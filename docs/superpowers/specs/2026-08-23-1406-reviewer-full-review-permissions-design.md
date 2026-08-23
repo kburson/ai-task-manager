@@ -1,616 +1,474 @@
-# Reviewer Full Review Permissions Design
+# SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Revised after manual review round 3; pending reviewer round 4
+**Status:** Reframed after the manual-review design decision; pending reviewer
+validation
 **Date:** 2026-08-23
 
 ## Review Context
 
-The official co-review runtime cannot provide an authoritative review of its
-own repair because the current reviewer Bash policy is the defect under review.
-The specification therefore uses a manual author/reviewer loop until #1406 is
-implemented. Each reviewer pass runs in a separate interactive provider
-session rooted in the isolated #1406 worktree, but does not claim an official
-co-review turn. After implementation, a fresh official co-review must validate
-the repaired boundary end to end.
+The official co-review runtime cannot authoritatively review this repair
+because its current reviewer capability policy is the defect under review. The
+specification therefore uses a manual author/reviewer loop in separate
+interactive sessions until #1406 is implemented.
+
+That manual loop exposed the simpler target architecture. The human has been
+copying complete author and reviewer outputs between sessions without
+performing a semantic review of every claim. The human is providing routing and
+continuation authority; the independent agent sessions are performing the
+substantive review. Automating that relay does not require constraining either
+agent to a shell-command keyhole.
+
+Commit `04cd9dfe` and its pending manual review describe the superseded
+capability-policy approach. The next review must evaluate this reframed
+specification from its new commit rather than accepting or amending that older
+design.
 
 ## Problem
 
-AITM currently applies its co-review mutation policy to every Bash request
-while a reviewer holds a live claim. The Bash target parser recognizes a
-deliberately small single-command grammar and treats commands it cannot prove
-read-only as ambiguous mutations. The reviewer policy then denies those
-commands before they execute with:
+AITM currently treats co-review as both:
+
+1. an orchestration and evidence protocol; and
+2. a same-user capability sandbox for the reviewer and waiting author.
+
+The orchestration protocol records useful authority: artifact commit and hash,
+roles, provider/session claims, ordered rounds, immutable responses and
+reviews, explicit decisions, locks, turn budgets, waits, and terminal archives.
+
+The capability sandbox is counterproductive. It parses every Bash request with
+a deliberately small grammar and denies commands it cannot prove read-only
+with:
 
 ```text
 reviewer mutation destinations are incomplete or ambiguous
 ```
 
-That ambiguity default-deny is the root cause. It blocks ordinary evidence
-gathering such as pipelines, `sed`, `find`, additional Git queries, Node
-scripts, and test commands. A reviewer can fall back to Read, Glob, and a few
-simple shell commands, but cannot perform the dynamic repository inspection
-required for a deep independent review.
+That denial blocks pipelines, `sed`, `find`, Git queries, Node scripts, tests,
+builds, and the owner-side polling and intervention commands needed by the
+protocol itself. It prevented a deep review while providing no adversarial
+security boundary: a process with arbitrary Bash can indirectly modify any
+same-user local file, including protocol state and locally stored digests.
 
-Issue #1365 added a narrow exception for exact co-review lifecycle commands. It
-did not restore general review capability, and its boundary regression invoked
-only `bash-guard.mjs` rather than the complete installed Bash hook chain.
-
-The repair must also acknowledge an unavoidable trust boundary: arbitrary Bash
-is arbitrary process execution. A same-user hook cannot both grant general
-shell execution and guarantee that a cooperative provider cannot indirectly
-modify local protocol or repository files. Static target checks can prevent
-obvious accidental writes, but they are not a security boundary against a
-provider deliberately modifying protocol state and its locally stored digests
-together.
+The manual author/reviewer loop performed a materially deeper review because
+both sessions retained normal capabilities. Its missing properties are
+automation, immutable routing, idempotency, recovery, and durable evidence—not
+additional shell policing.
 
 ## Design Decision
 
-`#1406` is a focused reviewer-permission boundary repair. It changes the matching
-reviewer's Bash path and only the activity permissions necessary for deep
-review. It does not add a total non-reviewer freeze, repository-wide snapshot
-validation, claim expiry, claim release, cross-worktree repository-set locks,
-or protocol-schema changes.
+Co-review is an automated, SHA-bound orchestration and evidence protocol. It is
+not an agent capability sandbox.
 
-Those broader controls are independently valuable, but combining them here
-would introduce new deadlock, recovery, compatibility, cross-worktree, and
-hot-path costs that are not required to remove the ambiguity refusal. They are
-recorded as deferred convergence concerns in this specification; no successor
-issue is created by this design.
+A co-review claim establishes role and provenance. It does not grant or remove
+Bash, Edit, Write, NotebookEdit, or apply_patch permissions. Claimed sessions
+use the same ordinary repository safeguards as any other session. Co-review
+does not parse arbitrary shell effects, maintain a reviewer command allowlist,
+or block a command merely because its destinations are ambiguous.
+
+The protocol protects correctness by binding every response, review, and
+decision to immutable Git and content identities. If the author advances from
+commit A to commit B, a review of A remains evidence about A and cannot approve
+B. This is the concurrency boundary; freezing all possible author or reviewer
+commands is not.
 
 ## Design Goals
 
-1. A session-bound reviewer can perform deep repository inspection and execute
-   verification through Bash without a co-review shell allowlist or ambiguity
-   refusal.
-2. A live reviewer grant permits `RUN_TESTS` and `RUN_BUILD` regardless of the
-   bound issue's kanban state.
-3. Dangerous-command, path-scope, worktree-binding, governed GitHub, AITM
-   command-path, commit-ownership, and installed-guard protections remain
-   effective.
-4. Direct file-writing tools remain limited to the exact session-bound pending
-   review artifact. If a readable index still identifies the current
-   provider/session as claimant but protocol integrity invalidates the live
-   grant, direct file-writing tools fail closed for that claimant.
-5. Explicitly detected Bash writes to protocol, authority, archive, and
-   reviewed-artifact paths remain denied as defense in depth.
-6. Existing non-reviewer mutation, cross-worktree handoff, human-authority,
-   lifecycle, and wait behavior is not broadened or newly restricted.
-7. Protocol role separation, provider/session ownership, locking, evidence
-   hashes, and archive validation remain governance controls within the stated
-   cooperative-provider trust model.
-8. The complete installed hook chain proves the permission boundary.
+1. Automate the successful manual author/reviewer relay without requiring the
+   human to copy substantive content between sessions.
+2. Preserve independent author and reviewer sessions with explicit provider,
+   session, and role provenance.
+3. Bind each review to the exact repository identity, artifact path, commit,
+   blob, and SHA-256 digest presented by the author.
+4. Reject stale approval when the artifact or reviewed commit has advanced.
+5. Allow the reviewer to inspect the repository deeply and run tests and
+   builds under ordinary repository safeguards.
+6. Allow both roles to use status, wait, lifecycle, and authenticated
+   intervention commands without a co-review-specific shell grammar.
+7. Preserve ordered rounds, bounded waits, turn budgets, immutable evidence,
+   locks, idempotent handoffs, and terminal archives.
+8. Distinguish human routing or continuation authority from human semantic
+   review approval.
+9. Preserve #1369 cross-worktree lifecycle commands through one narrow,
+   documented transport adapter.
+10. Prove the complete installed hook chain and end-to-end two-session relay.
 
 ## Non-Goals
 
-- Treating shell parsing as a tamper-proof sandbox for a malicious or
-  compromised same-user process.
-- Adding cryptographic signing, a remote authority service, operating-system
-  filesystem isolation, or a separately privileged protocol daemon.
-- Adding repository-wide snapshot fields or changing the existing
-  `aitm.co-review/v1`, `aitm.co-review-event/v1`, or
-  `aitm.co-review.archive/v1` schemas.
-- Adding reviewer-claim TTLs, heartbeats, release, reassignment, or abandoned
-  claim recovery.
-- Adding an index-wide or repository-set-wide author freeze.
-- Changing the #1369 cross-worktree runtime and handoff contract.
-- Granting reviewer implementation authority. The reviewer role remains
-  prohibited from using Bash to edit source, the authoritative artifact,
-  protocol state, authority files, or archives even where an indirect command
-  cannot be statically resolved.
-- Removing ordinary dangerous-command, path-scope, task-state, worktree,
-  GitHub-governance, AITM-command, commit-ownership, or installed-guard
-  protections.
-- Granting Edit, Write, NotebookEdit, or apply_patch authority over source,
-  reviewed artifacts, protocol files, authority files, archives, or unrelated
-  scratch files.
-- Hot-patching an active #1381 co-review runtime or treating evidence produced
-  under the constrained boundary as equivalent to evidence produced after the
-  correction.
+- Treating a malicious or compromised same-user author or reviewer process as
+  safely confined.
+- Inferring every filesystem or process side effect of arbitrary Bash.
+- Preventing a trusted reviewer from violating its role contract through an
+  indirect shell command.
+- Replacing ordinary dangerous-command, path-scope, worktree-binding, GitHub,
+  AITM-command, commit-ownership, or installed-guard protections.
+- Treating human routing as human approval of the reviewed content.
+- Automatically creating or controlling provider chat windows through
+  provider-specific private APIs. A human may still start each persistent
+  interactive session and give it the thin runtime handoff.
+- Adding reviewer-claim TTL, heartbeat, release, or reassignment in #1406.
+- Adding repository-wide snapshot state or changing the existing protocol and
+  archive schemas.
+- Hot-patching or reusing the active #1381 constrained runtime.
+- Creating successor issues for each deferred co-review concern.
 
-## Trust and Integrity Model
+## Authority Model
 
-The reviewer provider is a trusted governance principal, not hostile code. A
-reviewer is expected to follow its role contract just as an author is expected
-not to forge review prose. The implementation provides layered protection
-against mistakes and ordinary drift:
+### Normative artifact authority
 
-1. direct file-writing tools have an exact-path authorization boundary;
-2. statically resolved Bash destinations receive protected-path checks;
-3. existing non-reviewer mutation restrictions remain in place;
-4. protocol commands validate role, provider, session, lock, lifecycle, and
-   evidence agreement; and
-5. terminal evidence is archived and compared by the protocol.
+An owner handoff records:
 
-These controls do not establish independent authenticity against deliberate
-same-user Bash tampering. The protocol state and its digests are local mutable
-files. Strong adversarial tamper evidence would require one of the explicitly
-out-of-scope external or operating-system boundaries. Documentation and error
-messages must not claim otherwise.
+- canonical repository identity;
+- canonical artifact path;
+- immutable Git commit;
+- artifact blob identity;
+- SHA-256 digest of the artifact bytes at that commit; and
+- owner response digest and round.
 
-## Permission Model
+The reviewer handoff must cite that exact commit as `review-of`. The protocol
+loads authoritative artifact bytes from Git rather than trusting mutable
+working-tree bytes. A decision for commit A cannot satisfy a handoff or archive
+for commit B, even when both commits came from the same reused branch.
 
-### Matching-reviewer Bash
+Working-tree drift remains useful diagnostic evidence, but it cannot silently
+change a review's target. The operator either restores the reviewed commit or
+starts a new round for the new commit.
 
-When provider and session identity match the live reviewer grant, co-review
-does not deny a command merely because its mutation destinations are ambiguous,
-the command is compound, or the command is absent from a single-command
-allowlist. Bash continues through the ordinary guards:
+### Role and session authority
+
+Owner and reviewer identities remain distinct. Each claimed turn records the
+provider and session identifier that produced its evidence. Only the claimed
+role may submit that turn's handoff. Wrong actor, provider, session, runtime,
+round, review path, or `review-of` commit is a protocol refusal.
+
+The claim controls protocol mutation, not general tool permissions. A session
+may inspect files and execute verification without asking the co-review policy
+for permission. Only a successful protocol handoff can advance the review.
+
+### Human authority
+
+AITM records human actions according to what the human actually authorized:
+
+- starting or connecting independent sessions is operational routing and
+  creates no review-approval marker;
+- budget expansion, supplements, refocus, or intervention continuation retain
+  their existing authenticated-human provenance and mean only what their
+  command records; and
+- human semantic approval exists only when the human explicitly invokes the
+  repository's review-approval workflow.
+
+Copying an agent review between sessions or approving another automated round
+does not produce a human review-approval marker. This distinction uses existing
+command and approval evidence; #1406 adds no protocol or archive schema field.
+
+## Capability Model
+
+### Ordinary session safeguards
+
+Co-review adds no capability decision for Bash or direct file-writing tools.
+The installed ordinary guards continue to enforce:
 
 - unconditional dangerous-command refusal;
-- repository and home-directory path scope;
+- filesystem path scope;
 - active-task worktree binding;
-- governed GitHub and issue-lifecycle command policy;
-- AITM command-path policy;
-- commit ownership; and
-- installed-guard self-protection.
+- governed GitHub and issue-lifecycle commands;
+- sanctioned AITM command paths;
+- commit ownership;
+- installed-guard self-protection; and
+- ordinary activity-state policy.
 
-The activity guard continues to classify the command. A session-bound live
-reviewer grant permits `RUN_TESTS` and `RUN_BUILD` in every valid kanban state,
-including Refine, Plan, Review, and Done. It does not grant `WRITE_CODE`,
-`COMMIT_CODE`, `WRITE_DOCS`, `WRITE_ISSUE`, or `WRITE_OTHER` beyond what the
-ordinary state matrix already permits. The exception is keyed to the verified
-reviewer grant, not to a particular state name.
+The reviewer handoff instructs the reviewer to use a fresh session without an
+unrelated bound task. The co-review claim is its work context. Under the
+existing no-active-task policy, `RUN_TESTS`, `RUN_BUILD`, documentation writes,
+issue writes, and reads are available while `WRITE_CODE` and `COMMIT_CODE`
+remain refused when recognized.
 
-The Bash target extractor remains only as defense in depth. If it resolves a
-concrete destination under the co-review runtime, authority files, archive, or
-authoritative reviewed artifact, the command is denied. An empty target set or
-an ambiguous parse is not itself a refusal for the matching reviewer. The
-reviewer handoff states that indirect Bash mutation of protected or source
-files violates the reviewer role even when the hook cannot infer the
-destination.
+Verification is safe and useful in every lifecycle stage. `RUN_TESTS` and
+`RUN_BUILD` become universally permitted activity classes, like `READ_*`, so a
+legitimately bound reviewer or operator is not prevented from reproducing
+evidence solely because the issue is in Refine, Review, or Done. This is an
+ordinary activity-policy decision, not a co-review grant override.
 
-Ordinary source and documentation destinations are not added to the co-review
-protected-path list. When `classifyBash()` recognizes such a destination, the
-unchanged state matrix decides whether it is permitted. Commands whose indirect
-effects `classifyBash()` cannot recognize, such as some `sed -i` or embedded
-Node writes, may pass under the cooperative-provider trust model. They remain a
-reviewer-role violation, not an enforcement guarantee. This makes correct
-continuation into activity classification load-bearing even though activity
-classification is not a complete shell sandbox.
+### Reviewer role contract
 
-### Non-reviewer and human-authority behavior
+The reviewer may use normal Bash, Read, Glob, tests, builds, and repository
+inspection. The reviewer writes new review evidence under the protocol runtime
+and must not edit or commit the normative artifact, implementation source,
+prior response or review files, protocol state, authority indexes, or archives.
 
-`#1406` does not introduce a new total non-reviewer Bash freeze. In the owning
-worktree, when the existing `hasLiveReviewerClaim()` predicate is healthy and
-true, non-grant mutation attempts that the current policy detects remain
-denied. The current parser treats many `npx`, `npm`, `node`, `sed`, and `find`
-commands as ambiguous mutations, so an owner agent is already unable to run
-those commands through guarded Bash while the reviewer claim is live. Read,
-Glob, and the parser's explicitly read-only Bash shapes remain available.
+This is a cooperative-provider rule backed by immutable handoff validation and
+ordinary guards where they recognize the activity. It is not represented as a
+same-user security guarantee.
 
-`#1406` does not repair or widen the existing owner command surface.
-Specifically, it does not change the protocol semantics or human authorization
-of:
+### Cross-worktree lifecycle transport
 
-- `co-review status`, `help`, or `wait`;
-- `set-max-turns`, `supplement`, or `continue`;
-- owner or reviewer `claim` and `handoff` lifecycle commands;
-- finalization or authenticated human intervention; or
-- #1369 absolute-runtime cross-worktree handoff.
+`#1369` supports an interactive reviewer whose current directory differs from
+the runtime's linked worktree. Exact generated `co-review status`, help, and
+reviewer-handoff commands may require access to the canonical target runtime
+outside the caller's ordinary path scope.
 
-When those commands are invoked through an owner agent's guarded Bash during a
-healthy reviewer claim, the current ambiguity policy may refuse them before
-the protocol CLI runs. Human invocation outside the agent hook boundary remains
-governed by the protocol's authentication and lifecycle checks. The regression
-tests must pin this actual baseline rather than describing it as newly
-available.
+Retain one narrow lifecycle transport adapter in `bash-guard.mjs`. It recognizes
+only the generated single-command shapes, resolves the target runtime within
+the same Git common directory, and verifies provider/session targeting before
+allowing the command to reach the protocol CLI. It does not inspect or
+authorize ordinary reviewer Bash. Final actor, artifact, review, lock,
+lifecycle, and archive validation remains inside the protocol.
 
-This design neither repairs nor strengthens the current non-reviewer policy
-into a repository-set concurrency lock and does not claim that parser blind
-spots are eliminated for non-reviewer sessions.
+## Automated Relay
 
-### Direct file-writing tools
+The shared protocol runtime replaces the human clipboard as the substantive
+transport.
 
-Edit, Write, NotebookEdit, and apply_patch continue through
-`evaluateCoReviewWrite()`. A live reviewer grant permits only the exact
-canonical pending review artifact registered for that provider and session.
-The policy continues to reject:
+```text
+author session
+  -> commits artifact A
+  -> writes immutable owner response
+  -> hands off A
+  -> enters bounded wait
 
-- the reviewed artifact;
-- source or documentation outside the pending review file;
-- protocol, fleet-authority, and archive files;
-- other `.tmp/**` paths;
-- mixed targets;
-- malformed patches;
-- symlink aliases or drift; and
-- wrong-provider or wrong-session writes.
+reviewer session
+  -> wait wakes and status identifies A
+  -> reads A and owner response directly from recorded paths
+  -> performs unrestricted deep review under ordinary guards
+  -> writes immutable reviewer review citing A
+  -> hands off changes-requested or accepted
+  -> enters bounded wait when active
 
-These decisions run before ordinary scratch or activity allowances.
+author session
+  -> wait wakes and status identifies the exact review
+  -> reads the review directly from the runtime
+  -> revises and commits B when required
+  -> writes response citing the prior review
+  -> hands off B
+```
 
-### Unreadable or corrupt authority
+No substantive response or review text is copied through a human prompt. The
+human supplies each new persistent session only a thin handoff containing the
+worktree, runtime, actor, and instruction to start its bounded wait timer.
 
-Index authority and protocol integrity have different failure semantics:
+Every generated author and reviewer handoff includes:
 
-- If the co-review index cannot be read or parsed, the guard cannot determine
-  whether any provider owns a claim. Preserve the existing global fail-closed
-  result with `co-review-authority-unreadable` for Bash and direct writes.
-- If the index is readable but grant resolution itself throws, fail closed with
-  `co-review-grant-invalid`.
-- If the index is readable and names the current provider/session as reviewer,
-  but `statusProtocol().integrity.ok` is false and therefore no live grant
-  resolves, deny that indexed claimant's direct file-writing tools with
-  `co-review-claim-integrity-invalid`. Do not grant reviewer-specific Bash
-  permissions.
-- For other providers during protocol-integrity drift, preserve today's
-  claim-liveness and ordinary-policy behavior. Do not introduce an index-wide
-  freeze.
+- canonical worktree and runtime paths;
+- actor identity and current role;
+- exact status, claim, wait, and handoff commands;
+- authoritative artifact commit and evidence paths;
+- the remaining turn and bounded-wait budgets;
+- instructions to read peer evidence directly from disk;
+- instructions to start the turn timer immediately; and
+- the role and human-authority distinctions above.
 
-None of these failures may be reported as the ambiguity refusal. Protocol
-integrity drift does not become index unreadability and does not change
-`liveActive()` or `hasLiveReviewerClaim()` semantics.
-
-Recovery is an explicit operator boundary: preserve the index and protocol
-files, stop the official co-review, and use the manual author/reviewer workflow
-until authority is repaired through a separately approved recovery path.
-`#1406` does not add that recovery path.
+Both participants must keep separately observable bounded wait timers active
+while the other owns the turn. A successful handoff wakes the waiting role.
+Timeout is an observable checkpoint, not permission to reset the counter or
+steal the turn.
 
 ## Architecture Changes
 
 ### `activity-guard.mjs`
 
-- Keep direct-write target extraction and `evaluateCoReviewWrite()` for Edit,
-  Write, NotebookEdit, and apply_patch.
-- Scope the existing `coReview.decision === 'allow'` early exit to direct
-  file-writing tools only. Bash context evaluation must never reach that exit.
-- Resolve Bash through the dedicated context result. `reviewer-context` records
-  the matching live grant and continues into `classifyBash()`; `deny` blocks;
-  `not-applicable` follows ordinary classification without reviewer elevation.
-- Never interpret `reviewer-context` as permission to skip activity
-  classification.
-- Permit `RUN_TESTS` and `RUN_BUILD` whenever that matching live reviewer grant
-  exists, regardless of the recorded kanban state.
-- Apply every other activity class through the unchanged state matrix.
-- Do not add a lifecycle-command classifier to the activity guard. Once
-  matching-reviewer ambiguity returns `reviewer-context`, generated lifecycle
-  commands naturally continue and classify as `READ_*`.
-- Preserve existing non-reviewer Bash behavior; do not add a total freeze or a
-  new human-command allowlist.
+- Remove imports and evaluation of `mutation-targets.mjs` and
+  `co-review-write-policy.mjs`.
+- Remove all provider/session co-review capability decisions.
+- Continue directly from tool parsing into the ordinary activity classifier.
+- Make `RUN_TESTS` and `RUN_BUILD` universally allowed activity classes.
+- Retain every other state-matrix and installed-guard behavior.
+
+### `source-edit-gate.mjs`
+
+- Remove co-review target parsing, provider/session resolution, and
+  `evaluateCoReviewWrite()` decisions.
+- Continue applying ordinary source-edit, worktree, state, and installed-copy
+  protections.
+- Preserve the existing `.tmp/**` scratch behavior used for new response and
+  review artifacts.
 
 ### `bash-guard.mjs`
 
-- Resolve a matching reviewer grant before applying the ambiguity refusal.
-- For that matching reviewer only, ignore `ambiguousMutation` and an empty
-  target set as denial reasons.
-- Return `reviewer-context`, never `allow`, for ordinary matching-reviewer Bash.
-- Continue to deny statically resolved protected destinations.
-- Keep every subsequent ordinary Bash guard in its existing order for ordinary
-  reviewer Bash; matching reviewer authority alone is not an early success
-  exit.
-- Retain the existing early authorization only for an exact generated
-  lifecycle command whose runtime, provider, session, actor, review path,
-  reviewed commit, decision, and summary boundary match #1365/#1369 authority.
-- Preserve existing non-reviewer and cross-worktree lifecycle behavior.
+- Remove arbitrary Bash target extraction and
+  `evaluateCoReviewWrite()` evaluation.
+- Remove ambiguity-based and destination-completeness refusals.
+- Keep the strict #1369 lifecycle transport adapter as the only co-review-aware
+  Bash path.
+- Keep every ordinary Bash guard in its current order.
 
-### Co-review policy modules
+### Retired capability-policy modules
 
-Separate the two contracts without changing protocol schemas:
+Delete `co-review-write-policy.mjs` and `mutation-targets.mjs` after confirming
+they have no non-capability consumers. Remove their imports, fixtures, and
+focused policy tests.
 
-- `co-review-write-policy.mjs` remains the direct file-writing authority;
-- a focused Bash-context policy resolves matching reviewer ownership,
-  unreadable authority, and concrete protected targets without an ambiguity
-  default-deny for that reviewer; and
-- the existing non-reviewer decision path remains behaviorally unchanged.
+Rename `reviewer-co-review-command.mjs` to
+`co-review-lifecycle-transport.mjs`. Its only contract is recognizing and
+validating the exact #1369 transport shapes. It must not classify arbitrary
+review commands or become a replacement Bash allowlist.
 
-The Bash-context policy has a closed result vocabulary:
+Remove `resolveReviewerGrant()` or `hasLiveReviewerClaim()` exports from
+`scripts/review/lib/index.mjs` only if production consumer analysis proves they
+are unused after the capability policy is retired. Preserve the private
+claim-liveness behavior required by occupancy and protocol authority.
 
-- `{ decision: 'deny', code, reason }` blocks the request;
-- `{ decision: 'reviewer-context', grant }` marks ordinary matching-reviewer
-  Bash for continued guard and activity evaluation; and
-- `{ decision: 'not-applicable' }` applies no reviewer elevation and continues
-  through ordinary policy.
+### Protocol and generated handoffs
 
-It never returns `allow`. `allow` remains valid only for the exact pending
-review artifact in the direct-write policy and for the Bash guard's existing
-strict lifecycle-command compatibility lane. The activity guard's direct-write
-`allow` exit cannot consume a Bash-context result.
-
-`mutation-targets.mjs#extractBashWriteTargets` remains only for concrete
-defense-in-depth destinations on the matching-reviewer path. Its
-`ambiguousMutation` result cannot deny that reviewer.
-
-Add a readable-index claimant lookup that does not require
-`statusProtocol().integrity.ok`. It exists only to keep direct file-writing
-tools fail-closed for the exact provider/session already named as reviewer when
-integrity prevents a live grant. It does not grant Bash elevation, establish a
-live claim, freeze other providers, or change lifecycle decisions.
-
-Retain the strict lifecycle-command classifier only for the explicit #1365 and
-`#1369` compatibility lane. Rename
-`reviewer-co-review-command.mjs` to `co-review-lifecycle-command.mjs` and narrow
-its documented purpose to recognizing exact generated status, help, and
-reviewer-handoff commands that need target-runtime authorization. It must not
-classify or authorize ordinary reviewer Bash. `bash-guard.mjs` consumes this
-classifier for the narrow compatibility lane. `activity-guard.mjs` does not;
-its matching reviewer receives `reviewer-context`, continues naturally, and
-classifies the lifecycle command as `READ_*`. Complete-chain tests prove the
-two paths permit the same exact generated command. The protocol CLI remains
-responsible for final actor, runtime, review path, reviewed commit, decision,
-summary boundary, lock, and lifecycle validation.
-
-### Generated handoffs and documentation
-
-Replace the `Arbitrary Bash remains blocked` reviewer text in
-`scripts/review/lib/start.mjs#renderReviewerHandoff`. The generated reviewer
-handoff must say:
-
-- Bash inspection, tests, and builds are available to the session-bound
-  reviewer under the ordinary guards;
-- test/build permission follows the live reviewer grant rather than kanban
-  state;
-- direct Edit/Write/NotebookEdit/apply_patch writes are limited to the pending
-  review artifact;
-- the reviewer must not use Bash to mutate source, reviewed artifacts,
-  protocol, authority, or archive files;
-- protected-path shell checks are defense in depth rather than a hostile-code
-  sandbox; and
-- co-review lifecycle commands remain validated by the protocol.
-
-Update assertions in `scripts/tests/fixtures/co-review-start-cases.mjs` and
-`scripts/tests/fixtures/co-review-handoff-cases.mjs`. Do not change generated
-owner waiting, intervention, recovery, or human-authority instructions.
-
-## Command Flow
-
-For matching-reviewer Bash:
-
-```text
-Claude Bash request
-  -> evaluate Bash context
-  -> unreadable index or invalid grant resolution: deny with a distinct code
-  -> exact #1365/#1369 lifecycle command:
-       validate target-runtime authority through the shared compatibility lane
-       then execute the protocol command through the existing narrow path
-  -> matching ordinary reviewer: return reviewer-context, never allow
-  -> deny a concrete protected destination, if statically resolved
-  -> never deny solely for ambiguity, composition, or an empty target set
-  -> ordinary bash-guard policies
-  -> ordinary activity classification
-  -> reviewer-context grants only RUN_TESTS/RUN_BUILD state exceptions
-  -> execute or refuse
-```
-
-For all other Bash:
-
-```text
-Bash request
-  -> existing non-reviewer co-review decision path
-  -> existing ordinary guard path
-  -> no new freeze, exemption set, or cross-worktree rule
-```
-
-For direct writes:
-
-```text
-Edit/Write/NotebookEdit/apply_patch request
-  -> read index and resolve live reviewer provider/session grant
-  -> canonicalize every target
-  -> matching reviewer: allow only the exact pending review artifact
-  -> indexed claimant plus invalid protocol integrity: deny every direct write
-  -> otherwise preserve the existing co-review decision
-  -> continue through ordinary policy when not already decided
-```
-
-For reviewer handoff:
-
-```text
-reviewer Bash capability
-  -> npx aitm co-review handoff
-  -> protocol role, claim, review hash, review-of SHA, lock, lifecycle,
-     integrity, and archive validation
-```
+- Preserve SHA, blob, digest, role, provider/session, lock, round, decision,
+  budget, and archive validation.
+- Preserve #1369 canonical runtime resolution.
+- Update author and reviewer handoffs to describe normal capabilities and
+  direct file-based relay rather than arbitrary Bash prohibition.
+- Require the reviewer to start unbound from unrelated task work and to start
+  its bounded wait timer.
+- State plainly that routing and continuation do not constitute human semantic
+  approval; preserve existing command provenance and approval markers.
+- Do not change protocol or archive schemas in #1406.
 
 ## Failure Handling
 
-- A pre-fix ambiguity refusal remains attributable to #1406 and must not be
-  relabeled as an ordinary repository-policy refusal.
-- An ordinary guard refusal remains a normal repository-policy refusal and must
-  not be relabeled as a co-review mutation failure.
-- Unreadable or malformed index authority fails closed globally with
-  `co-review-authority-unreadable`.
-- Grant-resolution exceptions fail closed with `co-review-grant-invalid`.
-- Protocol-integrity drift preserves current claim-liveness behavior, with one
-  targeted addition: a readable index's exact claimed provider/session cannot
-  use direct file-writing tools and receives
-  `co-review-claim-integrity-invalid`.
-- Concrete protected-path writes are denied when statically resolved.
-- Artifact or protocol-integrity drift retains its current lifecycle refusal
-  behavior; #1406 does not change claim-liveness semantics.
-- A lifecycle command from the wrong actor, provider session, runtime, review
-  path, or reviewed SHA remains a protocol refusal.
-- A dead or abandoned reviewer claim remains an operator escalation under the
-  current protocol. #1406 neither worsens it with a total freeze nor introduces
-  an unreviewed release mechanism.
-- Policy-level results expose the structured `code`. Installed hooks serialize
-  the same code in the refusal reason as `[task-tracker:<code>] <reason>` so the
-  operator and subprocess tests observe the canonical diagnostic.
-- No fallback may impersonate the reviewer, silently repair authority, delete
-  evidence, or mutate terminal evidence.
+- Wrong artifact, commit, blob, digest, actor, provider, session, round,
+  review path, or decision refuses the protocol mutation with no state change.
+- Repeating the same handoff with identical evidence is idempotent; conflicting
+  reuse is refused.
+- Artifact advancement never inherits approval from the previous commit.
+- Ordinary guard refusals remain ordinary repository-policy refusals and are
+  never relabeled as co-review failures.
+- A reviewer command is never refused merely because arbitrary shell effects
+  are ambiguous.
+- Index, protocol, lock, or archive corruption remains a protocol refusal for
+  lifecycle commands; it does not remove ordinary repository capabilities.
+- A dead reviewer session may leave the protocol turn claimed, but it no longer
+  freezes the worktree or blocks ordinary tools. Preserve evidence and fall
+  back to the manual relay until a separately approved release/reassignment
+  design exists.
+- No recovery path may impersonate a reviewer, rewrite immutable evidence, or
+  silently convert agent review into human approval.
 
 ## Test Strategy
 
-### Failing complete-hook-chain regression first
+### Red-before-green guard regression
 
-Create an integration test that reads the installed Bash PreToolUse hook list
-and invokes the complete chain in its installed order against a real temporary
-repository and a live claimed reviewer protocol. The fixture must pin:
-
-- provider and session identity for owner and reviewer;
-- the authoritative artifact commit;
-- a clean repository checkout at fixture start; and
-- `TT_SKIP_NETWORK=1` so commit-assignee or other network work cannot obscure
-  the guard result.
+Create a real temporary repository with a live claimed reviewer and invoke the
+complete installed hook chain in its configured order. Pin provider/session
+identity and `TT_SKIP_NETWORK=1`.
 
 Before the fix, a representative pipeline must fail specifically with
-`reviewer mutation destinations are incomplete or ambiguous`. This prevents a
-fixture, identity, network, or state setup failure from masquerading as the
-required red.
+`reviewer mutation destinations are incomplete or ambiguous`.
 
-After the fix, the claimed reviewer must successfully run through the complete
-installed chain:
+After the fix, the same claimed reviewer must successfully run:
 
 - a Git or ripgrep pipeline;
 - `sed` and `find` inspection;
-- `git branch --show-current` or an equivalent Git query;
-- a focused `node --test` command;
-- a representative build command; and
-- reviewer status and handoff commands.
+- `git branch --show-current`;
+- a focused Node test;
+- a representative build; and
+- ordinary `status`, `wait`, and handoff commands.
 
-The sequence must reach a durable accepted or changes-requested protocol state
-and validate the existing immutable review evidence and archive.
+The installed chain must still refuse representative dangerous, path-scope,
+wrong-worktree, governed GitHub, forbidden source-write, and commit-ownership
+cases for the same session under ordinary policy.
 
-### Grant-scoped activity regression
+### Capability-policy retirement regression
 
-Focused activity-policy cases must prove:
+Tests must prove that:
 
-- ordinary matching-reviewer Bash returns `reviewer-context` and reaches
-  `classifyBash()`; it never returns or consumes `allow`;
-- `RUN_TESTS` and `RUN_BUILD` are permitted for the matching live reviewer in
-  every valid kanban state;
-- the same commands retain ordinary state-matrix behavior without that grant;
-- no additional write or commit activity class is granted; and
-- wrong provider, wrong session, stale lifecycle, unreadable authority, and
-  invalid integrity never receive the exception.
+- Bash, Edit, Write, NotebookEdit, and apply_patch outcomes are identical with
+  and without a live co-review claim, except for the documented #1369 lifecycle
+  transport adapter;
+- no installed guard imports or calls the retired co-review write policy;
+- no ambiguity or incomplete-destination refusal remains in production guard
+  code or generated handoffs;
+- direct review-file creation under the protocol runtime follows ordinary
+  `.tmp/**` policy; and
+- tests and builds are allowed in every kanban state while other activity
+  classes retain their existing matrix decisions.
 
-### Reviewer and non-reviewer boundary regression
+### Automated two-session acceptance
 
-Focused policy and complete-chain cases must prove:
+Run the full relay without copying substantive content through a human prompt:
 
-- matching-reviewer ambiguity alone never refuses Bash;
-- a concretely resolved write to protocol, authority, archive, or reviewed
-  artifact is refused;
-- ordinary dangerous-command, path, worktree-binding, governed GitHub, AITM,
-  commit-ownership, and installed-guard refusals remain effective;
-- concrete source/document writes recognized by `classifyBash()` reach the
-  ordinary state matrix rather than bypassing it;
-- existing non-reviewer mutation cases retain their decisions, including the
-  current ambiguity refusals for guarded owner-agent `npx`, `npm`, `node`,
-  `sed`, and `find` shapes during a healthy reviewer claim;
-- existing successful exact lifecycle and #1369 cross-worktree cases retain
-  their decisions; human protocol commands are tested at their actual current
-  hook boundary rather than assumed to be available; and
-- direct file-writing tools can write only the pending review artifact and
-  still refuse source, reviewed artifact, authority, protocol, archive, mixed,
-  malformed, symlink, and wrong-session targets.
+1. Author session hands off artifact commit A and enters bounded wait.
+2. Reviewer session claims, reads A and the owner response from recorded paths,
+   performs deep inspection, submits `changes-requested` against A, and waits.
+3. Author wait wakes, reads the review from the runtime, commits revised
+   artifact B, submits a response linked to the prior review, and waits.
+4. Reviewer wait wakes, reads B and the response, submits `accepted` against B,
+   and the protocol archives terminal evidence.
+5. A stale acceptance citing A for B is refused.
+6. Repeating an identical handoff is idempotent; conflicting evidence is
+   refused.
+7. Status and archive evidence prove every artifact, response, review, actor,
+   provider/session, round, decision, and SHA relationship. Existing session
+   timing evidence separately proves the bounded wait episodes; #1406 does not
+   add them to protocol or archive schemas.
 
-Authority-failure cases must separately prove:
+### Human-authority semantics
 
-- unreadable/malformed index: global fail-closed
-  `co-review-authority-unreadable`;
-- grant-resolution exception: `co-review-grant-invalid`;
-- readable indexed claimant plus protocol-integrity drift: direct writes deny
-  with `co-review-claim-integrity-invalid`, Bash receives no reviewer-context,
-  and other providers retain current behavior; and
-- none of these cases reports the ambiguity refusal.
+Tests must prove that session routing creates no human review-approval marker,
+that existing authenticated continuation evidence retains its current narrow
+meaning, and that only the explicit repository review-approval workflow can
+create human semantic-approval evidence.
 
-Unit policy tests pin the structured `code`. Complete installed-hook subprocess
-tests pin the serialized `[task-tracker:<code>]` token and reason text emitted
-by both guards.
+### Test-corpus maintenance
 
-### Zero-drift fixture assertion
+Remove or rewrite reviewer mutation-parser and co-review write-policy tests.
+Update `scripts/tests/fixtures/test-corpus-post-snapshot/**`,
+`scripts/tests/unit/meta/test-corpus-membership.test.mjs` expectations, and
+`scripts/task-tracker/test-impact-manifest.json` for the retired modules and new
+load-bearing integration tests.
 
-The complete-chain fixture must assert that its representative test, build,
-and co-review lifecycle leave tracked repository files unchanged. This is a
-test-harness honesty check, not a new protocol snapshot contract. In
-particular, the assertion covers tracked `.ai-task-manager/**` files without
-adding them to protocol state or guard hot paths.
-
-### Explicit test-corpus maintenance
-
-Replace or rewrite
-`scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
-as the complete installed-chain reviewer Bash boundary regression. Move the
-remaining strict lifecycle-classifier cases to the renamed
-`co-review-lifecycle-command.mjs` test surface. Trim Bash grammar cases from
-`scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs`, retain
-its direct-write and non-reviewer cases, and add focused tests for the new
-Bash-context policy.
-
-Add, move, or remove matching
-`scripts/tests/fixtures/test-corpus-post-snapshot/**` records and run
-`scripts/tests/unit/meta/test-corpus-membership.test.mjs`. Update
-`scripts/task-tracker/test-impact-manifest.json` so changes to the Bash guard,
-activity guard, Bash-context policy, lifecycle-command compatibility module,
-and handoff renderer select their load-bearing regressions.
-
-### Repository verification
-
-Run focused red/green tests during development, followed by the fast suite,
-slow suite, lint, documentation lint, spelling, and formatting before Test
-admission.
+Run focused red/green tests, then the fast suite, slow suite, lint,
+documentation lint, spelling, and formatting before Test admission.
 
 ## Deferred Convergence Concerns
 
-The manual review identified broader co-review concerns that #1406 records but
-does not implement:
+The implementation workflow must hydrate these findings into issue #1381's
+single durable convergence analysis before #1406 closes, without creating one
+successor issue per finding:
 
-- dead reviewer claims have no TTL, heartbeat, release, or reassignment path;
-- claim liveness currently depends on `statusProtocol().integrity.ok`;
-- non-reviewer mutation protection is worktree-scoped and parser-dependent;
-- a repository-family concurrency lock must account for #1369 cross-worktree
-  actors without freezing unrelated worktrees;
-- repository snapshot validation would affect protocol state, events, status,
-  archives, compatibility, and guard-path performance; and
-- existing v1 runtime and archive compatibility must be explicit before any
-  future protocol-schema evolution.
-
-These are convergence-analysis findings, not successor defects created by this
-specification. Before #1406 closes, the implementation workflow must hydrate
-them into the durable convergence analysis on issue #1381, with a citation to
-this specification and no successor issue per individual finding. The #1381
-body or a single authoritative #1381 planning comment must enumerate every
-bullet above so the concerns survive branch cleanup and later replanning.
+- dead reviewer claims lack human-authorized release or reassignment;
+- claim liveness depends on protocol integrity;
+- provider chat startup and wake-up remain host-adapter responsibilities;
+- strong adversarial tamper evidence would require external or OS authority;
+- repository snapshot review may eventually use a dedicated detached reviewer
+  worktree; and
+- existing constrained runtimes must never be reused as acceptance evidence.
 
 ## #1365 Disposition
 
-`#1406` supersedes `#1365`'s narrow command exception as the general reviewer
-permission model; it does not erase the historical reason `#1365` was accepted.
-The strict generated lifecycle-command lane remains for #1369 cross-worktree
-compatibility. The Bash guard retains its strict classifier; the activity guard
-permits the same command by resolving `reviewer-context` and reaching ordinary
-`READ_*` classification. Implementation must annotate the `#1365` plan or
-durable issue evidence with that narrowed disposition. Historical commits and
-review evidence remain unchanged.
+`#1406` supersedes `#1365`'s reviewer Bash allowlist and single-guard boundary as a
+general permission model. The strict lifecycle shape remains only as the
+renamed #1369 cross-worktree transport adapter. Historical commits and evidence
+remain unchanged; durable #1365 evidence must be annotated with this narrowed
+disposition during implementation.
 
 ## Rollout and Rollback
 
-Implement and verify this change only in the isolated #1406 worktree. Do not
-alter the active #1381 review runtime or its worktree while the constrained
-review is preserved as forensic evidence.
+Implement and verify only in the isolated #1406 worktree. Do not mutate the
+active #1381 constrained runtime or its worktree.
 
-After the correction is integrated into the branch used for review, start a
-fresh official co-review. The new runtime must use the corrected hook chain
-from its first reviewer claim. Do not import or reuse acceptance from a runtime
-created under the old boundary.
+After integration into the branch used for review, start a fresh official
+co-review from a new runtime. Both persistent sessions must use the corrected
+installed hooks from their first claim and must start their bounded wait
+timers. Do not import acceptance from an old runtime.
 
-Disable the repaired official co-review path and return to the manual
-author/reviewer workflow if any of these occur:
+Disable official co-review and return to the manual relay if:
 
-- a reviewer bypasses an ordinary dangerous, path, worktree, GitHub, AITM,
-  commit-ownership, or installed-guard refusal;
-- direct file-writing authority expands beyond the pending review artifact;
-- a non-reviewer command gains authority it did not have before #1406;
-- existing wait, lifecycle, human-authority, or #1369 cross-worktree behavior
-  regresses; or
-- legitimate deep-review commands remain blocked by a co-review ambiguity
-  decision.
+- ordinary dangerous, path, worktree, GitHub, AITM, commit-ownership, or
+  installed-guard protection regresses;
+- an artifact can inherit approval from another commit;
+- wrong-role or wrong-session evidence advances the protocol;
+- substantive content again requires human copy/paste between active turns;
+- either participant lacks an observable bounded wait timer; or
+- a legitimate deep-review command receives a co-review-specific refusal.
 
-Rollback means reverting the #1406 implementation as a governed change and
-marking official co-review unavailable pending diagnosis. It must not silently
-restore the constrained runtime and count its review as authoritative.
+Rollback means reverting #1406 as a governed change and marking official
+co-review unavailable pending diagnosis. A constrained runtime must not be
+silently restored and counted as authoritative review.
 
 ## Acceptance Summary
 
-The change is accepted when a session-bound reviewer can deeply inspect the
-repository and run tests and builds in every kanban state through the complete
-installed hook chain without an ambiguity-based refusal; ordinary reviewer
-Bash returns `reviewer-context` and still reaches activity classification;
-direct file-writing tools remain bound to the exact pending review artifact or
-fail closed for an indexed claimant whose live grant is invalidated by
-integrity; concrete protected Bash destinations and all ordinary guards remain
-enforced; and existing non-reviewer, wait, human-authority, lifecycle,
-cross-worktree, protocol, and archive behavior shows no regression.
+`#1406` is accepted when two independent persistent sessions can complete the
+author A -> reviewer changes-requested -> author B -> reviewer accepted flow
+using shared immutable files and bounded wait timers, without substantive human
+copy/paste and without co-review-specific restrictions on ordinary tools.
 
-The acceptance evidence must also state the cooperative-provider trust
-boundary: this design prevents accidents within the paths it can resolve, but
-does not claim adversarial tamper resistance against arbitrary same-user Bash.
+Every decision must remain bound to its exact artifact commit and provider
+session; ordinary repository guards must retain their behavior; terminal
+evidence must be complete and idempotent; and routing or continuation by the
+human must never be mislabeled as human semantic approval.
