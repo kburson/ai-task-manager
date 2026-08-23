@@ -87,6 +87,18 @@ function runMmdc(args) {
   });
 }
 
+export function buildMmdcArgs({ input, outPath, configPath } = {}) {
+  const args = ['-i', input, '-o', outPath, '-b', 'transparent', '-s', '3'];
+  const requestedConfig = String(configPath || '').trim();
+  if (requestedConfig) {
+    args.push(
+      '--puppeteerConfigFile',
+      path.isAbsolute(requestedConfig) ? requestedConfig : path.resolve(REPO_ROOT, requestedConfig)
+    );
+  }
+  return args;
+}
+
 /**
  * Render one Mermaid source string to an image file.
  *
@@ -100,7 +112,13 @@ export async function renderMermaidSource(code, outPath) {
   const input = path.join(dir, 'diagram.mmd');
   try {
     await writeFile(input, `${code}\n`, 'utf8');
-    await runMmdc(['-i', input, '-o', outPath, '-b', 'transparent', '-s', '3']);
+    await runMmdc(
+      buildMmdcArgs({
+        input,
+        outPath,
+        configPath: process.env.AITM_MERMAID_PUPPETEER_CONFIG,
+      })
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
