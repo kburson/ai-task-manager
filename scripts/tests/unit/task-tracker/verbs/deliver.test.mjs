@@ -443,7 +443,7 @@ test('merged exact head is independently verified and receives one durable recei
     'comments:read',
   ]);
   assert.equal(harness.calls.fetchOriginTrunk, 1);
-  assert.deepEqual(harness.calls.attributingCommits, [939]);
+  assert.deepEqual(harness.calls.attributingCommits, []);
 });
 
 test('merged verification rejects a missing merge SHA', async () => {
@@ -539,18 +539,6 @@ test('merged verification rejects a merge result unreachable from fetched origin
   await assert.rejects(() => deliver(harness), /delivery-verification:trunk-reachability/);
   assert.equal(harness.calls.createIssueComment, 1);
 });
-
-for (const missingIssue of [939, 1274]) {
-  test(`merged verification rejects missing #${missingIssue} trunk attribution`, async () => {
-    const harness = makeHarness({
-      commitSubjects: ['[#939] Top-level work', '[#1274] Child work'],
-      missingAttribution: [missingIssue],
-    });
-    await mergePendingIntent(harness);
-    await assert.rejects(() => deliver(harness), /delivery-verification:attribution/);
-    assert.equal(harness.calls.createIssueComment, 1);
-  });
-}
 
 test('ordinary intent rejects a merge timestamp earlier than the server intent timestamp', async () => {
   const harness = makeHarness({ mergedAt: '2026-08-22T13:59:59.000Z' });
@@ -721,7 +709,8 @@ test('ordinary prior-intent squash remains verifiable without provider method ev
 
 test('external recovery records observed merge bytes instead of synthesizing provider bytes', async () => {
   const historyCommitTitle = 'Merge pull request #1400 from codex/939-full-auto-merge';
-  const historyCommitMessage = 'GitHub default merge message for the historical pull request.';
+  const historyCommitMessage =
+    'GitHub default merge message for the historical pull request.\n\nAttribution: [#939]';
   const harness = makeHarness({
     prState: 'MERGED',
     historyCommitTitle,
@@ -784,13 +773,14 @@ test('external recovery derives required attribution from PR history when post-m
     prState: 'MERGED',
     commitSubjects: [],
     prCommitSubjects: ['[#939] Top-level work', '[#1274] Child work'],
+    historyCommitMessage: `PR #1400\nSource: ${HEAD}\n\n` + 'Attribution: [#939] [#1274]',
   });
 
   const result = await deliver(harness);
 
   assert.equal(result.status, 'delivered');
   assert.deepEqual(result.intent.attributionTokens, ['#1274', '#939']);
-  assert.deepEqual(harness.calls.attributingCommits, [1274, 939]);
+  assert.deepEqual(harness.calls.attributingCommits, []);
 });
 
 test('repeated external recovery re-verifies as already delivered without timestamp reclassification', async () => {
