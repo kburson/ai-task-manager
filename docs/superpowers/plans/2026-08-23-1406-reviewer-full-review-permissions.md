@@ -84,12 +84,27 @@ before `/task plan-approve #1406`; it is not an implementation task.
       still describes the superseded Bash-only/direct-write-confinement model.
       Replace its `User Story`, `Scope`, `Fix Direction`, `Out of Scope`,
       `Plan Metadata`, `Acceptance Criteria`, and `Verification Commands`
-      sections through governed `/task issue-body` operations so they match
-      the accepted specification and plan. Preserve every AITM marker and
-      lifecycle section; read back and verify each persisted body version.
-- [ ] The hydrated #1406 acceptance criteria must cover: normal tool outcomes
-      independent of a live claim; one canonical physical worktree; clean
-      tracked state at both handoffs; artifact-only A-to-B commit scope;
+      sections through governed `/task issue-body` operations so they match the
+      accepted specification and plan. Preserve every AITM marker and lifecycle
+      section; read back and verify each persisted body version.
+- [ ] Keep the six existing `<!-- aitm-verified vc-list="..." -->` markers
+      byte-for-byte and in their existing order while rewriting the surrounding
+      six acceptance-criterion labels. Keep Verification Command IDs 1 through
+      8 stable and replace the commands behind those IDs in place; remove only
+      uncited ID 9. This satisfies the `issue-body` verb's protected-marker
+      invariant without marker-loss permission, renumbering, or fabricated
+      evidence. Do not add or delete an `aitm-*` marker in these operations.
+- [ ] Map the stable VC IDs as follows: ID 1 runs focused protocol/repository
+      boundary tests; ID 2 runs the installed-chain and A-to-B integration; ID
+      3 runs ordinary guard-invariance tests; ID 4 runs generated-handoff,
+      provider-guidance, Markdown, and spelling checks; IDs 5 and 6 run the fast
+      and slow suites; ID 7 runs lint; and ID 8 runs formatting. Replace the
+      stale deleted-test command at ID 1 and the nonexistent
+      `npm run lint:docs` command at ID 4.
+- [ ] The six hydrated #1406 acceptance criteria collectively cover: normal
+      tool outcomes independent of a live claim; one canonical physical
+      worktree; clean tracked state at both handoffs; artifact-only A-to-B
+      commit scope;
       exact-HEAD import; immutable-SHA stale-decision refusal; ordinary-guard
       preservation; installed-hook capability parity; same-worktree
       A-to-B relay; idempotent terminal acceptance and exit-4 finalization;
@@ -97,7 +112,8 @@ before `/task plan-approve #1406`; it is not an implementation task.
 - [ ] Declare runnable verifier commands for every demonstrable #1406
       criterion, including the focused protocol/guard tests, installed-chain
       integration, documentation checks, fast suite, slow suite, lint, and
-      formatting. Remove commands for tests deleted by this plan.
+      formatting. Verify every preserved `vc-list` resolves to the intended
+      stable IDs before plan approval.
 - [ ] Invoke `/task plan-approve #1406` only after both issue-body updates are
       durable and independently checked. Do not implement, push, deliver,
       merge, promote, approve, or close as part of this gate.
@@ -242,6 +258,10 @@ finalization, and direct `validatedArchiveSnapshot()`. Build only the minimum
 valid lifecycle fixture needed to reach each command; each must refuse with
 `co-review:repository-identity` before writing protocol or archive bytes.
 
+Exercise both absolute foreign-runtime paths and a relative escape from the
+caller root, such as `--dir ../sibling/.tmp/review`. Assert the relative form
+resolves to the sibling repository before the same identity refusal.
+
 - [ ] **Step 2: Add the imported-review strict-ancestor regression**
 
 Extend `scripts/tests/fixtures/co-review-handoff-cases.mjs` with a real or memory
@@ -323,9 +343,12 @@ export function resolveRuntimeRoot({ cwd = process.cwd(), dir, repository }) {
 
 Delete the local `commonDirectory()` helper. Remove
 `commonDirectory()` from `REAL_REPOSITORY_BOUNDARY` and its boundary tests.
-Retain the existing symlink-escape test: a lexically contained runtime whose
-physical target escapes the repository must still reach `protocolPaths()` and
-fail `path-outside-repository`.
+Document the `not-a-repository` fallback as the routing needed for a lexically
+contained runtime symlink whose physical target is an external non-repository
+directory. Retain the existing real-Git symlink-escape test: that constructible
+case must pass through the fallback, reach `protocolPaths()`, and fail
+`path-outside-repository` rather than being mislabeled as a repository-identity
+failure.
 
 - [ ] **Step 5: Route initialization through the same boundary and reject
       ancestor imports**
@@ -357,8 +380,9 @@ node --test \
   scripts/tests/unit/review/co-review.test.mjs
 ```
 
-Expected: PASS; both foreign-worktree shapes fail before mutation and exact-HEAD
-imports pass.
+Expected: PASS; absolute and relative foreign-worktree shapes fail before
+mutation, the symlink escape preserves its path-containment diagnostic, and
+exact-HEAD imports pass.
 
 - [ ] **Step 7: Commit the protocol-root boundary**
 
@@ -396,7 +420,9 @@ git commit -m "[#1406] Enforce one-worktree co-review roots"
 
 - [ ] **Step 1: Add failing real-boundary and memory-boundary contract tests**
 
-Extend the boundary and fixture-cost tests with exact interface assertions:
+Add the real-Git assertions only to
+`scripts/tests/slow/review/co-review-boundaries.test.mjs`, alongside its
+existing `REAL_REPOSITORY_BOUNDARY` contract test:
 
 ```js
 assert.deepEqual(REAL_REPOSITORY_BOUNDARY.trackedChanges(root), []);
@@ -409,7 +435,11 @@ assert.deepEqual(REAL_REPOSITORY_BOUNDARY.changedPathsBetween(root, initialCommi
 ]);
 ```
 
-For the memory fixture, assert the same results and preserve:
+Add the matching in-memory assertions only to
+`scripts/tests/unit/review/co-review-fixture-cost.test.mjs`. Do not call the
+real boundary from that file: its process counters are module-scoped and the
+zero-subprocess contract must remain order-independent. Assert the same results
+through `fixture.repository` and preserve:
 
 ```js
 assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
@@ -562,6 +592,8 @@ git commit -m "[#1406] Enforce clean single-artifact handoffs"
 
 - Create: `scripts/task-tracker/lib/apply-patch-targets.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs`
+- Create:
+  `scripts/tests/integration/task-tracker/lib/co-review-reviewer-capability.test.mjs`
 - Modify: `scripts/task-tracker/activity-guard.mjs`
 - Modify: `scripts/task-tracker/source-edit-gate.mjs`
 - Modify: `scripts/task-tracker/bash-guard.mjs`
@@ -627,11 +659,26 @@ Include ordinary positive and negative cases: documentation edit, `.tmp/**`
 review-file write, source write while unbound, malformed apply_patch, and
 installed-guard self-edit refusal.
 
+In the new installed-chain integration file, build the minimum temporary
+repository and real-installer harness needed to establish a live reviewer
+claim. Assert that this representative pipeline succeeds through every
+configured Bash guard with the claim:
+
+```js
+'git status --short | sed -n "1,5p"';
+```
+
+Assert the desired success outcome only; do not embed the old refusal text in
+the test source.
+
 - [ ] **Step 3: Run the focused tests and record red behavior**
 
 Run:
 
 ```bash
+node --test \
+  scripts/tests/integration/task-tracker/lib/co-review-reviewer-capability.test.mjs
+
 node --test \
   scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs \
   scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs \
@@ -639,8 +686,11 @@ node --test \
   scripts/tests/unit/review/co-review-index.test.mjs
 ```
 
-Expected: FAIL because the new parser module is absent and live claims still
-change tool outcomes.
+Expected: the first command FAILS with the runtime diagnostic `reviewer
+mutation destinations are incomplete or ambiguous`; record that output as the
+installed-chain red receipt without copying the literal into the test file.
+The second command FAILS because the new parser module is absent and live
+claims still change tool outcomes.
 
 - [ ] **Step 4: Relocate the apply_patch parser**
 
@@ -704,7 +754,8 @@ git add -A -- \
   scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs \
   scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs \
   scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs \
-  scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs
+  scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs \
+  scripts/tests/integration/task-tracker/lib/co-review-reviewer-capability.test.mjs
 git commit -m "[#1406] Retire co-review capability policing"
 ```
 
@@ -735,8 +786,10 @@ Before committing, inspect `git diff --cached --name-status` and verify that
 - [ ] **Step 1: Replace stale handoff expectations with failing accepted-model
       expectations**
 
-In `co-review-start-cases.mjs`, remove the assertion matching
-`narrowly authorizes...Arbitrary Bash remains blocked` and add:
+In `co-review-start-cases.mjs`, remove all five stale reviewer-policy
+assertions: `narrowly authorizes...`, `arbitrary Bash remains blocked`,
+`ordinary quoted prose...supported`, `dynamic shell expressions...remain
+blocked`, and `live provider...session...claim`. Then add:
 
 ```js
 assert.match(reviewer, /normal repository inspection, test, build, and Bash capabilities/i);
@@ -846,7 +899,7 @@ git commit -m "[#1406] Document SHA-bound co-review roles"
 
 **Files:**
 
-- Create:
+- Modify:
   `scripts/tests/integration/task-tracker/lib/co-review-reviewer-capability.test.mjs`
 - Modify: `scripts/tests/fixtures/co-review-e2e-cases.mjs`
 - Modify: `scripts/tests/unit/review/co-review-finalization.test.mjs`
@@ -861,15 +914,15 @@ git commit -m "[#1406] Document SHA-bound co-review roles"
   owner lifecycle commands remain usable, A cannot approve B, and exit 4
   recovery never repeats terminal handoff.
 
-- [ ] **Step 1: Create the integration test harness and reproduce the original
-      failure**
+- [ ] **Step 1: Extend the installed-chain harness across deep-review commands**
 
-Build a temporary repository with the package installed through its real
-installer. Read the installed hook configuration in order and invoke each
-matching Bash or direct-write handler with the same payload, provider, session,
-and `TT_SKIP_NETWORK=1` environment.
+Extend Task 3's temporary repository and real-installer harness. Read the
+installed hook configuration in order and invoke each matching Bash or
+direct-write handler with the same payload, provider, session, and
+`TT_SKIP_NETWORK=1` environment.
 
-The first test must establish a live reviewer claim, run:
+The test must establish a live reviewer claim and expand the already-green
+pipeline case to:
 
 ```js
 const commands = [
@@ -881,11 +934,9 @@ const commands = [
 ];
 ```
 
-Before Task 3's production deletion, at least the pipeline must fail with:
-
-```text
-reviewer mutation destinations are incomplete or ambiguous
-```
+This is an acceptance-only extension after Task 3's production change. Its
+red-before-green receipt is the installed-chain failure captured in Task 3;
+do not recreate the retired diagnostic or add a synthetic failing assertion.
 
 - [ ] **Step 2: Add post-fix positive and negative installed-chain assertions**
 
@@ -928,7 +979,7 @@ all five cases.
 Reuse the existing e2e sequence and add assertions that:
 
 ```js
-assert.equal(changedPathsBetween(A, B), ['docs/artifact.md']);
+assert.deepEqual(repository.changedPathsBetween(root, A, B), ['docs/artifact.md']);
 assert.throws(() => reviewerHandoff({ reviewOf: A, currentArtifact: B }), /co-review:review-of/);
 assert.deepEqual(repeatIdenticalHandoff(), firstResult);
 assert.throws(conflictingReuse, /co-review:/);
@@ -1186,14 +1237,13 @@ Run each command separately and preserve its exit receipt:
 ```bash
 npm test
 npm run test:slow
-npm run lint:md
-npm run lint:spell
 npm run lint
 npm run format:check
 ```
 
-Expected: every command exits 0. Do not claim Test readiness from a partial
-suite.
+Expected: every command exits 0. `npm run lint` includes Markdown lint and
+spelling, so do not run those two nested scripts redundantly here. Do not claim
+Test readiness from a partial suite.
 
 - [ ] **Step 4: Verify installed artifacts and stale-reference absence**
 
