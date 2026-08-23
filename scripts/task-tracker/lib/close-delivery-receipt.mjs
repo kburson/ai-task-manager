@@ -35,9 +35,8 @@ export function resolveAcceptedDeliveryHead({
     !SHA_RE.test(localHeadSha || '') ||
     !SHA_RE.test(testReceiptSha || '') ||
     agentReviewPassed !== true ||
-    testReceiptSha !== localHeadSha ||
     (reviewReceiptSha !== null &&
-      (!SHA_RE.test(reviewReceiptSha || '') || reviewReceiptSha !== localHeadSha))
+      (!SHA_RE.test(reviewReceiptSha || '') || reviewReceiptSha !== testReceiptSha))
   ) {
     fail('accepted-evidence');
   }
