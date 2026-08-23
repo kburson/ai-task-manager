@@ -24,7 +24,7 @@ function pullRequest(number, headRefOid, state = 'OPEN') {
     mergeCommit: state === 'MERGED' ? { oid: 'c'.repeat(40) } : null,
     mergedAt: state === 'MERGED' ? '2026-08-23T03:57:33.000Z' : null,
     headRefDeleted: false,
-    sourceCommitSubjects: [`[#${number}] delivery`],
+    sourceCommitSubjects: ['[#1392] exact-head delivery'],
     mergeMethod: state === 'MERGED' ? 'squash' : null,
   };
 }
@@ -94,12 +94,27 @@ function harness(snapshots) {
       async listDirtyPaths() {
         return [];
       },
+      async fetchOriginTrunk() {},
+      async isAncestor() {
+        return true;
+      },
+      async inspectMergeCommit() {
+        return {
+          parents: ['d'.repeat(40)],
+          commitTitle: '[#1392] exact-head delivery',
+          commitMessage: `PR #1391\nSource: ${HEAD}\n\nAttribution: [#1392]`,
+        };
+      },
+      async attributingCommits(issueNumber) {
+        return [{ sha: 'c'.repeat(40), subject: `[#${issueNumber}] delivered` }];
+      },
       async listIssueComments() {
         return structuredClone(comments);
       },
       async createIssueComment({ body }) {
-        comments.push({ id: 'intent-1', createdAt: '2026-08-23T04:00:01.000Z', body });
-        return { id: 'intent-1' };
+        const id = `comment-${comments.length + 1}`;
+        comments.push({ id, createdAt: '2026-08-23T04:00:01.000Z', body });
+        return { id };
       },
       providerId() {
         return 'codex';
@@ -127,6 +142,18 @@ test('selects the sole current-head PR from historical branch PRs', async () => 
 
   assert.equal(result.status, 'action-required');
   assert.equal(result.action.prNumber, 1391);
+});
+
+test('recovers the sole merged current-head PR from historical branch PRs', async () => {
+  const result = await deliver([
+    pullRequest(1385, OLD_HEAD, 'MERGED'),
+    pullRequest(1391, HEAD, 'MERGED'),
+  ]);
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.recovery, true);
+  assert.equal(result.intent.prNumber, 1391);
+  assert.equal(result.receipt.prNumber, 1391);
 });
 
 test('preserves count refusal for zero or duplicate exact-head PRs', async () => {
