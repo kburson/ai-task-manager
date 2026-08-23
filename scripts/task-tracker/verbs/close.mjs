@@ -63,6 +63,7 @@ import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
 import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
 import {
   hasAcceptedApprovalEvidence,
   hasAcceptedReviewEvidence,
@@ -154,11 +155,15 @@ export async function loadCloseDeliveryGateInput({
         { timeout: GH_API_TIMEOUT_MS }
       );
       const pages = JSON.parse(String(commentsOut || '[]'));
-      const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => ({
-        id: String(comment.id),
-        body: comment.body,
-        createdAt: comment.created_at,
-      }));
+      const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
+        const createdAt = normalizeGitHubInstant(comment.created_at);
+        if (createdAt === null) throw new TypeError('close-delivery-comment-created-at');
+        return {
+          id: String(comment.id),
+          body: comment.body,
+          createdAt,
+        };
+      });
       const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
       records = projectDeliveryRecords(
         comments.map((comment) => parseDeliveryComment(comment, context)).filter(Boolean)

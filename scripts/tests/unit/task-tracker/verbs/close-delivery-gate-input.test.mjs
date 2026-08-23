@@ -1,4 +1,4 @@
-// @story #1397
+// @story #1397 #1399
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -61,12 +61,12 @@ function deliveryComments() {
     {
       id: 1,
       body: renderDeliveryIntentComment(intent),
-      created_at: '2026-08-23T00:00:01.000Z',
+      created_at: '2026-08-23T00:00:01Z',
     },
     {
       id: 2,
       body: renderDeliveryReceiptComment(receipt),
-      created_at: '2026-08-23T00:02:01.000Z',
+      created_at: '2026-08-23T00:02:01Z',
     },
   ];
 }
@@ -83,7 +83,7 @@ function pullRequest(number, headRefOid, mergeCommitSha = MERGE) {
   };
 }
 
-async function load(pullRequests) {
+async function load(pullRequests, { comments = deliveryComments() } = {}) {
   let commentReads = 0;
   const pexec = async (command, args) => {
     if (command === 'git' && args[0] === 'branch') return { stdout: 'codex/939-full-auto-merge\n' };
@@ -91,7 +91,7 @@ async function load(pullRequests) {
     if (command === 'gh' && args[0] === 'pr') return { stdout: JSON.stringify(pullRequests) };
     if (command === 'gh' && args[0] === 'api') {
       commentReads += 1;
-      return { stdout: JSON.stringify([deliveryComments()]) };
+      return { stdout: JSON.stringify([comments]) };
     }
     throw new Error(`unexpected command: ${command} ${args.join(' ')}`);
   };
@@ -117,8 +117,19 @@ test('#1397 projects delivery records under the unique accepted-head PR in eithe
     const { result, commentReads } = await load(pullRequests);
     assert.equal(commentReads, 1);
     assert.equal(result.records.liveIntent.record.prNumber, 1400);
+    assert.equal(result.records.liveIntent.createdAt, '2026-08-23T00:00:01.000Z');
     assert.equal(result.records.matchingReceipt.record.expectedHeadSha, HEAD);
+    assert.equal(result.records.matchingReceipt.createdAt, '2026-08-23T00:02:01.000Z');
   }
+});
+
+test('#1399 rejects an invalid GitHub comment timestamp before record projection', async () => {
+  const comments = deliveryComments();
+  comments[0].created_at = 'not-an-instant';
+  await assert.rejects(
+    load([pullRequest(1400, HEAD)], { comments }),
+    /close-delivery-comment-created-at/
+  );
 });
 
 test('#1397 does not read comments for zero or duplicate accepted-head candidates', async () => {
