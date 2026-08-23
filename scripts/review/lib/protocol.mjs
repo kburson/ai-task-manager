@@ -1190,6 +1190,93 @@ function committedOwnerArtifact(root, state, artifact, revision, repository) {
   };
 }
 
+function sameDigestArtifact(left, right) {
+  if (!left || !right) return !left && !right;
+  return left.path === right.path && left.sha256 === right.sha256;
+}
+
+function sameOwnerArtifact(left, right) {
+  return (
+    sameDigestArtifact(left, right) && left.commit === right.commit && left.blob === right.blob
+  );
+}
+
+function immediatelyCompletedHandoff(paths, state, role) {
+  const latest = readEventRecords(paths).at(-1);
+  return (
+    latest?.revision === state.revision &&
+    latest?.type === `${role}-handoff` &&
+    state.lastHandoff?.from === role
+  );
+}
+
+function recognizeOwnerHandoffReplay({
+  root,
+  paths,
+  state,
+  actor,
+  response,
+  artifact,
+  commit,
+  answers,
+  message,
+  repository,
+}) {
+  if (!immediatelyCompletedHandoff(paths, state, 'owner')) return null;
+  let matches = false;
+  try {
+    const responseArtifact = digestFile(root, response, 'response');
+    const answeredReview = answers ? digestFile(root, answers, 'answers') : null;
+    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
+    const recorded = state.lastHandoff;
+    matches =
+      state.roles.owner === actor &&
+      sameOwnerArtifact(artifactRecord, recorded.artifact) &&
+      sameOwnerArtifact(artifactRecord, state.artifact) &&
+      artifactRecord.commit === recorded.commit &&
+      sameDigestArtifact(responseArtifact, recorded.artifacts?.response) &&
+      sameDigestArtifact(answeredReview, recorded.artifacts?.answeredReview) &&
+      String(message || '').trim() === recorded.message;
+  } catch (error) {
+    if (!(error instanceof ProtocolError)) throw error;
+  }
+  if (!matches) fail('handoff-conflict', 'owner');
+  return state;
+}
+
+function recognizeReviewerHandoffReplay({
+  root,
+  paths,
+  state,
+  actor,
+  review,
+  reviewOf,
+  decision,
+  summary,
+  message,
+  repository,
+}) {
+  if (!immediatelyCompletedHandoff(paths, state, 'reviewer')) return null;
+  let matches = false;
+  try {
+    const reviewArtifact = digestFile(root, review, 'review');
+    const summaryArtifact = summary ? digestFile(root, summary, 'summary') : null;
+    const exactReviewOf = exactReachableCommit(root, reviewOf, repository);
+    const recorded = state.lastHandoff;
+    matches =
+      state.roles.reviewer === actor &&
+      exactReviewOf === recorded.commit &&
+      decision === recorded.decision &&
+      sameDigestArtifact(reviewArtifact, recorded.artifacts?.review) &&
+      sameDigestArtifact(summaryArtifact, recorded.artifacts?.summary) &&
+      String(message || '').trim() === recorded.message;
+  } catch (error) {
+    if (!(error instanceof ProtocolError)) throw error;
+  }
+  if (!matches) fail('handoff-conflict', 'reviewer');
+  return state;
+}
+
 export function handoffOwner({
   cwd = process.cwd(),
   dir,
@@ -1207,6 +1294,19 @@ export function handoffOwner({
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     assertIgnored(root, paths, repository);
     assertCleanTrackedState(root, repository);
+    const replay = recognizeOwnerHandoffReplay({
+      root,
+      paths,
+      state,
+      actor,
+      response,
+      artifact,
+      commit,
+      answers,
+      message,
+      repository,
+    });
+    if (replay) return replay;
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.owner !== actor || state.currentRole !== 'owner') {
       fail('wrong-role', `${actor}; expected owner ${state.roles.owner}`);
@@ -1293,6 +1393,19 @@ export function handoffReviewer({
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     assertIgnored(root, paths, repository);
     assertCleanTrackedState(root, repository);
+    const replay = recognizeReviewerHandoffReplay({
+      root,
+      paths,
+      state,
+      actor,
+      review,
+      reviewOf,
+      decision,
+      summary,
+      message,
+      repository,
+    });
+    if (replay) return replay;
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.reviewer !== actor || state.currentRole !== 'reviewer') {
       fail('wrong-role', `${actor}; expected reviewer ${state.roles.reviewer}`);

@@ -98,6 +98,48 @@ async function pendingReviewerHandoff() {
   };
 }
 
+async function completedOwnerHandoff() {
+  const fixture = await initializedProtocol({ imported: true });
+  const { api, root, options } = fixture;
+  api.claimTurn({ cwd: root, dir: options.dir, actor: options.owner });
+  const commit = commitArtifact(root, '# Artifact\n\nOwner revision.\n');
+  const response = `${options.dir}/owner-replay-response.md`;
+  writeFileSync(
+    path.join(root, response),
+    '[finding:F-001] [disposition:accepted]\nRevised terminal acceptance.\n'
+  );
+  const call = {
+    cwd: root,
+    dir: options.dir,
+    actor: options.owner,
+    response,
+    artifact: options.artifact,
+    commit,
+    answers: options.importReview,
+    message: 'owner revision ready',
+  };
+  const first = api.handoffOwner(call);
+  return { ...fixture, call, first, commit };
+}
+
+async function completedAcceptedReviewerHandoff() {
+  const fixture = await reviewerTurn({ maxReviewTurns: 1 });
+  const { api, root, options, commit } = fixture;
+  const review = `${options.dir}/accepted-replay-review.md`;
+  writeFileSync(path.join(root, review), '# Review\n\nAccepted.\n');
+  const call = {
+    cwd: root,
+    dir: options.dir,
+    actor: options.reviewer,
+    review,
+    reviewOf: commit,
+    decision: 'accepted',
+    message: 'accepted',
+  };
+  const first = api.handoffReviewer(call);
+  return { ...fixture, call, first, review };
+}
+
 test('imported review requires exact HEAD even when an ancestor has identical artifact bytes', async () => {
   const fixture = memoryRepositoryFixture();
   const api = await memoryProtocol(fixture.repository);
@@ -165,6 +207,55 @@ test('first owner handoff transfers a committed artifact plus immutable response
   assert.equal(state.lastHandoff.commit, initialCommit);
   assert.match(state.lastHandoff.artifacts.response.sha256, /^sha256:[a-f0-9]{64}$/);
   assert.equal(state.reviewTurnsUsed, 0);
+});
+
+test('an immediate exact owner handoff retry returns persisted state without mutation', async () => {
+  const fixture = await completedOwnerHandoff();
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  const replayed = fixture.api.handoffOwner({
+    ...fixture.call,
+    response: `./${fixture.call.response}`,
+    artifact: `./${fixture.call.artifact}`,
+    commit: 'HEAD',
+    answers: `./${fixture.call.answers}`,
+    message: '  owner revision ready  ',
+  });
+
+  assert.deepEqual(replayed, fixture.first);
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
+});
+
+test('an immediate conflicting owner handoff reuse refuses without mutation', async () => {
+  const fixture = await completedOwnerHandoff();
+  const alternateResponse = `${fixture.options.dir}/conflicting-owner-response.md`;
+  const alternateAnswers = `${fixture.options.dir}/conflicting-answers.md`;
+  writeFileSync(
+    path.join(fixture.root, alternateResponse),
+    '[finding:F-001] [disposition:accepted]\nDifferent response evidence.\n'
+  );
+  writeFileSync(
+    path.join(fixture.root, alternateAnswers),
+    '# Review\n\n[finding:F-001] Different review evidence.\n'
+  );
+  const conflicts = [
+    ['actor', { actor: 'different-owner' }],
+    ['response artifact', { response: alternateResponse }],
+    ['artifact path', { artifact: '.gitignore' }],
+    ['commit', { commit: fixture.initialCommit }],
+    ['answered review', { answers: alternateAnswers }],
+    ['message', { message: 'different owner message' }],
+  ];
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  for (const [name, mutation] of conflicts) {
+    assert.throws(
+      () => fixture.api.handoffOwner({ ...fixture.call, ...mutation }),
+      /co-review:handoff-conflict:owner/,
+      name
+    );
+    assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before, name);
+  }
 });
 
 test('owner handoff requires clean staged and unstaged tracked state', async () => {
@@ -479,6 +570,47 @@ test('accepted on the final allowed reviewer turn is terminal without summary', 
       }),
     /co-review:continue-state:accepted/
   );
+});
+
+test('an immediate exact reviewer handoff retry returns accepted state without mutation', async () => {
+  const fixture = await completedAcceptedReviewerHandoff();
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  const replayed = fixture.api.handoffReviewer({
+    ...fixture.call,
+    review: `./${fixture.call.review}`,
+    reviewOf: 'HEAD',
+    message: '  accepted  ',
+  });
+
+  assert.deepEqual(replayed, fixture.first);
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
+});
+
+test('an immediate conflicting reviewer handoff reuse refuses without mutation', async () => {
+  const fixture = await completedAcceptedReviewerHandoff();
+  const alternateReview = `${fixture.options.dir}/conflicting-review.md`;
+  const alternateSummary = `${fixture.options.dir}/conflicting-summary.md`;
+  writeFileSync(path.join(fixture.root, alternateReview), '# Review\n\nDifferent evidence.\n');
+  writeFileSync(path.join(fixture.root, alternateSummary), '# Summary\n\nUnexpected summary.\n');
+  const conflicts = [
+    ['actor', { actor: 'different-reviewer' }],
+    ['review artifact', { review: alternateReview }],
+    ['review-of commit', { reviewOf: 'missing-revision' }],
+    ['decision', { decision: 'changes-requested' }],
+    ['summary', { summary: alternateSummary }],
+    ['message', { message: 'different reviewer message' }],
+  ];
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  for (const [name, mutation] of conflicts) {
+    assert.throws(
+      () => fixture.api.handoffReviewer({ ...fixture.call, ...mutation }),
+      /co-review:handoff-conflict:reviewer/,
+      name
+    );
+    assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before, name);
+  }
 });
 
 test('final changes-requested preserves the closing owner turn, then enters intervention', async () => {
