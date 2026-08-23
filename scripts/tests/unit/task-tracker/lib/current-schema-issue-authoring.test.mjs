@@ -114,6 +114,9 @@ describe('current-schema User Story authoring', () => {
       'As a task author\nI want to create an issue\nSo that it is complete\nUnexpected fourth line\n',
       '## User Story\n\nAs a task author\nI want to create an issue\nSo that it is complete\n',
       'As a [who wants to accomplish something]\nI want to [what they want to accomplish]\nSo that [why they want to accomplish that thing]\n',
+      'developer\nfeature\nbenefit\n',
+      'As a task author\nI want feature\nSo that it is complete\n',
+      'As a\nI want to create an issue\nSo that it is complete\n',
     ];
     try {
       for (const value of invalidStories) {
@@ -181,6 +184,38 @@ describe('current-schema Acceptance Criterion verifier authoring', () => {
 });
 
 describe('current-schema public authoring contract', () => {
+  test('create-issue --body-file --dry-run rejects missing stories and legacy AC verifiers', async () => {
+    const files = fixture();
+    const bodyFile = path.join(files.dir, 'body.md');
+    try {
+      const rendered = await preflight(shapeArgs('solo', files));
+      assert.equal(rendered.code, 0, rendered.stderr);
+      const invalidBodies = [
+        rendered.stdout.replace(/## User Story[\s\S]*?(?=## Scope)/, ''),
+        rendered.stdout.replace(
+          '<!-- aitm-non-demonstrable -->',
+          '<!-- aitm-verified cmd="`node --test x.test.mjs`" -->'
+        ),
+      ];
+      for (const body of invalidBodies) {
+        writeFileSync(bodyFile, body, 'utf8');
+        await assert.rejects(
+          pexec(process.execPath, [
+            CREATE_ISSUE,
+            '--title',
+            'Invalid legacy body',
+            '--body-file',
+            bodyFile,
+            '--dry-run',
+          ]),
+          (error) => error.code === 4 && /canonical issue-body verifier/.test(error.stderr)
+        );
+      }
+    } finally {
+      rmSync(files.dir, { recursive: true, force: true });
+    }
+  });
+
   test('create-issue and preflight help advertise --user-story-file', async () => {
     for (const script of [CREATE_ISSUE, PREFLIGHT]) {
       const { stdout } = await pexec(process.execPath, [script, '--help']);
@@ -237,6 +272,12 @@ describe('current-schema public authoring contract', () => {
       const contents = readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
       assert.match(contents, /--user-story-file/, relativePath);
     }
+
+    const planMode = readFileSync(
+      path.join(REPO_ROOT, 'skill/shared/rules/plan-mode-backlog.md'),
+      'utf8'
+    );
+    assert.match(planMode, /\.tmp\/plan\/user-story\.md/);
   });
 });
 

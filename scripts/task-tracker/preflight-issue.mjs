@@ -52,7 +52,7 @@ import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
 import { stripKnownPrefix } from '../gh/lib/kind-prefix.mjs';
-import { buildUserStoryLines } from './lib/user-story-author.mjs';
+import { validateExactUserStoryLines } from './lib/user-story-author.mjs';
 import {
   findAcsWithLegacyVerificationForm,
   findAcsWithoutVerifierOrInvalidTag,
@@ -204,18 +204,7 @@ export function normalizeAcceptanceCriteria(value) {
 }
 
 export function normalizeUserStoryFragment(value) {
-  const lines = String(value || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length !== 3 || lines.some((line) => /^#{1,6}\s+/.test(line))) {
-    throw new TypeError('expected exactly three heading-free Connextra lines');
-  }
-  return buildUserStoryLines({
-    asA: lines[0],
-    iWant: lines[1],
-    soThat: lines[2],
-  }).join('\n');
+  return validateExactUserStoryLines(value).join('\n');
 }
 
 // Plan Metadata label emphasis (#416, fixed in #488). Delegates to the shared
@@ -579,11 +568,13 @@ function emitShape(args, dodPath, root) {
   if (stampKindMarker) {
     finalBody = setIssueKindMarker(finalBody, kind);
   }
-  const bodyVerification = verifyIssueBody(finalBody);
-  if (!bodyVerification.ok) {
-    die(
-      `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`
-    );
+  if (shape !== 'stub') {
+    const bodyVerification = verifyIssueBody(finalBody);
+    if (!bodyVerification.ok) {
+      die(
+        `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`
+      );
+    }
   }
   process.stdout.write(finalBody);
   // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded

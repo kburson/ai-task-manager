@@ -59,6 +59,28 @@ export function buildUserStoryLines({ asA, iWant, soThat } = {}) {
   ];
 }
 
+// Public issue-creation file inputs are already complete story artifacts, not
+// conversational clauses. Validate their exact Connextra form rather than
+// passing them through the prefix-repair behavior used by `setUserStory`.
+export function validateExactUserStoryLines(value) {
+  const lines = String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const patterns = [/^As an? \S.*$/, /^I want to \S.*$/, /^So that \S.*$/];
+  if (
+    lines.length !== 3 ||
+    lines.some((line) => /^#{1,6}\s+/.test(line)) ||
+    lines.some((line, index) => !patterns[index].test(line)) ||
+    lines.some((line) => PLACEHOLDERS.has(line))
+  ) {
+    throw new TypeError(
+      'expected exactly three complete heading-free Connextra lines: `As a ...`, `I want to ...`, `So that ...`'
+    );
+  }
+  return lines;
+}
+
 export function setUserStory(body, story = {}) {
   const src = String(body == null ? '' : body);
   const lines = buildUserStoryLines(story);

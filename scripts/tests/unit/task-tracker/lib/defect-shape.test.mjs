@@ -37,7 +37,7 @@ function defectArgs(overrides = {}) {
     label: [],
     'user-story-file': fragment(
       'user-story.md',
-      'As an AITM operator\nI want active work to remain active\nSo that timing records stay truthful'
+      'As an AITM operator\nI want to keep active work active\nSo that timing records stay truthful'
     ),
     'scope-file': fragment('scope.md', 'Resume classifies active issue work as idle.'),
     'ac-file': fragment(
@@ -112,7 +112,7 @@ test('defect dry-run renders a real User Story, diagnostic sections, and governe
   );
 
   assert.match(rendered, /## User Story\n\nAs an AITM operator/);
-  assert.match(rendered, /I want active work to remain active/);
+  assert.match(rendered, /I want to keep active work active/);
   assert.doesNotMatch(rendered, /\[who wants|\[what they want|TBD/);
   for (const heading of [
     '## Scope',
@@ -227,7 +227,7 @@ test('web defect normalization maps form fields through the same renderer and st
   assert.match(captured.reproduction, /Leave an active timing span open/);
   assert.equal(
     captured.acceptanceCriteria,
-    '- [ ] Active work remains active. <!-- aitm-non-demonstrable -->'
+    '- [ ] Active work remains active.'
   );
   assert.equal(captured.priority, 'P1');
   assert.equal(captured.size, 'S');
@@ -237,20 +237,19 @@ test('web defect normalization maps form fields through the same renderer and st
   assert.ok(Object.isFrozen(result));
 });
 
-test('web defect normalization default path renders the canonical defect body', async () => {
-  const result = await normalizeWebDefectIssue({
-    issue: {
-      title: '🐞 [BUG] resume invents idle time',
-      body: WEB_FORM_BODY,
-      labels: ['bug'],
-      created_at: '2026-08-04T12:00:00Z',
-    },
-    projectDir: ROOT,
-  });
-  assert.equal(result.status, 'normalized');
-  assert.match(result.body, /## Reproduction/);
-  assert.match(result.body, /## Definition of Done/);
-  assert.match(result.body, /aitm-body-version version="1"/);
+test('web defect normalization refuses default ACs without honest verifier evidence', async () => {
+  await assert.rejects(
+    normalizeWebDefectIssue({
+      issue: {
+        title: '🐞 [BUG] resume invents idle time',
+        body: WEB_FORM_BODY,
+        labels: ['bug'],
+        created_at: '2026-08-04T12:00:00Z',
+      },
+      projectDir: ROOT,
+    }),
+    /preflight-issue --shape failed|Command failed/
+  );
 });
 
 test('web normalization is a fixed point and excludes non-bug and beta-report issues', async () => {

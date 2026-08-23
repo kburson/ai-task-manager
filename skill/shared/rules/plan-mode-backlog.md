@@ -59,6 +59,7 @@ Every created epic, sub-issue, and solo task must be tethered via `project-tethe
 
 Stage the creation fragments under `./.tmp/plan/`; Plan Metadata is optional when planning output is not yet known:
 
+- `./.tmp/plan/user-story.md` — exactly three complete Connextra lines (`As a ...`, `I want to ...`, `So that ...`)
 - `./.tmp/plan/scope.md` — Epic Scope prose
 - `./.tmp/plan/acs.md` — Acceptance Criteria as `- [ ]` checkboxes (closes-gate parser requires the bracket-space-bracket format)
 - `./.tmp/plan/story-origin.md` — create-time provenance such as `**kind:**`, `**discovered-during:**`, and relationships

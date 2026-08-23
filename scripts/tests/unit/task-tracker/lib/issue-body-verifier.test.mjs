@@ -23,6 +23,12 @@ const preflightScript = join(repoRoot, 'scripts/task-tracker/preflight-issue.mjs
 // Definition of Done is a 2-hash top-level sibling with 3-hash
 // Functional/Lifecycle children.
 const CANONICAL_BODY = [
+  '## User Story',
+  '',
+  'As a task author',
+  'I want to create a governed issue',
+  'So that every public creation path uses the current schema',
+  '',
   '## Scope',
   '',
   'Some scope text.',
@@ -37,7 +43,11 @@ const CANONICAL_BODY = [
   '',
   '## Acceptance Criteria',
   '',
-  '- [ ] Something works',
+  '- [ ] Something works <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '',
+  '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
   '',
   '## Definition of Done',
   '',
@@ -60,6 +70,34 @@ test('verifyIssueBody: canonical body passes', () => {
   const res = verifyIssueBody(CANONICAL_BODY);
   assert.equal(res.ok, true, `unexpected missing: ${JSON.stringify(res.missing)}`);
   assert.deepEqual(res.missing, []);
+});
+
+test('verifyIssueBody: requires a complete current-schema User Story', () => {
+  for (const body of [
+    CANONICAL_BODY.replace(/## User Story[\s\S]*?(?=## Scope)/, ''),
+    CANONICAL_BODY.replace('I want to create a governed issue', 'I want a governed issue'),
+  ]) {
+    const res = verifyIssueBody(body);
+    assert.equal(res.ok, false);
+    assert.ok(res.missing.some((item) => /User Story/.test(item)), JSON.stringify(res.missing));
+  }
+});
+
+test('verifyIssueBody: rejects legacy and missing AC verifier declarations', () => {
+  for (const body of [
+    CANONICAL_BODY.replace(
+      '<!-- aitm-verified vc-list="vc:1" -->',
+      '<!-- aitm-verified cmd="`node --test x.test.mjs`" -->'
+    ),
+    CANONICAL_BODY.replace(' <!-- aitm-verified vc-list="vc:1" -->', ''),
+  ]) {
+    const res = verifyIssueBody(body);
+    assert.equal(res.ok, false);
+    assert.ok(
+      res.missing.some((item) => /Acceptance Criteria/.test(item)),
+      JSON.stringify(res.missing)
+    );
+  }
 });
 
 test('verifyIssueBody: missing Scope', () => {
@@ -220,7 +258,7 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
   const pmFile = join(tmp, 'pm.md');
   writeFileSync(
     storyFile,
-    'As a task author\nI want canonical issue rendering\nSo that body verification succeeds\n'
+    'As a task author\nI want to render canonical issues\nSo that body verification succeeds\n'
   );
   writeFileSync(scopeFile, 'Scope text here.\n');
   writeFileSync(acFile, '- [ ] Something works <!-- aitm-non-demonstrable -->\n');

@@ -27,7 +27,13 @@
 
 import { hasStoryOriginFields } from '../../task-tracker/lib/story-origin.mjs';
 import { hasNestedMetadataHeading } from '../../task-tracker/lib/metadata-section.mjs';
+import {
+  findAcsWithLegacyVerificationForm,
+  findAcsWithoutVerifierOrInvalidTag,
+} from '../../task-tracker/lib/body-invariants.mjs';
+import { validateExactUserStoryLines } from '../../task-tracker/lib/user-story-author.mjs';
 
+const USER_STORY_REGEX = /^##\s+User Story\s*$/m;
 const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
 const STORY_ORIGIN_REGEX = /^##\s+Story Origin\s*$/m;
 const PLAN_METADATA_REGEX = /^##\s+Plan Metadata\s*$/m;
@@ -41,6 +47,7 @@ const DOD_LIFECYCLE_REGEX = /^#{3,4}\s+Lifecycle\b/m;
 const PICKUP_HEADING_REGEX = /^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m;
 
 const SECTION_CHECKS = [
+  { name: '## User Story', regex: USER_STORY_REGEX },
   { name: '## Scope (or ## Problem)', regex: SCOPE_REGEX },
   { name: '## Story Origin', regex: STORY_ORIGIN_REGEX },
   { name: '## Plan Metadata', regex: PLAN_METADATA_REGEX },
@@ -69,6 +76,30 @@ export function verifyIssueBody(body) {
 
   for (const check of SECTION_CHECKS) {
     if (!check.regex.test(body)) missing.push(check.name);
+  }
+
+  if (USER_STORY_REGEX.test(body)) {
+    const match = body.match(USER_STORY_REGEX);
+    const start = match.index + match[0].length;
+    const after = body.slice(start);
+    const nextHeading = after.search(/^##\s+/m);
+    const story = nextHeading === -1 ? after : after.slice(0, nextHeading);
+    try {
+      validateExactUserStoryLines(story);
+    } catch {
+      missing.push('## User Story must contain exactly three complete Connextra lines');
+    }
+  }
+
+  if (/^##\s+Acceptance Criteria\s*$/m.test(body)) {
+    const acOffenders = [
+      ...findAcsWithLegacyVerificationForm(body),
+      ...findAcsWithoutVerifierOrInvalidTag(body),
+    ];
+    if (acOffenders.length > 0) {
+      const reasons = [...new Set(acOffenders.map(({ reason }) => reason))].join(', ');
+      missing.push(`## Acceptance Criteria must use current verifier citations (${reasons})`);
+    }
   }
 
   if (STORY_ORIGIN_REGEX.test(body) && !hasStoryOriginFields(body)) {

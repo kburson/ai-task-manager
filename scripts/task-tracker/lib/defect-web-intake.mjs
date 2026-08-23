@@ -54,8 +54,11 @@ function normalizeWebAcceptanceCriteria(value) {
   return String(value || '')
     .split('\n')
     .map((line) => {
-      if (!/^\s*- \[[ x]\]/.test(line) || /<!--\s*aitm-/.test(line)) return line;
-      return `${line} <!-- aitm-non-demonstrable -->`;
+      if (/^\s*- \[[ x]\]/.test(line)) return line;
+      const numbered = line.match(/^(\s*)\d+\.\s+(.+)$/);
+      if (numbered) return `${numbered[1]}- [ ] ${numbered[2]}`;
+      const bullet = line.match(/^(\s*)-\s+(?!\[)(.+)$/);
+      return bullet ? `${bullet[1]}- [ ] ${bullet[2]}` : line;
     })
     .join('\n');
 }
