@@ -14,6 +14,7 @@ import { parseReviewApprovedMarker, parseTestStartedMarker } from '../lib/marker
 import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
 import { resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import {
@@ -809,11 +810,15 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '--slurp',
         `repos/${owner}/${repoName}/issues/${issueNumber}/comments`,
       ]);
-      return (Array.isArray(pages) ? pages.flat() : []).map((comment) => ({
-        id: String(comment.id),
-        createdAt: comment.created_at,
-        body: comment.body,
-      }));
+      return (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
+        const createdAt = normalizeGitHubInstant(comment.created_at);
+        if (createdAt === null) throw deliverError('comment-created-at');
+        return {
+          id: String(comment.id),
+          createdAt,
+          body: comment.body,
+        };
+      });
     },
     async createIssueComment({ issueNumber, body }) {
       return json('gh', [

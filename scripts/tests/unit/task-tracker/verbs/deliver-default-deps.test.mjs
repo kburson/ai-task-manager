@@ -121,3 +121,73 @@ test('default merge-history inspector returns exact parents and authorized commi
     }
   );
 });
+
+test('#1389 default comment adapter canonicalizes live GitHub second-precision timestamps', async () => {
+  const exec = async (command, args) => {
+    assert.equal(command, 'gh');
+    assert.deepEqual(args, [
+      'api',
+      '--paginate',
+      '--slurp',
+      'repos/kburson/ai-task-manager/issues/1389/comments',
+    ]);
+    return {
+      stdout: JSON.stringify([
+        [
+          {
+            id: 42,
+            created_at: '2026-08-23T03:12:38Z',
+            body: 'ordinary issue comment',
+          },
+        ],
+      ]),
+    };
+  };
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    { exec }
+  );
+
+  assert.deepEqual(await deps.listIssueComments({ issueNumber: 1389 }), [
+    {
+      id: '42',
+      createdAt: '2026-08-23T03:12:38.000Z',
+      body: 'ordinary issue comment',
+    },
+  ]);
+});
+
+test('#1389 default comment adapter rejects malformed GitHub timestamps', async () => {
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    {
+      async exec() {
+        return {
+          stdout: JSON.stringify([
+            [
+              {
+                id: 42,
+                created_at: 'not-an-instant',
+                body: 'ordinary issue comment',
+              },
+            ],
+          ]),
+        };
+      },
+    }
+  );
+
+  await assert.rejects(deps.listIssueComments({ issueNumber: 1389 }), /deliver:comment-created-at/);
+});
