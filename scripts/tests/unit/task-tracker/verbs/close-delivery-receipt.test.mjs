@@ -15,6 +15,7 @@ import {
 
 const HEAD = 'a'.repeat(40);
 const MERGE = 'b'.repeat(40);
+const HISTORICAL_HEAD = 'c'.repeat(40);
 // cspell:disable-next-line
 const INTENT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 
@@ -88,6 +89,41 @@ test('valid exact-head delivery receipt authorizes close', () => {
   assert.ok(Object.isFrozen(result));
 });
 
+test('#1395 close selects the unique accepted-head PR regardless of branch history order', () => {
+  const current = input().pullRequests[0];
+  const historical = {
+    ...current,
+    number: 1391,
+    headRefOid: HISTORICAL_HEAD,
+    mergeCommitSha: 'd'.repeat(40),
+  };
+
+  for (const pullRequests of [
+    [historical, current],
+    [current, historical],
+  ]) {
+    const result = requireDeliveryReceipt(input({ pullRequests }));
+    assert.equal(result.skipped, false);
+    assert.equal(result.receipt.prNumber, current.number);
+    assert.equal(result.receipt.expectedHeadSha, HEAD);
+  }
+});
+
+test('#1395 close refuses zero or multiple accepted-head PR matches', () => {
+  const current = input().pullRequests[0];
+  assert.throws(
+    () =>
+      requireDeliveryReceipt(
+        input({ pullRequests: [{ ...current, headRefOid: HISTORICAL_HEAD }] })
+      ),
+    /ambiguous-pr/
+  );
+  assert.throws(
+    () => requireDeliveryReceipt(input({ pullRequests: [current, { ...current, number: 1401 }] })),
+    /ambiguous-pr/
+  );
+});
+
 test('accepted delivery head requires current Test and Agent Review evidence', () => {
   assert.equal(
     resolveAcceptedDeliveryHead({
@@ -131,7 +167,7 @@ test('missing, malformed, duplicate, conflicting, and mismatched receipt evidenc
     ['malformed', { records: {} }],
     ['duplicate', { records: duplicate }],
     ['conflicting', { records: conflict }],
-    ['head-mismatch', { acceptedSha: 'c'.repeat(40) }],
+    ['ambiguous-pr', { acceptedSha: HISTORICAL_HEAD }],
     ['pr-mismatch', { pullRequests: [{ ...input().pullRequests[0], number: 1401 }] }],
     ['branch-mismatch', { pullRequests: [{ ...input().pullRequests[0], headRefName: 'other' }] }],
     [
