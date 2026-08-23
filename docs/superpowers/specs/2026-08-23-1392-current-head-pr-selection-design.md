@@ -18,7 +18,7 @@ This preserves historical visibility while making the delivery identity the pair
 
 ## Error Handling
 
-Zero exact-head matches and multiple exact-head matches remain `delivery-preflight:pull-request-count` refusals. The selector does not guess, use the first result, or fall back to historical heads.
+When multiple branch-associated PRs are discovered, zero exact-head matches and multiple exact-head matches remain `delivery-preflight:pull-request-count` refusals. A sole discovered PR is retained so the existing preflight can continue reporting the more specific `head-mismatch` diagnostic. The selector does not guess, use the first of multiple results, or fall back to a historical head when branch history is ambiguous.
 
 ## Testing
 

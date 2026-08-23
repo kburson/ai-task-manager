@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Preserve `--state all` PR discovery so merged receipt recovery remains possible.
-- Preserve fail-closed refusal for zero or multiple exact-head matches.
+- Preserve fail-closed count refusal for ambiguous branch history and the existing head-mismatch refusal for one wrong-head PR.
 - Do not add a manual PR override or change provider action bytes.
 
 ---
@@ -48,7 +48,7 @@ const exactHeadPullRequests = pullRequests.filter(
 );
 ```
 
-Use `exactHeadPullRequests` for merged-state detection, required-check lookup, commit-subject selection, and `preflightInput.pullRequests`. Keep the unfiltered list only as provider discovery evidence.
+When multiple PRs were discovered, use `exactHeadPullRequests` for merged-state detection, required-check lookup, commit-subject selection, and `preflightInput.pullRequests`. When exactly one wrong-head PR was discovered, pass it through so the existing preflight retains its specific `head-mismatch` refusal.
 
 - [ ] **Step 4: Run focused verification and verify GREEN**
 
