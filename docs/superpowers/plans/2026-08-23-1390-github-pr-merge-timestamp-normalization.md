@@ -42,10 +42,7 @@ assert.equal(pullRequest.mergedAt, '2026-08-23T03:57:33.000Z');
 Use the same dependency boundary with merged responses whose `mergedAt` is `null` and `'not-an-instant'`, and require both calls to reject:
 
 ```js
-await assert.rejects(
-  deps.fetchPullRequest({ prNumber: 1385 }),
-  /deliver:pull-request-merged-at/
-);
+await assert.rejects(deps.fetchPullRequest({ prNumber: 1385 }), /deliver:pull-request-merged-at/);
 ```
 
 - [ ] **Step 3: Run the tests and verify RED**
