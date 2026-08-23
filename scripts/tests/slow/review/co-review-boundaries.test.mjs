@@ -3,30 +3,45 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import '../../fixtures/co-review-e2e-cases.mjs';
+import { mkdtempOutsideRepo } from '../../../task-tracker/lib/scratch-dir.mjs';
 import {
   cleanupTemporaryRoots,
   commitArtifact,
   git,
   realInitializedProtocol,
   repositoryFixture,
-  temporaryRoot,
+  runCliDirect,
 } from '../../fixtures/co-review-fixture.mjs';
 import { prepareArchive, publishPreparedArchive } from '../../../review/lib/archive.mjs';
 import {
   createRealRepositoryBoundary,
   REAL_REPOSITORY_BOUNDARY,
 } from '../../../review/lib/repository-boundary.mjs';
+import { startProtocol } from '../../../review/lib/start.mjs';
 import {
   claimTurn,
+  continueProtocol,
   handoffOwner,
   handoffReviewer,
   initializeProtocol,
+  registerSupplement,
+  setMaxReviewTurns,
   statusProtocol,
+  validatedArchiveSnapshot,
+  waitForTurn,
 } from '../../../review/lib/protocol.mjs';
 
 test.afterEach(cleanupTemporaryRoots);
@@ -35,10 +50,6 @@ test('real repository boundary normalizes repository observations', () => {
   const { root, initialCommit } = repositoryFixture();
 
   assert.equal(REAL_REPOSITORY_BOUNDARY.repositoryRoot(root), realpathSync(root));
-  assert.equal(
-    REAL_REPOSITORY_BOUNDARY.commonDirectory(root),
-    realpathSync(path.join(root, '.git'))
-  );
   assert.deepEqual(REAL_REPOSITORY_BOUNDARY.runtimeStatus(root, '.tmp/review'), {
     ignored: true,
     tracked: false,
@@ -83,7 +94,6 @@ test('real repository boundary invokes Git without a shell', () => {
   const { root, initialCommit } = repositoryFixture();
 
   boundary.repositoryRoot(root);
-  boundary.commonDirectory(root);
   boundary.runtimeStatus(root, '.tmp/review');
   boundary.trackedArtifact(root, 'docs/artifact.md');
   boundary.resolveReachableCommit(root, initialCommit);
@@ -91,7 +101,6 @@ test('real repository boundary invokes Git without a shell', () => {
   boundary.identity(root);
 
   assert.ok(calls.some(({ args }) => args.join(' ') === 'rev-parse --show-toplevel'));
-  assert.ok(calls.some(({ args }) => args.join(' ') === 'rev-parse --git-common-dir'));
   assert.ok(calls.some(({ args }) => args.join(' ') === 'check-ignore --quiet -- .tmp/review'));
   assert.ok(calls.some(({ args }) => args.join(' ') === 'ls-files --error-unmatch -- .tmp/review'));
   assert.ok(calls.some(({ args }) => args.join(' ') === 'show :docs/artifact.md'));
@@ -105,56 +114,230 @@ test('real repository boundary invokes Git without a shell', () => {
   );
 });
 
-test('absolute runtime keeps linked-worktree integrity and reviewer handoff from main cwd', () => {
+test('every command refuses a sibling linked-worktree runtime', () => {
   const main = repositoryFixture();
-  const linked = path.join(main.root, '.tmp', 'linked-review-worktree');
+  const linked = path.join(main.root, '.worktrees', 'reviewer');
   mkdirSync(path.dirname(linked), { recursive: true });
   git(main.root, 'worktree', 'add', '-b', 'reviewer-branch', linked);
-  const reviewedCommit = commitArtifact(linked, '# Artifact\n\nLinked worktree revision.\n');
-  const dir = '.tmp/review';
-
   initializeProtocol({
     cwd: linked,
-    dir,
+    dir: '.tmp/review',
     artifact: main.artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
     maxReviewTurns: 2,
   });
-  claimTurn({ cwd: linked, dir, actor: 'owner-agent' });
-  const response = `${dir}/owner-response.md`;
-  writeFileSync(path.join(linked, response), '# Owner response\n\nReady.\n');
-  handoffOwner({
-    cwd: linked,
-    dir,
-    actor: 'owner-agent',
-    response,
-    artifact: main.artifact,
-    commit: reviewedCommit,
-    message: 'ready for review',
-  });
-  const runtime = path.join(linked, dir);
-  const available = statusProtocol({ cwd: main.root, dir: runtime });
-  assert.match(available.nextAction, new RegExp(`claim --dir ${runtime} --actor reviewer-agent`));
-  claimTurn({ cwd: linked, dir, actor: 'reviewer-agent' });
+  assert.throws(
+    () => statusProtocol({ cwd: main.root, dir: path.join(linked, '.tmp/review') }),
+    /co-review:repository-identity/
+  );
+  assert.throws(
+    () =>
+      claimTurn({
+        cwd: main.root,
+        dir: path.join(linked, '.tmp/review'),
+        actor: 'owner-agent',
+      }),
+    /co-review:repository-identity/
+  );
+});
 
-  const status = statusProtocol({ cwd: main.root, dir: runtime });
-  assert.equal(status.integrity.ok, true, status.integrity.errors.join('\n'));
-  assert.equal(status.repositoryRoot, realpathSync(linked));
-  assert.equal(status.terminalEvidence.ownerResponse.path, response);
+test('initialization refuses a nested worktree runtime before the folder exists', () => {
+  const main = repositoryFixture();
+  const linked = path.join(main.root, '.worktrees', 'nested-reviewer');
+  mkdirSync(path.dirname(linked), { recursive: true });
+  git(main.root, 'worktree', 'add', '-b', 'nested-reviewer-branch', linked);
+  const runtime = path.join(linked, '.tmp', 'not-created');
 
-  const review = path.join(runtime, 'review.md');
-  writeFileSync(review, '# Review\n\nAccepted.\n');
-  const accepted = handoffReviewer({
-    cwd: main.root,
-    dir: runtime,
-    actor: 'reviewer-agent',
-    review,
-    reviewOf: reviewedCommit,
-    decision: 'accepted',
-    message: 'accepted from main cwd',
-  });
-  assert.equal(accepted.lifecycle, 'accepted');
+  assert.throws(
+    () =>
+      initializeProtocol({
+        cwd: main.root,
+        dir: runtime,
+        artifact: main.artifact,
+        owner: 'owner-agent',
+        reviewer: 'reviewer-agent',
+        maxReviewTurns: 2,
+      }),
+    /co-review:repository-identity/
+  );
+  assert.equal(existsSync(runtime), false);
+});
+
+function protocolBytes(root, dir) {
+  return {
+    state: readFileSync(path.join(root, dir, 'state.json')),
+    events: readFileSync(path.join(root, dir, 'events.jsonl')),
+  };
+}
+
+test('every protocol command refuses absolute and relative foreign runtimes before writing', async () => {
+  const main = repositoryFixture();
+  const linked = path.join(main.root, '.worktrees', 'command-reviewer');
+  mkdirSync(path.dirname(linked), { recursive: true });
+  git(main.root, 'worktree', 'add', '-b', 'command-reviewer-branch', linked);
+  const sibling = repositoryFixture();
+  const dir = '.tmp/review';
+  for (const root of [linked, sibling.root]) {
+    initializeProtocol({
+      cwd: root,
+      dir,
+      artifact: main.artifact,
+      owner: 'owner-agent',
+      reviewer: 'reviewer-agent',
+      maxReviewTurns: 2,
+    });
+  }
+  const relativeSibling = path.relative(main.root, path.join(sibling.root, dir));
+  assert.equal(path.resolve(main.root, relativeSibling), path.join(sibling.root, dir));
+
+  for (const target of [
+    { label: 'absolute linked worktree', root: linked, runtime: path.join(linked, dir) },
+    { label: 'relative sibling repository', root: sibling.root, runtime: relativeSibling },
+  ]) {
+    const runtimeFile = (name) => path.join(target.runtime, name);
+    const archiveDir = 'docs/reviews/foreign-runtime';
+    const cliFailure = async (args) => {
+      const result = await runCliDirect(args, {
+        cwd: main.root,
+        resolveGitHubLoginImpl: () => 'human-agent',
+      });
+      if (result.status !== 0) throw new Error(result.stderr);
+      return result;
+    };
+    const commands = [
+      {
+        name: 'init',
+        invoke: () =>
+          initializeProtocol({
+            cwd: main.root,
+            dir: target.runtime,
+            artifact: main.artifact,
+            owner: 'owner-agent',
+            reviewer: 'reviewer-agent',
+            maxReviewTurns: 2,
+          }),
+      },
+      {
+        name: 'start',
+        invoke: () =>
+          startProtocol({
+            cwd: main.root,
+            dir: target.runtime,
+            artifact: main.artifact,
+            owner: 'owner-agent',
+            reviewer: 'reviewer-agent',
+            maxReviewTurns: 2,
+          }),
+      },
+      { name: 'status', invoke: () => statusProtocol({ cwd: main.root, dir: target.runtime }) },
+      {
+        name: 'claim',
+        invoke: () => claimTurn({ cwd: main.root, dir: target.runtime, actor: 'owner-agent' }),
+      },
+      {
+        name: 'wait',
+        invoke: () =>
+          waitForTurn({
+            cwd: main.root,
+            dir: target.runtime,
+            actor: 'owner-agent',
+            timeoutSeconds: 0,
+          }),
+      },
+      {
+        name: 'owner handoff',
+        invoke: () =>
+          handoffOwner({
+            cwd: main.root,
+            dir: target.runtime,
+            actor: 'owner-agent',
+            response: runtimeFile('owner-response.md'),
+            artifact: main.artifact,
+            commit: main.initialCommit,
+            message: 'foreign owner handoff',
+          }),
+      },
+      {
+        name: 'reviewer handoff',
+        invoke: () =>
+          handoffReviewer({
+            cwd: main.root,
+            dir: target.runtime,
+            actor: 'reviewer-agent',
+            review: runtimeFile('review.md'),
+            reviewOf: main.initialCommit,
+            decision: 'accepted',
+            message: 'foreign reviewer handoff',
+          }),
+      },
+      {
+        name: 'set-max-turns',
+        invoke: () =>
+          setMaxReviewTurns({
+            cwd: main.root,
+            dir: target.runtime,
+            requestedMax: 3,
+            humanLogin: 'human-agent',
+          }),
+      },
+      {
+        name: 'supplement',
+        invoke: () =>
+          registerSupplement({
+            cwd: main.root,
+            dir: target.runtime,
+            file: runtimeFile('supplement.md'),
+            humanLogin: 'human-agent',
+          }),
+      },
+      {
+        name: 'continue',
+        invoke: () =>
+          continueProtocol({
+            cwd: main.root,
+            dir: target.runtime,
+            additionalTurns: 1,
+            humanLogin: 'human-agent',
+          }),
+      },
+      {
+        name: 'human-good-enough finalization',
+        invoke: () =>
+          cliFailure([
+            'finalize',
+            '--dir',
+            target.runtime,
+            '--good-enough',
+            '--archive-dir',
+            archiveDir,
+          ]),
+      },
+      {
+        name: 'archive finalization',
+        invoke: () =>
+          cliFailure(['finalize', '--dir', target.runtime, '--archive-dir', archiveDir]),
+      },
+      {
+        name: 'validated archive snapshot',
+        invoke: () => validatedArchiveSnapshot({ cwd: main.root, dir: target.runtime }),
+      },
+    ];
+
+    for (const command of commands) {
+      const before = protocolBytes(target.root, dir);
+      await assert.rejects(
+        async () => command.invoke(),
+        /co-review:repository-identity/,
+        `${target.label}: ${command.name}`
+      );
+      assert.deepEqual(protocolBytes(target.root, dir), before, command.name);
+      for (const generated of ['author-handoff.md', 'reviewer-handoff.md', 'start-manifest.json']) {
+        assert.equal(existsSync(path.join(target.root, dir, generated)), false, command.name);
+      }
+      assert.equal(existsSync(path.join(target.root, archiveDir)), false, command.name);
+    }
+  }
 });
 
 test('absolute runtime refuses another repository and recorded-root substitution', () => {
@@ -197,9 +380,10 @@ test('absolute runtime refuses another repository and recorded-root substitution
   );
 });
 
-test('real protocol refuses symlink escape and ignored or untracked violations', () => {
+test('real protocol refuses symlink escape and ignored or untracked violations', (t) => {
   const escaped = repositoryFixture();
-  const outside = temporaryRoot('aitm-co-review-boundary-outside-');
+  const outside = mkdtempOutsideRepo('aitm-co-review-boundary-outside-');
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
   mkdirSync(path.join(escaped.root, '.tmp'), { recursive: true });
   symlinkSync(outside, path.join(escaped.root, '.tmp/review'), 'dir');
   assert.throws(

@@ -1,19 +1,62 @@
 // @story #1266
 
 import assert from 'node:assert/strict';
-import { symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import {
   commitArtifact,
   initializedProtocol,
+  memoryProtocol,
   memoryRepositoryFixture,
   reviewerTurn,
   rewriteProtocolState,
   runCliDirect,
   snapshotProtocol,
 } from './co-review-fixture.mjs';
+
+test('imported review requires exact HEAD even when an ancestor has identical artifact bytes', async () => {
+  const fixture = memoryRepositoryFixture();
+  const api = await memoryProtocol(fixture.repository);
+  const commitA = fixture.initialCommit;
+  const commitB = fixture.repository.commit(
+    fixture.artifact,
+    readFileSync(path.join(fixture.root, fixture.artifact)),
+    'advance HEAD without changing artifact bytes'
+  );
+  assert.notEqual(commitB, commitA);
+  const options = {
+    cwd: fixture.root,
+    dir: '.tmp/imported-head',
+    artifact: fixture.artifact,
+    owner: 'owner-agent',
+    reviewer: 'reviewer-agent',
+    maxReviewTurns: 2,
+    importReview: '.tmp/imported-head/r1-review.md',
+  };
+  mkdirSync(path.join(fixture.root, options.dir), { recursive: true });
+  writeFileSync(path.join(fixture.root, options.importReview), '# Review\n\nAccepted evidence.\n');
+
+  assert.throws(
+    () =>
+      api.initializeProtocol({
+        ...options,
+        importReview: options.importReview,
+        reviewOf: commitA,
+      }),
+    /co-review:import-review-head-mismatch/
+  );
+  assert.equal(existsSync(path.join(fixture.root, options.dir, 'state.json')), false);
+
+  const exact = api.initializeProtocol({
+    ...options,
+    importReview: options.importReview,
+    reviewOf: commitB,
+  });
+  assert.equal(exact.initialization.reviewOf, commitB);
+  assert.equal(exact.lastHandoff.commit, commitB);
+});
 
 test('first owner handoff transfers a committed artifact plus immutable response', async () => {
   const { api, root, options, initialCommit } = await initializedProtocol();

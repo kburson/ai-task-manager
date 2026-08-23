@@ -68,10 +68,6 @@ function repositoryCall(code, detail, operation) {
   }
 }
 
-function repositoryRoot(cwd, repository) {
-  return repositoryCall('not-a-repository', String(cwd), () => repository.repositoryRoot(cwd));
-}
-
 function protocolRoot(cwd, dir, repository) {
   try {
     return resolveRuntimeRoot({ cwd, dir, repository }).root;
@@ -592,7 +588,7 @@ export function initializeProtocol({
     fail('import-exhausts-budget', 'imported R1 requires --max-turns >= 2', { exitCode: 2 });
   }
 
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   assertIgnored(root, paths, repository);
   const archive = archiveDir
@@ -613,6 +609,10 @@ export function initializeProtocol({
       fail('import-outside-runtime', importedReview.path);
     }
     importedCommit = exactReachableCommit(root, reviewOf, repository);
+    const identity = repositoryCall('git', 'repository identity', () => repository.identity(root));
+    if (importedCommit !== identity.head) {
+      fail('import-review-head-mismatch', `${importedCommit}; HEAD=${identity.head}`);
+    }
     artifactRecord.blob = assertCommitArtifact(root, importedCommit, artifactRecord, repository);
   }
 
