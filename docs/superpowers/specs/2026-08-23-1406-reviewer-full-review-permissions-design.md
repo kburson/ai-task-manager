@@ -1,7 +1,7 @@
 # SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Reframed after the manual-review design decision; pending reviewer
+**Status:** Revised after round-4 changes requested; pending round-5 reviewer
 validation
 **Date:** 2026-08-23
 
@@ -19,7 +19,7 @@ continuation authority; the independent agent sessions are performing the
 substantive review. Automating that relay does not require constraining either
 agent to a shell-command keyhole.
 
-Commit `04cd9dfe` and its pending manual review describe the superseded
+Commit `04cd9dfe` and its manual review describe the superseded
 capability-policy approach. The next review must evaluate this reframed
 specification from its new commit rather than accepting or amending that older
 design.
@@ -88,8 +88,8 @@ commands is not.
    locks, idempotent handoffs, and terminal archives.
 8. Distinguish human routing or continuation authority from human semantic
    review approval.
-9. Preserve #1369 cross-worktree lifecycle commands through one narrow,
-   documented transport adapter.
+9. Require both participants to review one exact commit in one canonical
+   physical worktree; cross-worktree execution is not authoritative review.
 10. Prove the complete installed hook chain and end-to-end two-session relay.
 
 ## Non-Goals
@@ -106,7 +106,7 @@ commands is not.
   provider-specific private APIs. A human may still start each persistent
   interactive session and give it the thin runtime handoff.
 - Adding reviewer-claim TTL, heartbeat, release, or reassignment in #1406.
-- Adding repository-wide snapshot state or changing the existing protocol and
+- Adding repository-wide snapshot state or changing the existing protocol or
   archive schemas.
 - Hot-patching or reusing the active #1381 constrained runtime.
 - Creating successor issues for each deferred co-review concern.
@@ -129,16 +129,33 @@ loads authoritative artifact bytes from Git rather than trusting mutable
 working-tree bytes. A decision for commit A cannot satisfy a handoff or archive
 for commit B, even when both commits came from the same reused branch.
 
-Working-tree drift remains useful diagnostic evidence, but it cannot silently
-change a review's target. The operator either restores the reviewed commit or
-starts a new round for the new commit.
+The protocol also records one canonical physical review worktree. Both roles
+must run from that exact worktree, whose `HEAD` must equal the handed-off
+artifact commit during the reviewer turn. A separate worktree at the same Git
+commit is not equivalent because dependencies, generated files, configuration,
+and untracked state can differ.
+
+At every owner or reviewer handoff, the canonical worktree must have no staged
+or unstaged tracked changes. After runtime initialization, the tracked diff
+between successive artifact commits may contain only the authoritative artifact
+path. During author revision that artifact is the only tracked file the role
+contract permits to change. The owner makes no tracked edits while the reviewer
+owns the turn. Protocol responses, reviews, state, timing evidence, and locks
+remain under the ignored co-review runtime and do not enter the tracked diff.
+
+Any other tracked path, mismatched `HEAD`, different physical worktree, or dirty
+tracked state refuses handoff. Working-tree drift remains diagnostic evidence,
+but it cannot silently change the review target. The operator restores the
+canonical worktree or begins a new conforming round; it never substitutes a
+different worktree.
 
 ### Role and session authority
 
 Owner and reviewer identities remain distinct. Each claimed turn records the
 provider and session identifier that produced its evidence. Only the claimed
 role may submit that turn's handoff. Wrong actor, provider, session, runtime,
-round, review path, or `review-of` commit is a protocol refusal.
+canonical worktree, round, review path, or `review-of` commit is a protocol
+refusal.
 
 The claim controls protocol mutation, not general tool permissions. A session
 may inspect files and execute verification without asking the co-review policy
@@ -176,42 +193,49 @@ The installed ordinary guards continue to enforce:
 - installed-guard self-protection; and
 - ordinary activity-state policy.
 
-The reviewer handoff instructs the reviewer to use a fresh session without an
-unrelated bound task. The co-review claim is its work context. Under the
-existing no-active-task policy, `RUN_TESTS`, `RUN_BUILD`, documentation writes,
-issue writes, and reads are available while `WRITE_CODE` and `COMMIT_CODE`
-remain refused when recognized.
+The reviewer handoff instructs the reviewer to start a fresh session in the
+canonical review worktree without an unrelated bound task. The co-review claim
+is its work context. Under the existing no-active-task policy, `RUN_TESTS`,
+`RUN_BUILD`, `WRITE_DOCS`, `WRITE_ISSUE`, `WRITE_OTHER`, and reads are available
+while `WRITE_CODE` and `COMMIT_CODE` remain refused when recognized. #1406 does
+not change the repository-wide activity matrix.
 
-Verification is safe and useful in every lifecycle stage. `RUN_TESTS` and
-`RUN_BUILD` become universally permitted activity classes, like `READ_*`, so a
-legitimately bound reviewer or operator is not prevented from reproducing
-evidence solely because the issue is in Refine, Review, or Done. This is an
-ordinary activity-policy decision, not a co-review grant override.
+That ordinary classifier is a workflow aid, not a security boundary. Its
+`COMMIT_CODE` recognition covers the canonical `git commit` shape but not every
+shell-equivalent form such as `git -C ... commit`, `git -c ... commit`, or
+`cd ... && git commit`. The reviewer role contract and immutable handoff checks,
+not complete shell-effect inference, protect review authority.
 
 ### Reviewer role contract
 
 The reviewer may use normal Bash, Read, Glob, tests, builds, and repository
-inspection. The reviewer writes new review evidence under the protocol runtime
-and must not edit or commit the normative artifact, implementation source,
-prior response or review files, protocol state, authority indexes, or archives.
+inspection in the canonical worktree. The reviewer writes one new review file
+under the protocol runtime with Edit, Write, NotebookEdit, or apply_patch and
+must not edit or commit the normative artifact, implementation source, prior
+response or review files, protocol state, authority indexes, or archives.
 
 This is a cooperative-provider rule backed by immutable handoff validation and
 ordinary guards where they recognize the activity. It is not represented as a
 same-user security guarantee.
 
-### Cross-worktree lifecycle transport
+### One-worktree review boundary
 
-`#1369` supports an interactive reviewer whose current directory differs from
-the runtime's linked worktree. Exact generated `co-review status`, help, and
-reviewer-handoff commands may require access to the canonical target runtime
-outside the caller's ordinary path scope.
+`#1369` previously allowed an interactive reviewer to issue lifecycle commands
+from a different linked worktree. That convenience conflicts with the stronger
+review invariant selected for #1406: both participants must inspect and verify
+the same physical checkout, not merely Git objects with the same commit name.
 
-Retain one narrow lifecycle transport adapter in `bash-guard.mjs`. It recognizes
-only the generated single-command shapes, resolves the target runtime within
-the same Git common directory, and verifies provider/session targeting before
-allowing the command to reach the protocol CLI. It does not inspect or
-authorize ordinary reviewer Bash. Final actor, artifact, review, lock,
-lifecycle, and archive validation remains inside the protocol.
+Generated handoffs therefore direct both sessions to the canonical review
+worktree before status, claim, wait, inspection, or handoff. Ordinary path and
+worktree guards refuse cross-worktree execution. No co-review-specific Bash
+transport exemption remains, and evidence produced from another worktree
+cannot advance or accept the protocol. #1406 deliberately supersedes the #1369
+cross-worktree handoff behavior for authoritative review.
+
+An advisory Edit/Write path tripwire is also deliberately omitted. It would
+retain claim-aware guard coupling without creating authority. Role guidance,
+tracked-diff validation, committed artifact identities, and immutable protocol
+evidence provide the enforceable boundary.
 
 ## Automated Relay
 
@@ -220,34 +244,41 @@ transport.
 
 ```text
 author session
+  -> works in canonical review worktree
   -> commits artifact A
+  -> proves clean tracked state and HEAD A
   -> writes immutable owner response
   -> hands off A
-  -> enters bounded wait
+  -> starts a bounded repeated-wait episode
 
 reviewer session
-  -> wait wakes and status identifies A
+  -> starts in the same canonical worktree at clean HEAD A
+  -> a wait poll wakes and status identifies A
   -> reads A and owner response directly from recorded paths
   -> performs unrestricted deep review under ordinary guards
   -> writes immutable reviewer review citing A
   -> hands off changes-requested or accepted
-  -> enters bounded wait when active
+  -> starts a new bounded repeated-wait episode when active
 
 author session
-  -> wait wakes and status identifies the exact review
+  -> a wait poll wakes and status identifies the exact review
   -> reads the review directly from the runtime
-  -> revises and commits B when required
+  -> revises only the artifact and commits B when required
+  -> proves A..B changes only the artifact and tracked state is clean
   -> writes response citing the prior review
   -> hands off B
 ```
 
 No substantive response or review text is copied through a human prompt. The
 human supplies each new persistent session only a thin handoff containing the
-worktree, runtime, actor, and instruction to start its bounded wait timer.
+canonical worktree, runtime, actor, and instruction to start its bounded wait
+episode.
 
 Every generated author and reviewer handoff includes:
 
 - canonical worktree and runtime paths;
+- the required canonical `HEAD`, clean tracked-state check, and artifact-only
+  inter-round diff rule;
 - actor identity and current role;
 - exact status, claim, wait, and handoff commands;
 - authoritative artifact commit and evidence paths;
@@ -256,73 +287,93 @@ Every generated author and reviewer handoff includes:
 - instructions to start the turn timer immediately; and
 - the role and human-authority distinctions above.
 
-Both participants must keep separately observable bounded wait timers active
-while the other owns the turn. A successful handoff wakes the waiting role.
-Timeout is an observable checkpoint, not permission to reset the counter or
-steal the turn.
+The current CLI implements waiting as repeated bounded polls, not a persistent
+host wake. Each generated handoff defines one waiting episode as at most
+`waitCycles` separately observed calls, each using `waitIntervalSeconds` no
+greater than the CLI's 60-second limit. The current defaults are 20 calls of 60
+seconds.
+
+After each exit 3 timeout, the role records `wait cycle N/M` and reissues the
+wait only while cycles remain. Exit 0 is a wake: run status and act on the
+reported state. Exit 2 or a non-integrity exit 1 is a refusal and stops the
+episode. Integrity exit 1 follows the existing one-time settled re-read rule,
+then stops if integrity remains invalid. After the last timeout, the role runs
+status, reports the stall to the human, and stops without silently starting a
+new batch. A successful handoff starts a new bounded episode for the role that
+handed off.
 
 ## Architecture Changes
 
 ### `activity-guard.mjs`
 
-- Remove imports and evaluation of `mutation-targets.mjs` and
+- Move `extractApplyPatchTargets()` and its parse-error type from
+  `mutation-targets.mjs` into a focused `apply-patch-targets.mjs` module because
+  ordinary activity classification still consumes those targets.
+- Remove Bash mutation-target extraction and all evaluation of
   `co-review-write-policy.mjs`.
 - Remove all provider/session co-review capability decisions.
 - Continue directly from tool parsing into the ordinary activity classifier.
-- Make `RUN_TESTS` and `RUN_BUILD` universally allowed activity classes.
-- Retain every other state-matrix and installed-guard behavior.
+- Retain the existing state matrix and every installed-guard behavior.
 
 ### `source-edit-gate.mjs`
 
-- Remove co-review target parsing, provider/session resolution, and
-  `evaluateCoReviewWrite()` decisions.
+- Import `extractApplyPatchTargets()` from the focused replacement module for
+  ordinary multi-target classification.
+- Remove provider/session resolution and `evaluateCoReviewWrite()` decisions.
 - Continue applying ordinary source-edit, worktree, state, and installed-copy
   protections.
 - Preserve the existing `.tmp/**` scratch behavior used for new response and
-  review artifacts.
+  review artifacts by direct Edit, Write, NotebookEdit, or apply_patch tools.
+  Generated handoffs do not prescribe Bash redirection for those files because
+  the ordinary Bash activity path has no equivalent `.tmp/**` carve-out.
 
 ### `bash-guard.mjs`
 
 - Remove arbitrary Bash target extraction and
   `evaluateCoReviewWrite()` evaluation.
 - Remove ambiguity-based and destination-completeness refusals.
-- Keep the strict #1369 lifecycle transport adapter as the only co-review-aware
-  Bash path.
+- Remove the strict #1369 cross-worktree lifecycle classifier and exception.
 - Keep every ordinary Bash guard in its current order.
+- Require lifecycle commands to originate from the canonical review worktree;
+  do not early-exit or expand path scope for co-review commands.
 
 ### Retired capability-policy modules
 
-Delete `co-review-write-policy.mjs` and `mutation-targets.mjs` after confirming
-they have no non-capability consumers. Remove their imports, fixtures, and
-focused policy tests.
+Delete `co-review-write-policy.mjs` and the original `mutation-targets.mjs`
+after relocating its apply_patch parser. Delete
+`reviewer-co-review-command.mjs`; no replacement Bash transport classifier is
+introduced. Remove their imports, fixtures, and focused capability-policy
+tests while retaining or relocating ordinary apply_patch-classification tests.
 
-Rename `reviewer-co-review-command.mjs` to
-`co-review-lifecycle-transport.mjs`. Its only contract is recognizing and
-validating the exact #1369 transport shapes. It must not classify arbitrary
-review commands or become a replacement Bash allowlist.
-
-Remove `resolveReviewerGrant()` or `hasLiveReviewerClaim()` exports from
-`scripts/review/lib/index.mjs` only if production consumer analysis proves they
-are unused after the capability policy is retired. Preserve the private
-claim-liveness behavior required by occupancy and protocol authority.
+Remove public `resolveReviewerGrant()` and `hasLiveReviewerClaim()` exports from
+`scripts/review/lib/index.mjs` once production analysis confirms the deleted
+capability and transport paths were their only consumers. Preserve the private
+claim-liveness behavior used by `allowsCoReviewOccupancy()` and protocol
+authority.
 
 ### Protocol and generated handoffs
 
 - Preserve SHA, blob, digest, role, provider/session, lock, round, decision,
   budget, and archive validation.
-- Preserve #1369 canonical runtime resolution.
+- Use the existing recorded repository root and successive artifact commits to
+  validate the canonical physical worktree, clean tracked state, exact `HEAD`,
+  and artifact-only inter-round tracked diff.
 - Update author and reviewer handoffs to describe normal capabilities and
   direct file-based relay rather than arbitrary Bash prohibition.
-- Require the reviewer to start unbound from unrelated task work and to start
-  its bounded wait timer.
+- Require both roles to start in the canonical worktree. Require the reviewer
+  to be unbound from unrelated task work and both roles to follow the existing
+  bounded repeated-poll discipline.
 - State plainly that routing and continuation do not constitute human semantic
   approval; preserve existing command provenance and approval markers.
-- Do not change protocol or archive schemas in #1406.
+- Do not change protocol or terminal archive schemas in #1406.
 
 ## Failure Handling
 
 - Wrong artifact, commit, blob, digest, actor, provider, session, round,
   review path, or decision refuses the protocol mutation with no state change.
+- Wrong physical worktree, mismatched `HEAD`, dirty tracked state, or a
+  non-artifact tracked path between successive artifact commits refuses
+  handoff with no state change.
 - Repeating the same handoff with identical evidence is idempotent; conflicting
   reuse is refused.
 - Artifact advancement never inherits approval from the previous commit.
@@ -330,6 +381,8 @@ claim-liveness behavior required by occupancy and protocol authority.
   never relabeled as co-review failures.
 - A reviewer command is never refused merely because arbitrary shell effects
   are ambiguous.
+- A command issued from another worktree remains subject to ordinary path and
+  worktree refusal and cannot become authoritative co-review evidence.
 - Index, protocol, lock, or archive corruption remains a protocol refusal for
   lifecycle commands; it does not remove ordinary repository capabilities.
 - A dead reviewer session may leave the protocol turn claimed, but it no longer
@@ -359,6 +412,10 @@ After the fix, the same claimed reviewer must successfully run:
 - a representative build; and
 - ordinary `status`, `wait`, and handoff commands.
 
+The reviewer must run all commands from the canonical physical worktree at the
+handed-off commit. A second linked worktree at the same commit is a negative
+case, not a substitute acceptance environment.
+
 The installed chain must still refuse representative dangerous, path-scope,
 wrong-worktree, governed GitHub, forbidden source-write, and commit-ownership
 cases for the same session under ordinary policy.
@@ -368,27 +425,42 @@ cases for the same session under ordinary policy.
 Tests must prove that:
 
 - Bash, Edit, Write, NotebookEdit, and apply_patch outcomes are identical with
-  and without a live co-review claim, except for the documented #1369 lifecycle
-  transport adapter;
+  and without a live co-review claim;
 - no installed guard imports or calls the retired co-review write policy;
 - no ambiguity or incomplete-destination refusal remains in production guard
   code or generated handoffs;
 - direct review-file creation under the protocol runtime follows ordinary
-  `.tmp/**` policy; and
-- tests and builds are allowed in every kanban state while other activity
-  classes retain their existing matrix decisions.
+  `.tmp/**` policy through Edit, Write, NotebookEdit, or apply_patch;
+- `extractApplyPatchTargets()` continues feeding ordinary activity and source
+  classification after relocation; and
+- the activity matrix remains unchanged.
+
+With a live reviewer claim, positive owner-side tests must prove that the owner
+can successfully run `status`, `wait`, `set-max-turns`, `supplement`, and
+`continue`. These are explicit success assertions, not only before/after claim
+equivalence checks.
+
+Working-state tests must prove that handoff refuses a different linked
+worktree, mismatched `HEAD`, staged or unstaged tracked drift, and an inter-round
+commit touching any tracked path besides the authoritative artifact. They must
+also prove that ignored runtime evidence does not count as tracked drift.
 
 ### Automated two-session acceptance
 
 Run the full relay without copying substantive content through a human prompt:
 
-1. Author session hands off artifact commit A and enters bounded wait.
-2. Reviewer session claims, reads A and the owner response from recorded paths,
-   performs deep inspection, submits `changes-requested` against A, and waits.
-3. Author wait wakes, reads the review from the runtime, commits revised
-   artifact B, submits a response linked to the prior review, and waits.
-4. Reviewer wait wakes, reads B and the response, submits `accepted` against B,
-   and the protocol archives terminal evidence.
+1. Author session in the canonical worktree hands off clean artifact commit A
+   and starts a bounded repeated-wait episode.
+2. Reviewer session starts in that same physical worktree at clean `HEAD` A,
+   claims, reads A and the owner response from recorded paths, performs deep
+   inspection, submits `changes-requested` against A, and starts its own bounded
+   repeated-wait episode.
+3. An author wait poll wakes; the author reads the review from the runtime,
+   changes only the artifact, commits B, proves A..B contains only the artifact,
+   submits a response linked to the prior review, and starts a new wait episode.
+4. A reviewer wait poll wakes in the same canonical worktree at clean `HEAD` B;
+   the reviewer reads B and the response, submits `accepted` against B, and the
+   protocol archives terminal evidence.
 5. A stale acceptance citing A for B is refused.
 6. Repeating an identical handoff is idempotent; conflicting evidence is
    refused.
@@ -396,6 +468,11 @@ Run the full relay without copying substantive content through a human prompt:
    provider/session, round, decision, and SHA relationship. Existing session
    timing evidence separately proves the bounded wait episodes; #1406 does not
    add them to protocol or archive schemas.
+8. A reviewer in a second linked worktree at A or B cannot claim, hand off, or
+   provide acceptance evidence for the canonical runtime.
+9. Each role's wait episode records every timeout cycle, wakes on exit 0, and
+   stops with status plus a human-visible stall report after its configured
+   cycle limit. Integrity refusal follows the one-time settled re-read rule.
 
 ### Human-authority semantics
 
@@ -407,35 +484,40 @@ create human semantic-approval evidence.
 ### Test-corpus maintenance
 
 Remove or rewrite reviewer mutation-parser and co-review write-policy tests.
-Update `scripts/tests/fixtures/test-corpus-post-snapshot/**`,
-`scripts/tests/unit/meta/test-corpus-membership.test.mjs` expectations, and
-`scripts/task-tracker/test-impact-manifest.json` for the retired modules and new
-load-bearing integration tests.
+Update `scripts/tests/fixtures/test-corpus-post-snapshot/**` and
+`scripts/tests/unit/meta/test-corpus-membership.test.mjs` expectations. Add a
+net-new `scripts/task-tracker/test-impact-manifest.json` rule whose sources
+cover the Bash guard, activity guard, source-edit gate, co-review protocol and
+handoff generator, and whose tests cover the new load-bearing integration and
+focused regressions.
 
 Run focused red/green tests, then the fast suite, slow suite, lint,
 documentation lint, spelling, and formatting before Test admission.
 
 ## Deferred Convergence Concerns
 
-The implementation workflow must hydrate these findings into issue #1381's
-single durable convergence analysis before #1406 closes, without creating one
-successor issue per finding:
+After the specification and implementation plan receive independent review
+acceptance, the #1406 author must hydrate the reviewed spec/plan references and
+the findings below into issue #1381's single durable convergence analysis
+before invoking `/task plan-approve #1406`. No successor issue is created for
+an individual finding:
 
 - dead reviewer claims lack human-authorized release or reassignment;
 - claim liveness depends on protocol integrity;
 - provider chat startup and wake-up remain host-adapter responsibilities;
 - strong adversarial tamper evidence would require external or OS authority;
 - repository snapshot review may eventually use a dedicated detached reviewer
-  worktree; and
+  worktree, but such a design is non-authoritative under #1406; and
 - existing constrained runtimes must never be reused as acceptance evidence.
 
-## #1365 Disposition
+## #1365 and #1369 Disposition
 
-`#1406` supersedes `#1365`'s reviewer Bash allowlist and single-guard boundary as a
-general permission model. The strict lifecycle shape remains only as the
-renamed #1369 cross-worktree transport adapter. Historical commits and evidence
-remain unchanged; durable #1365 evidence must be annotated with this narrowed
-disposition during implementation.
+`#1406` supersedes `#1365`'s reviewer Bash allowlist and single-guard boundary as
+a general permission model. It also supersedes #1369's cross-worktree
+authoritative reviewer handoff: both roles must now operate in the canonical
+physical review worktree. Historical commits and evidence remain unchanged;
+durable #1365 and #1369 evidence must be annotated with this disposition during
+implementation.
 
 ## Rollout and Rollback
 
@@ -444,8 +526,9 @@ active #1381 constrained runtime or its worktree.
 
 After integration into the branch used for review, start a fresh official
 co-review from a new runtime. Both persistent sessions must use the corrected
-installed hooks from their first claim and must start their bounded wait
-timers. Do not import acceptance from an old runtime.
+installed hooks in the same clean canonical worktree from their first claim and
+must start their bounded repeated-wait episodes. Do not import acceptance from
+an old runtime.
 
 Disable official co-review and return to the manual relay if:
 
@@ -454,7 +537,9 @@ Disable official co-review and return to the manual relay if:
 - an artifact can inherit approval from another commit;
 - wrong-role or wrong-session evidence advances the protocol;
 - substantive content again requires human copy/paste between active turns;
-- either participant lacks an observable bounded wait timer; or
+- either participant lacks an observable bounded repeated-wait episode;
+- either participant performs authoritative review from another worktree;
+- a handoff accepts tracked drift outside the artifact; or
 - a legitimate deep-review command receives a co-review-specific refusal.
 
 Rollback means reverting #1406 as a governed change and marking official
@@ -465,8 +550,9 @@ silently restored and counted as authoritative review.
 
 `#1406` is accepted when two independent persistent sessions can complete the
 author A -> reviewer changes-requested -> author B -> reviewer accepted flow
-using shared immutable files and bounded wait timers, without substantive human
-copy/paste and without co-review-specific restrictions on ordinary tools.
+in one clean canonical physical worktree using shared immutable files and
+bounded repeated-wait episodes, without substantive human copy/paste and
+without co-review-specific restrictions on ordinary tools.
 
 Every decision must remain bound to its exact artifact commit and provider
 session; ordinary repository guards must retain their behavior; terminal
