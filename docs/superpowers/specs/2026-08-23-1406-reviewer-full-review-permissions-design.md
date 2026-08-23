@@ -1,7 +1,7 @@
 # Reviewer Full Review Permissions Design
 
 **Issue:** #1406
-**Status:** Narrowed after manual review round 2; pending reviewer round 3
+**Status:** Revised after manual review round 3; pending reviewer round 4
 **Date:** 2026-08-23
 
 ## Review Context
@@ -69,7 +69,9 @@ issue is created by this design.
    command-path, commit-ownership, and installed-guard protections remain
    effective.
 4. Direct file-writing tools remain limited to the exact session-bound pending
-   review artifact.
+   review artifact. If a readable index still identifies the current
+   provider/session as claimant but protocol integrity invalidates the live
+   grant, direct file-writing tools fail closed for that claimant.
 5. Explicitly detected Bash writes to protocol, authority, archive, and
    reviewed-artifact paths remain denied as defense in depth.
 6. Existing non-reviewer mutation, cross-worktree handoff, human-authority,
@@ -158,15 +160,28 @@ reviewer handoff states that indirect Bash mutation of protected or source
 files violates the reviewer role even when the hook cannot infer the
 destination.
 
+Ordinary source and documentation destinations are not added to the co-review
+protected-path list. When `classifyBash()` recognizes such a destination, the
+unchanged state matrix decides whether it is permitted. Commands whose indirect
+effects `classifyBash()` cannot recognize, such as some `sed -i` or embedded
+Node writes, may pass under the cooperative-provider trust model. They remain a
+reviewer-role violation, not an enforcement guarantee. This makes correct
+continuation into activity classification load-bearing even though activity
+classification is not a complete shell sandbox.
+
 ### Non-reviewer and human-authority behavior
 
-`#1406` does not introduce a total non-reviewer Bash freeze. In the owning
+`#1406` does not introduce a new total non-reviewer Bash freeze. In the owning
 worktree, when the existing `hasLiveReviewerClaim()` predicate is healthy and
 true, non-grant mutation attempts that the current policy detects remain
-denied. Existing read-only, wait, lifecycle, human-authority, and cross-worktree
-behavior remains governed by the current protocol and ordinary guards.
+denied. The current parser treats many `npx`, `npm`, `node`, `sed`, and `find`
+commands as ambiguous mutations, so an owner agent is already unable to run
+those commands through guarded Bash while the reviewer claim is live. Read,
+Glob, and the parser's explicitly read-only Bash shapes remain available.
 
-Specifically, #1406 does not change the semantics or authorization of:
+`#1406` does not repair or widen the existing owner command surface.
+Specifically, it does not change the protocol semantics or human authorization
+of:
 
 - `co-review status`, `help`, or `wait`;
 - `set-max-turns`, `supplement`, or `continue`;
@@ -174,9 +189,16 @@ Specifically, #1406 does not change the semantics or authorization of:
 - finalization or authenticated human intervention; or
 - #1369 absolute-runtime cross-worktree handoff.
 
-This design does not strengthen the current non-reviewer policy into a
-repository-set concurrency lock and does not claim that parser blind spots are
-eliminated for non-reviewer sessions.
+When those commands are invoked through an owner agent's guarded Bash during a
+healthy reviewer claim, the current ambiguity policy may refuse them before
+the protocol CLI runs. Human invocation outside the agent hook boundary remains
+governed by the protocol's authentication and lifecycle checks. The regression
+tests must pin this actual baseline rather than describing it as newly
+available.
+
+This design neither repairs nor strengthens the current non-reviewer policy
+into a repository-set concurrency lock and does not claim that parser blind
+spots are eliminated for non-reviewer sessions.
 
 ### Direct file-writing tools
 
@@ -198,11 +220,25 @@ These decisions run before ordinary scratch or activity allowances.
 
 ### Unreadable or corrupt authority
 
-If the co-review index or live protocol authority cannot be read or validated,
-the guard cannot prove reviewer identity. Bash and direct writes fail closed
-for every provider with a distinct `co-review-authority-unreadable` or
-`co-review-grant-invalid` diagnostic. The failure must not be reported as an
-ambiguity refusal and must not fall through to ordinary reviewer permission.
+Index authority and protocol integrity have different failure semantics:
+
+- If the co-review index cannot be read or parsed, the guard cannot determine
+  whether any provider owns a claim. Preserve the existing global fail-closed
+  result with `co-review-authority-unreadable` for Bash and direct writes.
+- If the index is readable but grant resolution itself throws, fail closed with
+  `co-review-grant-invalid`.
+- If the index is readable and names the current provider/session as reviewer,
+  but `statusProtocol().integrity.ok` is false and therefore no live grant
+  resolves, deny that indexed claimant's direct file-writing tools with
+  `co-review-claim-integrity-invalid`. Do not grant reviewer-specific Bash
+  permissions.
+- For other providers during protocol-integrity drift, preserve today's
+  claim-liveness and ordinary-policy behavior. Do not introduce an index-wide
+  freeze.
+
+None of these failures may be reported as the ambiguity refusal. Protocol
+integrity drift does not become index unreadability and does not change
+`liveActive()` or `hasLiveReviewerClaim()` semantics.
 
 Recovery is an explicit operator boundary: preserve the index and protocol
 files, stop the official co-review, and use the manual author/reviewer workflow
@@ -215,17 +251,19 @@ until authority is repaired through a separately approved recovery path.
 
 - Keep direct-write target extraction and `evaluateCoReviewWrite()` for Edit,
   Write, NotebookEdit, and apply_patch.
-- Resolve the live reviewer grant for Bash without using shell ambiguity as an
-  authorization input.
-- For the matching reviewer, continue into `classifyBash()` and ordinary
-  task-state evaluation.
+- Scope the existing `coReview.decision === 'allow'` early exit to direct
+  file-writing tools only. Bash context evaluation must never reach that exit.
+- Resolve Bash through the dedicated context result. `reviewer-context` records
+  the matching live grant and continues into `classifyBash()`; `deny` blocks;
+  `not-applicable` follows ordinary classification without reviewer elevation.
+- Never interpret `reviewer-context` as permission to skip activity
+  classification.
 - Permit `RUN_TESTS` and `RUN_BUILD` whenever that matching live reviewer grant
   exists, regardless of the recorded kanban state.
 - Apply every other activity class through the unchanged state matrix.
-- Preserve the existing exact generated lifecycle-command compatibility lane
-  for #1369 cross-worktree reviewer handoffs; the activity guard must recognize
-  the same validated command shape as the Bash guard so the installed chain
-  cannot disagree.
+- Do not add a lifecycle-command classifier to the activity guard. Once
+  matching-reviewer ambiguity returns `reviewer-context`, generated lifecycle
+  commands naturally continue and classify as `READ_*`.
 - Preserve existing non-reviewer Bash behavior; do not add a total freeze or a
   new human-command allowlist.
 
@@ -234,6 +272,7 @@ until authority is repaired through a separately approved recovery path.
 - Resolve a matching reviewer grant before applying the ambiguity refusal.
 - For that matching reviewer only, ignore `ambiguousMutation` and an empty
   target set as denial reasons.
+- Return `reviewer-context`, never `allow`, for ordinary matching-reviewer Bash.
 - Continue to deny statically resolved protected destinations.
 - Keep every subsequent ordinary Bash guard in its existing order for ordinary
   reviewer Bash; matching reviewer authority alone is not an early success
@@ -253,20 +292,41 @@ Separate the two contracts without changing protocol schemas:
   default-deny for that reviewer; and
 - the existing non-reviewer decision path remains behaviorally unchanged.
 
+The Bash-context policy has a closed result vocabulary:
+
+- `{ decision: 'deny', code, reason }` blocks the request;
+- `{ decision: 'reviewer-context', grant }` marks ordinary matching-reviewer
+  Bash for continued guard and activity evaluation; and
+- `{ decision: 'not-applicable' }` applies no reviewer elevation and continues
+  through ordinary policy.
+
+It never returns `allow`. `allow` remains valid only for the exact pending
+review artifact in the direct-write policy and for the Bash guard's existing
+strict lifecycle-command compatibility lane. The activity guard's direct-write
+`allow` exit cannot consume a Bash-context result.
+
 `mutation-targets.mjs#extractBashWriteTargets` remains only for concrete
 defense-in-depth destinations on the matching-reviewer path. Its
 `ambiguousMutation` result cannot deny that reviewer.
+
+Add a readable-index claimant lookup that does not require
+`statusProtocol().integrity.ok`. It exists only to keep direct file-writing
+tools fail-closed for the exact provider/session already named as reviewer when
+integrity prevents a live grant. It does not grant Bash elevation, establish a
+live claim, freeze other providers, or change lifecycle decisions.
 
 Retain the strict lifecycle-command classifier only for the explicit #1365 and
 `#1369` compatibility lane. Rename
 `reviewer-co-review-command.mjs` to `co-review-lifecycle-command.mjs` and narrow
 its documented purpose to recognizing exact generated status, help, and
 reviewer-handoff commands that need target-runtime authorization. It must not
-classify or authorize ordinary reviewer Bash. Both installed Bash hooks consume
-the same result so a cross-worktree lifecycle command cannot pass one guard and
-fail the other. The protocol CLI remains responsible for final actor, runtime,
-review path, reviewed commit, decision, summary boundary, lock, and lifecycle
-validation.
+classify or authorize ordinary reviewer Bash. `bash-guard.mjs` consumes this
+classifier for the narrow compatibility lane. `activity-guard.mjs` does not;
+its matching reviewer receives `reviewer-context`, continues naturally, and
+classifies the lifecycle command as `READ_*`. Complete-chain tests prove the
+two paths permit the same exact generated command. The protocol CLI remains
+responsible for final actor, runtime, review path, reviewed commit, decision,
+summary boundary, lock, and lifecycle validation.
 
 ### Generated handoffs and documentation
 
@@ -296,17 +356,17 @@ For matching-reviewer Bash:
 
 ```text
 Claude Bash request
-  -> resolve live reviewer provider/session grant
-  -> unreadable or invalid authority: fail closed with a distinct diagnostic
+  -> evaluate Bash context
+  -> unreadable index or invalid grant resolution: deny with a distinct code
   -> exact #1365/#1369 lifecycle command:
        validate target-runtime authority through the shared compatibility lane
        then execute the protocol command through the existing narrow path
-  -> otherwise continue as ordinary reviewer Bash
+  -> matching ordinary reviewer: return reviewer-context, never allow
   -> deny a concrete protected destination, if statically resolved
   -> never deny solely for ambiguity, composition, or an empty target set
   -> ordinary bash-guard policies
   -> ordinary activity classification
-  -> grant-scoped RUN_TESTS/RUN_BUILD exception
+  -> reviewer-context grants only RUN_TESTS/RUN_BUILD state exceptions
   -> execute or refuse
 ```
 
@@ -323,9 +383,10 @@ For direct writes:
 
 ```text
 Edit/Write/NotebookEdit/apply_patch request
-  -> resolve live reviewer provider/session grant
+  -> read index and resolve live reviewer provider/session grant
   -> canonicalize every target
   -> matching reviewer: allow only the exact pending review artifact
+  -> indexed claimant plus invalid protocol integrity: deny every direct write
   -> otherwise preserve the existing co-review decision
   -> continue through ordinary policy when not already decided
 ```
@@ -345,8 +406,13 @@ reviewer Bash capability
   relabeled as an ordinary repository-policy refusal.
 - An ordinary guard refusal remains a normal repository-policy refusal and must
   not be relabeled as a co-review mutation failure.
-- Missing, unreadable, corrupt, or invalid reviewer authority fails closed with
-  a distinct authority diagnostic, not an ambiguity diagnostic.
+- Unreadable or malformed index authority fails closed globally with
+  `co-review-authority-unreadable`.
+- Grant-resolution exceptions fail closed with `co-review-grant-invalid`.
+- Protocol-integrity drift preserves current claim-liveness behavior, with one
+  targeted addition: a readable index's exact claimed provider/session cannot
+  use direct file-writing tools and receives
+  `co-review-claim-integrity-invalid`.
 - Concrete protected-path writes are denied when statically resolved.
 - Artifact or protocol-integrity drift retains its current lifecycle refusal
   behavior; #1406 does not change claim-liveness semantics.
@@ -355,6 +421,9 @@ reviewer Bash capability
 - A dead or abandoned reviewer claim remains an operator escalation under the
   current protocol. #1406 neither worsens it with a total freeze nor introduces
   an unreviewed release mechanism.
+- Policy-level results expose the structured `code`. Installed hooks serialize
+  the same code in the refusal reason as `[task-tracker:<code>] <reason>` so the
+  operator and subprocess tests observe the canonical diagnostic.
 - No fallback may impersonate the reviewer, silently repair authority, delete
   evidence, or mutate terminal evidence.
 
@@ -394,6 +463,8 @@ and validate the existing immutable review evidence and archive.
 
 Focused activity-policy cases must prove:
 
+- ordinary matching-reviewer Bash returns `reviewer-context` and reaches
+  `classifyBash()`; it never returns or consumes `allow`;
 - `RUN_TESTS` and `RUN_BUILD` are permitted for the matching live reviewer in
   every valid kanban state;
 - the same commands retain ordinary state-matrix behavior without that grant;
@@ -410,17 +481,31 @@ Focused policy and complete-chain cases must prove:
   artifact is refused;
 - ordinary dangerous-command, path, worktree-binding, governed GitHub, AITM,
   commit-ownership, and installed-guard refusals remain effective;
-- existing non-reviewer mutation cases retain their decisions;
-- `status`, `help`, `wait`, `set-max-turns`, `supplement`, `continue`, claim,
-  handoff, finalization, and #1369 cross-worktree cases do not gain new
-  refusals; and
+- concrete source/document writes recognized by `classifyBash()` reach the
+  ordinary state matrix rather than bypassing it;
+- existing non-reviewer mutation cases retain their decisions, including the
+  current ambiguity refusals for guarded owner-agent `npx`, `npm`, `node`,
+  `sed`, and `find` shapes during a healthy reviewer claim;
+- existing successful exact lifecycle and #1369 cross-worktree cases retain
+  their decisions; human protocol commands are tested at their actual current
+  hook boundary rather than assumed to be available; and
 - direct file-writing tools can write only the pending review artifact and
   still refuse source, reviewed artifact, authority, protocol, archive, mixed,
   malformed, symlink, and wrong-session targets.
 
-An unreadable-index case must assert the exact fail-closed authority diagnostic
-for both matching-looking and non-reviewer sessions. It must not pass or report
-the ambiguity refusal.
+Authority-failure cases must separately prove:
+
+- unreadable/malformed index: global fail-closed
+  `co-review-authority-unreadable`;
+- grant-resolution exception: `co-review-grant-invalid`;
+- readable indexed claimant plus protocol-integrity drift: direct writes deny
+  with `co-review-claim-integrity-invalid`, Bash receives no reviewer-context,
+  and other providers retain current behavior; and
+- none of these cases reports the ambiguity refusal.
+
+Unit policy tests pin the structured `code`. Complete installed-hook subprocess
+tests pin the serialized `[task-tracker:<code>]` token and reason text emitted
+by both guards.
 
 ### Zero-drift fixture assertion
 
@@ -470,17 +555,22 @@ does not implement:
   future protocol-schema evolution.
 
 These are convergence-analysis findings, not successor defects created by this
-specification. They must remain visible when #1381 and later co-review
-hardening work are replanned.
+specification. Before #1406 closes, the implementation workflow must hydrate
+them into the durable convergence analysis on issue #1381, with a citation to
+this specification and no successor issue per individual finding. The #1381
+body or a single authoritative #1381 planning comment must enumerate every
+bullet above so the concerns survive branch cleanup and later replanning.
 
 ## #1365 Disposition
 
 `#1406` supersedes `#1365`'s narrow command exception as the general reviewer
 permission model; it does not erase the historical reason `#1365` was accepted.
 The strict generated lifecycle-command lane remains for #1369 cross-worktree
-compatibility, but both installed Bash guards must enforce it. Implementation
-must annotate the `#1365` plan or durable issue evidence with that narrowed
-disposition. Historical commits and review evidence remain unchanged.
+compatibility. The Bash guard retains its strict classifier; the activity guard
+permits the same command by resolving `reviewer-context` and reaching ordinary
+`READ_*` classification. Implementation must annotate the `#1365` plan or
+durable issue evidence with that narrowed disposition. Historical commits and
+review evidence remain unchanged.
 
 ## Rollout and Rollback
 
@@ -513,11 +603,13 @@ restore the constrained runtime and count its review as authoritative.
 
 The change is accepted when a session-bound reviewer can deeply inspect the
 repository and run tests and builds in every kanban state through the complete
-installed hook chain without an ambiguity-based refusal; direct file-writing
-tools remain bound to the exact pending review artifact; concrete protected
-Bash destinations and all ordinary guards remain enforced; and existing
-non-reviewer, wait, human-authority, lifecycle, cross-worktree, protocol, and
-archive behavior shows no regression.
+installed hook chain without an ambiguity-based refusal; ordinary reviewer
+Bash returns `reviewer-context` and still reaches activity classification;
+direct file-writing tools remain bound to the exact pending review artifact or
+fail closed for an indexed claimant whose live grant is invalidated by
+integrity; concrete protected Bash destinations and all ordinary guards remain
+enforced; and existing non-reviewer, wait, human-authority, lifecycle,
+cross-worktree, protocol, and archive behavior shows no regression.
 
 The acceptance evidence must also state the cooperative-provider trust
 boundary: this design prevents accidents within the paths it can resolve, but
