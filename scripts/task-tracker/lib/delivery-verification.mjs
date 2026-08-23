@@ -173,6 +173,20 @@ function classifyMergeMethod(inspection, expectedHeadSha, mergeSha) {
   return 'unknown';
 }
 
+function assertMergeCommitAttribution(commitMessage, intent) {
+  const topLevelToken = `#${intent.issueNumber}`;
+  const messageTokens = [
+    topLevelToken,
+    ...intent.attributionTokens.filter((token) => token !== topLevelToken),
+  ];
+  const expectedLine = `Attribution: ${messageTokens.map((token) => `[${token}]`).join(' ')}`;
+  const lines = commitMessage.split('\n');
+  const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
+  if (attributionLines.length !== 1 || lines.at(-1) !== expectedLine) {
+    throw verificationError('attribution');
+  }
+}
+
 function assertVerificationFunctions(input) {
   if (
     typeof input.fetchOriginTrunk !== 'function' ||
@@ -256,22 +270,10 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         commitTitle: inspection.commitTitle,
         commitMessage: inspection.commitMessage,
       });
+  assertMergeCommitAttribution(inspection.commitMessage, verifiedIntent);
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');
-  }
-
-  for (const token of verifiedIntent.attributionTokens ?? []) {
-    const issueNumber = Number(String(token).replace(/^#/, ''));
-    let commits;
-    try {
-      commits = await input.attributingCommits(issueNumber, { refs: [verifiedTrunkRef] });
-    } catch (error) {
-      throw verificationError('attribution', error);
-    }
-    if (!Array.isArray(commits) || commits.length === 0) {
-      throw verificationError('attribution');
-    }
   }
 
   return deepFreeze({
