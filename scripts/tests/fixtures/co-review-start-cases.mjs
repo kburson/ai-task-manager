@@ -310,6 +310,15 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.match(author, new RegExp(`--response ${runtimeAbsolute}/round-N-author-response\\.md`));
   assert.match(author, /lastHandoff\.artifacts\.review\.path/);
   assert.match(author, /--answers REVIEW_PATH/);
+  assert.match(
+    author,
+    /read the exact preceding immutable review path directly from structured status/i
+  );
+  assert.match(author, /canonical `HEAD` and clean tracked state/i);
+  assert.match(author, /artifact-only changes/i);
+  assert.match(author, /separately observed waits/i);
+  assert.match(author, /start.*turn timer immediately/i);
+  assert.match(author, /routing.*does not.*human.*approval/is);
   assert.match(author, /\[finding:F-001\] \[disposition:accepted\]/);
   assert.match(author, /\[evidence:repository-path-or-command\]/);
   assert.match(reviewer, /reviewer-agent/);
@@ -320,11 +329,15 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.match(reviewer, /\[supplement:S-1\]/);
   assert.match(reviewer, /optional.*--summary/i);
   assert.doesNotMatch(reviewer, /required.*--summary/i);
-  assert.match(reviewer, /narrowly authorizes.*status.*help handoff.*reviewer handoff/is);
-  assert.match(reviewer, /arbitrary Bash remains blocked/i);
-  assert.match(reviewer, /ordinary quoted prose.*supported/i);
-  assert.match(reviewer, /dynamic shell expressions.*remain blocked/i);
-  assert.match(reviewer, /live provider.*session.*claim/i);
+  assert.match(reviewer, /normal repository inspection, test, build, and Bash capabilities/i);
+  assert.match(reviewer, /same canonical physical worktree/i);
+  assert.match(reviewer, /never edit or commit the authoritative artifact/i);
+  assert.match(reviewer, /write.*review.*Edit.*Write.*apply_patch/is);
+  assert.match(reviewer, /start.*turn timer immediately/i);
+  assert.match(reviewer, /without an unrelated bound task/i);
+  assert.match(reviewer, /routing.*does not.*human.*approval/is);
+  assert.match(reviewer, /exit 4.*acceptance is already durable/is);
+  assert.doesNotMatch(reviewer, /Arbitrary Bash remains blocked/i);
   assert.equal(
     result.output,
     `AUTHOR PROMPT\nRead and follow this handoff completely, then begin:\n${result.authorHandoff.absolute}\n\n` +

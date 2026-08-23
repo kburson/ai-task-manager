@@ -166,6 +166,8 @@ ${
 - Maximum reviewer handoffs: ${model.maxReviewTurns}
 - Waiting episode: at most ${model.waitCycles} separately observed waits of ${model.waitIntervalSeconds} seconds
 
+Run every protocol and repository command from the same canonical physical worktree above, using the shared ignored runtime above. Before each claim and handoff, verify the canonical \`HEAD\` and clean tracked state. Inter-round changes must be artifact-only changes to the authoritative artifact. Start the turn timer immediately when this handoff opens.
+
 Treat repository and protocol state as authoritative after chat loss or compaction. Reread this entire handoff, then run:
 
 \`\`\`text
@@ -198,7 +200,9 @@ After compaction, reread this file, run status, and resume from the last visible
 
 Accepted is terminal: verify status and stop forever. Intervention-required is a human decision boundary. Do not adjust the budget, continue/refocus, supplement, or finalize good-enough acceptance unless the authenticated human authorizes the existing command.
 
-Exit handling: 0 means the requested command completed (or a wait woke); 1 means runtime, Git, integrity, lock, role, or protocol refusal; 2 means invalid usage; 3 is only an ordinary bounded-wait timeout; 4 means acceptance is already durable while archive publication is pending. On exit 4, never repeat the terminal handoff—run the exact printed finalize retry.
+Starting, routing, or continuing a session is operational routing only; it does not create human semantic approval or an approval marker.
+
+Exit handling: 0 means the requested command completed (or a wait woke); 1 means runtime, Git, integrity, lock, role, or protocol refusal; 2 means invalid usage; 3 is only an ordinary bounded-wait timeout; 4 means acceptance is already durable while archive publication is pending. On exit 4, acceptance is already durable: never repeat the terminal handoff—run the exact printed finalize retry.
 ${
   model.archiveDir
     ? `
@@ -244,6 +248,8 @@ export function renderAuthorHandoff(state, settings) {
 
 You are the configured author ${inline(model.owner)}. You alone may edit and commit the authoritative artifact. The configured reviewer is ${inline(model.reviewer)} and must remain independent.
 
+The owner claim establishes provenance only; it does not grant or remove normal repository capabilities. Read peer evidence directly from the shared ignored runtime rather than asking a human to copy substantive review content.
+
 ${sharedHandoff(model)}
 ## Author turn
 
@@ -283,7 +289,7 @@ ${renderCliCommand([
 
 After a successful handoff, follow the bounded wait discipline above.
 
-On owner rounds after a review, inspect the structured status and read the exact preceding immutable review path from \`lastHandoff.artifacts.review.path\`:
+On owner rounds after a review, read the exact preceding immutable review path directly from structured status at \`lastHandoff.artifacts.review.path\`, then read that peer evidence from the shared ignored runtime:
 
 \`\`\`text
 ${renderCliCommand(['status', '--dir', model.runtimeAbsolute, '--json'])}
@@ -324,7 +330,7 @@ You are the configured reviewer ${inline(model.reviewer)}. Preserve role separat
 ${sharedHandoff(model)}
 ## Reviewer turn
 
-While your live provider/session owns this reviewer claim, AITM narrowly authorizes the generated co-review status command, co-review help handoff, and your exact reviewer handoff. Arbitrary Bash remains blocked. A mismatch in runtime, actor, review path, reviewed commit, decision, summary boundary, provider, or session is a refusal; correct the command from current status rather than bypassing the guard. Ordinary quoted prose in the handoff message is supported, including inert punctuation such as parentheses. Dynamic shell expressions and composed commands remain blocked; quote message prose instead of removing useful review detail.
+Run every protocol and repository command from the canonical worktree above. The co-review claim establishes reviewer provenance; it does not grant or remove ordinary tool capabilities. Use normal repository inspection, test, build, and Bash capabilities under the installed ordinary guards. Preserve role separation: never edit or commit the authoritative artifact or prior evidence. To write the new review file under the ignored runtime, use a direct file-writing tool: Edit, Write, or apply_patch. Begin without an unrelated bound task and start the turn timer immediately.
 
 Run status, then claim only when the reviewer role is available:
 

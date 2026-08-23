@@ -59,4 +59,20 @@ AITM enforces one editing provider per worktree with local authoritative occupan
 
 Grok's native Bash, edit, and agent hooks share the same AITM guards as Claude and Codex after envelope normalization. A missing bridge or named handler denies the operation because policy could not run; a crash inside an existing shared handler preserves the package's documented diagnostic fail-open behavior.
 
-Co-review reviewers stay unbound. A claimed reviewer session may write only its exact pending review artifact. Edit, Write, `apply_patch`, and Bash reject tracked source, authority files, other protocol or `.tmp/**` paths, mixed or malformed patches, ambiguous shell mutations, and symlink drift before ordinary scratch or chore allowances.
+Co-review reviewers stay unbound and begin without an unrelated bound task. The
+author and reviewer use one canonical physical worktree and its shared ignored
+runtime. A co-review claim records provenance only; it does not grant or remove
+normal repository inspection, test, build, and Bash capabilities under the
+installed ordinary guards.
+
+The protocol validates immutable SHA-bound authority: the canonical `HEAD`,
+authoritative artifact commit, Git blob, digest, clean tracked state, and
+immutable peer-evidence paths. Reviewer role separation is cooperative and
+enforced by this immutable evidence and handoff validation: reviewers never
+edit or commit the authoritative artifact or prior evidence, and create only a
+new review file in the shared ignored runtime with Edit, Write, or
+`apply_patch`. Both roles read peer evidence directly from structured runtime
+status rather than routing substantive content through a human.
+
+Session routing, continuation, and automated handoffs are operational actions,
+not human semantic approval; they never create an approval marker.
