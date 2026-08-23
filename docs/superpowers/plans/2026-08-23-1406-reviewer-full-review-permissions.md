@@ -114,6 +114,15 @@ before `/task plan-approve #1406`; it is not an implementation task.
       integration, documentation checks, fast suite, slow suite, lint, and
       formatting. Verify every preserved `vc-list` resolves to the intended
       stable IDs before plan approval.
+- [ ] Record that rewriting `Scope` and `Acceptance Criteria` intentionally
+      makes the existing `aitm-refinement-snapshot` stale. This does not block
+      the forward Plan-stage approval path, but `/task cancel-plan #1406` and
+      `/task shelve #1406` will refuse until refinement is refreshed. Do not
+      rewrite the snapshot marker through `issue-body` or bypass marker
+      protection. If cancellation or shelving becomes necessary, demote one
+      governed state edge at a time back to Refine, rerun `/task refine` against
+      the hydrated body to mint a current snapshot, then re-enter and re-review
+      Plan before continuing.
 - [ ] Invoke `/task plan-approve #1406` only after both issue-body updates are
       durable and independently checked. Do not implement, push, deliver,
       merge, promote, approve, or close as part of this gate.
@@ -159,7 +168,9 @@ before `/task plan-approve #1406`; it is not an implementation task.
 - `scripts/tests/fixtures/co-review-memory-repository.mjs`
 - `scripts/tests/fixtures/co-review-handoff-cases.mjs`
 - `scripts/tests/fixtures/co-review-start-cases.mjs`
+- `scripts/tests/fixtures/co-review-e2e-cases.mjs`
 - `scripts/tests/unit/review/co-review-fixture-cost.test.mjs`
+- `scripts/tests/unit/review/co-review-finalization.test.mjs`
 - `scripts/tests/unit/review/co-review-index.test.mjs`
 - `scripts/tests/unit/review/co-review.test.mjs`
 - `scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs`
@@ -262,6 +273,18 @@ Exercise both absolute foreign-runtime paths and a relative escape from the
 caller root, such as `--dir ../sibling/.tmp/review`. Assert the relative form
 resolves to the sibling repository before the same identity refusal.
 
+Repair the existing symlink-escape fixture before changing the resolver. Import
+`mkdtempOutsideRepo()` from `scripts/task-tracker/lib/scratch-dir.mjs` and
+`rmSync` from `node:fs`. Replace
+`temporaryRoot('aitm-co-review-boundary-outside-')` with
+`mkdtempOutsideRepo('aitm-co-review-boundary-outside-')`. Change that test's
+callback to `(t)` and immediately register
+`t.after(() => rmSync(outside, { recursive: true, force: true }))` before
+creating the symlink. Keep its existing refusal assertion unchanged.
+
+The repository-local `temporaryRoot()` climbs to the host worktree under Git
+root discovery and cannot exercise the `not-a-repository` fallback.
+
 - [ ] **Step 2: Add the imported-review strict-ancestor regression**
 
 Extend `scripts/tests/fixtures/co-review-handoff-cases.mjs` with a real or memory
@@ -345,10 +368,11 @@ Delete the local `commonDirectory()` helper. Remove
 `commonDirectory()` from `REAL_REPOSITORY_BOUNDARY` and its boundary tests.
 Document the `not-a-repository` fallback as the routing needed for a lexically
 contained runtime symlink whose physical target is an external non-repository
-directory. Retain the existing real-Git symlink-escape test: that constructible
-case must pass through the fallback, reach `protocolPaths()`, and fail
-`path-outside-repository` rather than being mislabeled as a repository-identity
-failure.
+directory. The repaired `mkdtempOutsideRepo()` real-Git case must pass through
+the fallback, reach `protocolPaths()`, and fail `path-outside-repository` rather
+than being mislabeled as a repository-identity failure. Retain a separate
+repository-local symlink case, if useful, with the expected
+`repository-identity` result; do not conflate the two topologies.
 
 - [ ] **Step 5: Route initialization through the same boundary and reject
       ancestor imports**
