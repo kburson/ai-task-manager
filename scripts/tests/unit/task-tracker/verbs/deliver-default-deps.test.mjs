@@ -87,6 +87,91 @@ test('default live PR snapshot records a server-confirmed deleted source branch'
   ]);
 });
 
+test('#1390 default PR adapter canonicalizes live GitHub second-precision mergedAt', async () => {
+  const exec = async (_command, args) => {
+    if (args[0] === 'pr') {
+      return {
+        stdout: JSON.stringify({
+          number: 1385,
+          state: 'MERGED',
+          isDraft: false,
+          baseRefName: 'trunk',
+          headRefName: 'codex/939-full-auto-merge',
+          headRefOid: HEAD,
+          mergeable: 'UNKNOWN',
+          mergedAt: '2026-08-23T03:57:33Z',
+          mergeCommit: { oid: MERGE_HEAD },
+          statusCheckRollup: [],
+          commits: [{ messageHeadline: '[#1390] provider evidence' }],
+          headRepository: { name: 'ai-task-manager' },
+          headRepositoryOwner: { login: 'kburson' },
+        }),
+      };
+    }
+    const error = new Error('HTTP 404: Not Found');
+    error.stderr = 'gh: Not Found (HTTP 404)';
+    throw error;
+  };
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    { exec }
+  );
+
+  const pullRequest = await deps.fetchPullRequest({ prNumber: 1385 });
+
+  assert.equal(pullRequest.mergedAt, '2026-08-23T03:57:33.000Z');
+});
+
+test('#1390 default PR adapter rejects missing or malformed mergedAt', async () => {
+  for (const mergedAt of [null, 'not-an-instant']) {
+    const exec = async (_command, args) => {
+      if (args[0] === 'pr') {
+        return {
+          stdout: JSON.stringify({
+            number: 1385,
+            state: 'MERGED',
+            isDraft: false,
+            baseRefName: 'trunk',
+            headRefName: 'codex/939-full-auto-merge',
+            headRefOid: HEAD,
+            mergeable: 'UNKNOWN',
+            mergedAt,
+            mergeCommit: { oid: MERGE_HEAD },
+            statusCheckRollup: [],
+            commits: [{ messageHeadline: '[#1390] provider evidence' }],
+            headRepository: { name: 'ai-task-manager' },
+            headRepositoryOwner: { login: 'kburson' },
+          }),
+        };
+      }
+      const error = new Error('HTTP 404: Not Found');
+      error.stderr = 'gh: Not Found (HTTP 404)';
+      throw error;
+    };
+    const deps = createDefaultDeliverDeps(
+      {
+        cfg: cfg(),
+        projectDir: '/injected/project',
+        async getIssueBoardState() {
+          return 'Review';
+        },
+      },
+      { exec }
+    );
+
+    await assert.rejects(
+      deps.fetchPullRequest({ prNumber: 1385 }),
+      /deliver:pull-request-merged-at/
+    );
+  }
+});
+
 test('default merge-history inspector returns exact parents and authorized commit bytes', async () => {
   const exec = async (command, args) => {
     assert.equal(command, 'git');

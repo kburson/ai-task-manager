@@ -363,8 +363,16 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
     )
   );
-  const mergedPullRequest = pullRequests.length === 1 && pullRequestMerged(pullRequests[0]);
-  const prNumber = pullRequests.length === 1 ? pullRequests[0].number : null;
+  const exactHeadPullRequests = pullRequests.filter(
+    (pullRequest) => pullRequest.headRefOid === localHeadSha
+  );
+  const selectedPullRequests =
+    exactHeadPullRequests.length === 0 && pullRequests.length === 1
+      ? pullRequests
+      : exactHeadPullRequests;
+  const mergedPullRequest =
+    selectedPullRequests.length === 1 && pullRequestMerged(selectedPullRequests[0]);
+  const prNumber = selectedPullRequests.length === 1 ? selectedPullRequests[0].number : null;
   const checks =
     prNumber === null
       ? { readable: false, required: [] }
@@ -374,7 +382,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           expectedHeadSha: localHeadSha,
         });
   const commitSubjectsPromise = mergedPullRequest
-    ? Promise.resolve(pullRequests[0].sourceCommitSubjects)
+    ? Promise.resolve(selectedPullRequests[0].sourceCommitSubjects)
     : listCommitSubjects({ range: 'origin/trunk..HEAD' });
   const [
     testReceiptSha,
@@ -413,7 +421,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     issue: { ...issue, agentReviewPassed, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
-    pullRequests,
+    pullRequests: selectedPullRequests,
     localHeadSha,
     testReceiptSha,
     acceptedReviewSha,
@@ -463,9 +471,9 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           cfg,
           intentId: createIntentId(),
           sessionId: sessionId(),
-          clientCreatedAt: pullRequests[0].mergedAt,
+          clientCreatedAt: selectedPullRequests[0].mergedAt,
         }),
-        pullRequest: pullRequests[0],
+        pullRequest: selectedPullRequests[0],
         localHeadSha,
         testReceiptSha,
         acceptedReviewSha,
@@ -489,7 +497,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
         context,
         liveIntent,
         matchingReceipt: null,
-        pullRequest: pullRequests[0],
+        pullRequest: selectedPullRequests[0],
         recovery,
         localHeadSha,
         testReceiptSha,
@@ -504,7 +512,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       context,
       liveIntent,
       matchingReceipt: initial.projection.matchingReceipt,
-      pullRequest: pullRequests[0],
+      pullRequest: selectedPullRequests[0],
       recovery,
       localHeadSha,
       testReceiptSha,
@@ -764,6 +772,11 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         : null;
       delete pr.commits;
       pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
+      if (pr.merged) {
+        const mergedAt = normalizeGitHubInstant(pr.mergedAt);
+        if (mergedAt === null) throw deliverError('pull-request-merged-at');
+        pr.mergedAt = mergedAt;
+      }
       pr.headRefDeleted = false;
       if (pr.merged && typeof pr.headRefName === 'string' && pr.headRefName.length > 0) {
         const headOwner = pr.headRepositoryOwner?.login || owner;
