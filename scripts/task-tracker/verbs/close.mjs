@@ -629,8 +629,7 @@ export async function verbClose(ctx) {
     const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
       session: loadSession(currentSessionId()),
       projectConfig: rawProjectConfig(),
-      acceptedHeadSha:
-        gateInput.acceptedSha === gateInput.localHeadSha ? gateInput.localHeadSha : null,
+      acceptedHeadSha: gateInput.acceptedSha,
       humanApprovalEvidence:
         directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
           ? {
