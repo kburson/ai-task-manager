@@ -764,6 +764,11 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         : null;
       delete pr.commits;
       pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
+      if (pr.merged) {
+        const mergedAt = normalizeGitHubInstant(pr.mergedAt);
+        if (mergedAt === null) throw deliverError('pull-request-merged-at');
+        pr.mergedAt = mergedAt;
+      }
       pr.headRefDeleted = false;
       if (pr.merged && typeof pr.headRefName === 'string' && pr.headRefName.length > 0) {
         const headOwner = pr.headRepositoryOwner?.login || owner;
