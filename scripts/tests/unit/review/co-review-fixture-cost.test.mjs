@@ -117,3 +117,20 @@ test('memory repository models identity, publication, reachability, and drift', 
     '# Published\n'
   );
 });
+
+test('memory repository reports tracked changes and committed path deltas without subprocesses', () => {
+  const fixture = memoryRepositoryFixture();
+  const { repository, root, artifact, initialCommit } = fixture;
+
+  assert.deepEqual(repository.trackedChanges(root), []);
+  repository.setWorktree(artifact, Buffer.from('# Dirty tracked artifact\n'));
+  assert.deepEqual(repository.trackedChanges(root), [artifact]);
+
+  const secondCommit = repository.commit(
+    artifact,
+    Buffer.from('# Artifact\n\nRevision two.\n'),
+    'revision two'
+  );
+  assert.deepEqual(repository.changedPathsBetween(root, initialCommit, secondCommit), [artifact]);
+  assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
+});

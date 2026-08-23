@@ -34,6 +34,23 @@ export function createRealRepositoryBoundary({ execFileSyncImpl = execFileSync }
       };
     },
 
+    trackedChanges(root) {
+      const unstaged = run(root, ['diff', '--name-only', '--diff-filter=ACDMRTUXB', '--']);
+      const staged = run(root, [
+        'diff',
+        '--cached',
+        '--name-only',
+        '--diff-filter=ACDMRTUXB',
+        '--',
+      ]);
+      return [...new Set(`${unstaged}\n${staged}`.split('\n').filter(Boolean))].sort();
+    },
+
+    changedPathsBetween(root, from, to) {
+      const output = run(root, ['diff', '--name-only', '--diff-filter=ACDMRTUXB', from, to, '--']);
+      return output.split('\n').filter(Boolean).sort();
+    },
+
     trackedArtifact(root, relative) {
       return {
         worktree: readFileSync(path.join(root, relative)),

@@ -81,6 +81,16 @@ test('real repository boundary normalizes repository observations', () => {
       blob: artifact.blob,
     }
   );
+
+  assert.deepEqual(REAL_REPOSITORY_BOUNDARY.trackedChanges(root), []);
+  writeFileSync(path.join(root, 'docs/artifact.md'), '# Dirty tracked artifact\n');
+  assert.deepEqual(REAL_REPOSITORY_BOUNDARY.trackedChanges(root), ['docs/artifact.md']);
+
+  const secondCommit = commitArtifact(root, '# Artifact\n\nRevision two.\n');
+  assert.deepEqual(
+    REAL_REPOSITORY_BOUNDARY.changedPathsBetween(root, initialCommit, secondCommit),
+    ['docs/artifact.md']
+  );
 });
 
 test('real repository boundary invokes Git without a shell', () => {

@@ -154,6 +154,21 @@ function assertIgnored(root, runtime, repository) {
   if (status.tracked) fail('runtime-tracked', runtime.relative);
 }
 
+function assertCleanTrackedState(root, repository) {
+  const changed = repositoryCall('git', 'tracked worktree state', () =>
+    repository.trackedChanges(root)
+  );
+  if (changed.length > 0) fail('tracked-worktree-dirty', changed.join(', '));
+}
+
+function assertArtifactOnlyDelta(root, state, commit, repository) {
+  const changed = repositoryCall('git', 'artifact change scope', () =>
+    repository.changedPathsBetween(root, state.artifact.commit, commit)
+  );
+  const outside = changed.filter((candidate) => candidate !== state.artifact.path);
+  if (outside.length > 0) fail('artifact-change-scope', outside.join(', '));
+}
+
 function assertTrackedArtifact(root, artifact, repository) {
   const resolved = relativePath(root, artifact, 'artifact');
   if (!existsSync(resolved.absolute)) {
@@ -1190,6 +1205,8 @@ export function handoffOwner({
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'owner-handoff', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    assertIgnored(root, paths, repository);
+    assertCleanTrackedState(root, repository);
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.owner !== actor || state.currentRole !== 'owner') {
       fail('wrong-role', `${actor}; expected owner ${state.roles.owner}`);
@@ -1220,6 +1237,7 @@ export function handoffOwner({
     }
     validateResponse(root, answeredReview, responseArtifact);
     const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
+    assertArtifactOnlyDelta(root, state, artifactRecord.commit, repository);
     const at = new Date().toISOString();
     const artifacts = {
       response: responseArtifact,
@@ -1273,6 +1291,8 @@ export function handoffReviewer({
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'reviewer-handoff', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    assertIgnored(root, paths, repository);
+    assertCleanTrackedState(root, repository);
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.reviewer !== actor || state.currentRole !== 'reviewer') {
       fail('wrong-role', `${actor}; expected reviewer ${state.roles.reviewer}`);

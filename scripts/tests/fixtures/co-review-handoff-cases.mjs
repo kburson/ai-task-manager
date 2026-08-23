@@ -16,6 +16,88 @@ import {
   snapshotProtocol,
 } from './co-review-fixture.mjs';
 
+const TRACKED_HANDOFF_DRIFT_CASES = [
+  ['staged tracked drift', stageTrackedFile],
+  ['unstaged tracked drift', editTrackedFile],
+  ['runtime force-added to index', forceAddRuntime],
+];
+
+function stageTrackedFile({ repository }) {
+  repository.setIndex('README.md', Buffer.from('# Staged tracked drift\n'));
+}
+
+function editTrackedFile({ repository }) {
+  repository.setWorktree('README.md', Buffer.from('# Unstaged tracked drift\n'));
+}
+
+function forceAddRuntime({ repository, root, options }) {
+  const relative = `${options.dir}/force-added.txt`;
+  const bytes = Buffer.from('force-added runtime evidence\n');
+  writeFileSync(path.join(root, relative), bytes);
+  repository.setIndex(relative, bytes);
+}
+
+async function initializedTrackedProtocol() {
+  const fixture = memoryRepositoryFixture();
+  const baselineCommit = fixture.repository.commit(
+    'README.md',
+    Buffer.from('# Co-review fixture\n'),
+    'track README'
+  );
+  const api = await memoryProtocol(fixture.repository);
+  const options = {
+    cwd: fixture.root,
+    dir: '.tmp/review',
+    artifact: fixture.artifact,
+    owner: 'owner-agent',
+    reviewer: 'reviewer-agent',
+    maxReviewTurns: 2,
+  };
+  const state = api.initializeProtocol(options);
+  return { ...fixture, api, options, state, baselineCommit };
+}
+
+async function pendingOwnerHandoff() {
+  const fixture = await initializedTrackedProtocol();
+  const { api, root, options, baselineCommit } = fixture;
+  api.claimTurn({ cwd: root, dir: options.dir, actor: options.owner });
+  const response = `${options.dir}/owner-response.md`;
+  writeFileSync(path.join(root, response), '# Owner response\n\nReady.\n');
+  return {
+    ...fixture,
+    call: {
+      cwd: root,
+      dir: options.dir,
+      actor: options.owner,
+      response,
+      artifact: options.artifact,
+      commit: baselineCommit,
+      message: 'ready for review',
+    },
+  };
+}
+
+async function pendingReviewerHandoff() {
+  const fixture = await pendingOwnerHandoff();
+  const { api, root, options, baselineCommit } = fixture;
+  api.handoffOwner(fixture.call);
+  api.claimTurn({ cwd: root, dir: options.dir, actor: options.reviewer });
+  const review = `${options.dir}/review.md`;
+  writeFileSync(path.join(root, review), '# Review\n\nAccepted.\n');
+  return {
+    ...fixture,
+    call: {
+      cwd: root,
+      dir: options.dir,
+      actor: options.reviewer,
+      review,
+      reviewOf: baselineCommit,
+      decision: 'accepted',
+      message: 'accepted',
+    },
+  };
+}
+
 test('imported review requires exact HEAD even when an ancestor has identical artifact bytes', async () => {
   const fixture = memoryRepositoryFixture();
   const api = await memoryProtocol(fixture.repository);
@@ -83,6 +165,70 @@ test('first owner handoff transfers a committed artifact plus immutable response
   assert.equal(state.lastHandoff.commit, initialCommit);
   assert.match(state.lastHandoff.artifacts.response.sha256, /^sha256:[a-f0-9]{64}$/);
   assert.equal(state.reviewTurnsUsed, 0);
+});
+
+test('owner handoff requires clean staged and unstaged tracked state', async () => {
+  for (const [name, mutate] of TRACKED_HANDOFF_DRIFT_CASES) {
+    const fixture = await pendingOwnerHandoff();
+    mutate(fixture);
+    const before = snapshotProtocol(fixture.root, fixture.options.dir);
+    const expected =
+      name === 'runtime force-added to index'
+        ? /co-review:runtime-tracked/
+        : /co-review:tracked-worktree-dirty/;
+    assert.throws(() => fixture.api.handoffOwner(fixture.call), expected, name);
+    assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before, name);
+  }
+});
+
+test('reviewer handoff requires clean staged and unstaged tracked state', async () => {
+  for (const [name, mutate] of TRACKED_HANDOFF_DRIFT_CASES) {
+    const fixture = await pendingReviewerHandoff();
+    mutate(fixture);
+    const before = snapshotProtocol(fixture.root, fixture.options.dir);
+    const expected =
+      name === 'runtime force-added to index'
+        ? /co-review:runtime-tracked/
+        : /co-review:tracked-worktree-dirty/;
+    assert.throws(() => fixture.api.handoffReviewer(fixture.call), expected, name);
+    assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before, name);
+  }
+});
+
+test('owner handoff rejects a proposed commit that changes paths outside the artifact', async () => {
+  const fixture = await pendingOwnerHandoff();
+  const commit = fixture.repository.commitFiles(
+    [
+      [fixture.options.artifact, Buffer.from('# Artifact\n\nRevision two.\n')],
+      ['README.md', Buffer.from('# Co-review fixture changed\n')],
+    ],
+    'revise artifact and README'
+  );
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  assert.throws(
+    () => fixture.api.handoffOwner({ ...fixture.call, commit }),
+    /co-review:artifact-change-scope:README\.md/
+  );
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
+});
+
+test('owner handoff accepts an artifact-only commit with ignored runtime evidence', async () => {
+  const fixture = await pendingOwnerHandoff();
+  writeFileSync(
+    path.join(fixture.root, fixture.options.dir, 'ignored-evidence.md'),
+    '# Ignored runtime evidence\n'
+  );
+  const commit = fixture.repository.commit(
+    fixture.options.artifact,
+    Buffer.from('# Artifact\n\nRevision two.\n'),
+    'revise artifact only'
+  );
+
+  const state = fixture.api.handoffOwner({ ...fixture.call, commit });
+
+  assert.equal(state.artifact.commit, commit);
+  assert.equal(state.currentRole, 'reviewer');
 });
 
 test('owner answers every imported finding with one supported disposition', async () => {
