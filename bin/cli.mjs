@@ -437,7 +437,10 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
 
   function add(event, matcher, command, extra = {}) {
     if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
-    const already = config.hooks[event].some((entry) => hookEntryHasCommand(entry, command));
+    const already = config.hooks[event].some(
+      (entry) =>
+        (entry.matcher ?? null) === (matcher ?? null) && hookEntryHasCommand(entry, command)
+    );
     if (already) return;
     const entry = {
       ...extra,

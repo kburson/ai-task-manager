@@ -7,6 +7,8 @@ import test from 'node:test';
 
 import {
   commitArtifact,
+  git,
+  profiledEnv,
   realInitializedProtocol,
   readEvents,
   repositoryFixture,
@@ -37,6 +39,10 @@ async function exhaustedIntervention({ lastFrom = 'reviewer' } = {}) {
 test('fresh CLI workflow reaches acceptance with ordered events and terminal next action', () => {
   const { root, artifact, initialCommit } = repositoryFixture();
   const io = { cwd: root };
+  const issueBody = path.join(root, '.tmp/issue-body.md');
+  mkdirSync(path.dirname(issueBody), { recursive: true });
+  writeFileSync(issueBody, '# Issue\n\nNo human semantic approval.\n');
+  const issueBodyBefore = readFileSync(issueBody, 'utf8');
   assert.equal(
     runCli(
       [
@@ -56,6 +62,11 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     ).status,
     0
   );
+  const initialWait = runCli(
+    ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
+    io
+  );
+  assert.equal(initialWait.status, 3, initialWait.stderr);
   assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
   writeFileSync(path.join(root, '.tmp/review/r1-response.md'), '# Response\n');
   assert.equal(
@@ -79,6 +90,11 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     ).status,
     0
   );
+  const reviewerWake = runCli(
+    ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
+    io
+  );
+  assert.equal(reviewerWake.status, 0, reviewerWake.stderr);
   assert.equal(
     runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io).status,
     0
@@ -87,29 +103,39 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     path.join(root, '.tmp/review/r2-review.md'),
     '[finding:F-001] Add explicit recovery.\n'
   );
-  assert.equal(
-    runCli(
-      [
-        'handoff',
-        '--dir',
-        '.tmp/review',
-        '--actor',
-        'reviewer-agent',
-        '--review',
-        '.tmp/review/r2-review.md',
-        '--review-of',
-        initialCommit,
-        '--decision',
-        'changes-requested',
-        '--message',
-        'one finding',
-      ],
-      io
-    ).status,
-    0
-  );
+  const changesRequestedArgs = [
+    'handoff',
+    '--dir',
+    '.tmp/review',
+    '--actor',
+    'reviewer-agent',
+    '--review',
+    '.tmp/review/r2-review.md',
+    '--review-of',
+    initialCommit,
+    '--decision',
+    'changes-requested',
+    '--message',
+    'one finding',
+  ];
+  const changesRequested = runCli(changesRequestedArgs, io);
+  assert.equal(changesRequested.status, 0, changesRequested.stderr);
+  const eventsAfterChanges = readEvents(root, '.tmp/review');
+  const identicalRetry = runCli(changesRequestedArgs, io);
+  assert.equal(identicalRetry.status, 0, identicalRetry.stderr);
+  assert.equal(identicalRetry.stdout, changesRequested.stdout);
+  assert.deepEqual(readEvents(root, '.tmp/review'), eventsAfterChanges);
+  const conflictingReuse = runCli(changesRequestedArgs.with(-1, 'conflicting handoff reuse'), io);
+  assert.equal(conflictingReuse.status, 1, conflictingReuse.stderr);
+  assert.match(conflictingReuse.stderr, /co-review:/);
   assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
   const secondCommit = commitArtifact(root, '# Artifact\n\nExplicit recovery.\n');
+  assert.deepEqual(
+    git(root, 'diff', '--name-only', `${initialCommit}..${secondCommit}`)
+      .split('\n')
+      .filter(Boolean),
+    ['docs/artifact.md']
+  );
   writeFileSync(
     path.join(root, '.tmp/review/r3-response.md'),
     '[finding:F-001] [disposition:accepted]\nAdded recovery section.\n'
@@ -141,8 +167,8 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io).status,
     0
   );
-  writeFileSync(path.join(root, '.tmp/review/r4-review.md'), '# Review\n\nAccepted.\n');
-  const pendingArchive = runCli(
+  writeFileSync(path.join(root, '.tmp/review/stale-review.md'), '# Review\n\nStale.\n');
+  const stale = runCli(
     [
       'handoff',
       '--dir',
@@ -150,24 +176,47 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
       '--actor',
       'reviewer-agent',
       '--review',
-      '.tmp/review/r4-review.md',
+      '.tmp/review/stale-review.md',
       '--review-of',
-      secondCommit,
+      initialCommit,
       '--decision',
       'accepted',
       '--message',
-      'accepted',
+      'stale acceptance',
     ],
     io
   );
+  assert.equal(stale.status, 1, stale.stderr);
+  assert.match(stale.stderr, /co-review:review-of/);
+  writeFileSync(path.join(root, '.tmp/review/r4-review.md'), '# Review\n\nAccepted.\n');
+  const acceptedArgs = [
+    'handoff',
+    '--dir',
+    '.tmp/review',
+    '--actor',
+    'reviewer-agent',
+    '--review',
+    '.tmp/review/r4-review.md',
+    '--review-of',
+    secondCommit,
+    '--decision',
+    'accepted',
+    '--message',
+    'accepted',
+  ];
+  const wrongSession = runCli(acceptedArgs, { ...io, env: profiledEnv('owner') });
+  assert.equal(wrongSession.status, 1, wrongSession.stderr);
+  assert.match(wrongSession.stderr, /co-review:handoff-session-mismatch/);
+  const pendingArchive = runCli(acceptedArgs, io);
   assert.equal(pendingArchive.status, 4, pendingArchive.stderr);
   assert.match(pendingArchive.stderr, /^ACCEPTED: protocol state is durable/);
   assert.match(
     pendingArchive.stderr,
     new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
   );
+  const terminalEvents = readEvents(root, '.tmp/review');
   assert.deepEqual(
-    readEvents(root, '.tmp/review').map(({ type }) => type),
+    terminalEvents.map(({ type }) => type),
     [
       'init',
       'claim',
@@ -180,6 +229,24 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
       'reviewer-handoff',
     ]
   );
+  const claims = terminalEvents.filter(({ type }) => type === 'claim').map(({ claim }) => claim);
+  assert.deepEqual(
+    claims.map(({ role, provider, sid }) => ({ role, provider, sid })),
+    [
+      { role: 'owner', provider: 'codex', sid: 'fixture-owner-sid' },
+      { role: 'reviewer', provider: 'claude', sid: 'fixture-reviewer-sid' },
+      { role: 'owner', provider: 'codex', sid: 'fixture-owner-sid' },
+      { role: 'reviewer', provider: 'claude', sid: 'fixture-reviewer-sid' },
+    ]
+  );
+  assert.notEqual(claims[0].provider, claims[1].provider);
+  assert.notEqual(claims[0].sid, claims[1].sid);
+  assert.equal(readFileSync(issueBody, 'utf8'), issueBodyBefore);
+  assert.ok(
+    terminalEvents.every(
+      (event) => event.type !== 'review:approved' && event.approval !== 'human-semantic'
+    )
+  );
   const status = runCli(['status', '--dir', '.tmp/review'], io);
   assert.equal(status.status, 0, status.stderr);
   assert.match(
@@ -191,6 +258,30 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     json.nextAction,
     new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
   );
+  const finalized = runCli(
+    ['finalize', '--dir', '.tmp/review', '--archive-dir', 'docs/reviews/provider-scoped-relay'],
+    io
+  );
+  assert.equal(finalized.status, 0, finalized.stderr);
+  const eventsAfterFinalize = readEvents(root, '.tmp/review');
+  assert.equal(
+    eventsAfterFinalize.filter(({ type }) => type === 'reviewer-handoff').length,
+    terminalEvents.filter(({ type }) => type === 'reviewer-handoff').length
+  );
+  const archiveReadme = readFileSync(
+    path.join(root, 'docs/reviews/provider-scoped-relay/README.md'),
+    'utf8'
+  );
+  const manifestMatch = archiveReadme.match(
+    /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]*?)\n```\n<!-- aitm-co-review-manifest:end -->/
+  );
+  assert.ok(manifestMatch, 'archive manifest exists');
+  const manifest = JSON.parse(manifestMatch[1]);
+  const finalOwner = terminalEvents.findLast(({ type }) => type === 'owner-handoff');
+  const finalReviewer = terminalEvents.findLast(({ type }) => type === 'reviewer-handoff');
+  assert.deepEqual(manifest.evidence.ownerResponse.claim, finalOwner.handoff.claim);
+  assert.deepEqual(manifest.evidence.reviewerReview.claim, finalReviewer.handoff.claim);
+  assert.equal(manifest.artifact.acceptedCommit, secondCommit);
 });
 
 test('Task 2 CLI continuation supports bare, absolute, legacy, focus, and authenticated recovery', async () => {
