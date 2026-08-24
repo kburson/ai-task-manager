@@ -1,0 +1,4437 @@
+[
+  {
+    "subject": "(none)",
+    "fileCount": 156,
+    "tests": 425,
+    "measuredFiles": 134,
+    "wallMs": 220677,
+    "inProcMs": 131797,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+      "scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs",
+      "scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs",
+      "scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/cli.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/gates.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/move-state.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs",
+      "scripts/tests/unit/dev-env/verify-local-worktree.test.mjs",
+      "scripts/tests/unit/fixtures/feature-fixtures.test.mjs",
+      "scripts/tests/unit/inspect/delivery-doc-parity.test.mjs",
+      "scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs",
+      "scripts/tests/unit/meta/audit-story-tags.test.mjs",
+      "scripts/tests/unit/providers/coverage-provider-adapter.test.mjs",
+      "scripts/tests/unit/providers/registry.test.mjs",
+      "scripts/tests/unit/review/co-review-finalization.test.mjs",
+      "scripts/tests/unit/task-tracker/core/adapter-dedup.test.mjs",
+      "scripts/tests/unit/task-tracker/core/adapter-token-floor.test.mjs",
+      "scripts/tests/unit/task-tracker/core/assert-file-excludes.test.mjs",
+      "scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs",
+      "scripts/tests/unit/task-tracker/core/assignee-default-docs-793.test.mjs",
+      "scripts/tests/unit/task-tracker/core/bash-guard-fail-closed.test.mjs",
+      "scripts/tests/unit/task-tracker/core/bash-guard-move-state-substring.test.mjs",
+      "scripts/tests/unit/task-tracker/core/bash-guard-move-state.test.mjs",
+      "scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs",
+      "scripts/tests/unit/task-tracker/core/beta-report-templates-497.test.mjs",
+      "scripts/tests/unit/task-tracker/core/child-cannot-lead-epic-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/core/child-process-api.test.mjs",
+      "scripts/tests/unit/task-tracker/core/ci-745-trunk-ref.test.mjs",
+      "scripts/tests/unit/task-tracker/core/ci-actions-node-pins.test.mjs",
+      "scripts/tests/unit/task-tracker/core/ci-memory-parity-index.test.mjs",
+      "scripts/tests/unit/task-tracker/core/cli-colorize.test.mjs",
+      "scripts/tests/unit/task-tracker/core/close-board-body-agreement.test.mjs",
+      "scripts/tests/unit/task-tracker/core/close-flush-timing.test.mjs",
+      "scripts/tests/unit/task-tracker/core/codex-support-matrix.test.mjs",
+      "scripts/tests/unit/task-tracker/core/contiguity-guard-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/core/contiguity-hole-message.test.mjs",
+      "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "scripts/tests/unit/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "scripts/tests/unit/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "scripts/tests/unit/task-tracker/core/deep-dive-no-direct-gh-edit.test.mjs",
+      "scripts/tests/unit/task-tracker/core/defect-first-doc.test.mjs",
+      "scripts/tests/unit/task-tracker/core/demonstrable-ac-doc.test.mjs",
+      "scripts/tests/unit/task-tracker/core/discuss-banner-wiring.test.mjs",
+      "scripts/tests/unit/task-tracker/core/discuss-label-action-499.test.mjs",
+      "scripts/tests/unit/task-tracker/core/docs-735-attribution.test.mjs",
+      "scripts/tests/unit/task-tracker/core/docs-issue-body-forbiddance.test.mjs",
+      "scripts/tests/unit/task-tracker/core/docs-no-raw-gh-create.test.mjs",
+      "scripts/tests/unit/task-tracker/core/empty-catch-audit.test.mjs",
+      "scripts/tests/unit/task-tracker/core/evidence-marker-guidance.test.mjs",
+      "scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs",
+      "scripts/tests/unit/task-tracker/core/guard-comment-truth.test.mjs",
+      "scripts/tests/unit/task-tracker/core/guard-registry.test.mjs",
+      "scripts/tests/unit/task-tracker/core/guard-stdin-portability.test.mjs",
+      "scripts/tests/unit/task-tracker/core/guard-trust-boundary-doc.test.mjs",
+      "scripts/tests/unit/task-tracker/core/guard-unbypassable.test.mjs",
+      "scripts/tests/unit/task-tracker/core/lock-primitive-doc.test.mjs",
+      "scripts/tests/unit/task-tracker/core/memory-seed-docs.test.mjs",
+      "scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs",
+      "scripts/tests/unit/task-tracker/core/move-state-no-main-shim.test.mjs",
+      "scripts/tests/unit/task-tracker/core/no-legacy-timing-access.test.mjs",
+      "scripts/tests/unit/task-tracker/core/no-mutation-guarantee.test.mjs",
+      "scripts/tests/unit/task-tracker/core/operational-jit-audit.test.mjs",
+      "scripts/tests/unit/task-tracker/core/package-boundary.test.mjs",
+      "scripts/tests/unit/task-tracker/core/phase-events-doc.test.mjs",
+      "scripts/tests/unit/task-tracker/core/pickup-directive-has-checkpoint.test.mjs",
+      "scripts/tests/unit/task-tracker/core/pickup-directive-recovery.test.mjs",
+      "scripts/tests/unit/task-tracker/core/pickup-directive-token-floor.test.mjs",
+      "scripts/tests/unit/task-tracker/core/project-tmp-dir.test.mjs",
+      "scripts/tests/unit/task-tracker/core/quality-config.test.mjs",
+      "scripts/tests/unit/task-tracker/core/recovery-gap-dependency-structure.test.mjs",
+      "scripts/tests/unit/task-tracker/core/refine-exit-complete-marker-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/core/relicense-manifest.test.mjs",
+      "scripts/tests/unit/task-tracker/core/relicense-no-mit.test.mjs",
+      "scripts/tests/unit/task-tracker/core/review-delta-source-lock.test.mjs",
+      "scripts/tests/unit/task-tracker/core/review-failure-block-structure.test.mjs",
+      "scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
+      "scripts/tests/unit/task-tracker/core/router-compression-493.test.mjs",
+      "scripts/tests/unit/task-tracker/core/scope-pack.test.mjs",
+      "scripts/tests/unit/task-tracker/core/scope-rename.test.mjs",
+      "scripts/tests/unit/task-tracker/core/seed-worktree.test.mjs",
+      "scripts/tests/unit/task-tracker/core/sequence-rules-docs.test.mjs",
+      "scripts/tests/unit/task-tracker/core/session-boot.test.mjs",
+      "scripts/tests/unit/task-tracker/core/session-state-template.test.mjs",
+      "scripts/tests/unit/task-tracker/core/silent-catch-regression.test.mjs",
+      "scripts/tests/unit/task-tracker/core/skill-relocation-492.test.mjs",
+      "scripts/tests/unit/task-tracker/core/skill-stub-seed-directive.test.mjs",
+      "scripts/tests/unit/task-tracker/core/state-machine.test.mjs",
+      "scripts/tests/unit/task-tracker/core/state-walk-ac-stamp-test-carveout.test.mjs",
+      "scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs",
+      "scripts/tests/unit/task-tracker/core/templates.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-active-zero-regression.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-delta-source-regression.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-row-reader-structure.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-word-marker-regression.test.mjs",
+      "scripts/tests/unit/task-tracker/core/verb-locks.test.mjs",
+      "scripts/tests/unit/task-tracker/core/verb-orphan-finalize.test.mjs",
+      "scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs",
+      "scripts/tests/unit/task-tracker/coverage-config.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/bug-bash-disposition.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/chore-mode-contract.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-config-get.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-migrate-project.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-tag-story-ids.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/estimation/record-claim.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/fleet-registry.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-command-policy.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/graphql-float.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/graphql-params.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/init-project-config-create.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/init-project-config.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/init-repair.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/install-claude-command.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/is-main-symlink.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lifecycle-policy.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/memory-resync-cli.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state-internal-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/paths.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/policy-dependency-boundaries.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/process-timeouts.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/run-move-state-timeout.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/sandbox-timeout-resolve.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/session-state.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/set-priority.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/set-rank.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/start-time-sync.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-concurrency.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/update-event-fields-states.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verb-pipeline-enforcement.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/word-counter-codex.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/word-counter.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/gh-timing-comment.mjs",
+    "fileCount": 23,
+    "tests": 65,
+    "measuredFiles": 22,
+    "wallMs": 40689,
+    "inProcMs": 28989,
+    "files": [
+      "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs",
+      "scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs",
+      "scripts/tests/unit/task-tracker/core/gh-timing-comment-backdated-row.test.mjs",
+      "scripts/tests/unit/task-tracker/core/gh-timing-comment-blank-zero.test.mjs",
+      "scripts/tests/unit/task-tracker/core/gh-timing-comment-duplicate-start.test.mjs",
+      "scripts/tests/unit/task-tracker/core/gh-timing-comment-full-column.test.mjs",
+      "scripts/tests/unit/task-tracker/core/gh-timing-comment-issue-number.test.mjs",
+      "scripts/tests/unit/task-tracker/core/gh-timing-comment.test.mjs",
+      "scripts/tests/unit/task-tracker/core/lifecycle-integration.test.mjs",
+      "scripts/tests/unit/task-tracker/core/move-state-assigned.test.mjs",
+      "scripts/tests/unit/task-tracker/core/pause-row-duration.test.mjs",
+      "scripts/tests/unit/task-tracker/core/read-timing-comment-body.test.mjs",
+      "scripts/tests/unit/task-tracker/core/regression-pause-compact.test.mjs",
+      "scripts/tests/unit/task-tracker/core/switch-scenario.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-first-start.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-word-marker-monotonic.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/absolute-word-markers.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/adjacent-word-delta.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-timing-comment-timeout-default.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/interruption-word-markers.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-events-policy.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-queue-retention.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/word-accounting-regressions.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/close.mjs",
+    "fileCount": 15,
+    "tests": 96,
+    "measuredFiles": 12,
+    "wallMs": 69031,
+    "inProcMs": 61758,
+    "files": [
+      "scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs",
+      "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-binding-cleanup.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-delivery-gate-input.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-lifecycle-tick-retry.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-occupancy-cleanup.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-pexec-offline.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/test.mjs",
+    "fileCount": 15,
+    "tests": 69,
+    "measuredFiles": 14,
+    "wallMs": 16359,
+    "inProcMs": 4651,
+    "files": [
+      "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/promote.mjs",
+    "fileCount": 10,
+    "tests": 98,
+    "measuredFiles": 8,
+    "wallMs": 39623,
+    "inProcMs": 35563,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/promote-deep-dive-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-inprocess.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-spawn-timeout.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-test-review-alias.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/body-invariants.mjs",
+    "fileCount": 10,
+    "tests": 84,
+    "measuredFiles": 10,
+    "wallMs": 5696,
+    "inProcMs": 160,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/body-invariants-non-demonstrable-marker.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/body-invariants-section-loss.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/demonstrable-ac-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/fabrication-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/fail-closed-gates.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-structural-completeness.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lane-split-ac-floor.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-waived-ac.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verifier-provenance-sentinel.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/stage-entry-markers.mjs",
+    "fileCount": 9,
+    "tests": 46,
+    "measuredFiles": 9,
+    "wallMs": 6381,
+    "inProcMs": 847,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/backfill-holes.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/contiguity-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/entry-marker-contiguity-recovery.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lifecycle-history-actions.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ready-for-plan-topology.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/stage-entry-markers-core.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/stage-entry-markers-reentry.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/stage-entry-markers-review-test-arc.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/evidence-markers.mjs",
+    "fileCount": 9,
+    "tests": 15,
+    "measuredFiles": 9,
+    "wallMs": 4843,
+    "inProcMs": 27,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/dod-stamp-vc-reconcile.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/evidence-marker-backfill.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/evidence-markers-consolidated.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/evidence-markers-emit.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/evidence-markers.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lane-split-dod-stamp.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lane-split-recognition.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-verb-consolidated-declaration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-verb-evidence-commands.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/check.mjs",
+    "fileCount": 8,
+    "tests": 100,
+    "measuredFiles": 8,
+    "wallMs": 22219,
+    "inProcMs": 18230,
+    "files": [
+      "scripts/tests/unit/task-tracker/check-allow-unverified-ticks.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/check.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/coverage-check.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/functional-dod-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/auto-tick-verified.mjs",
+    "fileCount": 8,
+    "tests": 20,
+    "measuredFiles": 8,
+    "wallMs": 4980,
+    "inProcMs": 19,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/auto-tick-functional-vc-list.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/auto-tick-legacy-cmd-compat.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/auto-tick-vc-ref-fanin.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/auto-tick-verified.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/dual-form-declaration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/functional-dod-exec.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/vc-authoring.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/vc-parser-trailing-marker.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/close-convergence.mjs",
+    "fileCount": 8,
+    "tests": 61,
+    "measuredFiles": 8,
+    "wallMs": 15037,
+    "inProcMs": 42,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/close-convergence-finalize.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-convergence.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-fail-closed.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-force-atomic.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-gate-order.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-terminal-false-open-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-terminal-stderr-classification.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-timeout-killed-move.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/review.mjs",
+    "fileCount": 8,
+    "tests": 69,
+    "measuredFiles": 8,
+    "wallMs": 5035,
+    "inProcMs": 362,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-probe-policy.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-receipt-reuse.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/review-sandbox-demote-slug.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/review-timing-monotonic.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/review-unverified-tick-hatch.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/work-assignment.mjs",
+    "fileCount": 8,
+    "tests": 73,
+    "measuredFiles": 8,
+    "wallMs": 5643,
+    "inProcMs": 1440,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-authority-adversarial.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-multi-replacement.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-nested-authority.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-predecessor-capability.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-replacement-capability.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-snapshot-boundary.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment-temporal.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/work-assignment.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/versioned-issue-write.mjs",
+    "fileCount": 7,
+    "tests": 38,
+    "measuredFiles": 6,
+    "wallMs": 3515,
+    "inProcMs": 37,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/body-write-roundtrip.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/versioned-issue-write-core.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/versioned-issue-write-deps-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/versioned-issue-write-deps-stale.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/versioned-issue-write-first-noop.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/versioned-issue-write-pexec.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/versioned-issue-write-repo-flag.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-entry-markers.mjs",
+    "fileCount": 7,
+    "tests": 72,
+    "measuredFiles": 7,
+    "wallMs": 3688,
+    "inProcMs": 74,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-heal-entry-markers.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-backlog-entry-marker.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-entry-markers-backlog-fallback.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-entry-markers-monotonize.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-entry-markers-visit-aware.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-entry-markers-zero-marker-backlog.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/heal-entry-markers-delegates.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/resume.mjs",
+    "fileCount": 7,
+    "tests": 12,
+    "measuredFiles": 7,
+    "wallMs": 83678,
+    "inProcMs": 26620,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/pause-resume-reason.test.mjs",
+      "scripts/tests/unit/task-tracker/core/self-bind-resume.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/resume-fleet-refresh.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/resume-seed.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verb-start-resume-stop.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/approve.mjs",
+    "fileCount": 7,
+    "tests": 51,
+    "measuredFiles": 7,
+    "wallMs": 36051,
+    "inProcMs": 14900,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/gh-edit-guard.mjs",
+    "fileCount": 7,
+    "tests": 30,
+    "measuredFiles": 7,
+    "wallMs": 4258,
+    "inProcMs": 49,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/gh-edit-guard-api-create.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-edit-guard-chain-segmentation.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-edit-guard-create-core.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-edit-guard-create-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/gh-edit-guard-no-diff-path.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/scope-guard-active.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/discover-test-files.mjs",
+    "fileCount": 6,
+    "tests": 57,
+    "measuredFiles": 6,
+    "wallMs": 26868,
+    "inProcMs": 24760,
+    "files": [
+      "scripts/tests/unit/meta/package-test-corpus.test.mjs",
+      "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
+      "scripts/tests/unit/meta/test-tree-layout.test.mjs",
+      "scripts/tests/unit/task-tracker/core/run-tests-discovery.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/discover-test-files.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lane-taxonomy.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/validators/timing-log-sequence.mjs",
+    "fileCount": 6,
+    "tests": 61,
+    "measuredFiles": 6,
+    "wallMs": 4856,
+    "inProcMs": 109,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/gate-refused-audit-slug.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence-audit-rows.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence-update-slug.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-emitted-bare-slugs.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-event-emitter-characterization.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/closed-issue-convergence.mjs",
+    "fileCount": 6,
+    "tests": 49,
+    "measuredFiles": 6,
+    "wallMs": 22551,
+    "inProcMs": 11499,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/closed-issue-actions.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/closed-issue-integrity.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/closed-issue-recovery-live-state.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/closed-issue-recovery-reason.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/closed-issue-recovery.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/close-convergence-wiring-finalize.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/reconcile.mjs",
+    "fileCount": 6,
+    "tests": 63,
+    "measuredFiles": 6,
+    "wallMs": 3708,
+    "inProcMs": 463,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/reconcile-inprocess.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/reconcile-multistep-walk.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/reconcile-verb.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/issue-mutator-lock.mjs",
+    "fileCount": 6,
+    "tests": 19,
+    "measuredFiles": 6,
+    "wallMs": 5230,
+    "inProcMs": 868,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/dod-stamp-lock-env.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state-lock.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/state-mutator-concurrency.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/guard-registry.mjs",
+    "fileCount": 6,
+    "tests": 79,
+    "measuredFiles": 6,
+    "wallMs": 25490,
+    "inProcMs": 23066,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/guard-parity-done-stages.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-parity-early-stages.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-parity-mid-stages.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-registry-entry-fields.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-registry-review-exit.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/ac-evidence.mjs",
+    "fileCount": 5,
+    "tests": 37,
+    "measuredFiles": 3,
+    "wallMs": 1817,
+    "inProcMs": 30,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/config.mjs",
+    "fileCount": 5,
+    "tests": 14,
+    "measuredFiles": 4,
+    "wallMs": 2535,
+    "inProcMs": 20,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs",
+      "scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs",
+      "scripts/tests/unit/task-tracker/core/disposition-field-contract.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/config.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/coverage-config.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/create-issue.mjs",
+    "fileCount": 5,
+    "tests": 34,
+    "measuredFiles": 4,
+    "wallMs": 3805,
+    "inProcMs": 2088,
+    "files": [
+      "scripts/tests/unit/gh/create-issue.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/create-issue-kind-prefix.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/create-issue-resolve-assignee.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/backfill-vc-sections.mjs",
+    "fileCount": 5,
+    "tests": 25,
+    "measuredFiles": 5,
+    "wallMs": 2719,
+    "inProcMs": 25,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/backfill-vc-sections-help.test.mjs",
+      "scripts/tests/unit/task-tracker/core/backfill-vc-sections-strict-argv.test.mjs",
+      "scripts/tests/unit/task-tracker/core/backfill-vc-sections.test.mjs",
+      "scripts/tests/unit/task-tracker/core/coverage-backfill-vc-sections.test.mjs",
+      "scripts/tests/unit/task-tracker/core/lane-split-seed.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-backlog.mjs",
+    "fileCount": 5,
+    "tests": 4,
+    "measuredFiles": 5,
+    "wallMs": 2816,
+    "inProcMs": 4,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-heal-backlog.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-backlog-core.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-backlog-fields.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-backlog-schema-drift.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/timing-rollup.mjs",
+    "fileCount": 5,
+    "tests": 7,
+    "measuredFiles": 5,
+    "wallMs": 2683,
+    "inProcMs": 9,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/log-issue-time-paired-slugs.test.mjs",
+      "scripts/tests/unit/task-tracker/core/parse-timing-rows-legacy.test.mjs",
+      "scripts/tests/unit/task-tracker/core/stage-rollup-seconds.test.mjs",
+      "scripts/tests/unit/task-tracker/core/stage-rollup-visits.test.mjs",
+      "scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/bind-event.mjs",
+    "fileCount": 5,
+    "tests": 45,
+    "measuredFiles": 5,
+    "wallMs": 9039,
+    "inProcMs": 5526,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/bind-event.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/orphan-pairing-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/switch-paired-events.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/switch-resumed-on-history.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/code-complete-gate.mjs",
+    "fileCount": 5,
+    "tests": 51,
+    "measuredFiles": 5,
+    "wallMs": 3951,
+    "inProcMs": 50,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/code-complete-gate-audit-494.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/code-complete-gate-non-demonstrable.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/code-complete-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/commit-trail-head-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/epic-ac-reconciled-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/timing-rows.mjs",
+    "fileCount": 5,
+    "tests": 38,
+    "measuredFiles": 5,
+    "wallMs": 5306,
+    "inProcMs": 37,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/phase-word-attribution.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-rows-seconds.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-rows.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/markers.mjs",
+    "fileCount": 5,
+    "tests": 14,
+    "measuredFiles": 5,
+    "wallMs": 2698,
+    "inProcMs": 11,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/full-auto-footnote.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/mark-deep-dive-complete.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/markers-full-auto-footnote.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/markers-progress-cluster.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/markers.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/move-state-core.mjs",
+    "fileCount": 5,
+    "tests": 27,
+    "measuredFiles": 5,
+    "wallMs": 2521,
+    "inProcMs": 27,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/move-state/move-regression.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-board-marker-atomicity.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-sentinel-write.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/new.mjs",
+    "fileCount": 5,
+    "tests": 23,
+    "measuredFiles": 5,
+    "wallMs": 16050,
+    "inProcMs": 3470,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/new-from-plan.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/new-help-probe-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/new-routes-create-issue.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/new.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/refine.mjs",
+    "fileCount": 5,
+    "tests": 5,
+    "measuredFiles": 5,
+    "wallMs": 11248,
+    "inProcMs": 25,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/refine-atomic-rollback.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/refine-fields-cache-refresh.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/refine-verb.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/deep-dive-gate.mjs",
+    "fileCount": 4,
+    "tests": 7,
+    "measuredFiles": 4,
+    "wallMs": 1875,
+    "inProcMs": 391,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/deep-dive-gate-size-floor.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/deep-dive-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ensure-deep-dive.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/record-envelope.mjs",
+    "fileCount": 4,
+    "tests": 46,
+    "measuredFiles": 4,
+    "wallMs": 1389,
+    "inProcMs": 428,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/github-records-coordinator-replacement.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/github-records-cross-platform-handoff.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/github-records-initialization.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/move-state.mjs",
+    "fileCount": 4,
+    "tests": 31,
+    "measuredFiles": 4,
+    "wallMs": 2761,
+    "inProcMs": 33,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-profiles.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verification-receipt.mjs",
+    "fileCount": 4,
+    "tests": 20,
+    "measuredFiles": 4,
+    "wallMs": 15839,
+    "inProcMs": 14549,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verification-receipt-carry-forward.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/review-receipt-lane-skip.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/close-gate.mjs",
+    "fileCount": 4,
+    "tests": 28,
+    "measuredFiles": 4,
+    "wallMs": 2502,
+    "inProcMs": 616,
+    "files": [
+      "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+      "scripts/tests/unit/task-tracker/core/close-gate-marker-robust.test.mjs",
+      "scripts/tests/unit/task-tracker/core/close-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/audit-lane-e2e-494.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-preflight.mjs",
+    "fileCount": 4,
+    "tests": 16,
+    "measuredFiles": 4,
+    "wallMs": 1920,
+    "inProcMs": 16,
+    "files": [
+      "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/evidence-marker-preflight.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-preflight-epic-aware.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/review-preflight.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/lib/project-tether.mjs",
+    "fileCount": 4,
+    "tests": 6,
+    "measuredFiles": 3,
+    "wallMs": 1775,
+    "inProcMs": 9,
+    "files": [
+      "scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/lib/project-tether.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/lib/tether-rank-write.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/status-config-projections.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/refine-to-plan-gate.mjs",
+    "fileCount": 4,
+    "tests": 41,
+    "measuredFiles": 3,
+    "wallMs": 1567,
+    "inProcMs": 27,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/demonstrable-ac-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-refine-to-plan-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/refine-exit-vc-citation-guardrail.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/refine-to-plan-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "bin/cli.mjs",
+    "fileCount": 4,
+    "tests": 27,
+    "measuredFiles": 4,
+    "wallMs": 4672,
+    "inProcMs": 1272,
+    "files": [
+      "scripts/tests/unit/providers/parity.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-cli.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/settings-hook-bootstrap.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/activity-policy.mjs",
+    "fileCount": 4,
+    "tests": 48,
+    "measuredFiles": 4,
+    "wallMs": 2476,
+    "inProcMs": 42,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/activity-policy-extra-globs.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/activity-guard-error.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/backfill-plan-metadata.mjs",
+    "fileCount": 4,
+    "tests": 33,
+    "measuredFiles": 4,
+    "wallMs": 2391,
+    "inProcMs": 25,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs",
+      "scripts/tests/unit/task-tracker/core/backfill-story-origin.test.mjs",
+      "scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs",
+      "scripts/tests/unit/task-tracker/core/mutate-issue-body-scripts-help-audit.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/source-edit-gate.mjs",
+    "fileCount": 4,
+    "tests": 64,
+    "measuredFiles": 4,
+    "wallMs": 47078,
+    "inProcMs": 45214,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/source-edit-post-develop-lock.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/state.mjs",
+    "fileCount": 4,
+    "tests": 14,
+    "measuredFiles": 4,
+    "wallMs": 3324,
+    "inProcMs": 15,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/state-project-dir.test.mjs",
+      "scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/state.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/demote.mjs",
+    "fileCount": 4,
+    "tests": 46,
+    "measuredFiles": 4,
+    "wallMs": 9230,
+    "inProcMs": 7426,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/demote-inprocess.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/demote-verb.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/demote.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/deep-dive.mjs",
+    "fileCount": 4,
+    "tests": 21,
+    "measuredFiles": 4,
+    "wallMs": 1941,
+    "inProcMs": 13,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/deep-dive-appendix-validation.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/deep-dive-section-boundary-724.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ensure-deep-dive-replace.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/mirror-deep-dive.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-children-gate.mjs",
+    "fileCount": 4,
+    "tests": 70,
+    "measuredFiles": 4,
+    "wallMs": 2105,
+    "inProcMs": 36,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/epic-children-gate-blocked.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/epic-children-gate-core.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/nested-epic-semantics.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/runtime.mjs",
+    "fileCount": 3,
+    "tests": 8,
+    "measuredFiles": 3,
+    "wallMs": 1472,
+    "inProcMs": 7,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/core/move-state-structured-result.test.mjs",
+      "scripts/tests/unit/task-tracker/core/runtime-move-inprocess.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/runtime-adapter.mjs",
+    "fileCount": 3,
+    "tests": 18,
+    "measuredFiles": 3,
+    "wallMs": 972,
+    "inProcMs": 26,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/runtime-adapter-receipt-lane-skip.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/github-comment-store.mjs",
+    "fileCount": 3,
+    "tests": 24,
+    "measuredFiles": 3,
+    "wallMs": 1426,
+    "inProcMs": 72,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/github-records-comment-store.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-comment-store-error-cause.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/github-comment-store.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/articles/lib/publish.mjs",
+    "fileCount": 3,
+    "tests": 37,
+    "measuredFiles": 2,
+    "wallMs": 342,
+    "inProcMs": 57,
+    "files": [
+      "scripts/tests/slow/articles/publish-articles-e2e.test.mjs",
+      "scripts/tests/unit/articles/diagram-drift.test.mjs",
+      "scripts/tests/unit/articles/publish-articles.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/command-surface/catalog.mjs",
+    "fileCount": 3,
+    "tests": 31,
+    "measuredFiles": 2,
+    "wallMs": 1015,
+    "inProcMs": 14,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/command-catalog-parser-policy.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/close-gates.mjs",
+    "fileCount": 3,
+    "tests": 53,
+    "measuredFiles": 2,
+    "wallMs": 18347,
+    "inProcMs": 17203,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/close-gates.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/commits-on-trunk-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/guard-bootstrap.mjs",
+    "fileCount": 3,
+    "tests": 15,
+    "measuredFiles": 2,
+    "wallMs": 14252,
+    "inProcMs": 13847,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/epic-children-review-lifecycle.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-parity-plan-develop.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/guard-parity-review-done.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/blocked-by-guard.mjs",
+    "fileCount": 3,
+    "tests": 24,
+    "measuredFiles": 1,
+    "wallMs": 719,
+    "inProcMs": 7,
+    "files": [
+      "scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/task-tracker.mjs",
+    "fileCount": 3,
+    "tests": 0,
+    "measuredFiles": 3,
+    "wallMs": 1761,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/cli-help-flag.test.mjs",
+      "scripts/tests/unit/task-tracker/core/handle-migrate-result.test.mjs",
+      "scripts/tests/unit/task-tracker/core/task-tracker-preflight-target.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-functional-dod.mjs",
+    "fileCount": 3,
+    "tests": 0,
+    "measuredFiles": 3,
+    "wallMs": 1613,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-heal-functional-dod.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-functional-dod.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/writer-consolidated-declaration.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/active-time.mjs",
+    "fileCount": 3,
+    "tests": 11,
+    "measuredFiles": 3,
+    "wallMs": 1510,
+    "inProcMs": 8,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/flush-active-anchor.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/active-by-phase-spans.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/active-time.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/policy.mjs",
+    "fileCount": 3,
+    "tests": 15,
+    "measuredFiles": 3,
+    "wallMs": 2190,
+    "inProcMs": 1045,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/move-state-force-flag.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-policy.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/gh-timing-comment.internals.mjs",
+    "fileCount": 3,
+    "tests": 10,
+    "measuredFiles": 3,
+    "wallMs": 18480,
+    "inProcMs": 8955,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/orphan-finalize-chrono-order.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-departure-guard.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/dispatch-prep.mjs",
+    "fileCount": 3,
+    "tests": 15,
+    "measuredFiles": 3,
+    "wallMs": 1870,
+    "inProcMs": 35,
+    "files": [
+      "scripts/tests/unit/task-tracker/gh/coverage-dispatch-prep.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/dispatch-prep-inprocess.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/dod-kind-filter.mjs",
+    "fileCount": 3,
+    "tests": 42,
+    "measuredFiles": 3,
+    "wallMs": 4527,
+    "inProcMs": 3706,
+    "files": [
+      "scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/docs-only-kind-dod.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/dod-kind-heal.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/review-gate.mjs",
+    "fileCount": 3,
+    "tests": 35,
+    "measuredFiles": 3,
+    "wallMs": 1751,
+    "inProcMs": 21,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review/review-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/agent-review/review-proven-box.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/nat-gate-diff-aware.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/body-gates.mjs",
+    "fileCount": 3,
+    "tests": 9,
+    "measuredFiles": 3,
+    "wallMs": 1746,
+    "inProcMs": 6,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/body-gates.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/child-cannot-lead-epic-gate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/parent-admission.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/issue-body-mutate.mjs",
+    "fileCount": 3,
+    "tests": 23,
+    "measuredFiles": 3,
+    "wallMs": 1806,
+    "inProcMs": 25,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/checkbox-proof-marker.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/mutate-issue-body-marker-loss.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/mutate-issue-body.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/supersede.mjs",
+    "fileCount": 3,
+    "tests": 31,
+    "measuredFiles": 3,
+    "wallMs": 16124,
+    "inProcMs": 9319,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/supersede-inprocess.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/supersede-verb.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/functional-dod-evidence.mjs",
+    "fileCount": 3,
+    "tests": 10,
+    "measuredFiles": 3,
+    "wallMs": 1647,
+    "inProcMs": 13,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/dod-stamp-vc-list.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/functional-dod-evidence.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/functional-dod-vc-list.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/on-stop.mjs",
+    "fileCount": 3,
+    "tests": 0,
+    "measuredFiles": 3,
+    "wallMs": 1298,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/foreign-session-refusal.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/on-stop.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/session-sweep.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/full-auto-merge.mjs",
+    "fileCount": 3,
+    "tests": 23,
+    "measuredFiles": 3,
+    "wallMs": 1856,
+    "inProcMs": 16,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/full-auto-merge-config.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/full-auto-merge-path.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/trunk-resync-no-desync.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/lifecycle-dod.mjs",
+    "fileCount": 3,
+    "tests": 44,
+    "measuredFiles": 3,
+    "wallMs": 1620,
+    "inProcMs": 17,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/functional-dod-pretick.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lifecycle-dod.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/lifecycle-satisfaction.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/maintenance/lib/corpus-marker-transforms.mjs",
+    "fileCount": 3,
+    "tests": 0,
+    "measuredFiles": 3,
+    "wallMs": 1726,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/maintenance/lib/corpus-marker-transforms-read-chain.test.mjs",
+      "scripts/tests/unit/task-tracker/maintenance/lib/corpus-marker-transforms-read-core.test.mjs",
+      "scripts/tests/unit/task-tracker/maintenance/lib/corpus-marker-transforms-write.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/plan-approve.mjs",
+    "fileCount": 3,
+    "tests": 17,
+    "measuredFiles": 3,
+    "wallMs": 1402,
+    "inProcMs": 9,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/coverage-plan-approve.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/plan-approve-collapse.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/deliver.mjs",
+    "fileCount": 3,
+    "tests": 48,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/deliver-default-deps.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/deliver-pr-selection.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/deliver.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/help.mjs",
+    "fileCount": 3,
+    "tests": 14,
+    "measuredFiles": 3,
+    "wallMs": 3092,
+    "inProcMs": 1989,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/help.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/next-alias.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/verb-discover-help.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/pull-next.mjs",
+    "fileCount": 3,
+    "tests": 26,
+    "measuredFiles": 3,
+    "wallMs": 4329,
+    "inProcMs": 2635,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/pull-next-background-profile.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/pull-next-close-convergence.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/lib/wave-admission.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 791,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/lib/wave-admission.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/gate-resolve.mjs",
+    "fileCount": 2,
+    "tests": 10,
+    "measuredFiles": 2,
+    "wallMs": 828,
+    "inProcMs": 18,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/forecast-model.mjs",
+    "fileCount": 2,
+    "tests": 18,
+    "measuredFiles": 2,
+    "wallMs": 721,
+    "inProcMs": 46,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/estimation/forecast-model.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/capsule-chain.mjs",
+    "fileCount": 2,
+    "tests": 15,
+    "measuredFiles": 2,
+    "wallMs": 574,
+    "inProcMs": 28,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/github-records-capsules.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/capsule-chain.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/lifecycle-transition.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 865,
+    "inProcMs": 84,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/github-records-transition-repair.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/github-records/lifecycle-transition.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/issue-body.mjs",
+    "fileCount": 2,
+    "tests": 11,
+    "measuredFiles": 2,
+    "wallMs": 387,
+    "inProcMs": 12,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/issue-body.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/refinement-snapshot.mjs",
+    "fileCount": 2,
+    "tests": 7,
+    "measuredFiles": 2,
+    "wallMs": 756,
+    "inProcMs": 22,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/refinement-snapshot-schema.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/shelve-transaction.mjs",
+    "fileCount": 2,
+    "tests": 33,
+    "measuredFiles": 2,
+    "wallMs": 870,
+    "inProcMs": 72,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/trunk-ref.mjs",
+    "fileCount": 2,
+    "tests": 12,
+    "measuredFiles": 2,
+    "wallMs": 3487,
+    "inProcMs": 2731,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/trunk-ref.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/review/lib/archive.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 576,
+    "inProcMs": 30,
+    "files": [
+      "scripts/tests/slow/review/co-review-boundaries.test.mjs",
+      "scripts/tests/unit/review/co-review-fixture-cost.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verify-develop.mjs",
+    "fileCount": 2,
+    "tests": 39,
+    "measuredFiles": 1,
+    "wallMs": 612,
+    "inProcMs": 5,
+    "files": [
+      "scripts/tests/slow/task-tracker/core/verify-develop.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verification-stage-ownership.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/action-capture.mjs",
+    "fileCount": 2,
+    "tests": 17,
+    "measuredFiles": 1,
+    "wallMs": 32412,
+    "inProcMs": 31835,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/action-capture.test.mjs"
+    ]
+  },
+  {
+    "subject": "bin/aitm.mjs",
+    "fileCount": 2,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 506,
+    "inProcMs": 4,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs",
+      "scripts/tests/unit/task-tracker/core/aitm-ismain-symlink.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/timing-row-reader.mjs",
+    "fileCount": 2,
+    "tests": 27,
+    "measuredFiles": 1,
+    "wallMs": 453,
+    "inProcMs": 8,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/cut-epic-branch.mjs",
+    "fileCount": 2,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 615,
+    "inProcMs": 4,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs",
+      "scripts/tests/unit/task-tracker/cut-epic-branch.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/commit-attribution.mjs",
+    "fileCount": 2,
+    "tests": 20,
+    "measuredFiles": 1,
+    "wallMs": 604,
+    "inProcMs": 6,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/commit-attribution.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/github-mutation.mjs",
+    "fileCount": 2,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 3960,
+    "inProcMs": 2817,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-verify-then-stamp.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/ready-for-plan-migration.mjs",
+    "fileCount": 2,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 4038,
+    "inProcMs": 3480,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ready-for-plan-migration.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/ensure-worktree-seeded.mjs",
+    "fileCount": 2,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 596,
+    "inProcMs": 21,
+    "files": [
+      "scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/ensure-worktree-seeded.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/run-tests-lanes.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 11970,
+    "inProcMs": 11213,
+    "files": [
+      "scripts/tests/unit/meta/slow-lane-partition-policy.test.mjs",
+      "scripts/tests/unit/task-tracker/core/run-tests-lanes.test.mjs"
+    ]
+  },
+  {
+    "subject": "bin/lib/stamp-skill-version.mjs",
+    "fileCount": 2,
+    "tests": 11,
+    "measuredFiles": 2,
+    "wallMs": 1197,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/providers/skill-version-stamp.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/install-skill-version.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/session-ref.mjs",
+    "fileCount": 2,
+    "tests": 21,
+    "measuredFiles": 2,
+    "wallMs": 17314,
+    "inProcMs": 16086,
+    "files": [
+      "scripts/tests/unit/providers/transcript-resolver.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/session-ref.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/reports/lib/daily-activity.mjs",
+    "fileCount": 2,
+    "tests": 14,
+    "measuredFiles": 2,
+    "wallMs": 1323,
+    "inProcMs": 11,
+    "files": [
+      "scripts/tests/unit/reports/daily-activity.test.mjs",
+      "scripts/tests/unit/reports/generate-value-report-daily.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/lib/self-doc.mjs",
+    "fileCount": 2,
+    "tests": 29,
+    "measuredFiles": 2,
+    "wallMs": 36090,
+    "inProcMs": 35007,
+    "files": [
+      "scripts/tests/unit/review/co-review.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/issue-field-db.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 746,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/assert-fields-persisted.test.mjs",
+      "scripts/tests/unit/task-tracker/core/issue-field-db.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/backfill-timing-logs.mjs",
+    "fileCount": 2,
+    "tests": 20,
+    "measuredFiles": 2,
+    "wallMs": 1217,
+    "inProcMs": 15,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/backfill-timing-logs.test.mjs",
+      "scripts/tests/unit/task-tracker/core/coverage-backfill-timing-logs.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-refine-entry-marker.mjs",
+    "fileCount": 2,
+    "tests": 28,
+    "measuredFiles": 2,
+    "wallMs": 933,
+    "inProcMs": 13,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-heal-refine-entry-marker.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-refine-entry-marker.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-timing-starts.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 894,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs",
+      "scripts/tests/unit/task-tracker/core/heal-timing-starts-command.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/migrate-fields-encoding.mjs",
+    "fileCount": 2,
+    "tests": 13,
+    "measuredFiles": 2,
+    "wallMs": 1108,
+    "inProcMs": 7,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-migrate-fields-encoding.test.mjs",
+      "scripts/tests/unit/task-tracker/core/migrate-fields-encoding.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/migrate-plan-approved.mjs",
+    "fileCount": 2,
+    "tests": 13,
+    "measuredFiles": 2,
+    "wallMs": 1169,
+    "inProcMs": 8,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/coverage-migrate-plan-approved.test.mjs",
+      "scripts/tests/unit/task-tracker/core/migrate-plan-approved.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/measure-context.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 1968,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/measure-context.test.mjs",
+      "scripts/tests/unit/task-tracker/core/skill-carve.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/project-fields.mjs",
+    "fileCount": 2,
+    "tests": 4,
+    "measuredFiles": 2,
+    "wallMs": 1106,
+    "inProcMs": 4,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/project-fields.test.mjs",
+      "scripts/tests/unit/task-tracker/core/sync-zero-values.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/run-tests-ceiling.mjs",
+    "fileCount": 2,
+    "tests": 12,
+    "measuredFiles": 2,
+    "wallMs": 1139,
+    "inProcMs": 13,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/run-tests-ceiling.test.mjs",
+      "scripts/tests/unit/task-tracker/core/run-tests-unit-section-split.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/run-tests-timing.mjs",
+    "fileCount": 2,
+    "tests": 21,
+    "measuredFiles": 2,
+    "wallMs": 1270,
+    "inProcMs": 16,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/run-tests-elapsed.test.mjs",
+      "scripts/tests/unit/task-tracker/core/run-tests-timing.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/run-tests-pool.mjs",
+    "fileCount": 2,
+    "tests": 16,
+    "measuredFiles": 2,
+    "wallMs": 16409,
+    "inProcMs": 15130,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/run-tests-pool.bench.test.mjs",
+      "scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/transition-plan.mjs",
+    "fileCount": 2,
+    "tests": 30,
+    "measuredFiles": 2,
+    "wallMs": 1733,
+    "inProcMs": 13,
+    "files": [
+      "scripts/tests/unit/task-tracker/core/state-machine-self-transition.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/transition-plan.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/init-repair.mjs",
+    "fileCount": 2,
+    "tests": 11,
+    "measuredFiles": 2,
+    "wallMs": 1194,
+    "inProcMs": 11,
+    "files": [
+      "scripts/tests/unit/task-tracker/gh/coverage-init-repair.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/verify-open-issue-bodies.mjs",
+    "fileCount": 2,
+    "tests": 18,
+    "measuredFiles": 2,
+    "wallMs": 1273,
+    "inProcMs": 13,
+    "files": [
+      "scripts/tests/unit/task-tracker/gh/coverage-verify-open-issue-bodies.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/verify-open-issue-bodies.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/lib/github-projects.mjs",
+    "fileCount": 2,
+    "tests": 21,
+    "measuredFiles": 2,
+    "wallMs": 786,
+    "inProcMs": 8,
+    "files": [
+      "scripts/tests/unit/task-tracker/gh/lib/coverage-github-projects.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/lib/github-projects.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/lib/with-retry.mjs",
+    "fileCount": 2,
+    "tests": 7,
+    "measuredFiles": 2,
+    "wallMs": 1247,
+    "inProcMs": 9,
+    "files": [
+      "scripts/tests/unit/task-tracker/gh/lib/gh-retry-test-cap.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/lib/with-retry.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/gh/lib/kind-prefix.mjs",
+    "fileCount": 2,
+    "tests": 14,
+    "measuredFiles": 2,
+    "wallMs": 1242,
+    "inProcMs": 19,
+    "files": [
+      "scripts/tests/unit/task-tracker/gh/lib/issue-template-prefix.test.mjs",
+      "scripts/tests/unit/task-tracker/gh/lib/title-prefix.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/codex-prompt-timestamp.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 927,
+    "inProcMs": 144,
+    "files": [
+      "scripts/tests/unit/task-tracker/hooks/codex-prompt-timestamp-hook.test.mjs",
+      "scripts/tests/unit/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/validators/required-comments.mjs",
+    "fileCount": 2,
+    "tests": 39,
+    "measuredFiles": 2,
+    "wallMs": 1135,
+    "inProcMs": 23,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review-nat-escape.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/required-comments.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/apply-refinement-estimate.mjs",
+    "fileCount": 2,
+    "tests": 26,
+    "measuredFiles": 2,
+    "wallMs": 918,
+    "inProcMs": 18,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/apply-refinement-estimate.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/apply-review-delta.mjs",
+    "fileCount": 2,
+    "tests": 13,
+    "measuredFiles": 2,
+    "wallMs": 1174,
+    "inProcMs": 9,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/apply-review-delta.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-apply-review-delta.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/assignee-guard.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 5841,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/assignee-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/entrypoint-guard-lint.mjs",
+    "fileCount": 2,
+    "tests": 8,
+    "measuredFiles": 2,
+    "wallMs": 862,
+    "inProcMs": 17,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/audit-top-level-writes.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/entrypoint-guard-convention.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/backlog-exit-child-parent-state-guard.mjs",
+    "fileCount": 2,
+    "tests": 24,
+    "measuredFiles": 2,
+    "wallMs": 1242,
+    "inProcMs": 11,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/backlog-exit-child-parent-state-guard.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/wave-guard-fail-closed.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/session-id.mjs",
+    "fileCount": 2,
+    "tests": 15,
+    "measuredFiles": 2,
+    "wallMs": 1092,
+    "inProcMs": 17,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/blast-radius-guard.mjs",
+    "fileCount": 2,
+    "tests": 10,
+    "measuredFiles": 2,
+    "wallMs": 18100,
+    "inProcMs": 16821,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/blast-radius-guard-adoption.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/blast-radius-guard.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/blocked-by-field.mjs",
+    "fileCount": 2,
+    "tests": 27,
+    "measuredFiles": 2,
+    "wallMs": 1174,
+    "inProcMs": 14,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/blocked-by-field.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/coverage-blocked-by-field.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/body-version.mjs",
+    "fileCount": 2,
+    "tests": 22,
+    "measuredFiles": 2,
+    "wallMs": 1169,
+    "inProcMs": 63,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/body-version.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/marker-write-retry.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/project-dir.mjs",
+    "fileCount": 2,
+    "tests": 6,
+    "measuredFiles": 2,
+    "wallMs": 1295,
+    "inProcMs": 8,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/bound-worktree-project-dir.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/queue.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 1106,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/close-drain.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/queue.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/commit-trail.mjs",
+    "fileCount": 2,
+    "tests": 10,
+    "measuredFiles": 2,
+    "wallMs": 1170,
+    "inProcMs": 7,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/commit-trail-ledger.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/commit-trail.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/block.mjs",
+    "fileCount": 2,
+    "tests": 40,
+    "measuredFiles": 2,
+    "wallMs": 2351,
+    "inProcMs": 1240,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/block-verb.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/plan.mjs",
+    "fileCount": 2,
+    "tests": 11,
+    "measuredFiles": 2,
+    "wallMs": 7374,
+    "inProcMs": 6462,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/verb-plan-promote.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/state-recording.mjs",
+    "fileCount": 2,
+    "tests": 17,
+    "measuredFiles": 2,
+    "wallMs": 5973,
+    "inProcMs": 11,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-state-recording.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/drift-reconcile-reason.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/unpark-dependents.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 1065,
+    "inProcMs": 11,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-unpark-dependents.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/unpark-dependents.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verb-preflight.mjs",
+    "fileCount": 2,
+    "tests": 21,
+    "measuredFiles": 2,
+    "wallMs": 16319,
+    "inProcMs": 10520,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/delivery-verification.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/delivery-real-pr-evidence.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/discuss-marker.mjs",
+    "fileCount": 2,
+    "tests": 32,
+    "measuredFiles": 2,
+    "wallMs": 1099,
+    "inProcMs": 17,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/discuss-banner-format.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/discuss-marker.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/find-unit-tests.mjs",
+    "fileCount": 2,
+    "tests": 23,
+    "measuredFiles": 2,
+    "wallMs": 1916,
+    "inProcMs": 98,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/enumerator-migration.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/find-unit-tests.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/locks.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 1700,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/flock-contention.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/locks.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/guard-entrypoint.mjs",
+    "fileCount": 2,
+    "tests": 14,
+    "measuredFiles": 2,
+    "wallMs": 793,
+    "inProcMs": 101,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/guard-entrypoint-resolution.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/hook-entrypoint.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-timing-departure.mjs",
+    "fileCount": 2,
+    "tests": 0,
+    "measuredFiles": 2,
+    "wallMs": 1163,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs",
+      "scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/audit-timing.mjs",
+    "fileCount": 2,
+    "tests": 22,
+    "measuredFiles": 2,
+    "wallMs": 1194,
+    "inProcMs": 96,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/move-state/coverage-audit-timing.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-phase-close-delta.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/post-commit-tail.mjs",
+    "fileCount": 2,
+    "tests": 13,
+    "measuredFiles": 2,
+    "wallMs": 1679,
+    "inProcMs": 9,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-error-diagnostics.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-terminal-tail-isolation.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/timing-events/index.mjs",
+    "fileCount": 2,
+    "tests": 18,
+    "measuredFiles": 2,
+    "wallMs": 1026,
+    "inProcMs": 10,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/no-idle-emitters.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/timing-event-map.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verb-home-state-guard.mjs",
+    "fileCount": 2,
+    "tests": 23,
+    "measuredFiles": 2,
+    "wallMs": 3028,
+    "inProcMs": 796,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/verb-home-state-guard.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/vc-ref.mjs",
+    "fileCount": 2,
+    "tests": 7,
+    "measuredFiles": 2,
+    "wallMs": 1157,
+    "inProcMs": 7,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/vc-ref-by-id.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/vc-ref-parsing.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/maintenance/lib/heal-stage-rollups-core.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 1018,
+    "inProcMs": 172,
+    "files": [
+      "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/ac-stamp.mjs",
+    "fileCount": 2,
+    "tests": 11,
+    "measuredFiles": 2,
+    "wallMs": 1643,
+    "inProcMs": 42,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/ac-stamp.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/commit-trace.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 2374,
+    "inProcMs": 1325,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/commit-trace-verb.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/dod-stamp.mjs",
+    "fileCount": 2,
+    "tests": 19,
+    "measuredFiles": 2,
+    "wallMs": 998,
+    "inProcMs": 74,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/fleet.mjs",
+    "fileCount": 2,
+    "tests": 9,
+    "measuredFiles": 2,
+    "wallMs": 2861,
+    "inProcMs": 1911,
+    "files": [
+      "scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs",
+      "scripts/tests/unit/task-tracker/verbs/fleet-closed-bindings.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/record-claim.mjs",
+    "fileCount": 1,
+    "tests": 3,
+    "measuredFiles": 1,
+    "wallMs": 152,
+    "inProcMs": 16,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/singleton-projections.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 179,
+    "inProcMs": 19,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/github-record-singleton-projections.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 1140,
+    "inProcMs": 984,
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/adopt-github-records.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 184,
+    "inProcMs": 10,
+    "files": ["scripts/tests/integration/task-tracker/verbs/adopt-github-records.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/contract-write.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 138,
+    "inProcMs": 19,
+    "files": ["scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs"]
+  },
+  {
+    "subject": "scripts/articles/lib/diagrams.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/commit-trail-handler.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/save-draft.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/plan-approval-audit.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs"]
+  },
+  {
+    "subject": "scripts/maintenance/audit-trunk-integration.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 1053,
+    "inProcMs": 598,
+    "files": ["scripts/tests/unit/maintenance/audit-trunk-integration.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/ci-workflow-history.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 518,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/meta/ci-workflow-history.test.mjs"]
+  },
+  {
+    "subject": "scripts/reports/generate-value-report.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 1195,
+    "inProcMs": 35,
+    "files": ["scripts/tests/unit/reports/generate-value-report-order.test.mjs"]
+  },
+  {
+    "subject": "scripts/reports/lib/board-fields.mjs",
+    "fileCount": 1,
+    "tests": 12,
+    "measuredFiles": 1,
+    "wallMs": 642,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/reports/generate-value-report.test.mjs"]
+  },
+  {
+    "subject": "scripts/reports/heal-backlog-attribution.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 645,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/reports/heal-backlog-attribution.test.mjs"]
+  },
+  {
+    "subject": "scripts/reports/lib/estimation-records.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 658,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/reports/lib/estimation-records.test.mjs"]
+  },
+  {
+    "subject": "scripts/reports/lib/session-field.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 594,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/reports/session-field.test.mjs"]
+  },
+  {
+    "subject": "scripts/review/lib/index.mjs",
+    "fileCount": 1,
+    "tests": 12,
+    "measuredFiles": 1,
+    "wallMs": 563,
+    "inProcMs": 30,
+    "files": ["scripts/tests/unit/review/co-review-index.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/backfill-disposition.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 556,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/core/backfill-disposition.test.mjs"]
+  },
+  {
+    "subject": "bin/aitm-registry.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 693,
+    "inProcMs": 14,
+    "files": ["scripts/tests/unit/task-tracker/core/command-manifest.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/docs-only-lane-skip-proof.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 634,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/core/docs-only-lane-skip-completeness.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/field-config-warn.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 2371,
+    "inProcMs": 1917,
+    "files": ["scripts/tests/unit/task-tracker/core/field-config-warn.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/delivery-preflight.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-timing-log.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 342,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/phase-events.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 851,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/core/phase-events.test.mjs"]
+  },
+  {
+    "subject": "scripts/run-tests-report.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 659,
+    "inProcMs": 20,
+    "files": ["scripts/tests/unit/task-tracker/core/run-tests-kill-report.test.mjs"]
+  },
+  {
+    "subject": "scripts/run-tests-schedule.mjs",
+    "fileCount": 1,
+    "tests": 3,
+    "measuredFiles": 1,
+    "wallMs": 668,
+    "inProcMs": 18,
+    "files": ["scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/cut-child-worktree.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 592,
+    "inProcMs": 17,
+    "files": ["scripts/tests/unit/task-tracker/cut-child-worktree.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/epic-base-edit-guard.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 675,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/epic-base-edit-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verify-epic-trail.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 435,
+    "inProcMs": 278,
+    "files": ["scripts/tests/unit/task-tracker/epic-verify-trail-render.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/set-priority.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 668,
+    "inProcMs": 18,
+    "files": ["scripts/tests/unit/task-tracker/gh/coverage-set-priority.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/scaffold-web-issue.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 505,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/gh/entry-marker-scaffold.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/bug-emoji-prefix.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 524,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/gh/lib/bug-emoji-prefix.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/list-issues.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 169,
+    "inProcMs": 11,
+    "files": ["scripts/tests/unit/task-tracker/gh/lib/coverage-list-issues.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/epic-metadata.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 528,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/gh/lib/epic-metadata.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/epic-retitle.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 539,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/gh/lib/epic-retitle.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/field-defs-drift.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 605,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/gh/lib/field-defs-drift.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/wave-detect.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 568,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/gh/lib/wave-detect.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/log-issue-time.mjs",
+    "fileCount": 1,
+    "tests": 2,
+    "measuredFiles": 1,
+    "wallMs": 654,
+    "inProcMs": 4,
+    "files": ["scripts/tests/unit/task-tracker/gh/log-issue-time-labels.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/grok-wire.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 2128,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/stop-audit-pause-resume.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 661,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/hooks/stop-audit-pause-resume.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/installed-guard-path.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 585,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/activity-guard-self-mod.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/registry.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 544,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/agent-review/registry.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/validators/ac-dod-vc-attributes.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 629,
+    "inProcMs": 58,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/ac-dod-vc-attributes.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/validators/body-sections.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 489,
+    "inProcMs": 34,
+    "files": ["scripts/tests/unit/task-tracker/lib/agent-review/validators/body-sections.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/validators/new-tests-content.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 393,
+    "inProcMs": 14,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/new-tests-content.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/agent-review/validators/v6-marker-organization.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 589,
+    "inProcMs": 14,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/agent-review/validators/v6-marker-organization.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/aitm-path-guard.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 572,
+    "inProcMs": 50,
+    "files": ["scripts/tests/unit/task-tracker/lib/aitm-path-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/argv-strict.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 411,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/argv-strict.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/assigned-status-migration.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 471,
+    "inProcMs": 13,
+    "files": ["scripts/tests/unit/task-tracker/lib/assigned-status-migration.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/assignment-snapshot.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 632,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/assignment-snapshot.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/count-code-lines.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 649,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/audit-line-cap-loc.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/bash-worktree-guard.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 2079,
+    "inProcMs": 1897,
+    "files": ["scripts/tests/unit/task-tracker/lib/bash-guard-worktree-binding.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/beta-report-title-reconcile.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 528,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/beta-report-title-reconcile.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/bind-context.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 407,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/bind-context.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/blocked-marker.mjs",
+    "fileCount": 1,
+    "tests": 23,
+    "measuredFiles": 1,
+    "wallMs": 672,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/blocked-marker.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 637,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/body-gates-entry-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/bound-state.mjs",
+    "fileCount": 1,
+    "tests": 3,
+    "measuredFiles": 1,
+    "wallMs": 603,
+    "inProcMs": 13,
+    "files": ["scripts/tests/unit/task-tracker/lib/bound-state-session-authoritative.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/worktree-binding.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 3107,
+    "inProcMs": 2940,
+    "files": ["scripts/tests/unit/task-tracker/lib/bound-worktree-state.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/branch-name.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 579,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/branch-name.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/cascade-child-close.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 581,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/cascade-child-close-fail-closed.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/checklist-command-lint.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 708,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/checklist-command-lint.test.mjs"]
+  },
+  {
+    "subject": "scripts/maintenance/repair-child-outcome-records.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 3538,
+    "inProcMs": 3325,
+    "files": ["scripts/tests/unit/task-tracker/lib/child-close-outcome-evidence.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/chore-mode.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 8123,
+    "inProcMs": 7406,
+    "files": ["scripts/tests/unit/task-tracker/lib/chore-mode-verb.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/claude-bash-allowlist.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 501,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/claude-bash-allowlist.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/cleanup-base-aware.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 742,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/cleanup-base-aware.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/close-disposition.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 599,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/close-disposition.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/close-gates-lineage.mjs",
+    "fileCount": 1,
+    "tests": 17,
+    "measuredFiles": 1,
+    "wallMs": 619,
+    "inProcMs": 49,
+    "files": ["scripts/tests/unit/task-tracker/lib/close-gates-lineage.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/co-review-write-policy.mjs",
+    "fileCount": 1,
+    "tests": 22,
+    "measuredFiles": 1,
+    "wallMs": 46686,
+    "inProcMs": 46019,
+    "files": ["scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/codex-superpowers.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 563,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/codex-superpowers.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/commit-attribution-format.mjs",
+    "fileCount": 1,
+    "tests": 31,
+    "measuredFiles": 1,
+    "wallMs": 586,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/commit-attribution-format.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/config-init/config-authoring.mjs",
+    "fileCount": 1,
+    "tests": 19,
+    "measuredFiles": 1,
+    "wallMs": 616,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/config-init/config-init.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/apply-reevaluate.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 678,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/coverage-apply-reevaluate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/cache-unpark.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 2072,
+    "inProcMs": 1682,
+    "files": ["scripts/tests/unit/task-tracker/lib/coverage-cache-unpark.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/stamp-start-time.mjs",
+    "fileCount": 1,
+    "tests": 12,
+    "measuredFiles": 1,
+    "wallMs": 440,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/coverage-stamp-start-time.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/unblock.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 453,
+    "inProcMs": 13,
+    "files": ["scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/parent-state-gate.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 428,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/create-issue-parent-state-fail-closed.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+    "fileCount": 1,
+    "tests": 26,
+    "measuredFiles": 1,
+    "wallMs": 610,
+    "inProcMs": 34,
+    "files": ["scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/decomposition-policy.mjs",
+    "fileCount": 1,
+    "tests": 28,
+    "measuredFiles": 1,
+    "wallMs": 391,
+    "inProcMs": 15,
+    "files": ["scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/defect-hint.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 355,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/defect-hint-498.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/defect-web-intake.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 923,
+    "inProcMs": 793,
+    "files": ["scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/delivery-attribution.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/delivery-attribution.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/delivery-provider-action.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/delivery-records.mjs",
+    "fileCount": 1,
+    "tests": 19,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/derive-drivers.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 525,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/derive-drivers.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/develop-epic-children-done-guard.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 617,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/develop-epic-children-done-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/develop-exit-sandbox-proof-guard.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 496,
+    "inProcMs": 11,
+    "files": ["scripts/tests/unit/task-tracker/lib/develop-exit-sandbox-proof-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/dirty-workspace.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 603,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/dirty-workspace.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/cancel.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 507,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/discover-cancel.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/discuss-block-guard.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 509,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/discuss-block-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/discuss-label.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 421,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/discuss-label.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/duplicate-child-guard.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 1064,
+    "inProcMs": 926,
+    "files": ["scripts/tests/unit/task-tracker/lib/duplicate-child-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/duration.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 386,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/duration.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/ensure-self-link.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 530,
+    "inProcMs": 37,
+    "files": ["scripts/tests/unit/task-tracker/lib/ensure-self-link.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-ac-child-bijection.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 1374,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/epic-ac-child-bijection.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-ac-commit-citation.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 1417,
+    "inProcMs": 15,
+    "files": ["scripts/tests/unit/task-tracker/lib/epic-ac-commit-citation.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-base-guard.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 611,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/epic-base-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-child-disposition-gate.mjs",
+    "fileCount": 1,
+    "tests": 19,
+    "measuredFiles": 1,
+    "wallMs": 519,
+    "inProcMs": 14,
+    "files": ["scripts/tests/unit/task-tracker/lib/epic-child-disposition-gate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-derived-commit-trail.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 497,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/epic-derived-commit-trail.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/epic-orchestration-plan.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 541,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/epic-orchestration-plan.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/outcome-builder.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 522,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/estimation/outcome-builder.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/outcome-writer.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 565,
+    "inProcMs": 17,
+    "files": ["scripts/tests/unit/task-tracker/lib/estimation/outcome-writer.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 565,
+    "inProcMs": 22,
+    "files": ["scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/forecast-record.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 529,
+    "inProcMs": 18,
+    "files": ["scripts/tests/unit/task-tracker/lib/estimation/records.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/rubric-model.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 585,
+    "inProcMs": 19,
+    "files": ["scripts/tests/unit/task-tracker/lib/estimation/rubric-model.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/estimation/rubric-refresh.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 662,
+    "inProcMs": 30,
+    "files": ["scripts/tests/unit/task-tracker/lib/estimation/rubric-refresh.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/evidence-branch-reachability.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 3596,
+    "inProcMs": 3328,
+    "files": ["scripts/tests/unit/task-tracker/lib/evidence-branch-reachability.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/evidence-provenance.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 1411,
+    "inProcMs": 1279,
+    "files": ["scripts/tests/unit/task-tracker/lib/evidence-marker-provenance.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/evidence-runner.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 560,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/evidence-runner-splitcmd.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/ownership-policy.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 16658,
+    "inProcMs": 16518,
+    "files": ["scripts/tests/unit/task-tracker/lib/exclusive-ownership-policy.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/chore-mode.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 6065,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/fleet-registry-gc.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/full-auto-merge-execute.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 647,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/full-auto-merge-execute.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/gated-delivery.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 640,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/gated-delivery.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/git-provenance.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 591,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/git-provenance.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/authority-locator.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 443,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/authority-locator.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/contract-source.mjs",
+    "fileCount": 1,
+    "tests": 12,
+    "measuredFiles": 1,
+    "wallMs": 462,
+    "inProcMs": 33,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/contract-source.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/coordination-authority.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 465,
+    "inProcMs": 26,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/coordination-authority.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/delivery-contract.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 600,
+    "inProcMs": 24,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/delivery-contract.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/insights-export.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 684,
+    "inProcMs": 32,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/insights-export.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/issue-directory.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 609,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/issue-directory.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/github-records/lifecycle-gate-source.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 693,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/github-records/lifecycle-gate-source.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-lifecycle-dod.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 552,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/heal-lifecycle-dod.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/heal-timing-interval.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 583,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/heal-timing-interval.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/heal-timing-log.mjs",
+    "fileCount": 1,
+    "tests": 29,
+    "measuredFiles": 1,
+    "wallMs": 627,
+    "inProcMs": 34,
+    "files": ["scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/heal-timing-starts.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 532,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/heal-timing-starts.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/heal-timing-sweep.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 496,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/heal-timing-sweep.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-vc-refs.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 557,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/heal-vc-refs.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/hook-handler.mjs",
+    "fileCount": 1,
+    "tests": 22,
+    "measuredFiles": 1,
+    "wallMs": 1099,
+    "inProcMs": 958,
+    "files": ["scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/human-reviewer-audit.mjs",
+    "fileCount": 1,
+    "tests": 18,
+    "measuredFiles": 1,
+    "wallMs": 504,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/human-reviewer-audit.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/provider-selection.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 2083,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/install.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/issue-body-push.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 532,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/issue-body-push.test.mjs"]
+  },
+  {
+    "subject": "scripts/gh/lib/issue-body-verifier.mjs",
+    "fileCount": 1,
+    "tests": 26,
+    "measuredFiles": 1,
+    "wallMs": 1706,
+    "inProcMs": 1521,
+    "files": ["scripts/tests/unit/task-tracker/lib/issue-body-verifier.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/issue-kind.mjs",
+    "fileCount": 1,
+    "tests": 28,
+    "measuredFiles": 1,
+    "wallMs": 463,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/issue-kind.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/issue-worktree-location.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 528,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/issue-worktree-location.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/tests-lane-split.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 557,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/lane-split-heal.test.mjs"]
+  },
+  {
+    "subject": "scripts/maintenance/lint-doc-anchors.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 9204,
+    "inProcMs": 8700,
+    "files": ["scripts/tests/unit/task-tracker/lib/lint-doc-anchors.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/lint-fleet-sandbox-isolation.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 517,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/marker-grammar.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 526,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/marker-grammar.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/memory-index.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 556,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/memory-index-hook.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/memory-resync-apply.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 568,
+    "inProcMs": 24,
+    "files": ["scripts/tests/unit/task-tracker/lib/memory-resync-apply.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/memory-resync-classify.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 505,
+    "inProcMs": 23,
+    "files": ["scripts/tests/unit/task-tracker/lib/memory-resync-classify.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/memory-resync-render.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 560,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/memory-resync-render.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/memory-seed-install.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 581,
+    "inProcMs": 17,
+    "files": ["scripts/tests/unit/task-tracker/lib/memory-seed-install-menu.test.mjs"]
+  },
+  {
+    "subject": "bin/lib/memory-seed-set.mjs",
+    "fileCount": 1,
+    "tests": 2,
+    "measuredFiles": 1,
+    "wallMs": 561,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/memory-seed-manifest.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/body-fetch-gate.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 607,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/move-state-body-fetch-fail-closed.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/readout.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 524,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/move-state/move-state-output.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/guard-execution.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 1111,
+    "inProcMs": 4,
+    "files": [
+      "scripts/tests/unit/task-tracker/lib/move-state/move-state-worktree-trunk-ref.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/sentinel.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 1094,
+    "inProcMs": 4,
+    "files": ["scripts/tests/unit/task-tracker/lib/move-state/sentinel.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/new-automated-tests-comment.mjs",
+    "fileCount": 1,
+    "tests": 21,
+    "measuredFiles": 1,
+    "wallMs": 575,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/new-automated-tests-comment.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/occupancy.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 487,
+    "inProcMs": 26,
+    "files": ["scripts/tests/unit/task-tracker/lib/occupancy.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/on-ask.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 504,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/on-ask.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/hooks/on-user-prompt.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 452,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/on-user-prompt.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/orphan-finalize.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 427,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/orphan-finalize.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/canonical-pause-reason.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 553,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/pause-resume-hybrid.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/pickup-directive-gate.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 566,
+    "inProcMs": 4,
+    "files": ["scripts/tests/unit/task-tracker/lib/pickup-directive-state-gate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/plan-exit-plan-metadata-guard.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 598,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/plan-metadata-exit-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/plan-metadata.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 532,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/plan-metadata-lib.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/policy-authority-audit.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 1517,
+    "inProcMs": 961,
+    "files": ["scripts/tests/unit/task-tracker/lib/policy-convergence.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/preflight-issue.mjs",
+    "fileCount": 1,
+    "tests": 22,
+    "measuredFiles": 1,
+    "wallMs": 3471,
+    "inProcMs": 3240,
+    "files": ["scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/proof-marker.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 338,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/proof-marker.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/stamp-verify.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 449,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/readback-verify.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/reevaluate-estimate.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 574,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/reevaluate-estimate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/refine-estimate-comment.mjs",
+    "fileCount": 1,
+    "tests": 28,
+    "measuredFiles": 1,
+    "wallMs": 494,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/refine-estimate-comment.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/refine-exit-child-parent-state-guard.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 477,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/refine-exit-child-parent-state-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/release-detection.mjs",
+    "fileCount": 1,
+    "tests": 3,
+    "measuredFiles": 1,
+    "wallMs": 605,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/release-detection.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/resolve-epic-lineage.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 627,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/resolve-epic-lineage.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-delta.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 505,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/review-delta.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-derive-rescan.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 657,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/review-derive-rescan.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/functional-dod-derive.mjs",
+    "fileCount": 1,
+    "tests": 1,
+    "measuredFiles": 1,
+    "wallMs": 601,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/review-derived-dod.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-exit-epic-children-done-guard.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 617,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/review-exit-epic-children-done-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-failure-block.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 573,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/review-failure-block.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-notes.mjs",
+    "fileCount": 1,
+    "tests": 12,
+    "measuredFiles": 1,
+    "wallMs": 506,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/review-notes.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/runtime-capabilities.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 3474,
+    "inProcMs": 2348,
+    "files": ["scripts/tests/unit/task-tracker/lib/runtime-capabilities.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/sandbox-exit-render.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 1130,
+    "inProcMs": 4,
+    "files": ["scripts/tests/unit/task-tracker/lib/sandbox-exec-render.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/save-plan.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 1178,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/save-plan.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/seed-kanban-cache.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 644,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/seed-kanban-cache.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/refinement-history.mjs",
+    "fileCount": 1,
+    "tests": 14,
+    "measuredFiles": 1,
+    "wallMs": 663,
+    "inProcMs": 17,
+    "files": ["scripts/tests/unit/task-tracker/lib/shelve-stale-refinement-migration.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/stage-bound-reason.mjs",
+    "fileCount": 1,
+    "tests": 3,
+    "measuredFiles": 1,
+    "wallMs": 524,
+    "inProcMs": 4,
+    "files": ["scripts/tests/unit/task-tracker/lib/stage-bound-reason.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/stamp-receipt-reuse.mjs",
+    "fileCount": 1,
+    "tests": 17,
+    "measuredFiles": 1,
+    "wallMs": 624,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/stamp-receipt-reuse.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/story-origin.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 1520,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/story-origin-lib.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/sub-issue-board-snapshot.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 1501,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/sub-issue-board-snapshot.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/superseded-marker.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 1490,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/superseded-marker.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/switch.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 22894,
+    "inProcMs": 16827,
+    "files": ["scripts/tests/unit/task-tracker/lib/switch-verb-noop.test.mjs"]
+  },
+  {
+    "subject": "scripts/sync-templates.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 662,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/terminal-disposition.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 709,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/terminal-disposition.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/test-lanes.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 666,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/test-impact-selector.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 23227,
+    "inProcMs": 22606,
+    "files": ["scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/test-parallel-safety.mjs",
+    "fileCount": 1,
+    "tests": 17,
+    "measuredFiles": 1,
+    "wallMs": 161,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/test-parallel-safety.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/timing-post-outcome.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 8177,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/timing-degraded-write-visibility.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/timing-ladder.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 641,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/timing-ladder.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/timing-slug-rename.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 617,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/timing-slug-rename.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/two-axis-delivery.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 668,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/two-axis-delivery.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/upstream-report.mjs",
+    "fileCount": 1,
+    "tests": 24,
+    "measuredFiles": 1,
+    "wallMs": 722,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/upstream-report.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/user-story-author.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 736,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/lib/user-story-author.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/user-story-guard.mjs",
+    "fileCount": 1,
+    "tests": 23,
+    "measuredFiles": 1,
+    "wallMs": 694,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/user-story-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/vc-emit.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 646,
+    "inProcMs": 20,
+    "files": ["scripts/tests/unit/task-tracker/lib/vc-id.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verification-allowlist.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 707,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/verification-allowlist.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verification-commands.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 661,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/lib/verification-commands-partition.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verifier-cache.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 669,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/lib/verifier-cache.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/verify-move-invariants.mjs",
+    "fileCount": 1,
+    "tests": 11,
+    "measuredFiles": 1,
+    "wallMs": 655,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/lib/verify-move-invariants.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/jsonl-line-scanner.mjs",
+    "fileCount": 1,
+    "tests": 1,
+    "measuredFiles": 1,
+    "wallMs": 410,
+    "inProcMs": 261,
+    "files": ["scripts/tests/unit/task-tracker/lib/word-counter-bounded-memory.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/worktree-binding-guard.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 726,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/lib/worktree-binding-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/worktree-binding-lifecycle.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 5449,
+    "inProcMs": 4799,
+    "files": ["scripts/tests/unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/worktree-relocation-guard.mjs",
+    "fileCount": 1,
+    "tests": 10,
+    "measuredFiles": 1,
+    "wallMs": 684,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/lib/worktree-relocation-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/worktree-seed.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 600,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/lib/worktree-seed.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/heal-timing-interval.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 545,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs"]
+  },
+  {
+    "subject": "scripts/maintenance/lint-article-citations.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 2689,
+    "inProcMs": 2545,
+    "files": ["scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs"]
+  },
+  {
+    "subject": "scripts/maintenance/lint-test-coverage-reach-detector.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 629,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/maintenance/lint-test-coverage-reach.test.mjs"]
+  },
+  {
+    "subject": "scripts/maintenance/migrate-markers-corpus.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 677,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/maintenance/migrate-markers-corpus-redaction.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/maintenance/lib/migrate-non-demonstrable-tag-position-core.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 655,
+    "inProcMs": 0,
+    "files": [
+      "scripts/tests/unit/task-tracker/maintenance/migrate-non-demonstrable-tag-position.test.mjs"
+    ]
+  },
+  {
+    "subject": "scripts/maintenance/rename-estimation-headers.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 664,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/maintenance/rename-estimation-headers.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/merge-back.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 658,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/merge-back.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/package-lockfile-version-parity.mjs",
+    "fileCount": 1,
+    "tests": 2,
+    "measuredFiles": 1,
+    "wallMs": 663,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/package-lockfile-version-parity.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/states/index.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 695,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/states/states-skeleton.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/sync-epic.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 675,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/sync-epic.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/assign.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 532,
+    "inProcMs": 9,
+    "files": ["scripts/tests/unit/task-tracker/verbs/assign.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/review-remediation-hint.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 10645,
+    "inProcMs": 10077,
+    "files": ["scripts/tests/unit/task-tracker/verbs/bind.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/board.mjs",
+    "fileCount": 1,
+    "tests": 15,
+    "measuredFiles": 1,
+    "wallMs": 607,
+    "inProcMs": 6,
+    "files": ["scripts/tests/unit/task-tracker/verbs/board-and-project-guard.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/close-delivery-receipt.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 0,
+    "wallMs": 0,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/comment.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 718,
+    "inProcMs": 7,
+    "files": ["scripts/tests/unit/task-tracker/verbs/comment.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/auto.mjs",
+    "fileCount": 1,
+    "tests": 5,
+    "measuredFiles": 1,
+    "wallMs": 583,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/verbs/coverage-auto.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/evidence-markers.mjs",
+    "fileCount": 1,
+    "tests": 16,
+    "measuredFiles": 1,
+    "wallMs": 4835,
+    "inProcMs": 4266,
+    "files": ["scripts/tests/unit/task-tracker/verbs/coverage-evidence-markers.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/kind.mjs",
+    "fileCount": 1,
+    "tests": 9,
+    "measuredFiles": 1,
+    "wallMs": 687,
+    "inProcMs": 13,
+    "files": ["scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/mirror-deep-dive.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 4282,
+    "inProcMs": 3854,
+    "files": ["scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/update.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 551,
+    "inProcMs": 131,
+    "files": ["scripts/tests/unit/task-tracker/verbs/coverage-update.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/epic-reconcile.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 569,
+    "inProcMs": 22,
+    "files": ["scripts/tests/unit/task-tracker/verbs/epic-reconcile.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/inflate-estimate.mjs",
+    "fileCount": 1,
+    "tests": 0,
+    "measuredFiles": 1,
+    "wallMs": 205,
+    "inProcMs": 0,
+    "files": ["scripts/tests/unit/task-tracker/verbs/inflate-estimate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/park.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 506,
+    "inProcMs": 10,
+    "files": ["scripts/tests/unit/task-tracker/verbs/park.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/plan-estimate.mjs",
+    "fileCount": 1,
+    "tests": 20,
+    "measuredFiles": 1,
+    "wallMs": 383,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/verbs/plan-estimate.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/move-state/contiguity-refresh.mjs",
+    "fileCount": 1,
+    "tests": 6,
+    "measuredFiles": 1,
+    "wallMs": 462,
+    "inProcMs": 5,
+    "files": ["scripts/tests/unit/task-tracker/verbs/refine-fresh-body-retry.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/reject.mjs",
+    "fileCount": 1,
+    "tests": 2,
+    "measuredFiles": 1,
+    "wallMs": 370,
+    "inProcMs": 35,
+    "files": ["scripts/tests/unit/task-tracker/verbs/reject.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/report.mjs",
+    "fileCount": 1,
+    "tests": 2,
+    "measuredFiles": 1,
+    "wallMs": 2241,
+    "inProcMs": 1875,
+    "files": ["scripts/tests/unit/task-tracker/verbs/report-verb-496.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/shelve.mjs",
+    "fileCount": 1,
+    "tests": 13,
+    "measuredFiles": 1,
+    "wallMs": 882,
+    "inProcMs": 652,
+    "files": ["scripts/tests/unit/task-tracker/verbs/shelve.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/lib/split-plan.mjs",
+    "fileCount": 1,
+    "tests": 17,
+    "measuredFiles": 1,
+    "wallMs": 1952,
+    "inProcMs": 1751,
+    "files": ["scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/verbs/unassign.mjs",
+    "fileCount": 1,
+    "tests": 8,
+    "measuredFiles": 1,
+    "wallMs": 542,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/task-tracker/verbs/unassign.test.mjs"]
+  },
+  {
+    "subject": "scripts/benchmarks/compare-test-fixtures.mjs",
+    "fileCount": 1,
+    "tests": 7,
+    "measuredFiles": 1,
+    "wallMs": 597,
+    "inProcMs": 8,
+    "files": ["scripts/tests/unit/tools/compare-test-fixtures.test.mjs"]
+  },
+  {
+    "subject": "scripts/task-tracker/tools/coverage-threshold.mjs",
+    "fileCount": 1,
+    "tests": 4,
+    "measuredFiles": 1,
+    "wallMs": 659,
+    "inProcMs": 4,
+    "files": ["scripts/tests/unit/tools/coverage-threshold-parse.test.mjs"]
+  }
+]

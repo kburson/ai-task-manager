@@ -1,0 +1,12 @@
+lint:js 8s exit=0
+lint:md 3s exit=0
+lint:spell 11s exit=0
+lint:tmp 0s exit=0
+lint:fleet-sandbox 1s exit=0
+lint:test-layout 0s exit=0
+lint:story-tags 0s exit=0
+lint:line-cap 1s exit=0
+lint:test-reach 0s exit=0
+lint:doc-anchors 1s exit=0
+lint:article-citations 0s exit=0
+format:check 51s exit=0
