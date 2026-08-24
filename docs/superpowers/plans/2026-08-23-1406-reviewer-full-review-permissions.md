@@ -1169,14 +1169,16 @@ so without masking negative tests:
 - `scripts/tests/unit/review/co-review-fixture-cost.test.mjs`
 - `scripts/tests/slow/review/co-review-boundaries.test.mjs`
 
-Also migrate the already-owned handoff and protocol cases. Do not make
-`bindProtocol()` silently inject provenance into every call: required-field,
-wrong-session, ambiguity, and legacy tests must retain a direct way to omit or
-conflict the inputs. Add a census assertion or review command over
-`claimTurn(`, `handoffOwner(`, and `handoffReviewer(` so every new-runtime call
-site, plus CLI `claim`/`handoff` invocations, so every new-runtime call is either
-explicitly profiled or deliberately marked as a negative/legacy case. This step
-is mechanical fixture migration, not a new production rule.
+Also migrate the already-owned `co-review-handoff-cases.mjs`,
+`co-review.test.mjs`, `scripts/review/lib/protocol.mjs`, and
+`scripts/review/co-review.mjs` call sites. Do not make `bindProtocol()` silently
+inject provenance into every call: required-field, wrong-session, ambiguity,
+and legacy tests must retain a direct way to omit or conflict the inputs. Add a
+census assertion or review command over `claimTurn(`, `handoffOwner(`, and
+`handoffReviewer(`, plus CLI `claim` and `handoff` invocations, proving that
+every new-runtime call site is either explicitly profiled or deliberately
+marked as a negative or legacy case. This step is mechanical fixture migration,
+not a new production rule.
 
 - [ ] **Step 5: Add failing post-claim index-publication tests**
 
@@ -1613,6 +1615,7 @@ Append a rule shaped as follows, using only final paths that exist after Tasks
     "scripts/tests/slow/review/co-review-boundaries.test.mjs",
     "scripts/tests/unit/review/co-review-provider-session.test.mjs",
     "scripts/tests/unit/review/co-review-index.test.mjs",
+    "scripts/tests/unit/review/co-review-fixture-cost.test.mjs",
     "scripts/tests/unit/review/co-review.test.mjs",
     "scripts/tests/unit/review/co-review-finalization.test.mjs",
     "scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs"
