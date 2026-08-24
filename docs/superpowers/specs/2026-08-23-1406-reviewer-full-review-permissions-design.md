@@ -145,6 +145,33 @@ before delivery, not before implementation. The historical Plan-approval
 marker remains untouched; amendment authority is recorded in the artifacts and
 durable #1406 evidence rather than fabricated as a second lifecycle approval.
 
+## Review-Timing Validator Amendment
+
+The exact accepted implementation at `f5773da1` reached Review with a canonical
+timing log whose Develop visit independently recomputes to 33,466 active seconds
+and 43,626 idle seconds. Every idle interval is bracketed by a departure and a
+re-engagement row. The Agent Review Gate nevertheless rejected the final
+`develop:completed` row because its `row-sec` cache contains the cumulative
+9h17m46s active total, which exceeds the validator's eight-hour suspicious-gap
+threshold.
+
+The root cause is a duplicated interpretation of that threshold. The
+adjacent-row check correctly detects one unexplained wall-clock span longer
+than eight hours when the preceding row is not a departure. The later
+`row-sec.activeSec` check incorrectly treats a cumulative phase total—assembled
+from many short, explicitly bracketed work sessions—as though it were one
+unbroken span.
+
+The human explicitly expanded #1406 so it owns this narrow Review-gate repair
+without creating a successor defect. The validator will retain the adjacent-row
+wall-clock check and stop rejecting a row solely because its cumulative active
+cache exceeds eight hours. A regression must prove that several individually
+short active spans may accumulate past eight hours, while the existing
+unbracketed many-hour gap remains rejected. The implementation must not rewrite
+#1406's timing log, change `SUSPICIOUS_GAP_SEC`, modify timing repair tools, or
+weaken departure/return, chronology, stage-walk, or marker-reconciliation
+validation.
+
 ## Problem
 
 AITM currently treats co-review as both:
@@ -224,6 +251,8 @@ index remains an operational occupancy cache.
 10. Prove the complete installed hook chain and end-to-end two-session relay.
 11. Persist and validate each role's exact provider/session claim through the
     handoff and terminal archive that contain its evidence.
+12. Accept legitimate cumulative phase work above eight hours while continuing
+    to reject any individual unbracketed wall-clock span above that threshold.
 
 ## Non-Goals
 
@@ -254,6 +283,8 @@ index remains an operational occupancy cache.
 - Raising subprocess or network timeouts, retrying until green, moving the test
   to a less demanding lane, weakening `npm run quality`, or waiving the missing
   #1406 acceptance marker.
+- Rewriting #1406 timing history, changing the eight-hour threshold, or changing
+  timing-log repair commands as part of the Review-validator correction.
 
 ## Authority Model
 

@@ -1803,3 +1803,110 @@ old #1381 runtime.
 Report the exact implementation commit, focused/full verification receipts,
 fresh runtime path, and any remaining deferred #1381 concerns. Do not push,
 deliver, merge, promote, approve, close, or mutate #1381.
+
+---
+
+### Task 9: Correct Cumulative Active-Time Review Validation
+
+This Review-stage amendment supersedes Task 8 Step 8 only for the explicitly
+approved #1406 validator repair. It creates no successor defect and does not
+change #1406 timing evidence or any timing repair command.
+
+**Files:**
+
+- Modify:
+  `scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs`
+- Modify:
+  `scripts/task-tracker/lib/agent-review/validators/timing-log-sequence.mjs`
+
+**Interfaces:**
+
+- Consumes: `SUSPICIOUS_GAP_SEC`, adjacent timing-row timestamps, departure
+  classification, and the existing `validate(context)` contract.
+- Produces: the same `{ pass, failures }` result, with the threshold applied
+  only to an individual unbracketed adjacent-row wall-clock span.
+
+- [ ] **Step 1: Add the failing cumulative-active regression**
+
+Add a validator test that constructs several active spans shorter than eight
+hours, separates them with explicit `pause`/`resumed` pairs, and finishes with a
+`develop:completed` row carrying `<!-- row-sec: a=33466 i=43626 -->`.
+
+```js
+test('passes cumulative active time above eight hours when every active span is bounded', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    ['2026-07-14 07:00:00 -05:00', 'pause'],
+    ['2026-07-14 09:00:00 -05:00', 'resumed'],
+    ['2026-07-14 16:00:00 -05:00', 'pause'],
+    ['2026-07-14 18:00:00 -05:00', 'resumed'],
+    [
+      '2026-07-14 20:00:00 -05:00',
+      'develop:completed',
+      'development complete',
+      '<!-- row-sec: a=33466 i=43626 -->',
+    ],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+```
+
+- [ ] **Step 2: Run the focused test and verify RED**
+
+Run:
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs
+```
+
+Expected: FAIL only because the cumulative `row-sec.activeSec` check reports a
+`suspicious active duration` objection.
+
+- [ ] **Step 3: Remove the cumulative-cache threshold check**
+
+In `timing-log-sequence.mjs`, remove `parseRowSecMarker` from the import and
+delete only this block:
+
+```js
+const rowSec = parseRowSecMarker(row.raw);
+if (rowSec && rowSec.activeSec > SUSPICIOUS_GAP_SEC) {
+  failures.push(/* cumulative-duration objection */);
+}
+```
+
+Retain the adjacent-row wall-clock comparison against
+`SUSPICIOUS_GAP_SEC`. Update the existing #899-shaped regression to assert that
+this wall-clock check, rather than cumulative cache inspection, rejects the
+unbracketed many-hour span.
+
+- [ ] **Step 4: Verify GREEN and surrounding timing coverage**
+
+Run:
+
+```bash
+node --test \
+  scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs \
+  scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence-audit-rows.test.mjs \
+  scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence-update-slug.test.mjs
+```
+
+Expected: PASS with the new cumulative-duration regression, existing
+unbracketed-gap refusal, explicit-pause acceptance, stage walk, and audit-row
+coverage all green.
+
+- [ ] **Step 5: Commit the focused repair**
+
+```bash
+git add \
+  scripts/task-tracker/lib/agent-review/validators/timing-log-sequence.mjs \
+  scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs
+git commit -m "[#1406] Validate timing gaps instead of cumulative work"
+```
+
+- [ ] **Step 6: Re-run governed #1406 verification**
+
+Demote #1406 to Develop before editing source, complete the RED/GREEN cycle,
+then run the issue's exact Verification Commands and Functional DoD at one
+clean tracked HEAD. Return through Test and re-run the Agent Review Gate. Do not
+touch #1407, #1381, or #939.
