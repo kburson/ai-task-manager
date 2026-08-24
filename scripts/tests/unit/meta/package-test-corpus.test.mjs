@@ -1,4 +1,4 @@
-// @story #876 #1263
+// @story #876 #1263 #1406
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -232,9 +232,11 @@ test('npm pack excludes the test corpus while retaining required runtime files a
     'package/scripts/providers/grok.mjs',
     'package/scripts/task-tracker/hooks/grok-wire.mjs',
     'package/scripts/task-tracker/lib/occupancy.mjs',
+    'package/scripts/task-tracker/lib/apply-patch-targets.mjs',
     'package/scripts/review/lib/index.mjs',
-    'package/scripts/task-tracker/lib/co-review-write-policy.mjs',
-    'package/scripts/task-tracker/lib/mutation-targets.mjs',
+    'package/scripts/review/lib/provider-session.mjs',
+    'package/scripts/review/lib/runtime-root.mjs',
+    'package/scripts/review/lib/repository-boundary.mjs',
     'package/skill/adapters/grok/SKILL.md',
     'package/docs/guides/grok-provider.md',
   ]) {

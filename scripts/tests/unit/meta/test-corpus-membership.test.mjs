@@ -1,4 +1,4 @@
-// @story #1263
+// @story #1263 #1406
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
