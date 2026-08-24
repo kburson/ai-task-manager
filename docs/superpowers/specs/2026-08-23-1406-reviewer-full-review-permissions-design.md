@@ -1,8 +1,8 @@
 # SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Second Claude review changes incorporated; final re-review pending
-**Date:** 2026-08-23
+**Status:** Verification-infrastructure amendment drafted for human review
+**Date:** 2026-08-24
 
 ## Review Context
 
@@ -82,6 +82,68 @@ first and final defect hop for this concern; it creates no successor defect. A
 new in-scope failure is repaired in its owning plan task; an unowned failure
 reopens this specification and plan as flawed. Deferred convergence
 observations remain only in #1381.
+
+## Verification-Infrastructure Amendment
+
+Task 8 reached a plan flaw after the implementation passed its focused matrix,
+standalone fast lane, slow lane, lint, formatting, packaging, and the first four
+acceptance verifiers. The mandatory aggregate `npm run quality` verifier failed
+in the historical #708 `close-repair.test.mjs` harness even though that file
+passed in isolation and the standalone 907-file fast lane passed. Three
+governed `ac-stamp` attempts therefore produced no marker.
+
+The captured aggregate symptom is a roughly 10-second baseline test returning
+empty stdout instead of the expected `already fully closed` convergence
+message. The harness suppresses `console.error` and does not include its
+captured exception or convergence failure in that assertion, so the exact
+failing adapter is hidden. The same file also permits a real
+`gh issue comment 708 -R o/r` subprocess through the best-effort review-delta
+path. That observed network escape proves the fixture is not fully offline, but
+it is not by itself proof that the review-delta call caused the baseline
+convergence failure. The repair must establish that causal boundary before it
+selects an injection seam.
+
+The human approved Option 1 in the current Codex task: amend #1406 so it owns
+one narrow #708 offline-test-isolation repair without creating a successor
+defect. This amendment changes plan ownership, not product scope or close
+semantics. It supersedes the prior stop only for this explicitly bounded
+repair; every other unowned failure and every proposed third defect level
+remains an immediate stop.
+
+The repair design is:
+
+1. First make the failing #708 assertion expose the caught error, exit code,
+   convergence status, and failed adapter/step. Reproduce the failure under the
+   repository's pooled runner before changing production behavior.
+2. Inventory every subprocess or network-capable boundary reached by both the
+   noop and `--repair` cases. The test must inject deterministic offline doubles
+   for each reached boundary; no case may invoke real `gh`, GitHub APIs, or the
+   project board.
+3. If the missing seam is in production code, add only the smallest optional
+   dependency-injection route needed by the test. Default production behavior,
+   command arguments, timeouts, error handling, convergence decisions, timing
+   rows, lifecycle mutation, and review-delta behavior must remain unchanged.
+4. Add a regression that fails immediately if the fixture attempts a real
+   subprocess or network call. Do not use retry loops, timeout increases,
+   serialized-lane reclassification, blanket environment skips, or verifier
+   changes to conceal the isolation defect.
+5. Prove the repaired test alone, repeatedly through its real pooled-runner
+   classification, in the standalone fast lane, and through the exact
+   `npm run quality` acceptance verifier. Then rerun every #1406 acceptance and
+   Functional DoD verifier at one unchanged tracked head.
+
+The permitted tracked boundary is the #708 test harness plus the minimum
+existing caller or dependency seam demonstrated by the RED evidence. Any need
+to change close behavior, broaden timing infrastructure, alter the test runner,
+weaken an assertion, modify verifier commands, or touch unrelated lifecycle
+code invalidates this amendment and stops execution for a new human decision.
+
+Independent Claude review must confirm the amendment before implementation.
+After the amendment is incorporated into the implementation plan, the human
+must approve the exact amended plan. The historical Plan-approval marker
+remains untouched; amendment authority is recorded in the reviewed artifacts
+and durable #1406 evidence rather than fabricated as a second lifecycle
+approval.
 
 ## Problem
 
@@ -187,6 +249,11 @@ index remains an operational occupancy cache.
   defense against a malicious same-user process.
 - Hot-patching or reusing the active #1381 constrained runtime.
 - Creating successor issues for each deferred co-review concern.
+- Changing #708 close, convergence, timing, lifecycle, delivery, or review-delta
+  behavior while isolating its offline test harness.
+- Raising subprocess or network timeouts, retrying until green, moving the test
+  to a less demanding lane, weakening `npm run quality`, or waiving the missing
+  #1406 acceptance marker.
 
 ## Authority Model
 
