@@ -16,7 +16,11 @@ import { test } from 'node:test';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { realRepositoryFixture, runCli } from '../../../fixtures/co-review-fixture.mjs';
+import {
+  profiledEnv,
+  realRepositoryFixture,
+  runCli,
+} from '../../../fixtures/co-review-fixture.mjs';
 import {
   decideSourceEdit,
   isAllowlistedPath,
@@ -28,15 +32,17 @@ import {
 
 const PROJECT_DIR = '/fake/project';
 const LOCAL_OWNERSHIP = { assignees: ['kburson'], currentUser: 'kburson' };
-const REVIEWER_ENV = {
+const OWNER_ENV = profiledEnv('owner', {
   ...process.env,
-  AI_TASK_MANAGER_SESSION_ID: 'source-edit-claim-invariance-1406',
-  GROK_AGENT: '1',
-  GROK_SESSION_ID: 'source-edit-claim-invariance-1406',
-};
+  AI_TASK_MANAGER_SESSION_ID: 'source-edit-owner-invariance-1406',
+});
+const REVIEWER_ENV = profiledEnv('reviewer', {
+  ...process.env,
+  AI_TASK_MANAGER_SESSION_ID: 'source-edit-reviewer-invariance-1406',
+});
 
-function successfulCoReview(args, root) {
-  const result = runCli(args, { cwd: root, env: REVIEWER_ENV });
+function successfulCoReview(args, root, env) {
+  const result = runCli(args, { cwd: root, env });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 }
@@ -57,9 +63,10 @@ function prepareReviewerTurn(root, artifact, commit) {
       '--max-turns',
       '3',
     ],
-    root
+    root,
+    OWNER_ENV
   );
-  successfulCoReview(['claim', '--dir', dir, '--actor', 'owner-agent'], root);
+  successfulCoReview(['claim', '--dir', dir, '--actor', 'owner-agent'], root, OWNER_ENV);
   const response = `${dir}/round-1-owner-response.md`;
   writeFileSync(path.join(root, response), '# Owner response\n\nReady for review.\n');
   successfulCoReview(
@@ -78,9 +85,11 @@ function prepareReviewerTurn(root, artifact, commit) {
       '--message',
       'owner handoff complete',
     ],
-    root
+    root,
+    OWNER_ENV
   );
-  return () => successfulCoReview(['claim', '--dir', dir, '--actor', 'reviewer-agent'], root);
+  return () =>
+    successfulCoReview(['claim', '--dir', dir, '--actor', 'reviewer-agent'], root, REVIEWER_ENV);
 }
 
 // Builds a throwaway project dir with a minimal task-tracker.json so

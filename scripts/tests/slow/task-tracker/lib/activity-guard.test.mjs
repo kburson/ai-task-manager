@@ -12,7 +12,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { realRepositoryFixture, runCli } from '../../../fixtures/co-review-fixture.mjs';
+import {
+  profiledEnv,
+  realRepositoryFixture,
+  runCli,
+} from '../../../fixtures/co-review-fixture.mjs';
 import path from 'node:path';
 import url from 'node:url';
 
@@ -25,15 +29,17 @@ const GUARD = path.resolve(
   'task-tracker',
   'activity-guard.mjs'
 );
-const REVIEWER_ENV = {
+const OWNER_ENV = profiledEnv('owner', {
   ...process.env,
-  AI_TASK_MANAGER_SESSION_ID: 'activity-claim-invariance-1406',
-  GROK_AGENT: '1',
-  GROK_SESSION_ID: 'activity-claim-invariance-1406',
-};
+  AI_TASK_MANAGER_SESSION_ID: 'activity-owner-invariance-1406',
+});
+const REVIEWER_ENV = profiledEnv('reviewer', {
+  ...process.env,
+  AI_TASK_MANAGER_SESSION_ID: 'activity-reviewer-invariance-1406',
+});
 
-function successfulCoReview(args, root) {
-  const result = runCli(args, { cwd: root, env: REVIEWER_ENV });
+function successfulCoReview(args, root, env) {
+  const result = runCli(args, { cwd: root, env });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 }
@@ -54,9 +60,10 @@ function prepareReviewerTurn(root, artifact, commit) {
       '--max-turns',
       '3',
     ],
-    root
+    root,
+    OWNER_ENV
   );
-  successfulCoReview(['claim', '--dir', dir, '--actor', 'owner-agent'], root);
+  successfulCoReview(['claim', '--dir', dir, '--actor', 'owner-agent'], root, OWNER_ENV);
   const response = `${dir}/round-1-owner-response.md`;
   writeFileSync(path.join(root, response), '# Owner response\n\nReady for review.\n');
   successfulCoReview(
@@ -75,9 +82,11 @@ function prepareReviewerTurn(root, artifact, commit) {
       '--message',
       'owner handoff complete',
     ],
-    root
+    root,
+    OWNER_ENV
   );
-  return () => successfulCoReview(['claim', '--dir', dir, '--actor', 'reviewer-agent'], root);
+  return () =>
+    successfulCoReview(['claim', '--dir', dir, '--actor', 'reviewer-agent'], root, REVIEWER_ENV);
 }
 
 // ---------------------------------------------------------------------------
