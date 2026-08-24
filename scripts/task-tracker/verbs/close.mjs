@@ -1673,9 +1673,8 @@ export async function verbClose(ctx) {
   }
   if (!SKIP_NETWORK && closeIssueNum) {
     try {
-      const { applyReviewDelta: defaultApplyReviewDelta } = await import(
-        '../lib/apply-review-delta.mjs'
-      );
+      const { applyReviewDelta: defaultApplyReviewDelta } =
+        await import('../lib/apply-review-delta.mjs');
       const applyReviewDelta = ctx.applyReviewDelta || defaultApplyReviewDelta;
       await applyReviewDelta({ cfg, issueNumber: closeIssueNum, body: closeBody });
     } catch (err) {
