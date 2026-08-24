@@ -1,4 +1,5 @@
 // @story #1292
+// cspell:ignore ACDMRTUXB
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';

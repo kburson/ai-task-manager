@@ -1,4 +1,5 @@
 // @story #1266 #1322
+// cspell:words finalizable
 
 import assert from 'node:assert/strict';
 import {
