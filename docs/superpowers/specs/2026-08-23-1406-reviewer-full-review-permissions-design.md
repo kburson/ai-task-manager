@@ -168,7 +168,7 @@ wall-clock check and stop rejecting a row solely because its cumulative active
 cache exceeds eight hours. A regression must prove that several individually
 short active spans may accumulate past eight hours, while the existing
 unbracketed many-hour gap remains rejected. The implementation must not rewrite
-#1406's timing log, change `SUSPICIOUS_GAP_SEC`, modify timing repair tools, or
+the #1406 timing log, change `SUSPICIOUS_GAP_SEC`, modify timing repair tools, or
 weaken departure/return, chronology, stage-walk, or marker-reconciliation
 validation.
 
