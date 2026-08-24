@@ -97,10 +97,12 @@ export function registerProtocol(input) {
 
 export function recordReviewerClaim(input) {
   const file = fileFor(input);
-  const protocolId = String(input.protocolId || '').trim();
-  const provider = String(input.provider || '').trim();
-  const sid = String(input.sid || '').trim();
-  const round = Number(input.round);
+  const state = input.state;
+  const claim = input.claim;
+  const protocolId = String(state?.protocolId ?? input.protocolId ?? '').trim();
+  const provider = String(claim?.provider ?? input.provider ?? '').trim();
+  const sid = String(claim?.sid ?? input.sid ?? '').trim();
+  const round = Number(state?.round ?? input.round);
   if (!protocolId || !provider || !sid || !Number.isInteger(round) || round < 1) {
     throw new TypeError(
       'co-review-index: reviewer claim requires protocol, provider, sid, and round'
@@ -108,8 +110,19 @@ export function recordReviewerClaim(input) {
   }
   return withLock(file, () => {
     const rows = readProtocolIndex(file);
-    const row = rows[protocolId];
-    if (!row) throw new Error(`co-review-index: protocol ${protocolId} is not registered`);
+    const authoritative = state ? baseRow(state) : null;
+    let row = rows[protocolId];
+    if (!row) {
+      if (!authoritative) {
+        throw new Error(`co-review-index: protocol ${protocolId} is not registered`);
+      }
+      row = authoritative;
+    } else if (authoritative) {
+      if (!isDeepStrictEqual(registrationIdentity(row), registrationIdentity(authoritative))) {
+        throw new Error(`co-review-index: conflicting registration for ${protocolId}`);
+      }
+      row = { ...authoritative, ...row, lifecycle: authoritative.lifecycle };
+    }
     if (row.lifecycle !== 'active') {
       throw new Error(`co-review-index: protocol ${protocolId} is ${row.lifecycle}`);
     }
@@ -120,7 +133,9 @@ export function recordReviewerClaim(input) {
       claimedProvider: provider,
       claimedSid: sid,
     };
-    if (isDeepStrictEqual(row, next)) return { status: 'unchanged', row: clone(row) };
+    if (isDeepStrictEqual(rows[protocolId], next)) {
+      return { status: 'unchanged', row: clone(next) };
+    }
     if (
       row.claimedSid &&
       row.claimedSid !== sid &&
@@ -179,7 +194,9 @@ function liveReviewerClaim(row, statusProtocol) {
     live.currentRole !== 'reviewer' ||
     live.turnState !== 'claimed' ||
     live.claim?.role !== 'reviewer' ||
-    live.claim?.actor !== row.reviewer
+    live.claim?.actor !== row.reviewer ||
+    live.claim?.provider !== row.claimedProvider ||
+    live.claim?.sid !== row.claimedSid
   ) {
     return null;
   }

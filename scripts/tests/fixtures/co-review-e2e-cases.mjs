@@ -347,8 +347,8 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   const index = JSON.parse(
     readFileSync(path.join(root, '.tmp/aitm/fleet/co-review-index.json'), 'utf8')
   );
-  assert.equal(index[protocolId].claimedProvider, 'grok');
-  assert.equal(index[protocolId].claimedSid, 'co-review-fixture-session');
+  assert.equal(index[protocolId].claimedProvider, 'claude');
+  assert.equal(index[protocolId].claimedSid, 'fixture-reviewer-sid');
   writeFileSync(path.join(root, '.tmp/review/r3-review.md'), '[finding:F-002] Refocus help.\n');
   writeFileSync(path.join(root, '.tmp/review/summary.md'), '# Summary\n\nRefocus help recovery.\n');
   assert.equal(

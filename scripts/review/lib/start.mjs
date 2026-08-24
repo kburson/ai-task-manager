@@ -14,7 +14,12 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { initializeProtocol, renderCliCommand, statusProtocol } from './protocol.mjs';
+import {
+  CLAIM_PROVENANCE_PROFILE,
+  initializeProtocol,
+  renderCliCommand,
+  statusProtocol,
+} from './protocol.mjs';
 import { registerProtocol } from './index.mjs';
 
 export const START_DEFAULTS = Object.freeze({
@@ -158,6 +163,7 @@ function sharedHandoff(model) {
 - Authoritative artifact: ${inline(model.artifact)}
 - Author identity: ${inline(model.owner)}
 - Reviewer identity: ${inline(model.reviewer)}
+- Claim provenance profile: ${inline(model.claimProvenance)}
 ${
   model.archiveDir
     ? `- Host issue: ${model.issue}\n- Artifact kind: ${inline(model.artifactKind)}\n- Archive destination: ${inline(model.archiveDir)}`
@@ -167,6 +173,8 @@ ${
 - Waiting episode: at most ${model.waitCycles} separately observed waits of ${model.waitIntervalSeconds} seconds
 
 Run every protocol and repository command from the same canonical physical worktree above, using the shared ignored runtime above. Before each claim and handoff, verify the canonical \`HEAD\` and clean tracked state. Inter-round changes must be artifact-only changes to the authoritative artifact. Start the turn timer immediately when this handoff opens.
+
+Every claim and handoff resolves exactly one provider-native session key from the current process environment. Keep the same provider/session pair for the whole role turn; the opposite role must use a different pair.
 
 Treat repository and protocol state as authoritative after chat loss or compaction. Reread this entire handoff, then run:
 
@@ -238,6 +246,7 @@ function modelFor(state, settings, actor) {
     issue: settings.issue,
     artifactKind: settings.artifactKind,
     archiveDir: state.initialization.archiveDir,
+    claimProvenance: state.initialization.claimProvenance,
     actor,
   });
 }
@@ -478,7 +487,8 @@ function assertStartupState(state) {
     state.currentRole !== 'owner' ||
     state.turnState !== 'available' ||
     state.round !== 1 ||
-    state.lastHandoff !== null
+    state.lastHandoff !== null ||
+    state.initialization?.claimProvenance !== CLAIM_PROVENANCE_PROFILE
   ) {
     fail('lifecycle', 'existing protocol has progressed beyond startup');
   }
@@ -554,6 +564,9 @@ export function startProtocol(options = {}, dependencies = {}) {
       owner: state.roles.owner,
       reviewer: state.roles.reviewer,
       maxReviewTurns: state.maxReviewTurns,
+      initialization: {
+        claimProvenance: state.initialization.claimProvenance,
+      },
       waitCycles: resolved.waitCycles,
       waitIntervalSeconds: resolved.waitIntervalSeconds,
       ...(resolved.archiveDir

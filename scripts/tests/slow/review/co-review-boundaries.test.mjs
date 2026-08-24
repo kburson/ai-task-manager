@@ -21,6 +21,7 @@ import {
   cleanupTemporaryRoots,
   commitArtifact,
   git,
+  profiledSession,
   realInitializedProtocol,
   repositoryFixture,
   runCliDirect,
@@ -481,25 +482,37 @@ test('real protocol refuses index or HEAD drift and unreachable publication comm
 test('real repository boundary publishes one representative terminal archive', async () => {
   const fixture = await realInitializedProtocol({ maxReviewTurns: 2 });
   const { api, root, options, initialCommit } = fixture;
-  api.claimTurn({ cwd: root, dir: options.dir, actor: options.owner });
+  api.claimTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: options.owner,
+    ...profiledSession('owner'),
+  });
   const response = `${options.dir}/owner-response.md`;
   writeFileSync(path.join(root, response), '# Owner response\n\nReady.\n');
   api.handoffOwner({
     cwd: root,
     dir: options.dir,
     actor: options.owner,
+    ...profiledSession('owner'),
     response,
     artifact: options.artifact,
     commit: initialCommit,
     message: 'ready for review',
   });
-  api.claimTurn({ cwd: root, dir: options.dir, actor: options.reviewer });
+  api.claimTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: options.reviewer,
+    ...profiledSession('reviewer'),
+  });
   const review = `${options.dir}/review.md`;
   writeFileSync(path.join(root, review), '# Review\n\nAccepted.\n');
   api.handoffReviewer({
     cwd: root,
     dir: options.dir,
     actor: options.reviewer,
+    ...profiledSession('reviewer'),
     review,
     reviewOf: initialCommit,
     decision: 'accepted',

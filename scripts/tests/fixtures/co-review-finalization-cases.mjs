@@ -97,7 +97,7 @@ async function acceptedConsensus(overrides = {}) {
   }
   const owner = overrides.owner ?? 'owner-agent';
   const reviewer = overrides.reviewer ?? 'reviewer-agent';
-  api.claimTurn({ cwd: root, dir: options.dir, actor: owner });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: owner });
   const response = writeRuntime(
     root,
     options.dir,
@@ -110,7 +110,7 @@ async function acceptedConsensus(overrides = {}) {
         return `${options.dir}/alias/owner-response.md`;
       })()
     : response;
-  api.handoffOwner({
+  api.profiledHandoffOwner({
     cwd: root,
     dir: options.dir,
     actor: owner,
@@ -119,9 +119,9 @@ async function acceptedConsensus(overrides = {}) {
     commit: initialCommit,
     message: 'owner handoff',
   });
-  api.claimTurn({ cwd: root, dir: options.dir, actor: reviewer });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: reviewer });
   const review = writeRuntime(root, options.dir, 'review.md', '# Review\n\nAccepted.\n');
-  const state = api.handoffReviewer({
+  const state = api.profiledHandoffReviewer({
     cwd: root,
     dir: options.dir,
     actor: reviewer,
@@ -147,7 +147,7 @@ async function goodEnoughReady({ archiveDir } = {}) {
   let finalResponse;
 
   for (let cycle = 1; cycle <= 3; cycle += 1) {
-    api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+    api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
     const response = writeRuntime(
       root,
       options.dir,
@@ -156,7 +156,7 @@ async function goodEnoughReady({ archiveDir } = {}) {
         ? `[finding:F-${cycle - 1}] [disposition:accepted]\nAddressed.\n`
         : '# Owner response\n\nReady.\n'
     );
-    api.handoffOwner({
+    api.profiledHandoffOwner({
       cwd: root,
       dir: options.dir,
       actor: 'owner-agent',
@@ -169,14 +169,14 @@ async function goodEnoughReady({ archiveDir } = {}) {
     finalResponse = response;
     if (cycle === 3) break;
 
-    api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+    api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
     const review = writeRuntime(
       root,
       options.dir,
       `review-${cycle}.md`,
       `# Review\n\n[finding:F-${cycle}] Revise.\n`
     );
-    api.handoffReviewer({
+    api.profiledHandoffReviewer({
       cwd: root,
       dir: options.dir,
       actor: 'reviewer-agent',
@@ -217,9 +217,9 @@ async function acceptedGoodEnough() {
 async function consensusReady({ archiveDir, dir } = {}) {
   const fixture = await initializedProtocol({ maxReviewTurns: 2, archiveDir, dir });
   const { api, root, options, initialCommit } = fixture;
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   const response = writeRuntime(root, options.dir, 'owner-response.md', '# Response\n\nReady.\n');
-  api.handoffOwner({
+  api.profiledHandoffOwner({
     cwd: root,
     dir: options.dir,
     actor: 'owner-agent',
@@ -228,7 +228,7 @@ async function consensusReady({ archiveDir, dir } = {}) {
     commit: initialCommit,
     message: 'owner handoff',
   });
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
   const review = writeRuntime(root, options.dir, 'review.md', '# Review\n\nAccepted.\n');
   return { ...fixture, review };
 }
@@ -690,7 +690,12 @@ test('good-enough acceptance is revision-checked, immutable, and requires two-si
   });
   const terminal = snapshotProtocol(ready.root, ready.options.dir);
   assert.throws(
-    () => ready.api.claimTurn({ cwd: ready.root, dir: ready.options.dir, actor: 'owner-agent' }),
+    () =>
+      ready.api.profiledClaimTurn({
+        cwd: ready.root,
+        dir: ready.options.dir,
+        actor: 'owner-agent',
+      }),
     /co-review:terminal/
   );
   assert.deepEqual(snapshotProtocol(ready.root, ready.options.dir), terminal);
@@ -702,9 +707,13 @@ test('good-enough acceptance is revision-checked, immutable, and requires two-si
     requestedMax: 0,
     humanLogin: 'kendrick',
   });
-  oneSided.api.claimTurn({ cwd: oneSided.root, dir: oneSided.options.dir, actor: 'owner-agent' });
+  oneSided.api.profiledClaimTurn({
+    cwd: oneSided.root,
+    dir: oneSided.options.dir,
+    actor: 'owner-agent',
+  });
   const response = writeRuntime(oneSided.root, oneSided.options.dir, 'response.md', '# Response\n');
-  oneSided.api.handoffOwner({
+  oneSided.api.profiledHandoffOwner({
     cwd: oneSided.root,
     dir: oneSided.options.dir,
     actor: 'owner-agent',
@@ -1167,13 +1176,39 @@ test('reachable artifacts use reference mode while preserving terminal evidence'
     new RegExp(`git cat-file blob ${prepared.manifest.artifact.gitBlob}`)
   );
   assert.equal(prepared.manifest.decision.basis, 'reviewer-consensus');
+  assert.equal(prepared.manifest.protocol.claimProvenance, 'provider-session/v1');
   assert.equal(prepared.manifest.evidence.pairRound, 3);
   assert.equal(prepared.manifest.evidence.ownerResponse.eventRound, 2);
   assert.equal(prepared.manifest.evidence.reviewerReview.eventRound, 3);
+  const events = readEvents(fixture.root, fixture.options.dir);
+  const ownerEvent = events.find((event) => event.type === 'owner-handoff');
+  const reviewerEvent = events.findLast((event) => event.type === 'reviewer-handoff');
+  assert.deepEqual(prepared.manifest.evidence.ownerResponse.claim, ownerEvent.handoff.claim);
+  assert.deepEqual(prepared.manifest.evidence.reviewerReview.claim, reviewerEvent.handoff.claim);
+  assert.equal(prepared.manifest.evidence.ownerResponse.handoffRevision, ownerEvent.revision);
+  assert.equal(prepared.manifest.evidence.reviewerReview.handoffRevision, reviewerEvent.revision);
   assert.equal(
     prepared.manifest.normative,
     'The accepted artifact remains normative; the archived review and owner response are evidence.'
   );
+});
+
+test('prepared archive validation refuses every altered terminal claim field', async () => {
+  for (const [side, field, value] of [
+    ['ownerResponse', 'provider', 'other-provider'],
+    ['ownerResponse', 'sid', 'other-owner-sid'],
+    ['reviewerReview', 'actor', 'other-reviewer'],
+    ['reviewerReview', 'revision', 0],
+  ]) {
+    const fixture = await acceptedConsensus();
+    const prepared = prepareArchive(archiveOptions(fixture, `docs/reviews/claim-${field}`));
+    const forged = structuredClone(prepared);
+    forged.manifest.evidence[side].claim[field] = value;
+    assert.throws(
+      () => inspectArchive({ prepared: forged, repository: fixture.repository }),
+      /co-review:archive-prepared-integrity/
+    );
+  }
 });
 
 test('unreachable accepted commits retain copy mode with exact artifact bytes', async () => {
@@ -1212,7 +1247,7 @@ test('archive refuses terminal event references that disagree with validated sta
 
     assert.throws(
       () => prepareArchive(archiveOptions(fixture, `docs/reviews/tampered-${target}`)),
-      (error) => error.code === 'archive-evidence',
+      (error) => ['archive-evidence', 'integrity'].includes(error.code),
       target
     );
   }

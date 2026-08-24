@@ -29,10 +29,10 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
   };
 
   api.initializeProtocol(options);
-  api.claimTurn({ cwd: fixture.root, dir: options.dir, actor: options.owner });
+  api.profiledClaimTurn({ cwd: fixture.root, dir: options.dir, actor: options.owner });
   mkdirSync(path.join(fixture.root, options.dir), { recursive: true });
   writeFileSync(path.join(fixture.root, options.dir, 'owner-response.md'), '# Ready\n');
-  api.handoffOwner({
+  api.profiledHandoffOwner({
     cwd: fixture.root,
     dir: options.dir,
     actor: options.owner,
@@ -41,9 +41,9 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
     commit: fixture.initialCommit,
     message: 'ready for review',
   });
-  api.claimTurn({ cwd: fixture.root, dir: options.dir, actor: options.reviewer });
+  api.profiledClaimTurn({ cwd: fixture.root, dir: options.dir, actor: options.reviewer });
   writeFileSync(path.join(fixture.root, options.dir, 'review.md'), '# Review\n\nAccepted.\n');
-  const state = api.handoffReviewer({
+  const state = api.profiledHandoffReviewer({
     cwd: fixture.root,
     dir: options.dir,
     actor: options.reviewer,

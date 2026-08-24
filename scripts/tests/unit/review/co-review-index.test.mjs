@@ -74,6 +74,34 @@ test('reviewer claim records the exact provider session and pending round path',
   assert.equal(row.pendingReviewPath, path.join(row.dir, 'round-2-reviewer-review.md'));
 });
 
+test('authoritative reviewer claim atomically registers an absent operational row', () => {
+  const { indexFile, state } = fixture();
+  const claim = {
+    role: 'reviewer',
+    actor: state.roles.reviewer,
+    provider: 'claude',
+    sid: 'authoritative-reviewer-sid',
+  };
+  const result = recordReviewerClaim({ indexFile, state, claim });
+  assert.equal(result.status, 'claimed');
+  assert.equal(result.row.protocolId, state.protocolId);
+  assert.equal(result.row.claimedProvider, claim.provider);
+  assert.equal(result.row.claimedSid, claim.sid);
+});
+
+test('authoritative reviewer claim repairs stale projection with the same registration identity', () => {
+  const { indexFile, state } = fixture();
+  registerProtocol({ indexFile, state });
+  markProtocolLifecycle({ indexFile, protocolId: state.protocolId, lifecycle: 'accepted' });
+  const result = recordReviewerClaim({
+    indexFile,
+    state,
+    claim: { provider: 'claude', sid: 'repair-sid' },
+  });
+  assert.equal(result.row.lifecycle, 'active');
+  assert.equal(result.row.claimedSid, 'repair-sid');
+});
+
 test('a later round may replace an inert prior reviewer session claim', () => {
   const { indexFile, state } = fixture();
   registerProtocol({ indexFile, state });
@@ -153,7 +181,12 @@ test('occupancy sharing is limited to the exact live reviewer provider session',
   const live = {
     ...state,
     turnState: 'claimed',
-    claim: { role: 'reviewer', actor: 'Reviewer' },
+    claim: {
+      role: 'reviewer',
+      actor: 'Reviewer',
+      provider: 'grok',
+      sid: 'grok-reviewer-sid',
+    },
   };
   const occupancy = {
     indexFile,

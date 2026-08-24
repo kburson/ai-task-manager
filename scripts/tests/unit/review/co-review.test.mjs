@@ -26,8 +26,11 @@ import {
   memoryProtocol,
   memoryRepositoryFixture,
   processCallCounts,
+  profiledSession,
   readEvents,
   runCliDirect,
+  rewriteProtocolState,
+  reviewerTurn,
   snapshotProtocol,
   temporaryRoot,
 } from '../../fixtures/co-review-fixture.mjs';
@@ -519,14 +522,14 @@ test('CLI rejects unknown handoff flags before protocol discovery', async () => 
 test('claim is role-safe and an exact claimant retry is idempotent', async () => {
   const { api, root, options } = await initializedProtocol();
   assert.throws(
-    () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' }),
+    () => api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' }),
     /co-review:wrong-role/
   );
-  const claimed = api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const claimed = api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   assert.equal(claimed.turnState, 'claimed');
   assert.equal(claimed.claim.actor, 'owner-agent');
   const before = snapshotProtocol(root, options.dir);
-  const retry = api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const retry = api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   assert.equal(retry.revision, claimed.revision);
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
   assert.deepEqual(
@@ -546,7 +549,7 @@ test('recorded immutable drift is visible in status and blocks claim', async () 
   assert.match(status.integrity.errors.join('\n'), /artifact-drift.*r1-review\.md/);
   const before = snapshotProtocol(root, options.dir);
   assert.throws(
-    () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
+    () => api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
     /co-review:integrity/
   );
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
@@ -562,7 +565,7 @@ test('event revision drift is visible in status and blocks mutation', async () =
   assert.match(status.integrity.errors.join('\n'), /event-revision.*expected 1.*actual 2/);
   const before = snapshotProtocol(root, options.dir);
   assert.throws(
-    () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
+    () => api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
     /co-review:integrity/
   );
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
@@ -650,4 +653,180 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', async () =
 
 test('fast co-review corpus does not spawn Git or external Node', () => {
   assert.deepEqual(processCallCounts(), { git: 0, nodeCli: 0 });
+});
+
+test('profiled claims and handoffs persist immutable provider-session authority', async () => {
+  const { api, root, options, initialCommit, state } = await initializedProtocol();
+  assert.equal(state.initialization.claimProvenance, 'provider-session/v1');
+
+  const owner = profiledSession('owner');
+  const reviewer = profiledSession('reviewer');
+  const claimed = api.claimTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: options.owner,
+    ...owner,
+  });
+  assert.deepEqual(readEvents(root, options.dir).at(-1).claim, claimed.claim);
+  assert.equal(claimed.claim.revision, claimed.revision);
+
+  const status = await runCliDirect(['status', '--dir', options.dir], { cwd: root });
+  for (const value of [
+    'owner',
+    options.owner,
+    owner.provider,
+    owner.sid,
+    `revision ${claimed.revision}`,
+    claimed.claim.at,
+  ]) {
+    assert.match(status.stdout, new RegExp(value));
+  }
+
+  const bytes = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () =>
+      api.claimTurn({
+        cwd: root,
+        dir: options.dir,
+        actor: options.owner,
+        provider: owner.provider,
+        sid: 'another-owner-session',
+      }),
+    /co-review:claim-conflict/
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), bytes);
+
+  const response = `${options.dir}/profile-response.md`;
+  writeFileSync(path.join(root, response), '# Response\n');
+  const handed = api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: options.owner,
+    ...owner,
+    response,
+    artifact: options.artifact,
+    commit: initialCommit,
+    message: 'ready',
+  });
+  assert.deepEqual(handed.lastHandoff.claim, {
+    revision: claimed.claim.revision,
+    role: 'owner',
+    actor: options.owner,
+    ...owner,
+    at: claimed.claim.at,
+  });
+  assert.throws(
+    () =>
+      api.handoffOwner({
+        cwd: root,
+        dir: options.dir,
+        actor: options.owner,
+        provider: owner.provider,
+        sid: 'wrong-replay-session',
+        response,
+        artifact: options.artifact,
+        commit: initialCommit,
+        message: 'ready',
+      }),
+    /co-review:handoff-session-mismatch/
+  );
+
+  assert.throws(
+    () =>
+      api.claimTurn({
+        cwd: root,
+        dir: options.dir,
+        actor: options.reviewer,
+        ...owner,
+      }),
+    /co-review:session-role-conflict/
+  );
+  const reviewerClaim = api.claimTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: options.reviewer,
+    ...reviewer,
+  });
+  assert.equal(reviewerClaim.claim.sid, reviewer.sid);
+});
+
+test('profile-less runtimes remain readable but active mutation refuses before retry sameness', async () => {
+  const initialized = await initializedProtocol();
+  const { api, root, options } = initialized;
+  rewriteProtocolState(root, options.dir, (state) => {
+    const initialization = { ...state.initialization };
+    delete initialization.claimProvenance;
+    return { ...state, initialization };
+  });
+  assert.equal(api.statusProtocol({ cwd: root, dir: options.dir }).integrity.ok, true);
+  assert.throws(
+    () =>
+      api.claimTurn({
+        cwd: root,
+        dir: options.dir,
+        actor: options.owner,
+        ...profiledSession('owner'),
+      }),
+    /co-review:provenance-profile-required/
+  );
+  assert.throws(() => api.initializeProtocol(options), /co-review:provenance-profile-required/);
+
+  rewriteProtocolState(root, options.dir, (state) => ({
+    ...state,
+    turnState: 'claimed',
+    claim: {
+      role: 'owner',
+      actor: options.owner,
+      pid: 1,
+      host: 'legacy-host',
+      at: state.updatedAt,
+    },
+  }));
+  assert.throws(
+    () =>
+      api.handoffOwner({
+        cwd: root,
+        dir: options.dir,
+        actor: options.owner,
+        ...profiledSession('owner'),
+      }),
+    /co-review:provenance-profile-required/
+  );
+});
+
+test('imported initialization records explicit unclaimed provenance', async () => {
+  const { state, root, options } = await initializedProtocol({ imported: true });
+  assert.equal(state.initialization.claimProvenance, 'provider-session/v1');
+  assert.deepEqual(state.lastHandoff.provenance, { mode: 'imported-unclaimed/v1' });
+  assert.equal('claim' in state.lastHandoff, false);
+  const event = readEvents(root, options.dir).at(-1);
+  assert.deepEqual(event.handoff.provenance, { mode: 'imported-unclaimed/v1' });
+});
+
+test('an already-accepted profile-less runtime remains finalizable', async () => {
+  const fixture = await reviewerTurn({ maxReviewTurns: 1 });
+  const { api, root, options, commit } = fixture;
+  const review = `${options.dir}/legacy-final-review.md`;
+  writeFileSync(path.join(root, review), '# Review\n\nAccepted.\n');
+  api.profiledHandoffReviewer({
+    cwd: root,
+    dir: options.dir,
+    actor: options.reviewer,
+    review,
+    reviewOf: commit,
+    decision: 'accepted',
+    message: 'accepted',
+  });
+  rewriteProtocolState(root, options.dir, (state) => {
+    const initialization = { ...state.initialization };
+    delete initialization.claimProvenance;
+    return { ...state, initialization };
+  });
+  assert.equal(api.statusProtocol({ cwd: root, dir: options.dir }).integrity.ok, true);
+  assert.doesNotThrow(() => api.validatedArchiveSnapshot({ cwd: root, dir: options.dir }));
+  const finalized = await runCliDirect(
+    ['finalize', '--dir', options.dir, '--archive-dir', 'docs/reviews/legacy', '--json'],
+    { cwd: root, repository: fixture.repository }
+  );
+  assert.equal(finalized.status, 0, finalized.stderr);
 });

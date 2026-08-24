@@ -17,6 +17,24 @@ import { isDeepStrictEqual } from 'node:util';
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
 const PROTOCOL_SCHEMA = 'aitm.co-review/v1';
+const CLAIM_PROVENANCE_PROFILE = 'provider-session/v1';
+
+function validClaimReference(claim, role) {
+  return Boolean(
+    claim &&
+    claim.role === role &&
+    Number.isInteger(claim.revision) &&
+    claim.revision >= 1 &&
+    typeof claim.actor === 'string' &&
+    claim.actor.trim() &&
+    typeof claim.provider === 'string' &&
+    claim.provider.trim() &&
+    typeof claim.sid === 'string' &&
+    claim.sid.trim() &&
+    typeof claim.at === 'string' &&
+    !Number.isNaN(Date.parse(claim.at))
+  );
+}
 
 function fail(code, detail) {
   const error = new Error(`co-review:${code}:${detail}; no state changed`);
@@ -259,6 +277,20 @@ function validateOptionalRecovery(recovery, { manifest, destination }) {
 
 function validateForeignRelationships(manifest, destination) {
   requireForeign(manifest.protocol.schema === PROTOCOL_SCHEMA, 'protocol schema');
+  const profiled = manifest.protocol.claimProvenance === CLAIM_PROVENANCE_PROFILE;
+  requireForeign(
+    manifest.protocol.claimProvenance === undefined || profiled,
+    'claim provenance profile'
+  );
+  if (!profiled) {
+    requireForeign(
+      manifest.evidence.ownerResponse.claim === undefined &&
+        manifest.evidence.ownerResponse.handoffRevision === undefined &&
+        manifest.evidence.reviewerReview.claim === undefined &&
+        manifest.evidence.reviewerReview.handoffRevision === undefined,
+      'legacy claim provenance absence'
+    );
+  }
   requireForeign(
     manifest.participants.owner !== manifest.participants.reviewer,
     'distinct participants'
@@ -271,6 +303,34 @@ function validateForeignRelationships(manifest, destination) {
     manifest.evidence.reviewerReview.identity === manifest.participants.reviewer,
     'reviewer evidence identity'
   );
+  if (profiled) {
+    requireForeign(
+      validClaimReference(manifest.evidence.ownerResponse.claim, 'owner'),
+      'owner evidence claim'
+    );
+    requireForeign(
+      validClaimReference(manifest.evidence.reviewerReview.claim, 'reviewer'),
+      'reviewer evidence claim'
+    );
+    requireForeign(
+      manifest.evidence.ownerResponse.claim.actor === manifest.participants.owner,
+      'owner claim identity'
+    );
+    requireForeign(
+      manifest.evidence.reviewerReview.claim.actor === manifest.participants.reviewer,
+      'reviewer claim identity'
+    );
+    for (const [label, evidence] of [
+      ['owner', manifest.evidence.ownerResponse],
+      ['reviewer', manifest.evidence.reviewerReview],
+    ]) {
+      requireForeign(
+        Number.isInteger(evidence.handoffRevision) &&
+          evidence.handoffRevision > evidence.claim.revision,
+        `${label} handoff revision`
+      );
+    }
+  }
   if (manifest.decision.basis === 'reviewer-consensus') {
     requireForeign(
       manifest.decision.reviewer === manifest.participants.reviewer,
@@ -610,6 +670,16 @@ function terminalEvidence(state, events) {
   if (owner.event.at !== ownerHandoff.at || reviewer.event.at !== reviewerHandoff.at) {
     fail('archive-evidence', 'terminal evidence timestamps');
   }
+  if (state.initialization?.claimProvenance === CLAIM_PROVENANCE_PROFILE) {
+    if (
+      !validClaimReference(ownerHandoff.claim, 'owner') ||
+      !validClaimReference(reviewerHandoff.claim, 'reviewer') ||
+      ownerHandoff.claim.actor !== state.roles.owner ||
+      reviewerHandoff.claim.actor !== state.roles.reviewer
+    ) {
+      fail('archive-evidence', 'terminal claim provenance');
+    }
+  }
   if (
     !Number.isInteger(owner.event.round) ||
     owner.event.round < 1 ||
@@ -659,6 +729,14 @@ function terminalEvidence(state, events) {
     artifact: ownerHandoff.artifact,
     response: ownerHandoff.artifacts.response,
     review: reviewerHandoff.artifacts.review,
+    ownerClaim:
+      state.initialization?.claimProvenance === CLAIM_PROVENANCE_PROFILE
+        ? ownerHandoff.claim
+        : undefined,
+    reviewerClaim:
+      state.initialization?.claimProvenance === CLAIM_PROVENANCE_PROFILE
+        ? reviewerHandoff.claim
+        : undefined,
     pairRound: Math.max(owner.event.round, reviewer.event.round),
   };
 }
@@ -803,6 +881,9 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       protocol: {
         id: state.protocolId,
         schema: state.schema,
+        ...(state.initialization?.claimProvenance
+          ? { claimProvenance: state.initialization.claimProvenance }
+          : {}),
       },
       artifact: artifactManifest(artifact, mode, artifactFile),
       participants: {
@@ -820,6 +901,9 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
         ownerResponse: {
           identity: state.roles.owner,
           eventRound: evidence.ownerEvent.round,
+          ...(evidence.ownerClaim
+            ? { claim: evidence.ownerClaim, handoffRevision: evidence.ownerEvent.revision }
+            : {}),
           sourcePath: response.path,
           sourceSha256: response.sha256,
           archivePath: responseFile.path,
@@ -828,6 +912,9 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
         reviewerReview: {
           identity: state.roles.reviewer,
           eventRound: evidence.reviewerEvent.round,
+          ...(evidence.reviewerClaim
+            ? { claim: evidence.reviewerClaim, handoffRevision: evidence.reviewerEvent.revision }
+            : {}),
           sourcePath: review.path,
           sourceSha256: review.sha256,
           archivePath: reviewFile.path,
@@ -1012,6 +1099,35 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   }
   if (prepared.manifest.protocol?.id !== prepared.protocolId) {
     fail('archive-prepared-integrity', 'protocol identity');
+  }
+  const claimProfile = prepared.manifest.protocol?.claimProvenance;
+  if (claimProfile !== undefined && claimProfile !== CLAIM_PROVENANCE_PROFILE) {
+    fail('archive-prepared-integrity', 'claim provenance profile');
+  }
+  if (
+    claimProfile === undefined &&
+    (prepared.manifest.evidence?.ownerResponse?.claim !== undefined ||
+      prepared.manifest.evidence?.ownerResponse?.handoffRevision !== undefined ||
+      prepared.manifest.evidence?.reviewerReview?.claim !== undefined ||
+      prepared.manifest.evidence?.reviewerReview?.handoffRevision !== undefined)
+  ) {
+    fail('archive-prepared-integrity', 'legacy claim provenance absence');
+  }
+  if (claimProfile === CLAIM_PROVENANCE_PROFILE) {
+    const ownerEvidence = prepared.manifest.evidence?.ownerResponse;
+    const reviewerEvidence = prepared.manifest.evidence?.reviewerReview;
+    if (
+      !validClaimReference(ownerEvidence?.claim, 'owner') ||
+      !validClaimReference(reviewerEvidence?.claim, 'reviewer') ||
+      ownerEvidence.claim.actor !== prepared.manifest.participants?.owner ||
+      reviewerEvidence.claim.actor !== prepared.manifest.participants?.reviewer ||
+      !Number.isInteger(ownerEvidence.handoffRevision) ||
+      ownerEvidence.handoffRevision <= ownerEvidence.claim.revision ||
+      !Number.isInteger(reviewerEvidence.handoffRevision) ||
+      reviewerEvidence.handoffRevision <= reviewerEvidence.claim.revision
+    ) {
+      fail('archive-prepared-integrity', 'claim evidence');
+    }
   }
   if (Boolean(prepared.manifest.recovery) !== Boolean(prepared.recoveryAuthorization)) {
     fail('archive-prepared-integrity', 'recovery authorization shape');

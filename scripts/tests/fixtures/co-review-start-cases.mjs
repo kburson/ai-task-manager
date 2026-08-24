@@ -402,6 +402,8 @@ test('flagged start records every numeric override in state and startup metadata
   );
   assert.equal(state.maxReviewTurns, 4);
   assert.equal(manifest.maxReviewTurns, 4);
+  assert.equal(state.initialization.claimProvenance, 'provider-session/v1');
+  assert.equal(manifest.initialization.claimProvenance, 'provider-session/v1');
   assert.equal(manifest.waitCycles, 7);
   assert.equal(manifest.waitIntervalSeconds, 12);
   assert.equal(state.initialization.archiveDir, 'docs/superpowers/reviews/1272/plan');
