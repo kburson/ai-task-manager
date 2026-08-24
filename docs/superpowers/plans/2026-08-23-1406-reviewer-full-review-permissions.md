@@ -11,12 +11,14 @@
 SHA-bound orchestration and evidence protocol that permits deep review under
 ordinary repository safeguards.
 
-**Architecture:** Protocol authority moves to canonical caller/runtime/worktree
-identity, exact commits, clean tracked state, and single-artifact commit deltas.
-The co-review-specific Bash and direct-write policy is deleted while ordinary
+**Architecture:** Protocol authority rests on canonical caller/runtime/worktree
+identity, exact commits, clean tracked state, single-artifact commit deltas, and
+provider-native session provenance embedded in every claimed turn. The
+co-review-specific Bash and direct-write policy is deleted while ordinary
 guards retain their existing decisions; generated handoffs and operator guides
 describe cooperative roles and bounded polling. Real-Git, memory-boundary,
-installed-hook-chain, and full A-to-B relay tests prove the resulting boundary.
+installed-hook-chain, provenance-envelope, and full A-to-B relay tests prove the
+resulting boundary.
 
 **Tech Stack:** Node.js ES modules, `node:test`, Git subprocesses through
 `execFileSync`, JSONL protocol state, Claude/Codex/Grok installed hook fixtures,
@@ -24,7 +26,46 @@ Markdown documentation, markdownlint-cli2, CSpell, Prettier, ESLint.
 
 **Reference specification:**
 `docs/superpowers/specs/2026-08-23-1406-reviewer-full-review-permissions-design.md`
-at commit `67903c3c`.
+at independently accepted commit `218e5cc16d93cf204568930e5d4a84146764aada`.
+
+**Execution state:** Tasks 1 through 4 and the Task 2 replay amendment are
+complete at the commits recorded below. Task 5 is the newly discovered
+provider/session provenance implementation. Tasks 6 through 8 are the revised
+acceptance, authority-metadata, and final-verification sequence.
+
+**Focused execution forecast:** 17 hours for the amended eight-task plan. The
+governed issue remains frozen at Size XL and 32 human hours; this plan does not
+rewrite either field or the historical forecast record.
+
+## Amendment Discovery Evidence
+
+- The first four implementation checkpoints are durable and independently
+  reviewed: one-worktree authority `b57c04c3`, clean/artifact-only handoffs
+  `de5fcdd6`, capability-policy retirement `0fb856d5`, and relay guidance
+  `6bc346cc` plus `623ec40b`.
+- The first Task 6 attempt found immediate owner and terminal reviewer handoff
+  replay was not idempotent. The repair and refusal-semantics correction landed
+  in the owning protocol task at `079d1125` and `495c0496`; the covering suite
+  passed 203/203 before the acceptance task resumed.
+- The resumed acceptance baseline passed 93/93. A carrier audit then proved the
+  second gap before any acceptance-test edit: `co-review.mjs` resolves and
+  publishes provider/session only for reviewer claims; `index.mjs` stores only
+  reviewer `claimedProvider`/`claimedSid`; protocol claims contain only
+  role/actor/process/host/time; and start/terminal manifests cannot bind owner
+  evidence to the session that produced it.
+- Occupancy and task-session records cannot substitute for protocol evidence:
+  occupancy is one operational row per issue, while task session references do
+  not bind both co-review roles to their evidence handoffs. Encoding a session
+  in the freely configured actor string would be fabricated provenance.
+- A boolean-only probe confirmed this Codex tool environment exports at least
+  one of `CODEX_THREAD_ID` or `CODEX_SESSION_ID`; the independent Claude review
+  confirmed `CLAUDE_CODE_SESSION_ID` in its session. No session value was
+  printed or persisted. The two-session acceptance is operationally reachable.
+- Independent Claude Opus 5 review accepted the amended specification at
+  `218e5cc1`. Its non-blocking D1 observation identified the exported
+  `sessionIdEnvKeys()` helper as a mis-implementation trap because it calls
+  `detectProvider`, prepends the orchestrator key, and flattens provider
+  attribution. Task 5 prohibits that helper explicitly.
 
 ## Global Constraints
 
@@ -44,88 +85,68 @@ at commit `67903c3c`.
   path; do not duplicate that mechanism.
 - Claims establish role/provenance only. They must not alter Bash, Edit, Write,
   NotebookEdit, or apply_patch outcomes.
+- New runtimes use the additive `provider-session/v1` provenance profile.
+  Every real claim resolves provider and `sid` together from exactly one
+  adapter's provider-native session keys, persists that pair in the claim and
+  handoff, and carries it into selected terminal evidence.
+- The profiled resolver enumerates adapters directly through `listProviders()`
+  and `getProvider(name).sessionIdEnvKeys`. It must not call
+  `detectProvider()`, `resolveSessionId()`, or the same-named
+  `sessionIdEnvKeys()` helper from `scripts/task-tracker/lib/session-id.mjs`;
+  consult `detectionEnvKeys`; accept `AI_TASK_MANAGER_SESSION_ID`; or use a
+  transcript/default fallback.
+- Native keys from no adapter refuse as required. Native keys from multiple
+  adapters, or conflicting values across one adapter's aliases, refuse as
+  ambiguous without printing session values.
+- Legacy runtimes remain readable and already-accepted legacy runtimes remain
+  available for finalization, but active profile-less runtimes cannot claim,
+  hand off, or be reinitialized into the profile.
 - Preserve ordinary dangerous-command, path-scope, active-task worktree,
   GitHub, AITM-path, commit-ownership, installed-guard, and activity-state
   behavior.
-- Preserve protocol and terminal archive schemas.
+- Preserve every version-1 envelope name. Provenance additions are the
+  accepted additive profile, not a schema-version rename.
 - Exit 4 means durable acceptance with archive publication pending. Never
   repeat the terminal handoff; use the exact printed finalize retry.
 - Terminal archive publication is post-acceptance and outside pre-handoff
   tracked-state checks.
 - Do not hot-patch or reuse the active #1381 constrained runtime.
-- Record deferred convergence concerns only in #1381; do not create one
-  successor defect per guard failure.
+- #1381 is the convergence ancestor and #1406 is the first and final defect hop
+  for this concern. Do not create a successor defect from #1406. Repair an
+  in-scope failure in its owning task; record a genuinely deferred convergence
+  observation only in #1381. If progress would require another defect hop,
+  stop and report that this implementation plan is flawed.
 - Use test-driven development: observe each focused test fail for the intended
   reason before implementing its production change.
 
-## Plan-Review Exit Gate
+## Develop-Stage Amendment Gate
 
-This gate runs after this plan receives independent review acceptance and
-before `/task plan-approve #1406`; it is not an implementation task.
+The original Plan-review exit gate completed before Develop. Its human
+Plan-approval marker and frozen forecast record remain historical authority and
+must not be overwritten, generalized, or replayed. There is no sanctioned
+Develop-to-Plan rollback and no new `/task plan-approve` call in this amendment.
 
-- [ ] Record the independently accepted plan commit. Pause #1406, then return
-      to #1381's recorded worktree
-      (`.worktrees/939-full-auto-merge`, branch
-      `codex/1381-governed-delivery-convergence-spec`) without touching its
-      ignored constrained co-review runtime.
-- [ ] Resume #1381 only long enough to update its body with the governed
-      `issue-body` verb and ignored operation file
-      `.tmp/gh/1381-convergence-operation.json`. Use one or more
-      `aitm.issue-body-operation/v1` named-section replacements
-      against the fresh body version. Add the accepted spec commit, accepted
-      plan commit, the canonical same-worktree A-to-B acceptance story, the
-      #1365/#1369 disposition, and every item under the specification's
-      `Deferred Convergence Concerns` section. Read the persisted body back,
-      verify the new body version and exact inserted text, then pause #1381.
-- [ ] Confirm #1381 remains the sole convergence and end-to-end acceptance
-      story; do not create individual successor issues for #1365, #1369, or
-      observed guard failures.
-- [ ] Before mutating #1406, obtain explicit human acknowledgment that replacing
-      its `Scope` and `Acceptance Criteria` will intentionally stale the current
-      `aitm-refinement-snapshot` and create a one-way lifecycle door. Forward
-      Plan approval and delivery remain available, but no current governed verb
-      can then cancel or shelve #1406, return it to Refine, or mint a refreshed
-      snapshot. Do not rewrite the snapshot marker, bypass marker protection, or
-      claim that a rollback path exists. If the human does not accept that loss
-      of governed backward recovery, stop before hydrating #1406 and replan the
-      hydration mechanism.
-- [ ] Return to this #1406 worktree and resume #1406. Its current issue body
-      still describes the superseded Bash-only/direct-write-confinement model.
-      Replace its `User Story`, `Scope`, `Fix Direction`, `Out of Scope`,
-      `Plan Metadata`, `Acceptance Criteria`, and `Verification Commands`
-      sections through governed `/task issue-body` operations so they match the
-      accepted specification and plan. Preserve every AITM marker and lifecycle
-      section; read back and verify each persisted body version.
-- [ ] Keep the six existing `<!-- aitm-verified vc-list="..." -->` markers
-      byte-for-byte and in their existing order while rewriting the surrounding
-      six acceptance-criterion labels. Keep Verification Command IDs 1 through
-      8 stable and replace the commands behind those IDs in place; remove only
-      uncited ID 9. This satisfies the `issue-body` verb's protected-marker
-      invariant without marker-loss permission, renumbering, or fabricated
-      evidence. Do not add or delete an `aitm-*` marker in these operations.
-- [ ] Map the stable VC IDs as follows: ID 1 runs focused protocol/repository
-      boundary tests; ID 2 runs the installed-chain and A-to-B integration; ID
-      3 runs ordinary guard-invariance tests; ID 4 runs generated-handoff,
-      provider-guidance, Markdown, and spelling checks; IDs 5 and 6 run the fast
-      and slow suites; ID 7 runs lint; and ID 8 runs formatting. Replace the
-      stale deleted-test command at ID 1 and the nonexistent
-      `npm run lint:docs` command at ID 4.
-- [ ] The six hydrated #1406 acceptance criteria collectively cover: normal
-      tool outcomes independent of a live claim; one canonical physical
-      worktree; clean tracked state at both handoffs; artifact-only A-to-B
-      commit scope;
-      exact-HEAD import; immutable-SHA stale-decision refusal; ordinary-guard
-      preservation; installed-hook capability parity; same-worktree
-      A-to-B relay; idempotent terminal acceptance and exit-4 finalization;
-      operator guidance; and full quality gates.
-- [ ] Declare runnable verifier commands for every demonstrable #1406
-      criterion, including the focused protocol/guard tests, installed-chain
-      integration, documentation checks, fast suite, slow suite, lint, and
-      formatting. Verify every preserved `vc-list` resolves to the intended
-      stable IDs before plan approval.
-- [ ] Invoke `/task plan-approve #1406` only after both issue-body updates are
-      durable and independently checked. Do not implement, push, deliver,
-      merge, promote, approve, or close as part of this gate.
+- [x] Preserve #1381 as the sole convergence story and keep its constrained
+      runtime untouched.
+- [x] Preserve the completed #1406 issue-body hydration, stable verification
+      command IDs, visible decomposition waiver, and human approval marker.
+- [x] Record the discovery that the original acceptance task could not bind
+      owner evidence to an authoritative provider/session and stop before
+      fabricating coverage or creating a successor defect.
+- [x] Revise and independently review the governing specification. Accepted
+      authority is commit `218e5cc16d93cf204568930e5d4a84146764aada` with no
+      blocking findings.
+- [x] Obtain explicit human approval of those exact accepted specification
+      bytes before revising this plan.
+- [ ] Commit this revised plan, obtain independent plan review, and incorporate
+      every blocking correction before resuming implementation.
+- [ ] After plan acceptance, update only #1406's `Plan Metadata`, visible
+      decomposition-waiver checkpoint text, adaptive focused-duration text,
+      discovery narrative, and affected acceptance/verifier wording through a
+      governed issue-body operation. Preserve every lifecycle marker, frozen
+      XL/32h fields, existing Plan-approval marker, verification-command ID,
+      and unrelated section byte. Read the persisted body back and verify the
+      exact plan/spec commit mapping. Do not call `/task plan-approve` again.
 
 ---
 
@@ -133,6 +154,11 @@ before `/task plan-approve #1406`; it is not an implementation task.
 
 ### New files
 
+- `scripts/review/lib/provider-session.mjs` — profiled co-review resolver that
+  selects one provider/session pair directly from adapter-native keys.
+- `scripts/tests/unit/review/co-review-provider-session.test.mjs` — one
+  table-driven resolver contract covering success, required, and ambiguous
+  environments without exposing session values.
 - `scripts/task-tracker/lib/apply-patch-targets.mjs` — ordinary apply_patch
   multi-target parser relocated out of the retired co-review module.
 - `scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs` — focused
@@ -144,6 +170,8 @@ before `/task plan-approve #1406`; it is not an implementation task.
 
 ### Production files modified
 
+- `scripts/review/co-review.mjs`
+- `scripts/review/lib/archive.mjs`
 - `scripts/review/lib/runtime-root.mjs`
 - `scripts/review/lib/repository-boundary.mjs`
 - `scripts/review/lib/protocol.mjs`
@@ -188,6 +216,10 @@ before `/task plan-approve #1406`; it is not an implementation task.
 
 ### Task 1: Enforce One Physical Worktree for Every Protocol Command
 
+**Status: COMPLETE.** Implemented and verified at
+`b57c04c388f8323829a7fbc928f7aea61ceb70f8`. The steps below are the preserved
+execution record and must not be rerun as new work.
+
 **Files:**
 
 - Modify: `scripts/review/lib/runtime-root.mjs`
@@ -206,7 +238,7 @@ repository)`.
 - Produces: imported review initialization refusal unless
   `importedCommit === repository.identity(root).head`.
 
-- [ ] **Step 1: Replace the linked-worktree success test with failing
+- [x] **Step 1: Replace the linked-worktree success test with failing
       one-worktree cases**
 
 In `scripts/tests/slow/review/co-review-boundaries.test.mjs`, replace
@@ -285,7 +317,7 @@ creating the symlink. Keep its existing refusal assertion unchanged.
 The repository-local `temporaryRoot()` climbs to the host worktree under Git
 root discovery and cannot exercise the `not-a-repository` fallback.
 
-- [ ] **Step 2: Add the imported-review strict-ancestor regression**
+- [x] **Step 2: Add the imported-review strict-ancestor regression**
 
 Extend `scripts/tests/fixtures/co-review-handoff-cases.mjs` with a real or memory
 fixture that creates commit A, advances `HEAD` to B without changing the
@@ -305,7 +337,7 @@ assert.throws(
 
 Also retain a positive exact-HEAD import assertion.
 
-- [ ] **Step 3: Run the focused tests and confirm the intended failures**
+- [x] **Step 3: Run the focused tests and confirm the intended failures**
 
 Run:
 
@@ -318,7 +350,7 @@ node --test \
 Expected: FAIL because sibling/nested runtime calls still succeed and ancestor
 imports remain accepted.
 
-- [ ] **Step 4: Implement nearest-existing-ancestor root resolution**
+- [x] **Step 4: Implement nearest-existing-ancestor root resolution**
 
 In `scripts/review/lib/runtime-root.mjs`, replace common-directory acceptance
 with a resolver shaped as follows:
@@ -374,7 +406,7 @@ than being mislabeled as a repository-identity failure. Retain a separate
 repository-local symlink case, if useful, with the expected
 `repository-identity` result; do not conflate the two topologies.
 
-- [ ] **Step 5: Route initialization through the same boundary and reject
+- [x] **Step 5: Route initialization through the same boundary and reject
       ancestor imports**
 
 In `initializeProtocol()`:
@@ -394,7 +426,7 @@ if (importedCommit !== identity.head) {
 
 Keep `assertCommitArtifact()` after the exact-HEAD check for blob validation.
 
-- [ ] **Step 6: Run focused boundary and protocol tests**
+- [x] **Step 6: Run focused boundary and protocol tests**
 
 Run:
 
@@ -408,7 +440,7 @@ Expected: PASS; absolute and relative foreign-worktree shapes fail before
 mutation, the symlink escape preserves its path-containment diagnostic, and
 exact-HEAD imports pass.
 
-- [ ] **Step 7: Commit the protocol-root boundary**
+- [x] **Step 7: Commit the protocol-root boundary**
 
 ```bash
 git add \
@@ -423,6 +455,14 @@ git commit -m "[#1406] Enforce one-worktree co-review roots"
 ---
 
 ### Task 2: Enforce Clean Tracked State and Single-Artifact Deltas
+
+**Status: COMPLETE, INCLUDING ROUTED REPLAY AMENDMENT.** The planned boundary
+landed at `de5fcdd68b70eb73819c2803cbb4ac9cfd6098d5`. Task 6 discovery routed the
+missing exact-handoff replay behavior back to this owning protocol task; the
+minimal implementation and review correction landed at
+`079d11256814af1436dd5ccd6509ac03aa17a0b0` and
+`495c04963c930efe2f75f21d0f1e3c0818d6c0bc`. The steps below are historical;
+do not recreate their RED receipts or replay fixes.
 
 **Files:**
 
@@ -442,7 +482,7 @@ git commit -m "[#1406] Enforce one-worktree co-review roots"
 - Consumes: existing `state.artifact.commit`, proposed owner commit, and
   `state.artifact.path`.
 
-- [ ] **Step 1: Add failing real-boundary and memory-boundary contract tests**
+- [x] **Step 1: Add failing real-boundary and memory-boundary contract tests**
 
 Add the real-Git assertions only to
 `scripts/tests/slow/review/co-review-boundaries.test.mjs`, alongside its
@@ -469,7 +509,7 @@ through `fixture.repository` and preserve:
 assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
 ```
 
-- [ ] **Step 2: Add failing handoff regressions**
+- [x] **Step 2: Add failing handoff regressions**
 
 Add table-driven cases that prove both owner and reviewer handoffs refuse:
 
@@ -502,7 +542,7 @@ expect:
 Add the positive case where only `docs/artifact.md` changes and ignored runtime
 files exist.
 
-- [ ] **Step 3: Run focused tests and confirm they fail before implementation**
+- [x] **Step 3: Run focused tests and confirm they fail before implementation**
 
 Run:
 
@@ -516,7 +556,7 @@ node --test \
 Expected: FAIL because the repository interfaces and handoff checks do not
 exist.
 
-- [ ] **Step 4: Add the real repository operations**
+- [x] **Step 4: Add the real repository operations**
 
 In `createRealRepositoryBoundary()`:
 
@@ -537,7 +577,7 @@ The staged and unstaged name-only union deliberately ignores untracked files
 and returns normalized Git paths for modifications, additions, deletions,
 renames, copies, type changes, and conflicts.
 
-- [ ] **Step 5: Add matching zero-subprocess memory operations**
+- [x] **Step 5: Add matching zero-subprocess memory operations**
 
 Track committed snapshots, index, and worktree state already held by
 `createMemoryRepository()`. Implement:
@@ -555,7 +595,7 @@ changedPathsBetween(_root, from, to) {
 Add a fixture helper for committing an additional tracked path so the
 artifact-only negative case does not use real Git.
 
-- [ ] **Step 6: Enforce the checks at owner and reviewer handoff**
+- [x] **Step 6: Enforce the checks at owner and reviewer handoff**
 
 Add focused helpers in `protocol.mjs`:
 
@@ -588,14 +628,14 @@ In owner handoff, call `assertArtifactOnlyDelta()` after resolving the proposed
 commit but before state mutation. Do not run these checks during terminal
 archive publication.
 
-- [ ] **Step 7: Run the focused boundary and handoff tests**
+- [x] **Step 7: Run the focused boundary and handoff tests**
 
 Run the Step 3 command again.
 
 Expected: PASS, including ignored runtime evidence, dirty tracked-state
 refusals, single-artifact success, and the zero-subprocess fixture assertion.
 
-- [ ] **Step 8: Commit repository cleanliness authority**
+- [x] **Step 8: Commit repository cleanliness authority**
 
 ```bash
 git add \
@@ -611,6 +651,11 @@ git commit -m "[#1406] Enforce clean single-artifact handoffs"
 ---
 
 ### Task 3: Retire Co-Review Capability Policing Without Losing Ordinary Guards
+
+**Status: COMPLETE.** Implemented and verified at
+`0fb856d5d9df640f26f695a5d33a83c37bb5aaad`. The steps below are the preserved
+execution record. Packaging and corpus follow-through remains owned by revised
+Task 7.
 
 **Files:**
 
@@ -642,7 +687,7 @@ git commit -m "[#1406] Enforce clean single-artifact handoffs"
 - Preserves: private claim liveness reached through
   `allowsCoReviewOccupancy()`.
 
-- [ ] **Step 1: Split parser tests into their future focused file**
+- [x] **Step 1: Split parser tests into their future focused file**
 
 Move only the apply_patch cases from
 `co-review-write-policy.test.mjs` into the new test:
@@ -669,7 +714,7 @@ test('rejects malformed apply_patch input or input with no destination', () => {
 });
 ```
 
-- [ ] **Step 2: Add claim-invariance regression cases before deletion**
+- [x] **Step 2: Add claim-invariance regression cases before deletion**
 
 In the activity/source-edit tests, run representative Bash, Edit, Write,
 NotebookEdit, and apply_patch payloads with no reviewer claim and with a live
@@ -695,7 +740,7 @@ configured Bash guard with the claim:
 Assert the desired success outcome only; do not embed the old refusal text in
 the test source.
 
-- [ ] **Step 3: Run the focused tests and record red behavior**
+- [x] **Step 3: Run the focused tests and record red behavior**
 
 Run:
 
@@ -716,14 +761,14 @@ installed-chain red receipt without copying the literal into the test file.
 The second command FAILS because the new parser module is absent and live
 claims still change tool outcomes.
 
-- [ ] **Step 4: Relocate the apply_patch parser**
+- [x] **Step 4: Relocate the apply_patch parser**
 
 Move `MutationParseError` and `extractApplyPatchTargets()` byte-for-byte into
 `apply-patch-targets.mjs`. Update `activity-guard.mjs` and
 `source-edit-gate.mjs` imports. Preserve apply_patch targets as ordinary
 `filePaths` for normal activity and source-edit classification.
 
-- [ ] **Step 5: Remove claim-aware decisions from all installed guards**
+- [x] **Step 5: Remove claim-aware decisions from all installed guards**
 
 From `activity-guard.mjs`, delete Bash target parsing, provider/session
 resolution, `evaluateCoReviewWrite()`, and its `deny`/`allow` branches. Do not
@@ -739,14 +784,14 @@ reviewer command classification, provider/session resolution, and co-review
 write evaluation. Do not add a co-review replacement classifier, early exit, or
 path-scope expansion.
 
-- [ ] **Step 6: Delete retired modules and narrow review-index exports**
+- [x] **Step 6: Delete retired modules and narrow review-index exports**
 
 Delete the three policy/classifier modules and two obsolete focused test files.
 Remove public `resolveReviewerGrant()` and `hasLiveReviewerClaim()` from
 `scripts/review/lib/index.mjs`. Remove their unit tests while retaining the
 `allowsCoReviewOccupancy()` cases that prove private liveness still works.
 
-- [ ] **Step 7: Run focused guard and index tests**
+- [x] **Step 7: Run focused guard and index tests**
 
 Run the Step 3 command plus:
 
@@ -761,7 +806,7 @@ Expected: PASS. No production guard contains
 `reviewer mutation destinations are incomplete or ambiguous`, and ordinary
 negative cases remain refused.
 
-- [ ] **Step 8: Commit capability-policy retirement**
+- [x] **Step 8: Commit capability-policy retirement**
 
 ```bash
 git add -A -- \
@@ -790,6 +835,11 @@ Before committing, inspect `git diff --cached --name-status` and verify that
 
 ### Task 4: Update Generated Relay Instructions and Operator Guidance
 
+**Status: COMPLETE.** Implemented and verified at
+`6bc346ccc506dc3690f78392a311a58f1b4f0bd4`, with the independent reviewer-scope
+clarification at `623ec40ba4aeb818c3f0595b1d1478b8d919af53`. The steps below are
+the preserved execution record.
+
 **Files:**
 
 - Modify: `scripts/review/lib/start.mjs`
@@ -807,7 +857,7 @@ Before committing, inspect `git diff --cached --name-status` and verify that
   cooperative role restrictions, one-worktree authority, direct runtime-file
   relay, and exit 4 finalization.
 
-- [ ] **Step 1: Replace stale handoff expectations with failing accepted-model
+- [x] **Step 1: Replace stale handoff expectations with failing accepted-model
       expectations**
 
 In `co-review-start-cases.mjs`, remove all five stale reviewer-policy
@@ -834,7 +884,7 @@ between operational routing and human semantic approval. Retain assertions for
 exact status/claim/wait/handoff commands, authoritative evidence paths, and
 remaining turn/wait budgets.
 
-- [ ] **Step 2: Update documentation coverage tests first**
+- [x] **Step 2: Update documentation coverage tests first**
 
 In `coverage-provider-adapter.test.mjs`, delete required-file assertions for the
 retired modules and replace `/pending review artifact/i` with assertions for:
@@ -846,7 +896,7 @@ assert.match(coordination, /normal repository.*capabilities/is);
 assert.doesNotMatch(coordination, /pending review artifact/i);
 ```
 
-- [ ] **Step 3: Run the focused tests and confirm stale guidance fails**
+- [x] **Step 3: Run the focused tests and confirm stale guidance fails**
 
 Run:
 
@@ -858,7 +908,7 @@ node --test \
 
 Expected: FAIL on the old restricted reviewer prose and pending-artifact docs.
 
-- [ ] **Step 4: Rewrite generated reviewer and owner guidance**
+- [x] **Step 4: Rewrite generated reviewer and owner guidance**
 
 In `renderReviewerHandoff()`, replace the capability paragraph with text that
 states:
@@ -879,7 +929,7 @@ status rather than expecting human-copied content. State that starting,
 routing, or continuing a session is not human semantic approval and does not
 create an approval marker.
 
-- [ ] **Step 5: Update both operator guides**
+- [x] **Step 5: Update both operator guides**
 
 Replace exact-pending-review-artifact capability language with the same four
 facts: normal capabilities, one canonical worktree, cooperative role
@@ -888,7 +938,7 @@ continuation, and automated handoffs do not create human semantic approval.
 Preserve unrelated Grok installation/session guidance and GitHub occupancy
 guidance.
 
-- [ ] **Step 6: Run focused handoff and documentation tests**
+- [x] **Step 6: Run focused handoff and documentation tests**
 
 Run the Step 3 command, then:
 
@@ -904,7 +954,7 @@ npx cspell --no-progress \
 Expected: all checks PASS and no current operator guidance describes claim-based
 tool confinement.
 
-- [ ] **Step 7: Commit generated and operator guidance**
+- [x] **Step 7: Commit generated and operator guidance**
 
 ```bash
 git add \
@@ -919,7 +969,291 @@ git commit -m "[#1406] Document SHA-bound co-review roles"
 
 ---
 
-### Task 5: Prove the Installed Hook Chain and Full A-to-B Relay
+### Task 5: Bind Every Claimed Turn to Provider-Native Session Provenance
+
+**Discovery owner:** This task owns the production gap that stopped the former
+Task 5 acceptance attempt. That attempt proved the installed-chain baseline and
+the routed replay fix green, then stopped before test edits because production
+persisted reviewer provider/session only. This is in-scope #1406 work, not a
+successor defect. If the interfaces below cannot carry the accepted design,
+stop and report the plan as flawed rather than creating another defect hop.
+
+**Files:**
+
+- Create: `scripts/review/lib/provider-session.mjs`
+- Create: `scripts/tests/unit/review/co-review-provider-session.test.mjs`
+- Modify: `scripts/review/co-review.mjs`
+- Modify: `scripts/review/lib/protocol.mjs`
+- Modify: `scripts/review/lib/index.mjs`
+- Modify: `scripts/review/lib/start.mjs`
+- Modify: `scripts/review/lib/archive.mjs`
+- Modify: `scripts/tests/fixtures/co-review-handoff-cases.mjs`
+- Modify: `scripts/tests/fixtures/co-review-start-cases.mjs`
+- Modify: `scripts/tests/fixtures/co-review-e2e-cases.mjs`
+- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/unit/review/co-review-index.test.mjs`
+- Modify: `scripts/tests/unit/review/co-review-finalization.test.mjs`
+- Modify: `scripts/tests/unit/providers/coverage-provider-adapter.test.mjs`
+
+**Interfaces:**
+
+- Produces `resolveProfiledProviderSession({ env, listProviders, getProvider })`,
+  returning `{ provider, sid }` only when exactly one adapter contributes one
+  unique non-empty native value.
+- Refuses no contributor with `co-review:provider-session-id-required` and
+  multiple contributors or conflicting same-adapter aliases with
+  `co-review:provider-session-id-ambiguous`. Ambiguity diagnostics may name
+  provider/key candidates but never session values.
+- Extends `claimTurn()` and both handoffs with required `provider` and `sid`
+  inputs for `provider-session/v1` runtimes.
+- Persists one exact claim record and immutable handoff claim reference carrying
+  revision, role, actor, provider, `sid`, process, host, and timestamp.
+- Publishes reviewer operational index state only after the authoritative
+  protocol claim and derives the index row from the returned claim.
+- Copies selected terminal evidence provenance only from each selected handoff
+  claim reference.
+
+- [ ] **Step 1: Add one table-driven native provider/session resolver test**
+
+Create `co-review-provider-session.test.mjs` with a table that supplies opaque
+fake values for the declared Claude, Codex, and Grok native keys and proves:
+
+```js
+[
+  [
+    'one Claude key',
+    { CLAUDE_CODE_SESSION_ID: 'claude-a' },
+    { provider: 'claude', sid: 'claude-a' },
+  ],
+  ['one Codex key', { CODEX_THREAD_ID: 'codex-a' }, { provider: 'codex', sid: 'codex-a' }],
+  ['one Grok key', { GROK_SESSION_ID: 'grok-a' }, { provider: 'grok', sid: 'grok-a' }],
+  [
+    'identical aliases',
+    { CODEX_THREAD_ID: 'codex-a', CODEX_SESSION_ID: 'codex-a' },
+    { provider: 'codex', sid: 'codex-a' },
+  ],
+];
+```
+
+Add negative rows for an empty environment; `AI_TASK_MANAGER_SESSION_ID` alone;
+`CODEX_HOME` or `GROK_AGENT` alone; native keys from two adapters; and different
+values across Claude's or Codex's aliases. Required and ambiguity assertions
+must compare the exact error code and prove that the diagnostic omits every
+opaque session value.
+
+Import only `listProviders` and `getProvider` from the provider registry. Add a
+source-level completion assertion or equivalent automated inspection proving
+the profiled resolver does not import or call `detectProvider()`,
+`resolveSessionId()`, or the exported `sessionIdEnvKeys()` helper from
+`scripts/task-tracker/lib/session-id.mjs`. That same-named helper is Claude
+finding D1: it calls `detectProvider`, prepends the orchestrator override, and
+flattens away adapter attribution. It is forbidden even though general
+task-tracker callers retain it.
+
+- [ ] **Step 2: Add failing provenance-profile and legacy tests**
+
+Extend the protocol/start fixtures so new initialization expects:
+
+```js
+state.initialization.claimProvenance === 'provider-session/v1';
+startManifest.initialization.claimProvenance === 'provider-session/v1';
+```
+
+Keep every version-1 envelope name. Add fixtures for a profile-less active
+runtime and an already-accepted profile-less runtime. Assert that status remains
+readable for both, already-accepted finalization remains available, and active
+legacy claim, handoff, and re-initialization refuse with
+`co-review:provenance-profile-required`. Re-initialization must refuse before
+the exact-JSON sameness path. Imported review initialization records the
+explicit `imported-unclaimed/v1` provenance mode without inventing a provider,
+`sid`, or claim reference and cannot supply selected terminal evidence.
+
+- [ ] **Step 3: Add failing claim, handoff, replay, and role-separation tests**
+
+For both roles, call `claimTurn()` with provider/session input and require the
+persisted `state.claim` and claim event to contain the exact record. Prove an
+identical actor/provider/session retry is idempotent and a different provider or
+`sid` receives `co-review:claim-conflict` with no byte change.
+
+Require each handoff to receive the same provider/session as the live claim and
+copy this immutable reference before clearing the claim:
+
+```js
+{
+  revision,
+  role,
+  actor,
+  provider,
+  sid,
+  at,
+}
+```
+
+A live or immediate replay call with another provider/session must receive
+`co-review:handoff-session-mismatch` before consuming evidence or returning
+replay success. Preserve the ordinary stale-replay refusal semantics established
+by `495c0496`; do not broaden the replay recognizer or translate unrelated
+`ProtocolError` diagnostics.
+
+At every real claim after a peer handoff, refuse equality with the opposite
+role's latest handoff pair using `co-review:session-role-conflict`. Prove each
+role may reuse its own persistent pair on later rounds. The first owner claim in
+a fresh runtime and after `imported-unclaimed/v1` has no comparison pair and
+must succeed; the rule first binds at the reviewer's first real claim.
+
+- [ ] **Step 4: Add failing post-claim index-publication tests**
+
+Drive the real CLI claim path and inject reviewer-index publication failure
+after the protocol claim is durable. Assert exit 1 with
+`co-review:index-publication-pending`, the exact retry command, one claim event,
+and unchanged authoritative protocol bytes on retry except for the repaired
+operational index.
+
+Change `recordReviewerClaim()` to an atomic upsert sourced from the returned
+protocol state and claim: register an absent row, repair a stale row with the
+same registration identity, then record the reviewer claim. An unreadable store
+or registration-identity conflict preserves suspect bytes and returns exit 1
+with `co-review:index-authority-conflict`; automatic retry is not represented as
+repair. Keep occupancy one-row-per-issue and reviewer-only. It is an operational
+sharing cache, not owner provenance authority.
+
+- [ ] **Step 5: Add failing start and archive provenance tests**
+
+Require state, event, handoff, start-manifest, prepared-archive, and
+terminal-archive validation to enforce the profile whenever it is present. The
+fresh A-to-B fixture must select owner response and reviewer review handoffs,
+then require the prepared and rendered terminal manifests to carry each exact
+claim reference alongside the existing actor, round, commit, blob, digest,
+decision, and path relationships.
+
+Delete or alter each provider/session/claim-reference field in turn and require
+a pre-preparation, pre-publication, and foreign-recovery refusal. Prove archive
+construction never re-resolves the current environment, reads configured actor
+strings as provenance, or consults the co-review/occupancy index. The sole
+source is the selected handoff event's claim reference.
+
+- [ ] **Step 6: Run the combined focused tests and record the intended RED**
+
+Run:
+
+```bash
+node --test \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs \
+  scripts/tests/unit/review/co-review-index.test.mjs \
+  scripts/tests/unit/review/co-review.test.mjs \
+  scripts/tests/unit/review/co-review-finalization.test.mjs \
+  scripts/tests/unit/providers/coverage-provider-adapter.test.mjs
+```
+
+Expected: FAIL because the focused resolver and provenance profile do not exist,
+claims/handoffs omit provider/session, reviewer-index publication precedes the
+authoritative claim, and archives source no handoff claim provenance. Record the
+distinct intended failures before editing production.
+
+- [ ] **Step 7: Implement the single profiled resolver**
+
+In `provider-session.mjs`, enumerate `listProviders()`, read each adapter through
+`getProvider(name)`, and collect its non-empty `sessionIdEnvKeys` values. Select
+one adapter only when it is the sole contributor and its values collapse to one
+unique string. Return `{ provider: adapter.name, sid }`.
+
+Do not infer an active provider first. Do not inspect `detectionEnvKeys`, apply
+registry priority, use an implicit Claude default, accept
+`AI_TASK_MANAGER_SESSION_ID`, or call any general session-id helper. Keep
+general task-tracker session resolution unchanged outside profiled co-review.
+
+- [ ] **Step 8: Implement the additive protocol profile and claim authority**
+
+Stamp `state.initialization.claimProvenance = 'provider-session/v1'` on every new
+runtime and copy it into the start manifest. Add profile-aware validators for
+state, events, both handoffs, and imported-unclaimed initialization without
+renaming any version-1 envelope.
+
+Extend `claimTurn()`, `handoffOwner()`, and `handoffReviewer()` with provider and
+`sid`. Persist the exact claim event, enforce idempotency/conflict and cross-role
+rules, and copy the claim reference into a successful handoff before clearing
+`state.claim`. Preserve mutex, integrity, canonical-root, ignored-runtime,
+clean-tracked-state, artifact-only, round, timer, budget, and evidence checks in
+their existing order unless the accepted specification explicitly requires the
+new provenance check earlier.
+
+- [ ] **Step 9: Route every profiled CLI claim and handoff through the resolver**
+
+In `co-review.mjs`, resolve provider/session for both owner and reviewer claims
+and both handoffs, then pass the pair into protocol functions. Delete the
+current reviewer-only `detectProvider()`/`resolveSessionId()` imports and the
+`FALLBACK_SESSION_ID` comparison. Their absence is a greppable completion
+condition.
+
+After a successful reviewer protocol claim, publish the reviewer operational
+index from the returned authoritative claim. Implement the retryable and
+terminal index diagnostics from Step 4 without rolling back or duplicating the
+protocol claim.
+
+- [ ] **Step 10: Build archive provenance from selected handoffs only**
+
+In `archive.mjs`, derive owner and reviewer evidence provenance from the claim
+reference embedded in each selected handoff event. Include the exact pair and
+claim identity in prepared and rendered manifests, validate it during normal
+inspection and foreign recovery, and reject environment/index/role-derived
+substitutes. Keep legacy archive reading behind its explicit profile-less path.
+
+- [ ] **Step 11: Run focused GREEN and targeted quality checks**
+
+Run the Step 6 command, then:
+
+```bash
+npx prettier --check \
+  scripts/review/co-review.mjs \
+  scripts/review/lib/provider-session.mjs \
+  scripts/review/lib/protocol.mjs \
+  scripts/review/lib/index.mjs \
+  scripts/review/lib/start.mjs \
+  scripts/review/lib/archive.mjs \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs
+npx eslint \
+  scripts/review/co-review.mjs \
+  scripts/review/lib/provider-session.mjs \
+  scripts/review/lib/protocol.mjs \
+  scripts/review/lib/index.mjs \
+  scripts/review/lib/start.mjs \
+  scripts/review/lib/archive.mjs \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs
+git diff --check
+```
+
+Expected: every focused test and targeted quality check passes. Search current
+production to confirm no profiled path calls the three forbidden helpers and no
+diagnostic or persisted file prints a session value.
+
+- [ ] **Step 12: Commit authoritative provider/session provenance**
+
+```bash
+git add \
+  scripts/review/co-review.mjs \
+  scripts/review/lib/provider-session.mjs \
+  scripts/review/lib/protocol.mjs \
+  scripts/review/lib/index.mjs \
+  scripts/review/lib/start.mjs \
+  scripts/review/lib/archive.mjs \
+  scripts/tests/fixtures/co-review-handoff-cases.mjs \
+  scripts/tests/fixtures/co-review-start-cases.mjs \
+  scripts/tests/fixtures/co-review-e2e-cases.mjs \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs \
+  scripts/tests/unit/review/co-review.test.mjs \
+  scripts/tests/unit/review/co-review-index.test.mjs \
+  scripts/tests/unit/review/co-review-finalization.test.mjs \
+  scripts/tests/unit/providers/coverage-provider-adapter.test.mjs
+git commit -m "[#1406] Bind co-review evidence to provider sessions"
+```
+
+Inspect the staged name-status list before committing. No
+`session-id.mjs`/provider-adapter behavior, schema-version rename, issue body,
+runtime evidence, #1381 file, or successor defect belongs in this commit.
+
+---
+
+### Task 6: Prove the Installed Hook Chain and Full A-to-B Relay
 
 **Files:**
 
@@ -933,9 +1267,11 @@ git commit -m "[#1406] Document SHA-bound co-review roles"
 **Interfaces:**
 
 - Consumes: installed Claude/Grok/Codex guard commands, co-review CLI, provider
-  and session environment, and a real temporary Git repository.
+  and session environment, profiled claim/handoff/archive envelopes, and a real
+  temporary Git repository.
 - Produces: end-to-end proof that a live claim changes no ordinary tool result,
-  owner lifecycle commands remain usable, A cannot approve B, and exit 4
+  owner lifecycle commands remain usable, every evidence-producing turn binds
+  to its distinct native provider/session, A cannot approve B, and exit 4
   recovery never repeats terminal handoff.
 
 - [ ] **Step 1: Extend the installed-chain harness across deep-review commands**
@@ -1010,15 +1346,25 @@ assert.throws(conflictingReuse, /co-review:/);
 ```
 
 Drive separate owner and reviewer provider/session identities against the same
-physical worktree and runtime. Simulate bounded waits with timeout 0/1 so the
-test stays deterministic; assert exit 3 timeout, exit 0 wake, every configured
-cycle record, final status plus the human-visible stall report at cycle
-exhaustion, and no unconfigured extra poll. Inject one integrity refusal and
-assert exactly one settled re-read before the episode stops.
+physical worktree and runtime. Launch each provider-scoped command environment
+with only that role's own provider-native session keys; explicitly unset the
+other adapters' native keys so a child-of-parent test launch does not inherit a
+second contributor and correctly fail as ambiguous. Do not unset ordinary
+non-session environment needed by the installer. Assert the persisted owner and
+reviewer claims name different providers and different `sid` values.
+
+Simulate bounded waits with timeout 0/1 so the test stays deterministic; assert
+exit 3 timeout, exit 0 wake, every configured cycle record, final status plus
+the human-visible stall report at cycle exhaustion, and no unconfigured extra
+poll. Inject one integrity refusal and assert exactly one settled re-read before
+the episode stops.
 
 After terminal acceptance, inspect status and the archive manifest and assert
 every artifact, response, review, actor, provider/session, round, decision,
-blob/digest, and commit relationship binds to the expected A or B evidence.
+blob/digest, claim-reference, and commit relationship binds to the expected A
+or B evidence. Re-run inspection and foreign-archive recovery under unrelated
+current environment values to prove the archive is handoff-sourced rather than
+re-derived.
 
 - [ ] **Step 5: Prove routing and continuation do not fabricate human
       approval**
@@ -1075,7 +1421,7 @@ git commit -m "[#1406] Prove full-capability co-review relay"
 
 ---
 
-### Task 6: Reconcile Packaging, Test Corpus, and Test-Impact Authority
+### Task 7: Reconcile Packaging, Test Corpus, and Test-Impact Authority
 
 **Files:**
 
@@ -1087,7 +1433,7 @@ git commit -m "[#1406] Prove full-capability co-review relay"
 
 **Interfaces:**
 
-- Consumes: final production/test file set from Tasks 1–5.
+- Consumes: final production/test file set from Tasks 1–6.
 - Produces: package assertions with no retired assets, exact corpus membership,
   and a source-to-test impact rule covering all load-bearing co-review changes.
 
@@ -1104,6 +1450,7 @@ Add:
 
 ```js
 'package/scripts/task-tracker/lib/apply-patch-targets.mjs',
+'package/scripts/review/lib/provider-session.mjs',
 'package/scripts/review/lib/runtime-root.mjs',
 'package/scripts/review/lib/repository-boundary.mjs',
 ```
@@ -1111,8 +1458,8 @@ Add:
 - [ ] **Step 2: Reconcile post-snapshot records**
 
 Delete records for the two deleted tests. Add schema-1 records for the new
-parser unit test and installed-chain integration test using their deterministic
-paths, for example:
+parser unit test, provider/session resolver unit test, and installed-chain
+integration test using their deterministic paths, for example:
 
 ```json
 {
@@ -1126,7 +1473,7 @@ Do not edit the frozen pre-move manifest.
 - [ ] **Step 3: Add the net-new test-impact rule**
 
 Append a rule shaped as follows, using only final paths that exist after Tasks
-1–5:
+1–6:
 
 ```json
 {
@@ -1135,6 +1482,8 @@ Append a rule shaped as follows, using only final paths that exist after Tasks
     "scripts/task-tracker/bash-guard.mjs",
     "scripts/task-tracker/source-edit-gate.mjs",
     "scripts/task-tracker/lib/apply-patch-targets.mjs",
+    "scripts/review/co-review.mjs",
+    "scripts/review/lib/provider-session.mjs",
     "scripts/review/lib/runtime-root.mjs",
     "scripts/review/lib/repository-boundary.mjs",
     "scripts/review/lib/protocol.mjs",
@@ -1147,11 +1496,13 @@ Append a rule shaped as follows, using only final paths that exist after Tasks
   "tests": [
     "scripts/tests/integration/task-tracker/lib/co-review-reviewer-capability.test.mjs",
     "scripts/tests/slow/review/co-review-boundaries.test.mjs",
+    "scripts/tests/unit/review/co-review-provider-session.test.mjs",
+    "scripts/tests/unit/review/co-review-index.test.mjs",
     "scripts/tests/unit/review/co-review.test.mjs",
     "scripts/tests/unit/review/co-review-finalization.test.mjs",
     "scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs"
   ],
-  "reason": "SHA-bound one-worktree co-review authority and installed guard behavior"
+  "reason": "SHA-bound one-worktree co-review authority, provider-session evidence, and installed guard behavior"
 }
 ```
 
@@ -1166,8 +1517,8 @@ node --test \
   scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
 ```
 
-Expected: PASS with no retired module/test reference and both new tests present
-in corpus authority.
+Expected: PASS with no retired module/test reference and all three new tests
+present in corpus authority.
 
 - [ ] **Step 5: Search current production, tests, and operator docs for stale
       policy references**
@@ -1178,11 +1529,16 @@ Run:
 rg -n \
   "co-review-write-policy|mutation-targets|reviewer-co-review-command|pending review artifact|reviewer mutation destinations are incomplete or ambiguous|Arbitrary Bash remains blocked" \
   scripts docs/guides
+rg -n \
+  "detectProvider|resolveSessionId|sessionIdEnvKeys\\(" \
+  scripts/review/co-review.mjs scripts/review/lib/provider-session.mjs
 ```
 
-Expected: no production, current-test, or current-guide match. Historical
-specifications, plans, and review evidence under `docs/superpowers/**` are
-excluded from this cleanup and remain immutable.
+Expected: neither search returns a match. There is no production,
+current-test, or current-guide stale policy reference and no forbidden general
+provider/session helper on the profiled CLI path. Historical specifications,
+plans, and review evidence under `docs/superpowers/**` are excluded from the
+policy cleanup and remain immutable.
 
 - [ ] **Step 6: Commit authority metadata reconciliation**
 
@@ -1200,7 +1556,7 @@ and deterministic membership records may appear.
 
 ---
 
-### Task 7: Run Full Verification and Prepare Fresh Official Acceptance
+### Task 8: Run Full Verification and Prepare Fresh Official Acceptance
 
 **Files:**
 
@@ -1211,7 +1567,7 @@ and deterministic membership records may appear.
 
 **Interfaces:**
 
-- Consumes: all commits from Tasks 1–6.
+- Consumes: all commits from Tasks 1–7.
 - Produces: complete focused/full-suite receipts and a fresh-runtime handoff for
   official A-to-B acceptance after integration.
 
@@ -1221,8 +1577,8 @@ Run:
 
 ```bash
 git status --short
-git diff --name-status 67903c3c..HEAD
-git diff --check 67903c3c..HEAD
+git diff --name-status c74408db033c2d50df8b25e9fcaf11dee46f579a..HEAD
+git diff --check c74408db033c2d50df8b25e9fcaf11dee46f579a..HEAD
 ```
 
 Expected: clean worktree; only planned production, test, fixture, guide, and
@@ -1240,6 +1596,7 @@ node --test \
   scripts/tests/unit/task-tracker/core/bash-guard-fail-closed.test.mjs \
   scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs \
   scripts/tests/unit/task-tracker/lib/bash-guard-worktree-binding.test.mjs \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs \
   scripts/tests/unit/review/co-review-index.test.mjs \
   scripts/tests/unit/review/co-review-fixture-cost.test.mjs \
   scripts/tests/unit/review/co-review.test.mjs \
@@ -1280,8 +1637,12 @@ rg -n \
   scripts docs/guides
 ```
 
-Expected: package includes `apply-patch-targets.mjs` and excludes retired
-modules; stale-reference search returns no current production/guide matches.
+Expected: package includes `apply-patch-targets.mjs` and
+`provider-session.mjs`, excludes retired modules, and the stale-reference search
+returns no current production/guide matches. Also inspect `co-review.mjs` and
+`provider-session.mjs` to confirm the profiled path contains no import or call
+of `detectProvider`, `resolveSessionId`, or the general
+`sessionIdEnvKeys()` helper.
 
 - [ ] **Step 5: Record per-AC verification through sanctioned #1406 workflow**
 
@@ -1308,13 +1669,16 @@ not a new repository file; make no empty verification commit.
 After the implementation branch is integrated into the branch used for review,
 create a brand-new ignored runtime. Both persistent sessions must start in the
 same clean physical worktree using corrected installed hooks from their first
-claim. Execute the specification's exact A → changes-requested → B → accepted
-scenario with bounded repeated waits. Do not import any claim, response, review,
-or acceptance from the old #1381 runtime.
+claim. Give each session an environment containing only its own provider-native
+session keys and explicitly remove the other provider-native keys. Execute the
+specification's exact A → changes-requested → B → accepted scenario with bounded
+repeated waits. Confirm the two persisted claim pairs are distinct and the
+archive reproduces them from selected handoffs under an unrelated inspection
+environment. Do not import any claim, response, review, or acceptance from the
+old #1381 runtime.
 
 - [ ] **Step 8: Stop at the governed handoff boundary**
 
 Report the exact implementation commit, focused/full verification receipts,
 fresh runtime path, and any remaining deferred #1381 concerns. Do not push,
-deliver, merge, promote, approve, close, or mutate #1381 beyond the separately
-authorized Plan-review exit gate.
+deliver, merge, promote, approve, close, or mutate #1381.
