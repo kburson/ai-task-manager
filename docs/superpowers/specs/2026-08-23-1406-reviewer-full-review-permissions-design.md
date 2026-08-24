@@ -138,12 +138,12 @@ to change close behavior, broaden timing infrastructure, alter the test runner,
 weaken an assertion, modify verifier commands, or touch unrelated lifecycle
 code invalidates this amendment and stops execution for a new human decision.
 
-Independent Claude review must confirm the amendment before implementation.
-After the amendment is incorporated into the implementation plan, the human
-must approve the exact amended plan. The historical Plan-approval marker
-remains untouched; amendment authority is recorded in the reviewed artifacts
-and durable #1406 evidence rather than fabricated as a second lifecycle
-approval.
+The human explicitly approved executing this bounded, reversible repair before
+another amendment-review round and inspecting the resulting diff and receipts
+afterward. Independent Claude review therefore occurs on the implemented diff
+before delivery, not before implementation. The historical Plan-approval
+marker remains untouched; amendment authority is recorded in the artifacts and
+durable #1406 evidence rather than fabricated as a second lifecycle approval.
 
 ## Problem
 
