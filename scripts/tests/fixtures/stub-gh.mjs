@@ -109,8 +109,9 @@ export function installStubGh({
   const intercepted = [];
 
   // Layer 2 — the PATH shim. Materialized under the project scratch dir, never
-  // `os.tmpdir()` (see `rules/scratch-dirs.md`); `/bin/sh` rather than Node so a
-  // call costs no interpreter start-up.
+  // the system temp directory (see `rules/scratch-dirs.md`, enforced by
+  // `lint:tmp`); `/bin/sh` rather than Node so a call costs no interpreter
+  // start-up.
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'stub-gh-'));
   const binDir = path.join(dir, 'bin');
   mkdirSync(binDir, { recursive: true });
