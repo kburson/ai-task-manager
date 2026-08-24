@@ -1,7 +1,7 @@
 # SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Development amendment approved; independent amendment review pending
+**Status:** Claude amendment review changes incorporated; re-review pending
 **Date:** 2026-08-23
 
 ## Review Context
@@ -39,6 +39,14 @@ development amendment corrects that contradiction by making provider/session
 provenance an additive version-1 profile owned by the protocol. It does not
 restore capability policing or create a successor defect.
 
+Independent Claude Opus 5 review of amendment commit `ada007b7` returned
+changes requested with findings A1-A5 and B1-B5. This revision incorporates all
+ten findings: cache upsert and failure taxonomy, provider-native session
+resolution, cross-role session separation, imported-unclaimed initialization,
+handoff-sourced archive provenance, complete envelope naming, legacy re-init
+refusal, named replay refusal, explicit #1381 ancestry, and #1406-specific
+Plan-approval wording. The corrected commit requires independent re-review.
+
 ## Development Amendment
 
 The amendment preserves the reviewed implementation already completed on the
@@ -54,17 +62,20 @@ issue #1406 branch:
 The remaining implementation must first add authoritative claim provenance,
 then resume installed-chain and A-to-B acceptance. Issue #1406 remains in
 Develop: the sanctioned lifecycle has no Develop-to-Plan transition, and
-`plan-approve` is valid only in Plan. The historical `aitm-plan-approved` marker
-therefore remains untouched and is not represented as approval of this
-amendment. Approval of the exact revised specification and plan will instead be
-recorded visibly in those artifacts, in updated Plan Metadata, and in a durable
-issue comment.
+`plan-approve` cannot mint a second approval for #1406 in Develop. Its narrow
+out-of-Plan forecast-backfill branch does not apply because #1406's existing
+approval already freezes a forecast record. The historical
+`aitm-plan-approved` marker therefore remains untouched and is not represented
+as approval of this amendment. Approval of the exact revised specification and
+plan will instead be recorded visibly in those artifacts, in updated Plan
+Metadata, and in a durable issue comment.
 
 The focused forecast increases from 13 to 17 hours. The frozen XL/32-hour board
-estimate is not reduced. Defect ancestry is capped at two levels: #1406 creates
-no successor defect. A new in-scope failure is repaired in its owning plan task;
-an unowned failure reopens this specification and plan as flawed. Deferred
-convergence observations remain only in #1381.
+estimate is not reduced. In the #1381 convergence discovery chain, #1406 is the
+first and final defect hop for this concern; it creates no successor defect. A
+new in-scope failure is repaired in its owning plan task; an unowned failure
+reopens this specification and plan as flawed. Deferred convergence
+observations remain only in #1381.
 
 ## Problem
 
@@ -118,10 +129,10 @@ commands is not.
 
 Every new runtime declares the additive profile
 `claimProvenance: "provider-session/v1"`. The profile keeps the existing
-`aitm.co-review/v1`, `aitm.co-review-event/v1`, and
-`aitm.co-review.archive/v1` envelopes while making provider/session evidence
-mandatory for new claims, handoffs, and terminal archives. The protocol is the
-authority; the co-review index remains an operational occupancy cache.
+version-1 state, event, start-manifest, prepared-archive, and terminal-archive
+envelopes while making provider/session evidence mandatory for new claims,
+handoffs, and terminal archives. The protocol is the authority; the co-review
+index remains an operational occupancy cache.
 
 ## Design Goals
 
@@ -220,9 +231,20 @@ first artifact-only diff.
 ### Role and session authority
 
 Owner and reviewer identities remain distinct. For a profiled runtime, the CLI
-resolves the provider adapter and a real, non-fallback provider session ID
-before every claim and handoff. The protocol library receives those values as
-required inputs; an arbitrary configured actor name is not a substitute.
+first resolves the active provider adapter, then resolves `sid` only from that
+adapter's declared provider-native `sessionIdEnvKeys`. It does not accept
+`AI_TASK_MANAGER_SESSION_ID`, another adapter's key, a transcript-basename
+fallback, or `default-session` as profiled co-review provenance. Claude and
+Codex therefore use their native session environment keys as required inputs
+for profiled turns even though their general task-tracker adapters retain legacy
+fallback behavior; Grok retains its existing required native key. A missing
+native value refuses with `co-review:provider-session-id-required` before every
+claim and handoff.
+
+The protocol library receives the resolved provider and `sid` as required
+inputs; an arbitrary configured actor name is not a substitute. The pair
+`{provider, sid}` is the session identity because session-ID namespaces are
+provider-specific.
 
 The live claim is:
 
@@ -248,11 +270,20 @@ therefore attributable to one persisted turn claim rather than merely to a
 freely supplied actor string.
 
 An exact claim retry from the same provider/session is idempotent. A different
-provider/session cannot take over an already claimed turn. Exact handoff replay
-also requires the provider/session recorded by the completed handoff; a second
-session cannot replay another session's submission. Wrong actor, provider,
-session, runtime, canonical worktree, round, review path, claim reference, or
-`review-of` commit is a protocol refusal.
+provider/session cannot take over an already claimed turn and receives
+`co-review:claim-conflict`. At each new claim after a peer handoff, the proposed
+`{provider, sid}` must differ from the opposite role's claim reference on that
+handoff; equality refuses before state advance with
+`co-review:session-role-conflict`. The same owner session and same reviewer
+session may each reclaim their own later rounds, but one provider session cannot
+serve both roles.
+
+Exact handoff replay also requires the provider/session recorded by the
+completed handoff; a second session cannot replay another session's submission.
+A live or replayed handoff whose provider/session differs from its claim
+reference refuses with `co-review:handoff-session-mismatch`. Wrong actor,
+provider, session, runtime, canonical worktree, round, review path, claim
+reference, or `review-of` commit is a protocol refusal.
 
 Provider/session values are opaque audit identifiers, not credentials. The
 protocol never persists access tokens or transcript contents. Environment-based
@@ -270,22 +301,53 @@ New initialization always records
 handoff, start-manifest, prepared-archive, and terminal-archive validation treat
 the profile as a fail-closed contract: if it is present, every required
 provider/session and claim-reference field must be present and internally
-consistent.
+consistent, except for the single explicitly marked imported-unclaimed
+initialization handoff defined below.
 
 Existing version-1 runtimes and archives without the profile remain readable.
 An already accepted legacy runtime may use its existing finalization path, but
 an active legacy runtime cannot claim or hand off after upgrade. It refuses with
 `co-review:provenance-profile-required` and directs the operator to start a
 fresh runtime. #1406 does not synthesize missing provenance, migrate an active
-turn, or count legacy evidence as fresh-runtime acceptance.
+turn, or count legacy evidence as fresh-runtime acceptance. Re-initializing an
+existing profile-less runtime also refuses with that same diagnostic before the
+exact-JSON initialization comparison; it is not silently upgraded and does not
+return a misleading idempotent success. Exact re-initialization remains
+idempotent only when the existing runtime already carries the same profile and
+initialization record.
+
+Imported-review initialization remains supported because it is input context,
+not a claimed turn. Its single synthetic initial reviewer handoff records
+`provenance.mode = "imported-unclaimed/v1"` plus the existing imported review
+path, digest, exact `review-of` commit, and initialization time; it carries no
+invented provider or `sid`. This is the only profiled handoff allowed without a
+provider-session claim reference. The existing `maxReviewTurns >= 2` rule
+ensures a later real reviewer claim and handoff before reviewer-consensus or
+human-good-enough acceptance. Terminal evidence selection must reject an
+imported-unclaimed handoff, so imported evidence cannot satisfy #1406's
+fresh-runtime acceptance or appear as either selected role provenance in a
+profiled terminal archive.
 
 The main-worktree co-review index remains an operational cache for reviewer
 occupancy. It is not a provenance ledger. The CLI first persists the reviewer
 claim through `claimTurn()`, then derives the cache update from the returned
-authoritative claim. If that cache write fails, the protocol claim remains
-durable; repeating the identical claim is safe and repairs the cache. The owner
-does not receive a second index row, and the single-row task occupancy store is
-not used to infer either role's terminal evidence provenance.
+authoritative state and claim. The post-claim operation is an upsert under the
+index lock: it re-registers an absent row from the authoritative protocol state,
+repairs a same-identity stale lifecycle row, and then records the reviewer
+claim. A row whose registration identity conflicts with protocol state is never
+overwritten.
+
+If a retryable filesystem publication failure occurs after the protocol claim,
+the CLI exits 1 with `co-review:index-publication-pending`, states that the
+claim is durable, and prints the identical claim retry. That retry appends no
+second claim event and reattempts only the cache upsert. An unreadable index or
+conflicting registration identity exits 1 with
+`co-review:index-authority-conflict`; the claim remains durable, the suspect
+cache bytes are preserved, and automatic retry is not represented as repair.
+The operator must restore or rebuild the operational cache from authoritative
+protocol state before occupancy can be granted. The owner does not receive a
+second index row, and the single-row task occupancy store is not used to infer
+either role's terminal evidence provenance.
 
 ### Human authority
 
@@ -515,15 +577,23 @@ reviewer-occupancy check; it is not protocol evidence authority.
 
 ### `co-review.mjs` and `index.mjs`
 
-- Resolve provider and a real non-fallback session ID for both roles before
-  `claim`, `owner-handoff`, or `reviewer-handoff` dispatch. Pass provider and
-  `sid` into the protocol library; actor alone is insufficient.
+- Add a co-review-specific resolver that detects the active provider and reads
+  only that adapter's provider-native `sessionIdEnvKeys`. Do not call the
+  general task-tracker fallback chain for profiled claims or handoffs. Pass the
+  resulting provider and `sid` into the protocol library; actor alone is
+  insufficient.
 - Move reviewer-index preparation after the authoritative protocol claim. Build
   its provider, `sid`, role, round, and pending-review path from the returned
   persisted claim rather than from pre-mutation assumptions.
-- Preserve exact claim retry as the recovery path when protocol mutation
-  succeeded but index publication failed. A retry repairs the operational cache
-  without appending a second claim event.
+- Replace the update-only reviewer-claim write with an atomic upsert that accepts
+  authoritative protocol state plus its returned claim. Re-register an absent
+  row, repair stale fields only when registration identity matches, and refuse
+  conflicting identity or an unreadable store without rewriting it.
+- Convert retryable post-claim publication failure to
+  `co-review:index-publication-pending` with exit 1 and the exact retry command.
+  Convert unreadable or conflicting cache authority to
+  `co-review:index-authority-conflict` with exit 1 and no claim that retry alone
+  will repair it.
 - Keep `recordReviewerClaim()` reviewer-specific because it supports the
   occupancy exception, not evidence authority. Do not add an owner row or treat
   `claimedProvider`/`claimedSid` as terminal provenance.
@@ -539,9 +609,18 @@ reviewer-occupancy check; it is not protocol evidence authority.
 - Stamp new initialization and start manifests with
   `claimProvenance: "provider-session/v1"` while retaining the version-1 state,
   event, start-manifest, prepared-archive, and terminal-archive envelope names.
+- When an existing runtime lacks the profile, refuse re-initialization before
+  `sameInitialization()` with `co-review:provenance-profile-required`. Preserve
+  exact idempotent initialization for already-profiled identical state.
+- Represent the initial handoff created by `--import-review` as
+  `imported-unclaimed/v1`, never synthesize provider/session for it, and prohibit
+  that synthetic record from terminal evidence selection.
 - Extend `claimTurn()` with required `provider` and `sid` inputs. Persist the
   complete claim in state and the claim event, including the claim revision.
   Same-actor replay is idempotent only when provider and `sid` also match.
+- Refuse a new claim when its `{provider, sid}` equals the opposite role's most
+  recent handoff claim reference. Preserve each role's ability to reuse its own
+  persistent session in later rounds.
 - Extend both handoff APIs with required `provider` and `sid` inputs. Compare
   them to the live claim before consuming evidence; copy the exact claim
   reference into the handoff before clearing `state.claim`.
@@ -577,6 +656,11 @@ reviewer-occupancy check; it is not protocol evidence authority.
   and handoff revision. Copy the provenance profile into the manifest and
   validate the complete relationship before preparation, publication, or
   foreign-archive recovery.
+- Source each evidence record only from the claim reference embedded in that
+  role's selected handoff event. Never re-resolve the current environment, copy
+  from `state.roles`, or consult the co-review or occupancy index. Any mismatch
+  between selected handoff provenance and manifest evidence refuses before
+  preparation, publication, and recovery.
 - Accept a profile-less version-1 archive only as legacy evidence. A profiled
   manifest with missing or mismatched provenance is invalid, and a profiled
   runtime cannot emit a legacy-shaped archive.
@@ -597,17 +681,34 @@ reviewer-occupancy check; it is not protocol evidence authority.
 - Wrong artifact, commit, blob, digest, actor, provider, session, round,
   review path, claim reference, or decision refuses the protocol mutation with
   no state change.
-- A missing, fallback, malformed, or mismatched provider/session refuses claim
-  or handoff before evidence is consumed or state is advanced.
+- A missing provider-native session key, a general orchestrator override without
+  that native key, a transcript-derived basename, a fallback value, or a
+  malformed provider/session refuses claim or handoff before evidence is
+  consumed or state is advanced.
 - A profiled claim may be retried only by the same actor, provider, and `sid`.
   A conflicting caller receives `co-review:claim-conflict`; there is no implicit
   takeover, release, or reassignment.
-- A reviewer-index write that fails after a successful protocol claim reports
-  that the claim is durable and instructs the same session to retry the exact
-  claim. The retry appends no second event and repairs only the cache.
+- One `{provider, sid}` cannot serve both roles. Equality with the opposite
+  role's latest handoff claim reference receives
+  `co-review:session-role-conflict` before mutation.
+- A handoff or handoff replay from a provider/session other than the recorded
+  claim receives `co-review:handoff-session-mismatch` before evidence is
+  consumed or replay success is returned.
+- A retryable reviewer-index publication failure after a successful protocol
+  claim reports `co-review:index-publication-pending`, exit 1, and the exact
+  retry. The retry appends no second event and reattempts only the cache upsert.
+  An unreadable or identity-conflicting cache reports
+  `co-review:index-authority-conflict`, exit 1, preserves both protocol and
+  cache evidence, and requires operator repair rather than promising that retry
+  will converge.
 - An active profile-less runtime refuses claim and handoff with
   `co-review:provenance-profile-required`. Status remains readable, and an
   already accepted legacy runtime retains its existing finalization path.
+  Re-initialization of a profile-less runtime receives the same refusal; it is
+  not silently upgraded.
+- An imported-unclaimed initialization handoff is allowed only as the single
+  synthetic initial context record. It cannot be selected as profiled terminal
+  owner/reviewer evidence or satisfy fresh-runtime acceptance.
 - Wrong physical worktree, mismatched `HEAD`, dirty tracked state, or a
   non-artifact tracked path from `state.artifact.commit` to the proposed commit
   refuses handoff with no state change.
@@ -626,7 +727,8 @@ reviewer-occupancy check; it is not protocol evidence authority.
 - A profiled archive missing either role's provider/session provenance, or
   disagreeing with the selected claim, handoff, participant, evidence, or event
   relationship, is refused as invalid. The writer never silently downgrades a
-  profiled runtime into a legacy manifest.
+  profiled runtime into a legacy manifest or re-derives provenance at archive
+  time.
 - A dead reviewer session may leave the protocol turn claimed, but it no longer
   freezes the worktree or blocks ordinary tools. Preserve evidence and fall
   back to the manual relay until a separately approved release/reassignment
@@ -709,19 +811,34 @@ Focused protocol and CLI tests must prove:
 
 - new initialization stamps the provenance profile in state and the start
   manifest without changing the version-1 envelope names;
-- owner and reviewer claims both refuse a missing or fallback session ID;
+- profiled owner/reviewer commands accept only the active adapter's native
+  session key and refuse a global orchestrator override alone, another
+  adapter's key, a transcript-derived basename, or a fallback value;
 - each persisted claim event contains the exact role, actor, provider, `sid`,
   claim revision, process, host, and timestamp from `state.claim`;
 - an exact same-session claim retry is idempotent, while another provider or
   `sid` receives a pre-mutation conflict;
+- an owner and reviewer cannot use the same `{provider, sid}`, while each role
+  can reclaim its own persistent session in later rounds;
 - both handoffs require the provider/session that owns the live claim, copy the
   exact claim reference, and reject another session before reading new evidence;
 - exact handoff replay requires the recorded provider/session and claim
-  reference, while stale or conflicting replay remains refused;
+  reference, returns `co-review:handoff-session-mismatch` for another session,
+  and keeps stale or conflicting replay refused;
 - event/state integrity detects missing or altered claim provenance;
 - reviewer-index publication occurs after protocol claim, derives its inputs
-  from that claim, and is repairable through an identical retry after injected
-  cache failure; and
+  from that claim, upserts an absent or same-identity stale row, and is
+  repairable through an identical retry after injected transient publication
+  failure;
+- unreadable and identity-conflicting index fixtures preserve their bytes and
+  produce terminal cache-authority diagnostics without undoing or duplicating
+  the durable protocol claim;
+- imported review initialization records imported-unclaimed provenance, still
+  enforces exact-HEAD import, and cannot supply selected profiled terminal
+  evidence;
+- exact re-initialization succeeds for an identical profiled runtime but a
+  profile-less runtime receives the profile-required refusal before the
+  initialization sameness check; and
 - an active legacy runtime refuses mutation, while status and already-accepted
   legacy finalization remain compatible.
 
@@ -729,13 +846,18 @@ Archive tests must prove that a fresh profiled A-to-B relay preserves distinct
 owner and reviewer provider/session identities through claim events, handoffs,
 prepared evidence, publication, deterministic reinspection, and foreign-archive
 recovery. Delete or alter each provenance field in turn and require a precise
-refusal. Existing profile-less archive fixtures remain readable only through
-the explicit legacy path and cannot satisfy the fresh-runtime acceptance case.
+refusal. They must also prove each manifest provenance record is copied from its
+selected handoff claim reference and never from the current environment,
+configured actor strings, or either operational index. Existing profile-less
+archive fixtures remain readable only through the explicit legacy path and
+cannot satisfy the fresh-runtime acceptance case.
 
-Provider adapter tests must exercise Claude, Codex, and Grok session-ID
-resolution symmetrically for owner claim, reviewer claim, owner handoff, and
-reviewer handoff. The test environment supplies opaque fake IDs; no credential
-or transcript content enters fixtures.
+Provider adapter tests must prove the concrete native-key contract for Claude
+(`CLAUDE_CODE_SESSION_ID` or `CLAUDE_SESSION_ID`), Codex (`CODEX_THREAD_ID` or
+`CODEX_SESSION_ID`), and Grok (`GROK_SESSION_ID`) across owner claim, reviewer
+claim, owner handoff, and reviewer handoff. General task-tracker legacy fallback
+behavior stays unchanged outside profiled co-review. The test environment
+supplies opaque fake IDs; no credential or transcript content enters fixtures.
 
 ### Automated two-session acceptance
 
