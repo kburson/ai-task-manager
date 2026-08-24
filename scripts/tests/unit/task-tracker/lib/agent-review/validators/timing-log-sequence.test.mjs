@@ -581,7 +581,25 @@ test('non-lifecycle qualified slugs (switch-out:#N, issue:wrap) are not reconcil
 
 // --- Forensic suspicious-gap detection (#984) -------------------------------
 
-test('fails a #899-shaped many-hour active lifecycle row with session-log remediation', () => {
+test('passes cumulative active time above eight hours when every active span is bounded', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    ['2026-07-14 07:00:00 -05:00', 'pause'],
+    ['2026-07-14 09:00:00 -05:00', 'resumed'],
+    ['2026-07-14 16:00:00 -05:00', 'pause'],
+    ['2026-07-14 18:00:00 -05:00', 'resumed'],
+    [
+      '2026-07-14 20:00:00 -05:00',
+      'develop:completed',
+      'development complete',
+      '<!-- row-sec: a=33466 i=43626 -->',
+    ],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('fails a #899-shaped unbracketed many-hour wall-clock span with session-log remediation', () => {
   const rows = [
     [T(0), 'develop:started'],
     [
@@ -596,8 +614,8 @@ test('fails a #899-shaped many-hour active lifecycle row with session-log remedi
   assert.ok(
     res.failures.some(
       (f) =>
-        /suspicious active duration/.test(f) &&
-        /row 2\b/.test(f) &&
+        /suspicious wall-clock gap/.test(f) &&
+        /row 1→2/.test(f) &&
         /session logs/.test(f) &&
         /heal/.test(f)
     ),
