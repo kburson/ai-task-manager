@@ -29,7 +29,8 @@
 //                            budget matched to the whole saga, NOT one API call.
 //   GIT_TIMEOUT_MS         — git read commands (`git rev-parse`, `git status`).
 //   LOCAL_FAST_TIMEOUT_MS  — local-only commands expected to return instantly.
-//   TEST_RUNNER_TIMEOUT_MS — node test runner / suite invocations.
+//   TEST_FILE_TIMEOUT_MS   — one test-file child spawned by `run-tests.mjs`.
+//   TEST_RUNNER_TIMEOUT_MS — one aggregate declared verifier command.
 //   SANDBOX_TIMEOUT_MS     — one command inside the Test-stage sandbox worktree
 //                            (`verbs/test.mjs`), i.e. a full `npm run test:all`
 //                            against a fresh checkout. Overridable per-machine;
@@ -64,9 +65,12 @@ export const GH_TIMING_COMMENT_TIMEOUT_MS = 10000;
 export const MOVE_STATE_TIMEOUT_MS = 120000;
 export const GIT_TIMEOUT_MS = 10000;
 export const LOCAL_FAST_TIMEOUT_MS = 5000;
-// 20 minutes — the aggregate `npm run quality` verifier currently takes about
-// 12.5 minutes on the governed worktree. Keep the complete safety net bounded
-// but runnable until authoritative TIA can reduce the routinely required scope.
+// 10 minutes — preserve the established per-file hung-test cutoff. This is
+// intentionally independent of the larger aggregate verifier-command budget.
+export const TEST_FILE_TIMEOUT_MS = 600_000;
+// 20 minutes — the governed `npm run quality` verifier was observed at 17m32s
+// on the #1406 worktree. Keep the complete safety net bounded but runnable
+// until authoritative TIA can reduce the routinely required scope.
 export const TEST_RUNNER_TIMEOUT_MS = 1_200_000;
 
 // #858 — the Test-stage sandbox's per-command budget. This lived as a private
@@ -90,6 +94,7 @@ export const TIMEOUT_CLASSES = Object.freeze({
   move: MOVE_STATE_TIMEOUT_MS,
   git: GIT_TIMEOUT_MS,
   local: LOCAL_FAST_TIMEOUT_MS,
+  testFile: TEST_FILE_TIMEOUT_MS,
   test: TEST_RUNNER_TIMEOUT_MS,
   sandbox: SANDBOX_TIMEOUT_MS,
 });

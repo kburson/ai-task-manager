@@ -15,6 +15,7 @@ import {
   GH_API_TIMEOUT_MS,
   GIT_TIMEOUT_MS,
   LOCAL_FAST_TIMEOUT_MS,
+  TEST_FILE_TIMEOUT_MS,
   TEST_RUNNER_TIMEOUT_MS,
   TIMEOUT_CLASSES,
   warnTimeout,
@@ -28,6 +29,7 @@ for (const [name, val] of [
   ['GH_API_TIMEOUT_MS', GH_API_TIMEOUT_MS],
   ['GIT_TIMEOUT_MS', GIT_TIMEOUT_MS],
   ['LOCAL_FAST_TIMEOUT_MS', LOCAL_FAST_TIMEOUT_MS],
+  ['TEST_FILE_TIMEOUT_MS', TEST_FILE_TIMEOUT_MS],
   ['TEST_RUNNER_TIMEOUT_MS', TEST_RUNNER_TIMEOUT_MS],
 ]) {
   assert.equal(typeof val, 'number', `${name} is a number`);
@@ -40,6 +42,7 @@ assert.equal(Object.isFrozen(TIMEOUT_CLASSES), true, 'TIMEOUT_CLASSES is frozen'
 assert.equal(TIMEOUT_CLASSES.gh, GH_API_TIMEOUT_MS);
 assert.equal(TIMEOUT_CLASSES.git, GIT_TIMEOUT_MS);
 assert.equal(TIMEOUT_CLASSES.local, LOCAL_FAST_TIMEOUT_MS);
+assert.equal(TIMEOUT_CLASSES.testFile, TEST_FILE_TIMEOUT_MS);
 assert.equal(TIMEOUT_CLASSES.test, TEST_RUNNER_TIMEOUT_MS);
 
 // warnTimeout exists and is callable. We don't assert its stderr output
