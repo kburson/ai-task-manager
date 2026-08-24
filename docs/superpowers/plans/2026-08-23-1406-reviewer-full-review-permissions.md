@@ -33,9 +33,13 @@ complete at the commits recorded below. Task 5 is the newly discovered
 provider/session provenance implementation. Tasks 6 through 8 are the revised
 acceptance, authority-metadata, and final-verification sequence.
 
-**Focused execution forecast:** 17 hours for the amended eight-task plan. The
-governed issue remains frozen at Size XL and 32 human hours; this plan does not
-rewrite either field or the historical forecast record.
+**Remaining focused execution forecast:** 17 hours after this plan revision:
+Task 5 provider/session provenance 9h; Task 6 installed-chain and A-to-B
+acceptance 4h; Task 7 package/corpus/test-impact authority 1h; Task 8 complete
+verification and fresh-runtime handoff 3h. Completed Tasks 1–4 and the routed
+replay repair are excluded. The governed issue remains frozen at Size XL and 32
+human hours; this adaptive remaining-work forecast does not rewrite either field
+or the historical Plan-approval forecast record.
 
 ## Amendment Discovery Evidence
 
@@ -137,7 +141,10 @@ Develop-to-Plan rollback and no new `/task plan-approve` call in this amendment.
       authority is commit `218e5cc16d93cf204568930e5d4a84146764aada` with no
       blocking findings.
 - [x] Obtain explicit human approval of those exact accepted specification
-      bytes before revising this plan.
+      bytes before revising this plan. Approval authority: `kburson`, in Codex
+      task/session `01a030a5-4e5b-75f2-bbaf-b3c7991151b7`, responding `yes` to
+      the prompt that named exact specification commit `218e5cc1`; the approval
+      immediately preceded the plan revision.
 - [ ] Commit this revised plan, obtain independent plan review, and incorporate
       every blocking correction before resuming implementation.
 - [ ] After plan acceptance, update only #1406's `Plan Metadata`, visible
@@ -194,6 +201,11 @@ Develop-to-Plan rollback and no new `/task plan-approve` call in this amendment.
 
 - `scripts/tests/slow/review/co-review-boundaries.test.mjs`
 - `scripts/tests/fixtures/co-review-memory-repository.mjs`
+- `scripts/tests/fixtures/co-review-fixture.mjs`
+- `scripts/tests/fixtures/co-review-consistency-cases.mjs`
+- `scripts/tests/fixtures/co-review-finalization-cases.mjs`
+- `scripts/tests/fixtures/co-review-supplement-cases.mjs`
+- `scripts/tests/fixtures/co-review-budget-cases.mjs`
 - `scripts/tests/fixtures/co-review-handoff-cases.mjs`
 - `scripts/tests/fixtures/co-review-start-cases.mjs`
 - `scripts/tests/fixtures/co-review-e2e-cases.mjs`
@@ -844,7 +856,7 @@ the preserved execution record.
 
 - Modify: `scripts/review/lib/start.mjs`
 - Modify: `scripts/tests/fixtures/co-review-start-cases.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Verify: `scripts/tests/unit/review/co-review.test.mjs`
 - Modify: `docs/guides/github-native-coordination.md`
 - Modify: `docs/guides/grok-provider.md`
 - Modify: `scripts/tests/unit/providers/coverage-provider-adapter.test.mjs`
@@ -990,10 +1002,16 @@ stop and report the plan as flawed rather than creating another defect hop.
 - Modify: `scripts/tests/fixtures/co-review-handoff-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-start-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-e2e-cases.mjs`
+- Modify: `scripts/tests/fixtures/co-review-fixture.mjs`
+- Modify: `scripts/tests/fixtures/co-review-consistency-cases.mjs`
+- Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
+- Modify: `scripts/tests/fixtures/co-review-supplement-cases.mjs`
+- Modify: `scripts/tests/fixtures/co-review-budget-cases.mjs`
+- Modify: `scripts/tests/unit/review/co-review-fixture-cost.test.mjs`
+- Modify: `scripts/tests/slow/review/co-review-boundaries.test.mjs`
 - Modify: `scripts/tests/unit/review/co-review.test.mjs`
 - Modify: `scripts/tests/unit/review/co-review-index.test.mjs`
 - Modify: `scripts/tests/unit/review/co-review-finalization.test.mjs`
-- Modify: `scripts/tests/unit/providers/coverage-provider-adapter.test.mjs`
 
 **Interfaces:**
 
@@ -1041,6 +1059,16 @@ values across Claude's or Codex's aliases. Required and ambiguity assertions
 must compare the exact error code and prove that the diagnostic omits every
 opaque session value.
 
+In the same new test file, add a second table over Claude, Codex, and Grok. For
+each adapter, drive owner claim, owner handoff, reviewer claim, and reviewer
+handoff through the profiled CLI or its injected command handler using only that
+adapter's declared native key. Assert each returned/persisted claim and handoff
+names the expected provider and opaque `sid`. Reuse the five negative environment
+shapes above at the CLI boundary so the concrete provider-adapter contract is
+proved in this file rather than in the already-completed documentation coverage
+test. `coverage-provider-adapter.test.mjs` remains verification-only outside
+Task 5 and is not staged by this task.
+
 Import only `listProviders` and `getProvider` from the provider registry. Add a
 source-level completion assertion or equivalent automated inspection proving
 the profiled resolver does not import or call `detectProvider()`,
@@ -1075,6 +1103,11 @@ persisted `state.claim` and claim event to contain the exact record. Prove an
 identical actor/provider/session retry is idempotent and a different provider or
 `sid` receives `co-review:claim-conflict` with no byte change.
 
+Add a failing human-readable status assertion while a claim is live. It must
+render the claim's role, actor, provider, `sid`, revision, and time. Keep the JSON
+assertion that receives the full claim through `statusProtocol()` and prove
+neither surface exposes credentials or transcript content.
+
 Require each handoff to receive the same provider/session as the live claim and
 copy this immutable reference before clearing the claim:
 
@@ -1101,7 +1134,51 @@ role may reuse its own persistent pair on later rounds. The first owner claim in
 a fresh runtime and after `imported-unclaimed/v1` has no comparison pair and
 must succeed; the rule first binds at the reviewer's first real claim.
 
-- [ ] **Step 4: Add failing post-claim index-publication tests**
+- [ ] **Step 4: Migrate every existing profiled fixture call site explicitly**
+
+In `co-review-fixture.mjs`, export stable opaque test identities such as:
+
+```js
+export const PROFILED_SESSIONS = Object.freeze({
+  owner: Object.freeze({ provider: 'codex', sid: 'fixture-owner-sid' }),
+  reviewer: Object.freeze({ provider: 'claude', sid: 'fixture-reviewer-sid' }),
+});
+
+export function profiledSession(role) {
+  return { ...PROFILED_SESSIONS[role] };
+}
+```
+
+Add a matching `profiledEnv(role, baseEnv)` helper for CLI fixtures. It must
+remove every registered provider-native session key from the inherited
+environment, then set only the selected role's native key. Retire the current
+single `SYNTHETIC_REVIEWER_ENV` default for profiled claim/handoff calls;
+`AI_TASK_MANAGER_SESSION_ID` and detection-only keys cannot stand in for either
+role. Non-claim lifecycle calls may retain a neutral environment when they do
+not invoke the profiled resolver.
+
+Update every claim/handoff call in these seven modules to spread the matching
+role identity explicitly, or route it through a named fixture wrapper that does
+so without masking negative tests:
+
+- `scripts/tests/fixtures/co-review-fixture.mjs`
+- `scripts/tests/fixtures/co-review-consistency-cases.mjs`
+- `scripts/tests/fixtures/co-review-finalization-cases.mjs`
+- `scripts/tests/fixtures/co-review-supplement-cases.mjs`
+- `scripts/tests/fixtures/co-review-budget-cases.mjs`
+- `scripts/tests/unit/review/co-review-fixture-cost.test.mjs`
+- `scripts/tests/slow/review/co-review-boundaries.test.mjs`
+
+Also migrate the already-owned handoff and protocol cases. Do not make
+`bindProtocol()` silently inject provenance into every call: required-field,
+wrong-session, ambiguity, and legacy tests must retain a direct way to omit or
+conflict the inputs. Add a census assertion or review command over
+`claimTurn(`, `handoffOwner(`, and `handoffReviewer(` so every new-runtime call
+site, plus CLI `claim`/`handoff` invocations, so every new-runtime call is either
+explicitly profiled or deliberately marked as a negative/legacy case. This step
+is mechanical fixture migration, not a new production rule.
+
+- [ ] **Step 5: Add failing post-claim index-publication tests**
 
 Drive the real CLI claim path and inject reviewer-index publication failure
 after the protocol claim is durable. Assert exit 1 with
@@ -1117,7 +1194,7 @@ with `co-review:index-authority-conflict`; automatic retry is not represented as
 repair. Keep occupancy one-row-per-issue and reviewer-only. It is an operational
 sharing cache, not owner provenance authority.
 
-- [ ] **Step 5: Add failing start and archive provenance tests**
+- [ ] **Step 6: Add failing start and archive provenance tests**
 
 Require state, event, handoff, start-manifest, prepared-archive, and
 terminal-archive validation to enforce the profile whenever it is present. The
@@ -1132,7 +1209,7 @@ construction never re-resolves the current environment, reads configured actor
 strings as provenance, or consults the co-review/occupancy index. The sole
 source is the selected handoff event's claim reference.
 
-- [ ] **Step 6: Run the combined focused tests and record the intended RED**
+- [ ] **Step 7: Run the combined focused tests and record the intended RED**
 
 Run:
 
@@ -1140,9 +1217,10 @@ Run:
 node --test \
   scripts/tests/unit/review/co-review-provider-session.test.mjs \
   scripts/tests/unit/review/co-review-index.test.mjs \
+  scripts/tests/unit/review/co-review-fixture-cost.test.mjs \
   scripts/tests/unit/review/co-review.test.mjs \
   scripts/tests/unit/review/co-review-finalization.test.mjs \
-  scripts/tests/unit/providers/coverage-provider-adapter.test.mjs
+  scripts/tests/slow/review/co-review-boundaries.test.mjs
 ```
 
 Expected: FAIL because the focused resolver and provenance profile do not exist,
@@ -1150,7 +1228,7 @@ claims/handoffs omit provider/session, reviewer-index publication precedes the
 authoritative claim, and archives source no handoff claim provenance. Record the
 distinct intended failures before editing production.
 
-- [ ] **Step 7: Implement the single profiled resolver**
+- [ ] **Step 8: Implement the single profiled resolver**
 
 In `provider-session.mjs`, enumerate `listProviders()`, read each adapter through
 `getProvider(name)`, and collect its non-empty `sessionIdEnvKeys` values. Select
@@ -1162,7 +1240,7 @@ registry priority, use an implicit Claude default, accept
 `AI_TASK_MANAGER_SESSION_ID`, or call any general session-id helper. Keep
 general task-tracker session resolution unchanged outside profiled co-review.
 
-- [ ] **Step 8: Implement the additive protocol profile and claim authority**
+- [ ] **Step 9: Implement the additive protocol profile and claim authority**
 
 Stamp `state.initialization.claimProvenance = 'provider-session/v1'` on every new
 runtime and copy it into the start manifest. Add profile-aware validators for
@@ -1177,7 +1255,7 @@ clean-tracked-state, artifact-only, round, timer, budget, and evidence checks in
 their existing order unless the accepted specification explicitly requires the
 new provenance check earlier.
 
-- [ ] **Step 9: Route every profiled CLI claim and handoff through the resolver**
+- [ ] **Step 10: Route every profiled CLI claim and handoff through the resolver**
 
 In `co-review.mjs`, resolve provider/session for both owner and reviewer claims
 and both handoffs, then pass the pair into protocol functions. Delete the
@@ -1185,12 +1263,17 @@ current reviewer-only `detectProvider()`/`resolveSessionId()` imports and the
 `FALLBACK_SESSION_ID` comparison. Their absence is a greppable completion
 condition.
 
+Update `formatStatus()` so a live claim renders role, actor, provider, `sid`,
+revision, and time. Preserve `none` when no claim is live. JSON status continues
+to serialize the validated state; add the Step 3 unit assertion for both
+surfaces so acceptance cannot accidentally prove JSON only.
+
 After a successful reviewer protocol claim, publish the reviewer operational
 index from the returned authoritative claim. Implement the retryable and
-terminal index diagnostics from Step 4 without rolling back or duplicating the
+terminal index diagnostics from Step 5 without rolling back or duplicating the
 protocol claim.
 
-- [ ] **Step 10: Build archive provenance from selected handoffs only**
+- [ ] **Step 11: Build archive provenance from selected handoffs only**
 
 In `archive.mjs`, derive owner and reviewer evidence provenance from the claim
 reference embedded in each selected handoff event. Include the exact pair and
@@ -1198,9 +1281,9 @@ claim identity in prepared and rendered manifests, validate it during normal
 inspection and foreign recovery, and reject environment/index/role-derived
 substitutes. Keep legacy archive reading behind its explicit profile-less path.
 
-- [ ] **Step 11: Run focused GREEN and targeted quality checks**
+- [ ] **Step 12: Run focused GREEN and targeted quality checks**
 
-Run the Step 6 command, then:
+Run the Step 7 command, then:
 
 ```bash
 npx prettier --check \
@@ -1210,7 +1293,20 @@ npx prettier --check \
   scripts/review/lib/index.mjs \
   scripts/review/lib/start.mjs \
   scripts/review/lib/archive.mjs \
-  scripts/tests/unit/review/co-review-provider-session.test.mjs
+  scripts/tests/fixtures/co-review-handoff-cases.mjs \
+  scripts/tests/fixtures/co-review-start-cases.mjs \
+  scripts/tests/fixtures/co-review-e2e-cases.mjs \
+  scripts/tests/fixtures/co-review-fixture.mjs \
+  scripts/tests/fixtures/co-review-consistency-cases.mjs \
+  scripts/tests/fixtures/co-review-finalization-cases.mjs \
+  scripts/tests/fixtures/co-review-supplement-cases.mjs \
+  scripts/tests/fixtures/co-review-budget-cases.mjs \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs \
+  scripts/tests/unit/review/co-review-fixture-cost.test.mjs \
+  scripts/tests/unit/review/co-review.test.mjs \
+  scripts/tests/unit/review/co-review-index.test.mjs \
+  scripts/tests/unit/review/co-review-finalization.test.mjs \
+  scripts/tests/slow/review/co-review-boundaries.test.mjs
 npx eslint \
   scripts/review/co-review.mjs \
   scripts/review/lib/provider-session.mjs \
@@ -1218,7 +1314,20 @@ npx eslint \
   scripts/review/lib/index.mjs \
   scripts/review/lib/start.mjs \
   scripts/review/lib/archive.mjs \
-  scripts/tests/unit/review/co-review-provider-session.test.mjs
+  scripts/tests/fixtures/co-review-handoff-cases.mjs \
+  scripts/tests/fixtures/co-review-start-cases.mjs \
+  scripts/tests/fixtures/co-review-e2e-cases.mjs \
+  scripts/tests/fixtures/co-review-fixture.mjs \
+  scripts/tests/fixtures/co-review-consistency-cases.mjs \
+  scripts/tests/fixtures/co-review-finalization-cases.mjs \
+  scripts/tests/fixtures/co-review-supplement-cases.mjs \
+  scripts/tests/fixtures/co-review-budget-cases.mjs \
+  scripts/tests/unit/review/co-review-provider-session.test.mjs \
+  scripts/tests/unit/review/co-review-fixture-cost.test.mjs \
+  scripts/tests/unit/review/co-review.test.mjs \
+  scripts/tests/unit/review/co-review-index.test.mjs \
+  scripts/tests/unit/review/co-review-finalization.test.mjs \
+  scripts/tests/slow/review/co-review-boundaries.test.mjs
 git diff --check
 ```
 
@@ -1226,7 +1335,7 @@ Expected: every focused test and targeted quality check passes. Search current
 production to confirm no profiled path calls the three forbidden helpers and no
 diagnostic or persisted file prints a session value.
 
-- [ ] **Step 12: Commit authoritative provider/session provenance**
+- [ ] **Step 13: Commit authoritative provider/session provenance**
 
 ```bash
 git add \
@@ -1239,11 +1348,17 @@ git add \
   scripts/tests/fixtures/co-review-handoff-cases.mjs \
   scripts/tests/fixtures/co-review-start-cases.mjs \
   scripts/tests/fixtures/co-review-e2e-cases.mjs \
+  scripts/tests/fixtures/co-review-fixture.mjs \
+  scripts/tests/fixtures/co-review-consistency-cases.mjs \
+  scripts/tests/fixtures/co-review-finalization-cases.mjs \
+  scripts/tests/fixtures/co-review-supplement-cases.mjs \
+  scripts/tests/fixtures/co-review-budget-cases.mjs \
   scripts/tests/unit/review/co-review-provider-session.test.mjs \
+  scripts/tests/unit/review/co-review-fixture-cost.test.mjs \
   scripts/tests/unit/review/co-review.test.mjs \
   scripts/tests/unit/review/co-review-index.test.mjs \
   scripts/tests/unit/review/co-review-finalization.test.mjs \
-  scripts/tests/unit/providers/coverage-provider-adapter.test.mjs
+  scripts/tests/slow/review/co-review-boundaries.test.mjs
 git commit -m "[#1406] Bind co-review evidence to provider sessions"
 ```
 
@@ -1530,8 +1645,8 @@ rg -n \
   "co-review-write-policy|mutation-targets|reviewer-co-review-command|pending review artifact|reviewer mutation destinations are incomplete or ambiguous|Arbitrary Bash remains blocked" \
   scripts docs/guides
 rg -n \
-  "detectProvider|resolveSessionId|sessionIdEnvKeys\\(" \
-  scripts/review/co-review.mjs scripts/review/lib/provider-session.mjs
+  "detectProvider|resolveSessionId|sessionIdEnvKeys\\(|FALLBACK_SESSION_ID" \
+  scripts/review/co-review.mjs scripts/review/lib
 ```
 
 Expected: neither search returns a match. There is no production,
@@ -1582,7 +1697,8 @@ git diff --check c74408db033c2d50df8b25e9fcaf11dee46f579a..HEAD
 ```
 
 Expected: clean worktree; only planned production, test, fixture, guide, and
-manifest paths plus this reviewed plan artifact changed; no whitespace errors.
+manifest paths plus the amended specification and reviewed plan artifacts
+changed; no whitespace errors.
 
 - [ ] **Step 2: Run all focused #1406 tests together**
 
@@ -1635,14 +1751,16 @@ npm pack --dry-run
 rg -n \
   "reviewer mutation destinations are incomplete or ambiguous|Arbitrary Bash remains blocked|pending review artifact" \
   scripts docs/guides
+rg -n \
+  "detectProvider|resolveSessionId|sessionIdEnvKeys\\(|FALLBACK_SESSION_ID" \
+  scripts/review/co-review.mjs scripts/review/lib
 ```
 
 Expected: package includes `apply-patch-targets.mjs` and
 `provider-session.mjs`, excludes retired modules, and the stale-reference search
-returns no current production/guide matches. Also inspect `co-review.mjs` and
-`provider-session.mjs` to confirm the profiled path contains no import or call
-of `detectProvider`, `resolveSessionId`, or the general
-`sessionIdEnvKeys()` helper.
+returns no current production/guide matches. The forbidden-helper search also
+returns no match anywhere on the co-review CLI or library path, including the
+removed `FALLBACK_SESSION_ID` import/comparison.
 
 - [ ] **Step 5: Record per-AC verification through sanctioned #1406 workflow**
 
