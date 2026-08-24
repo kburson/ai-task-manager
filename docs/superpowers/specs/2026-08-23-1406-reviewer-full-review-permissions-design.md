@@ -1,7 +1,7 @@
 # SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Claude amendment review changes incorporated; re-review pending
+**Status:** Second Claude review changes incorporated; final re-review pending
 **Date:** 2026-08-23
 
 ## Review Context
@@ -46,6 +46,12 @@ resolution, cross-role session separation, imported-unclaimed initialization,
 handoff-sourced archive provenance, complete envelope naming, legacy re-init
 refusal, named replay refusal, explicit #1381 ancestry, and #1406-specific
 Plan-approval wording. The corrected commit requires independent re-review.
+
+Re-review of corrected commit `81a36754` confirmed all ten findings resolved and
+returned two new findings, C1 and C2. This revision incorporates both by defining
+provider and session selection as one deterministic native-key operation and by
+making the cross-role comparison explicitly vacuous before any real peer claim
+exists. The resulting commit requires final independent re-review.
 
 ## Development Amendment
 
@@ -231,15 +237,28 @@ first artifact-only diff.
 ### Role and session authority
 
 Owner and reviewer identities remain distinct. For a profiled runtime, the CLI
-first resolves the active provider adapter, then resolves `sid` only from that
-adapter's declared provider-native `sessionIdEnvKeys`. It does not accept
-`AI_TASK_MANAGER_SESSION_ID`, another adapter's key, a transcript-basename
-fallback, or `default-session` as profiled co-review provenance. Claude and
-Codex therefore use their native session environment keys as required inputs
-for profiled turns even though their general task-tracker adapters retain legacy
-fallback behavior; Grok retains its existing required native key. A missing
-native value refuses with `co-review:provider-session-id-required` before every
-claim and handoff.
+resolves provider and `sid` together without calling the general
+`detectProvider()` or `resolveSessionId()` functions. It inspects only each
+registered adapter's declared provider-native `sessionIdEnvKeys` and ignores
+`detectionEnvKeys`. Empty values do not count.
+
+Exactly one adapter must contribute native session values, and every non-empty
+native key for that adapter must agree on one `sid`. That adapter name and the
+unique value form the result. No contributing adapter refuses with
+`co-review:provider-session-id-required`. More than one contributing adapter,
+or conflicting values across one adapter's native keys, refuses with
+`co-review:provider-session-id-ambiguous` and names the contributing providers
+and keys without printing session values. There is no registry-priority or
+implicit-Claude default.
+
+The resolver does not accept `AI_TASK_MANAGER_SESSION_ID`, a non-session
+detection key such as `CODEX_HOME` or `GROK_AGENT`, a transcript-basename
+fallback, or `default-session` as profiled co-review provenance. Native session
+keys from another adapter make the environment ambiguous rather than being
+ignored after one provider is selected. Claude and Codex therefore use their
+native session environment keys as required inputs for profiled turns even
+though their general task-tracker adapters retain legacy fallback behavior;
+Grok retains its existing required native key.
 
 The protocol library receives the resolved provider and `sid` as required
 inputs; an arbitrary configured actor name is not a substitute. The pair
@@ -276,7 +295,9 @@ provider/session cannot take over an already claimed turn and receives
 handoff; equality refuses before state advance with
 `co-review:session-role-conflict`. The same owner session and same reviewer
 session may each reclaim their own later rounds, but one provider session cannot
-serve both roles.
+serve both roles. The comparison is vacuous when no peer handoff exists or when
+the latest opposite-role handoff is the explicit `imported-unclaimed/v1`
+initialization record; it first binds at the reviewer's first real claim.
 
 Exact handoff replay also requires the provider/session recorded by the
 completed handoff; a second session cannot replay another session's submission.
@@ -577,10 +598,13 @@ reviewer-occupancy check; it is not protocol evidence authority.
 
 ### `co-review.mjs` and `index.mjs`
 
-- Add a co-review-specific resolver that detects the active provider and reads
-  only that adapter's provider-native `sessionIdEnvKeys`. Do not call the
-  general task-tracker fallback chain for profiled claims or handoffs. Pass the
-  resulting provider and `sid` into the protocol library; actor alone is
+- Add one co-review-specific resolver that selects provider and `sid` together
+  from registered adapters' `sessionIdEnvKeys` only. Do not call
+  `detectProvider()`, consult `detectionEnvKeys`, or enter the general
+  task-tracker fallback chain for profiled claims or handoffs. Require exactly
+  one contributing adapter and one unique value across its non-empty native
+  keys; otherwise return the required or ambiguity refusal defined above. Pass
+  the resulting provider and `sid` into the protocol library; actor alone is
   insufficient.
 - Move reviewer-index preparation after the authoritative protocol claim. Build
   its provider, `sid`, role, round, and pending-review path from the returned
@@ -620,7 +644,9 @@ reviewer-occupancy check; it is not protocol evidence authority.
   Same-actor replay is idempotent only when provider and `sid` also match.
 - Refuse a new claim when its `{provider, sid}` equals the opposite role's most
   recent handoff claim reference. Preserve each role's ability to reuse its own
-  persistent session in later rounds.
+  persistent session in later rounds. Treat no peer handoff and the explicit
+  imported-unclaimed initialization record as having no comparison pair; the
+  rule first binds on the first real peer claim.
 - Extend both handoff APIs with required `provider` and `sid` inputs. Compare
   them to the live claim before consuming evidence; copy the exact claim
   reference into the handoff before clearing `state.claim`.
@@ -681,16 +707,24 @@ reviewer-occupancy check; it is not protocol evidence authority.
 - Wrong artifact, commit, blob, digest, actor, provider, session, round,
   review path, claim reference, or decision refuses the protocol mutation with
   no state change.
-- A missing provider-native session key, a general orchestrator override without
-  that native key, a transcript-derived basename, a fallback value, or a
-  malformed provider/session refuses claim or handoff before evidence is
-  consumed or state is advanced.
+- No provider-native session key, a general orchestrator override alone, a
+  non-session detection key alone, a transcript-derived basename, a fallback
+  value, or a malformed provider/session refuses claim or handoff before
+  evidence is consumed or state is advanced with
+  `co-review:provider-session-id-required`.
+- Native session keys from multiple adapters, or different non-empty values
+  across one adapter's native keys, refuse with
+  `co-review:provider-session-id-ambiguous`. The diagnostic names provider/key
+  candidates but never session values, and registry order chooses nothing.
 - A profiled claim may be retried only by the same actor, provider, and `sid`.
   A conflicting caller receives `co-review:claim-conflict`; there is no implicit
   takeover, release, or reassignment.
 - One `{provider, sid}` cannot serve both roles. Equality with the opposite
   role's latest handoff claim reference receives
-  `co-review:session-role-conflict` before mutation.
+  `co-review:session-role-conflict` before mutation. No peer handoff and the
+  explicit imported-unclaimed initialization record provide no comparison pair
+  and therefore do not refuse; the rule first binds on the first real peer
+  claim.
 - A handoff or handoff replay from a provider/session other than the recorded
   claim receives `co-review:handoff-session-mismatch` before evidence is
   consumed or replay success is returned.
@@ -811,15 +845,24 @@ Focused protocol and CLI tests must prove:
 
 - new initialization stamps the provenance profile in state and the start
   manifest without changing the version-1 envelope names;
-- profiled owner/reviewer commands accept only the active adapter's native
-  session key and refuse a global orchestrator override alone, another
-  adapter's key, a transcript-derived basename, or a fallback value;
+- profiled owner/reviewer commands select provider and `sid` together from one
+  adapter's native session keys and refuse a global orchestrator override alone,
+  a non-session detection key alone, a transcript-derived basename, or a
+  fallback value;
+- an empty native-key environment refuses as required; simultaneous native keys
+  from two adapters and conflicting native values within one adapter refuse as
+  ambiguous; identical values across two native keys of one adapter resolve to
+  that one provider/session pair; registry priority and implicit Claude fallback
+  are never used;
 - each persisted claim event contains the exact role, actor, provider, `sid`,
   claim revision, process, host, and timestamp from `state.claim`;
 - an exact same-session claim retry is idempotent, while another provider or
   `sid` receives a pre-mutation conflict;
 - an owner and reviewer cannot use the same `{provider, sid}`, while each role
   can reclaim its own persistent session in later rounds;
+- the first owner claim in a fresh runtime and the first owner claim after an
+  imported-unclaimed initialization skip the cross-role comparison, which first
+  binds at the reviewer's first real claim;
 - both handoffs require the provider/session that owns the live claim, copy the
   exact claim reference, and reject another session before reading new evidence;
 - exact handoff replay requires the recorded provider/session and claim
@@ -855,9 +898,12 @@ cannot satisfy the fresh-runtime acceptance case.
 Provider adapter tests must prove the concrete native-key contract for Claude
 (`CLAUDE_CODE_SESSION_ID` or `CLAUDE_SESSION_ID`), Codex (`CODEX_THREAD_ID` or
 `CODEX_SESSION_ID`), and Grok (`GROK_SESSION_ID`) across owner claim, reviewer
-claim, owner handoff, and reviewer handoff. General task-tracker legacy fallback
-behavior stays unchanged outside profiled co-review. The test environment
-supplies opaque fake IDs; no credential or transcript content enters fixtures.
+claim, owner handoff, and reviewer handoff. The same table covers an empty
+environment, a detection-only environment, native keys from multiple adapters,
+conflicting same-adapter native values, and identical same-adapter aliases.
+General task-tracker legacy fallback behavior stays unchanged outside profiled
+co-review. The test environment supplies opaque fake IDs; no credential or
+transcript content enters fixtures.
 
 ### Automated two-session acceptance
 
