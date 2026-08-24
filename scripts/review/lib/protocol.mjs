@@ -1223,23 +1223,18 @@ function recognizeOwnerHandoffReplay({
   repository,
 }) {
   if (!immediatelyCompletedHandoff(paths, state, 'owner')) return null;
-  let matches = false;
-  try {
-    const responseArtifact = digestFile(root, response, 'response');
-    const answeredReview = answers ? digestFile(root, answers, 'answers') : null;
-    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
-    const recorded = state.lastHandoff;
-    matches =
-      state.roles.owner === actor &&
-      sameOwnerArtifact(artifactRecord, recorded.artifact) &&
-      sameOwnerArtifact(artifactRecord, state.artifact) &&
-      artifactRecord.commit === recorded.commit &&
-      sameDigestArtifact(responseArtifact, recorded.artifacts?.response) &&
-      sameDigestArtifact(answeredReview, recorded.artifacts?.answeredReview) &&
-      String(message || '').trim() === recorded.message;
-  } catch (error) {
-    if (!(error instanceof ProtocolError)) throw error;
-  }
+  const responseArtifact = digestFile(root, response, 'response');
+  const answeredReview = answers ? digestFile(root, answers, 'answers') : null;
+  const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
+  const recorded = state.lastHandoff;
+  const matches =
+    state.roles.owner === actor &&
+    sameOwnerArtifact(artifactRecord, recorded.artifact) &&
+    sameOwnerArtifact(artifactRecord, state.artifact) &&
+    artifactRecord.commit === recorded.commit &&
+    sameDigestArtifact(responseArtifact, recorded.artifacts?.response) &&
+    sameDigestArtifact(answeredReview, recorded.artifacts?.answeredReview) &&
+    String(message || '').trim() === recorded.message;
   if (!matches) fail('handoff-conflict', 'owner');
   return state;
 }
@@ -1257,22 +1252,17 @@ function recognizeReviewerHandoffReplay({
   repository,
 }) {
   if (!immediatelyCompletedHandoff(paths, state, 'reviewer')) return null;
-  let matches = false;
-  try {
-    const reviewArtifact = digestFile(root, review, 'review');
-    const summaryArtifact = summary ? digestFile(root, summary, 'summary') : null;
-    const exactReviewOf = exactReachableCommit(root, reviewOf, repository);
-    const recorded = state.lastHandoff;
-    matches =
-      state.roles.reviewer === actor &&
-      exactReviewOf === recorded.commit &&
-      decision === recorded.decision &&
-      sameDigestArtifact(reviewArtifact, recorded.artifacts?.review) &&
-      sameDigestArtifact(summaryArtifact, recorded.artifacts?.summary) &&
-      String(message || '').trim() === recorded.message;
-  } catch (error) {
-    if (!(error instanceof ProtocolError)) throw error;
-  }
+  const reviewArtifact = digestFile(root, review, 'review');
+  const summaryArtifact = summary ? digestFile(root, summary, 'summary') : null;
+  const exactReviewOf = exactReachableCommit(root, reviewOf, repository);
+  const recorded = state.lastHandoff;
+  const matches =
+    state.roles.reviewer === actor &&
+    exactReviewOf === recorded.commit &&
+    decision === recorded.decision &&
+    sameDigestArtifact(reviewArtifact, recorded.artifacts?.review) &&
+    sameDigestArtifact(summaryArtifact, recorded.artifacts?.summary) &&
+    String(message || '').trim() === recorded.message;
   if (!matches) fail('handoff-conflict', 'reviewer');
   return state;
 }

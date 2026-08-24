@@ -123,7 +123,7 @@ async function completedOwnerHandoff() {
 }
 
 async function completedAcceptedReviewerHandoff() {
-  const fixture = await reviewerTurn({ maxReviewTurns: 1 });
+  const fixture = await reviewerTurn({ imported: true, maxReviewTurns: 2 });
   const { api, root, options, commit } = fixture;
   const review = `${options.dir}/accepted-replay-review.md`;
   writeFileSync(path.join(root, review), '# Review\n\nAccepted.\n');
@@ -135,6 +135,24 @@ async function completedAcceptedReviewerHandoff() {
     reviewOf: commit,
     decision: 'accepted',
     message: 'accepted',
+  };
+  const first = api.handoffReviewer(call);
+  return { ...fixture, call, first, review };
+}
+
+async function completedChangesRequestedReviewerHandoff() {
+  const fixture = await reviewerTurn({ maxReviewTurns: 2 });
+  const { api, root, options, commit } = fixture;
+  const review = `${options.dir}/changes-requested-replay-review.md`;
+  writeFileSync(path.join(root, review), '[finding:F-002] Clarify recovery.\n');
+  const call = {
+    cwd: root,
+    dir: options.dir,
+    actor: options.reviewer,
+    review,
+    reviewOf: commit,
+    decision: 'changes-requested',
+    message: 'changes requested',
   };
   const first = api.handoffReviewer(call);
   return { ...fixture, call, first, review };
@@ -241,8 +259,6 @@ test('an immediate conflicting owner handoff reuse refuses without mutation', as
   const conflicts = [
     ['actor', { actor: 'different-owner' }],
     ['response artifact', { response: alternateResponse }],
-    ['artifact path', { artifact: '.gitignore' }],
-    ['commit', { commit: fixture.initialCommit }],
     ['answered review', { answers: alternateAnswers }],
     ['message', { message: 'different owner message' }],
   ];
@@ -256,6 +272,34 @@ test('an immediate conflicting owner handoff reuse refuses without mutation', as
     );
     assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before, name);
   }
+});
+
+test('an invalid immediate owner replay preserves its established evidence diagnostic', async () => {
+  const fixture = await completedOwnerHandoff();
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  assert.throws(
+    () =>
+      fixture.api.handoffOwner({
+        ...fixture.call,
+        response: '../outside-owner-response.md',
+      }),
+    /co-review:path-outside-repository:response=\.\.\/outside-owner-response\.md/
+  );
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
+});
+
+test('an owner replay after the reviewer claims is stale and follows ordinary role refusal', async () => {
+  const fixture = await completedOwnerHandoff();
+  fixture.api.claimTurn({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    actor: fixture.options.reviewer,
+  });
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  assert.throws(() => fixture.api.handoffOwner(fixture.call), /co-review:wrong-role/);
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
 });
 
 test('owner handoff requires clean staged and unstaged tracked state', async () => {
@@ -596,7 +640,7 @@ test('an immediate conflicting reviewer handoff reuse refuses without mutation',
   const conflicts = [
     ['actor', { actor: 'different-reviewer' }],
     ['review artifact', { review: alternateReview }],
-    ['review-of commit', { reviewOf: 'missing-revision' }],
+    ['review-of commit', { reviewOf: fixture.initialCommit }],
     ['decision', { decision: 'changes-requested' }],
     ['summary', { summary: alternateSummary }],
     ['message', { message: 'different reviewer message' }],
@@ -611,6 +655,34 @@ test('an immediate conflicting reviewer handoff reuse refuses without mutation',
     );
     assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before, name);
   }
+});
+
+test('an invalid immediate reviewer replay preserves its established evidence diagnostic', async () => {
+  const fixture = await completedAcceptedReviewerHandoff();
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  assert.throws(
+    () =>
+      fixture.api.handoffReviewer({
+        ...fixture.call,
+        review: '../outside-review.md',
+      }),
+    /co-review:path-outside-repository:review=\.\.\/outside-review\.md/
+  );
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
+});
+
+test('a reviewer replay after the owner claims is stale and follows ordinary role refusal', async () => {
+  const fixture = await completedChangesRequestedReviewerHandoff();
+  fixture.api.claimTurn({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    actor: fixture.options.owner,
+  });
+  const before = snapshotProtocol(fixture.root, fixture.options.dir);
+
+  assert.throws(() => fixture.api.handoffReviewer(fixture.call), /co-review:wrong-role/);
+  assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), before);
 });
 
 test('final changes-requested preserves the closing owner turn, then enters intervention', async () => {
