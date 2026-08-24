@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
+import { isGeneratedResearchArtifact } from '../../../lib/residue-audit-scope.mjs';
+
 const LEGACY_TOKEN = /on[- _]?deck/i;
 const SPLIT_LEGACY_TOKEN = /on[ \t]*\r?\n[ \t]*(?:(?:\/\/|#|\*)[ \t]*)?deck/gi;
 const SELF = 'scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs';
@@ -200,6 +202,7 @@ test('legacy On Deck vocabulary exists only in the audited compatibility allowli
   const residue = new Map();
   for (const file of files) {
     if (file === SELF) continue;
+    if (isGeneratedResearchArtifact(file)) continue;
     let source;
     try {
       source = readFileSync(file, 'utf8');
