@@ -64,10 +64,10 @@ export const GH_TIMING_COMMENT_TIMEOUT_MS = 10000;
 export const MOVE_STATE_TIMEOUT_MS = 120000;
 export const GIT_TIMEOUT_MS = 10000;
 export const LOCAL_FAST_TIMEOUT_MS = 5000;
-// 10 minutes — the full `npm test` suite (200+ files) runs well past 60s
-// under `dod-stamp tests`; 600_000 gives headroom for CI-equivalent wall-clock
-// while still catching a truly runaway suite.
-export const TEST_RUNNER_TIMEOUT_MS = 600000;
+// 20 minutes — the aggregate `npm run quality` verifier currently takes about
+// 12.5 minutes on the governed worktree. Keep the complete safety net bounded
+// but runnable until authoritative TIA can reduce the routinely required scope.
+export const TEST_RUNNER_TIMEOUT_MS = 1_200_000;
 
 // #858 — the Test-stage sandbox's per-command budget. This lived as a private
 // 900_000 constant in `verbs/test.mjs`, whose comment sized it for a fresh
