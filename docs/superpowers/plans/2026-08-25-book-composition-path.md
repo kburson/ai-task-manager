@@ -15,42 +15,173 @@
 - Node.js v22+, ES modules only. No new npm dependencies — metadata is JSON and markdown precisely so no YAML parser is needed.
 - `scripts/articles/**` is already excluded from the published npm package by `package.json` `files`. Nothing in this plan ships to consumers.
 - The LinkedIn path must not change. `scripts/tests/unit/articles/publish-articles.test.mjs` is the regression guard and must pass unmodified at every commit.
-- Every new test file's first line must be `// @story #<N>` using the tracking issue from Task 0 — `scripts/tests/tools/audit-story-tags.mjs` fails closed otherwise.
+- Every new test file's first line must be `// @chore`. Task 0 teaches `scripts/task-tracker/lib/story-tag-header.mjs` to accept that form; `scripts/tests/tools/audit-story-tags.mjs` fails closed on an untagged file.
 - New test files live at `scripts/tests/unit/articles/book/<name>.test.mjs`. `audit-test-layout.mjs` requires a subdirectory under the lane's area, which `articles/book/` satisfies.
 - Test files are capped at 800 code lines (`audit-line-cap.mjs`); feature files above 400 draw a soft warning.
-- Every commit subject leads with `[#<N>]` using the Task 0 issue number.
+- Commit subjects are plain conventional commits. This chore has no issue, so no `[#N]` token — that token belongs to `/task`-workflow commits.
 - Fail loud. A marker mistake, an unresolvable link, or a missing fragment is an error naming the file — never a silently dropped section.
 - Book output root is `.tmp/book/`. `.tmp/` is already gitignored.
 
 ---
 
-### Task 0: Tracking issue and package scaffolding
+### Task 0: Chore tag support and scaffolding
 
-The repo's `audit-story-tags` gate requires every test file to carry `// @story #N`. This chore has no AITM issue, so one GitHub issue is created purely as a tag anchor. No `/task` binding, no board workflow, no state machine — it exists to give the gate a number.
+`scripts/tests/tools/audit-story-tags.mjs` fails closed on any test file that does not open with `// @story #NNN`. This chore has no AITM issue, and inventing one purely to satisfy a lint gate puts a phantom entry on the board forever. Teach the gate that a chore is a legitimate provenance instead.
 
 **Files:**
 
+- Modify: `scripts/task-tracker/lib/story-tag-header.mjs`
+- Modify: `docs/guides/test-authoring.md:53`
 - Modify: `package.json` (scripts block)
-- Modify: `cspell-dictionary.txt`
+- Create: `scripts/tests/unit/task-tracker/lib/story-tag-header.test.mjs`
 - Create: `docs/articles/assets/book/.gitkeep`
 - Create: `docs/articles/assets/book/fragments/.gitkeep`
 
 **Interfaces:**
 
 - Consumes: nothing
-- Produces: the issue number `N` used in every subsequent `@story` tag and commit subject; npm scripts `book`, `doctor:book`, `lint:book-markers`
+- Produces: `hasPermittedStoryTag(content)` additionally accepts a leading `// @chore` line; npm scripts `book`, `doctor:book`, `lint:book-markers`
 
-- [ ] **Step 1: Create the tracking issue**
+- [ ] **Step 1: Write the failing test**
 
-```bash
-gh issue create \
-  --title "Book composition path for the article series" \
-  --body "Tracking anchor for the book publication chore. Design: docs/superpowers/specs/2026-08-25-book-composition-path-design.md. Plan: docs/superpowers/plans/2026-08-25-book-composition-path.md. No AITM workflow — this issue exists so test files can carry a @story tag and commits can carry a [#N] subject token."
+Create `scripts/tests/unit/task-tracker/lib/story-tag-header.test.mjs`:
+
+```javascript
+// @chore
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  hasPermittedStoryTag,
+  moveMalformedStoryTag,
+} from '../../../../task-tracker/lib/story-tag-header.mjs';
+
+test('a story tag on line one is permitted', () => {
+  assert.equal(hasPermittedStoryTag('// @story #876\n\nimport x;\n'), true);
+});
+
+test('a story tag after a shebang is permitted', () => {
+  assert.equal(hasPermittedStoryTag('#!/usr/bin/env node\n// @story #876\n'), true);
+});
+
+test('a cspell preamble may follow the tag', () => {
+  assert.equal(hasPermittedStoryTag('// @story #876\n// cspell:ignore foo\nimport x;\n'), true);
+});
+
+test('an untagged file is refused', () => {
+  assert.equal(hasPermittedStoryTag('import x;\n'), false);
+});
+
+test('a chore tag on line one is permitted', () => {
+  assert.equal(hasPermittedStoryTag('// @chore\n\nimport x;\n'), true);
+});
+
+test('a chore tag after a shebang is permitted', () => {
+  assert.equal(hasPermittedStoryTag('#!/usr/bin/env node\n// @chore\n'), true);
+});
+
+test('a cspell preamble may follow a chore tag', () => {
+  assert.equal(hasPermittedStoryTag('// @chore\n// cspell:ignore foo\nimport x;\n'), true);
+});
+
+test('a chore tag with trailing prose is permitted', () => {
+  assert.equal(hasPermittedStoryTag('// @chore book composition path\n'), true);
+});
+
+test('a bare @chore without the comment marker is refused', () => {
+  assert.equal(hasPermittedStoryTag('@chore\n'), false);
+});
+
+test('a chore tag below the first line is refused', () => {
+  assert.equal(hasPermittedStoryTag('import x;\n// @chore\n'), false);
+});
+
+test('a shebang after a chore tag is still refused', () => {
+  assert.equal(hasPermittedStoryTag('// @chore\n#!/usr/bin/env node\n'), false);
+});
+
+test('moveMalformedStoryTag leaves an already-valid chore tag alone', () => {
+  assert.equal(moveMalformedStoryTag('// @chore\nimport x;\n'), null);
+});
+
+test('moveMalformedStoryTag still repairs a out-of-order story tag', () => {
+  assert.equal(
+    moveMalformedStoryTag('// cspell:ignore foo\n// @story #876\nimport x;\n'),
+    '// @story #876\n// cspell:ignore foo\nimport x;\n'
+  );
+});
 ```
 
-Record the returned issue number. Everywhere below that says `#N`, substitute it.
+- [ ] **Step 2: Run test to verify it fails**
 
-- [ ] **Step 2: Add the npm scripts**
+Run: `node --test scripts/tests/unit/task-tracker/lib/story-tag-header.test.mjs`
+Expected: the four `@chore` acceptance tests FAIL (`Expected values to be strictly equal: false !== true`); the `@story` tests pass, which confirms the fixtures are right before the change.
+
+- [ ] **Step 3: Write the implementation**
+
+In `scripts/task-tracker/lib/story-tag-header.mjs`, add the chore pattern beside the story pattern:
+
+```javascript
+const STORY_TAG_LINE_RE = /^\/\/ @story #\d+(?:\s|$)/;
+const CHORE_TAG_LINE_RE = /^\/\/ @chore(?:\s|$)/;
+```
+
+Add a predicate beside `isStoryTag`:
+
+```javascript
+function isChoreTag(line) {
+  return CHORE_TAG_LINE_RE.test(normalizedLine(line));
+}
+
+// A test's provenance is either a story or a deliberate chore. Both are real
+// provenance; only an unmarked file is a gap.
+function isProvenanceTag(line) {
+  return isStoryTag(line) || isChoreTag(line);
+}
+```
+
+Then change the two `isStoryTag` calls inside `hasPermittedStoryTag` — and only those — to `isProvenanceTag`:
+
+```javascript
+export function hasPermittedStoryTag(content) {
+  const lines = String(content).split('\n');
+  if (isProvenanceTag(lines[0])) {
+    for (let index = 1; index < lines.length; index += 1) {
+      if (isShebang(lines[index])) return false;
+      if (!isCspellPreamble(lines[index])) break;
+    }
+    return true;
+  }
+  return isShebang(lines[0]) && isProvenanceTag(lines[1]);
+}
+```
+
+Leave `moveMalformedStoryTag` untouched. It repairs out-of-order _story_ tags by hoisting them above a cspell preamble; a chore tag has no id to hoist, and `hasPermittedStoryTag` already returns early for a well-formed one.
+
+- [ ] **Step 4: Run the new test and the gate's own test**
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/story-tag-header.test.mjs scripts/tests/unit/meta/audit-story-tags.test.mjs`
+Expected: PASS, 13 + 3 tests. The audit test must be green and unmodified — the gate still refuses untagged files.
+
+Then confirm the live corpus is unaffected:
+
+Run: `npm run lint:story-tags`
+Expected: `audit-story-tags: all <N> test files carry a @story tag.`
+
+- [ ] **Step 5: Document the chore form**
+
+In `docs/guides/test-authoring.md`, replace the paragraph beginning "Every test has `// @story #NNN`" with:
+
+```markdown
+Every test declares its provenance on line 1, or on line 2 immediately after a
+shebang: `// @story #NNN` for work tracked by an issue, or `// @chore` for
+deliberate chore work that has no issue and should not get a phantom one. A
+`// cspell:ignore ...` preamble follows the provenance tag; it never precedes
+it. Run `npm run lint:test-layout`, `npm run lint:story-tags`, and
+`npm run lint:line-cap` before the relevant lane.
+```
+
+- [ ] **Step 6: Add the npm scripts and the metadata folder**
 
 In `package.json`, add to `scripts`:
 
@@ -60,30 +191,23 @@ In `package.json`, add to `scripts`:
 "lint:book-markers": "node scripts/maintenance/lint-book-markers.mjs"
 ```
 
-Then append `&& npm run lint:book-markers` to the end of the existing `lint` script value.
+Do **not** append `lint:book-markers` to the `lint` chain yet — its script does not exist until Task 13, and adding it now breaks `npm run lint` for every task in between. Task 13 wires it into the chain.
 
-- [ ] **Step 3: Confirm spelling words are present**
-
-The toolchain vocabulary (`xelatex`, `latexmk`, `makeindex`, `tlmgr`, and the rest) was already appended to `cspell-dictionary.txt` when the spec and plan landed. Confirm rather than re-add:
-
-Run: `npm run lint:spell`
-Expected: `Issues found: 0 in 0 files`
-
-- [ ] **Step 4: Create the metadata folder**
+The book toolchain vocabulary (`xelatex`, `latexmk`, `tlmgr`, and the rest) is already in `cspell-dictionary.txt`; confirm rather than re-add.
 
 ```bash
 mkdir -p docs/articles/assets/book/fragments
 touch docs/articles/assets/book/.gitkeep docs/articles/assets/book/fragments/.gitkeep
 ```
 
-- [ ] **Step 5: Verify nothing broke and commit**
+- [ ] **Step 7: Verify and commit**
 
-Run: `npm run lint:md && npm run lint:spell`
-Expected: both pass. `lint:book-markers` is not yet runnable — it is added to the `lint` chain here but its script lands in Task 12, so do not run `npm run lint` until then.
+Run: `npm run lint:md && npm run lint:spell && npm run lint:story-tags`
+Expected: all three pass.
 
 ```bash
-git add package.json cspell-dictionary.txt docs/articles/assets/book
-git commit -m "[#N] chore(book): scaffold book metadata folder and npm scripts"
+git add scripts/task-tracker/lib/story-tag-header.mjs scripts/tests/unit/task-tracker/lib/story-tag-header.test.mjs docs/guides/test-authoring.md package.json docs/articles/assets/book
+git commit -m "chore(tests): accept @chore provenance tags and scaffold the book path"
 ```
 
 ---
@@ -107,7 +231,7 @@ An article belongs to the book if and only if it contains a `## Series Link` sec
 Create `scripts/tests/unit/articles/book/spine.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -205,7 +329,7 @@ Expected: PASS, 2 tests
 
 ```bash
 git add scripts/articles/lib/book/spine.mjs scripts/tests/unit/articles/book/spine.test.mjs
-git commit -m "[#N] feat(book): discover the book spine from drafted articles"
+git commit -m "feat(book): discover the book spine from drafted articles"
 ```
 
 ---
@@ -229,7 +353,7 @@ git commit -m "[#N] feat(book): discover the book spine from drafted articles"
 Create `scripts/tests/unit/articles/book/parse-keep-comments.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -309,7 +433,7 @@ Expected: PASS — the publisher test must be untouched and green
 
 ```bash
 git add scripts/articles/lib/parse-article.mjs scripts/tests/unit/articles/book/parse-keep-comments.test.mjs
-git commit -m "[#N] feat(book): let parseArticle preserve HTML comments on request"
+git commit -m "feat(book): let parseArticle preserve HTML comments on request"
 ```
 
 ---
@@ -336,7 +460,7 @@ git commit -m "[#N] feat(book): let parseArticle preserve HTML comments on reque
 Create `scripts/tests/unit/articles/book/markers.test.mjs`:
 
 ````javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -600,7 +724,7 @@ Expected: PASS, 5 tests
 
 ```bash
 git add scripts/articles/lib/book/markers.mjs scripts/tests/unit/articles/book/markers.test.mjs
-git commit -m "[#N] feat(book): parse and validate book composition markers"
+git commit -m "feat(book): parse and validate book composition markers"
 ```
 
 ---
@@ -622,7 +746,7 @@ git commit -m "[#N] feat(book): parse and validate book composition markers"
 Create `scripts/tests/unit/articles/book/strip.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -757,7 +881,7 @@ Expected: PASS, 3 tests
 
 ```bash
 git add scripts/articles/lib/book/strip.mjs scripts/tests/unit/articles/book/strip.test.mjs
-git commit -m "[#N] feat(book): strip series scaffolding from book chapters"
+git commit -m "feat(book): strip series scaffolding from book chapters"
 ```
 
 ---
@@ -781,7 +905,7 @@ git commit -m "[#N] feat(book): strip series scaffolding from book chapters"
 Create `scripts/tests/unit/articles/book/headings.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -904,7 +1028,7 @@ Expected: PASS, 4 tests
 
 ```bash
 git add scripts/articles/lib/book/headings.mjs scripts/tests/unit/articles/book/headings.test.mjs
-git commit -m "[#N] feat(book): plan chapters and shift heading levels"
+git commit -m "feat(book): plan chapters and shift heading levels"
 ```
 
 ---
@@ -929,7 +1053,7 @@ git commit -m "[#N] feat(book): plan chapters and shift heading levels"
 Create `scripts/tests/unit/articles/book/footnotes.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -1104,7 +1228,7 @@ Expected: PASS, 7 tests
 
 ```bash
 git add scripts/articles/lib/book/footnotes.mjs scripts/tests/unit/articles/book/footnotes.test.mjs
-git commit -m "[#N] feat(book): convert inline citations to footnotes"
+git commit -m "feat(book): convert inline citations to footnotes"
 ```
 
 ---
@@ -1126,7 +1250,7 @@ git commit -m "[#N] feat(book): convert inline citations to footnotes"
 Create `scripts/tests/unit/articles/book/sources.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -1209,7 +1333,7 @@ Expected: PASS, 3 tests
 
 ```bash
 git add scripts/articles/lib/book/sources.mjs scripts/tests/unit/articles/book/sources.test.mjs
-git commit -m "[#N] feat(book): merge chapter bibliographies into a sources appendix"
+git commit -m "feat(book): merge chapter bibliographies into a sources appendix"
 ```
 
 ---
@@ -1232,7 +1356,7 @@ git commit -m "[#N] feat(book): merge chapter bibliographies into a sources appe
 Create `scripts/tests/unit/articles/book/glossary.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -1432,7 +1556,7 @@ Expected: PASS, 3 tests
 
 ```bash
 git add scripts/articles/lib/book/glossary.mjs docs/articles/assets/book/glossary.md scripts/tests/unit/articles/book/glossary.test.mjs
-git commit -m "[#N] feat(book): parse the glossary and seed it from the style guide"
+git commit -m "feat(book): parse the glossary and seed it from the style guide"
 ```
 
 ---
@@ -1457,7 +1581,7 @@ git commit -m "[#N] feat(book): parse the glossary and seed it from the style gu
 Create `scripts/tests/unit/articles/book/index-terms.test.mjs`:
 
 ````javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -1655,7 +1779,7 @@ Expected: PASS, 6 tests
 
 ```bash
 git add scripts/articles/lib/book/index-terms.mjs scripts/tests/unit/articles/book/index-terms.test.mjs
-git commit -m "[#N] feat(book): record index hits once per term per section"
+git commit -m "feat(book): record index hits once per term per section"
 ```
 
 ---
@@ -1681,7 +1805,7 @@ This is the task that wires Tasks 1 through 9 together and produces the single m
 Create `scripts/tests/unit/articles/book/manuscript.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -1880,7 +2004,7 @@ async function loadArticle(entry, { isFirst }) {
   };
 }
 
-async function resolveIncludes(items, { bookDir, file }) {
+async function resolveIncludes(items, { bookDir, file, indexTarget }) {
   const lines = [];
   let demote = 0;
   for (const item of items) {
@@ -1892,12 +2016,24 @@ async function resolveIncludes(items, { bookDir, file }) {
       demote += Number(item.attrs.by);
       continue;
     }
+    // `pagebreak` and `index` are LaTeX-only instructions. Emitting them
+    // unconditionally would leak raw markup into EPUB, HTML, and the clean
+    // reviewable manuscript, which is exactly what the target parameter exists
+    // to prevent.
     if (item.verb === 'pagebreak') {
-      lines.push({ text: '\\newpage', demote, raw: true });
+      if (indexTarget === 'pdf') lines.push({ text: '\\newpage', demote, raw: true });
       continue;
     }
     if (item.verb === 'index') {
-      lines.push({ text: `\\index{${item.attrs.term}}`, demote, raw: true });
+      if (indexTarget === 'pdf') {
+        lines.push({ text: `\\index{${item.attrs.term}}`, demote, raw: true });
+      } else if (indexTarget === 'anchor') {
+        lines.push({
+          text: `<a id="ix-manual-${lines.length}"></a>`,
+          demote,
+          raw: true,
+        });
+      }
       continue;
     }
     if (item.verb === 'include') {
@@ -1966,7 +2102,11 @@ export async function buildManuscript({ articlesDir, bookDir, target }) {
         if (section.heading) {
           body.push(shiftHeading(`## ${section.heading}`, shift), '');
         }
-        const resolved = await resolveIncludes(section.items, { bookDir, file: article.file });
+        const resolved = await resolveIncludes(section.items, {
+          bookDir,
+          file: article.file,
+          indexTarget,
+        });
         const converted = resolved.map((line) =>
           line.raw ? line.text : shiftHeading(convertLine(line.text, ctx), shift + line.demote)
         );
@@ -2049,7 +2189,7 @@ Expected: PASS, 3 tests
 
 ```bash
 git add scripts/articles/lib/book/manuscript.mjs docs/articles/assets/book/book.json docs/articles/assets/book/introduction.md scripts/tests/unit/articles/book/manuscript.test.mjs
-git commit -m "[#N] feat(book): assemble the manuscript from the article spine"
+git commit -m "feat(book): assemble the manuscript from the article spine"
 ```
 
 ---
@@ -2075,7 +2215,7 @@ git commit -m "[#N] feat(book): assemble the manuscript from the article spine"
 Create `scripts/tests/unit/articles/book/toolchain.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -2250,7 +2390,7 @@ Expected: PASS, 6 tests
 
 ```bash
 git add scripts/articles/lib/book/toolchain.mjs scripts/tests/unit/articles/book/toolchain.test.mjs
-git commit -m "[#N] feat(book): check the latex toolchain and name missing packages"
+git commit -m "feat(book): check the latex toolchain and name missing packages"
 ```
 
 ---
@@ -2277,7 +2417,7 @@ git commit -m "[#N] feat(book): check the latex toolchain and name missing packa
 Create `scripts/tests/unit/articles/book/render.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -2498,7 +2638,7 @@ Expected: PASS, 6 tests
 
 ```bash
 git add scripts/articles/lib/book/render.mjs scripts/articles/compose-book.mjs scripts/tests/unit/articles/book/render.test.mjs
-git commit -m "[#N] feat(book): render the manuscript to pdf, epub, and html"
+git commit -m "feat(book): render the manuscript to pdf, epub, and html"
 ```
 
 ---
@@ -2522,7 +2662,7 @@ The composer already fails on bad markers, but it fails at build time and withou
 Create `scripts/tests/unit/articles/book/lint-book-markers.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -2726,11 +2866,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 Run: `node --test scripts/tests/unit/articles/book/lint-book-markers.test.mjs`
 Expected: PASS, 5 tests
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Wire the lint into the chain**
+
+Task 0 deliberately left `lint:book-markers` out of the `lint` chain, because its script did not exist yet. It does now. In `package.json`, append `&& npm run lint:book-markers` to the end of the existing `lint` script value.
+
+Run: `npm run lint`
+Expected: PASS, ending with `lint-book-markers: every book marker parses and resolves.`
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/maintenance/lint-book-markers.mjs scripts/tests/unit/articles/book/lint-book-markers.test.mjs
-git commit -m "[#N] feat(book): lint book markers with file and line reporting"
+git add scripts/maintenance/lint-book-markers.mjs scripts/tests/unit/articles/book/lint-book-markers.test.mjs package.json
+git commit -m "feat(book): lint book markers with file and line reporting"
 ```
 
 ---
@@ -2759,7 +2906,7 @@ Articles carry in-body ```mermaid fences, and `lib/diagrams.mjs` already treats 
 Create `scripts/tests/unit/articles/book/diagrams.test.mjs`:
 
 ````javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -2969,7 +3116,7 @@ Expected: PASS. The manuscript test's fixture has no Mermaid, so it must be unch
 
 ```bash
 git add scripts/articles/lib/book/diagrams.mjs scripts/articles/lib/book/manuscript.mjs scripts/articles/compose-book.mjs scripts/tests/unit/articles/book/diagrams.test.mjs
-git commit -m "[#N] feat(book): render in-body mermaid fences as print images"
+git commit -m "feat(book): render in-body mermaid fences as print images"
 ```
 
 ---
@@ -2992,7 +3139,7 @@ git commit -m "[#N] feat(book): render in-body mermaid fences as print images"
 Create `scripts/tests/unit/articles/book/corpus.test.mjs`:
 
 ```javascript
-// @story #N
+// @chore
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import test from 'node:test';
@@ -3145,11 +3292,11 @@ page-numbered index — via hidden `book:` markers and the metadata in
 - [ ] **Step 5: Run the full gate and commit**
 
 Run: `npm run lint && npm run test:unit`
-Expected: PASS. `lint:book-markers` is now present, so the full `lint` chain is runnable for the first time.
+Expected: PASS. This is the first run of the full gate over the finished path.
 
 ```bash
 git add scripts/tests/unit/articles/book/corpus.test.mjs docs/articles/book-publishing-guide.md docs/articles/README.md
-git commit -m "[#N] feat(book): verify the live corpus composes and document the path"
+git commit -m "feat(book): verify the live corpus composes and document the path"
 ```
 
 ---
