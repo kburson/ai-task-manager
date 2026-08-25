@@ -16,12 +16,12 @@ argv
 Ariane
 automatable
 automations
-backtest
-backtests
 backcompat
 backpointer
 Backpointer
 Backpressure
+backtest
+backtests
 backticked
 baselined
 basenames
@@ -49,12 +49,12 @@ chokepoint
 chrono
 comparables
 conflatable
-counterfactuals
 conflates
 Connextra
 Containerfile
 contig
 convergently
+counterfactuals
 covthr
 creds
 criticals
@@ -183,12 +183,11 @@ overinterpreted
 paydown
 paywalled
 pexec
+pipefail
+pkg
 PLOS
 Poppendieck
 Pramida
-RDBMS
-pipefail
-pkg
 prebody
 preflighted
 preflights
@@ -208,6 +207,7 @@ PVTSSF
 pytest
 quotepath
 Qwik
+RDBMS
 readback
 realdir
 realpath
@@ -255,9 +255,9 @@ Sayagh
 scriptable
 SDLC
 Segoe
+Sendbird
 sess
 shellcheck
-testmon
 sidechain
 Sidechain
 Skank
@@ -284,6 +284,7 @@ Swiftorial
 symlink
 tangoes
 testless
+testmon
 textless
 Therac
 Thoughtworks
@@ -350,8 +351,6 @@ Willison
 Willison's
 winget
 wontfixed
-Yoder
-Δwords
 workstreams
 worktree
 Worktree
@@ -362,5 +361,7 @@ worktrees
 Worktrees
 xcresult
 Xuezhi
+Yoder
 zxcvbn
 Zylos
+Δwords

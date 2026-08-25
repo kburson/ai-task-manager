@@ -1,0 +1,10 @@
+flowchart TB
+    Work["Governed backlog item\nintent, state, gates, evidence"] --> Roles["Role assignment"]
+    Roles --> Author["Author / driver\nClaude, Codex, Grok, Gemini"]
+    Roles --> Reviewer["Reviewer / navigator\nClaude, Codex, Grok, Gemini"]
+    Author --> Artifact["Spec, plan, patch, defect analysis"]
+    Artifact --> Reviewer
+    Reviewer --> Findings["Findings, objections, proof requests"]
+    Findings --> Work
+    Work --> Gate["State gate\ncontinue, block, escalate, close"]
+    Gate --> Roles
