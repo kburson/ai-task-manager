@@ -10,6 +10,7 @@ import {
   buildDeliveryReceipt,
   MAX_DELIVERY_REPOSITORY_BYTES,
   parseDeliveryComment,
+  parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
@@ -416,6 +417,45 @@ test('parser enforces repository, issue, PR, exact record keys, and server creat
   const extraKeyBody = `<!-- aitm-delivery-intent ${canonicalRecordJson(extraKeyRecord)} -->`;
   assert.throws(
     () => parseDeliveryComment({ ...validComment, body: extraKeyBody }, context),
+    /delivery-records:intent-keys/
+  );
+});
+
+// @story #1406
+test('transaction parser ignores only a fully valid historical PR record', () => {
+  const intent = buildDeliveryIntent(intentInput());
+  const validComment = {
+    id: 'IC_historical_pr',
+    body: renderDeliveryIntentComment(intent),
+    createdAt: '2026-08-22T01:02:03.000Z',
+  };
+  const currentPrContext = { ...context, prNumber: 1401 };
+
+  assert.equal(parseDeliveryCommentForPullRequest(validComment, currentPrContext), null);
+  assert.throws(
+    () =>
+      parseDeliveryCommentForPullRequest(validComment, {
+        ...currentPrContext,
+        issueNumber: 940,
+      }),
+    /delivery-records:context-mismatch/
+  );
+  assert.throws(
+    () =>
+      parseDeliveryCommentForPullRequest(validComment, {
+        ...currentPrContext,
+        repository: 'kburson/other',
+      }),
+    /delivery-records:context-mismatch/
+  );
+
+  const malformedRecord = { ...intent, extra: true };
+  const malformedComment = {
+    ...validComment,
+    body: `<!-- aitm-delivery-intent ${canonicalRecordJson(malformedRecord)} -->`,
+  };
+  assert.throws(
+    () => parseDeliveryCommentForPullRequest(malformedComment, currentPrContext),
     /delivery-records:intent-keys/
   );
 });

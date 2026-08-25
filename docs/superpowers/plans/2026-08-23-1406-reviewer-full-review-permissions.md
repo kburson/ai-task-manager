@@ -2009,3 +2009,34 @@ Run the terminal-handoff, departure-guard, close-order, and approval-boundary
 tests; then run #1406's complete verification at one clean tracked HEAD. Return
 through Test and Review, obtain exact-head approval, deliver, and close #1406.
 Pause immediately after verifying Done; do not touch #1407, #1381, or #939.
+
+---
+
+### Task 12: Select the Current PR Delivery Transaction
+
+This delivery-stage amendment permits #1406's required second governed PR
+without deleting or rewriting its valid first delivery receipt. It creates no
+successor defect and keeps malformed or cross-issue records fail closed.
+
+**Files:**
+
+- Modify: `scripts/task-tracker/lib/delivery-records.mjs`
+- Modify: `scripts/task-tracker/verbs/deliver.mjs`
+- Modify: `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`
+- Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
+
+- [ ] **Step 1: Reproduce the historical-transaction mismatch**
+
+Add a delivery regression containing a valid completed prior PR transaction
+and a current open PR. Verify RED at `delivery-records:context-mismatch`.
+
+- [ ] **Step 2: Select only the current PR after strict record validation**
+
+Validate every delivery marker and retain strict issue/repository correlation.
+Treat a fully valid record for a different PR number on the same issue as
+historical transaction evidence and exclude it from the current projection.
+
+- [ ] **Step 3: Rebuild exact-head evidence and deliver**
+
+Verify strict parsing, projection, delivery, and provider-action regressions;
+then repeat Test, Review, approval, CI, governed delivery, and close for #1406.
