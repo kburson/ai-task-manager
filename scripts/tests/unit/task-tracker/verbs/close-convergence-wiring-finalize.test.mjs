@@ -1,4 +1,4 @@
-// @story #925
+// @story #925 #1403
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -86,6 +86,29 @@ test('stale close approval refuses after fresh Test and Agent Review evidence', 
   });
   assert.equal(refreshed.exitCode, 0);
   assert.equal(refreshed.calls.movesToDone.length, 1);
+});
+
+test('#1403 close authorizes review against accepted delivery SHA after local HEAD advances', async () => {
+  const laterHead = 'b'.repeat(40);
+  let authorizationInput = null;
+  const run = await runClose({
+    deliveryGateInput: {
+      issueNumber: 925,
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      branch: 'feature/925',
+      acceptedSha: HEAD,
+      localHeadSha: laterHead,
+      pullRequests: [],
+      records: null,
+    },
+    reviewAuthorizationResolver: (input) => {
+      authorizationInput = input;
+      return { mode: 'human', standing: true, source: 'test-evidence' };
+    },
+  });
+
+  assert.equal(run.exitCode, 0);
+  assert.equal(authorizationInput.acceptedHeadSha, HEAD);
 });
 
 test('close consumes marker-free exact-head directory human authority', async () => {
