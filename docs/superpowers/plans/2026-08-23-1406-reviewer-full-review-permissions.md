@@ -2022,8 +2022,11 @@ successor defect and keeps malformed or cross-issue records fail closed.
 
 - Modify: `scripts/task-tracker/lib/delivery-records.mjs`
 - Modify: `scripts/task-tracker/verbs/deliver.mjs`
+- Modify: `scripts/task-tracker/verbs/close.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
+- Modify:
+  `scripts/tests/unit/task-tracker/verbs/close-delivery-gate-input.test.mjs`
 - Create:
   `scripts/tests/unit/task-tracker/verbs/deliver-multiple-pr-records.test.mjs`
 - Create:
@@ -2042,5 +2045,6 @@ historical transaction evidence and exclude it from the current projection.
 
 - [ ] **Step 3: Rebuild exact-head evidence and deliver**
 
-Verify strict parsing, projection, delivery, and provider-action regressions;
-then repeat Test, Review, approval, CI, governed delivery, and close for #1406.
+Verify strict parsing, delivery projection, close-time projection, and
+provider-action regressions; then repeat Test, Review, approval, CI, governed
+delivery, and close for #1406.
