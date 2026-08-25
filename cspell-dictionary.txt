@@ -258,6 +258,7 @@ Sayagh
 scriptable
 SDLC
 Segoe
+Sendbird
 sess
 shellcheck
 sidechain
@@ -355,7 +356,6 @@ Willison
 Willison's
 winget
 wontfixed
-Δwords
 workstreams
 worktree
 Worktree
@@ -369,3 +369,4 @@ Xuezhi
 Yoder
 zxcvbn
 Zylos
+Δwords
