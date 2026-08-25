@@ -1910,3 +1910,67 @@ Demote #1406 to Develop before editing source, complete the RED/GREEN cycle,
 then run the issue's exact Verification Commands and Functional DoD at one
 clean tracked HEAD. Return through Test and re-run the Agent Review Gate. Do not
 touch #1407, #1381, or #939.
+
+---
+
+### Task 10: Recover Delivery Across a Structurally Verified Branch Merge
+
+This post-merge amendment repairs #1406's own governed close path. It creates no
+successor defect and does not relax attribution for ordinary commits or open
+pull requests.
+
+**Files:**
+
+- Modify: `scripts/task-tracker/verbs/deliver.mjs`
+- Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
+- Create:
+  `scripts/tests/unit/task-tracker/verbs/deliver-merged-source-attribution.test.mjs`
+
+- [ ] **Step 1: Add failing merged-recovery topology tests**
+
+Add a merged-PR recovery case whose immutable source records include attributed
+ordinary commits plus one unattributed commit. Prove that the case succeeds only
+when inspection of that exact SHA returns the same title and at least two
+parents. Add refusals for a one-parent commit and an inspected-title mismatch.
+Also prove the open-PR path remains strict and never applies the exception.
+
+- [ ] **Step 2: Run the focused test and verify RED**
+
+```bash
+node --test \
+  scripts/tests/unit/task-tracker/verbs/deliver-merged-source-attribution.test.mjs \
+  scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+```
+
+Expected: the structurally valid merged-recovery case fails with
+`delivery-preflight:attribution` before the implementation change.
+
+- [ ] **Step 3: Implement the narrow structural exception**
+
+Retain immutable `{ oid, messageHeadline }` records returned by GitHub. During
+merged-PR recovery only, inspect each unattributed record's repository commit
+object. Omit that subject from attribution input only when the SHA is valid, the
+inspected title exactly matches the GitHub headline, and the object has at least
+two valid parent SHAs. On missing, malformed, unreadable, or mismatched evidence,
+leave the subject in strict attribution input so preflight fails closed.
+
+- [ ] **Step 4: Verify focused GREEN and delivery regressions**
+
+```bash
+node --test \
+  scripts/tests/unit/task-tracker/verbs/deliver-merged-source-attribution.test.mjs \
+  scripts/tests/unit/task-tracker/verbs/deliver.test.mjs \
+  scripts/tests/unit/task-tracker/lib/delivery-attribution.test.mjs \
+  scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs \
+  scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
+```
+
+Expected: all tests pass, including external recovery, ordinary attribution
+refusal, provider-action delivery, and exact-byte verification.
+
+- [ ] **Step 5: Commit and rebuild governed evidence**
+
+Commit the amendment and repair with `[#1406]` attribution, run #1406's complete
+Verification Commands and Functional DoD at the new clean HEAD, return through
+Test and Review, obtain exact-head approval, then deliver and close #1406. Pause
+immediately after verifying Done; do not touch #1407, #1381, or #939.

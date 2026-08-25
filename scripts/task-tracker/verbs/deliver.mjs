@@ -85,6 +85,61 @@ function bindingFromState({ branch, state }) {
   };
 }
 
+function isStructurallyInspectableSourceCommits(pullRequest) {
+  const subjects = pullRequest?.sourceCommitSubjects;
+  const commits = pullRequest?.sourceCommits;
+  return (
+    Array.isArray(subjects) &&
+    Array.isArray(commits) &&
+    subjects.length === commits.length &&
+    commits.every((commit, index) => {
+      if (commit === null || typeof commit !== 'object' || Array.isArray(commit)) return false;
+      const keys = Object.keys(commit).sort();
+      return (
+        keys.length === 2 &&
+        keys[0] === 'messageHeadline' &&
+        keys[1] === 'oid' &&
+        SHA_RE.test(commit.oid) &&
+        commit.messageHeadline === subjects[index]
+      );
+    })
+  );
+}
+
+function isUnattributedMergeCandidate(subject) {
+  return typeof subject === 'string' && !subject.includes('[') && !subject.includes('#');
+}
+
+export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommit) {
+  const strictSubjects = pullRequest?.sourceCommitSubjects;
+  if (!Array.isArray(strictSubjects)) return strictSubjects;
+  if (!strictSubjects.some(isUnattributedMergeCandidate)) return strictSubjects;
+  if (!isStructurallyInspectableSourceCommits(pullRequest)) return strictSubjects;
+
+  const attributableSubjects = [];
+  for (const commit of pullRequest.sourceCommits) {
+    if (!isUnattributedMergeCandidate(commit.messageHeadline)) {
+      attributableSubjects.push(commit.messageHeadline);
+      continue;
+    }
+    let inspection = null;
+    try {
+      inspection = await inspectSourceCommit({ commitSha: commit.oid });
+    } catch {
+      // Preserve the subject so the existing attribution parser fails closed.
+    }
+    const parents = inspection?.parents;
+    const verifiedMerge =
+      inspection?.commitTitle === commit.messageHeadline &&
+      Array.isArray(parents) &&
+      parents.length >= 2 &&
+      parents.every((parent) => SHA_RE.test(parent)) &&
+      new Set(parents).size === parents.length;
+    if (!verifiedMerge) attributableSubjects.push(commit.messageHeadline);
+  }
+  return attributableSubjects;
+}
+
 function validateLineageResult(lineage) {
   const parent = lineage?.parentIssueNumber;
   if (
@@ -382,7 +437,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           expectedHeadSha: localHeadSha,
         });
   const commitSubjectsPromise = mergedPullRequest
-    ? Promise.resolve(selectedPullRequests[0].sourceCommitSubjects)
+    ? mergedSourceCommitSubjects(selectedPullRequests[0], deps.inspectSourceCommit)
     : listCommitSubjects({ range: 'origin/trunk..HEAD' });
   const [
     testReceiptSha,
@@ -637,6 +692,24 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     }
     return directoryEvidence.get(key);
   };
+  const inspectCommitObject = async (commitSha) => {
+    const { stdout } = await run('git', ['cat-file', 'commit', commitSha]);
+    const raw = String(stdout || '');
+    const separator = raw.indexOf('\n\n');
+    if (separator < 0) throw deliverError('commit-object');
+    const headers = raw.slice(0, separator).split('\n');
+    const message = raw.slice(separator + 2).replace(/\n$/, '');
+    const [commitTitle, ...bodyLines] = message.split('\n');
+    const commitMessage =
+      bodyLines[0] === '' ? bodyLines.slice(1).join('\n') : bodyLines.join('\n');
+    return {
+      parents: headers
+        .filter((line) => line.startsWith('parent '))
+        .map((line) => line.slice('parent '.length)),
+      commitTitle,
+      commitMessage,
+    };
+  };
 
   return {
     async resolveReviewAuthorization({ issue, issueNumber, expectedHeadSha, acceptedReviewSha }) {
@@ -770,6 +843,9 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       pr.sourceCommitSubjects = Array.isArray(pr.commits)
         ? pr.commits.map(({ messageHeadline }) => messageHeadline)
         : null;
+      pr.sourceCommits = Array.isArray(pr.commits)
+        ? pr.commits.map(({ oid, messageHeadline }) => ({ oid, messageHeadline }))
+        : null;
       delete pr.commits;
       pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
       if (pr.merged) {
@@ -856,22 +932,10 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       }
     },
     async inspectMergeCommit({ mergeCommitSha }) {
-      const { stdout } = await run('git', ['cat-file', 'commit', mergeCommitSha]);
-      const raw = String(stdout || '');
-      const separator = raw.indexOf('\n\n');
-      if (separator < 0) throw deliverError('merge-commit-object');
-      const headers = raw.slice(0, separator).split('\n');
-      const message = raw.slice(separator + 2).replace(/\n$/, '');
-      const [commitTitle, ...bodyLines] = message.split('\n');
-      const commitMessage =
-        bodyLines[0] === '' ? bodyLines.slice(1).join('\n') : bodyLines.join('\n');
-      return {
-        parents: headers
-          .filter((line) => line.startsWith('parent '))
-          .map((line) => line.slice('parent '.length)),
-        commitTitle,
-        commitMessage,
-      };
+      return inspectCommitObject(mergeCommitSha);
+    },
+    async inspectSourceCommit({ commitSha }) {
+      return inspectCommitObject(commitSha);
     },
     async attributingCommits(issueNumber, options) {
       return defaultAttributingCommits(issueNumber, { cwd: ctx.projectDir, ...options });
