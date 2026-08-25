@@ -27,18 +27,15 @@ let r = await pexec('node', [CLI, '#321'], { env, cwd: sandbox });
 assert.match(r.stdout, /Active: #321/);
 
 r = await pexec('node', [CLI, 'review', '#321'], { env, cwd: sandbox });
-assert.match(r.stdout, /Review #321/);
-assert.match(r.stdout, /paused/i);
+assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
 
 let state = JSON.parse(
   readFileSync(path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
 );
-// #407 — a non-terminal verb (`review`) closes the timing session but KEEPS the
-// issue bound, so the next verb needs no intervening `start <N>` re-bind. The
-// binding is dropped only by an explicit `pause`/session-end. Pre-#407 this
-// asserted `state.active === null`, which encoded the very bug #407 fixes.
+// A no-network probe has not completed agent Review, so it must not pause for
+// human approval. The issue stays bound and its timing segment remains open.
 assert.equal(state.active, '#321');
-assert.equal(state.entryStartTs, null);
+assert.equal(typeof state.entryStartTs, 'string');
 assert.equal(state.lastActive, '#321');
 
 r = await pexec('node', [CLI, 'close', '#321'], { env, cwd: sandbox });
