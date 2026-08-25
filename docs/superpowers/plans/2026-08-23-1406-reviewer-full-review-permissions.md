@@ -2027,6 +2027,7 @@ successor defect and keeps malformed or cross-issue records fail closed.
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
 - Modify:
   `scripts/tests/unit/task-tracker/verbs/close-delivery-gate-input.test.mjs`
+- Modify: `scripts/tests/fixtures/state-engine-policy-baseline.mjs`
 - Create:
   `scripts/tests/unit/task-tracker/verbs/deliver-multiple-pr-records.test.mjs`
 - Create:
