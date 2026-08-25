@@ -15,7 +15,7 @@
 - Modify: `scripts/task-tracker/lib/auto-tick-verified.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/auto-tick-verified.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/auto-tick-functional-vc-list.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/evidence-branch-reachability.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs`
 
 1. Add failing tests for an explicit exact SHA across AC, VC, and Functional auto-ticks.
 2. Add a failing provenance-bearing AC case that is incomplete with `sandbox` and complete/reachable with the explicit SHA.

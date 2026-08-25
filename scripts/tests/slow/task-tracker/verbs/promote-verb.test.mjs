@@ -5,12 +5,31 @@
 // All cases drive runPromote with stubbed deps — no network, no spawn.
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { after, before, test } from 'node:test';
 
+import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
+
+// #1408 — the header above claims "no network, no spawn", and until now that was
+// aspiration rather than fact: a census counted 49 live `gh` invocations from
+// this file, 32 through the `github-projects` seam and 17 from hardcoded
+// module-level `pexec` bindings. Every one round-tripped to GitHub, failed
+// against the nonexistent fixture repo `o/r`, and was swallowed as non-fatal —
+// 14.7s of waiting for answers no assertion here reads.
+//
+// The double refuses both layers, which is exactly what the network already did,
+// so no case below changes meaning. Installed from before/after so teardown runs
+// even when a case throws.
+let stubGh;
+before(() => {
+  stubGh = installStubGh();
+});
+after(() => {
+  stubGh?.restore();
+});
 
 function makeDeps({
   body = '',

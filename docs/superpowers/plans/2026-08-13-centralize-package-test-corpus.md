@@ -33,7 +33,7 @@
 
 - Modify: `scripts/task-tracker/lib/test-lanes.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/test-corpus-paths.test.mjs` (moved by Task 3 to `scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs`)
-- Create: `scripts/task-tracker/tests/unit/meta/package-test-corpus.test.mjs` (moved by Task 3 to `scripts/tests/unit/meta/package-test-corpus.test.mjs`)
+- Create: `scripts/task-tracker/tests/unit/meta/package-test-corpus.test.mjs` (moved by Task 3 to `scripts/tests/integration/meta/package-test-corpus.test.mjs`)
 - Create: `scripts/task-tracker/tests/fixtures/test-corpus-pre-move.json` (moved by Task 3 to `scripts/tests/fixtures/test-corpus-pre-move.json`)
 
 **Interfaces:**
@@ -135,7 +135,7 @@ Commit: `test: freeze #876 package corpus migration`
 - Modify: `scripts/task-tracker/tests/audit-story-tags.mjs` (moved by Task 3 to `scripts/tests/tools/audit-story-tags.mjs`)
 - Modify: `scripts/task-tracker/tag-story-ids.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/coverage-tag-story-ids.test.mjs` (moved by Task 3)
-- Create: `scripts/task-tracker/tests/unit/meta/audit-story-tags.test.mjs` (moved by Task 3 to `scripts/tests/unit/meta/audit-story-tags.test.mjs`)
+- Create: `scripts/task-tracker/tests/unit/meta/audit-story-tags.test.mjs` (moved by Task 3 to `scripts/tests/integration/meta/audit-story-tags.test.mjs`)
 - Modify: the 32 starting untagged `*.test.mjs` files listed by canonical discovery
 
 **Interfaces:**
@@ -206,7 +206,7 @@ Commit: `fix: enforce whole-tree story tags for #876`
 - Modify: `.ai-task-manager/activity-policy.json`
 - Modify: every live source, fixture, baseline, or package script that names a retired test path
 - Modify: moved `scripts/tests/unit/task-tracker/lib/enumerator-migration.test.mjs`
-- Modify: moved `scripts/tests/unit/meta/test-tree-layout.test.mjs`
+- Modify: moved `scripts/tests/integration/meta/test-tree-layout.test.mjs`
 
 **Interfaces:**
 
@@ -277,7 +277,7 @@ Expected: no stale live reference remains; any match is an explicit legacy-fixtu
 
 - [ ] **Step 7: Verify focused contracts and rename provenance**
 
-Run: `node --test scripts/tests/unit/meta/test-tree-layout.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs scripts/tests/unit/task-tracker/lib/lane-taxonomy.test.mjs scripts/tests/unit/task-tracker/lib/find-unit-tests.test.mjs scripts/tests/unit/task-tracker/lib/enumerator-migration.test.mjs`
+Run: `node --test scripts/tests/integration/meta/test-tree-layout.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/unit/task-tracker/lib/lane-taxonomy.test.mjs scripts/tests/unit/task-tracker/lib/find-unit-tests.test.mjs scripts/tests/unit/task-tracker/lib/enumerator-migration.test.mjs`
 
 Run: `git diff --summary --find-renames=50% origin/trunk...HEAD`
 
@@ -292,8 +292,8 @@ Commit: `refactor: centralize package tests for #876`
 **Files:**
 
 - Create: `scripts/tests/tools/audit-test-layout.mjs`
-- Modify: `scripts/tests/unit/meta/test-tree-layout.test.mjs`
-- Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs`
+- Modify: `scripts/tests/integration/meta/test-tree-layout.test.mjs`
+- Modify: `scripts/tests/integration/meta/package-test-corpus.test.mjs`
 - Modify: `scripts/tests/tools/audit-story-tags.mjs`
 - Modify: `scripts/tests/tools/audit-line-cap.mjs`
 - Modify: `package.json`
@@ -314,7 +314,7 @@ The layout test must create an isolated fixture with one canonical test plus one
 
 - [ ] **Step 2: Run the new acceptance tests and confirm the missing gate/exclusion fails**
 
-Run: `node --test scripts/tests/unit/meta/test-tree-layout.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs`
+Run: `node --test scripts/tests/integration/meta/test-tree-layout.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs`
 
 Expected: FAIL until `lint:test-layout` exists and `package.json` excludes the package-level root explicitly.
 
@@ -338,15 +338,15 @@ Amend ADR 0001 to record the one-deliverable rationale, canonical tree, strict l
 
 - [ ] **Step 5: Run every issue verification command**
 
-Run: `node --test scripts/tests/unit/meta/test-tree-layout.test.mjs`
+Run: `node --test scripts/tests/integration/meta/test-tree-layout.test.mjs`
 
-Run: `node --test scripts/tests/unit/meta/audit-story-tags.test.mjs`
+Run: `node --test scripts/tests/integration/meta/audit-story-tags.test.mjs`
 
-Run: `node --test scripts/tests/unit/task-tracker/lib/coverage-tag-story-ids.test.mjs scripts/tests/unit/task-tracker/lib/enumerator-migration.test.mjs`
+Run: `node --test scripts/tests/integration/task-tracker/lib/coverage-tag-story-ids.test.mjs scripts/tests/unit/task-tracker/lib/enumerator-migration.test.mjs`
 
 Run: `npm run lint:story-tags`
 
-Run: `node --test scripts/tests/unit/meta/package-test-corpus.test.mjs`
+Run: `node --test scripts/tests/integration/meta/package-test-corpus.test.mjs`
 
 Expected: all five commands PASS.
 

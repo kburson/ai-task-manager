@@ -155,7 +155,7 @@ Help text will distinguish three cases:
 The focused verifier remains:
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Add cases proving:

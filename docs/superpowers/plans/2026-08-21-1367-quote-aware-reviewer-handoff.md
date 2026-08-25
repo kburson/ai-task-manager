@@ -173,7 +173,7 @@ git commit -m "[#1367] fix: honor quotes in reviewer handoff prose"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
 
 **Interfaces:**
 
@@ -216,7 +216,7 @@ Keep all existing denied commands unchanged.
 Run:
 
 ```bash
-node --test scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: PASS; the actual Bash guard emits no block decision for the punctuated command, the offline local `npx aitm` handoff reaches `accepted`, and `lastHandoff.message` matches exactly.
@@ -226,7 +226,7 @@ Expected: PASS; the actual Bash guard emits no block decision for the punctuated
 Run:
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: all tests pass with no weakening of the denied matrix.
@@ -234,7 +234,7 @@ Expected: all tests pass with no weakening of the denied matrix.
 - [ ] **Step 4: Commit the boundary proof**
 
 ```bash
-git add scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+git add scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 git commit -m "[#1367] test: prove punctuated reviewer handoff"
 ```
 
@@ -265,7 +265,7 @@ assert.match(reviewer, /dynamic shell expressions.*remain blocked/i);
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: FAIL because the generated reviewer handoff does not yet contain the new quote-boundary wording.
@@ -285,8 +285,8 @@ Add the same operational rule after the reviewer-command paragraph in `docs/guid
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: all tests pass.

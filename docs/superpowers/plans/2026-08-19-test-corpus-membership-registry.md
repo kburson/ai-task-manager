@@ -48,18 +48,18 @@ test-impact manifest.
 - Create `scripts/tests/lib/test-corpus-membership.mjs`: record mapping, frozen
   destination resolution, strict registry loading, exact reconciliation, and
   diagnostic formatting. This is test-only code, not a shipped runtime API.
-- Create `scripts/tests/unit/meta/test-corpus-membership.test.mjs`: synthetic
+- Create `scripts/tests/integration/meta/test-corpus-membership.test.mjs`: synthetic
   contract tests plus the cheap live-repository exact-membership guard.
 - Create
   `scripts/tests/fixtures/test-corpus-post-snapshot/<lane>/<relative>.test.mjs.json`:
   one schema-1 record per live post-snapshot test.
-- Modify `scripts/tests/unit/meta/package-test-corpus.test.mjs`: remove every
+- Modify `scripts/tests/integration/meta/package-test-corpus.test.mjs`: remove every
   mutable post-snapshot list/minimum while retaining frozen schema, hash, rename,
   lane-correction, package-exclusion, and `npm pack` proofs.
 - Modify `scripts/task-tracker/test-impact-manifest.json`: select the cheap guard
   for test/record changes and both corpus tests for frozen-authority changes.
 - Modify
-  `scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs`: prove
+  `scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs`: prove
   manifest selection, content-edit over-selection, record changes, and unchanged
   deletion/rename lane escalation.
 
@@ -70,7 +70,7 @@ test-impact manifest.
 **Files:**
 
 - Create: `scripts/tests/lib/test-corpus-membership.mjs`
-- Create: `scripts/tests/unit/meta/test-corpus-membership.test.mjs`
+- Create: `scripts/tests/integration/meta/test-corpus-membership.test.mjs`
 
 **Interfaces:**
 
@@ -110,7 +110,7 @@ test('the membership library exposes a test-only registry boundary', async () =>
 Run:
 
 ```bash
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
 ```
 
 Expected: FAIL at `test-corpus-membership.mjs must exist`.
@@ -255,7 +255,7 @@ root and a named malformed error for an unreadable/non-directory root.
 Run:
 
 ```bash
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
 ```
 
 Expected: all Task 1 tests pass with no warnings.
@@ -264,7 +264,7 @@ Expected: all Task 1 tests pass with no warnings.
 
 ```bash
 git add scripts/tests/lib/test-corpus-membership.mjs \
-  scripts/tests/unit/meta/test-corpus-membership.test.mjs
+  scripts/tests/integration/meta/test-corpus-membership.test.mjs
 git commit -m "test(corpus): add strict membership record loader [#1263]"
 ```
 
@@ -273,7 +273,7 @@ git commit -m "test(corpus): add strict membership record loader [#1263]"
 **Files:**
 
 - Modify: `scripts/tests/lib/test-corpus-membership.mjs`
-- Modify: `scripts/tests/unit/meta/test-corpus-membership.test.mjs`
+- Modify: `scripts/tests/integration/meta/test-corpus-membership.test.mjs`
 
 **Interfaces:**
 
@@ -379,7 +379,7 @@ Run the focused file. Expected: all Task 1 and Task 2 tests pass.
 
 ```bash
 git add scripts/tests/lib/test-corpus-membership.mjs \
-  scripts/tests/unit/meta/test-corpus-membership.test.mjs
+  scripts/tests/integration/meta/test-corpus-membership.test.mjs
 git commit -m "test(corpus): reconcile exact membership with diagnostics [#1263]"
 ```
 
@@ -387,8 +387,8 @@ git commit -m "test(corpus): reconcile exact membership with diagnostics [#1263]
 
 **Files:**
 
-- Modify: `scripts/tests/unit/meta/test-corpus-membership.test.mjs`
-- Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs`
+- Modify: `scripts/tests/integration/meta/test-corpus-membership.test.mjs`
+- Modify: `scripts/tests/integration/meta/package-test-corpus.test.mjs`
 - Create: 25 deterministic files under
   `scripts/tests/fixtures/test-corpus-post-snapshot/` listed below.
 - Verify unchanged:
@@ -437,7 +437,7 @@ test('live canonical discovery equals frozen destinations union post-snapshot re
 
 Run the focused file. Expected: FAIL with sorted undeclared paths and exact
 record locations. The result must include the new
-`scripts/tests/unit/meta/test-corpus-membership.test.mjs` path and must not be a
+`scripts/tests/integration/meta/test-corpus-membership.test.mjs` path and must not be a
 numeric mismatch.
 
 - [ ] **Step 3: Add the complete deterministic registry**
@@ -457,25 +457,25 @@ with one trailing newline and no other keys. Create every mapping below:
 | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `scripts/tests/slow/review/co-review-boundaries.test.mjs`                        | `slow/review/co-review-boundaries.test.mjs.json`                        |
 | `scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs`        | `slow/task-tracker/lib/action-capture-integration.test.mjs.json`        |
-| `scripts/tests/unit/meta/audit-story-tags.test.mjs`                              | `unit/meta/audit-story-tags.test.mjs.json`                              |
-| `scripts/tests/unit/meta/package-test-corpus.test.mjs`                           | `unit/meta/package-test-corpus.test.mjs.json`                           |
+| `scripts/tests/integration/meta/audit-story-tags.test.mjs`                       | `unit/meta/audit-story-tags.test.mjs.json`                              |
+| `scripts/tests/integration/meta/package-test-corpus.test.mjs`                    | `unit/meta/package-test-corpus.test.mjs.json`                           |
 | `scripts/tests/unit/meta/slow-lane-partition-policy.test.mjs`                    | `unit/meta/slow-lane-partition-policy.test.mjs.json`                    |
-| `scripts/tests/unit/meta/test-corpus-membership.test.mjs`                        | `unit/meta/test-corpus-membership.test.mjs.json`                        |
-| `scripts/tests/unit/review/co-review-finalization.test.mjs`                      | `unit/review/co-review-finalization.test.mjs.json`                      |
-| `scripts/tests/unit/review/co-review-fixture-cost.test.mjs`                      | `unit/review/co-review-fixture-cost.test.mjs.json`                      |
+| `scripts/tests/integration/meta/test-corpus-membership.test.mjs`                 | `unit/meta/test-corpus-membership.test.mjs.json`                        |
+| `scripts/tests/integration/review/co-review-finalization.test.mjs`               | `unit/review/co-review-finalization.test.mjs.json`                      |
+| `scripts/tests/integration/review/co-review-fixture-cost.test.mjs`               | `unit/review/co-review-fixture-cost.test.mjs.json`                      |
 | `scripts/tests/unit/review/co-review-index.test.mjs`                             | `unit/review/co-review-index.test.mjs.json`                             |
-| `scripts/tests/unit/review/co-review.test.mjs`                                   | `unit/review/co-review.test.mjs.json`                                   |
+| `scripts/tests/integration/review/co-review.test.mjs`                            | `unit/review/co-review.test.mjs.json`                                   |
 | `scripts/tests/unit/task-tracker/core/docs-only-lane-skip-completeness.test.mjs` | `unit/task-tracker/core/docs-only-lane-skip-completeness.test.mjs.json` |
 | `scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs`               | `unit/task-tracker/core/run-tests-schedule.test.mjs.json`               |
-| `scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs`                       | `unit/task-tracker/hooks/grok-wire.test.mjs.json`                       |
-| `scripts/tests/unit/task-tracker/lib/action-capture.test.mjs`                    | `unit/task-tracker/lib/action-capture.test.mjs.json`                    |
+| `scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs`                | `unit/task-tracker/hooks/grok-wire.test.mjs.json`                       |
+| `scripts/tests/integration/task-tracker/lib/action-capture.test.mjs`             | `unit/task-tracker/lib/action-capture.test.mjs.json`                    |
 | `scripts/tests/unit/task-tracker/lib/cleanup-base-aware.test.mjs`                | `unit/task-tracker/lib/cleanup-base-aware.test.mjs.json`                |
 | `scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs`            | `unit/task-tracker/lib/co-review-write-policy.test.mjs.json`            |
 | `scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs`             | `unit/task-tracker/lib/issue-lock-reentrancy.test.mjs.json`             |
 | `scripts/tests/unit/task-tracker/lib/occupancy.test.mjs`                         | `unit/task-tracker/lib/occupancy.test.mjs.json`                         |
 | `scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs`                 | `unit/task-tracker/lib/test-corpus-paths.test.mjs.json`                 |
 | `scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs`                 | `unit/task-tracker/lib/word-counter-grok.test.mjs.json`                 |
-| `scripts/tests/unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs`        | `unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs.json`        |
+| `scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs` | `unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs.json`        |
 | `scripts/tests/unit/task-tracker/verbs/close-binding-cleanup.test.mjs`           | `unit/task-tracker/verbs/close-binding-cleanup.test.mjs.json`           |
 | `scripts/tests/unit/task-tracker/verbs/close-occupancy-cleanup.test.mjs`         | `unit/task-tracker/verbs/close-occupancy-cleanup.test.mjs.json`         |
 | `scripts/tests/unit/task-tracker/verbs/fleet-closed-bindings.test.mjs`           | `unit/task-tracker/verbs/fleet-closed-bindings.test.mjs.json`           |
@@ -506,8 +506,8 @@ migration rename proof, lane-correction proof, package exclusion proof, or
 - [ ] **Step 6: Run both corpus files and observe GREEN**
 
 ```bash
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
-node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/package-test-corpus.test.mjs
 ```
 
 Expected: both files pass; no assertion message contains an authored expected
@@ -518,7 +518,7 @@ post-snapshot count.
 ```bash
 shasum -a 256 scripts/tests/fixtures/test-corpus-pre-move.json
 rg -n "EXPECTED_POST_SNAPSHOT_TESTS|focused Grok provider tests|minimumCounts" \
-  scripts/tests/unit/meta/package-test-corpus.test.mjs
+  scripts/tests/integration/meta/package-test-corpus.test.mjs
 ```
 
 Expected: SHA-256 equals the Global Constraints value; `rg` exits 1 with no
@@ -528,8 +528,8 @@ matches.
 
 ```bash
 git add scripts/tests/lib/test-corpus-membership.mjs \
-  scripts/tests/unit/meta/test-corpus-membership.test.mjs \
-  scripts/tests/unit/meta/package-test-corpus.test.mjs \
+  scripts/tests/integration/meta/test-corpus-membership.test.mjs \
+  scripts/tests/integration/meta/package-test-corpus.test.mjs \
   scripts/tests/fixtures/test-corpus-post-snapshot
 git commit -m "test(corpus): migrate exact post-snapshot registry [#1263]"
 ```
@@ -538,7 +538,7 @@ git commit -m "test(corpus): migrate exact post-snapshot registry [#1263]"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs`
 - Modify: `scripts/task-tracker/test-impact-manifest.json`
 
 **Interfaces:**
@@ -555,8 +555,8 @@ Use `selectAffectedTests()` with the real checked-in manifest and a synthetic
 discovered set containing:
 
 ```js
-const cheapMembershipTest = 'scripts/tests/unit/meta/test-corpus-membership.test.mjs';
-const expensivePackageTest = 'scripts/tests/unit/meta/package-test-corpus.test.mjs';
+const cheapMembershipTest = 'scripts/tests/integration/meta/test-corpus-membership.test.mjs';
+const expensivePackageTest = 'scripts/tests/integration/meta/package-test-corpus.test.mjs';
 const discovered = [
   cheapMembershipTest,
   expensivePackageTest,
@@ -581,7 +581,7 @@ Write separate tests proving:
 - [ ] **Step 2: Run selector tests and observe RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 ```
 
 Expected: new assertions fail because no corpus manifest rules exist.
@@ -596,14 +596,14 @@ Append these exact rules without changing selector code:
     "scripts/tests/**/*.test.mjs",
     "scripts/tests/fixtures/test-corpus-post-snapshot/**/*.json"
   ],
-  "tests": ["scripts/tests/unit/meta/test-corpus-membership.test.mjs"],
+  "tests": ["scripts/tests/integration/meta/test-corpus-membership.test.mjs"],
   "reason": "test corpus membership authority change"
 },
 {
   "sources": ["scripts/tests/fixtures/test-corpus-pre-move.json"],
   "tests": [
-    "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
-    "scripts/tests/unit/meta/package-test-corpus.test.mjs"
+    "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
+    "scripts/tests/integration/meta/package-test-corpus.test.mjs"
   ],
   "reason": "frozen test corpus authority change"
 }
@@ -612,9 +612,9 @@ Append these exact rules without changing selector code:
 - [ ] **Step 4: Run selector and corpus tests and observe GREEN**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
-node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/package-test-corpus.test.mjs
 ```
 
 Expected: all pass; deletion/rename tests still report lane escalation, and JSON
@@ -624,7 +624,7 @@ record changes do not.
 
 ```bash
 git add scripts/task-tracker/test-impact-manifest.json \
-  scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+  scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 git commit -m "test(impact): select cheap corpus membership guard [#1263]"
 ```
 
@@ -645,9 +645,9 @@ git commit -m "test(impact): select cheap corpus membership guard [#1263]"
 - [ ] **Step 1: Run focused verification**
 
 ```bash
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
-node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 ```
 
 Expected: all focused tests pass with zero warnings.

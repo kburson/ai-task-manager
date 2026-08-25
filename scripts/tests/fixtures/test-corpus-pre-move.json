@@ -20,6 +20,1267 @@
         "correctionCommit": "77cf0559cc076eb63e46c2a944045dc02dd2b5da",
         "renameStatus": "R100"
       }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/exclusive-ownership-policy.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/exclusive-ownership-policy.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/exclusive-ownership-policy.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "imported test suites execute system-touching coverage; #1413 moves the aggregator to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "662c49b7129d795b62e3b62f74b76dab5f10055f",
+        "correctionCommit": "b68d2b144170b2f6e51b4fd842d18f240346abdd",
+        "renameStatus": "R094"
+      }
+    },
+    {
+      "oldPath": "scripts/dev-env/verify-local-worktree.test.mjs",
+      "migrationPath": "scripts/tests/unit/dev-env/verify-local-worktree.test.mjs",
+      "finalPath": "scripts/tests/integration/dev-env/verify-local-worktree.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/fixtures/feature-fixtures.test.mjs",
+      "migrationPath": "scripts/tests/unit/fixtures/feature-fixtures.test.mjs",
+      "finalPath": "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/meta/test-tree-layout.test.mjs",
+      "migrationPath": "scripts/tests/unit/meta/test-tree-layout.test.mjs",
+      "finalPath": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R098"
+      }
+    },
+    {
+      "oldPath": "scripts/providers/tests/transcript-resolver.test.mjs",
+      "migrationPath": "scripts/tests/unit/providers/transcript-resolver.test.mjs",
+      "finalPath": "scripts/tests/integration/providers/transcript-resolver.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/assert-file-excludes.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/assert-file-excludes.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/assigned-state-residue.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R097"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/bash-guard-fail-closed.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/bash-guard-fail-closed.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/bash-guard-fail-closed.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/bash-guard-move-state-substring.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/bash-guard-move-state-substring.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/bash-guard-move-state-substring.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/bash-guard-move-state.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/bash-guard-move-state.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/bash-guard-move-state.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/bash-guard-tmp-contract.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/coverage-verify-epic-114.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/coverage-verify-sweep-comment.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/field-config-warn.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/field-config-warn.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/project-fields.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/project-fields.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/project-tmp-dir.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/project-tmp-dir.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/run-tests-kill-report.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/run-tests-kill-report.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/run-tests-kill-report.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/run-tests-lanes.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/run-tests-lanes.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R090"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/run-tests-pool.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/seed-worktree.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/seed-worktree.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/self-bind-resume.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/self-bind-resume.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/status-vocabulary.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R098"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/core/templates.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/core/templates.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/core/templates.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/hooks/coverage-codex-prompt-timestamp.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/absolute-word-markers.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/absolute-word-markers.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/bash-guard-worktree-binding.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/bound-worktree-state.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/bound-worktree-state.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/child-close-outcome-evidence.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/child-close-outcome-evidence.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/chore-mode-contract.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/chore-mode-contract.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/chore-mode-verb.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/chore-mode-verb.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/commit-ownership-message-sources.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-cache-unpark.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-cache-unpark.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-cli.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-cli.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-config-get.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-config-get.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-config-get.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-migrate-project.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-migrate-project.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-migrate-project.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-source-edit-gate.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-tag-story-ids.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-tag-story-ids.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-tag-story-ids.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/coverage-verify-priority-p3.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/create-issue-entry-marker.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/create-issue-partial-success.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/cross-worktree-bind-resume.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/defect-shape.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/discover-promote-aged-bucket.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/discover-test-files.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/discover-test-files.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R098"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/duplicate-child-guard.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/duplicate-child-guard.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/estimation/record-claim.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/estimation/record-claim.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/evidence-branch-reachability.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/evidence-branch-reachability.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/evidence-marker-provenance.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/evidence-marker-provenance.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/fail-closed-gates.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/fail-closed-gates.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/fleet-registry-gc.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/fleet-registry-gc.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/fleet-registry.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/fleet-registry.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/foreign-session-refusal.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/foreign-session-refusal.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/gh-command-policy.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/gh-command-policy.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/hook-entrypoint.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/hook-entrypoint.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/hook-session-start.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/install-hooks.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/interruption-word-markers.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/interruption-word-markers.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/is-main-symlink.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/is-main-symlink.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/issue-body-verifier.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/issue-body-verifier.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/issue-lock-pid-liveness.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/lint-doc-anchors.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/lint-doc-anchors.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/lint-fleet-sandbox-isolation.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/lock-env-leak-regression.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/memory-resync-cli.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/memory-resync-cli.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/move-state-lock.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/move-state-lock.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/move-state/event-field-sync-noop.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/new-switch-marker-order.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/process-timeouts.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/process-timeouts.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/resume-auto-gap-activity.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/resume-fleet-refresh.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/resume-fleet-refresh.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/resume-fresh-bind-no-switch.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/resume-seed.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/resume-seed.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/runtime-capabilities.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/runtime-capabilities.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/source-edit-gate.cache.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/source-edit-gate.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/start-time-sync.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/start-time-sync.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/state-mutator-concurrency.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/state-mutator-concurrency.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/switch-verb-noop.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/switch-verb-noop.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/terminal-review-handoff.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/test-impact-selector.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R098"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/test-verb-entry-interlock.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/timing-concurrency.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/timing-concurrency.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/timing-degraded-write-visibility.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/update-event-fields-states.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/update-event-fields-states.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/verb-start-resume-stop.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/verb-start-resume-stop.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/verification-receipt.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/word-counter-bounded-memory.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/word-counter-bounded-memory.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/maintenance/lint-article-citations.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/maintenance/lint-test-coverage-reach.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/verbs/approve-full-auto-unified.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/verbs/bind.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/verbs/bind.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/verbs/help.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/verbs/help.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/verbs/help.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/verbs/new-from-plan.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/verbs/new-from-plan.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/verbs/report-verb-496.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/verbs/report-verb-496.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
+    },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/verbs/shelve.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/verbs/shelve.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/verbs/shelve.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "test-support import reach touches a live system; #1413 moves the test to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "06cc1baddfd26536e7a79538c83a3ae325697464",
+        "correctionCommit": "8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb",
+        "renameStatus": "R100"
+      }
     }
   ],
   "tests": [

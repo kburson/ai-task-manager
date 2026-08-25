@@ -1,3 +1,5 @@
+<!-- DRAFT: provisional outline for a future article; not yet publishable. -->
+
 # The Provider-Neutral Orchestration Thesis
 
 **The Work Item Should Own The Workflow**

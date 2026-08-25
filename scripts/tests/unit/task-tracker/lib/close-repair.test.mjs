@@ -20,14 +20,32 @@
 //   AC4 — `--repair` is documented in the `close` verb help output.
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { after, before, test } from 'node:test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
+import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 import { verbHelp } from '../../../../task-tracker/verbs/help.mjs';
 import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
+
+// #1408 — "offline, injected collaborators" above was aspiration, not fact. A
+// census counted 12 live `gh` invocations from this file. They already fail
+// (fixture repo `o/r` does not exist) and the verb already swallows them, so
+// they buy nothing — but they are not free, and they are not reliable: under
+// sandbox load the AC2 baseline case burned its full 10s timeout waiting on one
+// and produced no stdout at all, failing an assertion that passes in 0.6s when
+// the network happens to answer quickly. The double refuses instantly, which is
+// what the nonexistent repo did anyway, so the cases keep their meaning and
+// stop depending on network weather.
+let stubGh;
+before(() => {
+  stubGh = installStubGh();
+});
+after(() => {
+  stubGh?.restore();
+});
 
 // A body that satisfies assertFieldsPersisted (engagedTime non-null) so the
 // full-pipeline path reaches its terminal "Closed" line offline.

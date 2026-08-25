@@ -641,20 +641,19 @@ function checkRollup(rollup, expectedHeadSha) {
   if (!Array.isArray(rollup)) return { readable: false, required: [] };
   return {
     readable: true,
-    required: rollup.map((check) => ({
-      name: String(check?.name || check?.context || ''),
-      headSha: expectedHeadSha,
-      status:
-        check?.status === 'COMPLETED' || check?.state
-          ? 'COMPLETED'
-          : String(check?.status || '').toUpperCase(),
-      conclusion: String(check?.conclusion || check?.state || '').toUpperCase(),
-    })),
+    required: rollup.map((check) => {
+      const state = String(check?.state || '').toUpperCase();
+      return {
+        name: String(check?.name || ''),
+        headSha: expectedHeadSha,
+        status: state === 'SUCCESS' ? 'COMPLETED' : state,
+        conclusion: state,
+      };
+    }),
   };
 }
 
 export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
-  const prRollups = new Map();
   const run = async (command, args, options = {}) =>
     exec(command, args, {
       cwd: ctx.projectDir,
@@ -666,6 +665,14 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   const json = async (command, args, options) => {
     const { stdout } = await run(command, args, options);
     return JSON.parse(String(stdout || 'null'));
+  };
+  const requiredChecksJson = async (args) => {
+    try {
+      return await json('gh', args);
+    } catch (error) {
+      if (Number(error?.code) !== 8 || typeof error?.stdout !== 'string') throw error;
+      return JSON.parse(error.stdout);
+    }
   };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
   const directoryEvidence = new Map();
@@ -837,10 +844,8 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '-R',
         ctx.cfg.repo,
         '--json',
-        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,statusCheckRollup,commits',
+        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,commits',
       ]);
-      prRollups.set(Number(prNumber), pr.statusCheckRollup);
-      delete pr.statusCheckRollup;
       pr.sourceCommitSubjects = Array.isArray(pr.commits)
         ? pr.commits.map(({ messageHeadline }) => messageHeadline)
         : null;
@@ -869,7 +874,30 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       return pr;
     },
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
-      return checkRollup(prRollups.get(Number(prNumber)), expectedHeadSha);
+      const required = await requiredChecksJson([
+        'pr',
+        'checks',
+        String(prNumber),
+        '-R',
+        ctx.cfg.repo,
+        '--required',
+        '--json',
+        'name,state',
+      ]);
+      const head = await json('gh', [
+        'pr',
+        'view',
+        String(prNumber),
+        '-R',
+        ctx.cfg.repo,
+        '--json',
+        'headRefOid',
+      ]);
+      const liveHeadSha = String(head?.headRefOid || '');
+      if (Array.isArray(required) && required.length === 0 && liveHeadSha !== expectedHeadSha) {
+        return { readable: false, required: [] };
+      }
+      return checkRollup(required, liveHeadSha);
     },
     async fetchRepositoryMergeMethods() {
       const repository = await json('gh', ['api', `repos/${owner}/${repoName}`]);

@@ -39,7 +39,7 @@ helpers.
 
 **Files:**
 
-- Create: `scripts/tests/unit/task-tracker/lib/action-capture.test.mjs`
+- Create: `scripts/tests/integration/task-tracker/lib/action-capture.test.mjs`
 - Create: `scripts/task-tracker/lib/action-capture.mjs`
 
 **Interfaces:**
@@ -78,7 +78,7 @@ test('classifies governed GitHub mutation families', () => {
 Run:
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
 ```
 
 Expected: FAIL because `action-capture.mjs` does not exist.
@@ -111,7 +111,7 @@ Run the same command. Expected: all classification tests pass.
 - [ ] **Step 5: Commit the pure contract**
 
 ```bash
-git add scripts/task-tracker/lib/action-capture.mjs scripts/tests/unit/task-tracker/lib/action-capture.test.mjs
+git add scripts/task-tracker/lib/action-capture.mjs scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
 git commit -m "feat: define GitHub action capture records [#1295]"
 ```
 
@@ -120,7 +120,7 @@ git commit -m "feat: define GitHub action capture records [#1295]"
 **Files:**
 
 - Modify: `scripts/task-tracker/lib/action-capture.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/action-capture.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/action-capture.test.mjs`
 
 **Interfaces:**
 
@@ -192,8 +192,8 @@ values.
 - [ ] **Step 5: Run and verify GREEN, then commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs
-git add scripts/task-tracker/lib/action-capture.mjs scripts/tests/unit/task-tracker/lib/action-capture.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
+git add scripts/task-tracker/lib/action-capture.mjs scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
 git commit -m "feat: persist crash-safe action capture [#1295]"
 ```
 
@@ -256,7 +256,7 @@ must run the real binary even when every capture operation throws.
 - [ ] **Step 5: Verify GREEN and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 git add bin/aitm.mjs scripts/task-tracker/action-capture-bin/gh scripts/task-tracker/lib/action-capture.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 git commit -m "feat: observe aitm gh subprocesses [#1295]"
 ```
@@ -269,7 +269,7 @@ git commit -m "feat: observe aitm gh subprocesses [#1295]"
 - Modify: `scripts/lib/self-doc.mjs`
 - Modify: `bin/aitm-registry.mjs`
 - Modify: `scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/action-capture.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/action-capture.test.mjs`
 - Create: `docs/guides/action-capture.md`
 
 **Interfaces:**
@@ -286,7 +286,7 @@ the orchestrator registry exposes `capture-actions` with complete self-doc.
 - [ ] **Step 2: Run and verify RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs
 ```
 
 - [ ] **Step 3: Implement the control command and self-doc contract**
@@ -305,9 +305,9 @@ authority.
 - [ ] **Step 5: Verify GREEN and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs
 npx markdownlint-cli2 docs/guides/action-capture.md
-git add scripts/task-tracker/capture-actions.mjs scripts/lib/self-doc.mjs bin/aitm-registry.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs scripts/tests/unit/task-tracker/lib/action-capture.test.mjs docs/guides/action-capture.md
+git add scripts/task-tracker/capture-actions.mjs scripts/lib/self-doc.mjs bin/aitm-registry.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs scripts/tests/integration/task-tracker/lib/action-capture.test.mjs docs/guides/action-capture.md
 git commit -m "docs: add action capture operator workflow [#1295]"
 ```
 
@@ -328,7 +328,7 @@ git commit -m "docs: add action capture operator workflow [#1295]"
 ```bash
 npx aitm capture-actions on
 npx aitm capture-actions status
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 npx aitm capture-actions summary --issue 1295 --json
 ```
 
@@ -348,7 +348,7 @@ the mechanical diff, and rerun both commands before committing.
 - [ ] **Step 3: Run focused and repository verification**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 npm test
 npm run test:slow
 ```
@@ -364,7 +364,7 @@ every critical or important finding through a new red-green cycle.
 - [ ] **Step 5: Commit any verification-only adjustments**
 
 ```bash
-git add bin/aitm.mjs bin/aitm-registry.mjs scripts/lib/self-doc.mjs scripts/task-tracker/action-capture-bin/gh scripts/task-tracker/capture-actions.mjs scripts/task-tracker/lib/action-capture.mjs scripts/tests/unit/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs docs/guides/action-capture.md
+git add bin/aitm.mjs bin/aitm-registry.mjs scripts/lib/self-doc.mjs scripts/task-tracker/action-capture-bin/gh scripts/task-tracker/capture-actions.mjs scripts/task-tracker/lib/action-capture.mjs scripts/tests/integration/task-tracker/lib/action-capture.test.mjs scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs docs/guides/action-capture.md
 git commit -m "test: verify GitHub action capture [#1295]"
 ```
 

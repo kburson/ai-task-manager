@@ -276,3 +276,131 @@ test('#1389 default comment adapter rejects malformed GitHub timestamps', async 
 
   await assert.rejects(deps.listIssueComments({ issueNumber: 1389 }), /deliver:comment-created-at/);
 });
+
+test('#1413 default delivery adapter excludes optional and historical PR checks', async () => {
+  const commands = [];
+  const exec = async (command, args) => {
+    commands.push([command, args]);
+    if (args[0] === 'pr' && args[1] === 'checks') {
+      return {
+        stdout: JSON.stringify([{ name: 'Fast lane', state: 'SUCCESS' }]),
+      };
+    }
+    if (args[0] === 'pr' && args[1] === 'view' && args.at(-1) === 'headRefOid') {
+      return { stdout: JSON.stringify({ headRefOid: HEAD }) };
+    }
+    if (args[0] === 'pr' && args[1] === 'view') {
+      return {
+        stdout: JSON.stringify({
+          number: 1418,
+          state: 'OPEN',
+          isDraft: false,
+          baseRefName: 'trunk',
+          headRefName: 'claude/pull-branch-trunk-origin-c647e3',
+          headRefOid: HEAD,
+          mergeable: 'MERGEABLE',
+          mergedAt: null,
+          mergeCommit: null,
+          statusCheckRollup: [
+            { name: 'Fast lane', status: 'COMPLETED', conclusion: 'SUCCESS' },
+            { name: 'Slow lane', status: 'COMPLETED', conclusion: 'SKIPPED' },
+            { name: 'Fast lane', status: 'COMPLETED', conclusion: 'FAILURE' },
+          ],
+          commits: [{ oid: HEAD, messageHeadline: '[#1413] Required checks' }],
+          headRepository: { name: 'ai-task-manager' },
+          headRepositoryOwner: { login: 'kburson' },
+        }),
+      };
+    }
+    throw new Error(`unexpected command: ${command} ${args.join(' ')}`);
+  };
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    { exec }
+  );
+
+  await deps.fetchPullRequest({ prNumber: 1418 });
+
+  assert.deepEqual(await deps.fetchRequiredChecks({ prNumber: 1418, expectedHeadSha: HEAD }), {
+    readable: true,
+    required: [
+      {
+        name: 'Fast lane',
+        headSha: HEAD,
+        status: 'COMPLETED',
+        conclusion: 'SUCCESS',
+      },
+    ],
+  });
+  assert.ok(
+    commands.some(
+      ([command, args]) =>
+        command === 'gh' &&
+        args.join(' ') === 'pr checks 1418 -R kburson/ai-task-manager --required --json name,state'
+    )
+  );
+});
+
+test('#1413 default delivery adapter preserves pending required checks as non-green', async () => {
+  const exec = async (_command, args) => {
+    if (args[0] === 'pr' && args[1] === 'checks') {
+      const error = new Error('checks pending');
+      error.code = 8;
+      error.stdout = JSON.stringify([{ name: 'Fast lane', state: 'PENDING' }]);
+      throw error;
+    }
+    if (args[0] === 'pr' && args[1] === 'view' && args.at(-1) === 'headRefOid') {
+      return { stdout: JSON.stringify({ headRefOid: HEAD }) };
+    }
+    if (args[0] === 'pr' && args[1] === 'view') {
+      return {
+        stdout: JSON.stringify({
+          number: 1418,
+          state: 'OPEN',
+          isDraft: false,
+          baseRefName: 'trunk',
+          headRefName: 'claude/pull-branch-trunk-origin-c647e3',
+          headRefOid: HEAD,
+          mergeable: 'MERGEABLE',
+          mergedAt: null,
+          mergeCommit: null,
+          statusCheckRollup: [],
+          commits: [{ oid: HEAD, messageHeadline: '[#1413] Required checks' }],
+          headRepository: { name: 'ai-task-manager' },
+          headRepositoryOwner: { login: 'kburson' },
+        }),
+      };
+    }
+    throw new Error(`unexpected command: ${args.join(' ')}`);
+  };
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    { exec }
+  );
+
+  await deps.fetchPullRequest({ prNumber: 1418 });
+
+  assert.deepEqual(await deps.fetchRequiredChecks({ prNumber: 1418, expectedHeadSha: HEAD }), {
+    readable: true,
+    required: [
+      {
+        name: 'Fast lane',
+        headSha: HEAD,
+        status: 'PENDING',
+        conclusion: 'PENDING',
+      },
+    ],
+  });
+});

@@ -33,7 +33,7 @@
     "scripts/tests/unit/task-tracker/core/session-boot.test.mjs",
     "scripts/tests/unit/task-tracker/core/session-state-template.test.mjs",
     "scripts/tests/unit/task-tracker/core/state-walk-ac-stamp-test-carveout.test.mjs",
-    "scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs",
+    "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
     "scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs"
   ]
 }

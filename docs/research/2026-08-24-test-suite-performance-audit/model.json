@@ -1,0 +1,31 @@
+{
+  "cpus": 10,
+  "fixedMs": 575,
+  "scenarios": [
+    {
+      "scenario": "measured today (4 sequential phases)",
+      "wallMs": 336968,
+      "note": "pool 141.5s + subprocess 124.8s + serial 70.7s"
+    },
+    {
+      "scenario": "A. one global pool (phases overlap)",
+      "wallMs": 180770,
+      "note": "pure lane 180.8s on 7 workers, subprocess lane 125.0s on 2"
+    },
+    {
+      "scenario": "B. A + import-graph trim (575ms -> 150ms fixed)",
+      "wallMs": 135975,
+      "note": "removes 372.3s of aggregate CPU"
+    },
+    {
+      "scenario": "C. B + halve top-20 heaviest files",
+      "wallMs": 106145,
+      "note": "top-20 currently 506.2s of 1514.7s"
+    },
+    {
+      "scenario": "D. C + consolidate 249 overhead-bound files 8:1",
+      "wallMs": 95714,
+      "note": "249 files -> 32, aggregate 187.8s -> 9.0s"
+    }
+  ]
+}

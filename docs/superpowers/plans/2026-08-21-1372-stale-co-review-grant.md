@@ -231,7 +231,7 @@ Run:
 ```bash
 node --test scripts/tests/unit/review/co-review-index.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
-node --test scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: all tests pass with zero failures.

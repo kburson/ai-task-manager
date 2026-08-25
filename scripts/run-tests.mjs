@@ -16,7 +16,7 @@
 //                           detected subprocess subset reduced-pooled;
 //                           explicit unsafe/unreadable subset serial)
 //   --lane integration    — the integration population (serial)
-//   --lane fast (default)  — unit ∪ integration (the retained regression floor)
+//   --lane fast (default)  — unit only (the deterministic local regression floor)
 //   --lane slow           — the slow lane (explicit-safe subset bounded at two;
 //                           every other file serial)
 //   --lane all            — every lane; INTERNAL union for the divergence guard

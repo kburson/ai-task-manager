@@ -78,7 +78,7 @@ assert.equal(output(prepared, 'artifact').sha256, prepared.manifest.artifact.arc
 
 - [ ] **Step 3: Run the focused tests and verify the expected failures**
 
-Run: `node --test scripts/tests/unit/review/co-review.test.mjs`
+Run: `node --test scripts/tests/integration/review/co-review.test.mjs`
 
 Expected: the default archive still has an artifact file and no `artifact.mode`; the unreachable wrapper still selects the old shape.
 
@@ -129,7 +129,7 @@ Insert the line before the embedded manifest only when `recovery` is non-null.
 
 - [ ] **Step 6: Run the focused tests and verify they pass**
 
-Run: `node --test scripts/tests/unit/review/co-review.test.mjs`
+Run: `node --test scripts/tests/integration/review/co-review.test.mjs`
 
 Expected: all co-review tests pass with reachable reference and unreachable copy coverage.
 
@@ -173,7 +173,7 @@ Publish the unreachable-commit candidate and assert the artifact bytes, owner re
 
 - [ ] **Step 3: Run the focused tests and verify they fail in prepared validation**
 
-Run: `node --test scripts/tests/unit/review/co-review.test.mjs`
+Run: `node --test scripts/tests/integration/review/co-review.test.mjs`
 
 Expected: reference candidates fail the fixed four-file/four-kind validator before publication.
 
@@ -210,7 +210,7 @@ Assert the observed last write is `README.md` in both modes.
 
 - [ ] **Step 6: Run focused and archive fixture-cost tests**
 
-Run: `node --test scripts/tests/unit/review/co-review.test.mjs scripts/tests/unit/review/co-review-fixture-cost.test.mjs`
+Run: `node --test scripts/tests/integration/review/co-review.test.mjs scripts/tests/integration/review/co-review-fixture-cost.test.mjs`
 
 Expected: both test files pass and the in-memory corpus still spawns no external Git process.
 
@@ -250,7 +250,7 @@ Prove exact new reference and new copy archives retry as complete. Prove a hybri
 
 - [ ] **Step 3: Run focused tests and verify legacy currently conflicts**
 
-Run: `node --test scripts/tests/unit/review/co-review.test.mjs`
+Run: `node --test scripts/tests/integration/review/co-review.test.mjs`
 
 Expected: the exact legacy archive is reported as extra/different because reference mode is preferred.
 
@@ -274,7 +274,7 @@ The legacy candidate must preserve the historical manifest object and rendered b
 Run in order:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 npm run format:check
 npm run lint
 npm test

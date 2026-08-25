@@ -28,7 +28,7 @@
 
 - Create: `scripts/tests/fixtures/co-review-start-cases.mjs`
 - Create: `scripts/review/lib/start.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 
 **Interfaces:**
 
@@ -57,7 +57,7 @@ Cover distinct identities, blank required values, integer-only limits, repositor
 - [ ] **Step 2: Run the focused test and verify RED**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: failure because the startup module and fixture do not exist.
@@ -115,8 +115,8 @@ Keep shared recovery/wait text in one renderer helper and role-only responsibili
 - [ ] **Step 6: Run focused tests and commit the contract slice**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
-git add scripts/review/lib/start.mjs scripts/tests/fixtures/co-review-start-cases.mjs scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
+git add scripts/review/lib/start.mjs scripts/tests/fixtures/co-review-start-cases.mjs scripts/tests/integration/review/co-review.test.mjs
 git commit -m "feat: define guided co-review startup [#1269]"
 ```
 
@@ -149,7 +149,7 @@ Assert startup uses same-directory temporary files and atomic rename, leaves unr
 - [ ] **Step 2: Run the focused test and verify RED**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: publication, manifest, and recovery cases fail.
@@ -182,7 +182,7 @@ Inject failures before initialization, immediately after initialization, between
 - [ ] **Step 7: Run focused tests and commit publication**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 git add scripts/review/lib/start.mjs scripts/tests/fixtures/co-review-start-cases.mjs
 git commit -m "feat: publish co-review agent handoffs [#1269]"
 ```
@@ -233,7 +233,7 @@ Reject unknown, duplicate, missing-value, malformed, and out-of-range flags with
 - [ ] **Step 5: Run focused and parser regression tests**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: all startup and existing co-review cases pass.
@@ -252,7 +252,7 @@ git commit -m "feat: add guided co-review start command [#1269]"
 - Modify: `scripts/review/lib/help.mjs`
 - Modify: `scripts/lib/self-doc.mjs`
 - Modify: `scripts/tests/fixtures/co-review-start-cases.mjs`
-- Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs`
+- Modify: `scripts/tests/integration/meta/package-test-corpus.test.mjs`
 
 - [ ] **Step 1: Add failing command-help tests**
 
@@ -269,7 +269,7 @@ Add the `start` structured record before `init`, update top-level lifecycle pros
 - [ ] **Step 4: Run documentation-focused verification**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs
 npm run format:check
 npm run spell:check
 npm run lint
@@ -279,7 +279,7 @@ git diff --check
 - [ ] **Step 5: Commit documentation parity**
 
 ```bash
-git add scripts/review/lib/help.mjs scripts/lib/self-doc.mjs scripts/tests/fixtures/co-review-start-cases.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs
+git add scripts/review/lib/help.mjs scripts/lib/self-doc.mjs scripts/tests/fixtures/co-review-start-cases.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs
 git commit -m "docs: document guided co-review startup [#1269]"
 ```
 
@@ -292,8 +292,8 @@ git commit -m "docs: document guided co-review startup [#1269]"
 - [ ] **Step 6: Run focused behavioral verification**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
-node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
+node --test scripts/tests/integration/meta/package-test-corpus.test.mjs
 ```
 
 - [ ] **Step 7: Run governed quality verification**

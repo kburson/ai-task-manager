@@ -54,6 +54,7 @@ Connextra
 Containerfile
 contig
 convergently
+corespotlightd
 counterfactuals
 covthr
 creds
@@ -89,6 +90,7 @@ Dogfooding
 drai
 dupguard
 duplicative
+durs
 dwords
 empts
 ensp
@@ -137,6 +139,7 @@ laned
 Liskov
 lstat
 Manushree
+mediaanalysisd
 menlo
 metachar
 metacharacter
@@ -283,6 +286,7 @@ subshell
 Swiftorial
 symlink
 tangoes
+testaudit
 testless
 testmon
 textless
@@ -291,6 +295,7 @@ Thoughtworks
 throughline
 TOCTOU
 toggleable
+toks
 tombstoned
 toplevel
 TOTP

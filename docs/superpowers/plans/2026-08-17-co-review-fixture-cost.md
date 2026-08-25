@@ -137,7 +137,7 @@ Production call sites omit it and therefore remain on the real adapter.
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/repository-boundary.test.mjs scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/unit/review/repository-boundary.test.mjs scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: repository-boundary tests pass and all existing co-review cases still
@@ -157,7 +157,7 @@ git commit -m "refactor: isolate co-review repository boundary [#1292]"
 **Files:**
 
 - Create: `scripts/tests/fixtures/co-review-memory-repository.mjs`
-- Create: `scripts/tests/unit/review/co-review-fixture-cost.test.mjs`
+- Create: `scripts/tests/integration/review/co-review-fixture-cost.test.mjs`
 - Modify: `scripts/tests/fixtures/co-review-fixture.mjs`
 
 **Interfaces:**
@@ -192,7 +192,7 @@ tracked artifact, reachable commit, committed bytes, and deliberate drift.
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review-fixture-cost.test.mjs
+node --test scripts/tests/integration/review/co-review-fixture-cost.test.mjs
 ```
 
 Expected: fail because the memory repository fixture is absent.
@@ -246,7 +246,7 @@ named so real-boundary use is visible in review.
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/repository-boundary.test.mjs scripts/tests/unit/review/co-review-fixture-cost.test.mjs
+node --test scripts/tests/unit/review/repository-boundary.test.mjs scripts/tests/integration/review/co-review-fixture-cost.test.mjs
 ```
 
 Expected: pass with zero real process calls on the memory path.
@@ -256,7 +256,7 @@ Expected: pass with zero real process calls on the memory path.
 ```bash
 git add scripts/tests/fixtures/co-review-memory-repository.mjs \
   scripts/tests/fixtures/co-review-fixture.mjs \
-  scripts/tests/unit/review/co-review-fixture-cost.test.mjs
+  scripts/tests/integration/review/co-review-fixture-cost.test.mjs
 git commit -m "test: add deterministic co-review repository fixture [#1292]"
 ```
 
@@ -268,7 +268,7 @@ git commit -m "test: add deterministic co-review repository fixture [#1292]"
 - Modify: `scripts/tests/fixtures/co-review-handoff-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-supplement-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-e2e-cases.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 
 **Interfaces:**
 
@@ -290,7 +290,7 @@ assert.match(api.statusProtocol(options).integrity.errors.join('\n'), /artifact-
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: the converted slice passes with unchanged assertions.
@@ -319,8 +319,8 @@ process spies and assert zero real Git and Node CLI calls. Remove the
 
 ```bash
 git add scripts/tests/fixtures/co-review-*-cases.mjs \
-  scripts/tests/unit/review/co-review.test.mjs \
-  scripts/tests/unit/review/co-review-fixture-cost.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs \
+  scripts/tests/integration/review/co-review-fixture-cost.test.mjs
 git commit -m "test: run pure co-review cases in process [#1292]"
 ```
 
@@ -329,8 +329,8 @@ git commit -m "test: run pure co-review cases in process [#1292]"
 **Files:**
 
 - Create: `scripts/tests/slow/review/co-review-boundaries.test.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
-- Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs` only if the
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/meta/package-test-corpus.test.mjs` only if the
   repository's discovery test requires an immutable surface assertion.
 
 **Interfaces:**
@@ -352,7 +352,7 @@ Run:
 
 ```bash
 node --test scripts/tests/slow/review/co-review-boundaries.test.mjs
-node --test scripts/tests/unit/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
 ```
 
 Expected: all retained behaviors pass and the combined outcome count equals the
@@ -363,7 +363,7 @@ baseline 61 cases (plus the new fixture architecture tests).
 Run:
 
 ```bash
-node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/meta/package-test-corpus.test.mjs
 ```
 
 Expected: both discovered roots remain represented without adding a mutable
@@ -373,8 +373,8 @@ central census unless that test explicitly requires the shipped surface.
 
 ```bash
 git add scripts/tests/slow/review/co-review-boundaries.test.mjs \
-  scripts/tests/unit/review/co-review.test.mjs \
-  scripts/tests/unit/meta/package-test-corpus.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs \
+  scripts/tests/integration/meta/package-test-corpus.test.mjs
 git commit -m "test: isolate real co-review boundaries [#1292]"
 ```
 
@@ -393,9 +393,9 @@ git commit -m "test: isolate real co-review boundaries [#1292]"
 - [ ] **Step 1: Run targeted commands**
 
 ```bash
-node --test scripts/tests/unit/review/co-review-fixture-cost.test.mjs
+node --test scripts/tests/integration/review/co-review-fixture-cost.test.mjs
 node --test scripts/tests/slow/review/co-review-boundaries.test.mjs
-node --test scripts/tests/unit/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
 ```
 
 Expected: all commands pass; pure instrumentation reports zero Git/Node CLI

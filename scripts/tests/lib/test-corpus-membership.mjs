@@ -298,7 +298,7 @@ export function formatCorpusMembershipErrors(result) {
         .map((testPath) => `! ${testPath}`)
         .join(
           '\n'
-        )}\n\nMove each file under scripts/tests/{unit,integration,slow}/<subsystem>/.\nSee: scripts/tests/unit/meta/test-tree-layout.test.mjs\nNo membership record can be created until the path is canonical.`
+        )}\n\nMove each file under scripts/tests/{unit,integration,slow}/<subsystem>/.\nSee: scripts/tests/integration/meta/test-tree-layout.test.mjs\nNo membership record can be created until the path is canonical.`
     );
   }
   if (duplicatePaths.length > 0) {

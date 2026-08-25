@@ -756,6 +756,28 @@ export async function verbReview(ctx) {
     process.exit(1);
   }
 
+  // Test keeps the issue bound but closes its timing segment. Review is an
+  // automated state action, so reopen that exact binding before preflight and
+  // keep it open through Full-Auto approval/delivery. This is entry
+  // normalization, not a resumed lifecycle event; the terminal human handoff
+  // below remains the only Review-owned pause.
+  if (s.active === target && s.entryStartTs == null) {
+    saveState(
+      {
+        ...s,
+        entryStartTs: nowIso(),
+        wordsAtEntryStart: s.lastWordMarker ?? 0,
+        lastActive: target,
+      },
+      statePath
+    );
+    try {
+      setTaskStatus(projectDir, target, 'active');
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
+  }
+
   if (!SKIP_NETWORK) {
     const issueNum = String(target).replace(/^#/, '');
     // #622 — `ctx.runReviewPreflight` overrides the dynamic import for offline
@@ -887,29 +909,14 @@ export async function verbReview(ctx) {
   // them. The bare rows merely re-displayed the same numbers, double-counting
   // them in the visible log.
   //
-  // What we KEEP is the session pause. Review is a non-terminal verb (#407):
-  // it closes the active timing session while preserving the binding, so a
-  // follow-up verb needs no intervening `start`. `pauseTimingKeepBinding` nulls
-  // the entry clock (entryStartTs / wordsAtEntryStart) without flushing a row;
-  // the `--duration-minutes` / `--words` agent-session flags are still parsed
-  // above but no longer materialize a row. `setTaskStatus(...,'paused')` runs
-  // only when there was a live session to pause (agent-timing flags present or
-  // the target is the active binding) — matching the pre-C6 branch behavior
-  // where the cold/no-session path left fleet status untouched.
+  // Review timing remains active while the agent performs the Review action.
+  // A successful human-gated Review pauses at the terminal handoff below;
+  // explicit Full-Auto continues through approval and delivery without a
+  // synthetic stop/resume pair.
   //
   // #408 — no test→test self-move here: by the time `review` runs the issue is
   // already in `test`, so the authoritative test→review move is runMoveState
   // below, not a self-loop the transition matrix would reject as illegal.
-  const hadActiveSession = hasAgentTiming || s.active === target;
-  saveState(pauseTimingKeepBinding(s, target), statePath);
-  if (hadActiveSession) {
-    try {
-      setTaskStatus(projectDir, target, 'paused');
-    } catch {
-      /* best-effort: failure must not abort the primary operation */
-    }
-  }
-  console.log(`Review ${target}: task paused.`);
   if (!SKIP_NETWORK) {
     const issueNum = target.replace(/^#/, '');
     const { stdout } = await pexec(
@@ -1569,6 +1576,30 @@ export async function verbReview(ctx) {
     // called from the verb path.
     await runLogIssueTime(target);
     console.log(`✓ ${target} moved to Review — all verification passed.`);
-    console.log(`PROMPT_REQUIRED: review-approval ${target}`);
+    if (reviewNeedsHumanApproval({ cfg, env: ctx.env ?? process.env })) {
+      const liveState = loadState(statePath);
+      const hadActiveSession = hasAgentTiming || liveState.active === target;
+      saveState(pauseTimingKeepBinding(liveState, target), statePath);
+      if (hadActiveSession) {
+        try {
+          setTaskStatus(projectDir, target, 'paused');
+        } catch {
+          /* best-effort: failure must not abort the primary operation */
+        }
+      }
+      console.log(`Review ${target}: task paused for human approval.`);
+      console.log(`PROMPT_REQUIRED: review-approval ${target}`);
+    } else {
+      try {
+        setTaskStatus(projectDir, target, 'active');
+      } catch {
+        /* best-effort: failure must not abort the primary operation */
+      }
+      console.log(`Review ${target}: Full-Auto continuation remains active.`);
+    }
   }
+}
+
+export function reviewNeedsHumanApproval({ cfg = {}, env = process.env } = {}) {
+  return env?.TT_FULL_AUTO !== '1' && cfg?.gateReviewToDone !== false;
 }
