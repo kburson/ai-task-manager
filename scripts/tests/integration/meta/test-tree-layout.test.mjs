@@ -10,8 +10,8 @@
 //   - left no test file directly in a lane root (AC1),
 //   - nested every file under a directory that mirrors a real source subsystem
 //     or is the core/meta bucket (AC2),
-//   - dropped nothing versus the frozen pre-move census and records the one
-//     intentional post-snapshot unit→integration correction (AC3/AC4 — baseline
+//   - dropped nothing versus the frozen pre-move census and records intentional
+//     post-snapshot unit→integration corrections (AC3/AC4 — baseline
 //     is a floor; new tests may be added),
 //   - keeps the three lanes a disjoint partition whose union is the whole
 //     canonical discovery set (AC4),
@@ -39,7 +39,7 @@ import { countCodeLines } from '../../../task-tracker/lib/count-code-lines.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 import { laneFiles } from '../../../run-tests-lanes.mjs';
 
-// scripts/tests/unit/meta/ → four levels up is the repo root.
+// scripts/tests/<lane>/meta/ → four levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../..');
 const LAYOUT_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-test-layout.mjs');
@@ -167,14 +167,14 @@ function isValidSubsystem(sub) {
   );
 }
 
-test('feature-oriented files keep semantic ownership and stay below the 800-line hard cap', () => {
+test('feature-oriented files keep semantic ownership after their lane correction', () => {
   const featureFiles = [
     'scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs',
     'scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs',
     'scripts/tests/integration/fixtures/feature-fixtures.test.mjs',
   ];
   for (const rel of featureFiles) {
-    assert.ok(manifest.unit.includes(rel), `${rel} must remain in the unit lane`);
+    assert.ok(manifest.integration.includes(rel), `${rel} belongs in the integration lane`);
     const codeLines = countCodeLines(readFileSync(path.join(REPO_ROOT, rel), 'utf8'));
     assert.ok(codeLines <= 800, `${rel} has ${codeLines} lines, above the hard cap`);
   }
