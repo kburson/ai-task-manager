@@ -15,6 +15,8 @@ const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
+const ISSUE_1413_CORRECTION_COMMIT = '736a62fbd314fad6b3dbdbfb03519f892183788e';
+const ISSUE_1413_CORRECTION_COUNT = 96;
 const EXPECTED_LANE_CORRECTION = {
   oldPath: 'scripts/task-tracker/lib/trunk-ref.integration.test.mjs',
   migrationPath: 'scripts/tests/unit/task-tracker/lib/trunk-ref.integration.test.mjs',
@@ -109,7 +111,16 @@ test('pre-move corpus manifest freezes the expected schema and lane census', () 
   assert.equal(manifest.sourceCommit, '4f4d7ccf1c3b2f7375e38e7a227f8bec1ef2fdc3');
   assert.deepEqual(manifest.counts, { all: 915, unit: 837, integration: 27, slow: 51 });
   assert.equal(manifest.tests.length, manifest.counts.all);
-  assert.deepEqual(manifest.laneCorrections, [EXPECTED_LANE_CORRECTION]);
+  assert.deepEqual(manifest.laneCorrections[0], EXPECTED_LANE_CORRECTION);
+  const issueCorrections = manifest.laneCorrections.filter(
+    ({ provenance }) => provenance.correctionCommit === ISSUE_1413_CORRECTION_COMMIT
+  );
+  assert.equal(issueCorrections.length, ISSUE_1413_CORRECTION_COUNT);
+  assert.equal(manifest.laneCorrections.length, ISSUE_1413_CORRECTION_COUNT + 1);
+  assert.equal(
+    new Set(issueCorrections.map(({ migrationPath }) => migrationPath)).size,
+    ISSUE_1413_CORRECTION_COUNT
+  );
 });
 
 test('pre-move corpus manifest is a one-to-one, lane-preserving migration map', () => {
@@ -166,26 +177,30 @@ test('the immutable Task 3 migration commit records every frozen path pair as a 
   }
 });
 
-test('the intentional lane correction retains its exact post-migration Git rename', () => {
-  const [correction] = manifest.laneCorrections;
-  const { baseCommit, correctionCommit, renameStatus } = correction.provenance;
-  assertCommitReachable(baseCommit, 'lane-correction base');
-  assertCommitReachable(correctionCommit, 'lane-correction commit');
-  const output = execFileSync(
-    'git',
-    [
-      'diff',
-      '--name-status',
-      '--find-renames=100%',
-      `${baseCommit}..${correctionCommit}`,
-      '--',
-      correction.migrationPath,
-      correction.finalPath,
-    ],
-    { cwd: PROJECT_ROOT, encoding: 'utf8' }
-  ).trim();
+test('every intentional lane correction retains its exact post-migration Git rename', () => {
+  for (const correction of manifest.laneCorrections) {
+    const { baseCommit, correctionCommit, renameStatus } = correction.provenance;
+    assertCommitReachable(baseCommit, 'lane-correction base');
+    assertCommitReachable(correctionCommit, 'lane-correction commit');
+    const output = execFileSync(
+      'git',
+      [
+        'diff',
+        '--name-status',
+        `--find-renames=${renameStatus.slice(1)}%`,
+        `${baseCommit}..${correctionCommit}`,
+        '--',
+        correction.migrationPath,
+        correction.finalPath,
+      ],
+      { cwd: PROJECT_ROOT, encoding: 'utf8' }
+    ).trim();
 
-  assert.equal(output, `${renameStatus}\t${correction.migrationPath}\t${correction.finalPath}`);
+    assert.equal(
+      output,
+      `${renameStatus}\t${correction.migrationPath}\t${correction.finalPath}`
+    );
+  }
 });
 
 test('live discovery realizes every frozen destination in its final canonical lane', () => {
