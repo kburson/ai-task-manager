@@ -4,8 +4,11 @@
 // assets/diagrams/ — those two have drifted, and the body is what a reader
 // actually sees. That is the same call `lib/diagrams.mjs` makes for LinkedIn.
 //
-// Rendering is at a higher scale than the screen path uses: a 1x PNG that looks
-// fine in a browser is visibly soft at 300 dpi on paper.
+// Today the book renders at the same scale as the LinkedIn path (`PRINT_SCALE`
+// matches `renderMermaidSource`'s own default). The `scale` option exists so
+// the two can diverge later — e.g. if print resolution turns out to need more
+// than the screen path does — without duplicating the `mmdc` spawn. Nobody has
+// measured what print scale this book actually needs yet.
 
 import path from 'node:path';
 

@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { parseArgs } from '../../../../articles/compose-book.mjs';
-import { latexmkArgs, pandocArgs, TARGETS } from '../../../../articles/lib/book/render.mjs';
+import {
+  latexmkArgs,
+  pandocArgs,
+  renderInvocations,
+  TARGETS,
+} from '../../../../articles/lib/book/render.mjs';
 
 test('pandocArgs maps top-level headings to chapters and loads the metadata file', () => {
   const args = pandocArgs({
@@ -48,4 +53,32 @@ test('parseArgs accepts a single target and a doctor flag', () => {
 test('parseArgs rejects unknown targets and unknown flags', () => {
   assert.throws(() => parseArgs(['--target', 'mobi']), /unknown target/);
   assert.throws(() => parseArgs(['--nope']), /unknown argument/);
+});
+
+test('renderInvocations runs pandoc with cwd set to outDir, so bare-filename image references (e.g. from extractBookDiagrams) resolve', () => {
+  const invocations = renderInvocations({
+    manuscriptPath: '/tmp/book/manuscript.md',
+    bookDir: '/repo/docs/articles/assets/book',
+    outDir: '/tmp/book',
+    target: 'epub',
+  });
+  assert.equal(invocations.length, 1);
+  assert.equal(invocations[0].command, 'pandoc');
+  assert.deepEqual(invocations[0].options, { cwd: '/tmp/book' });
+});
+
+test('renderInvocations also runs latexmk with cwd set to outDir for the pdf target, so LaTeX image includes resolve', () => {
+  const invocations = renderInvocations({
+    manuscriptPath: '/tmp/book/manuscript.md',
+    bookDir: '/repo/docs/articles/assets/book',
+    outDir: '/tmp/book',
+    target: 'pdf',
+  });
+  assert.equal(invocations.length, 2);
+  assert.deepEqual(
+    invocations.map((i) => i.command),
+    ['pandoc', 'latexmk']
+  );
+  assert.deepEqual(invocations[0].options, { cwd: '/tmp/book' });
+  assert.deepEqual(invocations[1].options, { cwd: '/tmp/book' });
 });
