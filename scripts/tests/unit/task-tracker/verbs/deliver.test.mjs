@@ -58,6 +58,7 @@ function makeHarness(options = {}) {
     fetchOriginTrunk: 0,
     isAncestor: 0,
     inspectMergeCommit: 0,
+    inspectSourceCommit: 0,
     attributingCommits: [],
     terminalTiming: 0,
     terminalBoard: 0,
@@ -242,6 +243,10 @@ function makeHarness(options = {}) {
         commitTitle,
         commitMessage,
       };
+    },
+    async inspectSourceCommit() {
+      calls.inspectSourceCommit += 1;
+      throw new Error('unexpected source commit inspection');
     },
     async attributingCommits(issueNumber, { refs }) {
       calls.attributingCommits.push(issueNumber);

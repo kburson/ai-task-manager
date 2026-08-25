@@ -17,6 +17,11 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import {
+  profiledEnv,
+  realRepositoryFixture,
+  runCli,
+} from '../../../fixtures/co-review-fixture.mjs';
+import {
   decideSourceEdit,
   isAllowlistedPath,
   normalizePath,
@@ -27,6 +32,65 @@ import {
 
 const PROJECT_DIR = '/fake/project';
 const LOCAL_OWNERSHIP = { assignees: ['kburson'], currentUser: 'kburson' };
+const OWNER_ENV = profiledEnv('owner', {
+  ...process.env,
+  AI_TASK_MANAGER_SESSION_ID: 'source-edit-owner-invariance-1406',
+});
+const REVIEWER_ENV = profiledEnv('reviewer', {
+  ...process.env,
+  AI_TASK_MANAGER_SESSION_ID: 'source-edit-reviewer-invariance-1406',
+});
+
+function successfulCoReview(args, root, env) {
+  const result = runCli(args, { cwd: root, env });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function prepareReviewerTurn(root, artifact, commit) {
+  const dir = '.tmp/co-review/source-edit-claim-invariance';
+  successfulCoReview(
+    [
+      'init',
+      '--dir',
+      dir,
+      '--artifact',
+      artifact,
+      '--owner',
+      'owner-agent',
+      '--reviewer',
+      'reviewer-agent',
+      '--max-turns',
+      '3',
+    ],
+    root,
+    OWNER_ENV
+  );
+  successfulCoReview(['claim', '--dir', dir, '--actor', 'owner-agent'], root, OWNER_ENV);
+  const response = `${dir}/round-1-owner-response.md`;
+  writeFileSync(path.join(root, response), '# Owner response\n\nReady for review.\n');
+  successfulCoReview(
+    [
+      'handoff',
+      '--dir',
+      dir,
+      '--actor',
+      'owner-agent',
+      '--response',
+      response,
+      '--artifact',
+      artifact,
+      '--commit',
+      commit,
+      '--message',
+      'owner handoff complete',
+    ],
+    root,
+    OWNER_ENV
+  );
+  return () =>
+    successfulCoReview(['claim', '--dir', dir, '--actor', 'reviewer-agent'], root, REVIEWER_ENV);
+}
 
 // Builds a throwaway project dir with a minimal task-tracker.json so
 // `fetchIssueSignals` can read its config off disk. Returns { dir, cleanup }.
@@ -340,8 +404,7 @@ test('runHook allowlists .tmp without needing a bound issue or signals', async (
   assert.equal(touched, true);
 });
 
-test('native apply_patch envelope parses every target before reviewer policy', async () => {
-  let observed;
+test('native apply_patch envelope classifies every target with ordinary source-edit rules', async () => {
   const result = await runHook(
     {
       tool_name: 'apply_patch',
@@ -352,15 +415,13 @@ test('native apply_patch envelope parses every target before reviewer policy', a
     },
     {
       projectDir: PROJECT_DIR,
-      evaluateCoReviewWrite: (input) => {
-        observed = input;
-        return { decision: 'deny', code: 'mixed', reason: 'mixed targets denied' };
-      },
+      isChoreModeActive: () => false,
+      loadBoundIssue: () => null,
     }
   );
-  assert.deepEqual(observed.targets, ['.tmp/review.md', 'src/a.mjs']);
   assert.equal(result.decision, 'block');
-  assert.equal(result.code, 'mixed');
+  assert.equal(result.code, 'source-edit-no-bound-issue');
+  assert.match(result.reason, /src\/a\.mjs/);
 });
 
 test('malformed native apply_patch envelope fails closed before ordinary allowances', async () => {
@@ -368,15 +429,86 @@ test('malformed native apply_patch envelope fails closed before ordinary allowan
     { tool_name: 'apply_patch', tool_input: { patch: 'not a patch' } },
     {
       projectDir: PROJECT_DIR,
-      evaluateCoReviewWrite: ({ parseError }) => ({
-        decision: parseError ? 'deny' : 'not-applicable',
-        code: 'malformed',
-        reason: 'malformed patch denied',
-      }),
+      isChoreModeActive: () => true,
+      loadBoundIssue: () => null,
     }
   );
   assert.equal(result.decision, 'block');
-  assert.equal(result.code, 'malformed');
+  assert.equal(result.code, 'mutation-parse-error');
+  assert.match(result.reason, /mutation target parsing failed/);
+});
+
+test('a live reviewer claim does not change ordinary source-edit decisions', async () => {
+  const fixture = realRepositoryFixture();
+  const establishClaim = prepareReviewerTurn(fixture.root, fixture.artifact, fixture.initialCommit);
+  const developed = {
+    state: 'develop',
+    hasPostedMarker: true,
+    hasCompleteMarker: true,
+    ...LOCAL_OWNERSHIP,
+  };
+  const cases = [
+    {
+      name: 'documentation edit',
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
+      deps: {
+        loadBoundIssue: () => '#1406',
+        resolveIssueSignals: async () => developed,
+      },
+      expectedDecision: 'allow',
+    },
+    {
+      name: 'temporary review-file write',
+      payload: {
+        tool_name: 'Write',
+        tool_input: { file_path: '.tmp/reviewer-work/round-2-review.md' },
+      },
+      deps: { loadBoundIssue: () => null },
+      expectedDecision: 'allow',
+    },
+    {
+      name: 'unbound source notebook write',
+      payload: {
+        tool_name: 'NotebookEdit',
+        tool_input: { notebook_path: 'analysis.ipynb' },
+      },
+      deps: { loadBoundIssue: () => null },
+      expectedDecision: 'block',
+    },
+    {
+      name: 'malformed apply_patch',
+      payload: { tool_name: 'apply_patch', tool_input: { patch: 'not a patch' } },
+      deps: {
+        loadBoundIssue: () => '#1406',
+        resolveIssueSignals: async () => developed,
+      },
+      expectedDecision: 'block',
+    },
+  ];
+  const runCases = () =>
+    Promise.all(
+      cases.map(async ({ payload, deps }) => {
+        const result = await runHook(payload, {
+          projectDir: fixture.root,
+          env: REVIEWER_ENV,
+          isChoreModeActive: () => false,
+          ...deps,
+        });
+        return result;
+      })
+    );
+
+  try {
+    const withoutClaim = await runCases();
+    for (const [index, result] of withoutClaim.entries()) {
+      assert.equal(result.decision, cases[index].expectedDecision, cases[index].name);
+    }
+    establishClaim();
+    const withClaim = await runCases();
+    assert.deepEqual(withClaim, withoutClaim);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 // ── #658 regression: deep-dive marker grammar detection ────────────────────

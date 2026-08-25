@@ -28,6 +28,7 @@ import { resolveRuntimeRoot, RuntimeRootError } from './runtime-root.mjs';
 
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
+export const CLAIM_PROVENANCE_PROFILE = 'provider-session/v1';
 const SNAPSHOT_MAX_ATTEMPTS = 5;
 const SNAPSHOT_RETRY_DELAY_MS = 10;
 const SNAPSHOT_WAIT_SIGNAL = new Int32Array(new SharedArrayBuffer(4));
@@ -66,10 +67,6 @@ function repositoryCall(code, detail, operation) {
     if (error instanceof ProtocolError) throw error;
     fail(code, error.stderr?.toString().trim() || detail);
   }
-}
-
-function repositoryRoot(cwd, repository) {
-  return repositoryCall('not-a-repository', String(cwd), () => repository.repositoryRoot(cwd));
 }
 
 function protocolRoot(cwd, dir, repository) {
@@ -156,6 +153,21 @@ function assertIgnored(root, runtime, repository) {
   );
   if (!status.ignored) fail('runtime-not-ignored', runtime.relative);
   if (status.tracked) fail('runtime-tracked', runtime.relative);
+}
+
+function assertCleanTrackedState(root, repository) {
+  const changed = repositoryCall('git', 'tracked worktree state', () =>
+    repository.trackedChanges(root)
+  );
+  if (changed.length > 0) fail('tracked-worktree-dirty', changed.join(', '));
+}
+
+function assertArtifactOnlyDelta(root, state, commit, repository) {
+  const changed = repositoryCall('git', 'artifact change scope', () =>
+    repository.changedPathsBetween(root, state.artifact.commit, commit)
+  );
+  const outside = changed.filter((candidate) => candidate !== state.artifact.path);
+  if (outside.length > 0) fail('artifact-change-scope', outside.join(', '));
 }
 
 function assertTrackedArtifact(root, artifact, repository) {
@@ -253,10 +265,15 @@ function eventFor(state, type, at) {
     at,
     lifecycle: state.lifecycle,
     currentRole: state.currentRole,
+    turnState: state.turnState,
     round: state.round,
     reviewTurnsUsed: state.reviewTurnsUsed,
     maxReviewTurns: state.maxReviewTurns,
     remainingReviewTurns: state.remainingReviewTurns,
+    ...(state.initialization?.claimProvenance
+      ? { claimProvenance: state.initialization.claimProvenance }
+      : {}),
+    ...(state.claim ? { claim: state.claim } : {}),
     ...(state.supplements === undefined
       ? {}
       : { supplements: supplementProjection(state.supplements) }),
@@ -305,6 +322,20 @@ function validateState(state) {
   ) {
     fail('invalid-state', 'schema, round, or budget invariant');
   }
+  const profile = state.initialization?.claimProvenance;
+  if (profile !== undefined && profile !== CLAIM_PROVENANCE_PROFILE) {
+    fail('invalid-state', 'claim provenance profile');
+  }
+  if (profile === CLAIM_PROVENANCE_PROFILE) {
+    if (state.claim !== null) validateClaimRecord(state.claim, 'state claim');
+    if (state.lastHandoff?.imported) {
+      if (state.lastHandoff.provenance?.mode !== 'imported-unclaimed/v1') {
+        fail('invalid-state', 'imported handoff provenance');
+      }
+    } else if (state.lastHandoff !== null) {
+      validateClaimReference(state.lastHandoff?.claim, 'last handoff claim');
+    }
+  }
   if (state.supplements !== undefined) {
     if (!Array.isArray(state.supplements)) fail('invalid-state', 'supplements must be an array');
     const ids = new Set();
@@ -332,6 +363,79 @@ function validateState(state) {
   return state;
 }
 
+function nonEmptyString(value) {
+  return typeof value === 'string' && Boolean(value.trim());
+}
+
+function validateClaimRecord(claim, label) {
+  if (
+    !claim ||
+    !Number.isInteger(claim.revision) ||
+    claim.revision < 1 ||
+    !['owner', 'reviewer'].includes(claim.role) ||
+    !nonEmptyString(claim.actor) ||
+    !nonEmptyString(claim.provider) ||
+    !nonEmptyString(claim.sid) ||
+    !Number.isInteger(claim.pid) ||
+    claim.pid < 1 ||
+    !nonEmptyString(claim.host) ||
+    !nonEmptyString(claim.at) ||
+    Number.isNaN(Date.parse(claim.at))
+  ) {
+    fail('invalid-state', label);
+  }
+  return claim;
+}
+
+function validateClaimReference(claim, label) {
+  if (
+    !claim ||
+    !Number.isInteger(claim.revision) ||
+    claim.revision < 1 ||
+    !['owner', 'reviewer'].includes(claim.role) ||
+    !nonEmptyString(claim.actor) ||
+    !nonEmptyString(claim.provider) ||
+    !nonEmptyString(claim.sid) ||
+    !nonEmptyString(claim.at) ||
+    Number.isNaN(Date.parse(claim.at))
+  ) {
+    fail('invalid-state', label);
+  }
+  return claim;
+}
+
+function claimReference(claim) {
+  const { revision, role, actor, provider, sid, at } = claim;
+  return { revision, role, actor, provider, sid, at };
+}
+
+function requireProfiledMutation(state) {
+  if (state.initialization?.claimProvenance !== CLAIM_PROVENANCE_PROFILE) {
+    fail('provenance-profile-required');
+  }
+}
+
+function requiredProviderSession(provider, sid) {
+  if (!nonEmptyString(provider) || !nonEmptyString(sid)) fail('provider-session-id-required');
+  return { provider: provider.trim(), sid: sid.trim() };
+}
+
+function requireHandoffSession(state, provider, sid) {
+  const requested = requiredProviderSession(provider, sid);
+  if (state.claim?.provider !== requested.provider || state.claim?.sid !== requested.sid) {
+    fail('handoff-session-mismatch');
+  }
+  return requested;
+}
+
+function requireReplaySession(state, provider, sid) {
+  const requested = requiredProviderSession(provider, sid);
+  const recorded = state.lastHandoff?.claim;
+  if (recorded?.provider !== requested.provider || recorded?.sid !== requested.sid) {
+    fail('handoff-session-mismatch');
+  }
+}
+
 function readEventRecords(paths) {
   return readFileSync(paths.events, 'utf8')
     .split('\n')
@@ -351,6 +455,7 @@ function eventIntegrity(paths, state) {
 
 function eventIntegrityForRecords(events, state) {
   const errors = [];
+  const latestClaimByRole = new Map();
   if (events.length !== state.revision) {
     errors.push(`event-count: expected ${state.revision}, actual ${events.length}`);
   }
@@ -380,6 +485,48 @@ function eventIntegrityForRecords(events, state) {
     if (!allowedTypes.has(event.type)) {
       errors.push(`event-type revision ${expectedRevision}: ${String(event.type)}`);
     }
+    if (state.initialization?.claimProvenance === CLAIM_PROVENANCE_PROFILE) {
+      if (event.claimProvenance !== CLAIM_PROVENANCE_PROFILE) {
+        errors.push(
+          `event-provenance revision ${expectedRevision}: ${String(event.claimProvenance)}`
+        );
+      }
+      try {
+        if (event.claim !== undefined) validateClaimRecord(event.claim, 'claim event');
+        if (event.type === 'claim') {
+          if (
+            event.claim.revision !== event.revision ||
+            event.claim.role !== event.currentRole ||
+            event.claim.actor !== state.roles?.[event.claim.role] ||
+            event.claim.at !== event.at
+          ) {
+            errors.push(`event-provenance revision ${expectedRevision}: claim projection`);
+          }
+          latestClaimByRole.set(event.claim.role, claimReference(event.claim));
+        }
+        if (event.type === 'owner-handoff' || event.type === 'reviewer-handoff') {
+          validateClaimReference(event.handoff?.claim, 'handoff event claim');
+          const role = event.type === 'owner-handoff' ? 'owner' : 'reviewer';
+          if (
+            event.handoff.from !== role ||
+            event.handoff.at !== event.at ||
+            JSON.stringify(event.handoff.claim) !== JSON.stringify(latestClaimByRole.get(role))
+          ) {
+            errors.push(`event-provenance revision ${expectedRevision}: handoff claim projection`);
+          }
+        }
+        if (
+          event.type === 'init-import' &&
+          event.handoff?.provenance?.mode !== 'imported-unclaimed/v1'
+        ) {
+          errors.push(`event-provenance revision ${expectedRevision}: imported-unclaimed`);
+        }
+      } catch (error) {
+        errors.push(
+          `event-provenance revision ${expectedRevision}: ${error.code ?? error.message}`
+        );
+      }
+    }
   }
   errors.push(...eventProjectionErrors(events, state));
   return { events, errors };
@@ -396,6 +543,7 @@ function eventProjectionErrors(events, state, { requireEvent = false } = {}) {
   for (const field of [
     'lifecycle',
     'currentRole',
+    'turnState',
     'round',
     'reviewTurnsUsed',
     'maxReviewTurns',
@@ -414,6 +562,23 @@ function eventProjectionErrors(events, state, { requireEvent = false } = {}) {
   }
   if (JSON.stringify(event.acceptance) !== JSON.stringify(state.acceptance)) {
     errors.push('event-projection acceptance: state differs from corresponding event');
+  }
+  if (state.initialization?.claimProvenance === CLAIM_PROVENANCE_PROFILE) {
+    if (JSON.stringify(event.claim) !== JSON.stringify(state.claim ?? undefined)) {
+      errors.push('event-projection claim: state differs from corresponding event');
+    }
+    if (
+      (event.type === 'owner-handoff' || event.type === 'reviewer-handoff') &&
+      JSON.stringify(event.handoff) !== JSON.stringify(state.lastHandoff)
+    ) {
+      errors.push('event-projection handoff: state differs from corresponding event');
+    }
+    if (
+      event.type === 'init-import' &&
+      JSON.stringify(event.handoff) !== JSON.stringify(state.lastHandoff)
+    ) {
+      errors.push('event-projection imported handoff: state differs from corresponding event');
+    }
   }
   return errors;
 }
@@ -592,7 +757,7 @@ export function initializeProtocol({
     fail('import-exhausts-budget', 'imported R1 requires --max-turns >= 2', { exitCode: 2 });
   }
 
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   assertIgnored(root, paths, repository);
   const archive = archiveDir
@@ -613,6 +778,10 @@ export function initializeProtocol({
       fail('import-outside-runtime', importedReview.path);
     }
     importedCommit = exactReachableCommit(root, reviewOf, repository);
+    const identity = repositoryCall('git', 'repository identity', () => repository.identity(root));
+    if (importedCommit !== identity.head) {
+      fail('import-review-head-mismatch', `${importedCommit}; HEAD=${identity.head}`);
+    }
     artifactRecord.blob = assertCommitArtifact(root, importedCommit, artifactRecord, repository);
   }
 
@@ -625,12 +794,14 @@ export function initializeProtocol({
     maxReviewTurns,
     importedReview,
     reviewOf: importedCommit,
+    claimProvenance: CLAIM_PROVENANCE_PROFILE,
     ...(archive ? { archiveDir: archive.lexicalRelative } : {}),
   };
 
   return withMutex(paths, 'system', 'init', () => {
     if (existsSync(paths.state)) {
       const existing = readProtocol({ cwd: root, dir: paths.relative, repository });
+      requireProfiledMutation(existing);
       if (sameInitialization(existing, initialization)) return existing;
       fail('already-initialized', paths.relative);
     }
@@ -664,6 +835,7 @@ export function initializeProtocol({
             commit: importedCommit,
             artifacts: { review: importedReview },
             imported: true,
+            provenance: { mode: 'imported-unclaimed/v1' },
           }
         : null,
       immutableArtifacts: imported ? { [importedReview.path]: importedReview } : {},
@@ -672,7 +844,14 @@ export function initializeProtocol({
       updatedAt: at,
     });
     const type = imported ? 'init-import' : 'init';
-    writeFileSync(paths.events, `${JSON.stringify(eventFor(state, type, at))}\n`, { flag: 'wx' });
+    writeFileSync(
+      paths.events,
+      `${JSON.stringify({
+        ...eventFor(state, type, at),
+        ...(imported ? { handoff: state.lastHandoff } : {}),
+      })}\n`,
+      { flag: 'wx' }
+    );
     return atomicStateWrite(paths, state);
   });
 }
@@ -948,31 +1127,56 @@ export function claimTurn({
   cwd = process.cwd(),
   dir,
   actor,
+  provider,
+  sid,
   repository = REAL_REPOSITORY_BOUNDARY,
 }) {
   const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'claim', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    requireProfiledMutation(state);
+    const session = requiredProviderSession(provider, sid);
     const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
     if (!role) fail('unknown-actor', String(actor));
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.currentRole !== role) {
       fail('wrong-role', `${actor} maps to ${role}; current role is ${state.currentRole}`);
     }
-    if (state.turnState === 'claimed' && state.claim?.actor === actor)
-      return readProtocol({ cwd: root, dir: paths.relative, repository });
+    if (state.turnState === 'claimed' && state.claim?.actor === actor) {
+      if (state.claim.provider === session.provider && state.claim.sid === session.sid) {
+        return readProtocol({ cwd: root, dir: paths.relative, repository });
+      }
+      fail('claim-conflict', role);
+    }
     if (state.turnState !== 'available') fail('not-available', state.turnState);
+    if (
+      state.lastHandoff?.from &&
+      state.lastHandoff.from !== role &&
+      state.lastHandoff.claim?.provider === session.provider &&
+      state.lastHandoff.claim?.sid === session.sid
+    ) {
+      fail('session-role-conflict');
+    }
     const at = new Date().toISOString();
+    const claim = {
+      revision: state.revision + 1,
+      role,
+      actor,
+      ...session,
+      pid: process.pid,
+      host: hostname(),
+      at,
+    };
     const next = validateState({
       ...state,
       integrity: undefined,
       revision: state.revision + 1,
       turnState: 'claimed',
-      claim: { role, actor, pid: process.pid, host: hostname(), at },
+      claim,
       updatedAt: at,
     });
-    appendEvent(paths, next, 'claim', at);
+    appendEvent(paths, next, 'claim', at, { claim });
     return atomicStateWrite(paths, next);
   });
 }
@@ -1175,10 +1379,95 @@ function committedOwnerArtifact(root, state, artifact, revision, repository) {
   };
 }
 
+function sameDigestArtifact(left, right) {
+  if (!left || !right) return !left && !right;
+  return left.path === right.path && left.sha256 === right.sha256;
+}
+
+function sameOwnerArtifact(left, right) {
+  return (
+    sameDigestArtifact(left, right) && left.commit === right.commit && left.blob === right.blob
+  );
+}
+
+function immediatelyCompletedHandoff(paths, state, role) {
+  const latest = readEventRecords(paths).at(-1);
+  return (
+    latest?.revision === state.revision &&
+    latest?.type === `${role}-handoff` &&
+    state.lastHandoff?.from === role
+  );
+}
+
+function recognizeOwnerHandoffReplay({
+  root,
+  paths,
+  state,
+  actor,
+  provider,
+  sid,
+  response,
+  artifact,
+  commit,
+  answers,
+  message,
+  repository,
+}) {
+  if (!immediatelyCompletedHandoff(paths, state, 'owner')) return null;
+  requireReplaySession(state, provider, sid);
+  const responseArtifact = digestFile(root, response, 'response');
+  const answeredReview = answers ? digestFile(root, answers, 'answers') : null;
+  const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
+  const recorded = state.lastHandoff;
+  const matches =
+    state.roles.owner === actor &&
+    sameOwnerArtifact(artifactRecord, recorded.artifact) &&
+    sameOwnerArtifact(artifactRecord, state.artifact) &&
+    artifactRecord.commit === recorded.commit &&
+    sameDigestArtifact(responseArtifact, recorded.artifacts?.response) &&
+    sameDigestArtifact(answeredReview, recorded.artifacts?.answeredReview) &&
+    String(message || '').trim() === recorded.message;
+  if (!matches) fail('handoff-conflict', 'owner');
+  return state;
+}
+
+function recognizeReviewerHandoffReplay({
+  root,
+  paths,
+  state,
+  actor,
+  provider,
+  sid,
+  review,
+  reviewOf,
+  decision,
+  summary,
+  message,
+  repository,
+}) {
+  if (!immediatelyCompletedHandoff(paths, state, 'reviewer')) return null;
+  requireReplaySession(state, provider, sid);
+  const reviewArtifact = digestFile(root, review, 'review');
+  const summaryArtifact = summary ? digestFile(root, summary, 'summary') : null;
+  const exactReviewOf = exactReachableCommit(root, reviewOf, repository);
+  const recorded = state.lastHandoff;
+  const matches =
+    state.roles.reviewer === actor &&
+    exactReviewOf === recorded.commit &&
+    decision === recorded.decision &&
+    sameDigestArtifact(reviewArtifact, recorded.artifacts?.review) &&
+    sameDigestArtifact(summaryArtifact, recorded.artifacts?.summary) &&
+    String(message || '').trim() === recorded.message;
+  if (!matches) fail('handoff-conflict', 'reviewer');
+  return state;
+}
+
 export function handoffOwner({
   cwd = process.cwd(),
   dir,
   actor,
+  provider,
+  sid,
   response,
   artifact,
   commit,
@@ -1190,6 +1479,24 @@ export function handoffOwner({
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'owner-handoff', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    requireProfiledMutation(state);
+    assertIgnored(root, paths, repository);
+    assertCleanTrackedState(root, repository);
+    const replay = recognizeOwnerHandoffReplay({
+      root,
+      paths,
+      state,
+      actor,
+      provider,
+      sid,
+      response,
+      artifact,
+      commit,
+      answers,
+      message,
+      repository,
+    });
+    if (replay) return replay;
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.owner !== actor || state.currentRole !== 'owner') {
       fail('wrong-role', `${actor}; expected owner ${state.roles.owner}`);
@@ -1197,6 +1504,7 @@ export function handoffOwner({
     if (state.turnState !== 'claimed' || state.claim?.actor !== actor) {
       fail('unclaimed', 'owner');
     }
+    requireHandoffSession(state, provider, sid);
     if (!String(message || '').trim()) fail('message-required', 'owner handoff');
     const precedingReview = state.lastHandoff?.artifacts?.review ?? null;
     if (precedingReview && !answers) fail('answers-required', precedingReview.path);
@@ -1220,6 +1528,7 @@ export function handoffOwner({
     }
     validateResponse(root, answeredReview, responseArtifact);
     const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
+    assertArtifactOnlyDelta(root, state, artifactRecord.commit, repository);
     const at = new Date().toISOString();
     const artifacts = {
       response: responseArtifact,
@@ -1235,6 +1544,7 @@ export function handoffOwner({
       commit: artifactRecord.commit,
       artifact: artifactRecord,
       artifacts,
+      claim: claimReference(state.claim),
     };
     const next = validateState({
       ...state,
@@ -1262,6 +1572,8 @@ export function handoffReviewer({
   cwd = process.cwd(),
   dir,
   actor,
+  provider,
+  sid,
   review,
   reviewOf,
   decision,
@@ -1273,6 +1585,24 @@ export function handoffReviewer({
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'reviewer-handoff', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    requireProfiledMutation(state);
+    assertIgnored(root, paths, repository);
+    assertCleanTrackedState(root, repository);
+    const replay = recognizeReviewerHandoffReplay({
+      root,
+      paths,
+      state,
+      actor,
+      provider,
+      sid,
+      review,
+      reviewOf,
+      decision,
+      summary,
+      message,
+      repository,
+    });
+    if (replay) return replay;
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.reviewer !== actor || state.currentRole !== 'reviewer') {
       fail('wrong-role', `${actor}; expected reviewer ${state.roles.reviewer}`);
@@ -1280,6 +1610,7 @@ export function handoffReviewer({
     if (state.turnState !== 'claimed' || state.claim?.actor !== actor) {
       fail('unclaimed', 'reviewer');
     }
+    requireHandoffSession(state, provider, sid);
     if (!String(message || '').trim()) fail('message-required', 'reviewer handoff');
     if (!['accepted', 'changes-requested'].includes(decision)) {
       fail('decision', String(decision));
@@ -1333,6 +1664,7 @@ export function handoffReviewer({
       commit: exactReviewOf,
       decision,
       artifacts,
+      claim: claimReference(state.claim),
     };
     const immutableArtifacts = {
       ...(state.immutableArtifacts ?? {}),

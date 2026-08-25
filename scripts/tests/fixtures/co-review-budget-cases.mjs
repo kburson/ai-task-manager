@@ -251,10 +251,10 @@ test('active owner budget adjustment records provenance and preserves the turn',
 test('reviewer available and claimed adjustments clamp below the in-progress turn', async () => {
   for (const claimed of [false, true]) {
     const { api, root, options, initialCommit } = await initializedProtocol();
-    api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+    api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
     const response = `${options.dir}/owner-response.md`;
     writeFileSync(path.join(root, response), '# Owner response\n\nReady.\n');
-    api.handoffOwner({
+    api.profiledHandoffOwner({
       cwd: root,
       dir: options.dir,
       actor: 'owner-agent',
@@ -263,7 +263,7 @@ test('reviewer available and claimed adjustments clamp below the in-progress tur
       commit: initialCommit,
       message: 'ready',
     });
-    if (claimed) api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+    if (claimed) api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
     const before = api.readProtocol({ cwd: root, dir: options.dir });
     const adjusted = api.setMaxReviewTurns({
       cwd: root,

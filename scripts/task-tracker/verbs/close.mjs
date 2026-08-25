@@ -34,7 +34,10 @@ import {
 } from '../lib/full-auto-merge-execute.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
-import { parseDeliveryComment, projectDeliveryRecords } from '../lib/delivery-records.mjs';
+import {
+  parseDeliveryCommentForPullRequest,
+  projectDeliveryRecords,
+} from '../lib/delivery-records.mjs';
 import {
   requireDeliveryReceipt,
   resolveAcceptedDeliveryHead,
@@ -166,7 +169,9 @@ export async function loadCloseDeliveryGateInput({
       });
       const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
       records = projectDeliveryRecords(
-        comments.map((comment) => parseDeliveryComment(comment, context)).filter(Boolean)
+        comments
+          .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
+          .filter(Boolean)
       );
     }
   }
@@ -629,8 +634,7 @@ export async function verbClose(ctx) {
     const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
       session: loadSession(currentSessionId()),
       projectConfig: rawProjectConfig(),
-      acceptedHeadSha:
-        gateInput.acceptedSha === gateInput.localHeadSha ? gateInput.localHeadSha : null,
+      acceptedHeadSha: gateInput.acceptedSha,
       humanApprovalEvidence:
         directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
           ? {
@@ -1673,7 +1677,9 @@ export async function verbClose(ctx) {
   }
   if (!SKIP_NETWORK && closeIssueNum) {
     try {
-      const { applyReviewDelta } = await import('../lib/apply-review-delta.mjs');
+      const { applyReviewDelta: defaultApplyReviewDelta } =
+        await import('../lib/apply-review-delta.mjs');
+      const applyReviewDelta = ctx.applyReviewDelta || defaultApplyReviewDelta;
       await applyReviewDelta({ cfg, issueNumber: closeIssueNum, body: closeBody });
     } catch (err) {
       process.stderr.write(`⚠ review-delta hook failed: ${err.message}\n`);

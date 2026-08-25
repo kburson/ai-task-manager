@@ -1,4 +1,5 @@
 // @story #1292
+// cspell:ignore ACDMRTUXB
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
@@ -24,11 +25,6 @@ export function createRealRepositoryBoundary({ execFileSyncImpl = execFileSync }
       return realpathSync(run(cwd, ['rev-parse', '--show-toplevel']).trim());
     },
 
-    commonDirectory(root) {
-      const observed = run(root, ['rev-parse', '--git-common-dir']).trim();
-      return realpathSync(path.resolve(root, observed));
-    },
-
     runtimeStatus(root, relative) {
       return {
         ignored:
@@ -37,6 +33,23 @@ export function createRealRepositoryBoundary({ execFileSyncImpl = execFileSync }
           run(root, ['ls-files', '--error-unmatch', '--', relative], { allowFailure: true }) !==
           null,
       };
+    },
+
+    trackedChanges(root) {
+      const unstaged = run(root, ['diff', '--name-only', '--diff-filter=ACDMRTUXB', '--']);
+      const staged = run(root, [
+        'diff',
+        '--cached',
+        '--name-only',
+        '--diff-filter=ACDMRTUXB',
+        '--',
+      ]);
+      return [...new Set(`${unstaged}\n${staged}`.split('\n').filter(Boolean))].sort();
+    },
+
+    changedPathsBetween(root, from, to) {
+      const output = run(root, ['diff', '--name-only', '--diff-filter=ACDMRTUXB', from, to, '--']);
+      return output.split('\n').filter(Boolean).sort();
     },
 
     trackedArtifact(root, relative) {

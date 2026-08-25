@@ -61,27 +61,28 @@ an abandoned claim, an operator may release only that issue:
 npx aitm occupancy --release #N
 ```
 
-Co-review reviewers remain unbound: they do not run `/task start #N`. When the
-reviewer claims a turn, AITM records the exact provider, real session id,
-pending review artifact, and live protocol authority in a main-anchored index.
-Edit, Write, and `apply_patch` may write only that exact pending review artifact
-for that exact provider/session. Bash additionally recognizes only the
-generated `npx aitm co-review status --dir <runtime> [--json]`,
-`npx aitm co-review help handoff`, and exact reviewer-handoff forms. The command
-must agree with the live runtime, reviewer, pending review, owner-handoff commit,
-bounded decision fields, provider, and session; the co-review CLI then
-revalidates and mutates under its protocol mutex.
+Co-review reviewers remain unbound: they do not run `/task start #N` and begin
+their turn without an unrelated bound task. One canonical physical worktree and
+its shared ignored runtime contain both persistent roles. The protocol binds the
+exact canonical `HEAD`, clean tracked state, authoritative artifact commit,
+immutable review and response paths, Git blob, and digest as SHA-bound evidence.
+Each handoff revalidates those facts under the protocol mutex; peer evidence is
+read directly from the structured runtime status rather than copied through a
+human relay.
 
-Ordinary quoted prose in the reviewer handoff message is supported, including
-inert punctuation such as parentheses. Single-quoted content is literal data;
-unescaped `$` or backticks inside double quotes remain expansion-capable and
-are refused. Dynamic shell expressions and composed commands remain blocked.
+A co-review claim records actor and turn provenance; it does not create a
+capability sandbox. Both roles use normal repository inspection, test, build,
+and Bash capabilities under the installed ordinary guards. Reviewer role
+separation is cooperative and enforceable through immutable evidence and
+handoff validation: reviewers never edit or commit the authoritative artifact
+or prior evidence, and create only a new immutable review file under the shared
+ignored runtime with a direct file-writing tool such as Edit, Write, or
+`apply_patch`.
 
-No generic `npx`, AITM, or Bash allowance exists. Mixed targets, tracked source,
-other `.tmp/**` files, occupancy/index files, protocol state, malformed patches,
-shell composition or expansion, alternate executables, wrong-session commands,
-and symlink drift fail closed. The index never grants access by itself; every
-decision revalidates live protocol state and event integrity.
+Starting, routing, or continuing a session, including an automated handoff, is
+operational routing only. It does not create human semantic approval or an
+approval marker; the explicit authenticated human approval workflow remains the
+only source of that authority.
 
 ## Identify the authority source
 
