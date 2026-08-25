@@ -18,9 +18,8 @@ import {
   deriveRuntimeDir,
   startProtocol,
 } from './lib/start.mjs';
-import { detectProvider } from '../providers/index.mjs';
-import { FALLBACK_SESSION_ID, resolveSessionId } from '../task-tracker/lib/session-id.mjs';
 import { markProtocolLifecycle, recordReviewerClaim, registerProtocol } from './lib/index.mjs';
+import { resolveProfiledProviderSession } from './lib/provider-session.mjs';
 
 const STATUS_PROJECTED_MUTATIONS = new Set([
   'init',
@@ -120,31 +119,40 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       const actor = required(values, 'actor');
       const state = protocol.statusProtocol({ cwd, dir, ...repositoryOptions });
       const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
-      if (role === 'reviewer') {
-        const env = io.env ?? process.env;
-        const provider = detectProvider({ env });
-        const sid = resolveSessionId({ env });
-        if (!sid || sid === FALLBACK_SESSION_ID) {
-          const error = new Error(
-            `${provider.name} requires a real provider session id for a reviewer claim`
-          );
-          error.code = 'provider-session-id-required';
-          throw error;
-        }
-        (io.recordReviewerClaim ?? recordReviewerClaim)({
-          projectDir: cwd,
-          protocolId: state.protocolId,
-          provider: provider.name,
-          sid,
-          round: state.round,
-        });
+      if (!role) throw usage(`--actor is not a configured identity: ${actor}`);
+      if (state.initialization?.claimProvenance !== protocol.CLAIM_PROVENANCE_PROFILE) {
+        throw new protocol.ProtocolError('provenance-profile-required');
       }
+      const session = resolveProfiledProviderSession({ env: io.env ?? process.env });
       result = protocol.claimTurn({
         cwd,
         dir,
         actor,
+        ...session,
         ...repositoryOptions,
       });
+      if (role === 'reviewer') {
+        try {
+          (io.recordReviewerClaim ?? recordReviewerClaim)({
+            projectDir: cwd,
+            state: result,
+            claim: result.claim,
+          });
+        } catch (error) {
+          const authorityConflict = /unreadable authority store|conflicting registration/.test(
+            error.message
+          );
+          throw new protocol.ProtocolError(
+            authorityConflict ? 'index-authority-conflict' : 'index-publication-pending',
+            authorityConflict ? '' : 'retry the identical reviewer claim',
+            {
+              next: authorityConflict
+                ? ''
+                : protocol.renderCliCommand(['claim', '--dir', dir, '--actor', actor]),
+            }
+          );
+        }
+      }
     } else if (name === 'wait') {
       assertAllowed(values, booleans, ['dir', 'actor', 'timeout']);
       result = await protocol.waitForTurn({
@@ -175,6 +183,10 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       const state = protocol.statusProtocol({ cwd, dir, ...repositoryOptions });
       const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
       if (!role) throw usage(`--actor is not a configured identity: ${actor}`);
+      if (state.initialization?.claimProvenance !== protocol.CLAIM_PROVENANCE_PROFILE) {
+        throw new protocol.ProtocolError('provenance-profile-required');
+      }
+      const session = resolveProfiledProviderSession({ env: io.env ?? process.env });
       if (role === 'owner') {
         assertAllowed(values, booleans, [
           'dir',
@@ -189,6 +201,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           cwd,
           dir,
           actor,
+          ...session,
           response: required(values, 'response'),
           artifact: required(values, 'artifact'),
           commit: required(values, 'commit'),
@@ -210,6 +223,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           cwd,
           dir,
           actor,
+          ...session,
           review: required(values, 'review'),
           reviewOf: required(values, 'review-of'),
           decision: required(values, 'decision'),
@@ -592,7 +606,7 @@ function number(values, name) {
 
 function formatStatus(state) {
   const claim = state.claim
-    ? `${state.claim.actor} as ${state.claim.role} at ${state.claim.at}`
+    ? `${state.claim.role} ${state.claim.actor} via ${state.claim.provider} session ${state.claim.sid} revision ${state.claim.revision} at ${state.claim.at}`
     : 'none';
   const lastHandoff = state.lastHandoff
     ? `${state.lastHandoff.from} -> ${state.lastHandoff.to ?? 'terminal'} at ${state.lastHandoff.at}${

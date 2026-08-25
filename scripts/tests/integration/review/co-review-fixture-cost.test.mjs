@@ -29,10 +29,10 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
   };
 
   api.initializeProtocol(options);
-  api.claimTurn({ cwd: fixture.root, dir: options.dir, actor: options.owner });
+  api.profiledClaimTurn({ cwd: fixture.root, dir: options.dir, actor: options.owner });
   mkdirSync(path.join(fixture.root, options.dir), { recursive: true });
   writeFileSync(path.join(fixture.root, options.dir, 'owner-response.md'), '# Ready\n');
-  api.handoffOwner({
+  api.profiledHandoffOwner({
     cwd: fixture.root,
     dir: options.dir,
     actor: options.owner,
@@ -41,9 +41,9 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
     commit: fixture.initialCommit,
     message: 'ready for review',
   });
-  api.claimTurn({ cwd: fixture.root, dir: options.dir, actor: options.reviewer });
+  api.profiledClaimTurn({ cwd: fixture.root, dir: options.dir, actor: options.reviewer });
   writeFileSync(path.join(fixture.root, options.dir, 'review.md'), '# Review\n\nAccepted.\n');
-  const state = api.handoffReviewer({
+  const state = api.profiledHandoffReviewer({
     cwd: fixture.root,
     dir: options.dir,
     actor: options.reviewer,
@@ -116,4 +116,21 @@ test('memory repository models identity, publication, reachability, and drift', 
     repository.committedArtifact(root, next, artifact).bytes.toString(),
     '# Published\n'
   );
+});
+
+test('memory repository reports tracked changes and committed path deltas without subprocesses', () => {
+  const fixture = memoryRepositoryFixture();
+  const { repository, root, artifact, initialCommit } = fixture;
+
+  assert.deepEqual(repository.trackedChanges(root), []);
+  repository.setWorktree(artifact, Buffer.from('# Dirty tracked artifact\n'));
+  assert.deepEqual(repository.trackedChanges(root), [artifact]);
+
+  const secondCommit = repository.commit(
+    artifact,
+    Buffer.from('# Artifact\n\nRevision two.\n'),
+    'revision two'
+  );
+  assert.deepEqual(repository.changedPathsBetween(root, initialCommit, secondCommit), [artifact]);
+  assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
 });

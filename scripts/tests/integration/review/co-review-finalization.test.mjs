@@ -1,4 +1,4 @@
-// @story #1276
+// @story #1276 #1406
 import test from 'node:test';
 
 import '../../fixtures/co-review-finalization-cases.mjs';

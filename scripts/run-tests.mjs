@@ -36,7 +36,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
+import { TEST_FILE_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
 import {
   poolConcurrency,
   slowPoolConcurrency,
@@ -166,7 +166,7 @@ async function runEntry(entry) {
   const t0 = process.hrtime.bigint();
   const res = await spawnTestChild({
     full: entry.full,
-    timeout: TEST_RUNNER_TIMEOUT_MS,
+    timeout: TEST_FILE_TIMEOUT_MS,
     maxBuffer: RUN_TESTS_MAX_BUFFER,
     env: { ...process.env, [TEST_NO_RETRY_ENV]: '1' },
   });

@@ -35,10 +35,7 @@ import { loadConfig } from './config.mjs';
 import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 import { ownershipDecision } from './lib/ownership-policy.mjs';
 import { fetchAssignmentSnapshot } from './lib/assignment-snapshot.mjs';
-import { detectProvider } from '../providers/index.mjs';
-import { resolveSessionId } from './lib/session-id.mjs';
-import { extractApplyPatchTargets } from './lib/mutation-targets.mjs';
-import { evaluateCoReviewWrite } from './lib/co-review-write-policy.mjs';
+import { extractApplyPatchTargets } from './lib/apply-patch-targets.mjs';
 
 const pexec = promisify(execFile);
 
@@ -399,7 +396,6 @@ export async function runHook(payload, deps = {}) {
     'projectDir' in deps ? deps.projectDir : findProjectDir(payload?.cwd || process.cwd());
   if (!projectDir) return { decision: 'allow', reason: 'no-project-dir' };
 
-  let parseError = null;
   let targets = [];
   if (toolName === 'apply_patch') {
     try {
@@ -407,7 +403,11 @@ export async function runHook(payload, deps = {}) {
         payload?.tool_input?.patch || payload?.tool_input?.input || payload?.tool_input?.text || ''
       );
     } catch (error) {
-      parseError = error;
+      return {
+        decision: 'block',
+        code: error.code || 'mutation-parse-error',
+        reason: `[task-tracker] mutation target parsing failed: ${error.message}`,
+      };
     }
   } else {
     const filePath =
@@ -416,35 +416,6 @@ export async function runHook(payload, deps = {}) {
       payload?.tool_input?.path ||
       '';
     if (filePath) targets = [filePath];
-  }
-
-  const env = deps.env || process.env;
-  const provider = (deps.detectProvider || detectProvider)({ env }).name;
-  let sid = null;
-  try {
-    sid = (deps.resolveSessionId || resolveSessionId)({ env });
-  } catch {
-    // The policy uses a missing sid as a non-matching reviewer identity and
-    // still protects every authority/protocol target.
-  }
-  const coReview = (deps.evaluateCoReviewWrite || evaluateCoReviewWrite)({
-    projectDir,
-    worktreePath: projectDir,
-    provider,
-    sid,
-    toolName,
-    targets,
-    parseError,
-    indexFile: deps.indexFile,
-    readIndex: deps.readIndex,
-    resolveGrant: deps.resolveGrant,
-    statusProtocol: deps.statusProtocol,
-  });
-  if (coReview.decision === 'deny') {
-    return { decision: 'block', code: coReview.code, reason: `[task-tracker] ${coReview.reason}` };
-  }
-  if (coReview.decision === 'allow') {
-    return { decision: 'allow', reason: coReview.reason };
   }
 
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);

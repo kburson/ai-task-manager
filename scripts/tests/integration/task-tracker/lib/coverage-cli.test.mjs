@@ -125,6 +125,14 @@ test('patchCodexHooksJson creates hooks, is idempotent, tolerates garbage', () =
   const first = JSON.parse(readFileSync(p, 'utf8'));
   assert.ok(Array.isArray(first.hooks.SessionStart) && first.hooks.SessionStart.length >= 1);
   assert.ok(Array.isArray(first.hooks.PreToolUse) && first.hooks.PreToolUse.length >= 1);
+  const activityMatchers = first.hooks.PreToolUse.filter((entry) =>
+    (entry.hooks ?? []).some((hook) => hook.command?.includes('activity-guard'))
+  ).map((entry) => entry.matcher);
+  assert.deepEqual(
+    activityMatchers.sort(),
+    ['Bash', 'apply_patch|Edit|Write|NotebookEdit'].sort(),
+    'Codex installs activity enforcement for both Bash and direct mutation tools'
+  );
   cli.patchCodexHooksJson(p);
   assert.deepEqual(JSON.parse(readFileSync(p, 'utf8')), first);
 

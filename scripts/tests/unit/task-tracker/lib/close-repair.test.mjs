@@ -105,6 +105,10 @@ function buildCtx({ statePath, rest, sideEffects }) {
     // #692 — inject the timing-comment reader so the close-pair emission runs
     // offline; empty body → neither half pending → both emitted.
     readTimingCommentBody: async () => '',
+    applyReviewDelta: async () => {
+      sideEffects.push('applyReviewDelta');
+      return { status: 'applied' };
+    },
     drainQueueIfAny: async () => {},
     safePostTiming: async () => {
       sideEffects.push('safePostTiming');
@@ -119,6 +123,15 @@ function buildCtx({ statePath, rest, sideEffects }) {
     writeTerminalDisposition: async ({ disposition }) => {
       sideEffects.push(`writeTerminalDisposition:${disposition}`);
       return { disposition };
+    },
+    releaseIssueBindings: () => {
+      sideEffects.push('releaseIssueBindings');
+      return { released: [] };
+    },
+    deregisterTask: () => sideEffects.push('deregisterTask'),
+    releaseBindingOccupancy: () => {
+      sideEffects.push('releaseBindingOccupancy');
+      return { status: 'released' };
     },
     runLogIssueTime: async () => {
       sideEffects.push('runLogIssueTime');
@@ -162,8 +175,9 @@ async function runClose(ctx) {
   console.error = () => {};
   console.warn = () => {};
   let caught = null;
+  let result = null;
   try {
-    await verbClose(ctx);
+    result = await verbClose(ctx);
   } catch (err) {
     if (!/__test_exit_\d+__/.test(err.message)) caught = err;
   } finally {
@@ -174,7 +188,7 @@ async function runClose(ctx) {
     if (prevSkipDirty === undefined) delete process.env.TT_SKIP_DIRTY_CHECK;
     else process.env.TT_SKIP_DIRTY_CHECK = prevSkipDirty;
   }
-  return { exitCode, stdout: stdout.join('\n'), caught };
+  return { exitCode, stdout: stdout.join('\n'), caught, result };
 }
 
 // ── AC2 ──────────────────────────────────────────────────────────────────────
@@ -186,6 +200,9 @@ test('#708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop s
   const r = await runClose(ctx);
 
   // The short-circuit fires: no full timing flush, no terminal move.
+  assert.ifError(r.caught);
+  assert.equal(r.exitCode, null);
+  assert.equal(r.result?.status, 'completed', JSON.stringify(r.result));
   assert.match(r.stdout, /already fully closed/, 'must hit the noop convergence branch');
   assert.ok(
     !sideEffects.includes('runLogIssueTime'),
@@ -218,6 +235,8 @@ test('#708 AC2: same state WITH --repair → bypasses noop and replays the full 
   const r = await runClose(ctx);
 
   assert.ok(!r.caught, `pipeline must run clean, got: ${r.caught && r.caught.stack}`);
+  assert.equal(r.exitCode, null);
+  assert.equal(r.result, undefined);
   assert.doesNotMatch(r.stdout, /already fully closed/, 'the noop branch must be bypassed');
   assert.ok(
     sideEffects.includes('runLogIssueTime'),
@@ -234,6 +253,13 @@ test('#708 AC2: same state WITH --repair → bypasses noop and replays the full 
   assert.ok(
     sideEffects.includes('writeTerminalDisposition:Delivered'),
     'repair must replay the Delivered classification after the terminal board move'
+  );
+  assert.ok(sideEffects.includes('applyReviewDelta'), 'review delta must use the injected seam');
+  assert.ok(sideEffects.includes('releaseIssueBindings'), 'binding cleanup must use the fixture');
+  assert.ok(sideEffects.includes('deregisterTask'), 'fleet cleanup must use the fixture');
+  assert.ok(
+    sideEffects.includes('releaseBindingOccupancy'),
+    'occupancy cleanup must use the fixture'
   );
   assert.ok(
     sideEffects.indexOf('writeTerminalDisposition:Delivered') >

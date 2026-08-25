@@ -63,6 +63,19 @@ test('the runner applies registered-worktree classification before leak reportin
   );
 });
 
+test('the runner keeps each test file on the dedicated 10-minute child budget', () => {
+  const runner = readFileSync(new URL('../../../../run-tests.mjs', import.meta.url), 'utf8');
+  const timeouts = readFileSync(
+    new URL('../../../../task-tracker/lib/process-timeouts.mjs', import.meta.url),
+    'utf8'
+  );
+
+  assert.match(timeouts, /export const TEST_FILE_TIMEOUT_MS = 600_000;/);
+  assert.match(runner, /import \{ TEST_FILE_TIMEOUT_MS \} from/);
+  assert.match(runner, /timeout: TEST_FILE_TIMEOUT_MS/);
+  assert.doesNotMatch(runner, /timeout: TEST_RUNNER_TIMEOUT_MS/);
+});
+
 test('clean exit reports ok', () => {
   assert.equal(describeSpawnResult({ status: 0 }), 'ok');
 });

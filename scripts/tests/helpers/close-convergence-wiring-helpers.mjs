@@ -61,6 +61,7 @@ export async function runClose({
   captureFinalState,
   initialState = baseState(),
   deliveryRefusal = null,
+  deliveryGateInput = null,
   reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
   reviewAuthorizationResolver = null,
   useInjectedReviewAuthorization = true,
@@ -251,15 +252,16 @@ export async function runClose({
       resolveCloseParentIssue: async () => null,
       ...(useInjectedDeliveryGateInput
         ? {
-            loadCloseDeliveryGateInput: async () => ({
-              issueNumber: 925,
-              lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
-              branch: 'feature/925',
-              acceptedSha: 'a'.repeat(40),
-              localHeadSha: 'a'.repeat(40),
-              pullRequests: [],
-              records: null,
-            }),
+            loadCloseDeliveryGateInput: async () =>
+              deliveryGateInput ?? {
+                issueNumber: 925,
+                lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+                branch: 'feature/925',
+                acceptedSha: 'a'.repeat(40),
+                localHeadSha: 'a'.repeat(40),
+                pullRequests: [],
+                records: null,
+              },
           }
         : {}),
       ...(useInjectedReviewAuthorization
