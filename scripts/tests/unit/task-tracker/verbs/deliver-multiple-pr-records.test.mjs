@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #1406
+// cspell:ignore NQDRXH VQZRSPZ ZZMPD
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
