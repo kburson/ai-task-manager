@@ -21,6 +21,19 @@
         "renameStatus": "R100"
       }
     },
+    {
+      "oldPath": "scripts/task-tracker/tests/unit/lib/exclusive-ownership-policy.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/exclusive-ownership-policy.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/exclusive-ownership-policy.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "imported test suites execute system-touching coverage; #1413 moves the aggregator to the CI-only integration lane",
+      "provenance": {
+        "baseCommit": "881fa3331b4e44bde3cae91a42f44eb8740c131f",
+        "correctionCommit": "b9b12167a340aef41ec2f311e24b39790313985a",
+        "renameStatus": "R094"
+      }
+    },
       {
         "oldPath": "scripts/dev-env/verify-local-worktree.test.mjs",
         "migrationPath": "scripts/tests/unit/dev-env/verify-local-worktree.test.mjs",

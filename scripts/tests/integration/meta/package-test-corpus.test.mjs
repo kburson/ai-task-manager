@@ -15,8 +15,11 @@ const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
-const ISSUE_1413_CORRECTION_COMMIT = '736a62fbd314fad6b3dbdbfb03519f892183788e';
-const ISSUE_1413_CORRECTION_COUNT = 96;
+const ISSUE_1413_CORRECTION_COMMITS = new Set([
+  '736a62fbd314fad6b3dbdbfb03519f892183788e',
+  'b9b12167a340aef41ec2f311e24b39790313985a',
+]);
+const ISSUE_1413_CORRECTION_COUNT = 97;
 const EXPECTED_LANE_CORRECTION = {
   oldPath: 'scripts/task-tracker/lib/trunk-ref.integration.test.mjs',
   migrationPath: 'scripts/tests/unit/task-tracker/lib/trunk-ref.integration.test.mjs',
@@ -113,7 +116,7 @@ test('pre-move corpus manifest freezes the expected schema and lane census', () 
   assert.equal(manifest.tests.length, manifest.counts.all);
   assert.deepEqual(manifest.laneCorrections[0], EXPECTED_LANE_CORRECTION);
   const issueCorrections = manifest.laneCorrections.filter(
-    ({ provenance }) => provenance.correctionCommit === ISSUE_1413_CORRECTION_COMMIT
+    ({ provenance }) => ISSUE_1413_CORRECTION_COMMITS.has(provenance.correctionCommit)
   );
   assert.equal(issueCorrections.length, ISSUE_1413_CORRECTION_COUNT);
   assert.equal(manifest.laneCorrections.length, ISSUE_1413_CORRECTION_COUNT + 1);
