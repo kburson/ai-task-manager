@@ -9,7 +9,7 @@ function stageClaimPublicationWindow({ api, root, options }) {
   const statePath = path.join(root, options.dir, 'state.json');
   const lockPath = path.join(root, options.dir, '.co-review-lock');
   const priorState = readFileSync(statePath, 'utf8');
-  const settled = api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const settled = api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   const settledState = readFileSync(statePath, 'utf8');
   writeFileSync(statePath, priorState);
   mkdirSync(lockPath);
@@ -43,7 +43,7 @@ function stageTwoPublications(fixture) {
   const eventsPath = path.join(fixture.root, fixture.options.dir, 'events.jsonl');
   const baseState = readFileSync(statePath, 'utf8');
   const baseEvents = readFileSync(eventsPath, 'utf8');
-  fixture.api.claimTurn({
+  fixture.api.profiledClaimTurn({
     cwd: fixture.root,
     dir: fixture.options.dir,
     actor: 'owner-agent',

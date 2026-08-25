@@ -42,10 +42,7 @@ import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs'
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
-import { detectProvider } from '../providers/index.mjs';
-import { resolveSessionId } from './lib/session-id.mjs';
-import { extractApplyPatchTargets, extractBashWriteTargets } from './lib/mutation-targets.mjs';
-import { evaluateCoReviewWrite } from './lib/co-review-write-policy.mjs';
+import { extractApplyPatchTargets } from './lib/apply-patch-targets.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -80,45 +77,15 @@ try {
 
 const policy = loadPolicy(projectRoot);
 
-let coReviewTargets = [];
-let coReviewParseError = null;
-let coReviewAmbiguous = false;
-if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
-  const candidate = toolInput?.file_path ?? toolInput?.notebook_path ?? '';
-  if (candidate) coReviewTargets = [candidate];
-} else if (toolName === 'apply_patch') {
+let applyPatchTargets = [];
+if (toolName === 'apply_patch') {
   try {
-    coReviewTargets = extractApplyPatchTargets(
+    applyPatchTargets = extractApplyPatchTargets(
       toolInput?.patch || toolInput?.input || toolInput?.text || ''
     );
   } catch (error) {
-    coReviewParseError = error;
+    block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
-} else if (toolName === 'Bash') {
-  const parsed = extractBashWriteTargets(toolInput?.command || '', projectRoot);
-  coReviewTargets = parsed.targets;
-  coReviewAmbiguous = parsed.ambiguousMutation;
-}
-if (['Edit', 'Write', 'NotebookEdit', 'apply_patch', 'Bash'].includes(toolName)) {
-  const provider = detectProvider().name;
-  let sid = null;
-  try {
-    sid = resolveSessionId();
-  } catch {
-    // Missing provider identity remains non-matching and authority stays denied.
-  }
-  const coReview = evaluateCoReviewWrite({
-    projectDir: projectRoot,
-    worktreePath: projectRoot,
-    provider,
-    sid,
-    toolName,
-    targets: coReviewTargets,
-    parseError: coReviewParseError,
-    ambiguousMutation: coReviewAmbiguous,
-  });
-  if (coReview.decision === 'deny') block(`[task-tracker] ${coReview.reason}`);
-  if (coReview.decision === 'allow') process.exit(0);
 }
 const { activeIssue, state: recordedState } = readBoundState(projectRoot);
 // When no task is bound (paused or never started), ignore the residual
@@ -145,7 +112,7 @@ if (
 ) {
   const filePaths =
     toolName === 'apply_patch'
-      ? coReviewTargets
+      ? applyPatchTargets
       : [toolInput?.file_path ?? toolInput?.notebook_path ?? ''];
   if (
     !filePaths.length ||

@@ -48,8 +48,8 @@ test('runVerifiers spawns each lane as its own child under TEST_RUNNER_TIMEOUT_M
       ['npm', 'run', 'test:slow'],
     ]
   );
-  // Each child gets the per-command budget, and it is the untouched 600s cap.
-  assert.equal(TEST_RUNNER_TIMEOUT_MS, 600000);
+  // Each child gets the per-command budget, now a bounded 20-minute ceiling.
+  assert.equal(TEST_RUNNER_TIMEOUT_MS, 1_200_000);
   for (const c of calls) assert.equal(c.timeout, TEST_RUNNER_TIMEOUT_MS);
   assert.ok(res.allPassed, 'both lanes green');
 });

@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { getProvider, listProviders } from '../../providers/index.mjs';
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
 import { createMemoryRepository } from './co-review-memory-repository.mjs';
 
@@ -13,11 +14,27 @@ const CLI = path.join(ROOT, 'scripts/review/co-review.mjs');
 const temporaryRoots = new Set();
 const memoryRepositories = new Map();
 const calls = { git: 0, nodeCli: 0 };
-const SYNTHETIC_REVIEWER_ENV = Object.freeze({
-  AI_TASK_MANAGER_SESSION_ID: 'co-review-fixture-session',
-  GROK_AGENT: '1',
-  GROK_SESSION_ID: 'co-review-fixture-session',
+export const PROFILED_SESSIONS = Object.freeze({
+  owner: Object.freeze({ provider: 'codex', sid: 'fixture-owner-sid' }),
+  reviewer: Object.freeze({ provider: 'claude', sid: 'fixture-reviewer-sid' }),
 });
+
+export function profiledSession(role) {
+  const session = PROFILED_SESSIONS[role];
+  if (!session) throw new TypeError(`unknown profiled co-review role: ${String(role)}`);
+  return { ...session };
+}
+
+export function profiledEnv(role, baseEnv = process.env) {
+  const env = { ...baseEnv };
+  for (const name of listProviders()) {
+    for (const key of getProvider(name).sessionIdEnvKeys) delete env[key];
+  }
+  if (role === 'owner') env.CODEX_THREAD_ID = PROFILED_SESSIONS.owner.sid;
+  else if (role === 'reviewer') env.CLAUDE_CODE_SESSION_ID = PROFILED_SESSIONS.reviewer.sid;
+  else throw new TypeError(`unknown profiled co-review role: ${String(role)}`);
+  return env;
+}
 
 export function processCallCounts() {
   return { ...calls };
@@ -29,8 +46,17 @@ export function temporaryRoot(prefix = 'aitm-co-review-') {
   return root;
 }
 
-function spawnedCliEnv(env) {
-  return env ?? { ...process.env, ...SYNTHETIC_REVIEWER_ENV };
+function profiledRoleForArgs(args) {
+  if (!['claim', 'handoff'].includes(args?.[0])) return null;
+  const actorIndex = args.indexOf('--actor');
+  const actor = actorIndex >= 0 ? String(args[actorIndex + 1] ?? '') : '';
+  return /reviewer/i.test(actor) ? 'reviewer' : 'owner';
+}
+
+function spawnedCliEnv(env, args) {
+  if (env) return env;
+  const role = profiledRoleForArgs(args);
+  return role ? profiledEnv(role) : { ...process.env };
 }
 
 export function runCli(args, { cwd = temporaryRoot(), env } = {}) {
@@ -38,7 +64,7 @@ export function runCli(args, { cwd = temporaryRoot(), env } = {}) {
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd,
     encoding: 'utf8',
-    env: spawnedCliEnv(env),
+    env: spawnedCliEnv(env, args),
     shell: false,
   });
 }
@@ -50,6 +76,7 @@ export async function runCliDirect(args, options = {}) {
   let stderr = '';
   const status = await execute(args, {
     ...options,
+    env: options.env ?? spawnedCliEnv(undefined, args),
     ...(repository ? { repository } : {}),
     stdout(value) {
       stdout += value;
@@ -66,7 +93,7 @@ export function runCliAsync(args, { cwd, env } = {}) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
-      env: spawnedCliEnv(env),
+      env: spawnedCliEnv(env, args),
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,
     });
@@ -139,9 +166,26 @@ function bindProtocol(api, repository) {
     statusProtocol: inject('statusProtocol'),
     validatedArchiveSnapshot: inject('validatedArchiveSnapshot'),
     claimTurn: inject('claimTurn'),
+    profiledClaimTurn(options = {}) {
+      const state = api.readProtocol({ ...options, repository });
+      const role = Object.entries(state.roles).find(
+        ([, identity]) => identity === options.actor
+      )?.[0];
+      return api.claimTurn({
+        ...options,
+        ...profiledSession(role ?? 'owner'),
+        repository,
+      });
+    },
     registerSupplement: inject('registerSupplement'),
     handoffOwner: inject('handoffOwner'),
     handoffReviewer: inject('handoffReviewer'),
+    profiledHandoffOwner(options = {}) {
+      return api.handoffOwner({ ...options, ...profiledSession('owner'), repository });
+    },
+    profiledHandoffReviewer(options = {}) {
+      return api.handoffReviewer({ ...options, ...profiledSession('reviewer'), repository });
+    },
     acceptGoodEnough: inject('acceptGoodEnough'),
     setMaxReviewTurns: inject('setMaxReviewTurns'),
     continueProtocol: inject('continueProtocol'),
@@ -174,17 +218,48 @@ export function rewriteProtocolState(root, dir, mutate) {
   const statePath = path.join(root, dir, 'state.json');
   const eventsPath = path.join(root, dir, 'events.jsonl');
   const state = JSON.parse(readFileSync(statePath, 'utf8'));
-  const next = mutate(structuredClone(state));
+  let next = mutate(structuredClone(state));
+  if (
+    next.initialization?.claimProvenance === 'provider-session/v1' &&
+    next.lastHandoff &&
+    !next.lastHandoff.imported &&
+    !next.lastHandoff.claim
+  ) {
+    const role = next.lastHandoff.from;
+    next = {
+      ...next,
+      lastHandoff: {
+        ...next.lastHandoff,
+        claim: {
+          revision: Math.max(1, next.revision - 1),
+          role,
+          actor: next.roles[role],
+          ...profiledSession(role),
+          at: next.lastHandoff.at,
+        },
+      },
+    };
+  }
   const events = readEvents(root, dir);
   events[events.length - 1] = {
     ...events.at(-1),
     lifecycle: next.lifecycle,
     currentRole: next.currentRole,
+    turnState: next.turnState,
     round: next.round,
     reviewTurnsUsed: next.reviewTurnsUsed,
     maxReviewTurns: next.maxReviewTurns,
     remainingReviewTurns: next.remainingReviewTurns,
+    ...(next.lastHandoff ? { handoff: next.lastHandoff } : {}),
   };
+  if (
+    next.initialization?.claimProvenance === 'provider-session/v1' &&
+    next.claim === null &&
+    events.at(-1).type === 'claim'
+  ) {
+    events[events.length - 1].type = 'continue';
+    delete events[events.length - 1].claim;
+  }
   writeFileSync(statePath, `${JSON.stringify(next, null, 2)}\n`);
   writeFileSync(eventsPath, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
   return next;
@@ -253,7 +328,7 @@ function initializeFixture({
 export async function reviewerTurn({ imported = false, maxReviewTurns = 6 } = {}) {
   const initialized = await initializedProtocol({ imported, maxReviewTurns });
   const { api, root, options, initialCommit } = initialized;
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   let commit = initialCommit;
   let answers;
   const response = `${options.dir}/owner-response.md`;
@@ -267,7 +342,7 @@ export async function reviewerTurn({ imported = false, maxReviewTurns = 6 } = {}
   } else {
     writeFileSync(path.join(root, response), '# Owner response\n\nReady for review.\n');
   }
-  api.handoffOwner({
+  api.profiledHandoffOwner({
     cwd: root,
     dir: options.dir,
     actor: 'owner-agent',
@@ -277,7 +352,7 @@ export async function reviewerTurn({ imported = false, maxReviewTurns = 6 } = {}
     answers,
     message: 'owner handoff',
   });
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
   return { ...initialized, commit, response };
 }
 

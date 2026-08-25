@@ -1,7 +1,7 @@
 // @story #1325
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
@@ -13,7 +13,6 @@ import {
   readProtocolIndex,
   recordReviewerClaim,
   registerProtocol,
-  resolveReviewerGrant,
 } from '../../../review/lib/index.mjs';
 
 function fixture() {
@@ -75,6 +74,34 @@ test('reviewer claim records the exact provider session and pending round path',
   assert.equal(row.pendingReviewPath, path.join(row.dir, 'round-2-reviewer-review.md'));
 });
 
+test('authoritative reviewer claim atomically registers an absent operational row', () => {
+  const { indexFile, state } = fixture();
+  const claim = {
+    role: 'reviewer',
+    actor: state.roles.reviewer,
+    provider: 'claude',
+    sid: 'authoritative-reviewer-sid',
+  };
+  const result = recordReviewerClaim({ indexFile, state, claim });
+  assert.equal(result.status, 'claimed');
+  assert.equal(result.row.protocolId, state.protocolId);
+  assert.equal(result.row.claimedProvider, claim.provider);
+  assert.equal(result.row.claimedSid, claim.sid);
+});
+
+test('authoritative reviewer claim repairs stale projection with the same registration identity', () => {
+  const { indexFile, state } = fixture();
+  registerProtocol({ indexFile, state });
+  markProtocolLifecycle({ indexFile, protocolId: state.protocolId, lifecycle: 'accepted' });
+  const result = recordReviewerClaim({
+    indexFile,
+    state,
+    claim: { provider: 'claude', sid: 'repair-sid' },
+  });
+  assert.equal(result.row.lifecycle, 'active');
+  assert.equal(result.row.claimedSid, 'repair-sid');
+});
+
 test('a later round may replace an inert prior reviewer session claim', () => {
   const { indexFile, state } = fixture();
   registerProtocol({ indexFile, state });
@@ -120,170 +147,6 @@ test('the same round cannot be prepared for a different reviewer session', () =>
   );
 });
 
-test('grant resolution requires live integrity and a matching durable claim', () => {
-  const { indexFile, state } = fixture();
-  registerProtocol({ indexFile, state });
-  recordReviewerClaim({
-    indexFile,
-    protocolId: state.protocolId,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    round: 2,
-  });
-  const live = {
-    ...state,
-    turnState: 'claimed',
-    claim: { role: 'reviewer', actor: 'Reviewer' },
-    lastHandoff: {
-      from: 'owner',
-      commit: '0123456789012345678901234567890123456789',
-    },
-  };
-  const statusProtocol = () => live;
-  const grant = resolveReviewerGrant({
-    indexFile,
-    worktreePath: state.worktree,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    statusProtocol,
-  });
-  assert.equal(
-    grant.pendingReviewPath,
-    path.join(state.worktree, '.tmp/custom-review/round-2-reviewer-review.md')
-  );
-  assert.equal(grant.ownerHandoffCommit, live.lastHandoff.commit);
-  assert.equal(
-    resolveReviewerGrant({
-      indexFile,
-      worktreePath: state.worktree,
-      provider: 'grok',
-      sid: 'other',
-      statusProtocol,
-    }),
-    null
-  );
-  assert.equal(
-    resolveReviewerGrant({
-      indexFile,
-      worktreePath: state.worktree,
-      provider: 'grok',
-      sid: 'grok-reviewer-sid',
-      statusProtocol: () => ({ ...live, integrity: { ok: false }, lifecycle: 'active' }),
-    }),
-    null
-  );
-});
-
-test('grant resolution targets the command runtime before verifying its worktree', () => {
-  const { indexFile, state, dir } = fixture();
-  registerProtocol({ indexFile, state });
-  recordReviewerClaim({
-    indexFile,
-    protocolId: state.protocolId,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    round: 2,
-  });
-  const live = {
-    ...state,
-    turnState: 'claimed',
-    claim: { role: 'reviewer', actor: 'Reviewer' },
-    lastHandoff: {
-      from: 'owner',
-      commit: '0123456789012345678901234567890123456789',
-    },
-  };
-  const grant = resolveReviewerGrant({
-    indexFile,
-    worktreePath: '/different/caller/worktree',
-    runtimeDir: dir,
-    runtimeRoot: state.worktree,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    statusProtocol: () => live,
-  });
-  assert.equal(grant.protocolId, state.protocolId);
-  assert.equal(grant.worktree, state.worktree);
-});
-
-test('unrelated stale active row cannot block an exact healthy reviewer grant', () => {
-  const { indexFile, state, dir } = fixture();
-  const staleWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-stale-index-'));
-  const staleDir = path.join(staleWorktree, '.tmp', 'stale-review');
-  mkdirSync(staleDir, { recursive: true });
-  registerProtocol({
-    indexFile,
-    state: {
-      ...state,
-      protocolId: 'stale-protocol',
-      repositoryRoot: staleWorktree,
-      worktree: staleWorktree,
-      roles: { owner: 'StaleOwner', reviewer: 'StaleReviewer' },
-      initialization: { runtimeDir: '.tmp/stale-review' },
-    },
-  });
-  recordReviewerClaim({
-    indexFile,
-    protocolId: 'stale-protocol',
-    provider: 'claude',
-    sid: 'unrelated-session',
-    round: 2,
-  });
-  registerProtocol({ indexFile, state });
-  recordReviewerClaim({
-    indexFile,
-    protocolId: state.protocolId,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    round: 2,
-  });
-  rmSync(staleDir, { recursive: true });
-  const live = {
-    ...state,
-    turnState: 'claimed',
-    claim: { role: 'reviewer', actor: 'Reviewer' },
-    lastHandoff: {
-      from: 'owner',
-      commit: '0123456789012345678901234567890123456789',
-    },
-  };
-
-  const grant = resolveReviewerGrant({
-    indexFile,
-    runtimeDir: dir,
-    runtimeRoot: state.worktree,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    statusProtocol: () => live,
-  });
-  assert.equal(grant.protocolId, state.protocolId);
-});
-
-test('identity-matching stale runtime remains fail-closed', () => {
-  const { indexFile, state, dir } = fixture();
-  registerProtocol({ indexFile, state });
-  recordReviewerClaim({
-    indexFile,
-    protocolId: state.protocolId,
-    provider: 'grok',
-    sid: 'grok-reviewer-sid',
-    round: 2,
-  });
-  rmSync(dir, { recursive: true });
-  assert.throws(
-    () =>
-      resolveReviewerGrant({
-        indexFile,
-        runtimeDir: state.worktree,
-        runtimeRoot: state.worktree,
-        provider: 'grok',
-        sid: 'grok-reviewer-sid',
-        statusProtocol: () => null,
-      }),
-    /ENOENT/
-  );
-});
-
 test('active co-review worktree is derived from live protocol integrity', () => {
   const { indexFile, state } = fixture();
   registerProtocol({ indexFile, state });
@@ -318,7 +181,12 @@ test('occupancy sharing is limited to the exact live reviewer provider session',
   const live = {
     ...state,
     turnState: 'claimed',
-    claim: { role: 'reviewer', actor: 'Reviewer' },
+    claim: {
+      role: 'reviewer',
+      actor: 'Reviewer',
+      provider: 'grok',
+      sid: 'grok-reviewer-sid',
+    },
   };
   const occupancy = {
     indexFile,

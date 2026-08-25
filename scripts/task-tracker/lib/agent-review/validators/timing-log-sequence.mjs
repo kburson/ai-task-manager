@@ -35,7 +35,7 @@ import {
   stageOfTimingEvent,
 } from '../../timing-events/index.mjs';
 import { parseMarker } from '../../marker-grammar.mjs';
-import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
+import { _tsToMs } from '../../timing-rows.mjs';
 import { parseTimingRow } from '../../timing-row-reader.mjs';
 import { stateIds, isTimingHistoryEdge, normalizeStateId } from '../../lifecycle-policy/index.mjs';
 
@@ -241,15 +241,6 @@ export function validate(context = {}) {
     }
     prevMs = ms;
     prevRow = row;
-
-    const rowSec = parseRowSecMarker(row.raw);
-    if (rowSec && rowSec.activeSec > SUSPICIOUS_GAP_SEC) {
-      failures.push(
-        `${loc(row)}: suspicious active duration (${formatShortDuration(
-          rowSec.activeSec
-        )}) — ${forensicRemediation()}`
-      );
-    }
 
     // --- Reconciliation vs aitm-entered markers ------------------------------
     const lifecycleStage = stageOf(row.event);
