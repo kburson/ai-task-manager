@@ -16,8 +16,8 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
 const ISSUE_1413_CORRECTION_COMMITS = new Set([
-  '736a62fbd314fad6b3dbdbfb03519f892183788e',
-  'b9b12167a340aef41ec2f311e24b39790313985a',
+  '8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb',
+  'b68d2b144170b2f6e51b4fd842d18f240346abdd',
 ]);
 const ISSUE_1413_CORRECTION_COUNT = 97;
 const EXPECTED_LANE_CORRECTION = {
