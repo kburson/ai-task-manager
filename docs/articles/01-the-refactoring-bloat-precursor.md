@@ -25,7 +25,7 @@ Microsoft announced Visual Studio Code at Build in April 2015, open-sourced it u
 
 ## The compute encumbrance moves to the cloud
 
-OpenAI announced Codex in July 2021 — a version of GPT-3 that OpenAI had fine-tuned specifically on source code, more than a year _before_ ChatGPT existed ([OpenAI Codex, Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(language_model)>)). Code-specific training came first for OpenAI's own model lineage; general-purpose chat came after. That ordering matters for what follows: the model existed before any editor product wrapped it.
+OpenAI announced Codex in July 2021 — a version of GPT-3 that OpenAI had fine-tuned specifically on source code, more than a year _before_ ChatGPT existed ([OpenAI Codex, Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_%28language_model%29)). Code-specific training came first for OpenAI's own model lineage; general-purpose chat came after. That ordering matters for what follows: the model existed before any editor product wrapped it.
 
 Microsoft built Copilot on top of that Codex model and turned it into an online service wired into GitHub, the open-source-heavy hosted git platform Microsoft had acquired three years earlier, in 2018 ([Microsoft: Completes GitHub acquisition](https://blogs.microsoft.com/blog/2018/10/26/microsoft-completes-github-acquisition/)). Copilot launched as a technical preview in June 2021, branded as a GitHub product from the start — GitHub's own product layer on OpenAI's code-tuned GPT-3, and the acquisition's first real AI-era payoff. Copilot's first client happened to be a VS Code extension, because that's where the developers already were. It went GA in June 2022, and it landed in more editors over time — JetBrains IDEs, Neovim, Visual Studio proper — a genuine multi-editor spread, not a brand migration.
 
@@ -51,13 +51,13 @@ Worth separating two different kinds of viral, since GPT-3 (June 2020, API acces
 
 ## 2023-2024: the field actually opens up
 
-Anysphere launched Cursor in March 2023 — a fork of VS Code with AI built into the core editing loop rather than bolted on as an extension ([Cursor, Wikipedia](<https://en.wikipedia.org/wiki/Cursor_(code_editor)>)). By 2024 the roster — Cursor, Claude, ChatGPT, Gemini — were all genuinely live and competing on code generation, with Anthropic pushing its Opus line hard through 2024 and into 2026 ([hidekazu-konishi.com: Claude Release Timeline](https://hidekazu-konishi.com/entry/anthropic_claude_model_release_timeline.html)).
+Anysphere launched Cursor in March 2023 — a fork of VS Code with AI built into the core editing loop rather than bolted on as an extension ([Cursor, Wikipedia](https://en.wikipedia.org/wiki/Cursor_%28code_editor%29)). By 2024 the roster — Cursor, Claude, ChatGPT, Gemini — were all genuinely live and competing on code generation, with Anthropic pushing its Opus line hard through 2024 and into 2026 ([hidekazu-konishi.com: Claude Release Timeline](https://hidekazu-konishi.com/entry/anthropic_claude_model_release_timeline.html)).
 
 ## The loop closes
 
 As of ReSharper 2026.1, JetBrains extended its C# tooling beyond Visual Studio to support VS Code _and_ Cursor — the tool that helped make "lightweight editor plus plugins" the dominant model is now shipping into the editors that model produced. Two decades on, refactoring-engine and AI-coding-agent lineages are converging back into the same editor surface.
 
-The loop didn't stop moving once that convergence landed, either: on August 14, 2026, SpaceX closed a $60 billion all-stock acquisition of Cursor, folding it into a new SpaceXAI unit ([Wikipedia: Cursor (company)](<https://en.wikipedia.org/wiki/Cursor_(company)>)). What it means to have a coding agent owned by a launch-and-compute company, rather than a cloud vendor or an AI lab, isn't settled yet — that's a thread for a later article in this series, not this one.
+The loop didn't stop moving once that convergence landed, either: on August 14, 2026, SpaceX closed a $60 billion all-stock acquisition of Cursor, folding it into a new SpaceXAI unit ([Wikipedia: Cursor (company)](https://en.wikipedia.org/wiki/Cursor_%28company%29)). What it means to have a coding agent owned by a launch-and-compute company, rather than a cloud vendor or an AI lab, isn't settled yet — that's a thread for a later article in this series, not this one.
 
 ## Series Link
 
@@ -109,11 +109,11 @@ Close:
 - Swiftorial, ["History of VS Code"](https://www.swiftorial.com/tutorials/development_tools/vs_code/introduction_to_vs_code/history_of_vs_code/).
 - Microsoft, ["Microsoft completes GitHub acquisition"](https://blogs.microsoft.com/blog/2018/10/26/microsoft-completes-github-acquisition/), Official Microsoft Blog, 2018-10-26.
 - Microsoft News, ["Microsoft to acquire GitHub for $7.5 billion"](https://news.microsoft.com/source/2018/06/04/microsoft-to-acquire-github-for-7-5-billion/), 2018-06-04.
-- Wikipedia, ["OpenAI Codex (language model)"](<https://en.wikipedia.org/wiki/OpenAI_Codex_(language_model)>).
+- Wikipedia, ["OpenAI Codex (language model)"](https://en.wikipedia.org/wiki/OpenAI_Codex_%28language_model%29).
 - GitHub Blog, ["Under the hood: Exploring the AI models powering GitHub Copilot"](https://github.blog/ai-and-ml/github-copilot/under-the-hood-exploring-the-ai-models-powering-github-copilot/).
 - GitHub Newsroom, ["GitHub Introduces Coding Agent For GitHub Copilot"](https://github.com/newsroom/press-releases/coding-agent-for-github-copilot).
 - Java Code Geeks, ["GitHub Copilot Workspace & The Agentic Era"](https://www.javacodegeeks.com/2026/02/github-copilot-workspace-the-agentic-era.html), 2026-02.
 - History.com, ["ChatGPT, the generative AI chatbot, is released"](https://www.history.com/this-day-in-history/november-30/chatgpt-released-openai).
-- Wikipedia, ["Cursor (code editor)"](<https://en.wikipedia.org/wiki/Cursor_(code_editor)>).
-- Wikipedia, ["Cursor (company)"](<https://en.wikipedia.org/wiki/Cursor_(company)>).
+- Wikipedia, ["Cursor (code editor)"](https://en.wikipedia.org/wiki/Cursor_%28code_editor%29).
+- Wikipedia, ["Cursor (company)"](https://en.wikipedia.org/wiki/Cursor_%28company%29).
 - hidekazu-konishi.com, ["Anthropic Claude Model Release Timeline"](https://hidekazu-konishi.com/entry/anthropic_claude_model_release_timeline.html).

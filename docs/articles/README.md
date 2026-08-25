@@ -43,6 +43,13 @@ the source of truth if this list ever drifts out of sync).
 
 Article header banners in [assets/article-headers](assets/article-headers/) were generated with Google Gemini, from the briefs in [assets/image-prompts](assets/image-prompts/). Confirmed via the C2PA content-credentials metadata embedded in the PNGs ("Created by Google Generative AI", SynthID watermark) — no prompt/tool record was kept in the repo at generation time.
 
+## Book Edition
+
+The same articles compose into a book — chapters, glossary, sources appendix,
+page-numbered index — via hidden `book:` markers and the metadata in
+[assets/book](assets/book/). See
+[book-publishing-guide.md](book-publishing-guide.md).
+
 ## Research Base
 
 Start with [research-synopsis.md](research-synopsis.md) for the evidence map, source taxonomy, and article angles.

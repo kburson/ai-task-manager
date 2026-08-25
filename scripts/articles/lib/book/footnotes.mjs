@@ -11,7 +11,7 @@
 
 const LINK_RE = /(!?)\[([^\]]+)\]\(([^)\s]+)\)/g;
 const BIB_LINE_RE = /^-\s+(.+?)\.\s+"(.+?)\."\s+(\S+)\s*$/;
-const ARTICLE_TARGET_RE = /^(\d{2}-.+)\.md$/;
+const ARTICLE_TARGET_RE = /^(\d{2}-.+)\.md(?:#.+)?$/;
 
 export class CitationError extends Error {
   constructor(message, file) {
@@ -45,6 +45,11 @@ export function parseBibliography(lines) {
 export function convertLine(line, ctx) {
   return line.replace(LINK_RE, (whole, bang, label, target) => {
     if (bang === '!') return whole;
+
+    // A same-document anchor (e.g. a heading cross-reference within the
+    // article) stays a live link in the manuscript — the heading it points
+    // to is still in the same chapter. Nothing to convert to a footnote.
+    if (target.startsWith('#')) return whole;
 
     if (/^https?:\/\//.test(target)) {
       const entry = ctx.bibByUrl.get(target);

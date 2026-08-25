@@ -62,6 +62,22 @@ test('images are left alone', () => {
   assert.deepEqual(ctx.footnotes, []);
 });
 
+test('a sibling article link with a heading anchor still resolves to a chapter', () => {
+  const ctx = makeCtx();
+  const out = convertLine('see [Easy Come](05-easy-come-easy-go.md#a-heading) for more.', ctx);
+  assert.equal(out, 'see Easy Come (Chapter 5) for more.');
+  assert.deepEqual(ctx.footnotes, []);
+});
+
+test('a same-document anchor link is left alone', () => {
+  const ctx = makeCtx();
+  assert.equal(
+    convertLine('see [the pattern](#aitm-and-the-backlog-manager-pattern) below.', ctx),
+    'see [the pattern](#aitm-and-the-backlog-manager-pattern) below.'
+  );
+  assert.deepEqual(ctx.footnotes, []);
+});
+
 test('a link that resolves to neither is a loud failure', () => {
   const ctx = makeCtx();
   assert.throws(() => convertLine('[gone](99-not-on-spine.md)', ctx), CitationError);
