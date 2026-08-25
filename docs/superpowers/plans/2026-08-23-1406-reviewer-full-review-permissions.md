@@ -1925,6 +1925,8 @@ pull requests.
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
 - Create:
   `scripts/tests/unit/task-tracker/verbs/deliver-merged-source-attribution.test.mjs`
+- Create:
+  `scripts/tests/fixtures/test-corpus-post-snapshot/unit/task-tracker/verbs/deliver-merged-source-attribution.test.mjs.json`
 
 - [ ] **Step 1: Add failing merged-recovery topology tests**
 
