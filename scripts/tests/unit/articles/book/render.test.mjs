@@ -1,0 +1,51 @@
+// @chore
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { parseArgs } from '../../../../articles/compose-book.mjs';
+import { latexmkArgs, pandocArgs, TARGETS } from '../../../../articles/lib/book/render.mjs';
+
+test('pandocArgs maps top-level headings to chapters and loads the metadata file', () => {
+  const args = pandocArgs({
+    manuscriptPath: '/tmp/book/manuscript.md',
+    bookDir: '/repo/docs/articles/assets/book',
+    target: 'pdf',
+    outDir: '/tmp/book',
+  });
+  assert.ok(args.includes('--top-level-division=chapter'));
+  assert.ok(args.includes('--metadata-file=/repo/docs/articles/assets/book/book.json'));
+  assert.ok(args.includes('--toc'));
+  assert.ok(args.includes('--standalone'));
+  assert.deepEqual(args.slice(-2), ['-o', '/tmp/book/book.tex']);
+});
+
+test('pandocArgs emits epub and html directly', () => {
+  const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
+  assert.deepEqual(pandocArgs({ ...base, target: 'epub' }).slice(-2), ['-o', '/o/book.epub']);
+  assert.deepEqual(pandocArgs({ ...base, target: 'html' }).slice(-2), ['-o', '/o/book.html']);
+});
+
+test('latexmkArgs drives xelatex with an output directory', () => {
+  const args = latexmkArgs({ texPath: '/o/book.tex', outDir: '/o' });
+  assert.ok(args.includes('-xelatex'));
+  assert.ok(args.includes('-interaction=nonstopmode'));
+  assert.ok(args.includes('-outdir=/o'));
+  assert.equal(args.at(-1), '/o/book.tex');
+});
+
+test('parseArgs defaults to every target', () => {
+  const options = parseArgs([]);
+  assert.deepEqual(options.targets, TARGETS);
+  assert.equal(options.doctor, false);
+});
+
+test('parseArgs accepts a single target and a doctor flag', () => {
+  assert.deepEqual(parseArgs(['--target', 'epub']).targets, ['epub']);
+  assert.equal(parseArgs(['--doctor']).doctor, true);
+  assert.equal(parseArgs(['--out', '/x']).out, '/x');
+});
+
+test('parseArgs rejects unknown targets and unknown flags', () => {
+  assert.throws(() => parseArgs(['--target', 'mobi']), /unknown target/);
+  assert.throws(() => parseArgs(['--nope']), /unknown argument/);
+});
