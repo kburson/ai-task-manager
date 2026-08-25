@@ -62,28 +62,12 @@ In `package.json`, add to `scripts`:
 
 Then append `&& npm run lint:book-markers` to the end of the existing `lint` script value.
 
-- [ ] **Step 3: Add spelling words**
+- [ ] **Step 3: Confirm spelling words are present**
 
-Append these lines to `cspell-dictionary.txt`, keeping the file's existing sort order if it has one:
+The toolchain vocabulary (`xelatex`, `latexmk`, `makeindex`, `tlmgr`, and the rest) was already appended to `cspell-dictionary.txt` when the spec and plan landed. Confirm rather than re-add:
 
-```
-xelatex
-latexmk
-makeindex
-makeidx
-printindex
-fontspec
-unicode-math
-footnotehyper
-fancyvrb
-upquote
-xurl
-tlmgr
-basictex
-frontmatter
-mainmatter
-backmatter
-```
+Run: `npm run lint:spell`
+Expected: `Issues found: 0 in 0 files`
 
 - [ ] **Step 4: Create the metadata folder**
 
