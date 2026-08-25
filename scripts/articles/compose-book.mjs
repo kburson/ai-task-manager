@@ -11,6 +11,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { renderBookDiagrams } from './lib/book/diagrams.mjs';
 import { buildManuscript } from './lib/book/manuscript.mjs';
 import { renderTarget, TARGETS } from './lib/book/render.mjs';
 import { doctor } from './lib/book/toolchain.mjs';
@@ -86,6 +87,7 @@ async function main() {
       `${target}: ${built.chapters} chapters, ${built.footnotes} footnotes, ${built.indexTerms} index terms -> ${manuscriptPath}`
     );
     if (target === 'manuscript') continue;
+    await renderBookDiagrams(built.diagrams, options.out);
     await renderTarget({ manuscriptPath, bookDir: BOOK_DIR, outDir: options.out, target });
   }
 }

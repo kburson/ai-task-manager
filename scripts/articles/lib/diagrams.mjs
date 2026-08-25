@@ -87,8 +87,8 @@ function runMmdc(args) {
   });
 }
 
-export function buildMmdcArgs({ input, outPath, configPath } = {}) {
-  const args = ['-i', input, '-o', outPath, '-b', 'transparent', '-s', '3'];
+export function buildMmdcArgs({ input, outPath, configPath, scale = 3 } = {}) {
+  const args = ['-i', input, '-o', outPath, '-b', 'transparent', '-s', String(scale)];
   const requestedConfig = String(configPath || '').trim();
   if (requestedConfig) {
     args.push(
@@ -105,8 +105,17 @@ export function buildMmdcArgs({ input, outPath, configPath } = {}) {
  * `-b transparent` matches LinkedIn's white article background without a
  * colored box; `-s 3` keeps the render sharp at LinkedIn's article width. Both
  * come from the publishing guide.
+ *
+ * `options.scale` overrides the default `-s 3` — the book's print path renders
+ * at a higher scale than the screen path, since a 1x-looking PNG is visibly
+ * soft at 300 dpi on paper.
+ *
+ * @param {string} code
+ * @param {string} outPath
+ * @param {{scale?: number}} [options]
  */
-export async function renderMermaidSource(code, outPath) {
+export async function renderMermaidSource(code, outPath, options = {}) {
+  const { scale = 3 } = options;
   // `.tmp/publish/`, not the system temp dir — scratch stays inside the repo.
   const dir = await mkdtemp(path.join(projectScratchDir('publish', REPO_ROOT), 'mermaid-'));
   const input = path.join(dir, 'diagram.mmd');
@@ -117,6 +126,7 @@ export async function renderMermaidSource(code, outPath) {
         input,
         outPath,
         configPath: process.env.AITM_MERMAID_PUPPETEER_CONFIG,
+        scale,
       })
     );
   } finally {

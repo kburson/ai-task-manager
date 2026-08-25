@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { parseArticle } from '../parse-article.mjs';
+import { extractBookDiagrams } from './diagrams.mjs';
 import { convertLine, parseBibliography } from './footnotes.mjs';
 import { parseGlossary, renderGlossary } from './glossary.mjs';
 import { planChapters, shiftHeading } from './headings.mjs';
@@ -29,7 +30,9 @@ async function loadArticle(entry, { isFirst }) {
   const markerOf = (verb) =>
     preamble.find((item) => item.kind === 'marker' && item.verb === verb) ?? null;
 
-  const { sections, bibliographyLines } = applyBookStrip(scanned);
+  const stripped = applyBookStrip(scanned);
+  const { sections, diagrams } = extractBookDiagrams(stripped.sections, entry.slug);
+  const bibliographyLines = stripped.bibliographyLines;
 
   return {
     slug: entry.slug,
@@ -39,6 +42,7 @@ async function loadArticle(entry, { isFirst }) {
     part: markerOf('part')?.attrs.title ?? null,
     mergeIntoPrevious: markerOf('merge-into-previous') !== null,
     sections,
+    diagrams,
     bibliography: parseBibliography(bibliographyLines),
   };
 }
@@ -94,7 +98,7 @@ async function resolveIncludes(items, { bookDir, file, indexTarget }) {
 
 /**
  * @param {{articlesDir: string, bookDir: string, target: 'pdf'|'epub'|'html'|'manuscript'}} options
- * @returns {Promise<{markdown: string, chapters: number, footnotes: number, indexTerms: number}>}
+ * @returns {Promise<{markdown: string, chapters: number, footnotes: number, indexTerms: number, diagrams: Array<{code: string, imageName: string}>}>}
  */
 export async function buildManuscript({ articlesDir, bookDir, target }) {
   const spine = await listSpine(articlesDir);
@@ -182,5 +186,6 @@ export async function buildManuscript({ articlesDir, bookDir, target }) {
     chapters: chapters.length,
     footnotes: footnotes.length,
     indexTerms: hits.size,
+    diagrams: articles.flatMap((a) => a.diagrams),
   };
 }
