@@ -247,7 +247,7 @@ test('isOnSpine requires a Series Link section', () => {
 });
 
 test('listSpine returns drafted articles in filename order', async () => {
-  const dir = await mkdtemp(path.join(projectScratchDir(), 'spine-'));
+  const dir = await mkdtemp(path.join(projectScratchDir('test'), 'spine-'));
   try {
     await writeFile(path.join(dir, '02-second.md'), '# Second\n\n## Series Link\n\nx\n');
     await writeFile(path.join(dir, '01-first.md'), '# First\n\n## Series Link\n\nx\n');
@@ -1870,7 +1870,7 @@ A transition check that requires observable proof before work advances.
 `;
 
 async function fixture() {
-  const root = await mkdtemp(path.join(projectScratchDir(), 'manuscript-'));
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'manuscript-'));
   const articlesDir = path.join(root, 'articles');
   const bookDir = path.join(articlesDir, 'assets', 'book');
   await mkdir(path.join(bookDir, 'fragments'), { recursive: true });
@@ -2340,7 +2340,7 @@ function run(command, args, options = {}) {
 
 /** Default probe: compile a throwaway document that loads exactly one package. */
 export async function compileProbe(pkg) {
-  const dir = await mkdtemp(path.join(projectScratchDir(), 'texprobe-'));
+  const dir = await mkdtemp(path.join(projectScratchDir('book'), 'texprobe-'));
   try {
     const file = path.join(dir, 'probe.tex');
     await writeFile(file, probeDocument(pkg));
@@ -2672,7 +2672,7 @@ import { lintBookMarkers } from '../../../../maintenance/lint-book-markers.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 async function repo(files) {
-  const root = await mkdtemp(path.join(projectScratchDir(), 'markerlint-'));
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'markerlint-'));
   const dir = path.join(root, 'docs', 'articles', 'assets', 'book', 'fragments');
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, 'known.md'), 'bridge\n');
