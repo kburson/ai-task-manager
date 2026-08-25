@@ -1990,6 +1990,7 @@ non-terminal lifecycle opener.
 - Modify: `scripts/task-tracker/gh-timing-comment.mjs`
 - Modify:
   `scripts/tests/unit/task-tracker/lib/terminal-review-handoff.test.mjs`
+- Modify: `scripts/tests/fixtures/state-engine-policy-baseline.mjs`
 
 - [ ] **Step 1: Reproduce the live recursive close failure**
 

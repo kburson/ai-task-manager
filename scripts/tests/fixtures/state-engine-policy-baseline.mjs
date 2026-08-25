@@ -197,14 +197,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 335, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      330,
+      331,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      339,
+      340,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
