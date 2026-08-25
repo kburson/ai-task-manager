@@ -2,7 +2,8 @@
 // AC6 (folds #744) — the CI Fast lane must run the repo-only memory-seed index
 // parity check so any MEMORY.md-index ⇄ docs/ai-memory/ durable-set drift fails
 // the build. Asserts the step is present in the Fast lane, uses `--mode index`
-// (the CI-safe mode, NOT the maintainer `--mode diff`), and precedes `npm test`.
+// (the CI-safe mode, NOT the maintainer `--mode diff`), and precedes both
+// explicit bounded test lanes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -38,10 +39,12 @@ test('the CI step uses --mode index (CI-safe), never the maintainer --mode diff'
   );
 });
 
-test('the parity check runs before npm test in the Fast lane', () => {
+test('the parity check runs before the unit and integration lanes', () => {
   const lane = fastLane(CI);
   const parityAt = lane.indexOf('--mode index');
-  const testAt = lane.indexOf('npm test');
-  assert.ok(parityAt !== -1 && testAt !== -1, 'both steps present');
-  assert.ok(parityAt < testAt, 'the cheap parity gate runs before the test fleet');
+  const unitAt = lane.indexOf('npm run test:unit');
+  const integrationAt = lane.indexOf('npm run test:integration');
+  assert.ok(parityAt !== -1 && unitAt !== -1 && integrationAt !== -1, 'all steps present');
+  assert.ok(parityAt < unitAt, 'the cheap parity gate runs before the unit lane');
+  assert.ok(parityAt < integrationAt, 'the cheap parity gate runs before the integration lane');
 });
