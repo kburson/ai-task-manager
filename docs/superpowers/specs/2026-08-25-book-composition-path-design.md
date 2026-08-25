@@ -50,8 +50,12 @@ Three inputs feed the composer:
 1. **The article spine** — `docs/articles/NN-*.md`, unmodified in substance.
 2. **`book:` markers** — HTML comments inside those articles. `parse-article.mjs`
    strips every HTML comment with a global regex before any other transform, so
-   markers are already invisible to the LinkedIn path. No publisher change is
-   needed to make them safe.
+   markers are inherently invisible to the LinkedIn path.
+
+   The book path needs them preserved, so `parseArticle` gains an options
+   argument: `parseArticle(source, { keepComments = false })`. The default is
+   the current behaviour, so the LinkedIn path and its tests are untouched.
+
 3. **`docs/articles/assets/book/`** — the things that exist in no article:
    title-page metadata, the introduction, the glossary, and book-only bridge
    fragments.
@@ -63,15 +67,31 @@ markdown file — which pandoc then renders to PDF, EPUB, and HTML.
 
 ```
 docs/articles/assets/book/
-  book.yaml            title, subtitle, author, copyright, edition, date,
+  book.json            title, subtitle, author, copyright, edition, date,
                        paper size, base font, margins, pandoc/LaTeX variables
   introduction.md      book-only front matter
-  glossary.yaml        term -> definition, aliases, see-also
+  glossary.md          term -> definition, aliases, see-also
   fragments/           book-only prose spliced in by `book:include`
     <name>.md
 ```
 
-`book.yaml` carries no chapter list and no ordering. It is a variables file.
+`book.json` carries no chapter list and no ordering. It is a variables file.
+JSON rather than YAML because pandoc's `--metadata-file` accepts either and the
+repo has no YAML parser; adding a dependency for author-local tooling is not
+worth it.
+
+`glossary.md` rather than a data file because definitions are prose the author
+edits by hand. As markdown they inherit prettier, markdownlint, and cspell
+coverage that a YAML block scalar would not get. Format is strict and parsed:
+
+```markdown
+## Evidence gate
+
+_Aliases:_ evidence gates, evidence-gated
+_See also:_ Story-governed delivery
+
+A transition check that requires observable proof before work advances.
+```
 
 ## Default strip rules
 
@@ -106,7 +126,10 @@ colliding with the `markdownlint-disable` comments already in the corpus.
 Parsing rules:
 
 - A marker must occupy its own line. Inline markers are a parse error.
-- `part` and `chapter` markers are only honoured before the article's H1.
+- `part` and `chapter` markers must appear in the article's preamble — the span
+  before the first `##` heading. `parse-article.mjs` lifts the H1 out into a
+  field, so "before the H1" is not observable after parsing; "in the preamble"
+  is, and is practically the same constraint.
 - `book:end` closes the nearest open `book:exclude`. An unmatched
   `book:exclude` or `book:end` is a parse error.
 - An unknown `book:` verb is a parse error, not a silent skip. A typo must not
@@ -125,9 +148,11 @@ Under `book:merge-into-previous`:
 - article H1 -> `##` inside the previous chapter
 - every deeper heading shifts down one level to match
 
-`book:part` emits a `#` Part divider and forces the following chapter to start a
-new page. Pandoc renders Parts via `--top-level-division=part` with
-`documentclass: book`.
+Pandoc runs with `--top-level-division=chapter`, so manuscript `#` maps to
+`\chapter`. Part dividers cannot also be `#` under that mapping, so `book:part`
+emits raw `\part{Title}` for the PDF target and a `#`-level heading for EPUB and
+HTML. The target-specific emission is a parameter of manuscript assembly, not a
+post-processing step.
 
 `book:demote N` applies an additional shift, for the case where an article's
 internal structure needs flattening that the merge rule does not express.
@@ -153,15 +178,9 @@ is an absolute `http(s)` URL, so the URL matcher works against a clean corpus.
 
 ## Glossary and index
 
-`glossary.yaml` schema:
-
-```yaml
-terms:
-  - term: Evidence gate
-    aliases: [evidence gates, evidence-gated]
-    definition: A transition check that requires observable proof before work advances.
-    see-also: [Story-governed delivery]
-```
+`glossary.md` format is given under Metadata layout above. Each `##` heading is
+a term; an optional `_Aliases:_` line and `_See also:_` line follow; the
+remaining prose is the definition.
 
 Terms seed from the `## Preferred Terms` list already in
 `docs/articles/series-style-guide.md`.
@@ -176,10 +195,16 @@ every match, which would produce an index entry per paragraph and be useless.
 The recorded hits emit differently per target:
 
 - **PDF** — raw `\index{Term}` at each recorded position; `makeindex` produces
-  the page-numbered index.
+  the page-numbered index, emitted by `\printindex`. `makeidx` and `\makeindex`
+  come from `header-includes` in `book.json`.
 - **EPUB and HTML** — anchors at each recorded position and a generated index
   page linking to them by chapter and section. There are no page numbers in a
   reflowable format, and inventing them would be a lie.
+- **`--target manuscript`** — neither. The reviewable markdown stays clean.
+
+Manuscript assembly therefore takes the target as a parameter rather than
+emitting one canonical string. Appendices are preceded by raw `\appendix` for
+the PDF target only.
 
 ## Document order
 
@@ -235,7 +260,9 @@ scripts/articles/
     headings.mjs             heading level algebra
     footnotes.mjs            inline link -> footnote, sibling link -> chapter ref
     sources.mjs              bibliography collection, dedupe, sort
-    glossary.mjs             glossary.yaml load, index hit recording
+    spine.mjs                discover on-spine articles in filename order
+    glossary.mjs             glossary.md parsing
+    index-terms.mjs          index hit recording, one per term per section
     manuscript.mjs           assemble the single markdown file
     render.mjs               pandoc and latexmk invocation
     toolchain.mjs            doctor checks
