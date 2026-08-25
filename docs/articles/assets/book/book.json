@@ -1,0 +1,15 @@
+{
+  "title": "Agentic Agile Delivery",
+  "subtitle": "Governing AI Implementation Agents With A Backlog",
+  "author": ["Kendrick Burson"],
+  "rights": "Copyright 2026 Kendrick Burson. All rights reserved.",
+  "lang": "en-US",
+  "documentclass": "book",
+  "classoption": ["oneside"],
+  "papersize": "letter",
+  "fontsize": "11pt",
+  "mainfont": "Palatino",
+  "geometry": ["margin=1in"],
+  "linkcolor": "black",
+  "header-includes": ["\\usepackage{makeidx}", "\\makeindex"]
+}
