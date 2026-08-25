@@ -105,7 +105,11 @@ test('buildManuscript composes chapters, front matter, and appendices', async ()
     assert.match(md, /^# Introduction$/m);
     assert.match(md, /^# Glossary$/m);
     assert.match(md, /^# Sources$/m);
-    assert.match(md, /^# Index$/m);
+    assert.equal(
+      /^# Index$/m.test(md),
+      false,
+      'the index is not an appendix chapter; \\printindex writes its own heading'
+    );
     assert.match(md, /\\printindex/);
 
     const sources = md.slice(md.indexOf('# Sources'));
@@ -136,6 +140,191 @@ test('a missing include fragment fails loudly', async () => {
       () => buildManuscript({ articlesDir, bookDir, target: 'pdf' }),
       /bridge\.md/
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the pdf wraps front matter so the introduction does not consume chapter 1', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
+    const frontmatter = markdown.indexOf('\\frontmatter');
+    const intro = markdown.indexOf('# Introduction');
+    const mainmatter = markdown.indexOf('\\mainmatter');
+    const firstChapter = markdown.indexOf('# First Chapter');
+
+    assert.notEqual(frontmatter, -1, 'the pdf opens in front matter');
+    assert.notEqual(mainmatter, -1, 'the pdf switches to main matter');
+    assert.ok(frontmatter < intro, 'frontmatter precedes the introduction');
+    assert.ok(intro < mainmatter, 'mainmatter follows the introduction');
+    assert.ok(mainmatter < firstChapter, 'mainmatter precedes chapter 1');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the pdf carries a copyright page built from book.json rights', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    await writeFile(
+      path.join(bookDir, 'book.json'),
+      JSON.stringify({ title: 'The Book', author: ['A. Author'], rights: 'Copyright 2026 A.' })
+    );
+    const pdf = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
+    assert.match(pdf.markdown, /\\noindent Copyright 2026 A\./);
+    assert.ok(
+      pdf.markdown.indexOf('\\noindent Copyright 2026 A.') < pdf.markdown.indexOf('# Introduction'),
+      'the copyright page sits inside the front matter'
+    );
+
+    const epub = await buildManuscript({ articlesDir, bookDir, target: 'epub' });
+    assert.equal(epub.markdown.includes('\\noindent'), false, 'no latex in the epub manuscript');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('epub and html number chapters in the heading text; pdf leaves them bare', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    for (const target of ['epub', 'html']) {
+      const { markdown } = await buildManuscript({ articlesDir, bookDir, target });
+      assert.match(markdown, /^# Chapter 1\. First Chapter$/m, `${target} numbers its chapters`);
+      assert.match(markdown, /^# Introduction$/m, 'the introduction stays unnumbered');
+    }
+    const pdf = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
+    assert.match(pdf.markdown, /^# First Chapter$/m, 'latex numbers the pdf headings itself');
+    assert.equal(pdf.markdown.includes('# Chapter 1.'), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the epub index links its anchors and never repeats an anchor id', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'epub' });
+    const ids = [...markdown.matchAll(/id="(ix-[^"]+)"/g)].map((m) => m[1]);
+    assert.ok(ids.length > 0, 'anchors are emitted');
+    assert.equal(new Set(ids).size, ids.length, 'anchor ids are unique');
+    for (const id of ids) {
+      assert.ok(markdown.includes(`](#${id})`), `anchor ${id} is linked from the index`);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('book:index records an index entry and gets a book-unique anchor', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    await writeFile(
+      path.join(articlesDir, '01-first.md'),
+      ARTICLE_ONE.replace(
+        '## Body One',
+        '## Body One\n\n<!-- book:index term="Trunk-based delivery" -->'
+      )
+    );
+    await writeFile(
+      path.join(articlesDir, '02-second.md'),
+      ARTICLE_TWO.replace(
+        '## Body Two',
+        '## Body Two\n\n<!-- book:index term="Story governance" -->'
+      )
+    );
+
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'epub' });
+    const index = markdown.slice(markdown.indexOf('# Index'));
+    assert.match(index, /\*\*Trunk-based delivery\*\*/, 'the manual term reaches the index page');
+    assert.match(index, /\*\*Story governance\*\*/);
+
+    const manual = [...markdown.matchAll(/id="(ix-manual-[^"]+)"/g)].map((m) => m[1]);
+    assert.equal(manual.length, 2);
+    assert.equal(new Set(manual).size, 2, 'manual anchors do not collide across sections');
+    for (const id of manual) assert.ok(index.includes(`](#${id})`), `${id} is linked`);
+
+    const pdf = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
+    assert.match(pdf.markdown, /\\index\{Trunk-based delivery\}/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('fenced code is never rewritten into footnotes or shifted', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    await writeFile(
+      path.join(articlesDir, '01-first.md'),
+      ARTICLE_ONE.replace(
+        '## Body One',
+        '## Body One\n\n```md\n# Not a heading\n[click here](https://example.com)\n[a](b.txt)\n```'
+      )
+    );
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'manuscript' });
+    assert.match(markdown, /^\[click here\]\(https:\/\/example\.com\)$/m, 'no footnote marker');
+    assert.match(markdown, /^\[a\]\(b\.txt\)$/m, 'a relative link in a sample does not fail');
+    assert.match(markdown, /^# Not a heading$/m, 'a fenced heading is not shifted');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('book:demote applies for the remainder of the article, across sections', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    await writeFile(
+      path.join(articlesDir, '01-first.md'),
+      ARTICLE_ONE.replace(
+        '## Body One\n',
+        '## Body One\n\n<!-- book:demote by=1 -->\n\n### Sub One\n\n## Body Two\n\n### Sub Two\n'
+      )
+    );
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'manuscript' });
+    assert.match(markdown, /^#### Sub One$/m, 'the demote applies in its own section');
+    assert.match(markdown, /^#### Sub Two$/m, 'and keeps applying in the next section');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a demote in one article does not bleed into the next', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    await writeFile(
+      path.join(articlesDir, '01-first.md'),
+      ARTICLE_ONE.replace('## Body One\n', '## Body One\n\n<!-- book:demote by=1 -->\n')
+    );
+    await writeFile(
+      path.join(articlesDir, '02-second.md'),
+      ARTICLE_TWO.replace('<!-- book:merge-into-previous -->\n\n', '')
+    );
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'manuscript' });
+    assert.match(markdown, /^## Body Two$/m, 'the next article starts from a clean shift');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('non-marker html comments never reach the manuscript', async () => {
+  const { root, articlesDir, bookDir } = await fixture();
+  try {
+    await writeFile(
+      path.join(articlesDir, '01-first.md'),
+      `<!-- markdownlint-disable MD034 -->\n<!-- TODO: needs new artwork -->\n${ARTICLE_ONE}`
+    );
+    await writeFile(
+      path.join(bookDir, 'introduction.md'),
+      '# Introduction\n\n<!-- STUB: replace me -->\n\nWhy this book.\n'
+    );
+    await writeFile(path.join(bookDir, 'fragments', 'bridge.md'), '<!-- draft -->\nA bridge.\n');
+
+    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'html' });
+    assert.equal(markdown.includes('markdownlint-disable'), false);
+    assert.equal(markdown.includes('TODO'), false);
+    assert.equal(markdown.includes('STUB'), false);
+    assert.equal(markdown.includes('<!-- draft -->'), false);
+    assert.match(markdown, /A bridge\./, 'the fragment prose survives');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

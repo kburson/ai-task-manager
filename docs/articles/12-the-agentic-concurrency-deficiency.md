@@ -115,4 +115,8 @@ Close:
 
 ## Bibliography
 
+<!-- book:exclude -->
+
 No external sources are cited in this piece — it draws on firsthand experience running parallel agents against a shared codebase, and hitting the ceiling described above, while building AITM.
+
+<!-- book:end -->

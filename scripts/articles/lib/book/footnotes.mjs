@@ -8,10 +8,24 @@
 // real relative path on LinkedIn, rewritten to a live URL during the backfill
 // pass. In the book it must become "Label (Chapter 5)" — a path would be a dead
 // link on paper.
+//
+// Bibliography parsing never drops an entry. The corpus uses at least three
+// citation shapes — `Publisher. "Title." url`, `Publisher, ["Title"](url),
+// context.`, and an author-date form with no URL at all — plus line-wrapped
+// entries. A parser that recognized one shape and skipped the rest lost a third
+// of the sources silently, which is the worst possible failure for a
+// bibliography. So: every list item becomes an entry carrying its `raw` text,
+// and `publisher`/`title`/`url` are a bonus extracted when the shape allows.
 
 const LINK_RE = /(!?)\[([^\]]+)\]\(([^)\s]+)\)/g;
-const BIB_LINE_RE = /^-\s+(.+?)\.\s+"(.+?)\."\s+(\S+)\s*$/;
 const ARTICLE_TARGET_RE = /^(\d{2}-.+)\.md(?:#.+)?$/;
+
+const BIB_ITEM_RE = /^[-*+]\s+(.*)$/;
+// `Publisher, ["Title"](url), trailing context.`
+const BIB_MD_LINK_RE = /^(.+?),\s*\[["“]?(.+?)["”]?\]\((\S+?)\)\s*,?\s*(.*)$/;
+// `Publisher. "Title." url` / `Publisher. "Title?"` / `Publisher. "Title." _Journal_.`
+const BIB_QUOTED_RE = /^(.+?)\.\s+["“]([^"”]+)["”]\.?\s*(.*)$/;
+const URL_RE = /https?:\/\/\S+/;
 
 export class CitationError extends Error {
   constructor(message, file) {
@@ -21,20 +35,104 @@ export class CitationError extends Error {
   }
 }
 
+const cleanUrl = (value) => value.replace(/[).,;]+$/, '');
+
+const stripTrailingPeriod = (value) => value.replace(/\.$/, '').trim();
+
+// A trailing `.` after the citation's closing paren is sentence punctuation,
+// not trailing context; keeping it rendered as a stray " ." in the appendix.
+const cleanSuffix = (value) => value.trim().replace(/^[.,;]+$/, '');
+
 /**
- * @param {string[]} lines the `## Bibliography` section's lines
- * @returns {Array<{publisher: string, title: string, url: string, raw: string}>}
+ * Structured fields, when the raw text happens to carry a recognisable shape.
+ * Anything unrecognized keeps `raw` and gets nulls, which every consumer knows
+ * how to handle.
+ *
+ * @param {string} raw
  */
-export function parseBibliography(lines) {
-  const entries = [];
+function structure(raw) {
+  const mdLink = raw.match(BIB_MD_LINK_RE);
+  if (mdLink) {
+    return {
+      publisher: mdLink[1].trim(),
+      title: stripTrailingPeriod(mdLink[2]),
+      url: cleanUrl(mdLink[3]),
+      suffix: cleanSuffix(mdLink[4]),
+    };
+  }
+  const quoted = raw.match(BIB_QUOTED_RE);
+  if (quoted) {
+    const rest = quoted[3].trim();
+    const url = rest.match(URL_RE);
+    return {
+      publisher: quoted[1].trim(),
+      title: stripTrailingPeriod(quoted[2]),
+      url: url ? cleanUrl(url[0]) : null,
+      suffix: cleanSuffix(url ? rest.replace(url[0], '') : rest),
+    };
+  }
+  const bare = raw.match(URL_RE);
+  return { publisher: null, title: null, url: bare ? cleanUrl(bare[0]) : null, suffix: '' };
+}
+
+/**
+ * Every list item under `## Bibliography` becomes an entry. Line-wrapped
+ * entries are joined onto the item they continue. A non-list line that
+ * continues nothing is an authoring mistake and is reported, never dropped —
+ * `book:exclude` is the way to say "this paragraph is not a citation".
+ *
+ * @param {string[]} lines the `## Bibliography` section's lines, blanks included
+ * @param {string} [file] for the error message
+ * @returns {Array<{publisher: string|null, title: string|null, url: string|null, suffix: string, raw: string}>}
+ */
+export function parseBibliography(lines, file = '<bibliography>') {
+  /** @type {string[]} */
+  const raws = [];
+  let open = false;
+
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed === '') continue;
-    const match = trimmed.match(BIB_LINE_RE);
-    if (!match) continue;
-    entries.push({ publisher: match[1], title: match[2], url: match[3], raw: trimmed });
+    if (trimmed === '') {
+      open = false;
+      continue;
+    }
+    const item = trimmed.match(BIB_ITEM_RE);
+    if (item) {
+      raws.push(item[1].trim());
+      open = true;
+      continue;
+    }
+    if (!open) {
+      throw new CitationError(
+        `bibliography line is neither a list item nor a continuation: ${trimmed}`,
+        file
+      );
+    }
+    raws[raws.length - 1] = `${raws[raws.length - 1]} ${trimmed}`;
   }
-  return entries;
+
+  return raws.map((raw) => {
+    const cleaned = raw.replace(/\s+/g, ' ').trim();
+    return { ...structure(cleaned), raw: cleaned };
+  });
+}
+
+/**
+ * The footnote body for a citation. Structured when the shape allowed it, the
+ * raw entry text when it did not — never a silent blank.
+ *
+ * @param {{publisher: string|null, title: string|null, url: string|null, raw: string}} entry
+ */
+export function footnoteText(entry) {
+  if (entry.publisher && entry.title) {
+    const title = /[?!]$/.test(entry.title) ? entry.title : `${entry.title}.`;
+    return entry.url
+      ? `${entry.publisher}. "${title}" <${entry.url}>`
+      : `${entry.publisher}. "${title}"`;
+  }
+  // Unstructured entries already read as a sentence and already carry their URL
+  // inline when they have one, so the raw text is the honest footnote.
+  return entry.raw;
 }
 
 /**
@@ -53,9 +151,7 @@ export function convertLine(line, ctx) {
 
     if (/^https?:\/\//.test(target)) {
       const entry = ctx.bibByUrl.get(target);
-      const text = entry
-        ? `${entry.publisher}. "${entry.title}." <${entry.url}>`
-        : `${label}. <${target}>`;
+      const text = entry ? footnoteText(entry) : `${label}. <${target}>`;
       const id = `${ctx.idPrefix}-${ctx.footnotes.length + 1}`;
       ctx.footnotes.push({ id, text });
       return `${label}[^${id}]`;

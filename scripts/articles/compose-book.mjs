@@ -62,16 +62,26 @@ async function main() {
   }
 
   if (options.doctor) {
-    const report = await doctor();
+    // Only the pdf target needs LaTeX. `--doctor --target epub` on a machine
+    // with no TeX installation should pass, not demand a 400MB download.
+    const report = await doctor({ targets: options.targets });
     if (report.missingBinaries.length > 0) {
       console.error(`missing on PATH: ${report.missingBinaries.join(', ')}`);
       console.error('install pandoc with `brew install pandoc`');
-      console.error(
-        'install LaTeX with `brew install --cask basictex`, then `sudo tlmgr install latexmk`'
-      );
+      if (report.latexChecked) {
+        console.error(
+          'install LaTeX with `brew install --cask basictex`, then `sudo tlmgr install latexmk`'
+        );
+      }
     }
     if (report.hint) console.error(report.hint);
-    if (report.ok) console.log('doctor:book — toolchain is complete');
+    if (report.ok) {
+      console.log(
+        report.latexChecked
+          ? 'doctor:book — toolchain is complete'
+          : `doctor:book — toolchain is complete for ${options.targets.join(', ')} (LaTeX not needed)`
+      );
+    }
     process.exitCode = report.ok ? 0 : 1;
     return;
   }

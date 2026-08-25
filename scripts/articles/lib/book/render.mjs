@@ -9,13 +9,21 @@ export const TARGETS = ['manuscript', 'pdf', 'epub', 'html'];
 
 const OUTPUT_NAME = { pdf: 'book.tex', epub: 'book.epub', html: 'book.html' };
 
+/**
+ * `--toc-depth` is not a portable number. Under the `book` class pandoc turns
+ * it into `\setcounter{tocdepth}{N}`, where 0 is chapter and 1 is section — so
+ * the 2 that gives EPUB and HTML a chapter-plus-section contents listed every
+ * `###` subsection in the PDF. The PDF therefore wants 1.
+ */
+export const TOC_DEPTH = { pdf: 1, epub: 2, html: 2 };
+
 export function pandocArgs({ manuscriptPath, bookDir, target, outDir }) {
   return [
     manuscriptPath,
     `--metadata-file=${path.join(bookDir, 'book.json')}`,
     '--top-level-division=chapter',
     '--toc',
-    '--toc-depth=2',
+    `--toc-depth=${TOC_DEPTH[target] ?? 2}`,
     '--standalone',
     '-o',
     path.join(outDir, OUTPUT_NAME[target]),

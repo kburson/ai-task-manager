@@ -6,6 +6,7 @@ import { parseArgs } from '../../../../../articles/compose-book.mjs';
 import {
   latexmkArgs,
   pandocArgs,
+  TOC_DEPTH,
   renderInvocations,
   TARGETS,
 } from '../../../../../articles/lib/book/render.mjs';
@@ -81,4 +82,19 @@ test('renderInvocations also runs latexmk with cwd set to outDir for the pdf tar
   );
   assert.deepEqual(invocations[0].options, { cwd: '/tmp/book' });
   assert.deepEqual(invocations[1].options, { cwd: '/tmp/book' });
+});
+
+test('toc depth is per target: chapters plus sections in the pdf, unchanged elsewhere', () => {
+  const base = { manuscriptPath: '/o/m.md', bookDir: '/b', outDir: '/o' };
+  const depthOf = (target) =>
+    pandocArgs({ ...base, target }).find((arg) => arg.startsWith('--toc-depth='));
+
+  assert.equal(
+    depthOf('pdf'),
+    '--toc-depth=1',
+    'under the book class 1 is section, 2 is subsection'
+  );
+  assert.equal(depthOf('epub'), '--toc-depth=2');
+  assert.equal(depthOf('html'), '--toc-depth=2');
+  assert.equal(TOC_DEPTH.pdf, 1);
 });

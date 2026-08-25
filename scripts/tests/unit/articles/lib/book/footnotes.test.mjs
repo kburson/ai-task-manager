@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   CitationError,
   convertLine,
+  footnoteText,
   parseBibliography,
 } from '../../../../../articles/lib/book/footnotes.mjs';
 
@@ -19,8 +20,82 @@ test('parseBibliography reads publisher, title, and url', () => {
     publisher: 'DORA',
     title: 'State of AI-assisted Software Development 2025',
     url: 'https://dora.dev/dora-report-2025/',
-    raw: '- DORA. "State of AI-assisted Software Development 2025." https://dora.dev/dora-report-2025/',
+    suffix: '',
+    raw: 'DORA. "State of AI-assisted Software Development 2025." https://dora.dev/dora-report-2025/',
   });
+});
+
+test('every list item becomes an entry, whatever shape the citation takes', () => {
+  const entries = parseBibliography(
+    [
+      '- JetBrains, ["ReSharper 20 Years!"](https://blog.jetbrains.com/x/), JetBrains Blog, 2024-07-23.',
+      '- Wikipedia, ["Visual Studio Code"](https://en.wikipedia.org/wiki/Visual_Studio_Code).',
+      '- Atlassian. "What is backlog refinement?" https://www.atlassian.com/agile/scrum/backlog-refinement',
+      '- Thaler, R. H., & Johnson, E. J. (1990). "Gambling with the House Money." _Management Science_.',
+      '- Glass, R. L. _Facts and Fallacies of Software Engineering_.',
+      '- Beck, Kent. _Extreme Programming Explained: Embrace Change._',
+      '  Addison-Wesley, 1999.',
+    ],
+    '01-x.md'
+  );
+
+  assert.equal(entries.length, 6, 'no shape is dropped and the wrapped entry is one entry');
+
+  assert.equal(entries[0].publisher, 'JetBrains');
+  assert.equal(entries[0].title, 'ReSharper 20 Years!', 'a title ending in ! still parses');
+  assert.equal(entries[0].url, 'https://blog.jetbrains.com/x/');
+  assert.equal(entries[0].suffix, 'JetBrains Blog, 2024-07-23.');
+
+  assert.equal(entries[1].suffix, '', 'a bare sentence period is not trailing context');
+
+  assert.equal(entries[2].title, 'What is backlog refinement?', 'a title ending in ? still parses');
+  assert.equal(entries[2].url, 'https://www.atlassian.com/agile/scrum/backlog-refinement');
+
+  assert.equal(entries[3].publisher, 'Thaler, R. H., & Johnson, E. J. (1990)');
+  assert.equal(entries[3].url, null, 'an author-date entry with no URL is still an entry');
+
+  assert.equal(entries[4].publisher, null, 'an unparseable shape keeps only its raw text');
+  assert.equal(entries[4].raw, 'Glass, R. L. _Facts and Fallacies of Software Engineering_.');
+
+  assert.equal(
+    entries[5].raw,
+    'Beck, Kent. _Extreme Programming Explained: Embrace Change._ Addison-Wesley, 1999.',
+    'a line-wrapped entry is joined onto the item it continues'
+  );
+});
+
+test('a bibliography line that is neither a list item nor a continuation is loud', () => {
+  assert.throws(
+    () =>
+      parseBibliography(
+        ['- DORA. "A Report." https://dora.dev/x/', '', 'No external sources are cited here.'],
+        '12-x.md'
+      ),
+    (error) => error instanceof CitationError && /12-x\.md/.test(error.message)
+  );
+});
+
+test('footnoteText falls back to the raw entry when the shape gave no structure', () => {
+  const [structured, bare] = parseBibliography([
+    '- DORA. "A Report." https://dora.dev/x/',
+    '- Glass, R. L. _Facts and Fallacies_.',
+  ]);
+  assert.equal(footnoteText(structured), 'DORA. "A Report." <https://dora.dev/x/>');
+  assert.equal(footnoteText(bare), 'Glass, R. L. _Facts and Fallacies_.');
+});
+
+test('a footnote uses the bibliography entry even when its title ends in a question mark', () => {
+  const [entry] = parseBibliography([
+    '- Atlassian. "What is backlog refinement?" https://www.atlassian.com/agile/scrum/backlog-refinement',
+  ]);
+  const ctx = makeCtx({ bibByUrl: new Map([[entry.url, entry]]) });
+  convertLine(`See [refinement](${entry.url}).`, ctx);
+  assert.deepEqual(ctx.footnotes, [
+    {
+      id: 'c03-1',
+      text: 'Atlassian. "What is backlog refinement?" <https://www.atlassian.com/agile/scrum/backlog-refinement>',
+    },
+  ]);
 });
 
 const makeCtx = (over = {}) => ({

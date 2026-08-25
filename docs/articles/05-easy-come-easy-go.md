@@ -113,4 +113,8 @@ Close:
 - Willison, S. (April 2026). First-person essay on discarding an AI-built prototype.
 - Beck, K., & Fowler, M. — "cognitive debt" framing, Thoughtworks Deer Valley retreat (February 2026), as reported.
 
+<!-- book:exclude -->
+
 _Placed at series position 05, pending review. Full research and design context in [research-easy-come-easy-go.md](research-easy-come-easy-go.md) and [the design doc](../superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md)._
+
+<!-- book:end -->

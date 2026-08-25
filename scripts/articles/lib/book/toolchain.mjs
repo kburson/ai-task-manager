@@ -11,7 +11,16 @@ import path from 'node:path';
 
 import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 
-export const REQUIRED_BINARIES = ['pandoc', 'xelatex', 'latexmk', 'makeindex'];
+// Pandoc renders every target. LaTeX renders exactly one of them, so a machine
+// that only wants EPUB or HTML should not be told to install BasicTeX.
+export const PANDOC_BINARIES = ['pandoc'];
+export const LATEX_BINARIES = ['xelatex', 'latexmk', 'makeindex'];
+export const REQUIRED_BINARIES = [...PANDOC_BINARIES, ...LATEX_BINARIES];
+
+/** @param {string[]} targets */
+export function requiredBinariesFor(targets) {
+  return targets.includes('pdf') ? REQUIRED_BINARIES : [...PANDOC_BINARIES];
+}
 
 export const PROBE_PACKAGES = [
   'fontspec',
@@ -62,19 +71,31 @@ export async function compileProbe(pkg) {
 }
 
 /**
- * @param {{runBinary?: (name: string) => Promise<boolean>, runProbe?: (pkg: string) => Promise<boolean>}} [injected]
- * @returns {Promise<{ok: boolean, missingBinaries: string[], missingPackages: string[], hint: string|null}>}
+ * @param {{targets?: string[], runBinary?: (name: string) => Promise<boolean>, runProbe?: (pkg: string) => Promise<boolean>}} [injected]
+ * @returns {Promise<{ok: boolean, latexChecked: boolean, missingBinaries: string[], missingPackages: string[], hint: string|null}>}
  */
 export async function doctor({
+  targets = ['pdf'],
   runBinary = (name) => run('command', ['-v', name], { shell: true }),
   runProbe = compileProbe,
 } = {}) {
+  const wantsPdf = targets.includes('pdf');
   const missingBinaries = [];
-  for (const name of REQUIRED_BINARIES) {
+  for (const name of requiredBinariesFor(targets)) {
     if (!(await runBinary(name))) missingBinaries.push(name);
   }
   if (missingBinaries.length > 0) {
-    return { ok: false, missingBinaries, missingPackages: [], hint: null };
+    return {
+      ok: false,
+      latexChecked: wantsPdf,
+      missingBinaries,
+      missingPackages: [],
+      hint: null,
+    };
+  }
+
+  if (!wantsPdf) {
+    return { ok: true, latexChecked: false, missingBinaries, missingPackages: [], hint: null };
   }
 
   const missingPackages = [];
@@ -83,6 +104,7 @@ export async function doctor({
   }
   return {
     ok: missingPackages.length === 0,
+    latexChecked: true,
     missingBinaries,
     missingPackages,
     hint: tlmgrHint(missingPackages),

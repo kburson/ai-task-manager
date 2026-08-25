@@ -64,19 +64,44 @@ export function parseMarkerLine(line, file) {
  * Turn `parseArticle` sections into ordered item streams where markers are
  * first-class rather than lines of text. Fenced code is left alone; a marker
  * inside a fence is prose about markers, not a marker.
+ *
+ * Every other HTML comment is dropped here, once marker scanning has had its
+ * look. The book path asks `parseArticle` to keep comments so the `book:`
+ * markers survive, but that also preserves `markdownlint-disable` pragmas and
+ * the author's private editorial notes — and pandoc passes raw HTML straight
+ * through into the distributed `book.html`. Nothing that is not a marker has
+ * any business in the manuscript.
  */
 export function scanSections(sections, file) {
   return sections.map((section) => {
     const items = [];
     let inFence = false;
+    let inComment = false;
     for (const text of section.lines) {
       if (FENCE_RE.test(text)) {
         inFence = !inFence;
         items.push({ kind: 'text', text });
         continue;
       }
-      const marker = inFence ? null : parseMarkerLine(text, file);
-      items.push(marker ? { kind: 'marker', ...marker } : { kind: 'text', text });
+      if (inFence) {
+        items.push({ kind: 'text', text });
+        continue;
+      }
+      if (inComment) {
+        if (text.includes('-->')) inComment = false;
+        continue;
+      }
+      const marker = parseMarkerLine(text, file);
+      if (marker) {
+        items.push({ kind: 'marker', ...marker });
+        continue;
+      }
+      const trimmed = text.trim();
+      if (trimmed.startsWith('<!--')) {
+        if (!trimmed.includes('-->')) inComment = true;
+        continue;
+      }
+      items.push({ kind: 'text', text });
     }
     return { heading: section.heading, items };
   });

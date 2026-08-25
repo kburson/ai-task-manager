@@ -14,7 +14,20 @@ The composer drops the series scaffolding — header image, `_Part N of a series
 caption, `## Series Link`, `## Series Roadmap`, `## LinkedIn Article Shape` —
 and hoists each `## Bibliography` into one deduped Sources appendix. Inline
 citations become footnotes; links to sibling articles become `(Chapter N)`
-cross-references.
+cross-references. Every HTML comment that is not a `book:` marker is dropped
+too, so `markdownlint-disable` pragmas and editorial notes never reach the
+rendered book.
+
+Every list item under `## Bibliography` becomes a source, whatever citation
+shape it uses, and a line-wrapped entry is joined onto the item it continues.
+A line under that heading that is neither a list item nor a continuation is a
+loud error — wrap it in `book:exclude` if it is a note rather than a citation.
+
+Chapter numbering differs by target on purpose. The PDF wraps its front matter
+in `\frontmatter` and switches to `\mainmatter` before chapter one, so LaTeX
+numbers the chapters and leaves the introduction unnumbered. EPUB and HTML have
+no such mechanism, so the composer writes the number into the heading text
+(`# Chapter 3. ...`) for those targets only.
 
 ## Markers
 
@@ -26,11 +39,11 @@ before it does anything else, so markers can never reach a published article.
 | `<!-- book:part title="How We Got Here" -->`    | Opens a Part before this chapter                         |
 | `<!-- book:chapter title="..." -->`             | Chapter title override; default is the article H1        |
 | `<!-- book:merge-into-previous -->`             | Fold this article into the previous chapter as a section |
-| `<!-- book:demote by=1 -->`                     | Shift the remaining heading levels down                  |
-| `<!-- book:exclude -->` ... `<!-- book:end -->` | Drop a span                                              |
+| `<!-- book:demote by=1 -->`                     | Shift heading levels down for the rest of the article    |
+| `<!-- book:exclude -->` ... `<!-- book:end -->` | Drop a span; it may cross `##` boundaries                |
 | `<!-- book:include path=fragments/name.md -->`  | Splice in book-only prose                                |
 | `<!-- book:pagebreak -->`                       | Force a page break                                       |
-| `<!-- book:index term="evidence gate" -->`      | Manual index anchor                                      |
+| `<!-- book:index term="evidence gate" -->`      | Manual index entry, and an anchor for EPUB and HTML      |
 
 `part` and `chapter` must sit in the article preamble, before the first `##`.
 
@@ -50,6 +63,9 @@ Everything the articles do not contain lives in `assets/book/`:
 
 ## Toolchain
 
+Pandoc renders every target. LaTeX renders only the PDF, so the second half of
+this list is needed only if you want a PDF.
+
 ```bash
 brew install pandoc
 brew install --cask basictex
@@ -58,9 +74,17 @@ sudo tlmgr install latexmk
 npm run doctor:book
 ```
 
-`doctor:book` compiles a one-line probe per LaTeX package and prints a single
-`sudo tlmgr install ...` line naming whatever is missing. Run it until it is
+`doctor:book` always checks pandoc. It checks the LaTeX binaries and compiles a
+one-line probe per LaTeX package only when the pdf target is in play, printing a
+single `tlmgr install ...` line naming whatever is missing. Run it until it is
 quiet.
+
+On a machine that only wants EPUB or HTML, name those targets and the doctor
+will not mention LaTeX at all:
+
+```bash
+npm run doctor:book -- --target epub --target html
+```
 
 ## Building
 

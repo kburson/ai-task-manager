@@ -55,3 +55,82 @@ test('applyBookStrip drops a section that becomes empty', () => {
     [null]
   );
 });
+
+test('an exclude span that crosses a section boundary still excludes', () => {
+  const scanned = [
+    { heading: null, items: [{ kind: 'text', text: 'Keep me.' }] },
+    {
+      heading: 'Doomed',
+      items: [
+        { kind: 'marker', verb: 'exclude', attrs: {} },
+        { kind: 'text', text: 'Drop me.' },
+      ],
+    },
+    {
+      heading: 'Also Doomed',
+      items: [
+        { kind: 'text', text: 'Drop me too.' },
+        { kind: 'marker', verb: 'end', attrs: {} },
+        { kind: 'text', text: 'Keep me again.' },
+      ],
+    },
+    {
+      heading: 'Later',
+      items: [
+        { kind: 'marker', verb: 'exclude', attrs: {} },
+        { kind: 'text', text: 'Also dropped.' },
+        { kind: 'marker', verb: 'end', attrs: {} },
+        { kind: 'text', text: 'Still here.' },
+      ],
+    },
+  ];
+
+  const { sections } = applyBookStrip(scanned);
+  const text = JSON.stringify(sections);
+
+  assert.equal(text.includes('Drop me.'), false, 'the span drops prose in its opening section');
+  assert.equal(text.includes('Drop me too.'), false, 'and keeps dropping in the next section');
+  assert.equal(
+    sections.some((s) => s.heading === 'Doomed'),
+    false,
+    'a section wholly inside the span loses its heading too'
+  );
+  assert.ok(text.includes('Keep me again.'), 'prose after book:end returns');
+  assert.equal(text.includes('Also dropped.'), false, 'a later span is not neutered by the first');
+  assert.ok(text.includes('Still here.'));
+});
+
+test('exclude spans are honoured inside the bibliography section', () => {
+  const scanned = [
+    {
+      heading: 'Bibliography',
+      items: [
+        { kind: 'marker', verb: 'exclude', attrs: {} },
+        { kind: 'text', text: 'No external sources are cited in this piece.' },
+        { kind: 'marker', verb: 'end', attrs: {} },
+        { kind: 'text', text: '- DORA. "A Report." https://dora.dev/x/' },
+      ],
+    },
+  ];
+  const { bibliographyLines } = applyBookStrip(scanned);
+  assert.deepEqual(bibliographyLines, ['- DORA. "A Report." https://dora.dev/x/']);
+});
+
+test('bibliography blank lines survive, so wrapped entries stay distinguishable', () => {
+  const scanned = [
+    {
+      heading: 'Bibliography',
+      items: [
+        { kind: 'text', text: '' },
+        { kind: 'text', text: '- Beck, Kent. _Extreme Programming Explained._' },
+        { kind: 'text', text: '  Addison-Wesley, 1999.' },
+      ],
+    },
+  ];
+  const { bibliographyLines } = applyBookStrip(scanned);
+  assert.deepEqual(bibliographyLines, [
+    '',
+    '- Beck, Kent. _Extreme Programming Explained._',
+    '  Addison-Wesley, 1999.',
+  ]);
+});

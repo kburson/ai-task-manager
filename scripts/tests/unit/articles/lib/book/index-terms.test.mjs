@@ -89,3 +89,33 @@ test('renderLinkedIndex lists terms alphabetically with chapter and section', ()
   assert.equal(lines[0], '- **Agent fleet** — Chapter 1 (Intro)');
   assert.equal(lines[1], '- **Evidence gate** — Chapter 3 (Body)');
 });
+
+test('the anchor target records the anchor id it emitted, and the index links it', () => {
+  const matcher = buildMatcher([{ term: 'Evidence gate', aliases: [] }]);
+  const hits = new Map();
+  const out = annotateLines(['Prose about an evidence gate.'], matcher, {
+    target: 'anchor',
+    location: { chapter: 3, section: 'A Section' },
+    hits,
+    seen: new Set(),
+  });
+
+  const id = out[0].match(/id="([^"]+)"/)[1];
+  assert.equal(hits.get('Evidence gate')[0].anchor, id, 'the hit carries the anchor it emitted');
+  assert.deepEqual(renderLinkedIndex(hits), [
+    `- **Evidence gate** — [Chapter 3 (A Section)](#${id})`,
+  ]);
+});
+
+test('the latex target records no anchor, so the index stays plain text', () => {
+  const matcher = buildMatcher([{ term: 'Evidence gate', aliases: [] }]);
+  const hits = new Map();
+  annotateLines(['An evidence gate.'], matcher, {
+    target: 'pdf',
+    location: { chapter: 1, section: 'S' },
+    hits,
+    seen: new Set(),
+  });
+  assert.equal(hits.get('Evidence gate')[0].anchor, undefined);
+  assert.deepEqual(renderLinkedIndex(hits), ['- **Evidence gate** — Chapter 1 (S)']);
+});
