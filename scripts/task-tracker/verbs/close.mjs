@@ -34,7 +34,10 @@ import {
 } from '../lib/full-auto-merge-execute.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
-import { parseDeliveryComment, projectDeliveryRecords } from '../lib/delivery-records.mjs';
+import {
+  parseDeliveryCommentForPullRequest,
+  projectDeliveryRecords,
+} from '../lib/delivery-records.mjs';
 import {
   requireDeliveryReceipt,
   resolveAcceptedDeliveryHead,
@@ -166,7 +169,9 @@ export async function loadCloseDeliveryGateInput({
       });
       const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
       records = projectDeliveryRecords(
-        comments.map((comment) => parseDeliveryComment(comment, context)).filter(Boolean)
+        comments
+          .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
+          .filter(Boolean)
       );
     }
   }
