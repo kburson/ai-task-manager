@@ -28,6 +28,7 @@ import {
   buildDeliveryIntent,
   buildDeliveryReceipt,
   parseDeliveryComment,
+  parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
@@ -157,10 +158,10 @@ function validateLineageResult(lineage) {
   return lineage;
 }
 
-function parsedDeliveryRecords(comments, context) {
+export function parsedDeliveryRecords(comments, context) {
   if (!Array.isArray(comments)) throw deliverError('comments');
   return comments
-    .map((comment) => parseDeliveryComment(comment, context))
+    .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
     .filter((record) => record !== null);
 }
 

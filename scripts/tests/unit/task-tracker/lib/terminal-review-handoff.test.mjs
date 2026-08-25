@@ -149,6 +149,57 @@ test('locked append reduces the #1077 handoff to canonical terminal rows', () =>
   );
 });
 
+// @story #1406
+test('issue:wrap closes a review:passed handoff without synthesizing resumed', () => {
+  const baseTs = Date.now();
+  let body = appendRow(
+    buildInitialComment(),
+    buildRow({
+      ts: new Date(baseTs).toISOString(),
+      event: 'pause:other',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 103183,
+      description: 'post-delivery reconciliation',
+    })
+  );
+
+  body = appendRow(
+    body,
+    buildRow({
+      ts: new Date(baseTs + 1).toISOString(),
+      event: 'review:passed',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 103183,
+      description: 'agent review passed',
+    })
+  );
+
+  body = appendRow(
+    body,
+    buildRow({
+      ts: new Date(baseTs + 2).toISOString(),
+      event: 'issue:wrap',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 103183,
+      description: 'wrap-up — finalizing for close',
+    })
+  );
+
+  const events = body
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((row) => row?.event && row.event !== 'event')
+    .map((row) => row.event);
+
+  assert.deepEqual(events, ['pause:other', 'review:passed', 'issue:wrap']);
+});
+
 // @story #1134
 test('locked append treats the first issue:closed row as an irreversible terminal seal', () => {
   const events = [
