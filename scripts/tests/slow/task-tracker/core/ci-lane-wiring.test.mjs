@@ -80,6 +80,22 @@ test('#864: --lane all survives ONLY as the internal coverage union', () => {
   );
 });
 
+test('#1413: fast CI runs the unit and integration lanes explicitly', () => {
+  const workflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
+  const [fastBlock] = workflow.split(/^ {2}slow:\s*$/m);
+  assert.match(fastBlock, /run:\s*npm run test:unit\b/, 'fast CI must run the unit lane');
+  assert.match(
+    fastBlock,
+    /run:\s*npm run test:integration\b/,
+    'fast CI must run the CI-only integration lane before delivery'
+  );
+  assert.doesNotMatch(
+    fastBlock,
+    /name:\s*Unit \+ integration tests[\s\S]*?run:\s*npm test\b/,
+    'CI must not label unit-only npm test as unit + integration coverage'
+  );
+});
+
 test('#1388: hosted Mermaid sandbox configuration is confined to the slow CI job', () => {
   const workflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
   const [fastBlock, slowBlock] = workflow.split(/^ {2}slow:\s*$/m);

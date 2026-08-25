@@ -55,8 +55,9 @@ laneManifest();
 
 ## Relationship to the runner's run-lanes
 
-The runner's `fast | slow | all` selection is a **view** over this taxonomy, not a
-separate scheme: `fast = unit ∪ integration`, `slow = slow`, `all = every lane`.
+The runner's `fast | integration | slow | all` selection is a **view** over this
+taxonomy, not a separate scheme: `fast = unit`, `integration` is the explicit
+CI-only system-touching lane, `slow = slow`, and `all = every lane`.
 The runner (migrated in #874) imports `laneManifest`/`laneOf` rather than
 re-deriving lanes from a directory list, so discovery and lane assignment share
 one source of truth and cannot drift.

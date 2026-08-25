@@ -12,7 +12,7 @@
  *
  * The signals are deliberately about *spawning and real repositories*, not about
  * imports. A unit test may import anything; what it may not do is create a git
- * repository, shell out to `git`, or launch the product CLI. Those are the three
+ * repository, shell out to `git`, or launch a Node subprocess. Those are the three
  * mechanisms measured as putting 1976 `git` spawns and ~900s of aggregate `git`
  * time into a single unit-lane run, at which saturation unrelated tests trip the
  * 10s `GIT_TIMEOUT_MS` and the lane stops being deterministic.
@@ -31,14 +31,14 @@ const SANDBOX_RE = /\bmkdtempProjectIsolated\b/;
 const GIT_SPAWN_RE =
   /\b(?:execFile|execFileSync|spawn|spawnSync|exec|execSync)\s*\(\s*['"`]git['"`]/;
 
-/** Launches the product CLI as a child process. */
-const CLI_SPAWN_RE =
+/** Launches any Node child process, including the product CLI and test helpers. */
+const NODE_SPAWN_RE =
   /\b(?:execFile|execFileSync|spawn|spawnSync)\s*\(\s*(?:['"`]node['"`]|process\.execPath)/;
 
 const SIGNALS = Object.freeze([
   ['sandbox', SANDBOX_RE],
   ['git-spawn', GIT_SPAWN_RE],
-  ['cli-spawn', CLI_SPAWN_RE],
+  ['node-spawn', NODE_SPAWN_RE],
 ]);
 
 /**

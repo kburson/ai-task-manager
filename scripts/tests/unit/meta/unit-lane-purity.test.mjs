@@ -70,9 +70,11 @@ test('the classifier catches a direct git spawn in each spawn form', () => {
   }
 });
 
-test('the classifier catches a product-CLI spawn by name or by execPath', () => {
-  assert.deepEqual(classifySystemReach("execFileSync('node', ['scripts/x.mjs'])"), ['cli-spawn']);
-  assert.deepEqual(classifySystemReach('spawnSync(process.execPath, [cli])'), ['cli-spawn']);
+test('the classifier catches any Node subprocess by name or by execPath', () => {
+  assert.deepEqual(classifySystemReach("execFileSync('node', ['unrelated-tool.mjs'])"), [
+    'node-spawn',
+  ]);
+  assert.deepEqual(classifySystemReach('spawnSync(process.execPath, [cli])'), ['node-spawn']);
 });
 
 test('the classifier reports every signal a file trips, in stable order', () => {
@@ -81,7 +83,7 @@ test('the classifier reports every signal a file trips, in stable order', () => 
     "execFileSync('git', ['init']);",
     "spawnSync('node', ['scripts/x.mjs']);",
   ].join('\n');
-  assert.deepEqual(classifySystemReach(source), ['sandbox', 'git-spawn', 'cli-spawn']);
+  assert.deepEqual(classifySystemReach(source), ['sandbox', 'git-spawn', 'node-spawn']);
   assert.deepEqual(classifySystemReach(source), [...SYSTEM_REACH_SIGNALS]);
 });
 

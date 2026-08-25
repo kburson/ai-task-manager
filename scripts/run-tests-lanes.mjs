@@ -8,7 +8,7 @@
  * is no independent `readdirSync` of hardcoded directories left in the runner.
  *
  * The runner's `fast | slow | all` **run**-lanes are a view over the taxonomy:
- *   fast = unit ∪ integration   slow = slow   all = every lane
+ *   fast = unit   integration = CI-only   slow = slow   all = every lane
  * (see docs/guides/test-lane-taxonomy.md). Because the union of the run-lanes is
  * exactly `discoverTestFiles()`, {@link discoveryDivergence} against the on-disk
  * ground truth is empty by construction — and a future edit that re-introduced a

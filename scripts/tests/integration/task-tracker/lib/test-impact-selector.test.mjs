@@ -1,6 +1,6 @@
 // @story #1089 #1263
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
@@ -268,6 +268,19 @@ describe('manifest fail-closed validation', () => {
 });
 
 describe('checked-in corpus membership selection', () => {
+  test('#1413: every literal checked-in manifest test path exists', () => {
+    const missing = CHECKED_IN_MANIFEST.rules
+      .flatMap((rule) => rule.tests ?? [])
+      .filter((testPath) => !/[?*[\]{}]/.test(testPath))
+      .filter((testPath) => !existsSync(path.join(ROOT, testPath)));
+
+    assert.deepEqual(
+      missing,
+      [],
+      `literal manifest test paths must not silently go stale:\n${missing.join('\n')}`
+    );
+  });
+
   test('a test content edit selects itself and the cheap membership guard', (t) => {
     const projectRoot = corpusSelectionProject(t);
     const changed = 'scripts/tests/unit/lib/live.test.mjs';
