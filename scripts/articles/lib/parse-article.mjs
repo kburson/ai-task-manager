@@ -19,10 +19,12 @@ function trimBlankEdges(lines) {
 
 /**
  * @param {string} source raw Markdown of one article file
+ * @param {{keepComments?: boolean}} [options] the book composer needs the
+ *   `book:` marker comments preserved; the LinkedIn publisher never does.
  * @returns {{title: string, bannerPath: string|null, sections: Array<{heading: string|null, lines: string[]}>}}
  */
-export function parseArticle(source) {
-  const lines = source.replace(HTML_COMMENT_RE, '').split('\n');
+export function parseArticle(source, { keepComments = false } = {}) {
+  const lines = (keepComments ? source : source.replace(HTML_COMMENT_RE, '')).split('\n');
   const sections = [{ heading: null, lines: [] }];
   let title = null;
   let bannerPath = null;
