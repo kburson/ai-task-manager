@@ -756,6 +756,28 @@ export async function verbReview(ctx) {
     process.exit(1);
   }
 
+  // Test keeps the issue bound but closes its timing segment. Review is an
+  // automated state action, so reopen that exact binding before preflight and
+  // keep it open through Full-Auto approval/delivery. This is entry
+  // normalization, not a resumed lifecycle event; the terminal human handoff
+  // below remains the only Review-owned pause.
+  if (s.active === target && s.entryStartTs == null) {
+    saveState(
+      {
+        ...s,
+        entryStartTs: nowIso(),
+        wordsAtEntryStart: s.lastWordMarker ?? 0,
+        lastActive: target,
+      },
+      statePath
+    );
+    try {
+      setTaskStatus(projectDir, target, 'active');
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
+  }
+
   if (!SKIP_NETWORK) {
     const issueNum = String(target).replace(/^#/, '');
     // #622 — `ctx.runReviewPreflight` overrides the dynamic import for offline

@@ -109,6 +109,29 @@ test('s.active === target: C6 no longer calls flushActiveToGH (deferral seam rem
   }
 });
 
+test('a paused binding opens a timing segment before automated Review work', async () => {
+  const state = {
+    active: '#999',
+    entryStartTs: null,
+    wordsAtEntryStart: 0,
+    lastActive: '#999',
+    lastWordMarker: 42,
+    discoverBucket: null,
+  };
+  const { statePath, dir } = makeTmpStatePath(state);
+  try {
+    const { ctx } = makeCtx({ statePath, rest: ['#999'] });
+
+    await verbReview(ctx);
+
+    const after = JSON.parse(readFileSync(statePath, 'utf8'));
+    assert.equal(typeof after.entryStartTs, 'string');
+    assert.equal(after.wordsAtEntryStart, state.lastWordMarker);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('review handoff policy pauses only when human approval is required', () => {
   assert.equal(
     reviewModule.reviewNeedsHumanApproval?.({ cfg: {}, env: {} }),

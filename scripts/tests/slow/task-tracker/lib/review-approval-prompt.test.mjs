@@ -363,17 +363,16 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
     const humanState = JSON.parse(readFileSync(liveStatePath, 'utf8'));
     assert.equal(humanState.entryStartTs, null, 'human approval wait pauses the timer');
 
-    const fullAutoEntry = '2026-05-10T01:00:00.000Z';
     humanState.active = '#101';
     humanState.lastActive = '#101';
-    humanState.entryStartTs = fullAutoEntry;
+    humanState.entryStartTs = null;
     humanState.wordsAtEntryStart = 0;
     writeFileSync(liveStatePath, JSON.stringify(humanState));
     const fullAuto = await run(sandbox, binDir, ['review', '#101'], { TT_FULL_AUTO: '1' });
     assert.equal(fullAuto.code, 0, `expected Full-Auto exit 0; stderr:\n${fullAuto.stderr}`);
     assert.doesNotMatch(fullAuto.stdout, /PROMPT_REQUIRED: review-approval/);
     const fullAutoState = JSON.parse(readFileSync(liveStatePath, 'utf8'));
-    assert.equal(fullAutoState.entryStartTs, fullAutoEntry);
+    assert.equal(typeof fullAutoState.entryStartTs, 'string');
     console.log('test 1 passed: verbReview emits marker on success');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
