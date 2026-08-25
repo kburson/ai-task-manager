@@ -1140,3 +1140,21 @@ session through an immutable claim and handoff reference; ordinary repository
 guards must retain their behavior; terminal evidence must be complete and
 idempotent; and routing or continuation by the human must never be mislabeled as
 human semantic approval.
+
+## Post-Merge Delivery Attribution Amendment
+
+The approved #1406 close-path repair remains part of this issue and creates no
+successor defect. When recovering delivery for an already-merged pull request,
+the delivery preflight may omit a source commit subject with no issue token only
+when the immutable pull-request commit record supplies its exact SHA and the
+repository commit object at that SHA proves both the same title and at least two
+parents. This is a structural merge-commit exception, not a subject-prefix
+heuristic.
+
+All other attribution remains fail closed. An unattributed one-parent commit, an
+unreadable or malformed commit object, an object-title mismatch, or an
+attributed subject with malformed tokens must still fail delivery attribution.
+Open-pull-request delivery retains its existing strict subject validation. The
+top-level `#1406` token must still be derived from the remaining attributed
+source commits, and the repair must preserve the existing external-recovery
+intent and receipt verification.
