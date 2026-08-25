@@ -3996,7 +3996,9 @@
     "measuredFiles": 1,
     "wallMs": 8177,
     "inProcMs": 0,
-    "files": ["scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs"]
+    "files": [
+      "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs"
+    ]
   },
   {
     "subject": "scripts/task-tracker/lib/timing-ladder.mjs",
@@ -4167,7 +4169,9 @@
     "measuredFiles": 1,
     "wallMs": 629,
     "inProcMs": 7,
-    "files": ["scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs"]
+    "files": [
+      "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs"
+    ]
   },
   {
     "subject": "scripts/maintenance/migrate-markers-corpus.mjs",

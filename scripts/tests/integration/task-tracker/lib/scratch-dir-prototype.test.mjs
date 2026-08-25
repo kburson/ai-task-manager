@@ -56,8 +56,8 @@ test('the sandbox carries the package.json and .gitignore the contract promises'
 });
 
 test('two sandboxes are independent repositories, not two views of one', () => {
-  const a = mkdtempProjectIsolated('proto-indep-a-');
-  const b = mkdtempProjectIsolated('proto-indep-b-');
+  const a = mkdtempProjectIsolated('proto-independent-a-');
+  const b = mkdtempProjectIsolated('proto-independent-b-');
 
   assert.notEqual(realpathSync(a), realpathSync(b));
   assert.notEqual(

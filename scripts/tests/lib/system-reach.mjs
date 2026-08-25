@@ -28,10 +28,12 @@
 const SANDBOX_RE = /\bmkdtempProjectIsolated\b/;
 
 /** Shells out to `git` directly — `execFileSync('git', …)`, `spawn('git', …)`. */
-const GIT_SPAWN_RE = /\b(?:execFile|execFileSync|spawn|spawnSync|exec|execSync)\s*\(\s*['"`]git['"`]/;
+const GIT_SPAWN_RE =
+  /\b(?:execFile|execFileSync|spawn|spawnSync|exec|execSync)\s*\(\s*['"`]git['"`]/;
 
 /** Launches the product CLI as a child process. */
-const CLI_SPAWN_RE = /\b(?:execFile|execFileSync|spawn|spawnSync)\s*\(\s*(?:['"`]node['"`]|process\.execPath)/;
+const CLI_SPAWN_RE =
+  /\b(?:execFile|execFileSync|spawn|spawnSync)\s*\(\s*(?:['"`]node['"`]|process\.execPath)/;
 
 const SIGNALS = Object.freeze([
   ['sandbox', SANDBOX_RE],

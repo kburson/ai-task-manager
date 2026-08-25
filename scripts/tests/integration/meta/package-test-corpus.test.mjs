@@ -115,8 +115,8 @@ test('pre-move corpus manifest freezes the expected schema and lane census', () 
   assert.deepEqual(manifest.counts, { all: 915, unit: 837, integration: 27, slow: 51 });
   assert.equal(manifest.tests.length, manifest.counts.all);
   assert.deepEqual(manifest.laneCorrections[0], EXPECTED_LANE_CORRECTION);
-  const issueCorrections = manifest.laneCorrections.filter(
-    ({ provenance }) => ISSUE_1413_CORRECTION_COMMITS.has(provenance.correctionCommit)
+  const issueCorrections = manifest.laneCorrections.filter(({ provenance }) =>
+    ISSUE_1413_CORRECTION_COMMITS.has(provenance.correctionCommit)
   );
   assert.equal(issueCorrections.length, ISSUE_1413_CORRECTION_COUNT);
   assert.equal(manifest.laneCorrections.length, ISSUE_1413_CORRECTION_COUNT + 1);
@@ -199,10 +199,7 @@ test('every intentional lane correction retains its exact post-migration Git ren
       { cwd: PROJECT_ROOT, encoding: 'utf8' }
     ).trim();
 
-    assert.equal(
-      output,
-      `${renameStatus}\t${correction.migrationPath}\t${correction.finalPath}`
-    );
+    assert.equal(output, `${renameStatus}\t${correction.migrationPath}\t${correction.finalPath}`);
   }
 });
 

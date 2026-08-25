@@ -56,10 +56,7 @@ test('no unit-lane test touches a live system', () => {
 // classifySystemReach return [] for everything would leave the case above green.
 
 test('the classifier catches a git sandbox', () => {
-  assert.deepEqual(
-    classifySystemReach('const dir = mkdtempProjectIsolated("x-");'),
-    ['sandbox']
-  );
+  assert.deepEqual(classifySystemReach('const dir = mkdtempProjectIsolated("x-");'), ['sandbox']);
 });
 
 test('the classifier catches a direct git spawn in each spawn form', () => {
@@ -123,10 +120,7 @@ test('the closure follows imported test modules because importing them executes 
       'scripts/tests/unit/meta/aggregate.test.mjs',
       "await import('../../integration/system.test.mjs');",
     ],
-    [
-      'scripts/tests/integration/system.test.mjs',
-      "execFileSync('git', ['status']);",
-    ],
+    ['scripts/tests/integration/system.test.mjs', "execFileSync('git', ['status']);"],
   ]);
   const deps = {
     root,
