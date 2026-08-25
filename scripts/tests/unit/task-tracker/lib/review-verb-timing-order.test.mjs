@@ -18,7 +18,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -27,6 +27,7 @@ import {
   emitReviewGateFailureTimeline,
   emitReviewGatePassTimeline,
 } from '../../../../task-tracker/verbs/review.mjs';
+import * as reviewModule from '../../../../task-tracker/verbs/review.mjs';
 
 function makeTmpStatePath(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-463-'));
@@ -97,9 +98,33 @@ test('s.active === target: C6 no longer calls flushActiveToGH (deferral seam rem
       'C6 retired the bare `review` row, so flushActiveToGH must not be called by the review verb'
     );
     assert.equal(calls.postTiming.length, 0, 'no timing row is posted on the pre-network path');
+    const after = JSON.parse(readFileSync(statePath, 'utf8'));
+    assert.equal(
+      after.entryStartTs,
+      state.entryStartTs,
+      'agent Review work must remain timed until a successful human handoff'
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('review handoff policy pauses only when human approval is required', () => {
+  assert.equal(
+    reviewModule.reviewNeedsHumanApproval?.({ cfg: {}, env: {} }),
+    true,
+    'interactive Review waits for a human'
+  );
+  assert.equal(
+    reviewModule.reviewNeedsHumanApproval?.({ cfg: {}, env: { TT_FULL_AUTO: '1' } }),
+    false,
+    'explicit Full-Auto Review continues without a human handoff'
+  );
+  assert.equal(
+    reviewModule.reviewNeedsHumanApproval?.({ cfg: { gateReviewToDone: false }, env: {} }),
+    false,
+    'a disabled human gate continues without a human handoff'
+  );
 });
 
 test('s.active === target: safePostTiming NOT called before SKIP_NETWORK block', async () => {
