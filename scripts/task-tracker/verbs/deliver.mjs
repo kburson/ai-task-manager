@@ -158,7 +158,7 @@ function validateLineageResult(lineage) {
   return lineage;
 }
 
-function parsedDeliveryRecords(comments, context) {
+export function parsedDeliveryRecords(comments, context) {
   if (!Array.isArray(comments)) throw deliverError('comments');
   return comments
     .map((comment) => parseDeliveryCommentForPullRequest(comment, context))

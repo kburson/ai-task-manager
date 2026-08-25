@@ -384,62 +384,6 @@ test('lost POST response reconciles the server-visible dedupe key without postin
   assert.equal(result.intent.intentId, INTENT_IDS[0]);
 });
 
-// @story #1406
-test('a completed prior PR transaction does not contaminate the current PR delivery', async () => {
-  const previousHead = 'd'.repeat(40);
-  const previousIntent = buildDeliveryIntent({
-    intentId: INTENT_IDS[2],
-    supersedesIntentId: null,
-    issueNumber: 939,
-    repository: 'kburson/ai-task-manager',
-    prNumber: 1399,
-    baseRef: 'trunk',
-    headRef: 'codex/939-prior-repair',
-    expectedHeadSha: previousHead,
-    mergeMethod: 'squash',
-    attributionTokens: ['#939'],
-    commitTitle: '[#939] Prior governed delivery',
-    commitMessage: `PR #1399\nSource: ${previousHead}\n\nAttribution: [#939]`,
-    provider: 'codex',
-    sessionId: 'session-previous',
-    clientCreatedAt: '2026-08-22T12:00:00.000Z',
-  });
-  const previousReceipt = buildDeliveryReceipt({
-    intentId: previousIntent.intentId,
-    issueNumber: 939,
-    prNumber: 1399,
-    expectedHeadSha: previousHead,
-    mergeCommitSha: 'e'.repeat(40),
-    baseRef: 'trunk',
-    mergeMethod: 'squash',
-    verifiedTrunkRef: 'origin/trunk',
-    provider: 'codex',
-    sessionId: 'session-previous',
-    verifiedAt: '2026-08-22T12:01:00.000Z',
-  });
-  const harness = makeHarness({
-    comments: [
-      {
-        id: 'comment-prior-intent',
-        createdAt: '2026-08-22T12:00:01.000Z',
-        body: renderDeliveryIntentComment(previousIntent),
-      },
-      {
-        id: 'comment-prior-receipt',
-        createdAt: '2026-08-22T12:01:01.000Z',
-        body: renderDeliveryReceiptComment(previousReceipt),
-      },
-    ],
-  });
-
-  const result = await deliver(harness);
-
-  assert.equal(result.status, 'action-required');
-  assert.equal(result.intent.prNumber, 1400);
-  assert.equal(harness.calls.createIssueComment, 1);
-  assert.equal(harness.data.comments.length, 3);
-});
-
 test('same dedupe key with divergent authorized bytes fails closed', async () => {
   const divergent = buildDeliveryIntent({
     intentId: INTENT_IDS[0],

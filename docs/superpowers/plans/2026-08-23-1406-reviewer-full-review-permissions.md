@@ -2024,6 +2024,10 @@ successor defect and keeps malformed or cross-issue records fail closed.
 - Modify: `scripts/task-tracker/verbs/deliver.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
+- Create:
+  `scripts/tests/unit/task-tracker/verbs/deliver-multiple-pr-records.test.mjs`
+- Create:
+  `scripts/tests/fixtures/test-corpus-post-snapshot/unit/task-tracker/verbs/deliver-multiple-pr-records.test.mjs.json`
 
 - [ ] **Step 1: Reproduce the historical-transaction mismatch**
 
