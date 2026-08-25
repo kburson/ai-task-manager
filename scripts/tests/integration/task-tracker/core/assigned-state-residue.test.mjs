@@ -8,7 +8,7 @@ import { isGeneratedResearchArtifact } from '../../../lib/residue-audit-scope.mj
 
 const LEGACY_TOKEN = /on[- _]?deck/i;
 const SPLIT_LEGACY_TOKEN = /on[ \t]*\r?\n[ \t]*(?:(?:\/\/|#|\*)[ \t]*)?deck/gi;
-const SELF = 'scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs';
+const SELF = 'scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs';
 
 // Exact path + matching-line counts are intentional compatibility surface.
 // Any new file, removed compatibility seam, or extra occurrence in an allowed
@@ -128,7 +128,7 @@ const ALLOWLIST = new Map(
       'legacy config rewrite fixtures',
     ],
     'scripts/tests/unit/task-tracker/lib/config.test.mjs': [6, 'legacy config fallback fixtures'],
-    'scripts/tests/unit/task-tracker/lib/coverage-source-edit-gate.test.mjs': [
+    'scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs': [
       4,
       'legacy cache display and config fixtures',
     ],
@@ -152,7 +152,7 @@ const ALLOWLIST = new Map(
       4,
       'historical move sentinel fixtures',
     ],
-    'scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs': [
+    'scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs': [
       3,
       'historical volatile-cache fixtures',
     ],

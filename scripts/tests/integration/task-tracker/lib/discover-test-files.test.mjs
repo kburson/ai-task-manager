@@ -71,7 +71,7 @@ test('discoverTestFiles returns sorted, repo-relative POSIX paths', () => {
 
 test('test discovery keeps lane fixtures visible and has no hidden support-tree tests', () => {
   const files = discoverTestFiles({ projectRoot: PROJECT_ROOT });
-  assert.ok(files.includes('scripts/tests/unit/fixtures/feature-fixtures.test.mjs'));
+  assert.ok(files.includes('scripts/tests/integration/fixtures/feature-fixtures.test.mjs'));
   // The live support tree contains data/helpers only. If a *.test.mjs appears
   // there later, TEST_FILE_EXCLUDES keeps it visible so layout fails closed.
   assert.equal(

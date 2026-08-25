@@ -19,7 +19,7 @@
       "graphBytes": 2815243
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/chore-mode-verb.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
       "lane": "unit",
       "graphModules": 313,
       "graphBytes": 2811429
@@ -31,7 +31,7 @@
       "graphBytes": 2812389
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
       "lane": "unit",
       "graphModules": 313,
       "graphBytes": 2810064
@@ -55,7 +55,7 @@
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/self-bind-resume.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
@@ -67,31 +67,31 @@
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/absolute-word-markers.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/bound-worktree-state.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/fleet-registry-gc.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/interruption-word-markers.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
@@ -103,31 +103,31 @@
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/resume-fleet-refresh.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/resume-seed.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/verb-start-resume-stop.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
@@ -139,7 +139,7 @@
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/verbs/bind.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
@@ -181,7 +181,7 @@
       "graphBytes": 2808923
     },
     {
-      "file": "scripts/tests/unit/task-tracker/verbs/shelve.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/verbs/shelve.test.mjs",
       "lane": "unit",
       "graphModules": 312,
       "graphBytes": 2808923
@@ -301,7 +301,7 @@
       "graphBytes": 1507700
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/runtime-capabilities.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
       "lane": "unit",
       "graphModules": 163,
       "graphBytes": 1380321
@@ -505,7 +505,7 @@
       "graphBytes": 1103817
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
       "lane": "unit",
       "graphModules": 132,
       "graphBytes": 1055558
@@ -811,13 +811,13 @@
       "graphBytes": 1006048
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
       "lane": "unit",
       "graphModules": 108,
       "graphBytes": 991982
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
       "lane": "unit",
       "graphModules": 108,
       "graphBytes": 1006048
@@ -931,7 +931,7 @@
       "graphBytes": 821424
     },
     {
-      "file": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
       "lane": "unit",
       "graphModules": 103,
       "graphBytes": 866737
@@ -1015,13 +1015,13 @@
       "graphBytes": 876211
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/switch-verb-noop.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
       "lane": "unit",
       "graphModules": 99,
       "graphBytes": 794971
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/child-close-outcome-evidence.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs",
       "lane": "unit",
       "graphModules": 98,
       "graphBytes": 811206
@@ -1099,7 +1099,7 @@
       "graphBytes": 779258
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs",
       "lane": "unit",
       "graphModules": 94,
       "graphBytes": 862694
@@ -1123,7 +1123,7 @@
       "graphBytes": 779258
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/evidence-branch-reachability.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs",
       "lane": "unit",
       "graphModules": 93,
       "graphBytes": 783479
@@ -1213,7 +1213,7 @@
       "graphBytes": 705102
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
       "lane": "unit",
       "graphModules": 88,
       "graphBytes": 852134
@@ -1225,7 +1225,7 @@
       "graphBytes": 705102
     },
     {
-      "file": "scripts/tests/unit/task-tracker/verbs/new-from-plan.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
       "lane": "unit",
       "graphModules": 88,
       "graphBytes": 852134
@@ -1249,7 +1249,7 @@
       "graphBytes": 804619
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
       "lane": "unit",
       "graphModules": 87,
       "graphBytes": 713202
@@ -1513,7 +1513,7 @@
       "graphBytes": 686202
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
       "lane": "unit",
       "graphModules": 82,
       "graphBytes": 709913
@@ -1525,13 +1525,13 @@
       "graphBytes": 685188
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs",
       "lane": "unit",
       "graphModules": 82,
       "graphBytes": 709913
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs",
       "lane": "unit",
       "graphModules": 82,
       "graphBytes": 709913
@@ -1843,7 +1843,7 @@
       "graphBytes": 636102
     },
     {
-      "file": "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
       "lane": "unit",
       "graphModules": 77,
       "graphBytes": 635146
@@ -2185,7 +2185,7 @@
       "graphBytes": 523152
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-cache-unpark.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
       "lane": "unit",
       "graphModules": 70,
       "graphBytes": 593610
@@ -2323,7 +2323,7 @@
       "graphBytes": 515005
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
       "lane": "unit",
       "graphModules": 68,
       "graphBytes": 571398
@@ -2509,7 +2509,7 @@
       "graphBytes": 483480
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/fail-closed-gates.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs",
       "lane": "unit",
       "graphModules": 63,
       "graphBytes": 483480
@@ -2527,7 +2527,7 @@
       "graphBytes": 483480
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/issue-body-verifier.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
       "lane": "unit",
       "graphModules": 63,
       "graphBytes": 473480
@@ -2629,7 +2629,7 @@
       "graphBytes": 445881
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/evidence-marker-provenance.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs",
       "lane": "unit",
       "graphModules": 57,
       "graphBytes": 437999
@@ -2761,13 +2761,13 @@
       "graphBytes": 294304
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-cli.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs",
       "lane": "unit",
       "graphModules": 38,
       "graphBytes": 291447
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
       "lane": "unit",
       "graphModules": 38,
       "graphBytes": 291447
@@ -2785,7 +2785,7 @@
       "graphBytes": 286477
     },
     {
-      "file": "scripts/tests/unit/review/co-review.test.mjs",
+      "file": "scripts/tests/integration/review/co-review.test.mjs",
       "lane": "unit",
       "graphModules": 36,
       "graphBytes": 392097
@@ -2809,25 +2809,25 @@
       "graphBytes": 307581
     },
     {
-      "file": "scripts/tests/unit/review/co-review-finalization.test.mjs",
+      "file": "scripts/tests/integration/review/co-review-finalization.test.mjs",
       "lane": "unit",
       "graphModules": 34,
       "graphBytes": 307581
     },
     {
-      "file": "scripts/tests/unit/review/co-review-fixture-cost.test.mjs",
+      "file": "scripts/tests/integration/review/co-review-fixture-cost.test.mjs",
       "lane": "unit",
       "graphModules": 34,
       "graphBytes": 307581
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
       "lane": "unit",
       "graphModules": 34,
       "graphBytes": 307581
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/action-capture.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
       "lane": "unit",
       "graphModules": 34,
       "graphBytes": 243883
@@ -2863,13 +2863,13 @@
       "graphBytes": 162921
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/chore-mode-contract.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
       "lane": "unit",
       "graphModules": 32,
       "graphBytes": 138549
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
       "lane": "unit",
       "graphModules": 32,
       "graphBytes": 238117
@@ -2935,7 +2935,7 @@
       "graphBytes": 235279
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/field-config-warn.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs",
       "lane": "unit",
       "graphModules": 29,
       "graphBytes": 137598
@@ -2953,7 +2953,7 @@
       "graphBytes": 209667
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/duplicate-child-guard.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs",
       "lane": "unit",
       "graphModules": 28,
       "graphBytes": 121661
@@ -2971,7 +2971,7 @@
       "graphBytes": 117170
     },
     {
-      "file": "scripts/tests/unit/meta/test-tree-layout.test.mjs",
+      "file": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
       "lane": "unit",
       "graphModules": 27,
       "graphBytes": 109203
@@ -3001,13 +3001,13 @@
       "graphBytes": 197180
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/project-fields.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
       "lane": "unit",
       "graphModules": 26,
       "graphBytes": 103990
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
       "lane": "unit",
       "graphModules": 26,
       "graphBytes": 132963
@@ -3043,13 +3043,13 @@
       "graphBytes": 177919
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
       "lane": "unit",
       "graphModules": 26,
       "graphBytes": 113372
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs",
       "lane": "unit",
       "graphModules": 26,
       "graphBytes": 127039
@@ -3067,13 +3067,13 @@
       "graphBytes": 104531
     },
     {
-      "file": "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
+      "file": "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
       "lane": "unit",
       "graphModules": 25,
       "graphBytes": 111374
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/run-tests-lanes.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/run-tests-lanes.test.mjs",
       "lane": "unit",
       "graphModules": 25,
       "graphBytes": 103497
@@ -3133,13 +3133,13 @@
       "graphBytes": 113080
     },
     {
-      "file": "scripts/tests/unit/fixtures/feature-fixtures.test.mjs",
+      "file": "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
       "lane": "unit",
       "graphModules": 24,
       "graphBytes": 94732
     },
     {
-      "file": "scripts/tests/unit/providers/transcript-resolver.test.mjs",
+      "file": "scripts/tests/integration/providers/transcript-resolver.test.mjs",
       "lane": "unit",
       "graphModules": 24,
       "graphBytes": 97118
@@ -3151,7 +3151,7 @@
       "graphBytes": 113154
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs",
       "lane": "unit",
       "graphModules": 24,
       "graphBytes": 101824
@@ -3217,7 +3217,7 @@
       "graphBytes": 108662
     },
     {
-      "file": "scripts/tests/unit/task-tracker/verbs/report-verb-496.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs",
       "lane": "unit",
       "graphModules": 24,
       "graphBytes": 102961
@@ -3301,7 +3301,7 @@
       "graphBytes": 93782
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/foreign-session-refusal.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 92671
@@ -3313,7 +3313,7 @@
       "graphBytes": 93574
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 104872
@@ -3325,13 +3325,13 @@
       "graphBytes": 104872
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/lint-doc-anchors.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 95672
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 104872
@@ -3343,7 +3343,7 @@
       "graphBytes": 93782
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/move-state-lock.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 104872
@@ -3367,7 +3367,7 @@
       "graphBytes": 93503
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/state-mutator-concurrency.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 104872
@@ -3391,7 +3391,7 @@
       "graphBytes": 101387
     },
     {
-      "file": "scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs",
       "lane": "unit",
       "graphModules": 23,
       "graphBytes": 97225
@@ -3553,31 +3553,31 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/dev-env/verify-local-worktree.test.mjs",
+      "file": "scripts/tests/integration/dev-env/verify-local-worktree.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs",
+      "file": "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/meta/audit-story-tags.test.mjs",
+      "file": "scripts/tests/integration/meta/audit-story-tags.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/assert-file-excludes.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/project-tmp-dir.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3589,7 +3589,7 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3601,31 +3601,31 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-config-get.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-config-get.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-migrate-project.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-migrate-project.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-tag-story-ids.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-tag-story-ids.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3637,19 +3637,19 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/estimation/record-claim.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/fleet-registry.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/gh-command-policy.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3673,7 +3673,7 @@
       "graphBytes": 93085
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/hook-entrypoint.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 93085
@@ -3703,13 +3703,13 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/is-main-symlink.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/memory-resync-cli.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3757,7 +3757,7 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/start-time-sync.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3769,13 +3769,13 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/timing-concurrency.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/update-event-fields-states.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -3787,7 +3787,7 @@
       "graphBytes": 90522
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/word-counter-bounded-memory.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs",
       "lane": "unit",
       "graphModules": 22,
       "graphBytes": 90522
@@ -4351,7 +4351,7 @@
       "graphBytes": 18304
     },
     {
-      "file": "scripts/tests/unit/task-tracker/verbs/help.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/verbs/help.test.mjs",
       "lane": "unit",
       "graphModules": 7,
       "graphBytes": 179525
@@ -4405,7 +4405,7 @@
       "graphBytes": 19560
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
       "lane": "unit",
       "graphModules": 6,
       "graphBytes": 14301
@@ -4711,7 +4711,7 @@
       "graphBytes": 22558
     },
     {
-      "file": "scripts/tests/unit/meta/package-test-corpus.test.mjs",
+      "file": "scripts/tests/integration/meta/package-test-corpus.test.mjs",
       "lane": "unit",
       "graphModules": 2,
       "graphBytes": 9236
@@ -4867,7 +4867,7 @@
       "graphBytes": 13442
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/run-tests-kill-report.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/run-tests-kill-report.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 4369
@@ -4933,13 +4933,13 @@
       "graphBytes": 1867
     },
     {
-      "file": "scripts/tests/unit/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 1867
     },
     {
-      "file": "scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 4378
@@ -5065,7 +5065,7 @@
       "graphBytes": 4526
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/discover-test-files.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 6331
@@ -5125,7 +5125,7 @@
       "graphBytes": 2760
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 4171
@@ -5155,7 +5155,7 @@
       "graphBytes": 5567
     },
     {
-      "file": "scripts/tests/unit/task-tracker/lib/process-timeouts.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 8547
@@ -5251,7 +5251,7 @@
       "graphBytes": 4638
     },
     {
-      "file": "scripts/tests/unit/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
       "lane": "unit",
       "graphModules": 1,
       "graphBytes": 4913
@@ -5293,7 +5293,7 @@
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
@@ -5305,25 +5305,25 @@
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/bash-guard-fail-closed.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/bash-guard-fail-closed.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/bash-guard-move-state-substring.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/bash-guard-move-state-substring.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/bash-guard-move-state.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/bash-guard-move-state.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
@@ -5401,19 +5401,19 @@
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
@@ -5641,7 +5641,7 @@
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/seed-worktree.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
@@ -5689,13 +5689,13 @@
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
     },
     {
-      "file": "scripts/tests/unit/task-tracker/core/templates.test.mjs",
+      "file": "scripts/tests/integration/task-tracker/core/templates.test.mjs",
       "lane": "unit",
       "graphModules": 0,
       "graphBytes": 0
@@ -6271,8 +6271,8 @@
     ["scripts/tests/unit/task-tracker/verbs/assign.test.mjs", 1],
     ["scripts/tests/unit/task-tracker/verbs/unassign.test.mjs", 1],
     ["scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs", 1],
-    ["scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs", 1],
-    ["scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs", 1],
+    ["scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs", 1],
+    ["scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs", 1],
     ["scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs", 1],
     ["scripts/tests/fixtures/executable-entrypoint-classification.mjs", 1],
     ["scripts/task-tracker/lib/gated-delivery.mjs", 1],

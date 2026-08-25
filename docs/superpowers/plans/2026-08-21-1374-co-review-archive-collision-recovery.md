@@ -28,7 +28,7 @@
 - `scripts/review/lib/help.mjs` documents prevention, deterministic recovery, and exact retry behavior.
 - `scripts/tests/fixtures/co-review-start-cases.mjs` covers empty/non-empty/file/symlink occupancy, direct init parity, and exact retry.
 - `scripts/tests/fixtures/co-review-finalization-cases.mjs` covers foreign validation, deterministic recovery, provenance, preservation, conflict refusal, status, and idempotency.
-- `scripts/tests/unit/review/co-review.test.mjs` remains the focused aggregate verifier and gains help assertions only when fixture-local coverage is insufficient.
+- `scripts/tests/integration/review/co-review.test.mjs` remains the focused aggregate verifier and gains help assertions only when fixture-local coverage is insufficient.
 - `docs/superpowers/reviews/README.md` documents first-published canonical paths, recovery siblings, recency, and independent immutability.
 
 ---
@@ -91,7 +91,7 @@ Add a direct `api.initializeProtocol({... archiveDir: 'docs/reviews/occupied' })
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: FAIL because occupied configured destinations currently reach protocol initialization.
@@ -150,7 +150,7 @@ Extend the existing guided host-context test: initialize once, materialize any e
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: PASS, including all new prevention cases.
@@ -251,7 +251,7 @@ Add a legacy v1 `README.md` case that changes only JSON whitespace and key order
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: FAIL with `archive-destination-mismatch` for the derived sibling because only configured-path equivalence is currently allowed.
@@ -377,7 +377,7 @@ assert.equal(statSync(path.join(recovered.destination.absolute, 'README.md')).mt
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: PASS for reference, copy, legacy-copy, recovery, refusal, preservation, race, and idempotency cases.
@@ -396,7 +396,7 @@ git commit -m "[#1374] Add deterministic co-review archive recovery"
 **Files:**
 
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 - Modify: `scripts/review/co-review.mjs`
 - Modify: `scripts/review/lib/help.mjs`
@@ -436,7 +436,7 @@ Add conflict variants proving same-protocol corruption, ineligible foreign archi
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: FAIL because status currently repeats the configured conflicting destination.
@@ -508,7 +508,7 @@ Add a `Collision recovery` section to `docs/superpowers/reviews/README.md` expla
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 npx aitm co-review help
 npx aitm co-review finalize --help
 ```
@@ -518,7 +518,7 @@ Expected: focused tests PASS; both help pages describe prevention and determinis
 - [ ] **Step 8: Commit status and documentation**
 
 ```bash
-git add scripts/review/lib/protocol.mjs scripts/review/co-review.mjs scripts/review/lib/help.mjs scripts/tests/fixtures/co-review-finalization-cases.mjs scripts/tests/unit/review/co-review.test.mjs docs/superpowers/reviews/README.md
+git add scripts/review/lib/protocol.mjs scripts/review/co-review.mjs scripts/review/lib/help.mjs scripts/tests/fixtures/co-review-finalization-cases.mjs scripts/tests/integration/review/co-review.test.mjs docs/superpowers/reviews/README.md
 git commit -m "[#1374] Surface co-review archive recovery"
 ```
 
@@ -538,7 +538,7 @@ git commit -m "[#1374] Surface co-review archive recovery"
 - [ ] **Step 1: Run the focused regression suite**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: PASS, including occupied-start prevention and accepted collision recovery.
@@ -593,7 +593,7 @@ Use the governed #1374 verification commands after the exact implementation SHA 
 If verification required a code correction, repeat the failed verifier and then the focused suite before committing. Stage only changed paths from this governed file set:
 
 ```bash
-git add scripts/review/lib/archive.mjs scripts/review/lib/protocol.mjs scripts/review/co-review.mjs scripts/review/lib/help.mjs scripts/tests/fixtures/co-review-start-cases.mjs scripts/tests/fixtures/co-review-finalization-cases.mjs scripts/tests/unit/review/co-review.test.mjs docs/superpowers/reviews/README.md
+git add scripts/review/lib/archive.mjs scripts/review/lib/protocol.mjs scripts/review/co-review.mjs scripts/review/lib/help.mjs scripts/tests/fixtures/co-review-start-cases.mjs scripts/tests/fixtures/co-review-finalization-cases.mjs scripts/tests/integration/review/co-review.test.mjs docs/superpowers/reviews/README.md
 git commit -m "[#1374] Fix archive recovery verification finding"
 ```
 

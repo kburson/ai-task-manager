@@ -169,9 +169,9 @@ function isValidSubsystem(sub) {
 
 test('feature-oriented files keep semantic ownership and stay below the 800-line hard cap', () => {
   const featureFiles = [
-    'scripts/tests/unit/task-tracker/lib/chore-mode-contract.test.mjs',
-    'scripts/tests/unit/task-tracker/lib/chore-mode-verb.test.mjs',
-    'scripts/tests/unit/fixtures/feature-fixtures.test.mjs',
+    'scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs',
+    'scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs',
+    'scripts/tests/integration/fixtures/feature-fixtures.test.mjs',
   ];
   for (const rel of featureFiles) {
     assert.ok(manifest.unit.includes(rel), `${rel} must remain in the unit lane`);

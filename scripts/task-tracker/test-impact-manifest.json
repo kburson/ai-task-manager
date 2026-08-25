@@ -91,14 +91,14 @@
         "scripts/tests/**/*.test.mjs",
         "scripts/tests/fixtures/test-corpus-post-snapshot/**/*.json"
       ],
-      "tests": ["scripts/tests/unit/meta/test-corpus-membership.test.mjs"],
+      "tests": ["scripts/tests/integration/meta/test-corpus-membership.test.mjs"],
       "reason": "test corpus membership authority change"
     },
     {
       "sources": ["scripts/tests/fixtures/test-corpus-pre-move.json"],
       "tests": [
-        "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
-        "scripts/tests/unit/meta/package-test-corpus.test.mjs"
+        "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
+        "scripts/tests/integration/meta/package-test-corpus.test.mjs"
       ],
       "reason": "frozen test corpus authority change"
     }

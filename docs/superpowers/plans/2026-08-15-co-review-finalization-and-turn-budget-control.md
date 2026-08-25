@@ -45,9 +45,9 @@
 - Create: `scripts/tests/fixtures/co-review-budget-cases.mjs` — active adjustment, short-circuit, closing-owner, and continuation cases.
 - Create: `scripts/tests/fixtures/co-review-supplement-cases.mjs` — supplement registration, freeze, acknowledgment, consumption, and compatibility cases.
 - Create: `scripts/tests/fixtures/co-review-finalization-cases.mjs` — consensus/good-enough publication, manifest, retry, conflict, failure, and concurrency cases.
-- Modify: `scripts/tests/unit/review/co-review.test.mjs` — imports the new case modules and owns focused CLI/help/catalog assertions.
+- Modify: `scripts/tests/integration/review/co-review.test.mjs` — imports the new case modules and owns focused CLI/help/catalog assertions.
 - Modify: `scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs` — add explicit co-review synopsis and exit-code 4 assertions to the package command-catalog policy.
-- Preserve: `scripts/tests/unit/meta/package-test-corpus.test.mjs` — package-wide discovery already finds `scripts/tests/unit/review/co-review.test.mjs`; do not add a mutable census entry for fixture modules.
+- Preserve: `scripts/tests/integration/meta/package-test-corpus.test.mjs` — package-wide discovery already finds `scripts/tests/integration/review/co-review.test.mjs`; do not add a mutable census entry for fixture modules.
 - Preserve: `docs/superpowers/specs/2026-08-15-co-review-finalization-and-turn-budget-control-design.md` — approved normative behavior.
 
 ## Shared Interfaces
@@ -112,7 +112,7 @@ identity failure cannot occur after protocol mutation.
 - Create: `scripts/review/lib/archive.mjs`
 - Create: `scripts/tests/fixtures/co-review-budget-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-fixture.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs:20-433`
 - Modify: `scripts/review/co-review.mjs:9-148`
 
@@ -268,20 +268,20 @@ Expected: focused tests pass; invalid/identity/lock/lifecycle refusals preserve
 state/events; initialization still rejects zero.
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/review/lib/budget.mjs scripts/review/lib/github-identity.mjs \
   scripts/review/lib/archive.mjs scripts/tests/fixtures/co-review-fixture.mjs \
   scripts/tests/fixtures/co-review-budget-cases.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1268] feat: add co-review budget control"
 ```
 
 **Verification Commands:**
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 ```
 
@@ -400,7 +400,7 @@ enumeration.
 - [ ] **Step 8: Run focused and repository Develop verification, then commit**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/review/lib/budget.mjs scripts/tests/fixtures/co-review-budget-cases.mjs \
@@ -412,7 +412,7 @@ git commit -m "[#1268] feat: preserve exhausted review cycles"
 **Verification Commands:**
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 ```
 
@@ -421,7 +421,7 @@ node scripts/task-tracker/verify-develop.mjs
 **Files:**
 
 - Create: `scripts/tests/fixtures/co-review-supplement-cases.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/tests/fixtures/co-review-fixture.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 - Modify: `scripts/review/co-review.mjs`
@@ -502,19 +502,19 @@ hashes, and target round while excluding consumed entries from next-action guida
 - [ ] **Step 8: Run focused and repository Develop verification, then commit**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/tests/fixtures/co-review-fixture.mjs \
   scripts/tests/fixtures/co-review-supplement-cases.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1268] feat: add co-review supplements"
 ```
 
 **Verification Commands:**
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 ```
 
@@ -526,7 +526,7 @@ node scripts/task-tracker/verify-develop.mjs
 - Modify: `scripts/review/lib/protocol.mjs`
 - Create: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-fixture.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 
 **Interfaces:**
 
@@ -617,19 +617,19 @@ or any caller-owned destination.
 - [ ] **Step 9: Run focused and repository Develop verification, then commit**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/lib/archive.mjs scripts/review/lib/protocol.mjs \
   scripts/tests/fixtures/co-review-finalization-cases.mjs \
   scripts/tests/fixtures/co-review-fixture.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1268] feat: publish deterministic review archives"
 ```
 
 **Verification Commands:**
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 ```
 
@@ -642,7 +642,7 @@ node scripts/task-tracker/verify-develop.mjs
 - Modify: `scripts/review/co-review.mjs`
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/tests/fixtures/co-review-e2e-cases.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 
 **Interfaces:**
 
@@ -734,20 +734,20 @@ emit the single state-appropriate next command.
 - [ ] **Step 9: Run focused and repository Develop verification, then commit**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/review/lib/archive.mjs \
   scripts/tests/fixtures/co-review-finalization-cases.mjs \
   scripts/tests/fixtures/co-review-e2e-cases.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1268] feat: finalize accepted co-reviews"
 ```
 
 **Verification Commands:**
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node scripts/task-tracker/verify-develop.mjs
 ```
 
@@ -758,7 +758,7 @@ node scripts/task-tracker/verify-develop.mjs
 - Modify: `scripts/review/lib/help.mjs`
 - Modify: `scripts/review/co-review.mjs`
 - Modify: `scripts/lib/self-doc.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs`
 
 **Interfaces:**
@@ -825,7 +825,7 @@ reported with exact command/output rather than altered silently.
 
 ```bash
 git add scripts/review/lib/help.mjs scripts/review/co-review.mjs \
-  scripts/lib/self-doc.mjs scripts/tests/unit/review/co-review.test.mjs \
+  scripts/lib/self-doc.mjs scripts/tests/integration/review/co-review.test.mjs \
   scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs
 git commit -m "[#1268] docs: complete co-review lifecycle help"
 ```
@@ -833,7 +833,7 @@ git commit -m "[#1268] docs: complete co-review lifecycle help"
 **Verification Commands:**
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs
 npm run format:check
 npm run lint:spell

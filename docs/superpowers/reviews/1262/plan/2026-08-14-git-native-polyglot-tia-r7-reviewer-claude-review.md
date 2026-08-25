@@ -14,11 +14,11 @@ hidden decisions.
 ## Finding dispositions
 
 F-001 (Task 14 Modify path `lib/help.test.mjs` did not exist) — RESOLVED. The
-Files block now declares `scripts/tests/unit/task-tracker/verbs/help.test.mjs`.
+Files block now declares `scripts/tests/integration/task-tracker/verbs/help.test.mjs`.
 
 F-002 (Task 14 run command still cited `lib/help.test.mjs`) — RESOLVED. Line 777's
 `node --test` command now targets
-`scripts/tests/unit/task-tracker/verbs/help.test.mjs`, matching the Files block.
+`scripts/tests/integration/task-tracker/verbs/help.test.mjs`, matching the Files block.
 Verified zero remaining occurrences of the `lib/help.test.mjs` string in the
 artifact; `install.test.mjs` correctly remains under `lib/`; the referenced help
 test exists.

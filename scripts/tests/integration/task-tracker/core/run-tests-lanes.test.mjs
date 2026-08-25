@@ -53,14 +53,14 @@ test('#864: laneFiles("integration") resolves to only the integration section', 
   assert.deepEqual(integration, ['scripts/tests/integration/beta.test.mjs']);
 });
 
-test('#864: integration files no longer ride the fast lane alone — but fast is still the union', () => {
+test('#1413: fast is unit-only while integration stays directly selectable', () => {
   const opts = fixture();
   const unit = laneFiles('unit', opts);
   const integration = laneFiles('integration', opts);
   const fast = laneFiles('fast', opts);
-  // fast is exactly unit ∪ integration; each section is independently runnable.
-  assert.deepEqual(fast, [...unit, ...integration].sort());
-  // The integration file is reachable on its own channel, not only via fast.
+  assert.deepEqual(fast, unit);
+  assert.ok(!fast.includes('scripts/tests/integration/beta.test.mjs'));
+  // Integration remains reachable on its explicit CI/TIA channel.
   assert.ok(integration.includes('scripts/tests/integration/beta.test.mjs'));
 });
 

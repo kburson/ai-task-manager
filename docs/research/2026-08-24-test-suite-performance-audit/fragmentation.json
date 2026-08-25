@@ -32,23 +32,23 @@
       "scripts/tests/slow/task-tracker/lib/move-state.test.mjs",
       "scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs",
       "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs",
-      "scripts/tests/unit/dev-env/verify-local-worktree.test.mjs",
-      "scripts/tests/unit/fixtures/feature-fixtures.test.mjs",
+      "scripts/tests/integration/dev-env/verify-local-worktree.test.mjs",
+      "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
       "scripts/tests/unit/inspect/delivery-doc-parity.test.mjs",
-      "scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs",
-      "scripts/tests/unit/meta/audit-story-tags.test.mjs",
+      "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
+      "scripts/tests/integration/meta/audit-story-tags.test.mjs",
       "scripts/tests/unit/providers/coverage-provider-adapter.test.mjs",
       "scripts/tests/unit/providers/registry.test.mjs",
-      "scripts/tests/unit/review/co-review-finalization.test.mjs",
+      "scripts/tests/integration/review/co-review-finalization.test.mjs",
       "scripts/tests/unit/task-tracker/core/adapter-dedup.test.mjs",
       "scripts/tests/unit/task-tracker/core/adapter-token-floor.test.mjs",
-      "scripts/tests/unit/task-tracker/core/assert-file-excludes.test.mjs",
-      "scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs",
+      "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
+      "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs",
       "scripts/tests/unit/task-tracker/core/assignee-default-docs-793.test.mjs",
-      "scripts/tests/unit/task-tracker/core/bash-guard-fail-closed.test.mjs",
-      "scripts/tests/unit/task-tracker/core/bash-guard-move-state-substring.test.mjs",
-      "scripts/tests/unit/task-tracker/core/bash-guard-move-state.test.mjs",
-      "scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs",
+      "scripts/tests/integration/task-tracker/core/bash-guard-fail-closed.test.mjs",
+      "scripts/tests/integration/task-tracker/core/bash-guard-move-state-substring.test.mjs",
+      "scripts/tests/integration/task-tracker/core/bash-guard-move-state.test.mjs",
+      "scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs",
       "scripts/tests/unit/task-tracker/core/beta-report-templates-497.test.mjs",
       "scripts/tests/unit/task-tracker/core/child-cannot-lead-epic-migration.test.mjs",
       "scripts/tests/unit/task-tracker/core/child-process-api.test.mjs",
@@ -61,9 +61,9 @@
       "scripts/tests/unit/task-tracker/core/codex-support-matrix.test.mjs",
       "scripts/tests/unit/task-tracker/core/contiguity-guard-migration.test.mjs",
       "scripts/tests/unit/task-tracker/core/contiguity-hole-message.test.mjs",
-      "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
-      "scripts/tests/unit/task-tracker/core/coverage-verify-epic-114.test.mjs",
-      "scripts/tests/unit/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
       "scripts/tests/unit/task-tracker/core/deep-dive-no-direct-gh-edit.test.mjs",
       "scripts/tests/unit/task-tracker/core/defect-first-doc.test.mjs",
       "scripts/tests/unit/task-tracker/core/demonstrable-ac-doc.test.mjs",
@@ -92,7 +92,7 @@
       "scripts/tests/unit/task-tracker/core/pickup-directive-has-checkpoint.test.mjs",
       "scripts/tests/unit/task-tracker/core/pickup-directive-recovery.test.mjs",
       "scripts/tests/unit/task-tracker/core/pickup-directive-token-floor.test.mjs",
-      "scripts/tests/unit/task-tracker/core/project-tmp-dir.test.mjs",
+      "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
       "scripts/tests/unit/task-tracker/core/quality-config.test.mjs",
       "scripts/tests/unit/task-tracker/core/recovery-gap-dependency-structure.test.mjs",
       "scripts/tests/unit/task-tracker/core/refine-exit-complete-marker-migration.test.mjs",
@@ -100,11 +100,11 @@
       "scripts/tests/unit/task-tracker/core/relicense-no-mit.test.mjs",
       "scripts/tests/unit/task-tracker/core/review-delta-source-lock.test.mjs",
       "scripts/tests/unit/task-tracker/core/review-failure-block-structure.test.mjs",
-      "scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
+      "scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
       "scripts/tests/unit/task-tracker/core/router-compression-493.test.mjs",
       "scripts/tests/unit/task-tracker/core/scope-pack.test.mjs",
       "scripts/tests/unit/task-tracker/core/scope-rename.test.mjs",
-      "scripts/tests/unit/task-tracker/core/seed-worktree.test.mjs",
+      "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs",
       "scripts/tests/unit/task-tracker/core/sequence-rules-docs.test.mjs",
       "scripts/tests/unit/task-tracker/core/session-boot.test.mjs",
       "scripts/tests/unit/task-tracker/core/session-state-template.test.mjs",
@@ -113,8 +113,8 @@
       "scripts/tests/unit/task-tracker/core/skill-stub-seed-directive.test.mjs",
       "scripts/tests/unit/task-tracker/core/state-machine.test.mjs",
       "scripts/tests/unit/task-tracker/core/state-walk-ac-stamp-test-carveout.test.mjs",
-      "scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs",
-      "scripts/tests/unit/task-tracker/core/templates.test.mjs",
+      "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
+      "scripts/tests/integration/task-tracker/core/templates.test.mjs",
       "scripts/tests/unit/task-tracker/core/timing-active-zero-regression.test.mjs",
       "scripts/tests/unit/task-tracker/core/timing-delta-source-regression.test.mjs",
       "scripts/tests/unit/task-tracker/core/timing-row-reader-structure.test.mjs",
@@ -124,39 +124,39 @@
       "scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs",
       "scripts/tests/unit/task-tracker/coverage-config.test.mjs",
       "scripts/tests/unit/task-tracker/lib/bug-bash-disposition.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/chore-mode-contract.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
       "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/coverage-config-get.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/coverage-migrate-project.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/coverage-tag-story-ids.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/create-issue-partial-success.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/estimation/record-claim.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/fleet-registry.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/gh-command-policy.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/coverage-config-get.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/coverage-migrate-project.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/coverage-tag-story-ids.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
       "scripts/tests/unit/task-tracker/lib/graphql-float.test.mjs",
       "scripts/tests/unit/task-tracker/lib/graphql-params.test.mjs",
       "scripts/tests/unit/task-tracker/lib/init-project-config-create.test.mjs",
       "scripts/tests/unit/task-tracker/lib/init-project-config.test.mjs",
       "scripts/tests/unit/task-tracker/lib/init-repair.test.mjs",
       "scripts/tests/unit/task-tracker/lib/install-claude-command.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/is-main-symlink.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs",
       "scripts/tests/unit/task-tracker/lib/lifecycle-policy.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/memory-resync-cli.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs",
       "scripts/tests/unit/task-tracker/lib/move-state-internal-gate.test.mjs",
       "scripts/tests/unit/task-tracker/lib/paths.test.mjs",
       "scripts/tests/unit/task-tracker/lib/policy-dependency-boundaries.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/process-timeouts.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs",
       "scripts/tests/unit/task-tracker/lib/run-move-state-timeout.test.mjs",
       "scripts/tests/unit/task-tracker/lib/sandbox-timeout-resolve.test.mjs",
       "scripts/tests/unit/task-tracker/lib/session-state.test.mjs",
       "scripts/tests/unit/task-tracker/lib/set-priority.test.mjs",
       "scripts/tests/unit/task-tracker/lib/set-rank.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/start-time-sync.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
       "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/timing-concurrency.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/update-event-fields-states.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs",
       "scripts/tests/unit/task-tracker/lib/verb-pipeline-enforcement.test.mjs",
       "scripts/tests/unit/task-tracker/lib/word-counter-codex.test.mjs",
       "scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs",
@@ -189,10 +189,10 @@
       "scripts/tests/unit/task-tracker/core/switch-scenario.test.mjs",
       "scripts/tests/unit/task-tracker/core/timing-first-start.test.mjs",
       "scripts/tests/unit/task-tracker/core/timing-word-marker-monotonic.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/absolute-word-markers.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
       "scripts/tests/unit/task-tracker/lib/adjacent-word-delta.test.mjs",
       "scripts/tests/unit/task-tracker/lib/gh-timing-comment-timeout-default.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/interruption-word-markers.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
       "scripts/tests/unit/task-tracker/lib/timing-events-policy.test.mjs",
       "scripts/tests/unit/task-tracker/lib/timing-queue-retention.test.mjs",
       "scripts/tests/unit/task-tracker/lib/word-accounting-regressions.test.mjs"
@@ -233,7 +233,7 @@
     "files": [
       "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs",
       "scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
       "scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs",
       "scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs",
       "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs",
@@ -281,7 +281,7 @@
       "scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs",
       "scripts/tests/unit/task-tracker/lib/demonstrable-ac-gate.test.mjs",
       "scripts/tests/unit/task-tracker/lib/fabrication-guard.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/fail-closed-gates.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs",
       "scripts/tests/unit/task-tracker/lib/guard-structural-completeness.test.mjs",
       "scripts/tests/unit/task-tracker/lib/lane-split-ac-floor.test.mjs",
       "scripts/tests/unit/task-tracker/lib/review-waived-ac.test.mjs",
@@ -298,7 +298,7 @@
     "files": [
       "scripts/tests/unit/task-tracker/lib/backfill-holes.test.mjs",
       "scripts/tests/unit/task-tracker/lib/contiguity-guard.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
       "scripts/tests/unit/task-tracker/lib/entry-marker-contiguity-recovery.test.mjs",
       "scripts/tests/unit/task-tracker/lib/lifecycle-history-actions.test.mjs",
       "scripts/tests/unit/task-tracker/lib/ready-for-plan-topology.test.mjs",
@@ -459,12 +459,12 @@
     "inProcMs": 26620,
     "files": [
       "scripts/tests/unit/task-tracker/core/pause-resume-reason.test.mjs",
-      "scripts/tests/unit/task-tracker/core/self-bind-resume.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/resume-auto-gap-activity.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/resume-fleet-refresh.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/resume-seed.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/verb-start-resume-stop.test.mjs"
+      "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs"
     ]
   },
   {
@@ -479,7 +479,7 @@
       "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs",
-      "scripts/tests/unit/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs"
     ]
@@ -509,11 +509,11 @@
     "wallMs": 26868,
     "inProcMs": 24760,
     "files": [
-      "scripts/tests/unit/meta/package-test-corpus.test.mjs",
-      "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
-      "scripts/tests/unit/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+      "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
       "scripts/tests/unit/task-tracker/core/run-tests-discovery.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/discover-test-files.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs",
       "scripts/tests/unit/task-tracker/lib/lane-taxonomy.test.mjs"
     ]
   },
@@ -574,11 +574,11 @@
     "inProcMs": 868,
     "files": [
       "scripts/tests/unit/task-tracker/lib/dod-stamp-lock-env.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
       "scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/lock-env-leak-regression.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/move-state-lock.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/state-mutator-concurrency.test.mjs"
+      "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs"
     ]
   },
   {
@@ -696,7 +696,7 @@
     "inProcMs": 5526,
     "files": [
       "scripts/tests/unit/task-tracker/lib/bind-event.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
       "scripts/tests/unit/task-tracker/lib/orphan-pairing-guard.test.mjs",
       "scripts/tests/unit/task-tracker/lib/switch-paired-events.test.mjs",
       "scripts/tests/unit/task-tracker/lib/switch-resumed-on-history.test.mjs"
@@ -725,7 +725,7 @@
     "wallMs": 5306,
     "inProcMs": 37,
     "files": [
-      "scripts/tests/unit/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
       "scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs",
       "scripts/tests/unit/task-tracker/lib/phase-word-attribution.test.mjs",
       "scripts/tests/unit/task-tracker/lib/timing-rows-seconds.test.mjs",
@@ -770,8 +770,8 @@
     "wallMs": 16050,
     "inProcMs": 3470,
     "files": [
-      "scripts/tests/unit/task-tracker/lib/new-switch-marker-order.test.mjs",
-      "scripts/tests/unit/task-tracker/verbs/new-from-plan.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/new-help-probe-guard.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/new-routes-create-issue.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/new.test.mjs"
@@ -844,7 +844,7 @@
     "files": [
       "scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs",
       "scripts/tests/unit/task-tracker/lib/verification-receipt-carry-forward.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/review-receipt-lane-skip.test.mjs"
     ]
   },
@@ -913,8 +913,8 @@
     "inProcMs": 1272,
     "files": [
       "scripts/tests/unit/providers/parity.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/coverage-cli.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
       "scripts/tests/unit/task-tracker/lib/settings-hook-bootstrap.test.mjs"
     ]
   },
@@ -955,9 +955,9 @@
     "inProcMs": 45214,
     "files": [
       "scripts/tests/unit/task-tracker/core/source-edit-post-develop-lock.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/coverage-source-edit-gate.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs"
+      "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs"
     ]
   },
   {
@@ -1168,7 +1168,7 @@
     "inProcMs": 1045,
     "files": [
       "scripts/tests/unit/task-tracker/core/move-state-force-flag.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
       "scripts/tests/unit/task-tracker/lib/move-state/move-state-policy.test.mjs"
     ]
   },
@@ -1181,7 +1181,7 @@
     "inProcMs": 8955,
     "files": [
       "scripts/tests/unit/task-tracker/core/orphan-finalize-chrono-order.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
       "scripts/tests/unit/task-tracker/lib/timing-departure-guard.test.mjs"
     ]
   },
@@ -1284,7 +1284,7 @@
     "wallMs": 1298,
     "inProcMs": 0,
     "files": [
-      "scripts/tests/unit/task-tracker/lib/foreign-session-refusal.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs",
       "scripts/tests/unit/task-tracker/lib/on-stop.test.mjs",
       "scripts/tests/unit/task-tracker/lib/session-sweep.test.mjs"
     ]
@@ -1362,7 +1362,7 @@
     "wallMs": 3092,
     "inProcMs": 1989,
     "files": [
-      "scripts/tests/unit/task-tracker/verbs/help.test.mjs",
+      "scripts/tests/integration/task-tracker/verbs/help.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/next-alias.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/verb-discover-help.test.mjs"
     ]
@@ -1497,7 +1497,7 @@
     "inProcMs": 30,
     "files": [
       "scripts/tests/slow/review/co-review-boundaries.test.mjs",
-      "scripts/tests/unit/review/co-review-fixture-cost.test.mjs"
+      "scripts/tests/integration/review/co-review-fixture-cost.test.mjs"
     ]
   },
   {
@@ -1521,7 +1521,7 @@
     "inProcMs": 31835,
     "files": [
       "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/action-capture.test.mjs"
+      "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs"
     ]
   },
   {
@@ -1617,7 +1617,7 @@
     "inProcMs": 11213,
     "files": [
       "scripts/tests/unit/meta/slow-lane-partition-policy.test.mjs",
-      "scripts/tests/unit/task-tracker/core/run-tests-lanes.test.mjs"
+      "scripts/tests/integration/task-tracker/core/run-tests-lanes.test.mjs"
     ]
   },
   {
@@ -1640,7 +1640,7 @@
     "wallMs": 17314,
     "inProcMs": 16086,
     "files": [
-      "scripts/tests/unit/providers/transcript-resolver.test.mjs",
+      "scripts/tests/integration/providers/transcript-resolver.test.mjs",
       "scripts/tests/unit/task-tracker/lib/session-ref.test.mjs"
     ]
   },
@@ -1664,7 +1664,7 @@
     "wallMs": 36090,
     "inProcMs": 35007,
     "files": [
-      "scripts/tests/unit/review/co-review.test.mjs",
+      "scripts/tests/integration/review/co-review.test.mjs",
       "scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs"
     ]
   },
@@ -1760,7 +1760,7 @@
     "wallMs": 1106,
     "inProcMs": 4,
     "files": [
-      "scripts/tests/unit/task-tracker/core/project-fields.test.mjs",
+      "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
       "scripts/tests/unit/task-tracker/core/sync-zero-values.test.mjs"
     ]
   },
@@ -1797,7 +1797,7 @@
     "inProcMs": 15130,
     "files": [
       "scripts/tests/unit/task-tracker/core/run-tests-pool.bench.test.mjs",
-      "scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs"
+      "scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs"
     ]
   },
   {
@@ -1881,7 +1881,7 @@
     "inProcMs": 144,
     "files": [
       "scripts/tests/unit/task-tracker/hooks/codex-prompt-timestamp-hook.test.mjs",
-      "scripts/tests/unit/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs"
+      "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs"
     ]
   },
   {
@@ -2157,7 +2157,7 @@
     "inProcMs": 101,
     "files": [
       "scripts/tests/unit/task-tracker/lib/guard-entrypoint-resolution.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/hook-entrypoint.test.mjs"
+      "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs"
     ]
   },
   {
@@ -2240,7 +2240,7 @@
     "wallMs": 1018,
     "inProcMs": 172,
     "files": [
-      "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
       "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups.test.mjs"
     ]
   },
@@ -2485,7 +2485,7 @@
     "measuredFiles": 1,
     "wallMs": 2371,
     "inProcMs": 1917,
-    "files": ["scripts/tests/unit/task-tracker/core/field-config-warn.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/delivery-preflight.mjs",
@@ -2521,7 +2521,7 @@
     "measuredFiles": 1,
     "wallMs": 659,
     "inProcMs": 20,
-    "files": ["scripts/tests/unit/task-tracker/core/run-tests-kill-report.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/core/run-tests-kill-report.test.mjs"]
   },
   {
     "subject": "scripts/run-tests-schedule.mjs",
@@ -2647,7 +2647,7 @@
     "measuredFiles": 1,
     "wallMs": 2128,
     "inProcMs": 0,
-    "files": ["scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/hooks/stop-audit-pause-resume.mjs",
@@ -2770,7 +2770,7 @@
     "measuredFiles": 1,
     "wallMs": 2079,
     "inProcMs": 1897,
-    "files": ["scripts/tests/unit/task-tracker/lib/bash-guard-worktree-binding.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/beta-report-title-reconcile.mjs",
@@ -2824,7 +2824,7 @@
     "measuredFiles": 1,
     "wallMs": 3107,
     "inProcMs": 2940,
-    "files": ["scripts/tests/unit/task-tracker/lib/bound-worktree-state.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/branch-name.mjs",
@@ -2860,7 +2860,7 @@
     "measuredFiles": 1,
     "wallMs": 3538,
     "inProcMs": 3325,
-    "files": ["scripts/tests/unit/task-tracker/lib/child-close-outcome-evidence.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/chore-mode.mjs",
@@ -2869,7 +2869,7 @@
     "measuredFiles": 1,
     "wallMs": 8123,
     "inProcMs": 7406,
-    "files": ["scripts/tests/unit/task-tracker/lib/chore-mode-verb.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs"]
   },
   {
     "subject": "bin/lib/claude-bash-allowlist.mjs",
@@ -2959,7 +2959,7 @@
     "measuredFiles": 1,
     "wallMs": 2072,
     "inProcMs": 1682,
-    "files": ["scripts/tests/unit/task-tracker/lib/coverage-cache-unpark.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/stamp-start-time.mjs",
@@ -3022,7 +3022,7 @@
     "measuredFiles": 1,
     "wallMs": 923,
     "inProcMs": 793,
-    "files": ["scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/delivery-attribution.mjs",
@@ -3121,7 +3121,7 @@
     "measuredFiles": 1,
     "wallMs": 1064,
     "inProcMs": 926,
-    "files": ["scripts/tests/unit/task-tracker/lib/duplicate-child-guard.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/duration.mjs",
@@ -3256,7 +3256,7 @@
     "measuredFiles": 1,
     "wallMs": 3596,
     "inProcMs": 3328,
-    "files": ["scripts/tests/unit/task-tracker/lib/evidence-branch-reachability.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/evidence-provenance.mjs",
@@ -3265,7 +3265,7 @@
     "measuredFiles": 1,
     "wallMs": 1411,
     "inProcMs": 1279,
-    "files": ["scripts/tests/unit/task-tracker/lib/evidence-marker-provenance.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/evidence-runner.mjs",
@@ -3292,7 +3292,7 @@
     "measuredFiles": 1,
     "wallMs": 6065,
     "inProcMs": 0,
-    "files": ["scripts/tests/unit/task-tracker/lib/fleet-registry-gc.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/full-auto-merge-execute.mjs",
@@ -3445,7 +3445,7 @@
     "measuredFiles": 1,
     "wallMs": 1099,
     "inProcMs": 958,
-    "files": ["scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/human-reviewer-audit.mjs",
@@ -3481,7 +3481,7 @@
     "measuredFiles": 1,
     "wallMs": 1706,
     "inProcMs": 1521,
-    "files": ["scripts/tests/unit/task-tracker/lib/issue-body-verifier.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/issue-kind.mjs",
@@ -3517,7 +3517,7 @@
     "measuredFiles": 1,
     "wallMs": 9204,
     "inProcMs": 8700,
-    "files": ["scripts/tests/unit/task-tracker/lib/lint-doc-anchors.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/lint-fleet-sandbox-isolation.mjs",
@@ -3526,7 +3526,7 @@
     "measuredFiles": 1,
     "wallMs": 517,
     "inProcMs": 7,
-    "files": ["scripts/tests/unit/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/marker-grammar.mjs",
@@ -3852,7 +3852,7 @@
     "measuredFiles": 1,
     "wallMs": 3474,
     "inProcMs": 2348,
-    "files": ["scripts/tests/unit/task-tracker/lib/runtime-capabilities.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/sandbox-exit-render.mjs",
@@ -3942,7 +3942,7 @@
     "measuredFiles": 1,
     "wallMs": 22894,
     "inProcMs": 16827,
-    "files": ["scripts/tests/unit/task-tracker/lib/switch-verb-noop.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs"]
   },
   {
     "subject": "scripts/sync-templates.mjs",
@@ -3978,7 +3978,7 @@
     "measuredFiles": 1,
     "wallMs": 23227,
     "inProcMs": 22606,
-    "files": ["scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/test-parallel-safety.mjs",
@@ -3996,7 +3996,7 @@
     "measuredFiles": 1,
     "wallMs": 8177,
     "inProcMs": 0,
-    "files": ["scripts/tests/unit/task-tracker/lib/timing-degraded-write-visibility.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/timing-ladder.mjs",
@@ -4104,7 +4104,7 @@
     "measuredFiles": 1,
     "wallMs": 410,
     "inProcMs": 261,
-    "files": ["scripts/tests/unit/task-tracker/lib/word-counter-bounded-memory.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/worktree-binding-guard.mjs",
@@ -4122,7 +4122,7 @@
     "measuredFiles": 1,
     "wallMs": 5449,
     "inProcMs": 4799,
-    "files": ["scripts/tests/unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/worktree-relocation-guard.mjs",
@@ -4158,7 +4158,7 @@
     "measuredFiles": 1,
     "wallMs": 2689,
     "inProcMs": 2545,
-    "files": ["scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs"]
   },
   {
     "subject": "scripts/maintenance/lint-test-coverage-reach-detector.mjs",
@@ -4167,7 +4167,7 @@
     "measuredFiles": 1,
     "wallMs": 629,
     "inProcMs": 7,
-    "files": ["scripts/tests/unit/task-tracker/maintenance/lint-test-coverage-reach.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs"]
   },
   {
     "subject": "scripts/maintenance/migrate-markers-corpus.mjs",
@@ -4252,7 +4252,7 @@
     "measuredFiles": 1,
     "wallMs": 10645,
     "inProcMs": 10077,
-    "files": ["scripts/tests/unit/task-tracker/verbs/bind.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/verbs/bind.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/verbs/board.mjs",
@@ -4387,7 +4387,7 @@
     "measuredFiles": 1,
     "wallMs": 2241,
     "inProcMs": 1875,
-    "files": ["scripts/tests/unit/task-tracker/verbs/report-verb-496.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/verbs/shelve.mjs",
@@ -4396,7 +4396,7 @@
     "measuredFiles": 1,
     "wallMs": 882,
     "inProcMs": 652,
-    "files": ["scripts/tests/unit/task-tracker/verbs/shelve.test.mjs"]
+    "files": ["scripts/tests/integration/task-tracker/verbs/shelve.test.mjs"]
   },
   {
     "subject": "scripts/task-tracker/lib/split-plan.mjs",

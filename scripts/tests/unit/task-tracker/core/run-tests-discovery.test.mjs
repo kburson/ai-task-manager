@@ -47,10 +47,15 @@ test('AC1: laneFiles is a pure view over canonical discovery', () => {
   assert.deepEqual(all, [...discoverTestFiles(opts)].sort(), 'all-lane == discoverTestFiles()');
 
   const m = laneManifest(opts);
-  assert.deepEqual(
+  // #1413 — `fast` is unit-only. The integration lane holds the tests that touch
+  // live systems and is CI-only under the 2026-08-24 test-architecture
+  // direction, so the local composite lane must not pull it in. `integration`
+  // stays directly selectable, and TIA still resolves individual files from it.
+  assert.deepEqual(laneFiles('fast', opts), [...m.unit].sort(), 'fast = unit');
+  assert.notDeepEqual(
     laneFiles('fast', opts),
     [...m.unit, ...m.integration].sort(),
-    'fast = unit ∪ integration'
+    'fast must NOT include the CI-only integration lane'
   );
   assert.deepEqual(laneFiles('slow', opts), [...m.slow].sort(), 'slow = slow');
   // #864 — unit and integration are now first-class sections; `all` stays as the

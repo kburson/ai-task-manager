@@ -93,7 +93,7 @@ Each lane (`unit/`, `integration/`, `slow/`) is nested identically. **No `*.test
 file lives directly in a lane root** — every file is under a subsystem or bucket
 subdirectory. `laneOf()` parses the exact canonical path rather than inferring a
 default. The layout is enforced by `npm run lint:test-layout` and
-`scripts/tests/unit/meta/test-tree-layout.test.mjs`; a per-directory file cap (source
+`scripts/tests/integration/meta/test-tree-layout.test.mjs`; a per-directory file cap (source
 `lib/` is itself flat) is deferred to #946.
 
 ### 3. Story-ID tagging

@@ -32,8 +32,8 @@ function signals(result, testPath) {
     .sort();
 }
 
-const CHEAP_MEMBERSHIP_TEST = 'scripts/tests/unit/meta/test-corpus-membership.test.mjs';
-const EXPENSIVE_PACKAGE_TEST = 'scripts/tests/unit/meta/package-test-corpus.test.mjs';
+const CHEAP_MEMBERSHIP_TEST = 'scripts/tests/integration/meta/test-corpus-membership.test.mjs';
+const EXPENSIVE_PACKAGE_TEST = 'scripts/tests/integration/meta/package-test-corpus.test.mjs';
 const CORPUS_DISCOVERED = [
   CHEAP_MEMBERSHIP_TEST,
   EXPENSIVE_PACKAGE_TEST,

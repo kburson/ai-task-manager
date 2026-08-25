@@ -14,7 +14,7 @@ still useful: it proves that the migration preserved every source path, target
 path, lane, and digest.
 
 The mutable post-migration census is not useful in its current shape.
-`scripts/tests/unit/meta/package-test-corpus.test.mjs` originally repeated the
+`scripts/tests/integration/meta/package-test-corpus.test.mjs` originally repeated the
 same changing fact as:
 
 1. `EXPECTED_POST_SNAPSHOT_TESTS`, a literal path list;
@@ -292,7 +292,7 @@ Noncanonical discovered test files:
 ! scripts/gh/misplaced.test.mjs
 
 Move each file under scripts/tests/{unit,integration,slow}/<subsystem>/.
-See: scripts/tests/unit/meta/test-tree-layout.test.mjs
+See: scripts/tests/integration/meta/test-tree-layout.test.mjs
 No membership record can be created until the path is canonical.
 ```
 
@@ -319,7 +319,7 @@ The guard never writes, moves, creates, or deletes records.
 Membership reconciliation moves into a cheap, focused test:
 
 ```text
-scripts/tests/unit/meta/test-corpus-membership.test.mjs
+scripts/tests/integration/meta/test-corpus-membership.test.mjs
 ```
 
 That test performs deterministic record loading, canonical-layout
@@ -327,7 +327,7 @@ classification, finalized-frozen-path calculation, exact set reconciliation,
 and path diagnostics only. It does not run `npm pack`, read historical blobs,
 or prove migration renames.
 
-`scripts/tests/unit/meta/package-test-corpus.test.mjs` retains the expensive
+`scripts/tests/integration/meta/package-test-corpus.test.mjs` retains the expensive
 frozen-manifest, historical-Git, and package-surface proofs. The central
 `EXPECTED_POST_SNAPSHOT_TESTS` list, its minimum-count logic, and the focused
 Grok-provider test-path list are removed; none remains as an independently
@@ -488,9 +488,9 @@ Focused test-impact tests will prove:
 Repository verification remains:
 
 ```text
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
-node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/package-test-corpus.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 npm run lint
 npm run format:check
 npm test

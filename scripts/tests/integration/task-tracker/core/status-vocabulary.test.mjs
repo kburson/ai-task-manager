@@ -97,7 +97,7 @@ const lines = grepRaw.split('\n').filter((l) => l.length > 0);
 const allowedPrefixes = [
   'skill/shared/rules/parallel.md:',
   'docs/guides/parallel-agents.md:',
-  'scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs:',
+  'scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs:',
 ];
 for (const line of lines) {
   const ok = allowedPrefixes.some((p) => line.startsWith(p));

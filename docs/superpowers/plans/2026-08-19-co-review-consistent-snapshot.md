@@ -22,7 +22,7 @@ co-review CLI.
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 
 ### Step 1: Add a deterministic failing status regression
@@ -42,7 +42,7 @@ state and releases the test mutex. Assert:
 Run:
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: the new test fails with `event-count: expected N, actual N+1`.
@@ -99,7 +99,7 @@ Run the focused command again and require green.
 ### Step 5: Commit
 
 ```text
-git add scripts/review/lib/protocol.mjs scripts/tests/unit/review/co-review.test.mjs
+git add scripts/review/lib/protocol.mjs scripts/tests/integration/review/co-review.test.mjs
 git commit -m '[#1322] fix: settle concurrent co-review snapshots'
 ```
 
@@ -107,7 +107,7 @@ git commit -m '[#1322] fix: settle concurrent co-review snapshots'
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 
 ### Step 1: Add a failing `waitForTurn` interleaving test
@@ -133,13 +133,13 @@ Assert:
 ### Step 4: Run focused tests
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 ### Step 5: Commit
 
 ```text
-git add scripts/review/lib/protocol.mjs scripts/tests/unit/review/co-review.test.mjs
+git add scripts/review/lib/protocol.mjs scripts/tests/integration/review/co-review.test.mjs
 git commit -m '[#1322] test: preserve persistent integrity refusals'
 ```
 
@@ -168,7 +168,7 @@ all non-integrity exit semantics.
 ### Step 3: Run focused unit and real-boundary tests
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
 ```
 
 ### Step 4: Commit
@@ -183,8 +183,8 @@ git commit -m '[#1322] docs: teach co-review snapshot recovery'
 ### Step 1: Run all declared verification
 
 ```text
-node --test scripts/tests/unit/review/co-review.test.mjs
-node --test scripts/tests/unit/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs scripts/tests/slow/review/co-review-boundaries.test.mjs
 npm test
 npm run test:slow
 npm run lint

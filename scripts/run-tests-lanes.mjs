@@ -52,13 +52,24 @@ export function laneFiles(lane, opts = {}) {
   const manifest = laneManifest(opts);
   const unit = [...manifest.unit].sort();
   const integration = [...manifest.integration].sort();
-  const fast = [...manifest.unit, ...manifest.integration].sort();
+  // #1413 — `fast` is unit-only. The integration lane is CI-only under the
+  // 2026-08-24 test-architecture direction: it holds the tests that touch live
+  // systems, and running them locally is what made the lane nondeterministic
+  // (1976 git spawns / ~900s per run, unrelated tests tripping GIT_TIMEOUT_MS).
+  // "CI-only" means the local composite lanes stop including it — `integration`
+  // is still directly selectable, and TIA still resolves individual files from
+  // it, so a story touching heavy-system code runs those tests in Develop.
+  const fast = [...manifest.unit].sort();
   const slow = [...manifest.slow].sort();
   if (lane === 'unit') return unit;
   if (lane === 'integration') return integration;
   if (lane === 'fast') return fast;
   if (lane === 'slow') return slow;
-  if (lane === 'all') return [...fast, ...slow].sort();
+  // `all` is an EXPLICIT three-lane union, not `fast ∪ slow`. Deriving it from a
+  // now-narrower `fast` would drop every integration file, and
+  // `discoveryDivergence` compares this selection against on-disk ground truth
+  // and fails the runner closed on any gap.
+  if (lane === 'all') return [...manifest.unit, ...manifest.integration, ...manifest.slow].sort();
   throw new Error(`run-tests: --lane must be one of ${RUN_LANES.join('|')} (got: ${lane})`);
 }
 

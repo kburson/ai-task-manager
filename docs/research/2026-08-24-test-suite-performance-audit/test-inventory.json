@@ -2365,7 +2365,7 @@
     "story": "#1099"
   },
   {
-    "file": "scripts/tests/unit/dev-env/verify-local-worktree.test.mjs",
+    "file": "scripts/tests/integration/dev-env/verify-local-worktree.test.mjs",
     "lane": "unit",
     "bytes": 6793,
     "lines": 197,
@@ -2390,7 +2390,7 @@
     "story": "#309"
   },
   {
-    "file": "scripts/tests/unit/fixtures/feature-fixtures.test.mjs",
+    "file": "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
     "lane": "unit",
     "bytes": 3394,
     "lines": 87,
@@ -2496,7 +2496,7 @@
     "story": "#564"
   },
   {
-    "file": "scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs",
+    "file": "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
     "lane": "unit",
     "bytes": 2663,
     "lines": 64,
@@ -2521,7 +2521,7 @@
     "story": "#1383"
   },
   {
-    "file": "scripts/tests/unit/meta/audit-story-tags.test.mjs",
+    "file": "scripts/tests/integration/meta/audit-story-tags.test.mjs",
     "lane": "unit",
     "bytes": 5551,
     "lines": 149,
@@ -2571,7 +2571,7 @@
     "story": "#949"
   },
   {
-    "file": "scripts/tests/unit/meta/package-test-corpus.test.mjs",
+    "file": "scripts/tests/integration/meta/package-test-corpus.test.mjs",
     "lane": "unit",
     "bytes": 10664,
     "lines": 244,
@@ -2628,7 +2628,7 @@
     "story": "#1307"
   },
   {
-    "file": "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
+    "file": "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
     "lane": "unit",
     "bytes": 21205,
     "lines": 521,
@@ -2656,7 +2656,7 @@
     "story": "#1263"
   },
   {
-    "file": "scripts/tests/unit/meta/test-tree-layout.test.mjs",
+    "file": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
     "lane": "unit",
     "bytes": 14081,
     "lines": 335,
@@ -2802,7 +2802,7 @@
     "story": "#454"
   },
   {
-    "file": "scripts/tests/unit/providers/transcript-resolver.test.mjs",
+    "file": "scripts/tests/integration/providers/transcript-resolver.test.mjs",
     "lane": "unit",
     "bytes": 6791,
     "lines": 163,
@@ -3015,7 +3015,7 @@
     "story": "#786"
   },
   {
-    "file": "scripts/tests/unit/review/co-review-finalization.test.mjs",
+    "file": "scripts/tests/integration/review/co-review-finalization.test.mjs",
     "lane": "unit",
     "bytes": 223,
     "lines": 8,
@@ -3040,7 +3040,7 @@
     "story": "#1276"
   },
   {
-    "file": "scripts/tests/unit/review/co-review-fixture-cost.test.mjs",
+    "file": "scripts/tests/integration/review/co-review-fixture-cost.test.mjs",
     "lane": "unit",
     "bytes": 4167,
     "lines": 120,
@@ -3090,7 +3090,7 @@
     "story": "#1325"
   },
   {
-    "file": "scripts/tests/unit/review/co-review.test.mjs",
+    "file": "scripts/tests/integration/review/co-review.test.mjs",
     "lane": "unit",
     "bytes": 23563,
     "lines": 654,
@@ -3306,7 +3306,7 @@
     "story": "#300"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/assert-file-excludes.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
     "lane": "unit",
     "bytes": 1989,
     "lines": 61,
@@ -3331,7 +3331,7 @@
     "story": "#854"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs",
     "lane": "unit",
     "bytes": 9027,
     "lines": 234,
@@ -3562,7 +3562,7 @@
     "story": "#427"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/bash-guard-fail-closed.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/bash-guard-fail-closed.test.mjs",
     "lane": "unit",
     "bytes": 3619,
     "lines": 86,
@@ -3587,7 +3587,7 @@
     "story": "#751"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/bash-guard-move-state-substring.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/bash-guard-move-state-substring.test.mjs",
     "lane": "unit",
     "bytes": 3175,
     "lines": 80,
@@ -3612,7 +3612,7 @@
     "story": "#675 (AC5)"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/bash-guard-move-state.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/bash-guard-move-state.test.mjs",
     "lane": "unit",
     "bytes": 3546,
     "lines": 87,
@@ -3637,7 +3637,7 @@
     "story": "#542"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs",
     "lane": "unit",
     "bytes": 4310,
     "lines": 141,
@@ -4302,7 +4302,7 @@
     "story": "#638"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
     "lane": "unit",
     "bytes": 1629,
     "lines": 38,
@@ -4402,7 +4402,7 @@
     "story": "#642"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/coverage-verify-epic-114.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
     "lane": "unit",
     "bytes": 2463,
     "lines": 48,
@@ -4427,7 +4427,7 @@
     "story": "#605"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
     "lane": "unit",
     "bytes": 1537,
     "lines": 36,
@@ -4762,7 +4762,7 @@
     "story": "#113"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/field-config-warn.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs",
     "lane": "unit",
     "bytes": 7448,
     "lines": 208,
@@ -6244,7 +6244,7 @@
     "story": "#491"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/project-fields.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
     "lane": "unit",
     "bytes": 7932,
     "lines": 185,
@@ -6273,7 +6273,7 @@
     "story": "#309"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/project-tmp-dir.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
     "lane": "unit",
     "bytes": 4919,
     "lines": 116,
@@ -6526,7 +6526,7 @@
     "story": "#1040"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs",
     "lane": "unit",
     "bytes": 6042,
     "lines": 182,
@@ -6655,7 +6655,7 @@
     "story": "#1090"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/run-tests-kill-report.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/run-tests-kill-report.test.mjs",
     "lane": "unit",
     "bytes": 5059,
     "lines": 148,
@@ -6680,7 +6680,7 @@
     "story": "#531 #1156"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/run-tests-lanes.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/run-tests-lanes.test.mjs",
     "lane": "unit",
     "bytes": 3441,
     "lines": 80,
@@ -6730,7 +6730,7 @@
     "story": "#863"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs",
     "lane": "unit",
     "bytes": 9757,
     "lines": 273,
@@ -6909,7 +6909,7 @@
     "story": "#768"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/seed-worktree.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs",
     "lane": "unit",
     "bytes": 4346,
     "lines": 115,
@@ -6934,7 +6934,7 @@
     "story": "#575 — Retire seed-worktree."
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/self-bind-resume.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
     "lane": "unit",
     "bytes": 6762,
     "lines": 156,
@@ -7318,7 +7318,7 @@
     "story": "#718"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/status-vocabulary.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
     "lane": "unit",
     "bytes": 4694,
     "lines": 111,
@@ -7421,7 +7421,7 @@
     "story": "#845"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/core/templates.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/core/templates.test.mjs",
     "lane": "unit",
     "bytes": 15516,
     "lines": 411,
@@ -8610,7 +8610,7 @@
     "story": "#466"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
     "lane": "unit",
     "bytes": 5664,
     "lines": 143,
@@ -8635,7 +8635,7 @@
     "story": "#653"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs",
     "lane": "unit",
     "bytes": 3334,
     "lines": 101,
@@ -8714,7 +8714,7 @@
     "story": "#681"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/absolute-word-markers.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
     "lane": "unit",
     "bytes": 15633,
     "lines": 439,
@@ -8825,7 +8825,7 @@
     "story": "#345"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/action-capture.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
     "lane": "unit",
     "bytes": 14462,
     "lines": 412,
@@ -9923,7 +9923,7 @@
     "story": "#338"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
     "lane": "unit",
     "bytes": 6455,
     "lines": 198,
@@ -10404,7 +10404,7 @@
     "story": "#1164"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/bound-worktree-state.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
     "lane": "unit",
     "bytes": 6694,
     "lines": 201,
@@ -10587,7 +10587,7 @@
     "story": "#162"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/child-close-outcome-evidence.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs",
     "lane": "unit",
     "bytes": 11951,
     "lines": 392,
@@ -10619,7 +10619,7 @@
     "story": "#1129"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/chore-mode-contract.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
     "lane": "unit",
     "bytes": 983,
     "lines": 28,
@@ -10649,7 +10649,7 @@
     "story": "#1090"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/chore-mode-verb.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
     "lane": "unit",
     "bytes": 9615,
     "lines": 314,
@@ -11466,7 +11466,7 @@
     "story": "#731"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
     "lane": "unit",
     "bytes": 9611,
     "lines": 234,
@@ -11827,7 +11827,7 @@
     "story": "#632"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-cache-unpark.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
     "lane": "unit",
     "bytes": 10970,
     "lines": 358,
@@ -11856,7 +11856,7 @@
     "story": "#629"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-cli.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs",
     "lane": "unit",
     "bytes": 13596,
     "lines": 338,
@@ -11881,7 +11881,7 @@
     "story": "#651"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-config-get.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-config-get.test.mjs",
     "lane": "unit",
     "bytes": 2134,
     "lines": 52,
@@ -11963,7 +11963,7 @@
     "story": "#636 — coverage lift for scripts/task-tracker/heal-backlog.mjs (part 2)."
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-migrate-project.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-migrate-project.test.mjs",
     "lane": "unit",
     "bytes": 2089,
     "lines": 40,
@@ -12097,7 +12097,7 @@
     "story": "#622"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
     "lane": "unit",
     "bytes": 12697,
     "lines": 320,
@@ -12204,7 +12204,7 @@
     "story": "#620"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-tag-story-ids.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-tag-story-ids.test.mjs",
     "lane": "unit",
     "bytes": 8525,
     "lines": 233,
@@ -12310,7 +12310,7 @@
     "story": "#633"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-verify-priority-p3.test.mjs",
     "lane": "unit",
     "bytes": 2058,
     "lines": 45,
@@ -12335,7 +12335,7 @@
     "story": "#608"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/create-issue-entry-marker.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
     "lane": "unit",
     "bytes": 5302,
     "lines": 164,
@@ -12388,7 +12388,7 @@
     "story": "#513"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/create-issue-partial-success.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
     "lane": "unit",
     "bytes": 5205,
     "lines": 181,
@@ -12413,7 +12413,7 @@
     "story": "#459"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
     "lane": "unit",
     "bytes": 5197,
     "lines": 155,
@@ -12660,7 +12660,7 @@
     "story": "#498"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs",
     "lane": "unit",
     "bytes": 10910,
     "lines": 321,
@@ -12981,7 +12981,7 @@
     "story": "#234"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
     "lane": "unit",
     "bytes": 5366,
     "lines": 141,
@@ -13010,7 +13010,7 @@
     "story": "#234"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/discover-test-files.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs",
     "lane": "unit",
     "bytes": 4707,
     "lines": 113,
@@ -13344,7 +13344,7 @@
     "story": "#418"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/duplicate-child-guard.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs",
     "lane": "unit",
     "bytes": 7744,
     "lines": 201,
@@ -13991,7 +13991,7 @@
     "story": "#1091"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/estimation/record-claim.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
     "lane": "unit",
     "bytes": 2441,
     "lines": 65,
@@ -14101,7 +14101,7 @@
     "story": "#1091"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/evidence-branch-reachability.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs",
     "lane": "unit",
     "bytes": 10131,
     "lines": 278,
@@ -14188,7 +14188,7 @@
     "story": "#113"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/evidence-marker-provenance.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs",
     "lane": "unit",
     "bytes": 4777,
     "lines": 131,
@@ -14354,9 +14354,9 @@
     "helpers": [
       "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
       "scripts/tests/unit/task-tracker/lib/assignment-snapshot.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
       "scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/assign.test.mjs",
       "scripts/tests/unit/task-tracker/verbs/unassign.test.mjs"
     ],
@@ -14416,7 +14416,7 @@
     "story": "#522"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/fail-closed-gates.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs",
     "lane": "unit",
     "bytes": 3644,
     "lines": 82,
@@ -14472,7 +14472,7 @@
     "story": "#448 #1089"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/fleet-registry-gc.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
     "lane": "unit",
     "bytes": 7457,
     "lines": 243,
@@ -14501,7 +14501,7 @@
     "story": "#441"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/fleet-registry.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
     "lane": "unit",
     "bytes": 1477,
     "lines": 50,
@@ -14554,7 +14554,7 @@
     "story": "#216"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/foreign-session-refusal.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs",
     "lane": "unit",
     "bytes": 2308,
     "lines": 63,
@@ -14815,7 +14815,7 @@
     "story": "#914 (epic #912)"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/gh-command-policy.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
     "lane": "unit",
     "bytes": 4062,
     "lines": 106,
@@ -16185,7 +16185,7 @@
     "story": "#721"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/hook-entrypoint.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs",
     "lane": "unit",
     "bytes": 2909,
     "lines": 62,
@@ -16210,7 +16210,7 @@
     "story": "#869"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
     "lane": "unit",
     "bytes": 10024,
     "lines": 250,
@@ -16368,7 +16368,7 @@
     "story": "#464"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
     "lane": "unit",
     "bytes": 14396,
     "lines": 393,
@@ -16452,7 +16452,7 @@
     "story": "#309"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/interruption-word-markers.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
     "lane": "unit",
     "bytes": 8999,
     "lines": 231,
@@ -16486,7 +16486,7 @@
     "story": "#1142"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/is-main-symlink.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs",
     "lane": "unit",
     "bytes": 1654,
     "lines": 42,
@@ -16536,7 +16536,7 @@
     "story": "#258"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/issue-body-verifier.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
     "lane": "unit",
     "bytes": 15933,
     "lines": 475,
@@ -16589,7 +16589,7 @@
     "story": "#494"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
     "lane": "unit",
     "bytes": 5364,
     "lines": 125,
@@ -16921,7 +16921,7 @@
     "story": "#179"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/lint-doc-anchors.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs",
     "lane": "unit",
     "bytes": 3426,
     "lines": 89,
@@ -16949,7 +16949,7 @@
     "story": "#941"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
     "lane": "unit",
     "bytes": 5033,
     "lines": 108,
@@ -16974,7 +16974,7 @@
     "story": "#442"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/lock-env-leak-regression.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
     "lane": "unit",
     "bytes": 4729,
     "lines": 118,
@@ -17269,7 +17269,7 @@
     "story": "#978"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/memory-resync-cli.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs",
     "lane": "unit",
     "bytes": 2122,
     "lines": 55,
@@ -17451,7 +17451,7 @@
     "story": "#66"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/move-state-lock.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
     "lane": "unit",
     "bytes": 5971,
     "lines": 131,
@@ -17504,7 +17504,7 @@
     "story": "#628"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
     "lane": "unit",
     "bytes": 4483,
     "lines": 98,
@@ -18040,7 +18040,7 @@
     "story": "#674"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/new-switch-marker-order.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
     "lane": "unit",
     "bytes": 4986,
     "lines": 127,
@@ -18554,7 +18554,7 @@
     "story": "#236"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/process-timeouts.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs",
     "lane": "unit",
     "bytes": 3562,
     "lines": 99,
@@ -19066,7 +19066,7 @@
     "story": "#905"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
     "lane": "unit",
     "bytes": 8551,
     "lines": 261,
@@ -19095,7 +19095,7 @@
     "story": "#1095"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/resume-fleet-refresh.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
     "lane": "unit",
     "bytes": 2890,
     "lines": 81,
@@ -19125,7 +19125,7 @@
     "story": "#1128"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
     "lane": "unit",
     "bytes": 4163,
     "lines": 117,
@@ -19154,7 +19154,7 @@
     "story": "#666"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/resume-seed.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
     "lane": "unit",
     "bytes": 7904,
     "lines": 232,
@@ -19617,7 +19617,7 @@
     "story": "#1200"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/runtime-capabilities.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
     "lane": "unit",
     "bytes": 9654,
     "lines": 236,
@@ -20057,7 +20057,7 @@
     "story": "#1341"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/source-edit-gate.cache.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate.cache.test.mjs",
     "lane": "unit",
     "bytes": 6473,
     "lines": 179,
@@ -20085,7 +20085,7 @@
     "story": "#664"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs",
     "lane": "unit",
     "bytes": 15252,
     "lines": 447,
@@ -20241,7 +20241,7 @@
     "story": "#1356"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/start-time-sync.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
     "lane": "unit",
     "bytes": 5664,
     "lines": 187,
@@ -20301,7 +20301,7 @@
     "story": "#1007"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/state-mutator-concurrency.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
     "lane": "unit",
     "bytes": 4478,
     "lines": 118,
@@ -20507,7 +20507,7 @@
     "story": "#535"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/switch-verb-noop.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
     "lane": "unit",
     "bytes": 7396,
     "lines": 181,
@@ -20590,7 +20590,7 @@
     "story": "#1035"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/terminal-review-handoff.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
     "lane": "unit",
     "bytes": 10858,
     "lines": 349,
@@ -20673,7 +20673,7 @@
     "story": "#876"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
     "lane": "unit",
     "bytes": 13750,
     "lines": 362,
@@ -20755,7 +20755,7 @@
     "story": "#154 #1089 #1344"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
     "lane": "unit",
     "bytes": 6118,
     "lines": 203,
@@ -20951,7 +20951,7 @@
     "story": "#310 #1089"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/timing-concurrency.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
     "lane": "unit",
     "bytes": 4413,
     "lines": 111,
@@ -20976,7 +20976,7 @@
     "story": "#213"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
     "lane": "unit",
     "bytes": 5200,
     "lines": 182,
@@ -21443,7 +21443,7 @@
     "story": "#249"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/update-event-fields-states.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs",
     "lane": "unit",
     "bytes": 3381,
     "lines": 104,
@@ -21765,7 +21765,7 @@
     "story": "#208 #1212"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/verb-start-resume-stop.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
     "lane": "unit",
     "bytes": 8893,
     "lines": 225,
@@ -21879,7 +21879,7 @@
     "story": "#1110"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs",
     "lane": "unit",
     "bytes": 9544,
     "lines": 298,
@@ -22237,7 +22237,7 @@
     "story": "#1142"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/word-counter-bounded-memory.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs",
     "lane": "unit",
     "bytes": 4023,
     "lines": 107,
@@ -22434,7 +22434,7 @@
     "story": "#1165"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
     "lane": "unit",
     "bytes": 7311,
     "lines": 228,
@@ -22679,7 +22679,7 @@
     "story": "#310"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
     "lane": "unit",
     "bytes": 3897,
     "lines": 100,
@@ -22732,7 +22732,7 @@
     "story": "#694"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs",
     "lane": "unit",
     "bytes": 5417,
     "lines": 152,
@@ -22760,7 +22760,7 @@
     "story": "#1101"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
     "lane": "unit",
     "bytes": 4981,
     "lines": 112,
@@ -23038,7 +23038,7 @@
     "story": "#310"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
     "lane": "unit",
     "bytes": 14221,
     "lines": 354,
@@ -23150,7 +23150,7 @@
     "story": "#1212"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/verbs/bind.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
     "lane": "unit",
     "bytes": 5764,
     "lines": 153,
@@ -24374,7 +24374,7 @@
     "story": "#259"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/verbs/help.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/verbs/help.test.mjs",
     "lane": "unit",
     "bytes": 7899,
     "lines": 191,
@@ -24481,7 +24481,7 @@
     "story": "#764"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/verbs/new-from-plan.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
     "lane": "unit",
     "bytes": 9051,
     "lines": 283,
@@ -25235,7 +25235,7 @@
     "story": "#996"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/verbs/report-verb-496.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs",
     "lane": "unit",
     "bytes": 3433,
     "lines": 103,
@@ -25422,7 +25422,7 @@
     "story": "#541"
   },
   {
-    "file": "scripts/tests/unit/task-tracker/verbs/shelve.test.mjs",
+    "file": "scripts/tests/integration/task-tracker/verbs/shelve.test.mjs",
     "lane": "unit",
     "bytes": 10315,
     "lines": 315,
