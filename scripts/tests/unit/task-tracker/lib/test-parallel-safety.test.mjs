@@ -158,7 +158,9 @@ test('#1203 pure source remains eligible for the parallel pool', () => {
 
 // @story #1212
 test('#1212 ownership aggregate is excluded from the parallel pool', () => {
-  const fullPath = fileURLToPath(new URL('exclusive-ownership-policy.test.mjs', import.meta.url));
+  const fullPath = fileURLToPath(
+    new URL('../../../integration/task-tracker/lib/exclusive-ownership-policy.test.mjs', import.meta.url)
+  );
 
   assert.equal(
     isParallelSafe(fullPath),

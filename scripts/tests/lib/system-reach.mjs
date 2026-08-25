@@ -68,8 +68,10 @@ export const SYSTEM_REACH_SIGNALS = Object.freeze(SIGNALS.map(([name]) => name))
 // timeout started this whole thread — a self-source classifier would have left
 // it in the unit lane and "fixed" nothing.
 //
-// So a test inherits the system reach of the modules it imports. Walk the static
-// import graph from the test and union the signals found across the closure.
+// So a test inherits the system reach of the modules it imports. Walk the
+// literal import graph from the test and union the signals found across the
+// closure. This includes test modules: importing a test executes its suites,
+// which some historical AC aggregators deliberately do.
 //
 // Static imports only. Dynamic `import()` with a computed specifier is not
 // resolvable without executing the module, so the closure is a lower bound —
@@ -83,23 +85,21 @@ export const SYSTEM_REACH_SIGNALS = Object.freeze(SIGNALS.map(([name]) => name))
 // sister epics exist to work through. Relocating it would empty the unit lane
 // and leave nothing meaningful running locally.
 //
-// So the walk follows only TEST-SUPPORT modules: files under `scripts/tests/`
-// that are not themselves `*.test.mjs`. A fixture that shells out is morally
-// part of the test that imports it — `co-review-fixture.mjs` spawns the product
-// CLI and `git`, and the three co-review suites importing it were the last
-// tests failing on timeouts after the first relocation pass. Product code that
-// spawns is a different problem with a different fix: mock it.
+// So the walk follows only TEST-TREE modules: files under `scripts/tests/`.
+// A fixture that shells out is morally part of the test that imports it, and an
+// imported test module executes its suites. Product code that spawns is a
+// different problem with a different fix: mock it.
 
-const STATIC_IMPORT_RE = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]/g;
+const MODULE_IMPORT_RE =
+  /(?:(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\))/g;
 
 /**
- * A test-support module: lives under the test tree but is not itself a test.
- * Fixtures, case tables, and shared harness helpers. The transitive walk follows
- * these and nothing else.
+ * A module under the test tree. Fixtures, case tables, shared harness helpers,
+ * and deliberately imported test entrypoints all execute as part of the caller.
  */
-export function isTestSupportModule(file) {
+export function isTestTreeModule(file) {
   const normalized = String(file).replaceAll('\\\\', '/');
-  return normalized.startsWith('scripts/tests/') && !/\.test\.mjs$/.test(normalized);
+  return normalized.startsWith('scripts/tests/');
 }
 
 function resolveRelativeImport(root, importer, specifier, deps) {
@@ -138,9 +138,9 @@ export function classifyTransitiveSystemReach(file, deps) {
       continue;
     }
     for (const signal of classifySystemReach(source)) found.add(signal);
-    for (const match of source.matchAll(STATIC_IMPORT_RE)) {
-      const next = resolveRelativeImport(root, current, match[1], deps);
-      if (next && isTestSupportModule(next) && !seen.has(next)) queue.push(next);
+    for (const match of source.matchAll(MODULE_IMPORT_RE)) {
+      const next = resolveRelativeImport(root, current, match[1] ?? match[2], deps);
+      if (next && isTestTreeModule(next) && !seen.has(next)) queue.push(next);
     }
   }
   return SYSTEM_REACH_SIGNALS.filter((signal) => found.has(signal));

@@ -23,7 +23,7 @@ import { laneManifest } from '../../../task-tracker/lib/test-lanes.mjs';
 import {
   classifySystemReach,
   classifyTransitiveSystemReach,
-  isTestSupportModule,
+  isTestTreeModule,
   touchesLiveSystem,
   SYSTEM_REACH_SIGNALS,
 } from '../../lib/system-reach.mjs';
@@ -105,13 +105,38 @@ test('merely mentioning git in prose or data is not a spawn', () => {
   assert.deepEqual(classifySystemReach('// spawns git somewhere else'), []);
 });
 
-test('the closure follows test fixtures but stops at product code', () => {
-  assert.equal(isTestSupportModule('scripts/tests/fixtures/co-review-fixture.mjs'), true);
-  assert.equal(isTestSupportModule('scripts/tests/lib/stub-gh.mjs'), true);
-  // A test is not support for another test.
-  assert.equal(isTestSupportModule('scripts/tests/unit/meta/unit-lane-purity.test.mjs'), false);
+test('the closure follows the test tree but stops at product code', () => {
+  assert.equal(isTestTreeModule('scripts/tests/fixtures/co-review-fixture.mjs'), true);
+  assert.equal(isTestTreeModule('scripts/tests/lib/stub-gh.mjs'), true);
+  // Imported test entrypoints execute their suites and therefore carry reach.
+  assert.equal(isTestTreeModule('scripts/tests/unit/meta/unit-lane-purity.test.mjs'), true);
   // Product code is where the walk stops. Following it flags 63% of the lane —
   // that population is the mocking backlog, not a relocation list.
-  assert.equal(isTestSupportModule('scripts/task-tracker/verbs/close.mjs'), false);
-  assert.equal(isTestSupportModule('scripts/gh/lib/github-projects.mjs'), false);
+  assert.equal(isTestTreeModule('scripts/task-tracker/verbs/close.mjs'), false);
+  assert.equal(isTestTreeModule('scripts/gh/lib/github-projects.mjs'), false);
+});
+
+test('the closure follows imported test modules because importing them executes their suites', () => {
+  const root = '/repo';
+  const sources = new Map([
+    [
+      'scripts/tests/unit/meta/aggregate.test.mjs',
+      "await import('../../integration/system.test.mjs');",
+    ],
+    [
+      'scripts/tests/integration/system.test.mjs',
+      "execFileSync('git', ['status']);",
+    ],
+  ]);
+  const deps = {
+    root,
+    path,
+    existsSync: (file) => sources.has(path.relative(root, file).replaceAll(path.sep, '/')),
+    readFileSync: (file) => sources.get(path.relative(root, file).replaceAll(path.sep, '/')),
+  };
+
+  assert.deepEqual(
+    classifyTransitiveSystemReach('scripts/tests/unit/meta/aggregate.test.mjs', deps),
+    ['git-spawn']
+  );
 });
