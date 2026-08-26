@@ -10,10 +10,10 @@ const LATEX_ESCAPES = Object.freeze({
   '\\': '\\textbackslash{}',
   '{': '\\{',
   '}': '\\}',
-  '$': '\\$',
+  $: '\\$',
   '&': '\\&',
   '#': '\\#',
-  '_': '\\_',
+  _: '\\_',
   '%': '\\%',
   '~': '\\textasciitilde{}',
   '^': '\\textasciicircum{}',
@@ -26,9 +26,7 @@ export function escapeLatex(value) {
 export function chapterOpenerFor({ target, chapter, imageName, subtitle }) {
   const number = chapter.number;
   if (target === 'pdf') {
-    return [
-      `\\bookchapter{${imageName}}{${escapeLatex(chapter.title)}}{${escapeLatex(subtitle)}}`,
-    ];
+    return [`\\bookchapter{${imageName}}{${escapeLatex(chapter.title)}}{${escapeLatex(subtitle)}}`];
   }
   if (target === 'manuscript') {
     return [
@@ -73,7 +71,9 @@ export function planChapterImages({ articlesDir, chapters, outDir }) {
     const first = chapter.members?.[0]?.article;
     if (!first) throw new Error(`chapter ${chapter.number} has no first member banner`);
     if (!BOOK_BANNER_RE.test(first.bannerPath ?? '')) {
-      throw new Error(`${first.slug ?? `chapter ${chapter.number}`} has an invalid book banner path`);
+      throw new Error(
+        `${first.slug ?? `chapter ${chapter.number}`} has an invalid book banner path`
+      );
     }
 
     const sourcePath = path.resolve(articleRoot, first.bannerPath);
@@ -103,6 +103,8 @@ export function planChapterImages({ articlesDir, chapters, outDir }) {
 
 export async function stageChapterImages(plan) {
   await Promise.all(plan.map(({ sourcePath }) => access(sourcePath, constants.R_OK)));
-  await Promise.all(plan.map(({ outputPath }) => mkdir(path.dirname(outputPath), { recursive: true })));
+  await Promise.all(
+    plan.map(({ outputPath }) => mkdir(path.dirname(outputPath), { recursive: true }))
+  );
   await Promise.all(plan.map(({ sourcePath, outputPath }) => copyFile(sourcePath, outputPath)));
 }
