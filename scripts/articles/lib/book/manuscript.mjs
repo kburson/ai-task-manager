@@ -18,6 +18,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { parseArticle } from '../parse-article.mjs';
+import { chapterOpenerFor } from './chapter-openers.mjs';
 import { extractBookDiagrams } from './diagrams.mjs';
 import { convertLine, parseBibliography } from './footnotes.mjs';
 import { parseGlossary, renderGlossary } from './glossary.mjs';
@@ -45,6 +46,8 @@ const indexTargetFor = (target) =>
 
 async function loadArticle(entry, { isFirst }) {
   const parsed = parseArticle(entry.source, { keepComments: true });
+  if (!parsed.subtitle) throw new Error(`${entry.file}: article has no preamble subtitle`);
+  if (!parsed.bannerPath) throw new Error(`${entry.file}: article has no banner image`);
   const scanned = scanSections(parsed.sections, entry.file);
   validateArticle(scanned, { file: entry.file, isFirst });
 
@@ -53,6 +56,24 @@ async function loadArticle(entry, { isFirst }) {
     preamble.find((item) => item.kind === 'marker' && item.verb === verb) ?? null;
 
   const stripped = applyBookStrip(scanned);
+  const subtitleLine = `**${parsed.subtitle}**`;
+  let subtitleRemoved = false;
+  stripped.sections = stripped.sections.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => {
+      if (
+        !subtitleRemoved &&
+        section.heading === null &&
+        item.kind === 'text' &&
+        item.text === subtitleLine
+      ) {
+        subtitleRemoved = true;
+        return false;
+      }
+      return true;
+    }),
+  }));
+  if (!subtitleRemoved) throw new Error(`${entry.file}: could not remove captured subtitle`);
   const { sections, diagrams } = extractBookDiagrams(stripped.sections, entry.slug);
   const bibliographyLines = stripped.bibliographyLines;
 
@@ -60,6 +81,8 @@ async function loadArticle(entry, { isFirst }) {
     slug: entry.slug,
     file: entry.file,
     title: parsed.title,
+    subtitle: parsed.subtitle,
+    bannerPath: parsed.bannerPath,
     chapterTitle: markerOf('chapter')?.attrs.title ?? null,
     part: markerOf('part')?.attrs.title ?? null,
     mergeIntoPrevious: markerOf('merge-into-previous') !== null,
@@ -174,7 +197,7 @@ function copyrightPage(metadata) {
 
 /**
  * @param {{articlesDir: string, bookDir: string, target: 'pdf'|'epub'|'html'|'manuscript'}} options
- * @returns {Promise<{markdown: string, chapters: number, footnotes: number, indexTerms: number, sources: number, diagrams: Array<{code: string, imageName: string}>}>}
+ * @returns {Promise<{markdown: string, chapters: number, footnotes: number, indexTerms: number, sources: number, diagrams: Array<{code: string, imageName: string}>, chapterImages: Array<{chapter: number, slug: string, title: string, subtitle: string, bannerPath: string}>}>}
  */
 export async function buildManuscript({ articlesDir, bookDir, target }) {
   const spine = await listSpine(articlesDir);
@@ -193,7 +216,6 @@ export async function buildManuscript({ articlesDir, bookDir, target }) {
   const matcher = buildMatcher(glossaryTerms);
   const indexTarget = indexTargetFor(target);
   const isPdf = target === 'pdf';
-  const numberInHeading = target === 'epub' || target === 'html';
 
   const hits = new Map();
   const footnotes = [];
@@ -204,9 +226,15 @@ export async function buildManuscript({ articlesDir, bookDir, target }) {
     if (chapter.part) {
       body.push(isPdf ? `\\part{${chapter.part}}` : `# ${chapter.part}`, '');
     }
+    const firstArticle = chapter.members[0].article;
+    const imageName = `chapter-${String(chapter.number).padStart(2, '0')}-header.png`;
     body.push(
-      numberInHeading ? `# Chapter ${chapter.number}. ${chapter.title}` : `# ${chapter.title}`,
-      ''
+      ...chapterOpenerFor({
+        target,
+        chapter,
+        imageName,
+        subtitle: firstArticle.subtitle,
+      })
     );
 
     for (const member of chapter.members) {
@@ -284,5 +312,15 @@ export async function buildManuscript({ articlesDir, bookDir, target }) {
     indexTerms: hits.size,
     sources: sources.length,
     diagrams: articles.flatMap((a) => a.diagrams),
+    chapterImages: chapters.map((chapter) => {
+      const article = chapter.members[0].article;
+      return {
+        chapter: chapter.number,
+        slug: article.slug,
+        title: chapter.title,
+        subtitle: article.subtitle,
+        bannerPath: article.bannerPath,
+      };
+    }),
   };
 }

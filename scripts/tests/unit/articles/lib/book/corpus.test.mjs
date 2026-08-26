@@ -21,7 +21,8 @@ test('the live corpus composes into a manuscript', async () => {
     target: 'manuscript',
   });
 
-  assert.ok(built.chapters >= 15, `expected the drafted series, got ${built.chapters} chapters`);
+  assert.equal(built.chapters, 15, `expected the drafted series, got ${built.chapters} chapters`);
+  assert.equal(built.chapterImages.length, 15, 'every live chapter has one opener image');
   assert.ok(built.footnotes > 0, 'the series cites sources; footnotes must exist');
   assert.ok(built.indexTerms > 0, 'the glossary terms should appear somewhere in the prose');
 });
@@ -120,7 +121,7 @@ test('epub and html carry no latex, and the pdf keeps its index out of the appen
     for (const token of ['\\index{', '\\newpage', '\\part{', '\\appendix', '\\printindex']) {
       assert.equal(markdown.includes(token), false, `${target} leaked ${token}`);
     }
-    assert.match(markdown, /^# Chapter 1\. /m, 'reflowable targets number their chapters');
+    assert.match(markdown, /<div class="chapter-number">Chapter 1<\/div>/);
   }
 
   const manuscript = await buildManuscript({
@@ -143,7 +144,7 @@ test('epub and html carry no latex, and the pdf keeps its index out of the appen
   assert.match(pdf.markdown, /\\printindex/);
   assert.ok(
     pdf.markdown.indexOf('\\mainmatter') <
-      pdf.markdown.indexOf('# The Refactoring Bloat Precursor'),
+      pdf.markdown.indexOf('\\bookchapter{chapter-01-header.png}'),
     'chapter one is the first main-matter chapter'
   );
 });
