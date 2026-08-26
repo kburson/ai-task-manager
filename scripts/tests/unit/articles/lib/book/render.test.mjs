@@ -64,12 +64,22 @@ test('the PDF chapter image is proportional and never clipped', () => {
 test('the PDF page styles put chapter numbers left and page numbers right', () => {
   const header = readFileSync(CHAPTER_HEADER, 'utf8');
   assert.match(header, /\\usepackage\{fancyhdr\}/);
+  assert.match(header, /\\setlength\{\\headheight\}\{14pt\}/);
   assert.match(header, /\\fancyhead\[L\]\{\\bookchapterheader\}/);
   assert.match(header, /\\fancyfoot\[R\]\{\\thepage\}/);
   assert.match(header, /\\fancypagestyle\{plain\}/);
   assert.match(header, /\\ifnum\\value\{chapter\}>0 Chapter \\thechapter\\fi/);
   assert.match(header, /\\renewcommand\{\\headrulewidth\}\{0pt\}/);
   assert.match(header, /\\renewcommand\{\\footrulewidth\}\{0pt\}/);
+});
+
+test('the PDF uses unique physical-page anchors across visible numbering resets', () => {
+  const header = readFileSync(CHAPTER_HEADER, 'utf8');
+  assert.match(
+    header,
+    /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/
+  );
+  assert.doesNotMatch(header, /pageanchor=false/);
 });
 
 test('the PDF title page is banner-first, unnumbered, and uses a 34-point title', () => {
