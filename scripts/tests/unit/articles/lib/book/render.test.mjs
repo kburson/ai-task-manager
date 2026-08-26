@@ -427,13 +427,21 @@ test('createAssetStager copies chapter, title, and CSS assets once', async () =>
     await writeFile(path.join(bookDir, 'title-page.png'), png);
     await writeFile(path.join(bookDir, 'book.css'), '.book {}\n');
     const stage = createAssetStager({ articlesDir, bookDir, outDir });
-    await stage([
+    const chapterImages = [
       {
         chapter: 1,
         slug: '01-first',
         bannerPath: 'assets/article-headers/article-01-header.png',
       },
-    ]);
+    ];
+    const first = stage(chapterImages);
+    const second = stage(chapterImages);
+    assert.strictEqual(first, second, 'both calls receive the cached staging promise');
+    await first;
+    await writeFile(path.join(headersDir, 'article-01-header.png'), Buffer.from('changed'));
+    await writeFile(path.join(bookDir, 'title-page.png'), Buffer.from('changed'));
+    await writeFile(path.join(bookDir, 'book.css'), '.changed {}\n');
+    await second;
     assert.deepEqual(await readFile(path.join(outDir, 'chapter-01-header.png')), png);
     assert.deepEqual(await readFile(path.join(outDir, 'title-page.png')), png);
     assert.equal(await readFile(path.join(outDir, 'book.css'), 'utf8'), '.book {}\n');

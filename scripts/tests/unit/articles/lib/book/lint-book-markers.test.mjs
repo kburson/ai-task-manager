@@ -1,6 +1,6 @@
 // @chore
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -63,6 +63,54 @@ test('an include pointing at a missing fragment is reported', async () => {
   try {
     const findings = await lintBookMarkers(root);
     assert.match(findings[0].message, /fragments\/gone\.md/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('unsafe and non-regular include paths are all reported by marker lint', async () => {
+  const root = await repo({ '01-a.md': '# placeholder\n' });
+  const articlesDir = path.join(root, 'docs', 'articles');
+  const bookDir = path.join(articlesDir, 'assets', 'book');
+  const fragmentDir = path.join(bookDir, 'fragments');
+  try {
+    const absolute = path.join(root, 'absolute.md');
+    const outside = path.resolve(bookDir, 'fragments/../../outside.md');
+    const symlinkTarget = path.join(root, 'symlink-target.md');
+    await writeFile(absolute, 'secret');
+    await writeFile(outside, 'secret');
+    await writeFile(symlinkTarget, 'secret');
+    await writeFile(path.join(bookDir, 'glossary.md'), 'sibling');
+    await writeFile(path.join(bookDir, 'fragments\\known.md'), 'backslash');
+    await mkdir(path.join(fragmentDir, 'directory.md'));
+    await symlink(symlinkTarget, path.join(fragmentDir, 'link.md'));
+    await writeFile(
+      path.join(articlesDir, '01-a.md'),
+      `# A
+
+<!-- book:include path=fragments/../../outside.md -->
+<!-- book:include path=${absolute} -->
+<!-- book:include path=fragments\\known.md -->
+<!-- book:include path=glossary.md -->
+<!-- book:include path=fragments/./known.md -->
+<!-- book:include path=fragments/link.md -->
+<!-- book:include path=fragments/directory.md -->
+
+## Series Link
+
+y
+`
+    );
+
+    const findings = await lintBookMarkers(root);
+    assert.equal(findings.length, 7);
+    assert.deepEqual(
+      findings.map((finding) => finding.line),
+      [3, 4, 5, 6, 7, 8, 9]
+    );
+    for (const finding of findings) {
+      assert.match(finding.message, /unsafe book:include path|regular file/);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

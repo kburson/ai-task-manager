@@ -31,6 +31,19 @@ test('parseMarkerLine rejects unknown verbs and inline markers', () => {
   assert.throws(() => parseMarkerLine('prose <!-- book:pagebreak --> more', 'f.md'), MarkerError);
 });
 
+test('parseMarkerLine rejects malformed and schema-invalid attributes', () => {
+  const invalid = [
+    ['<!-- book:include path=fragments/a.md trailing-garbage -->', /malformed/],
+    ['<!-- book:include path=fragments/a.md path=fragments/b.md -->', /duplicate/],
+    ['<!-- book:include path=fragments/a.md typo=value -->', /unknown/],
+    ['<!-- book:pagebreak title="not allowed" -->', /does not accept/],
+  ];
+
+  for (const [line, message] of invalid) {
+    assert.throws(() => parseMarkerLine(line, 'f.md'), message, line);
+  }
+});
+
 test('scanSections splits text from markers and ignores fenced code', () => {
   const sections = [
     { heading: null, lines: ['<!-- book:chapter title="Ch" -->', 'prose'] },
@@ -45,6 +58,45 @@ test('scanSections splits text from markers and ignores fenced code', () => {
     scanned[1].items.map((i) => i.kind),
     ['text', 'text', 'text', 'text']
   );
+});
+
+test('scanSections strips inline and multiline comments but preserves surrounding prose', () => {
+  const sections = [
+    {
+      heading: null,
+      lines: [
+        'Visible <!-- PRIVATE inline --> prose.',
+        'Before <!-- PRIVATE multiline',
+        'still private --> after.',
+        '```md',
+        'literal <!-- example comment --> bytes',
+        '```',
+      ],
+    },
+  ];
+
+  assert.deepEqual(
+    scanSections(sections, 'f.md')[0].items.map((item) => item.text),
+    [
+      'Visible  prose.',
+      'Before ',
+      ' after.',
+      '```md',
+      'literal <!-- example comment --> bytes',
+      '```',
+    ]
+  );
+});
+
+test('scanSections rejects an inline book marker after a multiline comment closes', () => {
+  const sections = [
+    {
+      heading: null,
+      lines: ['<!-- editorial note', '--> prose <!-- book:pagebreak -->'],
+    },
+  ];
+
+  assert.throws(() => scanSections(sections, 'f.md'), /marker must be alone on its line/);
 });
 
 test('validateArticle rejects structural mistakes', () => {

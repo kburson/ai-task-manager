@@ -7,11 +7,12 @@
 // files, so it can say exactly where the mistake is — and it runs in the normal
 // lint sweep, long before anyone renders a book.
 
-import { access, readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { ARTICLE_FILE_RE, isOnSpine } from '../articles/lib/book/spine.mjs';
+import { resolveIncludeFragment } from '../articles/lib/book/include-fragment.mjs';
 import { parseMarkerLine } from '../articles/lib/book/markers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -68,12 +69,12 @@ export async function lintBookMarkers(root) {
       }
       if (marker.verb === 'include') {
         try {
-          await access(path.join(bookDir, marker.attrs.path));
-        } catch {
+          await resolveIncludeFragment({ bookDir, includePath: marker.attrs.path, file });
+        } catch (error) {
           findings.push({
             file,
             line,
-            message: `book:include points at ${marker.attrs.path}, which does not exist`,
+            message: error.message.replace(`${file}: `, ''),
           });
         }
       }

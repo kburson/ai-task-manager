@@ -1,6 +1,6 @@
 // @chore
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -188,6 +188,67 @@ test('a missing include fragment fails loudly', async () => {
   }
 });
 
+test('book:include rejects paths outside the regular fragment-file boundary', async (t) => {
+  const cases = [
+    {
+      name: 'traversal',
+      includePath: 'fragments/../../outside.md',
+      setup: ({ bookDir }) =>
+        writeFile(path.resolve(bookDir, 'fragments/../../outside.md'), 'secret'),
+    },
+    {
+      name: 'absolute path',
+      includePath: ({ root }) => path.join(root, 'absolute.md'),
+      setup: ({ root }) => writeFile(path.join(root, 'absolute.md'), 'secret'),
+    },
+    {
+      name: 'backslash',
+      includePath: 'fragments\\bridge.md',
+      setup: ({ bookDir }) => writeFile(path.join(bookDir, 'fragments\\bridge.md'), 'secret'),
+    },
+    { name: 'sibling directory', includePath: 'glossary.md' },
+    { name: 'dot segment', includePath: 'fragments/./bridge.md' },
+    {
+      name: 'symlink',
+      includePath: 'fragments/link.md',
+      setup: async ({ root, bookDir }) => {
+        const outside = path.join(root, 'outside-symlink.md');
+        await writeFile(outside, 'secret');
+        await symlink(outside, path.join(bookDir, 'fragments', 'link.md'));
+      },
+    },
+    {
+      name: 'non-regular file',
+      includePath: 'fragments/directory.md',
+      setup: ({ bookDir }) => mkdir(path.join(bookDir, 'fragments', 'directory.md')),
+    },
+  ];
+
+  for (const entry of cases) {
+    await t.test(entry.name, async () => {
+      const fixtureState = await fixture();
+      const { root, articlesDir, bookDir } = fixtureState;
+      try {
+        const includePath =
+          typeof entry.includePath === 'function'
+            ? entry.includePath(fixtureState)
+            : entry.includePath;
+        if (entry.setup) await entry.setup(fixtureState);
+        await writeFile(
+          path.join(articlesDir, '02-second.md'),
+          ARTICLE_TWO.replace('fragments/bridge.md', includePath)
+        );
+        await assert.rejects(
+          () => buildManuscript({ articlesDir, bookDir, target: 'manuscript' }),
+          /unsafe book:include path|regular file/
+        );
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
 test('the pdf wraps front matter so the introduction does not consume chapter 1', async () => {
   const { root, articlesDir, bookDir } = await fixture();
   try {
@@ -352,25 +413,77 @@ test('a demote in one article does not bleed into the next', async () => {
   }
 });
 
-test('non-marker html comments never reach the manuscript', async () => {
+test('non-marker html comments outside fences never reach any composed target', async () => {
   const { root, articlesDir, bookDir } = await fixture();
   try {
     await writeFile(
       path.join(articlesDir, '01-first.md'),
-      `<!-- markdownlint-disable MD034 -->\n<!-- TODO: needs new artwork -->\n${ARTICLE_ONE}`
+      ARTICLE_ONE.replace(
+        '## Body One',
+        `Visible <!-- PRIVATE article inline --> prose.
+
+Before <!-- PRIVATE article multiline
+still private --> after.
+
+\`\`\`md
+literal <!-- article example --> bytes
+\`\`\`
+
+## Body One`
+      )
     );
     await writeFile(
       path.join(bookDir, 'introduction.md'),
-      '# Introduction\n\n<!-- STUB: replace me -->\n\nWhy this book.\n'
-    );
-    await writeFile(path.join(bookDir, 'fragments', 'bridge.md'), '<!-- draft -->\nA bridge.\n');
+      `# Introduction
 
-    const { markdown } = await buildManuscript({ articlesDir, bookDir, target: 'html' });
-    assert.equal(markdown.includes('markdownlint-disable'), false);
-    assert.equal(markdown.includes('TODO'), false);
-    assert.equal(markdown.includes('STUB'), false);
-    assert.equal(markdown.includes('<!-- draft -->'), false);
-    assert.match(markdown, /A bridge\./, 'the fragment prose survives');
+Intro <!-- PRIVATE introduction inline --> prose.
+
+Intro before <!-- PRIVATE introduction multiline
+still private --> intro after.
+
+\`\`\`md
+literal <!-- introduction example --> bytes
+\`\`\`
+`
+    );
+    await writeFile(
+      path.join(bookDir, 'fragments', 'bridge.md'),
+      `Fragment <!-- PRIVATE fragment inline --> prose.
+
+Fragment before <!-- PRIVATE fragment multiline
+still private --> fragment after.
+
+\`\`\`md
+literal <!-- fragment example --> bytes
+\`\`\`
+`
+    );
+
+    for (const target of ['manuscript', 'pdf', 'epub', 'html']) {
+      const { markdown } = await buildManuscript({ articlesDir, bookDir, target });
+      assert.doesNotMatch(markdown, /PRIVATE|still private/, `${target} leaked a private comment`);
+      assert.match(markdown, /Visible {2}prose\./, `${target} preserves inline article prose`);
+      assert.match(markdown, /Before\s+after\./, `${target} preserves multiline article prose`);
+      assert.match(markdown, /Intro {2}prose\./, `${target} preserves inline introduction prose`);
+      assert.match(
+        markdown,
+        /Intro before\s+intro after\./,
+        `${target} preserves multiline introduction prose`
+      );
+      assert.match(markdown, /Fragment {2}prose\./, `${target} preserves inline fragment prose`);
+      assert.match(
+        markdown,
+        /Fragment before\s+fragment after\./,
+        `${target} preserves multiline fragment prose`
+      );
+      for (const fenced of [
+        'literal <!-- article example --> bytes',
+        'literal <!-- introduction example --> bytes',
+        'literal <!-- fragment example --> bytes',
+      ]) {
+        assert.ok(markdown.includes(fenced), `${target} changed fenced comment bytes`);
+      }
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

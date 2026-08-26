@@ -23,14 +23,19 @@ import { extractBookDiagrams } from './diagrams.mjs';
 import { convertLine, parseBibliography } from './footnotes.mjs';
 import { parseGlossary, renderGlossary } from './glossary.mjs';
 import { planChapters, shiftHeading } from './headings.mjs';
+import { resolveIncludeFragment } from './include-fragment.mjs';
 import { annotateLines, buildMatcher, renderLinkedIndex } from './index-terms.mjs';
-import { MarkerError, scanSections, validateArticle } from './markers.mjs';
+import {
+  MarkerError,
+  scanSections,
+  stripHtmlCommentsOutsideFences,
+  validateArticle,
+} from './markers.mjs';
 import { listSpine } from './spine.mjs';
 import { applyBookStrip } from './strip.mjs';
 import { dedupeSources, renderSources } from './sources.mjs';
 
 const FENCE_RE = /^```/;
-const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
 
 /**
  * Book-only prose (the introduction, `book:include` fragments) is spliced in
@@ -39,13 +44,15 @@ const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
  * `scanSections`; this is the same rule for the files that never pass through
  * it.
  */
-const stripComments = (source) => source.replace(HTML_COMMENT_RE, '');
-
 const indexTargetFor = (target) =>
   target === 'pdf' ? 'pdf' : target === 'manuscript' ? 'none' : 'anchor';
 
 async function loadArticle(entry, { isFirst }) {
-  const parsed = parseArticle(entry.source, { keepComments: true });
+  const source = stripHtmlCommentsOutsideFences(entry.source, {
+    preserveBookMarkers: true,
+    file: entry.file,
+  });
+  const parsed = parseArticle(source, { keepComments: true });
   if (!parsed.subtitle) throw new Error(`${entry.file}: article has no preamble subtitle`);
   if (!parsed.bannerPath) throw new Error(`${entry.file}: article has no banner image`);
   const scanned = scanSections(parsed.sections, entry.file);
@@ -138,14 +145,18 @@ async function resolveIncludes(items, { bookDir, file, indexTarget, state, locat
       continue;
     }
     if (item.verb === 'include') {
-      const target = path.join(bookDir, item.attrs.path);
+      const target = await resolveIncludeFragment({
+        bookDir,
+        includePath: item.attrs.path,
+        file,
+      });
       let fragment;
       try {
         fragment = await readFile(target, 'utf8');
       } catch {
         throw new MarkerError(`book:include cannot read ${item.attrs.path}`, file);
       }
-      for (const text of stripComments(fragment).replace(/\n+$/, '').split('\n')) {
+      for (const text of stripHtmlCommentsOutsideFences(fragment).replace(/\n+$/, '').split('\n')) {
         lines.push({ text, demote: state.demote });
       }
       continue;
@@ -276,7 +287,9 @@ export async function buildManuscript({ articlesDir, bookDir, target }) {
     }
   }
 
-  const introduction = stripComments(await readFile(path.join(bookDir, 'introduction.md'), 'utf8'));
+  const introduction = stripHtmlCommentsOutsideFences(
+    await readFile(path.join(bookDir, 'introduction.md'), 'utf8')
+  );
   const metadata = JSON.parse(await readFile(path.join(bookDir, 'book.json'), 'utf8'));
   const sources = dedupeSources(articles.map((a) => a.bibliography));
 

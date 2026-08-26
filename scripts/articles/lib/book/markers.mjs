@@ -8,7 +8,7 @@
 
 const MARKER_LINE_RE = /^<!--\s*book:([a-z][a-z-]*)\s*(.*?)\s*-->$/;
 const MARKER_ANYWHERE_RE = /<!--\s*book:/;
-const ATTR_RE = /([a-z][a-z-]*)=(?:"([^"]*)"|(\S+))/g;
+const ATTR_RE = /([a-z][a-z-]*)=(?:"([^"]*)"|(\S+))/y;
 const FENCE_RE = /^```/;
 
 export const VERBS = new Set([
@@ -22,6 +22,19 @@ export const VERBS = new Set([
   'pagebreak',
   'index',
 ]);
+
+const ATTRS_BY_VERB = new Map([
+  ['part', new Set(['title'])],
+  ['chapter', new Set(['title'])],
+  ['merge-into-previous', new Set()],
+  ['demote', new Set(['by'])],
+  ['exclude', new Set()],
+  ['end', new Set()],
+  ['include', new Set(['path'])],
+  ['pagebreak', new Set()],
+  ['index', new Set(['term'])],
+]);
+const KNOWN_ATTRS = new Set([...ATTRS_BY_VERB.values()].flatMap((attrs) => [...attrs]));
 
 export class MarkerError extends Error {
   constructor(message, file) {
@@ -49,15 +62,88 @@ export function parseMarkerLine(line, file) {
     throw new MarkerError(`unknown marker verb "book:${verb}": ${trimmed}`, file);
   }
   const attrs = {};
-  let consumed = 0;
-  for (const attr of rest.matchAll(ATTR_RE)) {
-    attrs[attr[1]] = attr[2] ?? attr[3];
-    consumed += attr[0].length;
-  }
-  if (rest.replace(/\s+/g, '').length > 0 && consumed === 0) {
-    throw new MarkerError(`malformed marker attributes: ${trimmed}`, file);
+  let cursor = 0;
+  while (cursor < rest.length) {
+    while (/\s/.test(rest[cursor] ?? '')) cursor += 1;
+    if (cursor === rest.length) break;
+    ATTR_RE.lastIndex = cursor;
+    const attr = ATTR_RE.exec(rest);
+    if (attr === null) {
+      throw new MarkerError(`malformed marker attributes: ${trimmed}`, file);
+    }
+    const key = attr[1];
+    if (Object.hasOwn(attrs, key)) {
+      throw new MarkerError(`duplicate marker attribute "${key}": ${trimmed}`, file);
+    }
+    if (!KNOWN_ATTRS.has(key)) {
+      throw new MarkerError(`unknown marker attribute "${key}": ${trimmed}`, file);
+    }
+    if (!ATTRS_BY_VERB.get(verb).has(key)) {
+      throw new MarkerError(`book:${verb} does not accept attribute "${key}": ${trimmed}`, file);
+    }
+    attrs[key] = attr[2] ?? attr[3];
+    cursor = ATTR_RE.lastIndex;
   }
   return { verb, attrs };
+}
+
+function stripCommentSpans(text, inComment, { rejectBookMarkers = false, file } = {}) {
+  let cursor = 0;
+  let clean = '';
+  let removed = inComment;
+  while (cursor < text.length) {
+    if (inComment) {
+      const close = text.indexOf('-->', cursor);
+      removed = true;
+      if (close === -1) return { text: clean, inComment: true, removed };
+      cursor = close + 3;
+      inComment = false;
+      continue;
+    }
+    const open = text.indexOf('<!--', cursor);
+    if (open === -1) {
+      clean += text.slice(cursor);
+      break;
+    }
+    if (rejectBookMarkers && /^<!--\s*book:/.test(text.slice(open))) {
+      throw new MarkerError(`marker must be alone on its line: ${text.trim()}`, file);
+    }
+    clean += text.slice(cursor, open);
+    cursor = open + 4;
+    inComment = true;
+    removed = true;
+  }
+  return { text: clean, inComment, removed };
+}
+
+/**
+ * Strip HTML comments without changing fenced examples. Article callers may
+ * preserve standalone book markers for the marker scanner; inline markers
+ * still fail through parseMarkerLine.
+ */
+export function stripHtmlCommentsOutsideFences(
+  source,
+  { preserveBookMarkers = false, file = '<book source>' } = {}
+) {
+  let inFence = false;
+  let inComment = false;
+  return source
+    .split('\n')
+    .map((text) => {
+      if (!inComment && FENCE_RE.test(text)) {
+        inFence = !inFence;
+        return text;
+      }
+      if (inFence) return text;
+      if (!inComment && preserveBookMarkers && parseMarkerLine(text, file) !== null) return text;
+      const stripped = stripCommentSpans(text, inComment, {
+        rejectBookMarkers: preserveBookMarkers,
+        file,
+      });
+      inComment = stripped.inComment;
+      return stripped.text;
+    })
+    .join('\n');
 }
 
 /**
@@ -78,7 +164,7 @@ export function scanSections(sections, file) {
     let inFence = false;
     let inComment = false;
     for (const text of section.lines) {
-      if (FENCE_RE.test(text)) {
+      if (!inComment && FENCE_RE.test(text)) {
         inFence = !inFence;
         items.push({ kind: 'text', text });
         continue;
@@ -87,21 +173,18 @@ export function scanSections(sections, file) {
         items.push({ kind: 'text', text });
         continue;
       }
-      if (inComment) {
-        if (text.includes('-->')) inComment = false;
-        continue;
+      if (!inComment) {
+        const marker = parseMarkerLine(text, file);
+        if (marker) {
+          items.push({ kind: 'marker', ...marker });
+          continue;
+        }
       }
-      const marker = parseMarkerLine(text, file);
-      if (marker) {
-        items.push({ kind: 'marker', ...marker });
-        continue;
+      const stripped = stripCommentSpans(text, inComment, { rejectBookMarkers: true, file });
+      inComment = stripped.inComment;
+      if (!stripped.removed || stripped.text.trim() !== '') {
+        items.push({ kind: 'text', text: stripped.text });
       }
-      const trimmed = text.trim();
-      if (trimmed.startsWith('<!--')) {
-        if (!trimmed.includes('-->')) inComment = true;
-        continue;
-      }
-      items.push({ kind: 'text', text });
     }
     return { heading: section.heading, items };
   });
