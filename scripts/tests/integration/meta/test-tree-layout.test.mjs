@@ -38,6 +38,11 @@ import {
 import { countCodeLines } from '../../../task-tracker/lib/count-code-lines.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 import { laneFiles } from '../../../run-tests-lanes.mjs';
+import {
+  finalizedFrozenPaths,
+  loadPostSnapshotRecords,
+} from '../../lib/test-corpus-membership.mjs';
+import { loadFrozenRetirements } from '../../lib/frozen-test-retirements.mjs';
 
 // scripts/tests/<lane>/meta/ → four levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -54,6 +59,19 @@ const baseline = JSON.parse(
 const corpusManifest = JSON.parse(
   readFileSync(path.join(REPO_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json'), 'utf8')
 );
+const discovered = discoverTestFiles({ projectRoot: REPO_ROOT });
+const postSnapshotAuthority = loadPostSnapshotRecords({ projectRoot: REPO_ROOT });
+const retirementAuthority = loadFrozenRetirements({
+  projectRoot: REPO_ROOT,
+  finalizedFrozenPaths: finalizedFrozenPaths(corpusManifest),
+  postSnapshotRecordPaths: postSnapshotAuthority.records.map(({ path: recordPath }) => recordPath),
+  liveDiscoveredPaths: discovered,
+});
+const retiredBasenamesByLane = new Map(LANES.map((lane) => [lane, new Set()]));
+for (const { path: testPath } of retirementAuthority.retirements) {
+  const lane = laneOf(testPath);
+  retiredBasenamesByLane.get(lane).add(path.posix.basename(testPath));
+}
 
 function git(args) {
   return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
@@ -214,6 +232,12 @@ test('AC2: every lane subdirectory mirrors a real source subsystem (or is core/m
 });
 
 test('AC3/AC4: no pre-move file was dropped outside an explicit lane correction', () => {
+  assert.deepEqual(retirementAuthority.errors, [], 'frozen retirement authority is valid');
+  assert.deepEqual(
+    retirementAuthority.misplacedReceipts,
+    [],
+    'frozen retirement receipts are placed'
+  );
   for (const lane of LANES) {
     const live = new Set(manifest[lane].map((f) => f.split('/').pop()));
     const correctedFromLane = new Set(
@@ -221,7 +245,10 @@ test('AC3/AC4: no pre-move file was dropped outside an explicit lane correction'
         .filter(({ fromLane }) => fromLane === lane)
         .map(({ migrationPath }) => path.posix.basename(migrationPath))
     );
-    const dropped = baseline[lane].filter((b) => !live.has(b) && !correctedFromLane.has(b));
+    const retired = retiredBasenamesByLane.get(lane);
+    const dropped = baseline[lane].filter(
+      (b) => !live.has(b) && !correctedFromLane.has(b) && !retired.has(b)
+    );
     assert.deepEqual(
       dropped,
       [],

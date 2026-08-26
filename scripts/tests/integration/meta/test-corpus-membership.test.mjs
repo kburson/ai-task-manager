@@ -14,6 +14,7 @@ import {
   reconcileCorpusMembership,
   recordPathForTestPath,
 } from '../../lib/test-corpus-membership.mjs';
+import { loadFrozenRetirements } from '../../lib/frozen-test-retirements.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -40,12 +41,21 @@ test('live canonical discovery equals frozen destinations union post-snapshot re
   );
   const frozenPaths = finalizedFrozenPaths(frozenManifest);
   const loaded = loadPostSnapshotRecords({ projectRoot: PROJECT_ROOT });
+  const retirementAuthority = loadFrozenRetirements({
+    projectRoot: PROJECT_ROOT,
+    finalizedFrozenPaths: frozenPaths,
+    postSnapshotRecordPaths: loaded.records.map(({ path: recordPath }) => recordPath),
+    liveDiscoveredPaths: discovered,
+  });
   const result = reconcileCorpusMembership({
     discovered,
     frozenPaths,
     records: loaded.records,
     recordErrors: loaded.errors,
     misplacedRecords: loaded.misplacedRecords,
+    retirements: retirementAuthority.retirements,
+    retirementErrors: retirementAuthority.errors,
+    misplacedRetirements: retirementAuthority.misplacedReceipts,
   });
   assert.equal(result.ok, true, formatCorpusMembershipErrors(result));
 });
@@ -303,6 +313,138 @@ test('reconciles an exact canonical corpus and derives lane counts from discover
   assert.deepEqual(exact.malformedRecords, []);
   assert.deepEqual(exact.misplacedRecords, []);
   assert.deepEqual(exact.counts, { all: 2, unit: 1, integration: 1, slow: 0 });
+});
+
+test('allows a validated retired frozen path to be absent from discovery', () => {
+  const retiredPath = 'scripts/tests/unit/lib/retired.test.mjs';
+  const receiptFile =
+    'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/retired.test.mjs.json';
+  const result = reconcileCorpusMembership({
+    discovered: [],
+    frozenPaths: [retiredPath],
+    records: [],
+    retirements: [{ path: retiredPath, receiptFile, source: 'active' }],
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.missingPaths, []);
+  assert.deepEqual(result.receiptTestOverlapPaths, []);
+});
+
+test('keeps a frozen path active when its retirement receipt overlaps live discovery', () => {
+  const frozenPath = 'scripts/tests/unit/lib/retired.test.mjs';
+  const receiptFile =
+    'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/retired.test.mjs.json';
+  const result = reconcileCorpusMembership({
+    discovered: [frozenPath],
+    frozenPaths: [frozenPath],
+    records: [],
+    retirements: [{ path: frozenPath, receiptFile, source: 'active' }],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.receiptTestOverlapPaths, [
+    { path: frozenPath, receiptFiles: [receiptFile] },
+  ]);
+  assert.match(formatCorpusMembershipErrors(result), /receipt overlaps a live discovered test/);
+});
+
+test('rejects retirement authority that is non-frozen or overlaps a post-snapshot record', () => {
+  const frozenPath = 'scripts/tests/unit/lib/frozen.test.mjs';
+  const postSnapshotPath = 'scripts/tests/integration/lib/new.test.mjs';
+  const nonFrozenPath = 'scripts/tests/slow/lib/non-frozen.test.mjs';
+  const postSnapshotReceipt =
+    'scripts/tests/fixtures/test-corpus-frozen-retirements/integration/lib/new.test.mjs.json';
+  const nonFrozenReceipt =
+    'scripts/tests/fixtures/test-corpus-frozen-retirements/slow/lib/non-frozen.test.mjs.json';
+  const result = reconcileCorpusMembership({
+    discovered: [frozenPath, postSnapshotPath],
+    frozenPaths: [frozenPath, postSnapshotPath],
+    records: [
+      { recordFile: recordPathForTestPath(postSnapshotPath), schema: 1, path: postSnapshotPath },
+    ],
+    retirements: [
+      { path: postSnapshotPath, receiptFile: postSnapshotReceipt, source: 'active' },
+      { path: nonFrozenPath, receiptFile: nonFrozenReceipt, source: 'active' },
+    ],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.invalidRetirementAuthorityPaths, [
+    {
+      path: postSnapshotPath,
+      receiptFiles: [postSnapshotReceipt],
+      reason: 'overlaps a post-snapshot membership record',
+    },
+    {
+      path: nonFrozenPath,
+      receiptFiles: [nonFrozenReceipt],
+      reason: 'is not a finalized frozen path',
+    },
+  ]);
+  assert.match(formatCorpusMembershipErrors(result), /Invalid retirement authority overlap/);
+});
+
+test('reports duplicate retirement authority deterministically without subtracting membership', () => {
+  const frozenPath = 'scripts/tests/unit/lib/retired.test.mjs';
+  const firstReceipt =
+    'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/a-retired.test.mjs.json';
+  const secondReceipt =
+    'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/z-retired.test.mjs.json';
+  const result = reconcileCorpusMembership({
+    discovered: [],
+    frozenPaths: [frozenPath],
+    records: [],
+    retirements: [
+      { path: frozenPath, receiptFile: secondReceipt, source: 'active' },
+      { path: frozenPath, receiptFile: firstReceipt, source: 'active' },
+    ],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.duplicateRetirementPaths, [
+    { path: frozenPath, receiptFiles: [firstReceipt, secondReceipt] },
+  ]);
+  assert.deepEqual(result.missingPaths, [
+    { path: frozenPath, authority: 'frozen', recordFile: null },
+  ]);
+  const diagnostics = formatCorpusMembershipErrors(result);
+  assert.ok(diagnostics.indexOf(firstReceipt) < diagnostics.indexOf(secondReceipt));
+});
+
+test('formats malformed and misplaced retirement authority without subtracting frozen membership', () => {
+  const frozenPath = 'scripts/tests/unit/lib/retired.test.mjs';
+  const malformedRetirement = {
+    receiptFile:
+      'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/bad-retired.test.mjs.json',
+    error: 'frozen-test-retirements: invalid JSON',
+  };
+  const misplacedRetirement = {
+    receiptFile:
+      'scripts/tests/fixtures/test-corpus-frozen-retirements/integration/lib/retired.test.mjs.json',
+    expectedReceiptFile:
+      'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/retired.test.mjs.json',
+    path: frozenPath,
+  };
+  const result = reconcileCorpusMembership({
+    discovered: [],
+    frozenPaths: [frozenPath],
+    records: [],
+    retirementErrors: [malformedRetirement],
+    misplacedRetirements: [misplacedRetirement],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.malformedRetirements, [malformedRetirement]);
+  assert.deepEqual(result.misplacedRetirements, [misplacedRetirement]);
+  assert.deepEqual(result.missingPaths, [
+    { path: frozenPath, authority: 'frozen', recordFile: null },
+  ]);
+  const diagnostics = formatCorpusMembershipErrors(result);
+  assert.match(diagnostics, /Malformed frozen-retirement receipts/);
+  assert.match(diagnostics, /Misplaced frozen-retirement receipts/);
+  assert.match(diagnostics, /invalid JSON/);
+  assert.match(diagnostics, new RegExp(misplacedRetirement.expectedReceiptFile));
 });
 
 test('reports canonical discovered paths missing from both membership authorities', () => {

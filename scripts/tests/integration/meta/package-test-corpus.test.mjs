@@ -9,6 +9,11 @@ import { fileURLToPath } from 'node:url';
 
 import { discoverTestFiles } from '../../../task-tracker/lib/discover-test-files.mjs';
 import { parseCanonicalTestPath } from '../../../task-tracker/lib/test-lanes.mjs';
+import {
+  finalizedFrozenPaths,
+  loadPostSnapshotRecords,
+} from '../../lib/test-corpus-membership.mjs';
+import { loadFrozenRetirements } from '../../lib/frozen-test-retirements.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json');
@@ -208,12 +213,34 @@ test('every intentional lane correction retains its exact post-migration Git ren
 test('live discovery realizes every frozen destination in its final canonical lane', () => {
   const discovered = discoverTestFiles({ projectRoot: PROJECT_ROOT });
   const live = new Set(discovered);
+  const frozenPaths = finalizedFrozenPaths(manifest);
+  const postSnapshotAuthority = loadPostSnapshotRecords({ projectRoot: PROJECT_ROOT });
+  const retirementAuthority = loadFrozenRetirements({
+    projectRoot: PROJECT_ROOT,
+    finalizedFrozenPaths: frozenPaths,
+    postSnapshotRecordPaths: postSnapshotAuthority.records.map(
+      ({ path: recordPath }) => recordPath
+    ),
+    liveDiscoveredPaths: discovered,
+  });
+  const retired = new Set(retirementAuthority.retirements.map(({ path: testPath }) => testPath));
   assert.equal(live.size, discovered.length, 'live discovery has no duplicate path');
+  assert.deepEqual(retirementAuthority.errors, [], 'frozen retirement authority is valid');
+  assert.deepEqual(
+    retirementAuthority.misplacedReceipts,
+    [],
+    'frozen retirement receipts are placed'
+  );
 
   for (const entry of manifest.tests) {
     const finalPath = finalPathFor(entry);
-    assert.ok(existsSync(path.join(PROJECT_ROOT, finalPath)), `${finalPath} exists`);
-    assert.ok(live.has(finalPath), `${finalPath} is discovered`);
+    if (retired.has(finalPath)) {
+      assert.ok(!existsSync(path.join(PROJECT_ROOT, finalPath)), `${finalPath} is retired`);
+      assert.ok(!live.has(finalPath), `${finalPath} is not discovered after retirement`);
+    } else {
+      assert.ok(existsSync(path.join(PROJECT_ROOT, finalPath)), `${finalPath} exists`);
+      assert.ok(live.has(finalPath), `${finalPath} is discovered`);
+    }
     if (entry.oldPath !== finalPath) {
       assert.ok(!existsSync(path.join(PROJECT_ROOT, entry.oldPath)), `${entry.oldPath} is absent`);
       assert.ok(!live.has(entry.oldPath), `${entry.oldPath} is not discovered`);
