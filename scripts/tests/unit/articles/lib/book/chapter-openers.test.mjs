@@ -43,8 +43,6 @@ test('chapterOpenerFor emits a reviewable manuscript opener', () => {
     [
       '![Chapter 2 header](chapter-02-header.png)',
       '',
-      '<div align="center">Chapter 2</div>',
-      '',
       '# Title',
       '',
       '<div align="center">Subtitle</div>',
@@ -67,7 +65,8 @@ test('chapterOpenerFor emits one native PDF command and one semantic reflowable 
     const markdown = chapterOpenerFor({ ...options, target }).join('\n');
     assert.equal((markdown.match(/\.chapter-opener/g) || []).length, 1);
     assert.ok(markdown.indexOf('# A & B') < markdown.indexOf('chapter-02-header.png'));
-    assert.match(markdown, /Chapter 2/);
+    assert.doesNotMatch(markdown, /chapter-number/);
+    assert.doesNotMatch(markdown, />Chapter 2</);
     assert.match(markdown, /C_1/);
   }
 });

@@ -34,8 +34,6 @@ export function chapterOpenerFor({ target, chapter, imageName, subtitle }) {
     return [
       `![Chapter ${number} header](${imageName})`,
       '',
-      `<div align="center">Chapter ${number}</div>`,
-      '',
       `# ${chapter.title}`,
       '',
       `<div align="center">${subtitle}</div>`,
@@ -49,7 +47,6 @@ export function chapterOpenerFor({ target, chapter, imageName, subtitle }) {
       '::: {.chapter-image}',
       `![Chapter ${number} header](${imageName})`,
       ':::',
-      `<div class="chapter-number">Chapter ${number}</div>`,
       `<div class="chapter-subtitle">${subtitle}</div>`,
       ':::',
       '',

@@ -146,7 +146,7 @@ test('epub and html carry no latex, and the pdf keeps its index out of the appen
     for (const token of ['\\index{', '\\newpage', '\\part{', '\\appendix', '\\printindex']) {
       assert.equal(markdown.includes(token), false, `${target} leaked ${token}`);
     }
-    assert.match(markdown, /<div class="chapter-number">Chapter 1<\/div>/);
+    assert.doesNotMatch(markdown, /chapter-number/);
   }
 
   const manuscript = await buildManuscript({

@@ -27,7 +27,7 @@ test('extractBookDiagrams replaces fences with image references', () => {
   ]);
   assert.deepEqual(out[0].items, [
     text('Before.'),
-    text('![](03-slug-diagram-1.png)'),
+    text('![](03-slug-diagram-1.png){.book-diagram}'),
     text('After.'),
   ]);
 });

@@ -48,7 +48,7 @@ export function extractBookDiagrams(sections, slug) {
       }
       const imageName = `${slug}-diagram-${diagrams.length + 1}.png`;
       diagrams.push({ code: code.join('\n'), imageName });
-      items.push({ kind: 'text', text: `![](${imageName})` });
+      items.push({ kind: 'text', text: `![](${imageName}){.book-diagram}` });
       i = j + 1;
     }
     return { heading: section.heading, items };
