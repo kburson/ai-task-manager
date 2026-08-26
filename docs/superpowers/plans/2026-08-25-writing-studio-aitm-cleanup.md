@@ -35,7 +35,7 @@ JSON, SHA-256, Prettier, ESLint, CSpell, markdownlint-cli2.
   dirty or its ancestry differs from the verified extraction source.
 - Never edit or regenerate
   `scripts/tests/fixtures/test-corpus-pre-move.json` or
-  `scripts/tests/unit/meta/test-tree-layout.baseline.json`.
+  `scripts/tests/integration/meta/test-tree-layout.baseline.json`.
 - Frozen retirements are limited to exactly four publisher tests during this
   pilot.
 - Post-snapshot book-test removal keeps the existing paired test/record rule;
@@ -81,7 +81,7 @@ JSON, SHA-256, Prettier, ESLint, CSpell, markdownlint-cli2.
 
 ```bash
 cd /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.claude/worktrees/articles-book-publication-6a7dfe
-node scripts/dev-env/seed-worktree.mjs
+node scripts/task-tracker/ensure-worktree-seeded.mjs
 node scripts/dev-env/verify-local-worktree.mjs
 test "$(readlink node_modules/ai-task-manager)" = ".."
 git status --short
@@ -206,7 +206,7 @@ collect deterministic errors so all repair targets are visible in one run.
 
 ```bash
 node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
 ```
 
 Expected: new tests pass and existing membership behavior remains unchanged.
@@ -324,9 +324,9 @@ git commit -m "feat(test-corpus): hydrate historical retirements"
 **Files:**
 
 - Modify: `scripts/tests/lib/test-corpus-membership.mjs`
-- Modify: `scripts/tests/unit/meta/test-corpus-membership.test.mjs`
-- Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs`
-- Modify: `scripts/tests/unit/meta/test-tree-layout.test.mjs`
+- Modify: `scripts/tests/integration/meta/test-corpus-membership.test.mjs`
+- Modify: `scripts/tests/integration/meta/package-test-corpus.test.mjs`
+- Modify: `scripts/tests/integration/meta/test-tree-layout.test.mjs`
 
 **Interfaces:**
 
@@ -357,7 +357,7 @@ formatted diagnostic, and existing post-snapshot cases are unchanged.
 - [ ] **Step 2: Run and verify red**
 
 ```bash
-node --test scripts/tests/unit/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/meta/test-corpus-membership.test.mjs
 ```
 
 Expected: FAIL because reconciliation ignores retirements.
@@ -397,8 +397,8 @@ regenerate its baseline JSON.
 - [ ] **Step 5: Verify focused authority tests**
 
 ```bash
-node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/unit/meta/test-corpus-membership.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs scripts/tests/unit/meta/test-tree-layout.test.mjs
-git diff --exit-code -- scripts/tests/fixtures/test-corpus-pre-move.json scripts/tests/unit/meta/test-tree-layout.baseline.json
+node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/integration/meta/test-corpus-membership.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/integration/meta/test-tree-layout.test.mjs
+git diff --exit-code -- scripts/tests/fixtures/test-corpus-pre-move.json scripts/tests/integration/meta/test-tree-layout.baseline.json
 ```
 
 Expected: tests pass and both frozen data files are byte-for-byte untouched.
@@ -406,7 +406,7 @@ Expected: tests pass and both frozen data files are byte-for-byte untouched.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/tests/lib/test-corpus-membership.mjs scripts/tests/unit/meta/test-corpus-membership.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs scripts/tests/unit/meta/test-tree-layout.test.mjs
+git add scripts/tests/lib/test-corpus-membership.mjs scripts/tests/integration/meta/test-corpus-membership.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/integration/meta/test-tree-layout.test.mjs
 git commit -m "feat(test-corpus): reconcile retired frozen tests"
 ```
 
@@ -596,7 +596,7 @@ git commit -m "ci: batch frozen test retirement cleanup"
 **Files:**
 
 - Modify: `scripts/task-tracker/test-impact-manifest.json`
-- Modify: `scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs`
 
 **Interfaces:**
 
@@ -616,7 +616,7 @@ lane.
 - [ ] **Step 2: Verify red**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 ```
 
 Expected: FAIL because the new roots have no manifest rule.
@@ -638,8 +638,8 @@ existing corpus guards. Keep the immutable frozen-manifest rule unchanged.
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
-git add scripts/task-tracker/test-impact-manifest.json scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
+git add scripts/task-tracker/test-impact-manifest.json scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 git commit -m "test-impact: select retirement authority guards"
 ```
 
@@ -677,7 +677,7 @@ git commit -m "test-impact: select retirement authority guards"
 - [ ] **Step 1: Capture exact pre-deletion digests**
 
 ```bash
-shasum -a 256 scripts/tests/unit/articles/publish-articles.test.mjs scripts/tests/unit/articles/diagram-drift.test.mjs scripts/tests/slow/articles/publish-articles-e2e.test.mjs scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs
+shasum -a 256 scripts/tests/unit/articles/publish-articles.test.mjs scripts/tests/unit/articles/diagram-drift.test.mjs scripts/tests/slow/articles/publish-articles-e2e.test.mjs scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs
 git status --short
 ```
 
@@ -712,7 +712,7 @@ node --input-type=module -e '
     "scripts/tests/unit/articles/publish-articles.test.mjs",
     "scripts/tests/unit/articles/diagram-drift.test.mjs",
     "scripts/tests/slow/articles/publish-articles-e2e.test.mjs",
-    "scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs",
+    "scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs",
   ];
   for (const testPath of paths) {
     const receipt = {
@@ -735,7 +735,7 @@ corresponding receipt before continuing.
 - [ ] **Step 4: Validate receipts before deletion**
 
 ```bash
-node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/unit/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/integration/meta/test-corpus-membership.test.mjs
 ```
 
 Expected: FAIL specifically because each receipt overlaps a still-live test.
@@ -746,7 +746,7 @@ This proves the safety guard before the destructive half of the change.
 First list exact targets:
 
 ```bash
-git ls-files docs/articles scripts/articles scripts/tests/unit/articles scripts/tests/slow/articles scripts/maintenance/lint-article-citations.mjs scripts/maintenance/lint-book-markers.mjs
+git ls-files docs/articles scripts/articles scripts/tests/unit/articles scripts/tests/slow/articles scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs scripts/maintenance/lint-article-citations.mjs scripts/maintenance/lint-book-markers.mjs
 git ls-files 'scripts/tests/fixtures/test-corpus-post-snapshot/unit/articles/**'
 ```
 
@@ -793,7 +793,7 @@ update install-and-setup package prose.
 - [ ] **Step 8: Reconcile the deleted corpus**
 
 ```bash
-node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/unit/meta/test-corpus-membership.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs scripts/tests/unit/meta/test-tree-layout.test.mjs scripts/tests/unit/meta/slow-lane-partition-policy.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs
+node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/integration/meta/test-corpus-membership.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/integration/meta/test-tree-layout.test.mjs scripts/tests/unit/meta/slow-lane-partition-policy.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs
 ```
 
 Expected: PASS. The four frozen paths are accepted only through active receipts;
@@ -839,7 +839,7 @@ approved cleanup scope and retirement-owned additions.
 - [ ] **Step 1: Run focused retirement and cleanup tests**
 
 ```bash
-node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/unit/meta/test-corpus-membership.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs scripts/tests/unit/meta/test-tree-layout.test.mjs scripts/tests/unit/maintenance/graduate-frozen-test-retirements.test.mjs scripts/tests/unit/meta/graduate-frozen-test-retirements-workflow.test.mjs scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs
+node --test scripts/tests/unit/meta/frozen-test-retirements.test.mjs scripts/tests/integration/meta/test-corpus-membership.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/integration/meta/test-tree-layout.test.mjs scripts/tests/unit/maintenance/graduate-frozen-test-retirements.test.mjs scripts/tests/unit/meta/graduate-frozen-test-retirements-workflow.test.mjs scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 ```
 
 Expected: PASS.
@@ -847,7 +847,7 @@ Expected: PASS.
 - [ ] **Step 2: Prove frozen data immutability**
 
 ```bash
-git diff origin/trunk...HEAD -- scripts/tests/fixtures/test-corpus-pre-move.json scripts/tests/unit/meta/test-tree-layout.baseline.json
+git diff origin/trunk...HEAD -- scripts/tests/fixtures/test-corpus-pre-move.json scripts/tests/integration/meta/test-tree-layout.baseline.json
 ```
 
 Expected: empty diff.
