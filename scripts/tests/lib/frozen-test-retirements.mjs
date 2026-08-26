@@ -105,7 +105,7 @@ export function loadActiveFrozenRetirements({
   }
 
   const errors = [];
-  const retirements = [];
+  const candidates = [];
   const misplacedReceipts = [];
   const frozenPaths = normalizedPaths(finalizedFrozenPaths);
   const postSnapshotPaths = normalizedPaths(postSnapshotRecordPaths);
@@ -157,7 +157,7 @@ export function loadActiveFrozenRetirements({
       errors.push(receiptError(receiptFile, `path overlaps a post-snapshot record: ${testPath}`));
       continue;
     }
-    if (typeof receipt.reason !== 'string' || receipt.reason.trim().length === 0) {
+    if (typeof receipt.reason !== 'string' || !/[.!?]$/.test(receipt.reason.trim())) {
       errors.push(receiptError(receiptFile, 'reason must be a non-empty sentence'));
       continue;
     }
@@ -197,12 +197,14 @@ export function loadActiveFrozenRetirements({
       lastLiveSha256: receipt.lastLiveSha256,
       evidence: evidenceFile,
     };
-    retirements.push(normalizedReceipt);
     const expectedReceiptFile = retirementReceiptPathForTestPath(testPath);
-    if (receiptFile !== expectedReceiptFile) {
+    const isMisplaced = receiptFile !== expectedReceiptFile;
+    const overlapsLiveTest = livePaths.has(testPath);
+    candidates.push({ normalizedReceipt, isMisplaced, overlapsLiveTest });
+    if (isMisplaced) {
       misplacedReceipts.push({ receiptFile, expectedReceiptFile, path: testPath });
     }
-    if (livePaths.has(testPath)) {
+    if (overlapsLiveTest) {
       errors.push(
         receiptError(receiptFile, `receipt overlaps a live discovered test: ${testPath}`)
       );
@@ -221,5 +223,18 @@ export function loadActiveFrozenRetirements({
       comparePosix(left.path, right.path)
     );
   });
+  const declarationCounts = new Map();
+  for (const { normalizedReceipt } of candidates) {
+    declarationCounts.set(
+      normalizedReceipt.path,
+      (declarationCounts.get(normalizedReceipt.path) || 0) + 1
+    );
+  }
+  const retirements = candidates
+    .filter(
+      ({ normalizedReceipt, isMisplaced, overlapsLiveTest }) =>
+        declarationCounts.get(normalizedReceipt.path) === 1 && !isMisplaced && !overlapsLiveTest
+    )
+    .map(({ normalizedReceipt }) => normalizedReceipt);
   return { retirements, errors, misplacedReceipts, rootPresent: true };
 }

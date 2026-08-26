@@ -101,12 +101,14 @@ test('accepts only exact receipt keys, schema, digest, and a non-empty sentence 
     'scripts/tests/unit/articles/schema.test.mjs',
     'scripts/tests/unit/articles/digest.test.mjs',
     'scripts/tests/unit/articles/reason.test.mjs',
+    'scripts/tests/unit/articles/fragment.test.mjs',
   ];
   const extraPath = frozenPaths[0];
   const missingPath = frozenPaths[1];
   const schemaPath = frozenPaths[2];
   const digestPath = frozenPaths[3];
   const reasonPath = frozenPaths[4];
+  const fragmentPath = frozenPaths[5];
   const receipts = [
     receiptFor(extraPath, { extra: true }),
     (() => {
@@ -116,10 +118,14 @@ test('accepts only exact receipt keys, schema, digest, and a non-empty sentence 
     receiptFor(schemaPath, { schema: '1' }),
     receiptFor(digestPath, { lastLiveSha256: 'A'.repeat(64) }),
     receiptFor(reasonPath, { reason: '   ' }),
+    receiptFor(fragmentPath, {
+      reason: 'The extracted subsystem no longer belongs to this package',
+    }),
   ];
   for (const receipt of receipts) {
     writeReceipt(projectRoot, receipt.path, receipt);
   }
+  writeEvidence(projectRoot, receiptFor(extraPath).evidence);
 
   const loaded = load(projectRoot, { finalizedFrozenPaths: frozenPaths });
   assert.deepEqual(loaded.retirements, []);
@@ -145,6 +151,10 @@ test('accepts only exact receipt keys, schema, digest, and a non-empty sentence 
   );
   assert.match(
     loaded.errors.find(({ receiptFile }) => receiptFile.includes('reason.')).error,
+    /reason/
+  );
+  assert.match(
+    loaded.errors.find(({ receiptFile }) => receiptFile.includes('fragment.')).error,
     /reason/
   );
 });
@@ -244,7 +254,7 @@ test('rejects missing and escaping evidence paths', () => {
   );
 });
 
-test('reports duplicate declarations and leaves both valid receipts available for repair diagnostics', () => {
+test('reports duplicate declarations without authorizing either receipt', () => {
   const projectRoot = mkdtempProjectIsolated('frozen-retirements-duplicate-');
   const testPath = 'scripts/tests/unit/articles/duplicate.test.mjs';
   const receipt = receiptFor(testPath);
@@ -254,10 +264,7 @@ test('reports duplicate declarations and leaves both valid receipts available fo
   writeEvidence(projectRoot, receipt.evidence);
 
   const loaded = load(projectRoot, { finalizedFrozenPaths: [testPath] });
-  assert.deepEqual(
-    loaded.retirements.map(({ receiptFile }) => receiptFile),
-    [first, second]
-  );
+  assert.deepEqual(loaded.retirements, []);
   assert.deepEqual(
     loaded.errors.map(({ receiptFile }) => receiptFile),
     [second]
@@ -268,7 +275,7 @@ test('reports duplicate declarations and leaves both valid receipts available fo
   ]);
 });
 
-test('reports a valid receipt at the wrong deterministic location separately from malformed receipts', () => {
+test('reports a receipt at the wrong deterministic location without authorizing it', () => {
   const projectRoot = mkdtempProjectIsolated('frozen-retirements-misplaced-');
   const testPath = 'scripts/tests/integration/articles/misplaced.test.mjs';
   const receipt = receiptFor(testPath);
@@ -278,10 +285,7 @@ test('reports a valid receipt at the wrong deterministic location separately fro
 
   const loaded = load(projectRoot, { finalizedFrozenPaths: [testPath] });
   assert.deepEqual(loaded.errors, []);
-  assert.deepEqual(
-    loaded.retirements.map(({ receiptFile: file }) => file),
-    [receiptFile]
-  );
+  assert.deepEqual(loaded.retirements, []);
   assert.deepEqual(loaded.misplacedReceipts, [
     {
       receiptFile,
@@ -291,7 +295,7 @@ test('reports a valid receipt at the wrong deterministic location separately fro
   ]);
 });
 
-test('reports receipt and live-test overlap without rejecting the otherwise valid retirement', () => {
+test('reports receipt and live-test overlap without authorizing the retirement', () => {
   const projectRoot = mkdtempProjectIsolated('frozen-retirements-live-overlap-');
   const testPath = 'scripts/tests/slow/articles/live.test.mjs';
   const receipt = receiptFor(testPath);
@@ -303,10 +307,7 @@ test('reports receipt and live-test overlap without rejecting the otherwise vali
     finalizedFrozenPaths: [testPath],
     liveDiscoveredPaths: [testPath],
   });
-  assert.deepEqual(
-    loaded.retirements.map(({ receiptFile: file }) => file),
-    [receiptFile]
-  );
+  assert.deepEqual(loaded.retirements, []);
   assert.match(loaded.errors[0].error, /live discovered test/);
 });
 
