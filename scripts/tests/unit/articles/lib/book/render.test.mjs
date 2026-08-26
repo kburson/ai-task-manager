@@ -22,13 +22,20 @@ test('pandocArgs maps top-level headings to chapters and loads the metadata file
   assert.ok(args.includes('--metadata-file=/repo/docs/articles/assets/book/book.json'));
   assert.ok(args.includes('--toc'));
   assert.ok(args.includes('--standalone'));
+  assert.ok(
+    args.includes('--include-in-header=/repo/docs/articles/assets/book/chapter-openers.tex')
+  );
   assert.deepEqual(args.slice(-2), ['-o', '/tmp/book/book.tex']);
 });
 
 test('pandocArgs emits epub and html directly', () => {
   const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
-  assert.deepEqual(pandocArgs({ ...base, target: 'epub' }).slice(-2), ['-o', '/o/book.epub']);
-  assert.deepEqual(pandocArgs({ ...base, target: 'html' }).slice(-2), ['-o', '/o/book.html']);
+  const epub = pandocArgs({ ...base, target: 'epub' });
+  const html = pandocArgs({ ...base, target: 'html' });
+  assert.ok(epub.includes('--css=book.css'));
+  assert.ok(html.includes('--css=book.css'));
+  assert.deepEqual(epub.slice(-2), ['-o', '/o/book.epub']);
+  assert.deepEqual(html.slice(-2), ['-o', '/o/book.html']);
 });
 
 test('latexmkArgs drives xelatex with an output directory', () => {
@@ -66,6 +73,18 @@ test('renderInvocations runs pandoc with cwd set to outDir, so bare-filename ima
   assert.equal(invocations.length, 1);
   assert.equal(invocations[0].command, 'pandoc');
   assert.deepEqual(invocations[0].options, { cwd: '/tmp/book' });
+});
+
+test('the reviewable manuscript target never invokes pandoc', () => {
+  assert.deepEqual(
+    renderInvocations({
+      manuscriptPath: '/tmp/book/manuscript.md',
+      bookDir: '/repo/docs/articles/assets/book',
+      outDir: '/tmp/book',
+      target: 'manuscript',
+    }),
+    []
+  );
 });
 
 test('renderInvocations also runs latexmk with cwd set to outDir for the pdf target, so LaTeX image includes resolve', () => {

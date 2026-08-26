@@ -18,6 +18,12 @@ const OUTPUT_NAME = { pdf: 'book.tex', epub: 'book.epub', html: 'book.html' };
 export const TOC_DEPTH = { pdf: 1, epub: 2, html: 2 };
 
 export function pandocArgs({ manuscriptPath, bookDir, target, outDir }) {
+  const presentationArgs =
+    target === 'pdf'
+      ? [`--include-in-header=${path.join(bookDir, 'chapter-openers.tex')}`]
+      : target === 'epub' || target === 'html'
+        ? ['--css=book.css']
+        : [];
   return [
     manuscriptPath,
     `--metadata-file=${path.join(bookDir, 'book.json')}`,
@@ -25,6 +31,7 @@ export function pandocArgs({ manuscriptPath, bookDir, target, outDir }) {
     '--toc',
     `--toc-depth=${TOC_DEPTH[target] ?? 2}`,
     '--standalone',
+    ...presentationArgs,
     '-o',
     path.join(outDir, OUTPUT_NAME[target]),
   ];
@@ -64,6 +71,7 @@ export function runCommand(command, args, { cwd } = {}) {
  * @returns {Array<{command: string, args: string[], options: {cwd: string}}>}
  */
 export function renderInvocations({ manuscriptPath, bookDir, outDir, target }) {
+  if (target === 'manuscript') return [];
   const invocations = [
     {
       command: 'pandoc',

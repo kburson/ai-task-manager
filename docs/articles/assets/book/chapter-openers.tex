@@ -1,0 +1,23 @@
+\usepackage{adjustbox}
+
+\newcommand{\bookchapter}[3]{%
+  \clearpage
+  \refstepcounter{chapter}%
+  \phantomsection
+  \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#2}%
+  \markboth{#2}{#2}%
+  \thispagestyle{plain}%
+  \noindent
+  \begin{adjustbox}{min size={\textwidth}{0.2\paperheight},Clip={.5\width-.5\textwidth} {.5\height-.1\paperheight} {.5\width+.5\textwidth} {.5\height+.1\paperheight},center}
+    \includegraphics{#1}%
+  \end{adjustbox}
+  \par\nobreak\vspace{1.4em}
+  \begin{center}
+    {\large\scshape Chapter \thechapter\par}
+    \vspace{0.7em}
+    {\huge\bfseries #2\par}
+    \vspace{0.7em}
+    {\large\itshape #3\par}
+  \end{center}
+  \par\vspace{1.4em}\noindent
+}
