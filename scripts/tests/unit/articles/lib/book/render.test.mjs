@@ -1,5 +1,6 @@
 // @chore
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,6 +14,15 @@ import {
   TARGETS,
 } from '../../../../../articles/lib/book/render.mjs';
 import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+
+const CHAPTER_HEADER = path.resolve(
+  import.meta.dirname,
+  '../../../../../../docs/articles/assets/book/chapter-openers.tex'
+);
+const BOOK_CSS = path.resolve(
+  import.meta.dirname,
+  '../../../../../../docs/articles/assets/book/book.css'
+);
 
 test('pandocArgs maps top-level headings to chapters and loads the metadata file', () => {
   const args = pandocArgs({
@@ -29,6 +39,28 @@ test('pandocArgs maps top-level headings to chapters and loads the metadata file
     args.includes('--include-in-header=/repo/docs/articles/assets/book/chapter-openers.tex')
   );
   assert.deepEqual(args.slice(-2), ['-o', '/tmp/book/book.tex']);
+});
+
+test('the explicit PDF header keeps index setup that pandoc header inclusion replaces', () => {
+  const header = readFileSync(CHAPTER_HEADER, 'utf8');
+  assert.match(header, /\\usepackage\{makeidx\}/);
+  assert.match(header, /\\makeindex/);
+  assert.match(header, /\\usepackage\{adjustbox\}/);
+  assert.match(header, /\\newcommand\{\\bookchapter\}/);
+});
+
+test('the PDF center crop trims equal overflow from opposite edges', () => {
+  const header = readFileSync(CHAPTER_HEADER, 'utf8');
+  assert.ok(
+    header.includes(
+      'Clip={.5\\width-.5\\textwidth} {.5\\height-.1\\paperheight} {.5\\width-.5\\textwidth} {.5\\height-.1\\paperheight}'
+    )
+  );
+});
+
+test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
+  const css = readFileSync(BOOK_CSS, 'utf8');
+  assert.match(css, /\.chapter-opener figcaption\s*\{[^}]*display:\s*none;/s);
 });
 
 test('pandocArgs emits epub and html directly', () => {

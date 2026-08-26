@@ -20,6 +20,10 @@
   object-position: center;
 }
 
+.chapter-opener figcaption {
+  display: none;
+}
+
 .chapter-opener .chapter-number {
   order: 2;
   text-align: center;

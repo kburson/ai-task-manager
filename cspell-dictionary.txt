@@ -3,6 +3,7 @@ ACMR
 actuals
 Actuals
 adrs
+adjustbox
 affordances
 Agentic
 aitm
@@ -33,6 +34,7 @@ bindingless
 blockquotes
 Boehm
 Boehm's
+bookchapter
 booktabs
 Bossavit
 bottlenecked
@@ -183,6 +185,7 @@ myorg
 mytest
 Nanocluster
 networkidle
+newcommand
 newpage
 noactive
 noncanonical
@@ -209,8 +212,10 @@ overinterpreted
 pagebreak
 Palatino
 pandoc
+paperheight
 papersize
 parskip
+pasteable
 paydown
 paywalled
 pexec
@@ -322,7 +327,11 @@ testless
 testmon
 texlive
 texprobe
+textasciicircum
+textasciitilde
+textbackslash
 textless
+textwidth
 Therac
 thispagestyle
 Thoughtworks

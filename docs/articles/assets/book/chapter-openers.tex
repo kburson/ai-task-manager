@@ -1,3 +1,7 @@
+% Pandoc's --include-in-header replaces book.json's header-includes instead of
+% appending to them, so this selected header must retain the index setup too.
+\usepackage{makeidx}
+\makeindex
 \usepackage{adjustbox}
 
 \newcommand{\bookchapter}[3]{%
@@ -8,7 +12,7 @@
   \markboth{#2}{#2}%
   \thispagestyle{plain}%
   \noindent
-  \begin{adjustbox}{min size={\textwidth}{0.2\paperheight},Clip={.5\width-.5\textwidth} {.5\height-.1\paperheight} {.5\width+.5\textwidth} {.5\height+.1\paperheight},center}
+  \begin{adjustbox}{min size={\textwidth}{0.2\paperheight},Clip={.5\width-.5\textwidth} {.5\height-.1\paperheight} {.5\width-.5\textwidth} {.5\height-.1\paperheight},center}
     \includegraphics{#1}%
   \end{adjustbox}
   \par\nobreak\vspace{1.4em}
