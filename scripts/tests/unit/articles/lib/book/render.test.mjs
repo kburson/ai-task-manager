@@ -106,12 +106,29 @@ test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
   assert.match(css, /\.chapter-opener figcaption\s*\{[^}]*display:\s*none;/s);
 });
 
+test('the reflowable stylesheet keeps title, chapter, and diagram images proportional', () => {
+  const css = readFileSync(BOOK_CSS, 'utf8');
+  assert.match(css, /#title-block-header::before\s*\{[^}]*url\("title-page\.png"\)/s);
+  assert.match(css, /#title-block-header h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
+  assert.match(
+    css,
+    /\.chapter-opener \.chapter-image img\s*\{[^}]*max-width:\s*100%;[^}]*width:\s*auto;[^}]*height:\s*auto;[^}]*object-fit:\s*contain;/s
+  );
+  assert.match(
+    css,
+    /\.book-diagram\s*\{[^}]*max-width:\s*100%;[^}]*max-height:\s*70vh;[^}]*object-fit:\s*contain;/s
+  );
+  assert.doesNotMatch(css, /object-fit:\s*cover/);
+});
+
 test('pandocArgs emits epub and html directly', () => {
   const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
   const epub = pandocArgs({ ...base, target: 'epub' });
   const html = pandocArgs({ ...base, target: 'html' });
   assert.ok(epub.includes('--css=book.css'));
+  assert.ok(epub.includes('--epub-cover-image=title-page.png'));
   assert.ok(html.includes('--css=book.css'));
+  assert.equal(html.includes('--epub-cover-image=title-page.png'), false);
   assert.deepEqual(epub.slice(-2), ['-o', '/o/book.epub']);
   assert.deepEqual(html.slice(-2), ['-o', '/o/book.html']);
 });

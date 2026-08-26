@@ -1,3 +1,25 @@
+#title-block-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+#title-block-header::before {
+  content: '';
+  display: block;
+  order: -1;
+  width: 100%;
+  aspect-ratio: 1376 / 768;
+  margin-bottom: 2rem;
+  background: url("title-page.png") center / contain no-repeat;
+}
+
+#title-block-header h1.title {
+  font-size: 2.75rem;
+  line-height: 1.15;
+}
+
 .chapter-opener {
   display: flex;
   flex-direction: column;
@@ -14,21 +36,25 @@
 
 .chapter-opener .chapter-image img {
   display: block;
-  width: 100%;
-  height: 20vh;
-  object-fit: cover;
-  object-position: center;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  margin-inline: auto;
+  object-fit: contain;
 }
 
 .chapter-opener figcaption {
   display: none;
 }
 
-.chapter-opener .chapter-number {
-  order: 2;
-  text-align: center;
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
+.book-diagram {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 70vh;
+  margin: 1.5rem auto;
+  object-fit: contain;
 }
 
 .chapter-opener .chapter-title {
@@ -53,12 +79,7 @@
     page-break-inside: avoid;
   }
 
-  .chapter-opener .chapter-image img {
-    height: 2.2in;
-  }
-
   .chapter-opener .chapter-image,
-  .chapter-opener .chapter-number,
   .chapter-opener .chapter-title,
   .chapter-opener .chapter-subtitle {
     break-inside: avoid;

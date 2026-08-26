@@ -21,8 +21,10 @@ export function pandocArgs({ manuscriptPath, bookDir, target, outDir }) {
   const presentationArgs =
     target === 'pdf'
       ? [`--include-in-header=${path.join(bookDir, 'chapter-openers.tex')}`]
-      : target === 'epub' || target === 'html'
-        ? ['--css=book.css']
+      : target === 'epub'
+        ? ['--css=book.css', '--epub-cover-image=title-page.png']
+        : target === 'html'
+          ? ['--css=book.css']
         : [];
   return [
     manuscriptPath,
