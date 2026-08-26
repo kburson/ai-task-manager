@@ -1,6 +1,6 @@
 # Writing Studio Extraction — Design
 
-Status: approved in discussion; pending review of this written specification
+Status: approved for implementation
 
 ## Context
 
@@ -188,13 +188,14 @@ The extraction includes the history of:
 - `scripts/articles/**`;
 - unit and slow tests dedicated to the article publisher and book composer;
 - the article-citation checker and its dedicated tests; and
-- the seven writing-owned design and implementation documents listed below.
+- the nine writing-owned design and implementation documents listed below.
 
 Writing-owned specifications:
 
 - `docs/superpowers/specs/2026-08-17-article-ending-sections-design.md`
 - `docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md`
 - `docs/superpowers/specs/2026-08-25-book-composition-path-design.md`
+- `docs/superpowers/specs/2026-08-25-book-chapter-openers-design.md`
 
 Writing-owned implementation plans:
 
@@ -202,6 +203,7 @@ Writing-owned implementation plans:
 - `docs/superpowers/plans/2026-08-17-article-ending-sections.md`
 - `docs/superpowers/plans/2026-08-20-exclude-draft-articles-from-publisher.md`
 - `docs/superpowers/plans/2026-08-25-book-composition-path.md`
+- `docs/superpowers/plans/2026-08-25-book-chapter-openers.md`
 
 Completed specifications and plans move to
 `collections/agentic-delivery/history/`. They remain decision provenance rather
@@ -321,7 +323,7 @@ After the migration gates pass, a separate AITM cleanup removes:
 - the article-citation checker and dedicated tests if it has no other caller;
 - article-only package commands and dependencies;
 - article-specific test-corpus registration and hosted Mermaid CI wiring;
-- the seven writing-owned specifications and plans after their presence in
+- the nine writing-owned specifications and plans after their presence in
   `writing-studio` is verified; and
 - stale package-boundary and installation-document references to
   `scripts/articles`.
@@ -363,7 +365,7 @@ explicit decision.
   direct decision records.
 - The `agentic-delivery` collection contains every current article, research
   note, editorial document, publishing guide, required asset, and book source.
-- The seven directly related specifications and plans are preserved under the
+- The nine directly related specifications and plans are preserved under the
   collection's history.
 - The studio installs and verifies independently of AITM.
 - Publisher and book commands consume collection configuration rather than

@@ -1,7 +1,6 @@
 # Frozen Test Retirement — Bounded Pilot Design
 
-Status: approved in discussion for a four-test pilot; pending review of this
-written specification
+Status: approved for implementation as a four-test pilot on 2026-08-25
 
 ## Context
 

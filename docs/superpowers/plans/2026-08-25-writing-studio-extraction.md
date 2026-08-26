@@ -14,6 +14,9 @@
 
 - Source repository: `git@github.com:kburson/ai-task-manager.git`.
 - Source worktree: `/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.claude/worktrees/articles-book-publication-6a7dfe`.
+- Complete and verify `docs/superpowers/plans/2026-08-25-book-chapter-openers.md`
+  in the source worktree before starting this extraction, so the selected
+  history contains the approved book layout and its rendered evidence.
 - Target repository: private `kburson/writing-studio` with default branch `trunk`.
 - Target checkout: `/Users/kpburson/projects/Vibe-Coding/writing-studio`.
 - Filter workspace: `/Users/kpburson/projects/Vibe-Coding/.tmp-writing-studio-filter`.
@@ -96,10 +99,12 @@ git filter-repo --force \
   --path docs/superpowers/specs/2026-08-17-article-ending-sections-design.md \
   --path docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md \
   --path docs/superpowers/specs/2026-08-25-book-composition-path-design.md \
+  --path docs/superpowers/specs/2026-08-25-book-chapter-openers-design.md \
   --path docs/superpowers/plans/2026-07-16-article-deepening.md \
   --path docs/superpowers/plans/2026-08-17-article-ending-sections.md \
   --path docs/superpowers/plans/2026-08-20-exclude-draft-articles-from-publisher.md \
-  --path docs/superpowers/plans/2026-08-25-book-composition-path.md
+  --path docs/superpowers/plans/2026-08-25-book-composition-path.md \
+  --path docs/superpowers/plans/2026-08-25-book-chapter-openers.md
 git branch -m trunk
 ```
 
@@ -153,7 +158,7 @@ Expected: branch `trunk`; clean status; `origin` is the private SSH remote; sele
 - Move: `scripts/articles/**` into `tools/publishing/{articles,books,shared}/**`
 - Move: publishing lints into `tools/publishing/lint/**`
 - Move: dedicated tests into `tests/{unit,e2e}/publishing/**`
-- Move: seven approved specs/plans into `collections/agentic-delivery/history/**`
+- Move: nine approved specs/plans into `collections/agentic-delivery/history/**`
 
 **Interfaces:**
 
@@ -184,8 +189,8 @@ Run:
 
 ```bash
 mkdir -p tools/publishing/articles tools/publishing/books tools/publishing/shared tools/publishing/lint tests/unit/publishing/articles tests/unit/publishing/books tests/unit/publishing/lint tests/e2e/publishing
-git mv docs/superpowers/specs/2026-08-17-article-ending-sections-design.md docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md docs/superpowers/specs/2026-08-25-book-composition-path-design.md collections/agentic-delivery/history/specs/
-git mv docs/superpowers/plans/2026-07-16-article-deepening.md docs/superpowers/plans/2026-08-17-article-ending-sections.md docs/superpowers/plans/2026-08-20-exclude-draft-articles-from-publisher.md docs/superpowers/plans/2026-08-25-book-composition-path.md collections/agentic-delivery/history/plans/
+git mv docs/superpowers/specs/2026-08-17-article-ending-sections-design.md docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md docs/superpowers/specs/2026-08-25-book-composition-path-design.md docs/superpowers/specs/2026-08-25-book-chapter-openers-design.md collections/agentic-delivery/history/specs/
+git mv docs/superpowers/plans/2026-07-16-article-deepening.md docs/superpowers/plans/2026-08-17-article-ending-sections.md docs/superpowers/plans/2026-08-20-exclude-draft-articles-from-publisher.md docs/superpowers/plans/2026-08-25-book-composition-path.md docs/superpowers/plans/2026-08-25-book-chapter-openers.md collections/agentic-delivery/history/plans/
 git mv scripts/articles/publish-articles.mjs tools/publishing/articles/cli.mjs
 git mv scripts/articles/compose-book.mjs tools/publishing/books/cli.mjs
 git mv scripts/articles/lib/companion-post.mjs scripts/articles/lib/html-document.mjs scripts/articles/lib/markdown-to-html.mjs scripts/articles/lib/publish.mjs scripts/articles/lib/roadmap.mjs scripts/articles/lib/strip-rules.mjs tools/publishing/articles/
