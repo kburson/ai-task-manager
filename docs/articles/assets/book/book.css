@@ -12,10 +12,35 @@
   width: 100%;
   aspect-ratio: 1376 / 768;
   margin-bottom: 2rem;
-  background: url("title-page.png") center / contain no-repeat;
+  background: url('title-page.png') center / contain no-repeat;
 }
 
 #title-block-header h1.title {
+  font-size: 2.75rem;
+  line-height: 1.15;
+}
+
+.titlepage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.titlepage .title-banner {
+  display: block;
+  order: -1;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.titlepage .title-banner svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.titlepage h1.title {
   font-size: 2.75rem;
   line-height: 1.15;
 }

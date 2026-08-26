@@ -75,10 +75,7 @@ test('the PDF page styles put chapter numbers left and page numbers right', () =
 
 test('the PDF uses unique physical-page anchors across visible numbering resets', () => {
   const header = readFileSync(CHAPTER_HEADER, 'utf8');
-  assert.match(
-    header,
-    /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/
-  );
+  assert.match(header, /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/);
   assert.doesNotMatch(header, /pageanchor=false/);
 });
 
@@ -108,7 +105,7 @@ test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
 
 test('the reflowable stylesheet keeps title, chapter, and diagram images proportional', () => {
   const css = readFileSync(BOOK_CSS, 'utf8');
-  assert.match(css, /#title-block-header::before\s*\{[^}]*url\("title-page\.png"\)/s);
+  assert.match(css, /#title-block-header::before\s*\{[^}]*url\(['"]title-page\.png['"]\)/s);
   assert.match(css, /#title-block-header h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
   assert.match(
     css,
@@ -121,12 +118,41 @@ test('the reflowable stylesheet keeps title, chapter, and diagram images proport
   assert.doesNotMatch(css, /object-fit:\s*cover/);
 });
 
+test('the reflowable stylesheet supports Pandoc EPUB title-page banners', () => {
+  const css = readFileSync(BOOK_CSS, 'utf8');
+  assert.match(css, /\.titlepage\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s);
+  assert.match(css, /\.titlepage \.title-banner\s*\{[^}]*order:\s*-1;[^}]*width:\s*100%;/s);
+  assert.match(css, /\.titlepage h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
+});
+
+test('the EPUB banner inserter uses manifest media before the title', async () => {
+  const { insertEpubTitleBanner } = await import('../../../../../articles/lib/book/render.mjs');
+  assert.equal(typeof insertEpubTitleBanner, 'function');
+  const template = insertEpubTitleBanner({
+    titlePage:
+      '<section epub:type="titlepage" class="titlepage">\n  <h1 class="title">Book</h1>\n</section>',
+    titleHref: 'text/title_page.xhtml',
+    coverHref: 'media/file35.png',
+    coverWidth: 1376,
+    coverHeight: 768,
+  });
+  assert.match(
+    template,
+    /class="title-banner"[\s\S]*xlink:href="\.\.\/media\/file35\.png"[\s\S]*<h1 class="title">Book<\/h1>/
+  );
+  assert.match(template, /viewBox="0 0 1376 768"/);
+});
+
 test('pandocArgs emits epub and html directly', () => {
   const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
   const epub = pandocArgs({ ...base, target: 'epub' });
   const html = pandocArgs({ ...base, target: 'html' });
   assert.ok(epub.includes('--css=book.css'));
   assert.ok(epub.includes('--epub-cover-image=title-page.png'));
+  assert.equal(
+    epub.some((arg) => arg.startsWith('--template=')),
+    false
+  );
   assert.ok(html.includes('--css=book.css'));
   assert.equal(html.includes('--epub-cover-image=title-page.png'), false);
   assert.deepEqual(epub.slice(-2), ['-o', '/o/book.epub']);
