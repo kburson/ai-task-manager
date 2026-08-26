@@ -135,12 +135,13 @@ Each collection has one `collection.json`. The initial contract provides:
 - the article-source directory;
 - research, editorial, guide, and asset directories;
 - the book metadata directory;
-- the generated-output root; and
+- the generated-output namespace; and
 - the publication targets enabled for that collection.
 
-A shared resolver reads the manifest, resolves every path against the
-collection root, and passes resolved paths into publishing modules. Modules do
-not hardcode `docs/articles`, the repository root, or an AITM helper.
+A shared resolver reads the manifest, resolves every source path against the
+collection root, derives generated output under repository-level
+`.tmp/<collection>/`, and passes resolved paths into publishing modules. Modules
+do not hardcode `docs/articles`, the repository root, or an AITM helper.
 
 The command line accepts `--collection <id>`. `agentic-delivery` is the default
 only while it is the sole collection. Adding a second collection requires an
@@ -255,7 +256,7 @@ The tools continue to fail before producing a partial publication when they
 encounter:
 
 - a missing or invalid collection manifest;
-- a path that escapes its collection root;
+- a configured source path that escapes its collection root;
 - missing source or required asset files;
 - malformed article structure or book markers;
 - invalid or broken local Markdown links;
