@@ -230,13 +230,13 @@ test('the pdf carries a copyright page built from book.json rights', async () =>
   }
 });
 
-test('epub and html carry semantic headings plus separate chapter numbers', async () => {
+test('epub and html carry semantic chapter headings without separate number markup', async () => {
   const { root, articlesDir, bookDir } = await fixture();
   try {
     for (const target of ['epub', 'html']) {
       const { markdown } = await buildManuscript({ articlesDir, bookDir, target });
       assert.match(markdown, /^# First Chapter \{\.chapter-title\}$/m);
-      assert.match(markdown, /<div class="chapter-number">Chapter 1<\/div>/);
+      assert.doesNotMatch(markdown, /chapter-number/);
       assert.match(markdown, /^# Introduction$/m, 'the introduction stays unnumbered');
     }
     const pdf = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
