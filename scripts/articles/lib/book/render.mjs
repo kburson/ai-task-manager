@@ -199,6 +199,7 @@ async function listZipEntries(epubPath) {
     names: namesOutput.split('\n').filter(Boolean),
     modes: modesOutput
       .split('\n')
+      // cspell:ignore dlcbps
       .filter((line) => /^[-dlcbps?]/.test(line))
       .map((line) => line[0]),
   };
