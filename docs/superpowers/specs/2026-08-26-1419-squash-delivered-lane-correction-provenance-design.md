@@ -1,8 +1,11 @@
 # Squash-Delivered Lane-Correction Provenance Design
 
-**Issue:** #1419  
-**Status:** Proposed for human approval  
-**Delivery dependency:** #1413 / PR #1418  
+**Issue:** #1419
+
+**Status:** Proposed for human approval
+
+**Delivery dependency:** #1413 / PR #1418
+
 **Blocks:** writing-studio AITM cleanup Task 4
 
 ## Problem
