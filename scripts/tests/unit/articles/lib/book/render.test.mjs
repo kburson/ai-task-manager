@@ -1,8 +1,10 @@
 // @chore
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
 
-import { parseArgs } from '../../../../../articles/compose-book.mjs';
+import { composeTarget, parseArgs } from '../../../../../articles/compose-book.mjs';
 import {
   latexmkArgs,
   pandocArgs,
@@ -10,6 +12,7 @@ import {
   renderInvocations,
   TARGETS,
 } from '../../../../../articles/lib/book/render.mjs';
+import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
 
 test('pandocArgs maps top-level headings to chapters and loads the metadata file', () => {
   const args = pandocArgs({
@@ -85,6 +88,49 @@ test('the reviewable manuscript target never invokes pandoc', () => {
     }),
     []
   );
+});
+
+test('composeTarget stages assets before writing and rendering every target', async () => {
+  const outDir = await mkdtemp(path.join(projectScratchDir('test'), 'compose-target-'));
+  const built = {
+    markdown: '# Book\n',
+    chapters: 1,
+    footnotes: 0,
+    indexTerms: 0,
+    diagrams: [],
+    chapterImages: [{ chapter: 1 }],
+  };
+  try {
+    for (const target of ['manuscript', 'html']) {
+      const calls = [];
+      await composeTarget({
+        target,
+        outDir,
+        articlesDir: '/articles',
+        bookDir: '/book',
+        build: async () => {
+          calls.push('build');
+          return built;
+        },
+        ensureAssets: async (images) => {
+          assert.equal(images, built.chapterImages);
+          calls.push('stage');
+        },
+        write: async () => calls.push('write'),
+        renderDiagrams: async () => calls.push('diagrams'),
+        render: async () => calls.push('render'),
+        log: () => {},
+      });
+      assert.deepEqual(
+        calls,
+        target === 'manuscript'
+          ? ['build', 'stage', 'write']
+          : ['build', 'stage', 'write', 'diagrams', 'render']
+      );
+    }
+  } finally {
+    await rm(outDir, { recursive: true, force: true });
+  }
 });
 
 test('renderInvocations also runs latexmk with cwd set to outDir for the pdf target, so LaTeX image includes resolve', () => {

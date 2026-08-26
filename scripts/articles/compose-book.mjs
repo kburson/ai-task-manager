@@ -7,11 +7,13 @@
 //
 // Reads docs/articles/ and never writes there.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, copyFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { renderBookDiagrams } from './lib/book/diagrams.mjs';
+import { planChapterImages, stageChapterImages } from './lib/book/chapter-openers.mjs';
 import { buildManuscript } from './lib/book/manuscript.mjs';
 import { renderTarget, TARGETS } from './lib/book/render.mjs';
 import { doctor } from './lib/book/toolchain.mjs';
@@ -54,6 +56,52 @@ export function parseArgs(argv) {
   return options;
 }
 
+export function createAssetStager({ articlesDir, bookDir, outDir }) {
+  let staged = null;
+  return (chapterImages) => {
+    if (staged === null) {
+      staged = (async () => {
+        const cssPath = path.join(bookDir, 'book.css');
+        const imagePlan = planChapterImages({
+          articlesDir,
+          chapters: chapterImages,
+          outDir,
+        });
+        await access(cssPath, constants.R_OK);
+        await stageChapterImages(imagePlan);
+        await copyFile(cssPath, path.join(outDir, 'book.css'));
+      })();
+    }
+    return staged;
+  };
+}
+
+export async function composeTarget({
+  target,
+  outDir,
+  articlesDir = ARTICLES_DIR,
+  bookDir = BOOK_DIR,
+  build = buildManuscript,
+  ensureAssets = createAssetStager({ articlesDir, bookDir, outDir }),
+  write = writeFile,
+  renderDiagrams = renderBookDiagrams,
+  render = renderTarget,
+  log = console.log,
+}) {
+  const built = await build({ articlesDir, bookDir, target });
+  await ensureAssets(built.chapterImages);
+  const name = target === 'manuscript' ? 'manuscript.md' : `manuscript-${target}.md`;
+  const manuscriptPath = path.join(outDir, name);
+  await write(manuscriptPath, built.markdown);
+  log(
+    `${target}: ${built.chapters} chapters, ${built.footnotes} footnotes, ${built.indexTerms} index terms -> ${manuscriptPath}`
+  );
+  if (target === 'manuscript') return { built, manuscriptPath };
+  await renderDiagrams(built.diagrams, outDir);
+  await render({ manuscriptPath, bookDir, outDir, target });
+  return { built, manuscriptPath };
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
@@ -87,18 +135,14 @@ async function main() {
   }
 
   await mkdir(options.out, { recursive: true });
+  const ensureAssets = createAssetStager({
+    articlesDir: ARTICLES_DIR,
+    bookDir: BOOK_DIR,
+    outDir: options.out,
+  });
 
   for (const target of options.targets) {
-    const built = await buildManuscript({ articlesDir: ARTICLES_DIR, bookDir: BOOK_DIR, target });
-    const name = target === 'manuscript' ? 'manuscript.md' : `manuscript-${target}.md`;
-    const manuscriptPath = path.join(options.out, name);
-    await writeFile(manuscriptPath, built.markdown);
-    console.log(
-      `${target}: ${built.chapters} chapters, ${built.footnotes} footnotes, ${built.indexTerms} index terms -> ${manuscriptPath}`
-    );
-    if (target === 'manuscript') continue;
-    await renderBookDiagrams(built.diagrams, options.out);
-    await renderTarget({ manuscriptPath, bookDir: BOOK_DIR, outDir: options.out, target });
+    await composeTarget({ target, outDir: options.out, ensureAssets });
   }
 }
 

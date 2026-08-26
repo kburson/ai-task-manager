@@ -68,11 +68,12 @@ export function planChapterImages({ articlesDir, chapters, outDir }) {
   const outputRoot = path.resolve(outDir);
   const seenOutputs = new Set();
   const plan = chapters.map((chapter) => {
-    const first = chapter.members?.[0]?.article;
-    if (!first) throw new Error(`chapter ${chapter.number} has no first member banner`);
+    const first = chapter.members?.[0]?.article ?? chapter;
+    const chapterNumber = chapter.number ?? chapter.chapter;
+    if (!first || !chapterNumber) throw new Error('chapter image has no chapter number or banner');
     if (!BOOK_BANNER_RE.test(first.bannerPath ?? '')) {
       throw new Error(
-        `${first.slug ?? `chapter ${chapter.number}`} has an invalid book banner path`
+        `${first.slug ?? `chapter ${chapterNumber}`} has an invalid book banner path`
       );
     }
 
@@ -84,7 +85,7 @@ export function planChapterImages({ articlesDir, chapters, outDir }) {
       throw new Error(`cannot read book banner: ${first.bannerPath}`);
     }
 
-    const imageName = `chapter-${String(chapter.number).padStart(2, '0')}-header.png`;
+    const imageName = `chapter-${String(chapterNumber).padStart(2, '0')}-header.png`;
     const outputPath = path.join(outputRoot, imageName);
     if (seenOutputs.has(outputPath)) {
       throw new Error(`duplicate chapter image output: ${imageName}`);
@@ -92,7 +93,7 @@ export function planChapterImages({ articlesDir, chapters, outDir }) {
     seenOutputs.add(outputPath);
 
     return Object.freeze({
-      chapter: chapter.number,
+      chapter: chapterNumber,
       sourcePath,
       imageName,
       outputPath,
