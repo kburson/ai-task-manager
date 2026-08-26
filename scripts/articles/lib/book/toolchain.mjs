@@ -37,6 +37,7 @@ export const PROBE_PACKAGES = [
   'xurl',
   'bookmark',
   'makeidx',
+  'adjustbox',
 ];
 
 export function probeDocument(pkg) {

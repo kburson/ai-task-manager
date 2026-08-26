@@ -96,9 +96,19 @@ test('doctor reports missing packages with a tlmgr hint', async () => {
   assert.equal(result.ok, false);
 });
 
+test('doctor names a missing chapter-opener package in its pasteable hint', async () => {
+  const result = await doctor({
+    runBinary: async () => true,
+    runProbe: async (pkg) => pkg !== 'adjustbox',
+  });
+  assert.deepEqual(result.missingPackages, ['adjustbox']);
+  assert.equal(result.hint, 'sudo tlmgr install adjustbox');
+});
+
 test('the probe list covers what the pandoc book template needs', () => {
   for (const required of ['fontspec', 'unicode-math', 'hyperref', 'geometry', 'makeidx']) {
     assert.ok(PROBE_PACKAGES.includes(required), `missing ${required}`);
   }
+  assert.ok(PROBE_PACKAGES.includes('adjustbox'));
   assert.deepEqual(REQUIRED_BINARIES, ['pandoc', 'xelatex', 'latexmk', 'makeindex']);
 });

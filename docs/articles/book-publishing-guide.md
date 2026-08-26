@@ -78,7 +78,12 @@ npm run doctor:book
 `doctor:book` always checks pandoc. It checks the LaTeX binaries and compiles a
 one-line probe per LaTeX package only when the pdf target is in play, printing a
 single `tlmgr install ...` line naming whatever is missing. Run it until it is
-quiet.
+quiet. That probe includes `adjustbox`, which the image-led chapter opener uses
+to preserve aspect ratio while center-cropping artwork to its printable frame.
+
+PDF citations remain same-page footnotes: each note appears at the bottom of the
+physical page containing its citation marker. HTML and EPUB keep Pandoc's linked
+notes because reflowable editions have no stable physical page boundary.
 
 On a machine that only wants EPUB or HTML, name those targets and the doctor
 will not mention LaTeX at all:
