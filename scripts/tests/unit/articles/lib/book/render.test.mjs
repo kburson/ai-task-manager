@@ -72,6 +72,25 @@ test('the PDF page styles put chapter numbers left and page numbers right', () =
   assert.match(header, /\\renewcommand\{\\footrulewidth\}\{0pt\}/);
 });
 
+test('the PDF title page is banner-first, unnumbered, and uses a 34-point title', () => {
+  const header = readFileSync(CHAPTER_HEADER, 'utf8');
+  assert.match(header, /\\providecommand\{\\subtitle\}\[1\]\{\\gdef\\booksubtitle\{#1\}\}/);
+  assert.match(header, /\\renewcommand\{\\maketitle\}/);
+  assert.match(header, /\\thispagestyle\{empty\}/);
+  assert.match(header, /\\includegraphics\{title-page\.png\}/);
+  assert.match(header, /\\fontsize\{34\}\{40\}\\selectfont\\bfseries \\@title/);
+  assert.match(header, /\\booksubtitle/);
+  assert.match(header, /\\@author/);
+});
+
+test('the PDF body-image wrapper centers and bounds diagrams to 70 percent of text height', () => {
+  const header = readFileSync(CHAPTER_HEADER, 'utf8');
+  assert.match(header, /\\renewcommand\*\\pandocbounded/);
+  assert.match(header, /\.7\\textheight/);
+  assert.match(header, /\\linewidth/);
+  assert.match(header, /\\makebox\[\\linewidth\]\[c\]/);
+});
+
 test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
   const css = readFileSync(BOOK_CSS, 'utf8');
   assert.match(css, /\.chapter-opener figcaption\s*\{[^}]*display:\s*none;/s);

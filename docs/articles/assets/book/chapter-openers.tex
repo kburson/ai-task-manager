@@ -24,6 +24,43 @@
   \renewcommand{\footrulewidth}{0pt}%
 }
 
+\makeatletter
+\newcommand{\booksubtitle}{}
+\providecommand{\subtitle}[1]{\gdef\booksubtitle{#1}}
+
+\renewcommand{\maketitle}{%
+  \begin{titlepage}
+    \thispagestyle{empty}%
+    \centering
+    \begin{adjustbox}{max width=\textwidth,center}
+      \includegraphics{title-page.png}%
+    \end{adjustbox}
+    \par\vspace{2em}
+    {\fontsize{34}{40}\selectfont\bfseries \@title\par}
+    \vspace{1em}
+    {\Large \booksubtitle\par}
+    \vfill
+    {\large \@author\par}
+  \end{titlepage}%
+}
+\makeatother
+
+\makeatletter
+\renewcommand*\pandocbounded[1]{%
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{.7\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi
+  \makebox[\linewidth][c]{%
+    \ifdim\@tempa\p@<\p@
+      \scalebox{\@tempa}{\usebox\pandoc@box}%
+    \else
+      \usebox{\pandoc@box}%
+    \fi
+  }%
+}
+\makeatother
+
 \newcommand{\bookchapter}[3]{%
   \clearpage
   \refstepcounter{chapter}%
