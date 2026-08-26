@@ -184,6 +184,12 @@ test('AC2 converted body preserves formatting as markup', () => {
   }
 });
 
+test('captured subtitle remains in LinkedIn publication exactly once', () => {
+  const { html } = convertFixture();
+  assert.equal(html.split('A Strong Subtitle').length - 1, 1);
+  assert.ok(html.includes('<strong>A Strong Subtitle</strong>'));
+});
+
 test('AC2 converted body contains no literal Markdown syntax', () => {
   const body = convertFixture().html.split('<body>')[1];
   for (const pattern of [/\*\*/, /\]\(/, /!\[/, /^#{1,6} /m, /^> /m, /^- /m, /`/]) {

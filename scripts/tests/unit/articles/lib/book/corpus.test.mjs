@@ -1,5 +1,6 @@
 // @chore
 import assert from 'node:assert/strict';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -15,16 +16,32 @@ const ARTICLES_DIR = path.join(REPO_ROOT, 'docs', 'articles');
 const BOOK_DIR = path.join(ARTICLES_DIR, 'assets', 'book');
 
 test('the live corpus composes into a manuscript', async () => {
-  const built = await buildManuscript({
-    articlesDir: ARTICLES_DIR,
-    bookDir: BOOK_DIR,
-    target: 'manuscript',
-  });
+  for (const target of ['manuscript', 'pdf', 'epub', 'html']) {
+    const built = await buildManuscript({ articlesDir: ARTICLES_DIR, bookDir: BOOK_DIR, target });
+    assert.equal(
+      built.chapters,
+      15,
+      `${target}: expected the drafted series, got ${built.chapters} chapters`
+    );
+    assert.equal(built.chapterImages.length, 15, `${target}: every chapter has one opener image`);
+    assert.ok(built.footnotes > 0, `${target}: the series citations become notes`);
+    assert.ok(built.indexTerms > 0, `${target}: glossary terms appear in the prose`);
+  }
+});
 
-  assert.equal(built.chapters, 15, `expected the drafted series, got ${built.chapters} chapters`);
-  assert.equal(built.chapterImages.length, 15, 'every live chapter has one opener image');
-  assert.ok(built.footnotes > 0, 'the series cites sources; footnotes must exist');
-  assert.ok(built.indexTerms > 0, 'the glossary terms should appear somewhere in the prose');
+test('every live spine article has valid opener metadata and a readable PNG', async () => {
+  const spine = await listSpine(ARTICLES_DIR);
+  assert.equal(spine.length, 15);
+  for (const entry of spine) {
+    const parsed = parseArticle(entry.source, { keepComments: true });
+    assert.ok(parsed.subtitle?.trim(), `${entry.file}: missing subtitle`);
+    assert.match(
+      parsed.bannerPath ?? '',
+      /^assets\/article-headers\/[^/]+\.png$/,
+      `${entry.file}: invalid banner path`
+    );
+    await access(path.resolve(ARTICLES_DIR, parsed.bannerPath));
+  }
 });
 
 test('the composed manuscript leaks no markers, captions, or relative paths', async () => {

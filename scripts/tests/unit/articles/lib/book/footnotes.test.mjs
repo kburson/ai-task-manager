@@ -8,6 +8,7 @@ import {
   footnoteText,
   parseBibliography,
 } from '../../../../../articles/lib/book/footnotes.mjs';
+import { chapterOpenerFor } from '../../../../../articles/lib/book/chapter-openers.mjs';
 
 test('parseBibliography reads publisher, title, and url', () => {
   const entries = parseBibliography([
@@ -174,6 +175,27 @@ test('images are left alone', () => {
   const ctx = makeCtx();
   assert.equal(convertLine('![alt](assets/x.png)', ctx), '![alt](assets/x.png)');
   assert.deepEqual(ctx.footnotes, []);
+});
+
+test('a native PDF chapter opener leaves the citation footnote definition intact', () => {
+  const ctx = makeCtx({ idPrefix: 'c01' });
+  const prose = convertLine('As shown by the [report](https://dora.dev/x/).', ctx);
+  const markdown = [
+    ...chapterOpenerFor({
+      target: 'pdf',
+      chapter: { number: 1, title: 'First' },
+      imageName: 'chapter-01-header.png',
+      subtitle: 'Subtitle',
+    }),
+    '',
+    prose,
+    '',
+    ...ctx.footnotes.map((footnote) => `[^${footnote.id}]: ${footnote.text}`),
+  ].join('\n');
+
+  assert.match(markdown, /^\\bookchapter\{chapter-01-header\.png\}/m);
+  assert.match(markdown, /report\[\^c01-1\]/);
+  assert.match(markdown, /^\[\^c01-1\]: DORA\. "A Report\." <https:\/\/dora\.dev\/x\/>$/m);
 });
 
 test('a sibling article link with a heading anchor still resolves to a chapter', () => {
