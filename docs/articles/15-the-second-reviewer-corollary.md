@@ -84,8 +84,4 @@ Close:
 
 ## Bibliography
 
-<!-- book:exclude -->
-
 No external sources are cited in this piece — it draws on firsthand experience running the author/reviewer review loop while building AITM.
-
-<!-- book:end -->

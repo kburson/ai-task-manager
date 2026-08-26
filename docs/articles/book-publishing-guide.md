@@ -20,8 +20,9 @@ rendered book.
 
 Every list item under `## Bibliography` becomes a source, whatever citation
 shape it uses, and a line-wrapped entry is joined onto the item it continues.
-A line under that heading that is neither a list item nor a continuation is a
-loud error — wrap it in `book:exclude` if it is a note rather than a citation.
+Blank-separated prose with no URL is treated as an editorial note and ignored.
+An unindented line adjacent to a list item, or isolated prose containing an
+`http(s)` URL, is a loud error so a malformed source cannot disappear silently.
 
 Chapter numbering differs by target on purpose. The PDF wraps its front matter
 in `\frontmatter` and switches to `\mainmatter` before chapter one, so LaTeX

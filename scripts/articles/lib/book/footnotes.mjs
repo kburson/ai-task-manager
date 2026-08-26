@@ -76,10 +76,10 @@ function structure(raw) {
 }
 
 /**
- * Every list item under `## Bibliography` becomes an entry. Line-wrapped
- * entries are joined onto the item they continue. A non-list line that
- * continues nothing is an authoring mistake and is reported, never dropped —
- * `book:exclude` is the way to say "this paragraph is not a citation".
+ * Every list item under `## Bibliography` becomes an entry. Indented lines
+ * continue the preceding item. Blank-separated, URL-free prose is a note
+ * rather than a source and is ignored. Any unindented adjacent line or
+ * isolated URL-bearing prose is an authoring mistake and is reported.
  *
  * @param {string[]} lines the `## Bibliography` section's lines, blanks included
  * @param {string} [file] for the error message
@@ -88,27 +88,26 @@ function structure(raw) {
 export function parseBibliography(lines, file = '<bibliography>') {
   /** @type {string[]} */
   const raws = [];
-  let open = false;
+  let adjacentToItem = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed === '') {
-      open = false;
+      adjacentToItem = false;
       continue;
     }
     const item = trimmed.match(BIB_ITEM_RE);
     if (item) {
       raws.push(item[1].trim());
-      open = true;
+      adjacentToItem = true;
       continue;
     }
-    if (!open) {
-      throw new CitationError(
-        `bibliography line is neither a list item nor a continuation: ${trimmed}`,
-        file
-      );
+    if (adjacentToItem && /^\s+/.test(line)) {
+      raws[raws.length - 1] = `${raws[raws.length - 1]} ${trimmed}`;
+      continue;
     }
-    raws[raws.length - 1] = `${raws[raws.length - 1]} ${trimmed}`;
+    if (!adjacentToItem && !URL_RE.test(trimmed)) continue;
+    throw new CitationError(`bibliography line is not a list item: ${trimmed}`, file);
   }
 
   return raws.map((raw) => {

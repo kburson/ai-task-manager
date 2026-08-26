@@ -60,15 +60,54 @@ test('every list item becomes an entry, whatever shape the citation takes', () =
   assert.equal(
     entries[5].raw,
     'Beck, Kent. _Extreme Programming Explained: Embrace Change._ Addison-Wesley, 1999.',
-    'a line-wrapped entry is joined onto the item it continues'
+    'an indented line is joined onto the item it continues'
   );
 });
 
-test('a bibliography line that is neither a list item nor a continuation is loud', () => {
+test('an indented URL line continues the preceding bibliography item', () => {
+  const [entry] = parseBibliography([
+    '- DORA. "State of AI-assisted Software Development 2025."',
+    '  https://dora.dev/dora-report-2025/',
+  ]);
+
+  assert.equal(entry.url, 'https://dora.dev/dora-report-2025/');
+});
+
+test('blank-separated URL-free bibliography prose is ignored', () => {
+  const entries = parseBibliography(
+    [
+      '- DORA. "A Report." https://dora.dev/x/',
+      '',
+      'No external sources are cited in this piece.',
+      '',
+      '- METR. "Another Report." https://metr.org/x/',
+    ],
+    '12-x.md'
+  );
+
+  assert.equal(entries.length, 2);
+  assert.deepEqual(
+    entries.map((entry) => entry.publisher),
+    ['DORA', 'METR']
+  );
+});
+
+test('unindented adjacent non-list bibliography prose is loud', () => {
   assert.throws(
     () =>
       parseBibliography(
-        ['- DORA. "A Report." https://dora.dev/x/', '', 'No external sources are cited here.'],
+        ['- DORA. "A Report." https://dora.dev/x/', 'Continuation that lost its list marker.'],
+        '12-x.md'
+      ),
+    (error) => error instanceof CitationError && /12-x\.md/.test(error.message)
+  );
+});
+
+test('blank-separated bibliography prose containing a URL is loud', () => {
+  assert.throws(
+    () =>
+      parseBibliography(
+        ['- DORA. "A Report." https://dora.dev/x/', '', 'See https://example.com/missed-source.'],
         '12-x.md'
       ),
     (error) => error instanceof CitationError && /12-x\.md/.test(error.message)

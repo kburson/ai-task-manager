@@ -83,8 +83,4 @@ Close:
 
 ## Bibliography
 
-<!-- book:exclude -->
-
 No external sources are cited in this piece — it draws on firsthand experience running spec-driven delivery with AITM.
-
-<!-- book:end -->

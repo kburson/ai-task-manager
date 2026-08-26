@@ -173,8 +173,15 @@ converts citations to footnotes:
 - **Appendix B, Sources** — every bibliography entry across all chapters, deduped
   by URL, sorted by publisher then title.
 
-`npm run lint:article-citations` already enforces that every bibliography target
-is an absolute `http(s)` URL, so the URL matcher works against a clean corpus.
+Every Markdown list item becomes a source even when its citation shape cannot be
+structured; the raw text is the lossless fallback. Indented lines continue the
+preceding item. Blank-separated, URL-free prose is an editorial note and is
+ignored because the entire bibliography section is stripped from the chapter.
+An unindented line adjacent to an item, or isolated prose containing an
+`http(s)` URL, is a parse error so a malformed source cannot disappear silently.
+
+`npm run lint:article-citations` enforces URL absoluteness where URLs are present.
+The bibliography parser, rather than that lint, owns entry-shape preservation.
 
 ## Glossary and index
 
