@@ -16,7 +16,26 @@ AITM tests dead:
 - `scripts/tests/unit/articles/publish-articles.test.mjs`
 - `scripts/tests/unit/articles/diagram-drift.test.mjs`
 - `scripts/tests/slow/articles/publish-articles-e2e.test.mjs`
-- `scripts/tests/unit/task-tracker/maintenance/lint-article-citations.test.mjs`
+- `scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs`
+
+## Current-trunk test-layout compatibility
+
+AITM trunk's test-lane migration finalized the citation test at the integration
+path above and moved the live corpus-authority tests and tree baseline beneath
+`scripts/tests/integration/`. Frozen retirement authority follows each manifest
+record's finalized path, not its intermediate migration path.
+
+The retirement implementation therefore modifies the existing repository-wide
+membership, package-corpus, tree-layout, and test-impact tests at their current
+integration paths. New tests for one bounded retirement module, the local
+graduation command, and the workflow text contract remain unit tests; isolated
+filesystem, Git, and child-process fixtures do not become integration tests
+solely because of those mechanics.
+
+The immutable inputs are the current `origin/trunk` copies of
+`scripts/tests/fixtures/test-corpus-pre-move.json` and
+`scripts/tests/integration/meta/test-tree-layout.baseline.json`. The cleanup may
+read their finalized paths but must not edit or regenerate either file.
 
 Keeping those tests, skipped proxies, or replacement stubs in active `trunk`
 would misrepresent the current package merely to satisfy a historical receipt.
