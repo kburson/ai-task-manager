@@ -8,7 +8,9 @@ import {
   chapterOpenerFor,
   escapeLatex,
   planChapterImages,
+  planTitleImage,
   stageChapterImages,
+  stageTitleImage,
 } from '../../../../../articles/lib/book/chapter-openers.mjs';
 import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -152,6 +154,44 @@ test('planChapterImages rejects duplicate staged names', async () => {
         }),
       /duplicate chapter image output/
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+test('planTitleImage stages a readable PNG under a stable replaceable name', async () => {
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'title-image-'));
+  const bookDir = path.join(root, 'book');
+  const outDir = path.join(root, 'out');
+  try {
+    await mkdir(bookDir, { recursive: true });
+    await writeFile(path.join(bookDir, 'title-page.png'), PNG_SIGNATURE);
+    const plan = planTitleImage({ bookDir, outDir });
+    assert.deepEqual(plan, {
+      sourcePath: path.join(bookDir, 'title-page.png'),
+      imageName: 'title-page.png',
+      outputPath: path.join(outDir, 'title-page.png'),
+    });
+    await stageTitleImage(plan);
+    assert.deepEqual(await readFile(plan.outputPath), PNG_SIGNATURE);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('stageTitleImage rejects missing or non-PNG input before copying', async () => {
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'title-image-invalid-'));
+  const bookDir = path.join(root, 'book');
+  const outDir = path.join(root, 'out');
+  try {
+    await mkdir(bookDir, { recursive: true });
+    assert.throws(() => planTitleImage({ bookDir, outDir }), /cannot read title image/);
+    await writeFile(path.join(bookDir, 'title-page.png'), 'not a png');
+    const plan = planTitleImage({ bookDir, outDir });
+    await assert.rejects(stageTitleImage(plan), /invalid PNG signature/);
+    assert.deepEqual(await readdir(outDir).catch(() => []), []);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

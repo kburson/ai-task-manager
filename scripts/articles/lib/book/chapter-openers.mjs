@@ -1,10 +1,12 @@
 // Target-specific chapter opener markup and validated image staging.
 
 import { constants, accessSync } from 'node:fs';
-import { access, copyFile, mkdir } from 'node:fs/promises';
+import { access, copyFile, mkdir, open } from 'node:fs/promises';
 import path from 'node:path';
 
 const BOOK_BANNER_RE = /^assets\/article-headers\/[^/]+\.png$/;
+const TITLE_IMAGE_NAME = 'title-page.png';
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 const LATEX_ESCAPES = Object.freeze({
   '\\': '\\textbackslash{}',
@@ -59,7 +61,7 @@ export function chapterOpenerFor({ target, chapter, imageName, subtitle }) {
 function assertContained(root, candidate, label) {
   const relative = path.relative(root, candidate);
   if (relative === '' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`${label} escapes the article root`);
+    throw new Error(`${label} escapes the approved root`);
   }
 }
 
@@ -108,4 +110,40 @@ export async function stageChapterImages(plan) {
     plan.map(({ outputPath }) => mkdir(path.dirname(outputPath), { recursive: true }))
   );
   await Promise.all(plan.map(({ sourcePath, outputPath }) => copyFile(sourcePath, outputPath)));
+}
+
+export function planTitleImage({ bookDir, outDir }) {
+  const bookRoot = path.resolve(bookDir);
+  const sourcePath = path.resolve(bookRoot, TITLE_IMAGE_NAME);
+  assertContained(bookRoot, sourcePath, 'title image');
+  try {
+    accessSync(sourcePath, constants.R_OK);
+  } catch {
+    throw new Error(`cannot read title image: ${TITLE_IMAGE_NAME}`);
+  }
+  return Object.freeze({
+    sourcePath,
+    imageName: TITLE_IMAGE_NAME,
+    outputPath: path.join(path.resolve(outDir), TITLE_IMAGE_NAME),
+  });
+}
+
+async function assertPngSignature(sourcePath) {
+  const handle = await open(sourcePath, 'r');
+  try {
+    const signature = Buffer.alloc(PNG_SIGNATURE.length);
+    const { bytesRead } = await handle.read(signature, 0, signature.length, 0);
+    if (bytesRead !== PNG_SIGNATURE.length || !signature.equals(PNG_SIGNATURE)) {
+      throw new Error('title image has an invalid PNG signature');
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+export async function stageTitleImage({ sourcePath, outputPath }) {
+  await access(sourcePath, constants.R_OK);
+  await assertPngSignature(sourcePath);
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await copyFile(sourcePath, outputPath);
 }

@@ -1,6 +1,6 @@
 // @chore
 import assert from 'node:assert/strict';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -14,6 +14,14 @@ import { applyBookStrip } from '../../../../../articles/lib/book/strip.mjs';
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../../../../..');
 const ARTICLES_DIR = path.join(REPO_ROOT, 'docs', 'articles');
 const BOOK_DIR = path.join(ARTICLES_DIR, 'assets', 'book');
+
+test('the tracked title placeholder initially matches chapter seven artwork', async () => {
+  const title = await readFile(path.join(BOOK_DIR, 'title-page.png'));
+  const chapterSeven = await readFile(
+    path.join(ARTICLES_DIR, 'assets', 'article-headers', 'article-07-header.png')
+  );
+  assert.deepEqual(title, chapterSeven);
+});
 
 test('the live corpus composes into a manuscript', async () => {
   for (const target of ['manuscript', 'pdf', 'epub', 'html']) {

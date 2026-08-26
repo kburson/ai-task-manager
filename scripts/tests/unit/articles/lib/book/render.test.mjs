@@ -1,11 +1,15 @@
 // @chore
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-import { composeTarget, parseArgs } from '../../../../../articles/compose-book.mjs';
+import {
+  composeTarget,
+  createAssetStager,
+  parseArgs,
+} from '../../../../../articles/compose-book.mjs';
 import {
   latexmkArgs,
   pandocArgs,
@@ -162,6 +166,35 @@ test('composeTarget stages assets before writing and rendering every target', as
     }
   } finally {
     await rm(outDir, { recursive: true, force: true });
+  }
+});
+
+test('createAssetStager copies chapter, title, and CSS assets once', async () => {
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'book-assets-'));
+  const articlesDir = path.join(root, 'articles');
+  const bookDir = path.join(articlesDir, 'assets', 'book');
+  const headersDir = path.join(articlesDir, 'assets', 'article-headers');
+  const outDir = path.join(root, 'out');
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  try {
+    await mkdir(bookDir, { recursive: true });
+    await mkdir(headersDir, { recursive: true });
+    await writeFile(path.join(headersDir, 'article-01-header.png'), png);
+    await writeFile(path.join(bookDir, 'title-page.png'), png);
+    await writeFile(path.join(bookDir, 'book.css'), '.book {}\n');
+    const stage = createAssetStager({ articlesDir, bookDir, outDir });
+    await stage([
+      {
+        chapter: 1,
+        slug: '01-first',
+        bannerPath: 'assets/article-headers/article-01-header.png',
+      },
+    ]);
+    assert.deepEqual(await readFile(path.join(outDir, 'chapter-01-header.png')), png);
+    assert.deepEqual(await readFile(path.join(outDir, 'title-page.png')), png);
+    assert.equal(await readFile(path.join(outDir, 'book.css'), 'utf8'), '.book {}\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 

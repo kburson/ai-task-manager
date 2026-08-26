@@ -13,7 +13,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { renderBookDiagrams } from './lib/book/diagrams.mjs';
-import { planChapterImages, stageChapterImages } from './lib/book/chapter-openers.mjs';
+import {
+  planChapterImages,
+  planTitleImage,
+  stageChapterImages,
+  stageTitleImage,
+} from './lib/book/chapter-openers.mjs';
 import { buildManuscript } from './lib/book/manuscript.mjs';
 import { renderTarget, TARGETS } from './lib/book/render.mjs';
 import { doctor } from './lib/book/toolchain.mjs';
@@ -67,8 +72,10 @@ export function createAssetStager({ articlesDir, bookDir, outDir }) {
           chapters: chapterImages,
           outDir,
         });
+        const titlePlan = planTitleImage({ bookDir, outDir });
         await access(cssPath, constants.R_OK);
         await stageChapterImages(imagePlan);
+        await stageTitleImage(titlePlan);
         await copyFile(cssPath, path.join(outDir, 'book.css'));
       })();
     }
