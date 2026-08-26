@@ -117,7 +117,7 @@ function createHistoryRepository(prefix, testContents = '// frozen test before r
 }
 
 function addRetirementTree(history, overrides = {}, { evidence = true } = {}) {
-  rmSync(path.join(history.projectRoot, history.testPath));
+  rmSync(path.join(history.projectRoot, history.testPath), { recursive: true });
   const receipt = receiptFor(history.testPath, {
     lastLiveSha256: history.digest,
     evidence: history.evidenceFile,
@@ -129,9 +129,9 @@ function addRetirementTree(history, overrides = {}, { evidence = true } = {}) {
 }
 
 function graduateRetirement(history, { removeEvidence = true } = {}) {
-  rmSync(path.join(history.projectRoot, history.receiptFile));
+  rmSync(path.join(history.projectRoot, history.receiptFile), { recursive: true });
   if (removeEvidence && existsSync(path.join(history.projectRoot, history.evidenceFile))) {
-    rmSync(path.join(history.projectRoot, history.evidenceFile));
+    rmSync(path.join(history.projectRoot, history.evidenceFile), { recursive: true });
   }
   const commit = commitAll(history.projectRoot, 'graduate frozen retirement receipt');
   pushTrunk(history.projectRoot);
@@ -154,6 +154,25 @@ function assertHistoricalRetirement(retirement, history, receipt) {
     source: 'historical',
     ...receipt,
   });
+}
+
+function assertHistoricalError(history, matchers, overrides = {}) {
+  assert.throws(
+    () => hydrate(history, overrides),
+    (error) => {
+      assert.match(error.message, new RegExp(history.receiptFile.replaceAll('.', '\\.')));
+      for (const matcher of matchers) assert.match(error.message, matcher);
+      return true;
+    }
+  );
+}
+
+function assertInvalidTreeAuthority(history, label, authorityPath = history.receiptFile) {
+  assertHistoricalError(history, [
+    label,
+    /invalid object type tree/,
+    new RegExp(authorityPath.replaceAll('.', '\\.')),
+  ]);
 }
 
 function removeLooseObject(projectRoot, objectId) {
@@ -688,6 +707,71 @@ test('rejects canonical receipt history when evidence is absent from the receipt
   );
 });
 
+test('rejects a directory at the historical evidence authority path', () => {
+  const history = createHistoryRepository('frozen-retirements-history-evidence-tree-');
+  rmSync(path.join(history.projectRoot, history.testPath));
+  writeReceipt(
+    history.projectRoot,
+    history.testPath,
+    receiptFor(history.testPath, {
+      lastLiveSha256: history.digest,
+      evidence: history.evidenceFile,
+    })
+  );
+  writeFixture(
+    history.projectRoot,
+    `${history.evidenceFile}/details.md`,
+    '# Not the evidence blob\n'
+  );
+  commitAll(history.projectRoot, 'deliver evidence path as a directory');
+  pushTrunk(history.projectRoot);
+  graduateRetirement(history);
+
+  assertInvalidTreeAuthority(history, /evidence path/, history.evidenceFile);
+});
+
+test('rejects a non-blob direct-parent test authority path', () => {
+  const history = createHistoryRepository('frozen-retirements-history-parent-test-tree-');
+  rmSync(path.join(history.projectRoot, history.testPath));
+  writeFixture(history.projectRoot, `${history.testPath}/fixture.txt`, 'not a test blob\n');
+  commitAll(history.projectRoot, 'replace parent test blob with a directory');
+  addRetirementTree(history);
+  commitAll(history.projectRoot, 'deliver retirement after non-blob parent');
+  pushTrunk(history.projectRoot);
+  graduateRetirement(history);
+
+  assertInvalidTreeAuthority(history, /parent test path/, history.testPath);
+});
+
+test('rejects a directory at the delivered historical receipt path', () => {
+  const history = createHistoryRepository('frozen-retirements-history-receipt-tree-');
+  rmSync(path.join(history.projectRoot, history.testPath));
+  writeFixture(history.projectRoot, `${history.receiptFile}/receipt.json`, '{}\n');
+  writeEvidence(history.projectRoot, history.evidenceFile);
+  commitAll(history.projectRoot, 'deliver receipt path as a directory');
+  pushTrunk(history.projectRoot);
+  graduateRetirement(history);
+
+  assertInvalidTreeAuthority(history, /receipt path/);
+});
+
+test('rejects a non-blob receipt authority in a graduation parent', () => {
+  const history = createHistoryRepository('frozen-retirements-history-graduation-parent-tree-');
+  addRetirementTree(history);
+  commitAll(history.projectRoot, 'deliver valid receipt before invalid graduation parent');
+  pushTrunk(history.projectRoot);
+  rmSync(path.join(history.projectRoot, history.receiptFile));
+  writeFixture(
+    history.projectRoot,
+    `${history.receiptFile}/placeholder.txt`,
+    'not a receipt blob\n'
+  );
+  commitAll(history.projectRoot, 'replace receipt blob with a directory');
+  graduateRetirement(history);
+
+  assertInvalidTreeAuthority(history, /graduation parent receipt path/);
+});
+
 test('rejects a delivered receipt whose graduation deletion is not reachable from origin/trunk', () => {
   const history = createHistoryRepository('frozen-retirements-history-no-graduation-');
   addRetirementTree(history);
@@ -750,15 +834,10 @@ test('fails closed and names the receipt when a required parent blob is missing'
   const blob = git(history.projectRoot, ['rev-parse', `${parentCommit}:${history.testPath}`]);
   removeLooseObject(history.projectRoot, blob);
 
-  assert.throws(
-    () => hydrate(history),
-    (error) => {
-      assert.match(error.message, /required parent blob/);
-      assert.match(error.message, new RegExp(history.receiptFile.replaceAll('.', '\\.')));
-      assert.match(error.message, /fetch complete canonical history for origin\/trunk and retry/);
-      return true;
-    }
-  );
+  assertHistoricalError(history, [
+    /required parent blob/,
+    /fetch complete canonical history for origin\/trunk and retry/,
+  ]);
 });
 
 test('fails closed when a receipt object is missing during a canonical path check', () => {
@@ -773,14 +852,7 @@ test('fails closed when a receipt object is missing during a canonical path chec
   ]);
   removeLooseObject(history.projectRoot, receiptBlob);
 
-  assert.throws(
-    () => hydrate(history),
-    (error) => {
-      assert.match(error.message, new RegExp(history.receiptFile.replaceAll('.', '\\.')));
-      assert.match(error.message, /fetch complete canonical history for origin\/trunk and retry/);
-      return true;
-    }
-  );
+  assertHistoricalError(history, [/fetch complete canonical history for origin\/trunk and retry/]);
 });
 
 test('fails closed when canonical graduation enumeration cannot complete', () => {
@@ -805,13 +877,9 @@ test('fails closed when canonical graduation enumeration cannot complete', () =>
     return rawGit(history.projectRoot, args);
   };
 
-  assert.throws(
-    () => hydrate(history, { git: runGit }),
-    (error) => {
-      assert.match(error.message, /graduation history/);
-      assert.match(error.message, new RegExp(history.receiptFile.replaceAll('.', '\\.')));
-      assert.match(error.message, /fetch complete canonical history for origin\/trunk and retry/);
-      return true;
-    }
+  assertHistoricalError(
+    history,
+    [/graduation history/, /fetch complete canonical history for origin\/trunk and retry/],
+    { git: runGit }
   );
 });

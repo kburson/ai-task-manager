@@ -160,23 +160,38 @@ function directParents(runGit, commit, receiptFile) {
   return ancestry.split(' ').slice(1);
 }
 
-function treePathState(runGit, commit, repositoryPath, incompleteMessage) {
+function treePathEntry(runGit, commit, repositoryPath, incompleteMessage) {
   let entry;
   try {
     entry = gitOutput(runGit, ['ls-tree', commit, '--', repositoryPath]);
   } catch {
     throw historicalError(`${incompleteMessage}; ${FETCH_CANONICAL_HISTORY}`);
   }
-  if (!entry) return 'absent';
-  if (!/^\d+\s+\S+\s+[a-f0-9]+\t/.test(entry)) {
+  if (!entry) return { state: 'absent' };
+  const match = /^\d+\s+(\S+)\s+([a-f0-9]+)\t/.exec(entry);
+  if (!match) {
     throw historicalError(`${incompleteMessage}; ${FETCH_CANONICAL_HISTORY}`);
+  }
+  return { state: 'present', objectType: match[1], objectId: match[2] };
+}
+
+function blobPathState(runGit, commit, repositoryPath, { incompleteMessage, invalidTypeMessage }) {
+  const entry = treePathEntry(runGit, commit, repositoryPath, incompleteMessage);
+  if (entry.state === 'absent') return entry;
+  if (entry.objectType !== 'blob') {
+    return {
+      state: 'invalid',
+      error: historicalError(
+        `${invalidTypeMessage} has invalid object type ${entry.objectType}; expected blob`
+      ),
+    };
   }
   try {
     gitOutput(runGit, ['cat-file', '-e', `${commit}:${repositoryPath}`]);
   } catch {
     throw historicalError(`${incompleteMessage}; ${FETCH_CANONICAL_HISTORY}`);
   }
-  return 'present';
+  return entry;
 }
 
 function showTreeText(runGit, commit, repositoryPath) {
@@ -255,27 +270,31 @@ function hasReachableGraduation(runGit, deliveryCommit, receiptFile) {
       `canonical graduation history is incomplete for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
     );
   }
+  let invalidParentReceiptError = null;
   for (const commit of receiptCommits) {
     if (!canonicalIsAncestor(runGit, deliveryCommit, commit, receiptFile)) continue;
-    const commitReceiptState = treePathState(
+    const commitReceiptEntry = treePathEntry(
       runGit,
       commit,
       receiptFile,
       `canonical receipt path history is incomplete for ${receiptFile}`
     );
-    if (commitReceiptState === 'present') continue;
+    if (commitReceiptEntry.state === 'present') continue;
     const parents = directParents(runGit, commit, receiptFile);
     for (const parent of parents) {
       if (!canonicalIsAncestor(runGit, deliveryCommit, parent, receiptFile)) continue;
-      const parentReceiptState = treePathState(
-        runGit,
-        parent,
-        receiptFile,
-        `canonical receipt path history is incomplete for ${receiptFile}`
-      );
-      if (parentReceiptState === 'present') return true;
+      const parentReceiptState = blobPathState(runGit, parent, receiptFile, {
+        incompleteMessage: `canonical receipt path history is incomplete for ${receiptFile}`,
+        invalidTypeMessage: `graduation parent receipt path ${receiptFile}`,
+      });
+      if (parentReceiptState.state === 'invalid') {
+        invalidParentReceiptError = parentReceiptState.error;
+        continue;
+      }
+      if (parentReceiptState.state === 'present') return true;
     }
   }
+  if (invalidParentReceiptError) throw invalidParentReceiptError;
   return false;
 }
 
@@ -310,6 +329,9 @@ export function hydrateHistoricalFrozenRetirement({
   let digestMismatch = null;
   let missingEvidence = false;
   let malformedReceiptError = null;
+  let invalidReceiptObjectError = null;
+  let invalidEvidenceObjectError = null;
+  let invalidParentTestObjectError = null;
 
   for (const commit of commits) {
     try {
@@ -319,20 +341,22 @@ export function hydrateHistoricalFrozenRetirement({
         `canonical commit is missing for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
       );
     }
-    const receiptState = treePathState(
-      runGit,
-      commit,
-      receiptFile,
-      `canonical receipt path history is incomplete for ${receiptFile}`
-    );
-    if (receiptState === 'absent') continue;
-    const testState = treePathState(
+    const receiptState = blobPathState(runGit, commit, receiptFile, {
+      incompleteMessage: `canonical receipt path history is incomplete for ${receiptFile}`,
+      invalidTypeMessage: `historical receipt path ${receiptFile}`,
+    });
+    if (receiptState.state === 'absent') continue;
+    if (receiptState.state === 'invalid') {
+      invalidReceiptObjectError = receiptState.error;
+      continue;
+    }
+    const testState = treePathEntry(
       runGit,
       commit,
       normalizedTestPath,
       `canonical test path history is incomplete for ${normalizedTestPath} while validating ${receiptFile}`
     );
-    if (testState === 'present') continue;
+    if (testState.state === 'present') continue;
 
     let receiptText;
     try {
@@ -359,13 +383,15 @@ export function hydrateHistoricalFrozenRetirement({
       malformedReceiptError = error;
       continue;
     }
-    const evidenceState = treePathState(
-      runGit,
-      commit,
-      normalizedReceipt.evidenceFile,
-      `canonical evidence history is incomplete for ${normalizedReceipt.evidenceFile} referenced by ${receiptFile}`
-    );
-    if (evidenceState === 'absent') {
+    const evidenceState = blobPathState(runGit, commit, normalizedReceipt.evidenceFile, {
+      incompleteMessage: `canonical evidence history is incomplete for ${normalizedReceipt.evidenceFile} referenced by ${receiptFile}`,
+      invalidTypeMessage: `historical evidence path ${normalizedReceipt.evidenceFile} referenced by ${receiptFile}`,
+    });
+    if (evidenceState.state === 'invalid') {
+      invalidEvidenceObjectError = evidenceState.error;
+      continue;
+    }
+    if (evidenceState.state === 'absent') {
       missingEvidence = true;
       continue;
     }
@@ -373,13 +399,15 @@ export function hydrateHistoricalFrozenRetirement({
     let foundLiveParent = false;
     let foundMatchingParent = false;
     for (const parent of directParents(runGit, commit, receiptFile)) {
-      const parentTestState = treePathState(
-        runGit,
-        parent,
-        normalizedTestPath,
-        `required parent blob is missing for ${normalizedTestPath} at ${receiptFile}`
-      );
-      if (parentTestState === 'absent') continue;
+      const parentTestState = blobPathState(runGit, parent, normalizedTestPath, {
+        incompleteMessage: `required parent blob is missing for ${normalizedTestPath} at ${receiptFile}`,
+        invalidTypeMessage: `direct-parent test path ${normalizedTestPath} for ${receiptFile}`,
+      });
+      if (parentTestState.state === 'invalid') {
+        invalidParentTestObjectError = parentTestState.error;
+        continue;
+      }
+      if (parentTestState.state === 'absent') continue;
       foundLiveParent = true;
       let parentBytes;
       try {
@@ -415,6 +443,9 @@ export function hydrateHistoricalFrozenRetirement({
   if (deliveryCandidates.length > 0) {
     throw historicalError(`receipt graduation is not reachable for ${receiptFile}`);
   }
+  if (invalidReceiptObjectError) throw invalidReceiptObjectError;
+  if (invalidEvidenceObjectError) throw invalidEvidenceObjectError;
+  if (invalidParentTestObjectError) throw invalidParentTestObjectError;
   if (missingEvidence) {
     throw historicalError(
       `historical evidence is missing from the receipt tree for ${receiptFile}`
