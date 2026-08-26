@@ -57,6 +57,9 @@ Everything the articles do not contain lives in `assets/book/`:
 
 - `book.json` — title, author, copyright, paper size, fonts, margins. Pandoc
   reads it directly as a metadata file.
+- `title-page.png` — replaceable title-page artwork. It is staged under the same
+  name for every rendered target; replacing it requires no code or metadata
+  change.
 - `introduction.md` — the book's introduction.
 - `glossary.md` — one `##` per term, optional `_Aliases:_` and `_See also:_`
   lines, then the definition. Renders as Appendix A and drives the index.
@@ -78,8 +81,14 @@ npm run doctor:book
 `doctor:book` always checks pandoc. It checks the LaTeX binaries and compiles a
 one-line probe per LaTeX package only when the pdf target is in play, printing a
 single `tlmgr install ...` line naming whatever is missing. Run it until it is
-quiet. That probe includes `adjustbox`, which the image-led chapter opener uses
-to preserve aspect ratio while center-cropping artwork to its printable frame.
+quiet. The probe includes `adjustbox`, which keeps title and chapter artwork
+complete and proportional, and `fancyhdr`, which provides the left chapter
+header and right page-number footer.
+
+The PDF renderer centers body Mermaid images and limits them to the printable
+width and 70 percent of text height. HTML and EPUB apply the equivalent content
+width and viewport-height bounds. These presentation rules do not change the
+authoritative Mermaid source or generated PNG bytes.
 
 PDF citations remain same-page footnotes: each note appears at the bottom of the
 physical page containing its citation marker. HTML and EPUB keep Pandoc's linked

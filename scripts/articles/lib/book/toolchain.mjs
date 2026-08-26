@@ -43,6 +43,7 @@ export const PROBE_PACKAGES = [
   'bookmark',
   'makeidx',
   'adjustbox',
+  'fancyhdr',
 ];
 
 export function probeDocument(pkg) {
