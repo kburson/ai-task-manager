@@ -275,6 +275,34 @@ test('reports duplicate declarations without authorizing either receipt', () => 
   ]);
 });
 
+test('does not authorize a valid receipt when an invalid duplicate declares its path', () => {
+  const projectRoot = mkdtempProjectIsolated('frozen-retirements-mixed-duplicate-');
+  const testPath = 'scripts/tests/unit/articles/mixed-duplicate.test.mjs';
+  const receipt = receiptFor(testPath);
+  const first = writeReceipt(projectRoot, testPath, receipt);
+  const second = `${FROZEN_RETIREMENT_ROOT}/unit/articles/z-mixed-duplicate.test.mjs.json`;
+  writeFixture(
+    projectRoot,
+    second,
+    receiptFor(testPath, {
+      reason: 'The extracted subsystem no longer belongs to this package',
+    })
+  );
+  writeEvidence(projectRoot, receipt.evidence);
+
+  const loaded = load(projectRoot, { finalizedFrozenPaths: [testPath] });
+  assert.deepEqual(loaded.retirements, []);
+  assert.deepEqual(
+    loaded.errors.map(({ receiptFile }) => receiptFile),
+    [second, second]
+  );
+  assert.match(loaded.errors[0].error, /duplicate declared path/);
+  assert.match(loaded.errors[1].error, /reason/);
+  assert.deepEqual(loaded.misplacedReceipts, [
+    { receiptFile: second, expectedReceiptFile: first, path: testPath },
+  ]);
+});
+
 test('reports a receipt at the wrong deterministic location without authorizing it', () => {
   const projectRoot = mkdtempProjectIsolated('frozen-retirements-misplaced-');
   const testPath = 'scripts/tests/integration/articles/misplaced.test.mjs';

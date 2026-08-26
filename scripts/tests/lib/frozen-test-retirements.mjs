@@ -110,11 +110,10 @@ export function loadActiveFrozenRetirements({
   const frozenPaths = normalizedPaths(finalizedFrozenPaths);
   const postSnapshotPaths = normalizedPaths(postSnapshotRecordPaths);
   const livePaths = normalizedPaths(liveDiscoveredPaths);
+  const declarationCounts = new Map();
   const receiptFiles = listJsonFiles(projectRoot, root, errors, true).sort((left, right) =>
     comparePosix(posixRelative(projectRoot, left), posixRelative(projectRoot, right))
   );
-  const declaredPaths = new Set();
-
   for (const absoluteReceiptFile of receiptFiles) {
     const receiptFile = posixRelative(projectRoot, absoluteReceiptFile);
     let receipt;
@@ -125,6 +124,29 @@ export function loadActiveFrozenRetirements({
         receiptError(receiptFile, `invalid JSON or unreadable receipt: ${error.message}`)
       );
       continue;
+    }
+    const declaredTestPath = normalizeRepositoryPath(receipt?.path);
+    if (
+      typeof receipt?.path === 'string' &&
+      declaredTestPath &&
+      parseCanonicalTestPath(declaredTestPath) &&
+      declaredTestPath === receipt.path.replaceAll('\\', '/') &&
+      frozenPaths.has(declaredTestPath) &&
+      !postSnapshotPaths.has(declaredTestPath)
+    ) {
+      const declarationCount = (declarationCounts.get(declaredTestPath) || 0) + 1;
+      declarationCounts.set(declaredTestPath, declarationCount);
+      if (declarationCount > 1) {
+        errors.push(receiptError(receiptFile, `duplicate declared path: ${declaredTestPath}`));
+      }
+      const expectedReceiptFile = retirementReceiptPathForTestPath(declaredTestPath);
+      if (receiptFile !== expectedReceiptFile) {
+        misplacedReceipts.push({
+          receiptFile,
+          expectedReceiptFile,
+          path: declaredTestPath,
+        });
+      }
     }
     if (!isExactReceipt(receipt)) {
       errors.push(
@@ -182,11 +204,6 @@ export function loadActiveFrozenRetirements({
       continue;
     }
 
-    if (declaredPaths.has(testPath)) {
-      errors.push(receiptError(receiptFile, `duplicate declared path: ${testPath}`));
-    } else {
-      declaredPaths.add(testPath);
-    }
     const normalizedReceipt = {
       receiptFile,
       evidenceFile,
@@ -201,9 +218,6 @@ export function loadActiveFrozenRetirements({
     const isMisplaced = receiptFile !== expectedReceiptFile;
     const overlapsLiveTest = livePaths.has(testPath);
     candidates.push({ normalizedReceipt, isMisplaced, overlapsLiveTest });
-    if (isMisplaced) {
-      misplacedReceipts.push({ receiptFile, expectedReceiptFile, path: testPath });
-    }
     if (overlapsLiveTest) {
       errors.push(
         receiptError(receiptFile, `receipt overlaps a live discovered test: ${testPath}`)
@@ -223,13 +237,6 @@ export function loadActiveFrozenRetirements({
       comparePosix(left.path, right.path)
     );
   });
-  const declarationCounts = new Map();
-  for (const { normalizedReceipt } of candidates) {
-    declarationCounts.set(
-      normalizedReceipt.path,
-      (declarationCounts.get(normalizedReceipt.path) || 0) + 1
-    );
-  }
   const retirements = candidates
     .filter(
       ({ normalizedReceipt, isMisplaced, overlapsLiveTest }) =>
