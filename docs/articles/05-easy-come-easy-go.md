@@ -1,10 +1,12 @@
 <!-- markdownlint-disable MD034 -->
 <!-- DRAFT: placed at series position 05, pending review. Title is a working title, not a final riff. See docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md -->
-<!-- TODO: no header image exists yet for this position. article-05-header.png currently belongs to the (renamed) product-owner-escalation article, now at 06. Needs new artwork before publish. -->
+<!-- TEMPORARY ARTWORK: article-05-header.png intentionally duplicates article-06-header.png. Replace that one file when final Chapter 5 artwork is ready. -->
 
 # Easy Come, Easy Go
 
 **Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.**
+
+![Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.](assets/article-headers/article-05-header.png)
 
 _Part 5 of a series of articles on succeeding with Agentic Agile Delivery_
 

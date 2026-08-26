@@ -29,6 +29,8 @@ const FIXTURE = `# The Fixture Article
 
 <!-- markdownlint-disable MD034 -->
 
+**A Strong Subtitle**
+
 ![The Fixture Article](assets/article-headers/article-99-header.png)
 _Part 1 of a series_
 
@@ -114,7 +116,12 @@ test('listArticles excludes sources marked DRAFT in their leading comment preamb
 test('parseArticle lifts title and banner and splits sections', () => {
   const parsed = parseArticle(FIXTURE);
   assert.equal(parsed.title, 'The Fixture Article');
+  assert.equal(parsed.subtitle, 'A Strong Subtitle');
   assert.equal(parsed.bannerPath, 'assets/article-headers/article-99-header.png');
+  assert.ok(
+    parsed.sections[0].lines.includes('**A Strong Subtitle**'),
+    'shared parsing leaves the subtitle available to LinkedIn publication'
+  );
   const headings = parsed.sections.map((section) => section.heading);
   assert.deepEqual(headings, [
     null,
@@ -134,6 +141,18 @@ test('parseArticle strips every HTML comment', () => {
 
 test('parseArticle rejects an unterminated fence', () => {
   assert.throws(() => parseArticle('# T\n\n```mermaid\nflowchart TB\n'), /unterminated code fence/);
+});
+
+test('parseArticle rejects multiple preamble subtitles', () => {
+  assert.throws(
+    () => parseArticle('# T\n\n**First**\n\n**Second**\n\n## Body\n\nText.\n'),
+    /more than one preamble subtitle/
+  );
+});
+
+test('bold prose after the first H2 is not chapter subtitle metadata', () => {
+  const parsed = parseArticle('# T\n\n## Body\n\n**Bold prose.**\n');
+  assert.equal(parsed.subtitle, null);
 });
 
 // AC3 — every strip-before-publish element is gone from the converted body.

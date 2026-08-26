@@ -8,6 +8,7 @@
 const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
 const BANNER_RE = /^!\[[^\]]*\]\((assets\/article-headers\/[^)]+)\)$/;
 const FENCE_RE = /^```/;
+const SUBTITLE_RE = /^\*\*(.+)\*\*$/;
 
 function trimBlankEdges(lines) {
   let start = 0;
@@ -21,12 +22,13 @@ function trimBlankEdges(lines) {
  * @param {string} source raw Markdown of one article file
  * @param {{keepComments?: boolean}} [options] the book composer needs the
  *   `book:` marker comments preserved; the LinkedIn publisher never does.
- * @returns {{title: string, bannerPath: string|null, sections: Array<{heading: string|null, lines: string[]}>}}
+ * @returns {{title: string, subtitle: string|null, bannerPath: string|null, sections: Array<{heading: string|null, lines: string[]}>}}
  */
 export function parseArticle(source, { keepComments = false } = {}) {
   const lines = (keepComments ? source : source.replace(HTML_COMMENT_RE, '')).split('\n');
   const sections = [{ heading: null, lines: [] }];
   let title = null;
+  let subtitle = null;
   let bannerPath = null;
   let inFence = false;
 
@@ -55,6 +57,13 @@ export function parseArticle(source, { keepComments = false } = {}) {
         sections.push({ heading: heading2[1].trim(), lines: [] });
         continue;
       }
+      if (sections.length === 1) {
+        const subtitleMatch = line.match(SUBTITLE_RE);
+        if (subtitleMatch) {
+          if (subtitle !== null) throw new Error('article has more than one preamble subtitle');
+          subtitle = subtitleMatch[1].trim();
+        }
+      }
     }
     sections[sections.length - 1].lines.push(line);
   }
@@ -64,6 +73,7 @@ export function parseArticle(source, { keepComments = false } = {}) {
 
   return {
     title,
+    subtitle,
     bannerPath,
     sections: sections
       .map((section) => ({ heading: section.heading, lines: trimBlankEdges(section.lines) }))
