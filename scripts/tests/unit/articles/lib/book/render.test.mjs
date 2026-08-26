@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -30,8 +30,8 @@ const BOOK_CSS = path.resolve(
 );
 const PNG_HEADER = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-  0x00, 0x00, 0x05, 0x60, 0x00, 0x00, 0x03, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00,
+  0x00, 0x00, 0x05, 0x60, 0x00, 0x00, 0x03, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x25, 0xb1, 0x59,
+  0xea,
 ]);
 
 async function createEpubFixture(root, name = 'book.epub') {
@@ -55,6 +55,22 @@ async function createEpubFixture(root, name = 'book.epub') {
   execFileSync('zip', ['-X', '-q', '-0', target, 'mimetype'], { cwd: source });
   execFileSync('zip', ['-X', '-q', '-r', target, 'META-INF', 'EPUB'], { cwd: source });
   return target;
+}
+
+async function createSymlinkEpubFixture(root) {
+  const source = path.join(root, 'source');
+  const outside = path.join(root, 'outside');
+  const target = path.join(root, 'symlink.epub');
+  await mkdir(path.join(source, 'META-INF'), { recursive: true });
+  await mkdir(outside);
+  await writeFile(path.join(source, 'mimetype'), 'application/epub+zip');
+  await writeFile(path.join(source, 'META-INF', 'container.xml'), '<container/>');
+  await writeFile(path.join(outside, 'sentinel.txt'), 'outside content must stay untouched');
+  await symlink(outside, path.join(source, 'EPUB'));
+  execFileSync('zip', ['-X', '-q', '-y', target, 'mimetype', 'META-INF', 'EPUB'], {
+    cwd: source,
+  });
+  return { target, outside };
 }
 
 test('pandocArgs maps top-level headings to chapters and loads the metadata file', () => {
@@ -173,7 +189,7 @@ test('the EPUB banner inserter uses manifest media before the title', async () =
 });
 
 test('the EPUB postprocessor rejects unsafe archive and manifest paths', async () => {
-  const { assertSafeArchiveEntry, resolveEpubPath } =
+  const { assertSafeArchiveEntry, resolveEpubPath, validateZipEntries } =
     await import('../../../../../articles/lib/book/render.mjs');
   assert.equal(typeof assertSafeArchiveEntry, 'function');
   assert.equal(typeof resolveEpubPath, 'function');
@@ -185,9 +201,11 @@ test('the EPUB postprocessor rejects unsafe archive and manifest paths', async (
   for (const unsafeHref of ['/absolute', '../traversal', 'text/../../escape', 'text\\title']) {
     assert.throws(() => resolveEpubPath(root, unsafeHref), /unsafe EPUB path/);
   }
+  assert.throws(() => validateZipEntries(root, ['mimetype'], []), /metadata/);
+  assert.throws(() => validateZipEntries(root, ['mimetype'], ['l']), /entry type/);
 });
 
-test('the EPUB postprocessor validates the complete PNG signature and IHDR', async () => {
+test('the EPUB postprocessor validates the complete PNG signature, IHDR, and CRC', async () => {
   const { pngDimensions } = await import('../../../../../articles/lib/book/render.mjs');
   assert.equal(typeof pngDimensions, 'function');
   assert.deepEqual(pngDimensions(PNG_HEADER), { width: 1376, height: 768 });
@@ -196,6 +214,46 @@ test('the EPUB postprocessor validates the complete PNG signature and IHDR', asy
   const missingIhdr = Buffer.from(PNG_HEADER);
   missingIhdr.writeUInt32BE(12, 8);
   assert.throws(() => pngDimensions(missingIhdr), /IHDR/);
+  const corruptCrc = Buffer.from(PNG_HEADER);
+  corruptCrc[32] ^= 0xff;
+  assert.throws(() => pngDimensions(corruptCrc), /CRC/);
+});
+
+test('a malicious symlink archive is rejected before extraction or outside access', async () => {
+  const { injectEpubTitleBanner } = await import('../../../../../articles/lib/book/render.mjs');
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'epub-symlink-archive-'));
+  try {
+    const { target, outside } = await createSymlinkEpubFixture(root);
+    let extractionAttempted = false;
+    await assert.rejects(
+      injectEpubTitleBanner(target, {
+        run: async () => {
+          extractionAttempted = true;
+        },
+      }),
+      /entry type/
+    );
+    assert.equal(extractionAttempted, false);
+    assert.equal(
+      await readFile(path.join(outside, 'sentinel.txt'), 'utf8'),
+      'outside content must stay untouched'
+    );
+    assert.equal((await lstat(path.join(root, 'source', 'EPUB'))).isSymbolicLink(), true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the extracted-tree guard rejects symlinks before manifest access', async () => {
+  const { assertExtractedEpubTreeSafe } =
+    await import('../../../../../articles/lib/book/render.mjs');
+  const root = await mkdtemp(path.join(projectScratchDir('test'), 'epub-extracted-symlink-'));
+  try {
+    await symlink(path.join(root, 'outside'), path.join(root, 'EPUB'));
+    await assert.rejects(assertExtractedEpubTreeSafe(root), /unsafe EPUB extracted entry/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('the EPUB postprocessor rebuilds a custom output atomically with stored mimetype', async () => {

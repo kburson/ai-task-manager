@@ -3,7 +3,7 @@
 // runs the engine exactly once.
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const TARGETS = ['manuscript', 'pdf', 'epub', 'html'];
@@ -62,6 +62,17 @@ function epubCoverHref(opf) {
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ ((crc & 1) === 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 export function pngDimensions(png) {
   if (
     png.length < PNG_SIGNATURE.length ||
@@ -71,6 +82,9 @@ export function pngDimensions(png) {
   }
   if (png.length < 33 || png.readUInt32BE(8) !== 13 || png.toString('ascii', 12, 16) !== 'IHDR') {
     throw new Error('EPUB cover image has an invalid IHDR chunk');
+  }
+  if (crc32(png.subarray(12, 29)) !== png.readUInt32BE(29)) {
+    throw new Error('EPUB cover image has an invalid IHDR CRC');
   }
   const width = png.readUInt32BE(16);
   const height = png.readUInt32BE(20);
@@ -115,6 +129,31 @@ export function assertSafeArchiveEntry(root, entryName) {
   return true;
 }
 
+export function validateZipEntries(root, entryNames, modes) {
+  if (!Array.isArray(entryNames) || !Array.isArray(modes) || entryNames.length !== modes.length) {
+    throw new Error('EPUB ZIP metadata does not match its entry list');
+  }
+  entryNames.forEach((entryName, index) => {
+    assertSafeArchiveEntry(root, entryName);
+    if (!['-', 'd'].includes(modes[index])) {
+      throw new Error(`unsafe EPUB entry type: ${entryName}`);
+    }
+  });
+}
+
+export async function assertExtractedEpubTreeSafe(root) {
+  const entry = await lstat(root);
+  if (!entry.isDirectory()) throw new Error(`unsafe EPUB extracted entry: ${root}`);
+  for (const name of await readdir(root)) {
+    const child = path.join(root, name);
+    const childStat = await lstat(child);
+    if (childStat.isSymbolicLink() || (!childStat.isFile() && !childStat.isDirectory())) {
+      throw new Error(`unsafe EPUB extracted entry: ${child}`);
+    }
+    if (childStat.isDirectory()) await assertExtractedEpubTreeSafe(child);
+  }
+}
+
 export function insertEpubTitleBanner({
   titlePage,
   titleHref,
@@ -152,8 +191,17 @@ function readCommand(command, args, { cwd } = {}) {
 }
 
 async function listZipEntries(epubPath) {
-  const output = await readCommand('unzip', ['-Z1', epubPath]);
-  return output.split('\n').filter(Boolean);
+  const [namesOutput, modesOutput] = await Promise.all([
+    readCommand('unzip', ['-Z1', epubPath]),
+    readCommand('unzip', ['-Z', '-l', epubPath]),
+  ]);
+  return {
+    names: namesOutput.split('\n').filter(Boolean),
+    modes: modesOutput
+      .split('\n')
+      .filter((line) => /^[-dlcbps?]/.test(line))
+      .map((line) => line[0]),
+  };
 }
 
 export async function injectEpubTitleBanner(
@@ -162,14 +210,15 @@ export async function injectEpubTitleBanner(
 ) {
   const targetPath = path.resolve(epubPath);
   const targetDir = path.dirname(targetPath);
-  const archiveEntries = await listEntries(targetPath);
+  const { names, modes } = await listEntries(targetPath);
   const validationRoot = path.join(targetDir, '.epub-entry-validation');
-  archiveEntries.forEach((entryName) => assertSafeArchiveEntry(validationRoot, entryName));
+  validateZipEntries(validationRoot, names, modes);
   const stageDir = await mkdtemp(
     path.join(targetDir, `.${path.basename(targetPath)}-title-banner-`)
   );
   try {
     await run('unzip', ['-qq', targetPath, '-d', stageDir]);
+    await assertExtractedEpubTreeSafe(stageDir);
     const epubDir = resolveEpubPath(stageDir, 'EPUB');
     const opfPath = resolveEpubPath(epubDir, 'content.opf');
     const opf = await readFile(opfPath, 'utf8');
