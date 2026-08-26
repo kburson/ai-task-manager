@@ -3,6 +3,26 @@
 \usepackage{makeidx}
 \makeindex
 \usepackage{adjustbox}
+\usepackage{fancyhdr}
+
+\newcommand{\bookchapterheader}{%
+  \ifnum\value{chapter}>0 Chapter \thechapter\fi
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\bookchapterheader}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyhead[L]{\bookchapterheader}%
+  \fancyfoot[R]{\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
 
 \newcommand{\bookchapter}[3]{%
   \clearpage
@@ -12,13 +32,11 @@
   \markboth{#2}{#2}%
   \thispagestyle{plain}%
   \noindent
-  \begin{adjustbox}{min size={\textwidth}{0.2\paperheight},Clip={.5\width-.5\textwidth} {.5\height-.1\paperheight} {.5\width-.5\textwidth} {.5\height-.1\paperheight},center}
+  \begin{adjustbox}{max width=\textwidth,center}
     \includegraphics{#1}%
   \end{adjustbox}
   \par\nobreak\vspace{1.4em}
   \begin{center}
-    {\large\scshape Chapter \thechapter\par}
-    \vspace{0.7em}
     {\huge\bfseries #2\par}
     \vspace{0.7em}
     {\large\itshape #3\par}

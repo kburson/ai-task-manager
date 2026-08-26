@@ -53,13 +53,23 @@ test('the explicit PDF header keeps index setup that pandoc header inclusion rep
   assert.match(header, /\\newcommand\{\\bookchapter\}/);
 });
 
-test('the PDF center crop trims equal overflow from opposite edges', () => {
+test('the PDF chapter image is proportional and never clipped', () => {
   const header = readFileSync(CHAPTER_HEADER, 'utf8');
-  assert.ok(
-    header.includes(
-      'Clip={.5\\width-.5\\textwidth} {.5\\height-.1\\paperheight} {.5\\width-.5\\textwidth} {.5\\height-.1\\paperheight}'
-    )
-  );
+  assert.match(header, /\\begin\{adjustbox\}\{max width=\{?\\textwidth\}?,center\}/);
+  assert.doesNotMatch(header, /Clip=/);
+  assert.doesNotMatch(header, /min size=/);
+  assert.doesNotMatch(header, /\\large\\scshape Chapter \\thechapter/);
+});
+
+test('the PDF page styles put chapter numbers left and page numbers right', () => {
+  const header = readFileSync(CHAPTER_HEADER, 'utf8');
+  assert.match(header, /\\usepackage\{fancyhdr\}/);
+  assert.match(header, /\\fancyhead\[L\]\{\\bookchapterheader\}/);
+  assert.match(header, /\\fancyfoot\[R\]\{\\thepage\}/);
+  assert.match(header, /\\fancypagestyle\{plain\}/);
+  assert.match(header, /\\ifnum\\value\{chapter\}>0 Chapter \\thechapter\\fi/);
+  assert.match(header, /\\renewcommand\{\\headrulewidth\}\{0pt\}/);
+  assert.match(header, /\\renewcommand\{\\footrulewidth\}\{0pt\}/);
 });
 
 test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {

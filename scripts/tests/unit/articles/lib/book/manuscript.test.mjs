@@ -216,6 +216,8 @@ test('the pdf carries a copyright page built from book.json rights', async () =>
     );
     const pdf = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
     assert.match(pdf.markdown, /\\noindent Copyright 2026 A\./);
+    assert.match(pdf.markdown, /\\thispagestyle\{plain\}/);
+    assert.equal(pdf.markdown.includes('\\thispagestyle{empty}'), false);
     assert.ok(
       pdf.markdown.indexOf('\\noindent Copyright 2026 A.') < pdf.markdown.indexOf('# Introduction'),
       'the copyright page sits inside the front matter'

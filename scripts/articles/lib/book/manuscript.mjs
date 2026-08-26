@@ -182,7 +182,7 @@ function copyrightPage(metadata) {
   const rights = metadata.rights;
   if (!rights) return [];
   return [
-    '\\thispagestyle{empty}',
+    '\\thispagestyle{plain}',
     '',
     '\\vspace*{\\fill}',
     '',
