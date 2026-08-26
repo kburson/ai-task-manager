@@ -14,12 +14,17 @@ import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 // Pandoc renders every target. LaTeX renders exactly one of them, so a machine
 // that only wants EPUB or HTML should not be told to install BasicTeX.
 export const PANDOC_BINARIES = ['pandoc'];
+export const EPUB_BINARIES = ['zip', 'unzip'];
 export const LATEX_BINARIES = ['xelatex', 'latexmk', 'makeindex'];
 export const REQUIRED_BINARIES = [...PANDOC_BINARIES, ...LATEX_BINARIES];
 
 /** @param {string[]} targets */
 export function requiredBinariesFor(targets) {
-  return targets.includes('pdf') ? REQUIRED_BINARIES : [...PANDOC_BINARIES];
+  return [
+    ...PANDOC_BINARIES,
+    ...(targets.includes('epub') ? EPUB_BINARIES : []),
+    ...(targets.includes('pdf') ? LATEX_BINARIES : []),
+  ];
 }
 
 export const PROBE_PACKAGES = [

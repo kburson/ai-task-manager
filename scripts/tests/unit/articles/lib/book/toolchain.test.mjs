@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   doctor,
+  EPUB_BINARIES,
   PROBE_PACKAGES,
   probeDocument,
   REQUIRED_BINARIES,
@@ -37,21 +38,21 @@ test('doctor reports a clean toolchain', async () => {
   });
 });
 
-test('a non-pdf target needs pandoc but no LaTeX at all', async () => {
+test('an EPUB target needs Pandoc and archive tools but no LaTeX', async () => {
   const asked = [];
   let probed = 0;
   const result = await doctor({
     targets: ['epub', 'html'],
     runBinary: async (name) => {
       asked.push(name);
-      return name === 'pandoc';
+      return ['pandoc', 'zip', 'unzip'].includes(name);
     },
     runProbe: async () => {
       probed += 1;
       return true;
     },
   });
-  assert.deepEqual(asked, ['pandoc'], 'no LaTeX binary is demanded');
+  assert.deepEqual(asked, ['pandoc', 'zip', 'unzip'], 'no LaTeX binary is demanded');
   assert.equal(probed, 0, 'no LaTeX package probe is compiled');
   assert.equal(result.ok, true, 'a TeX-free machine can still render epub and html');
   assert.equal(result.latexChecked, false);
@@ -68,7 +69,9 @@ test('a non-pdf target still fails when pandoc is missing', async () => {
 });
 
 test('requiredBinariesFor adds the LaTeX chain only for the pdf target', () => {
-  assert.deepEqual(requiredBinariesFor(['epub']), ['pandoc']);
+  assert.deepEqual(EPUB_BINARIES, ['zip', 'unzip']);
+  assert.deepEqual(requiredBinariesFor(['epub']), ['pandoc', 'zip', 'unzip']);
+  assert.deepEqual(requiredBinariesFor(['html']), ['pandoc']);
   assert.deepEqual(requiredBinariesFor(['manuscript', 'pdf']), REQUIRED_BINARIES);
 });
 
