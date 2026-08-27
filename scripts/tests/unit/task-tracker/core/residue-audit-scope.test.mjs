@@ -49,10 +49,7 @@ test('executable analysis scripts under docs/research are still audited', () => 
 
 test('generated-looking files outside docs/research are still audited', () => {
   assert.equal(isGeneratedResearchArtifact('package.json'), false);
-  assert.equal(
-    isGeneratedResearchArtifact('scripts/tests/fixtures/test-corpus-pre-move.json'),
-    false
-  );
+  assert.equal(isGeneratedResearchArtifact('scripts/tests/fixtures/generated.json'), false);
   assert.equal(isGeneratedResearchArtifact('docs/migration-history.md'), false);
   // A path that merely contains the research segment deeper down does not match;
   // the prefix is anchored.
