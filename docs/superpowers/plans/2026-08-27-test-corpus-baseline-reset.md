@@ -362,8 +362,8 @@ test('a deleted integration test selects the current-tree guard and retains its 
   assert.deepEqual(result.lanes, ['integration']);
   assert.equal(result.escalated, true);
   assert.ok(
-    result.reasons.some(({ changedPath, signal }) =>
-      changedPath === deleted && signal === 'deleted-test-lane'
+    result.reasons.some(
+      ({ changedPath, signal }) => changedPath === deleted && signal === 'deleted-test-lane'
     )
   );
   assert.deepEqual(manifestReasons(result, CURRENT_TREE_TEST), [
