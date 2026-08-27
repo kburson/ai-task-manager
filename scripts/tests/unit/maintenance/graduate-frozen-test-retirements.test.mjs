@@ -1,6 +1,8 @@
 // @chore
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
@@ -13,12 +15,20 @@ import {
 } from '../../../maintenance/graduate-frozen-test-retirements.mjs';
 import {
   FROZEN_RETIREMENT_ROOT,
+  retirementReceiptPathForTestPath,
   TEMPORARY_RETIREMENT_EVIDENCE_ROOT,
+  verifyActiveFrozenRetirementDelivery,
 } from '../../lib/frozen-test-retirements.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 const DIGEST_A = 'a'.repeat(64);
 const DIGEST_B = 'b'.repeat(64);
+const GIT_TEST_IDENTITY = {
+  GIT_AUTHOR_NAME: 'aitm-test',
+  GIT_AUTHOR_EMAIL: 'aitm-test@example.com',
+  GIT_COMMITTER_NAME: 'aitm-test',
+  GIT_COMMITTER_EMAIL: 'aitm-test@example.com',
+};
 
 function writeFixture(projectRoot, repositoryPath, contents = 'fixture\n') {
   const absolutePath = path.join(projectRoot, repositoryPath);
@@ -71,6 +81,89 @@ function planWith(projectRoot, retirements, deliveryByPath = new Map(), override
     ...overrides,
   });
 }
+
+function git(projectRoot, args) {
+  return execFileSync('git', args, {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    env: { ...process.env, ...GIT_TEST_IDENTITY },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function commitAll(projectRoot, message) {
+  git(projectRoot, ['add', '--all', '--force']);
+  git(projectRoot, ['commit', '--quiet', '--no-verify', '-m', message]);
+  return git(projectRoot, ['rev-parse', 'HEAD']);
+}
+
+function pushTrunk(projectRoot) {
+  git(projectRoot, ['push', '--quiet', 'origin', 'trunk']);
+  git(projectRoot, ['fetch', '--quiet', 'origin', 'trunk']);
+}
+
+function createActiveHistory(prefix) {
+  const projectRoot = mkdtempProjectIsolated(prefix);
+  const originRoot = `${projectRoot}-origin.git`;
+  mkdirSync(originRoot);
+  git(originRoot, ['init', '--quiet', '--bare', '--initial-branch=trunk']);
+  git(projectRoot, ['remote', 'add', 'origin', originRoot]);
+  const testPath = 'scripts/tests/unit/articles/historical.test.mjs';
+  const testContents = '// frozen test before retirement\n';
+  writeFixture(projectRoot, testPath, testContents);
+  commitAll(projectRoot, 'add frozen test');
+  pushTrunk(projectRoot);
+  const item = retirement('historical', {
+    receiptFile: retirementReceiptPathForTestPath(testPath),
+    path: testPath,
+    evidenceFile: `${TEMPORARY_RETIREMENT_EVIDENCE_ROOT}/historical.md`,
+    evidence: `${TEMPORARY_RETIREMENT_EVIDENCE_ROOT}/historical.md`,
+    lastLiveSha256: createHash('sha256').update(testContents).digest('hex'),
+  });
+  return { projectRoot, item };
+}
+
+function addActiveRetirement({ projectRoot, item }) {
+  rmSync(path.join(projectRoot, item.path));
+  const receiptBody = {
+    schema: item.schema,
+    path: item.path,
+    reason: item.reason,
+    lastLiveSha256: item.lastLiveSha256,
+    evidence: item.evidence,
+  };
+  writeFixture(projectRoot, item.receiptFile, `${JSON.stringify(receiptBody, null, 2)}\n`);
+  writeFixture(projectRoot, item.evidenceFile, '# Historical evidence\n');
+}
+
+test('proves an active retirement delivery from canonical origin/trunk history', () => {
+  const history = createActiveHistory('graduate-frozen-delivered-');
+  addActiveRetirement(history);
+  const deliveryCommit = commitAll(history.projectRoot, 'deliver active frozen retirement');
+  pushTrunk(history.projectRoot);
+
+  assert.deepEqual(
+    verifyActiveFrozenRetirementDelivery({
+      projectRoot: history.projectRoot,
+      retirement: history.item,
+    }),
+    { eligible: true, deliveryCommit }
+  );
+});
+
+test('keeps a feature-only active retirement pending canonical delivery', () => {
+  const history = createActiveHistory('graduate-frozen-pending-');
+  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
+  addActiveRetirement(history);
+  commitAll(history.projectRoot, 'retire only on feature branch');
+
+  const proof = verifyActiveFrozenRetirementDelivery({
+    projectRoot: history.projectRoot,
+    retirement: history.item,
+  });
+  assert.equal(proof.eligible, false);
+  assert.match(proof.reason, /not delivered in origin\/trunk/);
+});
 
 test('requires exactly one mode and accepts json with either mode', () => {
   assert.deepEqual(parseGraduationArgs(['--check']), { mode: 'check', json: false });
