@@ -259,6 +259,152 @@ function normalizeHistoricalReceipt(receipt, testPath, receiptFile) {
   };
 }
 
+function receiptBody(retirement) {
+  return {
+    schema: retirement.schema,
+    path: retirement.path,
+    reason: retirement.reason,
+    lastLiveSha256: retirement.lastLiveSha256,
+    evidence: retirement.evidence,
+  };
+}
+
+/**
+ * Proves whether one valid active receipt has reached canonical origin/trunk
+ * history. A receipt that exists only on the current feature branch is pending,
+ * while incomplete or contradictory canonical evidence fails closed.
+ */
+export function verifyActiveFrozenRetirementDelivery({
+  projectRoot,
+  retirement,
+  git: gitOverride,
+} = {}) {
+  const expectedReceiptFile = retirementReceiptPathForTestPath(retirement?.path);
+  if (retirement?.source !== 'active' || retirement?.receiptFile !== expectedReceiptFile) {
+    throw historicalError(
+      `active receipt path must be deterministic: expected ${expectedReceiptFile}`
+    );
+  }
+  const expectedReceipt = normalizeHistoricalReceipt(
+    receiptBody(retirement),
+    retirement.path,
+    retirement.receiptFile
+  );
+  const runGit = gitOverride || ((args) => defaultGit(projectRoot, args));
+  requireCanonicalHistory(runGit, retirement.receiptFile);
+  const commits = relevantCanonicalCommits(runGit, retirement.receiptFile, retirement.path);
+  let malformedReceiptError = null;
+  let mismatchedCanonicalReceipt = false;
+  let missingEvidence = false;
+  let invalidReceiptObjectError = null;
+  let invalidEvidenceObjectError = null;
+  let invalidParentTestObjectError = null;
+  let digestMismatch = false;
+
+  for (const commit of commits) {
+    const receiptState = blobPathState(runGit, commit, retirement.receiptFile, {
+      incompleteMessage: `canonical receipt path history is incomplete for ${retirement.receiptFile}`,
+      invalidTypeMessage: `historical receipt path ${retirement.receiptFile}`,
+    });
+    if (receiptState.state === 'absent') continue;
+    if (receiptState.state === 'invalid') {
+      invalidReceiptObjectError = receiptState.error;
+      continue;
+    }
+    const testState = treePathEntry(
+      runGit,
+      commit,
+      retirement.path,
+      `canonical test path history is incomplete for ${retirement.path} while validating ${retirement.receiptFile}`
+    );
+    if (testState.state === 'present') continue;
+
+    let canonicalReceipt;
+    try {
+      canonicalReceipt = JSON.parse(showTreeText(runGit, commit, retirement.receiptFile));
+    } catch (error) {
+      malformedReceiptError = historicalError(
+        `invalid historical receipt at ${retirement.receiptFile}: ${error.message}`
+      );
+      continue;
+    }
+    let normalizedCanonicalReceipt;
+    try {
+      normalizedCanonicalReceipt = normalizeHistoricalReceipt(
+        canonicalReceipt,
+        retirement.path,
+        retirement.receiptFile
+      );
+    } catch (error) {
+      malformedReceiptError = error;
+      continue;
+    }
+    if (
+      JSON.stringify(receiptBody(normalizedCanonicalReceipt)) !==
+      JSON.stringify(receiptBody(expectedReceipt))
+    ) {
+      mismatchedCanonicalReceipt = true;
+      continue;
+    }
+    const evidenceState = blobPathState(runGit, commit, retirement.evidenceFile, {
+      incompleteMessage: `canonical evidence history is incomplete for ${retirement.evidenceFile} referenced by ${retirement.receiptFile}`,
+      invalidTypeMessage: `historical evidence path ${retirement.evidenceFile} referenced by ${retirement.receiptFile}`,
+    });
+    if (evidenceState.state === 'invalid') {
+      invalidEvidenceObjectError = evidenceState.error;
+      continue;
+    }
+    if (evidenceState.state === 'absent') {
+      missingEvidence = true;
+      continue;
+    }
+
+    let foundLiveParent = false;
+    for (const parent of directParents(runGit, commit, retirement.receiptFile)) {
+      const parentState = blobPathState(runGit, parent, retirement.path, {
+        incompleteMessage: `required parent blob is missing for ${retirement.path} at ${retirement.receiptFile}`,
+        invalidTypeMessage: `direct-parent test path ${retirement.path} for ${retirement.receiptFile}`,
+      });
+      if (parentState.state === 'invalid') {
+        invalidParentTestObjectError = parentState.error;
+        continue;
+      }
+      if (parentState.state === 'absent') continue;
+      foundLiveParent = true;
+      const parentBytes = showTreeBlob(runGit, parent, retirement.path);
+      const digest = createHash('sha256').update(parentBytes).digest('hex');
+      if (digest === retirement.lastLiveSha256) {
+        return { eligible: true, deliveryCommit: commit };
+      }
+    }
+    if (foundLiveParent) digestMismatch = true;
+  }
+
+  if (invalidReceiptObjectError) throw invalidReceiptObjectError;
+  if (invalidEvidenceObjectError) throw invalidEvidenceObjectError;
+  if (invalidParentTestObjectError) throw invalidParentTestObjectError;
+  if (missingEvidence) {
+    throw historicalError(
+      `historical evidence is missing from the receipt tree for ${retirement.receiptFile}`
+    );
+  }
+  if (digestMismatch) {
+    throw historicalError(
+      `test ${retirement.path} does not match expected digest ${retirement.lastLiveSha256}`
+    );
+  }
+  if (mismatchedCanonicalReceipt) {
+    throw historicalError(
+      `canonical receipt content does not match active receipt ${retirement.receiptFile}`
+    );
+  }
+  if (malformedReceiptError) throw malformedReceiptError;
+  return {
+    eligible: false,
+    reason: `active receipt is not delivered in origin/trunk: ${retirement.receiptFile}`,
+  };
+}
+
 function hasReachableGraduation(runGit, deliveryCommit, receiptFile) {
   let receiptCommits;
   try {

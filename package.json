@@ -30,6 +30,7 @@
     "publish:articles": "node scripts/articles/publish-articles.mjs",
     "book": "node scripts/articles/compose-book.mjs",
     "doctor:book": "node scripts/articles/compose-book.mjs --doctor",
+    "graduate:frozen-tests": "node scripts/maintenance/graduate-frozen-test-retirements.mjs",
     "lint:book-markers": "node scripts/maintenance/lint-book-markers.mjs",
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs",

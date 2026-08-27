@@ -14,6 +14,7 @@ import {
   loadFrozenRetirements,
   retirementReceiptPathForTestPath,
   TEMPORARY_RETIREMENT_EVIDENCE_ROOT,
+  verifyActiveFrozenRetirementDelivery,
 } from '../../lib/frozen-test-retirements.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -543,6 +544,45 @@ test('combines an active receipt without invoking historical Git inspection', ()
     errors: [],
     misplacedReceipts: [],
   });
+});
+
+test('proves an active retirement delivery from canonical origin/trunk history', () => {
+  const history = createHistoryRepository('frozen-retirements-active-delivered-');
+  const receipt = addRetirementTree(history);
+  const deliveryCommit = commitAll(history.projectRoot, 'deliver active frozen retirement');
+  pushTrunk(history.projectRoot);
+
+  assert.deepEqual(
+    verifyActiveFrozenRetirementDelivery({
+      projectRoot: history.projectRoot,
+      retirement: {
+        receiptFile: history.receiptFile,
+        evidenceFile: history.evidenceFile,
+        source: 'active',
+        ...receipt,
+      },
+    }),
+    { eligible: true, deliveryCommit }
+  );
+});
+
+test('keeps a feature-only active retirement pending canonical delivery', () => {
+  const history = createHistoryRepository('frozen-retirements-active-pending-');
+  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
+  const receipt = addRetirementTree(history);
+  commitAll(history.projectRoot, 'retire only on feature branch');
+
+  const proof = verifyActiveFrozenRetirementDelivery({
+    projectRoot: history.projectRoot,
+    retirement: {
+      receiptFile: history.receiptFile,
+      evidenceFile: history.evidenceFile,
+      source: 'active',
+      ...receipt,
+    },
+  });
+  assert.equal(proof.eligible, false);
+  assert.match(proof.reason, /not delivered in origin\/trunk/);
 });
 
 test('hydrates a graduated fast-forward delivery from origin/trunk', () => {
