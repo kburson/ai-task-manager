@@ -1,6 +1,6 @@
 # Test Corpus Baseline Reset Design
 
-Status: approved in conversation on 2026-08-27; pending written-spec review
+Status: approved on 2026-08-27
 
 ## Context
 
