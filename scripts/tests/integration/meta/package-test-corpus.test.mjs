@@ -1,4 +1,4 @@
-// @story #876 #1263 #1406
+// @story #876 #1263 #1406 #1419
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -15,10 +15,8 @@ const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
-const ISSUE_1413_CORRECTION_COMMITS = new Set([
-  '8f6eb9ed0196faf1e79befb49e19bfe0e64a0cfb',
-  'b68d2b144170b2f6e51b4fd842d18f240346abdd',
-]);
+const ISSUE_1413_DELIVERY_PARENT = '28b28babe6c7d3044dad3c0ea04103ce120d0004';
+const ISSUE_1413_DELIVERY_COMMIT = 'b4e952d11c62ba3978a4dee46d47d53051516d2e';
 const ISSUE_1413_CORRECTION_COUNT = 97;
 const EXPECTED_LANE_CORRECTION = {
   oldPath: 'scripts/task-tracker/lib/trunk-ref.integration.test.mjs',
@@ -115,10 +113,14 @@ test('pre-move corpus manifest freezes the expected schema and lane census', () 
   assert.deepEqual(manifest.counts, { all: 915, unit: 837, integration: 27, slow: 51 });
   assert.equal(manifest.tests.length, manifest.counts.all);
   assert.deepEqual(manifest.laneCorrections[0], EXPECTED_LANE_CORRECTION);
-  const issueCorrections = manifest.laneCorrections.filter(({ provenance }) =>
-    ISSUE_1413_CORRECTION_COMMITS.has(provenance.correctionCommit)
+  const issueCorrections = manifest.laneCorrections.filter(
+    ({ provenance }) => provenance.correctionCommit === ISSUE_1413_DELIVERY_COMMIT
   );
   assert.equal(issueCorrections.length, ISSUE_1413_CORRECTION_COUNT);
+  assert.deepEqual(
+    new Set(issueCorrections.map(({ provenance }) => provenance.baseCommit)),
+    new Set([ISSUE_1413_DELIVERY_PARENT])
+  );
   assert.equal(manifest.laneCorrections.length, ISSUE_1413_CORRECTION_COUNT + 1);
   assert.equal(
     new Set(issueCorrections.map(({ migrationPath }) => migrationPath)).size,
