@@ -34,9 +34,20 @@ function signals(result, testPath) {
 
 const CHEAP_MEMBERSHIP_TEST = 'scripts/tests/integration/meta/test-corpus-membership.test.mjs';
 const EXPENSIVE_PACKAGE_TEST = 'scripts/tests/integration/meta/package-test-corpus.test.mjs';
-const CORPUS_DISCOVERED = [
+const TREE_LAYOUT_TEST = 'scripts/tests/integration/meta/test-tree-layout.test.mjs';
+const FROZEN_RETIREMENT_TEST = 'scripts/tests/unit/meta/frozen-test-retirements.test.mjs';
+const GRADUATION_TEST = 'scripts/tests/unit/maintenance/graduate-frozen-test-retirements.test.mjs';
+const WORKFLOW_TEST = 'scripts/tests/unit/meta/graduate-frozen-test-retirements-workflow.test.mjs';
+const RETIREMENT_GUARDS = [
   CHEAP_MEMBERSHIP_TEST,
   EXPENSIVE_PACKAGE_TEST,
+  TREE_LAYOUT_TEST,
+  FROZEN_RETIREMENT_TEST,
+  GRADUATION_TEST,
+  WORKFLOW_TEST,
+].sort();
+const CORPUS_DISCOVERED = [
+  ...RETIREMENT_GUARDS,
   'scripts/tests/unit/lib/live.test.mjs',
   'scripts/tests/integration/lib/live.test.mjs',
   'scripts/tests/slow/lib/live.test.mjs',
@@ -371,4 +382,47 @@ describe('checked-in corpus membership selection', () => {
     ]);
     assert.equal(result.escalated, false);
   });
+
+  for (const change of ['added', 'modified', 'deleted']) {
+    test(`${change} frozen retirement receipt selects every focused retirement guard`, (t) => {
+      const projectRoot = corpusSelectionProject(t);
+      const receipt = `scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/${change}.test.mjs.json`;
+      if (change !== 'deleted') writeFixture(projectRoot, receipt);
+
+      const result = selectCorpus(projectRoot, [receipt]);
+
+      assert.deepEqual(result.tests, RETIREMENT_GUARDS);
+      assert.deepEqual(result.lanes, []);
+      assert.equal(result.escalated, false);
+    });
+  }
+
+  test('temporary retirement evidence selects every focused retirement guard', (t) => {
+    const projectRoot = corpusSelectionProject(t);
+    const evidence =
+      'docs/evidence/temporary-test-retirements/2026-08-25-writing-studio-extraction.md';
+    writeFixture(projectRoot, evidence);
+
+    const result = selectCorpus(projectRoot, [evidence]);
+
+    assert.deepEqual(result.tests, RETIREMENT_GUARDS);
+    assert.deepEqual(result.lanes, []);
+    assert.equal(result.escalated, false);
+  });
+
+  for (const source of [
+    'scripts/maintenance/graduate-frozen-test-retirements.mjs',
+    '.github/workflows/graduate-frozen-test-retirements.yml',
+  ]) {
+    test(`${source} selects every focused retirement guard`, (t) => {
+      const projectRoot = corpusSelectionProject(t);
+      writeFixture(projectRoot, source);
+
+      const result = selectCorpus(projectRoot, [source]);
+
+      assert.deepEqual(result.tests, RETIREMENT_GUARDS);
+      assert.deepEqual(result.lanes, []);
+      assert.equal(result.escalated, false);
+    });
+  }
 });
