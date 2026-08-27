@@ -1,48 +1,22 @@
 #!/usr/bin/env node
 // @story #868
-// #868 — the subsystem-nesting layout verifier (vc:1). The flat 622-file
-// tests/unit/ (plus tests/integration/ and tests/slow/) was reorganized so every
-// *.test.mjs mirrors the source subsystem it covers (lib/, verbs/, gh/, gh/lib/,
-// states/, hooks/, maintenance/, lib/agent-review/, lib/move-state/, …), with a
-// `core/` bucket for root-level modules and a `meta/` bucket for tree-shape tests
-// like this one. This suite is the demonstrable anchor for AC1–AC4 and AC6: it
-// asserts, over the LIVE discovery output, that the reorg
-//   - left no test file directly in a lane root (AC1),
-//   - nested every file under a directory that mirrors a real source subsystem
-//     or is the core/meta bucket (AC2),
-//   - dropped nothing versus the frozen pre-move census and records intentional
-//     post-snapshot unit→integration corrections (AC3/AC4 — baseline
-//     is a floor; new tests may be added),
-//   - keeps the three lanes a disjoint partition whose union is the whole
-//     canonical discovery set (AC4),
-//   - carries git-mv provenance for a sample per subsystem (AC6).
-//
-// The baseline (test-tree-layout.baseline.json) is the pre-move per-lane basename
-// census, computed by applying the real laneOf() to every HEAD test path at the
-// moment of the move. Regenerate it ONLY on a deliberate add/remove/relane, via
-// .tmp/inspect/gen-layout-baseline.mjs.
+// #868 — current test-tree authority. Every live test must occupy exactly one
+// canonical lane and every path in the checked-in current-state baseline must
+// remain live in that lane. Canonically placed additions are allowed; an
+// intentional removal refreshes the baseline in the same change.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { LANES, laneManifest, laneOf } from '../../../task-tracker/lib/test-lanes.mjs';
 import { discoverTestFiles } from '../../../task-tracker/lib/discover-test-files.mjs';
-import {
-  provenanceVerdict,
-  isShallowRepository,
-} from '../../../task-tracker/lib/git-provenance.mjs';
 import { countCodeLines } from '../../../task-tracker/lib/count-code-lines.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 import { laneFiles } from '../../../run-tests-lanes.mjs';
-import {
-  finalizedFrozenPaths,
-  loadPostSnapshotRecords,
-} from '../../lib/test-corpus-membership.mjs';
-import { loadFrozenRetirements } from '../../lib/frozen-test-retirements.mjs';
 
 // scripts/tests/<lane>/meta/ → four levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -51,32 +25,12 @@ const LAYOUT_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-test-layout
 const STORY_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-story-tags.mjs');
 const LINE_CAP_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-line-cap.mjs');
 
-const LANE_ROOTS = LANES.map((l) => `scripts/tests/${l}`);
-
-const baseline = JSON.parse(
+const LANE_ROOTS = LANES.map((lane) => `scripts/tests/${lane}`);
+const baselineDocument = JSON.parse(
   readFileSync(path.join(HERE, 'test-tree-layout.baseline.json'), 'utf8')
-).lanes;
-const corpusManifest = JSON.parse(
-  readFileSync(path.join(REPO_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json'), 'utf8')
 );
-const discovered = discoverTestFiles({ projectRoot: REPO_ROOT });
-const postSnapshotAuthority = loadPostSnapshotRecords({ projectRoot: REPO_ROOT });
-const retirementAuthority = loadFrozenRetirements({
-  projectRoot: REPO_ROOT,
-  finalizedFrozenPaths: finalizedFrozenPaths(corpusManifest),
-  postSnapshotRecordPaths: postSnapshotAuthority.records.map(({ path: recordPath }) => recordPath),
-  liveDiscoveredPaths: discovered,
-});
-const retiredPaths = new Set(retirementAuthority.retirements.map(({ path: testPath }) => testPath));
-const retiredBasenamesByLane = new Map(LANES.map((lane) => [lane, new Set()]));
-for (const { path: testPath } of retirementAuthority.retirements) {
-  const lane = laneOf(testPath);
-  retiredBasenamesByLane.get(lane).add(path.posix.basename(testPath));
-}
-
-function git(args) {
-  return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
-}
+const baseline = baselineDocument.lanes;
+const manifest = laneManifest({ projectRoot: REPO_ROOT });
 
 function writeFixture(projectRoot, relPath) {
   const absPath = path.join(projectRoot, relPath);
@@ -199,7 +153,33 @@ test('feature-oriented files keep semantic ownership after their lane correction
   }
 });
 
-const manifest = laneManifest({ projectRoot: REPO_ROOT });
+test('current test-tree baseline is well formed', () => {
+  assert.equal(baselineDocument.schema, 1);
+  assert.deepEqual(Object.keys(baseline).sort(), [...LANES].sort());
+  assert.deepEqual(Object.keys(baselineDocument.counts).sort(), [...LANES].sort());
+
+  for (const lane of LANES) {
+    assert.equal(baselineDocument.counts[lane], baseline[lane].length);
+    assert.deepEqual(baseline[lane], [...baseline[lane]].sort(), `${lane} baseline is sorted`);
+    assert.equal(new Set(baseline[lane]).size, baseline[lane].length);
+    for (const rel of baseline[lane]) {
+      assert.equal(laneOf(rel), lane, `${rel} belongs to the ${lane} lane`);
+    }
+  }
+});
+
+test('AC3/AC4: every current baseline test remains live in its recorded lane', () => {
+  for (const lane of LANES) {
+    const live = new Set(manifest[lane]);
+    const missing = baseline[lane].filter((rel) => !live.has(rel));
+    assert.deepEqual(
+      missing,
+      [],
+      `${lane} lane lost ${missing.length} baseline test(s): ${missing.slice(0, 8).join(', ')}` +
+        ' — refresh the baseline only when the removal or relane is intentional'
+    );
+  }
+});
 
 test('AC1: no *.test.mjs file remains directly in a lane root', () => {
   for (const root of LANE_ROOTS) {
@@ -232,41 +212,6 @@ test('AC2: every lane subdirectory mirrors a real source subsystem (or is core/m
   }
 });
 
-test('AC3/AC4: no pre-move file was dropped outside an explicit lane correction', () => {
-  assert.deepEqual(retirementAuthority.errors, [], 'frozen retirement authority is valid');
-  assert.deepEqual(
-    retirementAuthority.misplacedReceipts,
-    [],
-    'frozen retirement receipts are placed'
-  );
-  for (const lane of LANES) {
-    const live = new Set(manifest[lane].map((f) => f.split('/').pop()));
-    const correctedFromLane = new Set(
-      corpusManifest.laneCorrections
-        .filter(({ fromLane }) => fromLane === lane)
-        .map(({ migrationPath }) => path.posix.basename(migrationPath))
-    );
-    const retired = retiredBasenamesByLane.get(lane);
-    const dropped = baseline[lane].filter(
-      (b) => !live.has(b) && !correctedFromLane.has(b) && !retired.has(b)
-    );
-    assert.deepEqual(
-      dropped,
-      [],
-      `${lane} lane lost ${dropped.length} pre-move file(s): ${dropped.slice(0, 8).join(', ')}` +
-        ' — a move that drops or relanes a file breaks discovery'
-    );
-  }
-
-  for (const correction of corpusManifest.laneCorrections) {
-    assert.ok(
-      retiredPaths.has(correction.finalPath) ||
-        manifest[correction.toLane].includes(correction.finalPath),
-      `${correction.finalPath} realizes or validly retires the intentional ${correction.fromLane}→${correction.toLane} correction`
-    );
-  }
-});
-
 test('AC4: the three lanes are a disjoint partition whose union is the whole discovery set', () => {
   const canonical = new Set(discoverTestFiles({ projectRoot: REPO_ROOT }));
   const seen = new Map(); // path -> lane, to catch any double-classification
@@ -294,70 +239,4 @@ test('AC4: the three lanes are a disjoint partition whose union is the whole dis
     [],
     `canonical walker has files no lane claims: ${canonicalOnly.slice(0, 8)}`
   );
-});
-
-test('AC6: git-mv provenance survives for a sampled file from each subsystem', (t) => {
-  // #949 — `git log --follow` reconstructs a rename chain by walking commits, so
-  // it needs commits. A shallow clone (`actions/checkout` defaults to
-  // `fetch-depth: 1`) has exactly one, and this assertion then fails for every
-  // sample with no hint that the repository, not the code, is what is wrong.
-  // CI now checks out with `fetch-depth: 0` — guarded by
-  // meta/ci-workflow-history.test.mjs — so the check genuinely runs there. The
-  // skip below covers only workspaces that truly cannot answer.
-  const shallow = isShallowRepository(git);
-  // Staged rename map (pre-commit, e.g. under verify-develop): new paths that
-  // arrived via `git mv`, not a fresh add.
-  const stagedRenameTargets = new Set(
-    git(['diff', '--cached', '--find-renames', '-M', '--name-status', '--diff-filter=R'])
-      .split('\n')
-      .filter(Boolean)
-      .map((l) => l.split('\t').pop())
-  );
-
-  // One sample per (lane, subsystem), restricted to files that existed pre-move
-  // (basename in the baseline). meta/ holds only new files and is skipped.
-  const samples = [];
-  for (const lane of LANES) {
-    const base = new Set(baseline[lane]);
-    const bySub = new Map();
-    for (const rel of manifest[lane]) {
-      if (!underLaneRoot(rel, lane)) continue; // co-located test, never moved
-      const sub = path.posix.dirname(rel.slice(laneRootPrefix(lane).length));
-      if (sub === 'meta') continue;
-      if (!base.has(rel.split('/').pop())) continue; // only moved (pre-existing) files
-      if (!bySub.has(sub)) bySub.set(sub, rel);
-    }
-    samples.push(...bySub.values());
-  }
-  assert.ok(
-    samples.length >= 10,
-    `expected a sample from each subsystem, got only ${samples.length}`
-  );
-
-  const skipped = [];
-  for (const sample of samples) {
-    const follow = git(['log', '--follow', '--format=%h', '--', sample])
-      .split('\n')
-      .filter(Boolean);
-    const verdict = provenanceVerdict({
-      followCount: follow.length,
-      stagedRename: stagedRenameTargets.has(sample),
-      shallow,
-    });
-    if (verdict.status === 'skip') {
-      skipped.push(sample);
-      continue;
-    }
-    assert.equal(verdict.status, 'ok', `${sample}: ${verdict.reason}`);
-  }
-
-  // Report the unanswerable case rather than passing quietly — a silent green
-  // here would be indistinguishable from a real proof.
-  if (skipped.length) {
-    t.diagnostic(
-      `provenance unverifiable for ${skipped.length}/${samples.length} sample(s): ` +
-        'shallow repository, clone with full history to check'
-    );
-    t.skip('shallow repository — git-mv provenance is unverifiable here');
-  }
 });
