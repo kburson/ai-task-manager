@@ -155,6 +155,24 @@ function sortMisplacedRecords(records) {
   });
 }
 
+function sortRetirementErrors(errors) {
+  return [...errors].sort((left, right) => {
+    const fileComparison = comparePosix(left.receiptFile, right.receiptFile);
+    return fileComparison || comparePosix(left.error, right.error);
+  });
+}
+
+function sortMisplacedRetirements(retirements) {
+  return [...retirements].sort((left, right) => {
+    const fileComparison = comparePosix(left.receiptFile, right.receiptFile);
+    return (
+      fileComparison ||
+      comparePosix(left.expectedReceiptFile, right.expectedReceiptFile) ||
+      comparePosix(left.path, right.path)
+    );
+  });
+}
+
 /**
  * Reconciles canonical live test discovery with frozen and record authorities.
  *
@@ -167,6 +185,9 @@ export function reconcileCorpusMembership({
   records,
   recordErrors = [],
   misplacedRecords = [],
+  retirements = [],
+  retirementErrors = [],
+  misplacedRetirements = [],
 }) {
   const noncanonicalDiscoveredPaths = sortedStrings(
     discovered.filter((testPath) => !parseCanonicalTestPath(testPath))
@@ -177,11 +198,18 @@ export function reconcileCorpusMembership({
   const canonicalDiscoveredSet = new Set(canonicalDiscovered);
   const frozen = new Set(frozenPaths);
   const declaredRecords = new Map();
+  const declaredRetirements = new Map();
 
   for (const record of records) {
     const entries = declaredRecords.get(record.path) || [];
     entries.push(record);
     declaredRecords.set(record.path, entries);
+  }
+
+  for (const retirement of retirements) {
+    const entries = declaredRetirements.get(retirement.path) || [];
+    entries.push(retirement);
+    declaredRetirements.set(retirement.path, entries);
   }
 
   const duplicatePaths = [...declaredRecords.entries()]
@@ -200,13 +228,68 @@ export function reconcileCorpusMembership({
     }))
     .sort((left, right) => comparePosix(left.path, right.path));
 
+  const duplicateRetirementPaths = [...declaredRetirements.entries()]
+    .filter(([, declarations]) => declarations.length > 1)
+    .map(([path, declarations]) => ({
+      path,
+      receiptFiles: sortedStrings(declarations.map(({ receiptFile }) => receiptFile)),
+    }))
+    .sort((left, right) => comparePosix(left.path, right.path));
+
+  const invalidRetirementAuthorityPaths = [...declaredRetirements.entries()]
+    .flatMap(([path, declarations]) => {
+      if (!frozen.has(path)) {
+        return [
+          {
+            path,
+            receiptFiles: sortedStrings(declarations.map(({ receiptFile }) => receiptFile)),
+            reason: 'is not a finalized frozen path',
+          },
+        ];
+      }
+      if (declaredRecords.has(path)) {
+        return [
+          {
+            path,
+            receiptFiles: sortedStrings(declarations.map(({ receiptFile }) => receiptFile)),
+            reason: 'overlaps a post-snapshot membership record',
+          },
+        ];
+      }
+      return [];
+    })
+    .sort((left, right) => comparePosix(left.path, right.path));
+
+  const receiptTestOverlapPaths = [...declaredRetirements.entries()]
+    .filter(([testPath]) => canonicalDiscoveredSet.has(testPath))
+    .map(([path, declarations]) => ({
+      path,
+      receiptFiles: sortedStrings(declarations.map(({ receiptFile }) => receiptFile)),
+    }))
+    .sort((left, right) => comparePosix(left.path, right.path));
+
+  const invalidRetirementPaths = new Set([
+    ...duplicateRetirementPaths.map(({ path }) => path),
+    ...invalidRetirementAuthorityPaths.map(({ path }) => path),
+    ...receiptTestOverlapPaths.map(({ path }) => path),
+  ]);
+  const retired = new Set(
+    [...declaredRetirements.entries()]
+      .filter(
+        ([testPath, declarations]) =>
+          declarations.length === 1 && !invalidRetirementPaths.has(testPath)
+      )
+      .map(([testPath]) => testPath)
+  );
+  const activeFrozen = new Set(frozenPaths.filter((testPath) => !retired.has(testPath)));
+
   const declaredPaths = new Set(declaredRecords.keys());
-  const declaredMembership = new Set([...frozen, ...declaredPaths]);
+  const declaredMembership = new Set([...activeFrozen, ...declaredPaths]);
   const undeclaredPaths = canonicalDiscovered.filter(
     (testPath) => !declaredMembership.has(testPath)
   );
   const missingPaths = [
-    ...[...frozen]
+    ...[...activeFrozen]
       .filter((testPath) => !canonicalDiscoveredSet.has(testPath))
       .map((path) => ({ path, authority: 'frozen', recordFile: null })),
     ...[...declaredRecords.entries()]
@@ -222,6 +305,8 @@ export function reconcileCorpusMembership({
   });
   const malformedRecords = sortRecordErrors(recordErrors);
   const sortedMisplacedRecords = sortMisplacedRecords(misplacedRecords);
+  const malformedRetirements = sortRetirementErrors(retirementErrors);
+  const sortedMisplacedRetirements = sortMisplacedRetirements(misplacedRetirements);
   const counts = { all: 0, unit: 0, integration: 0, slow: 0 };
 
   for (const testPath of canonicalDiscovered) {
@@ -236,8 +321,13 @@ export function reconcileCorpusMembership({
     missingPaths,
     duplicatePaths,
     overlapPaths,
+    duplicateRetirementPaths,
+    invalidRetirementAuthorityPaths,
+    receiptTestOverlapPaths,
     malformedRecords,
     misplacedRecords: sortedMisplacedRecords,
+    malformedRetirements,
+    misplacedRetirements: sortedMisplacedRetirements,
     counts,
   };
   result.ok = Object.entries(result)
@@ -262,11 +352,22 @@ export function formatCorpusMembershipErrors(result) {
   const sections = [];
   const malformedRecords = sortRecordErrors(result.malformedRecords || []);
   const misplacedRecords = sortMisplacedRecords(result.misplacedRecords || []);
+  const malformedRetirements = sortRetirementErrors(result.malformedRetirements || []);
+  const misplacedRetirements = sortMisplacedRetirements(result.misplacedRetirements || []);
   const noncanonicalDiscoveredPaths = sortedStrings(result.noncanonicalDiscoveredPaths || []);
   const duplicatePaths = [...(result.duplicatePaths || [])].sort((left, right) =>
     comparePosix(left.path, right.path)
   );
   const overlapPaths = [...(result.overlapPaths || [])].sort((left, right) =>
+    comparePosix(left.path, right.path)
+  );
+  const duplicateRetirementPaths = [...(result.duplicateRetirementPaths || [])].sort(
+    (left, right) => comparePosix(left.path, right.path)
+  );
+  const invalidRetirementAuthorityPaths = [...(result.invalidRetirementAuthorityPaths || [])].sort(
+    (left, right) => comparePosix(left.path, right.path)
+  );
+  const receiptTestOverlapPaths = [...(result.receiptTestOverlapPaths || [])].sort((left, right) =>
     comparePosix(left.path, right.path)
   );
   const undeclaredPaths = sortedStrings(result.undeclaredPaths || []);
@@ -292,6 +393,23 @@ export function formatCorpusMembershipErrors(result) {
         .join('\n')}`
     );
   }
+  if (malformedRetirements.length > 0) {
+    sections.push(
+      `Malformed frozen-retirement receipts:\n${malformedRetirements
+        .map(({ receiptFile, error }) => `! ${receiptFile}\n  ${error}`)
+        .join('\n')}`
+    );
+  }
+  if (misplacedRetirements.length > 0) {
+    sections.push(
+      `Misplaced frozen-retirement receipts:\n${misplacedRetirements
+        .map(
+          ({ receiptFile, expectedReceiptFile, path }) =>
+            `! ${path}\n  ${receiptFile}\n  Expected: ${expectedReceiptFile}\n  move or repair that receipt.`
+        )
+        .join('\n')}`
+    );
+  }
   if (noncanonicalDiscoveredPaths.length > 0) {
     sections.push(
       `Noncanonical discovered test files:\n${noncanonicalDiscoveredPaths
@@ -312,6 +430,33 @@ export function formatCorpusMembershipErrors(result) {
     sections.push(
       `Post-snapshot records overlapping frozen destinations:\n${overlapPaths
         .map(({ path, recordFiles }) => `! ${path}\n${formatRecordFiles(recordFiles)}`)
+        .join('\n')}`
+    );
+  }
+  if (duplicateRetirementPaths.length > 0) {
+    sections.push(
+      `Duplicate frozen-retirement receipts:\n${duplicateRetirementPaths
+        .map(({ path, receiptFiles }) => `! ${path}\n${formatRecordFiles(receiptFiles)}`)
+        .join('\n')}`
+    );
+  }
+  if (invalidRetirementAuthorityPaths.length > 0) {
+    sections.push(
+      `Invalid retirement authority overlap:\n${invalidRetirementAuthorityPaths
+        .map(
+          ({ path, receiptFiles, reason }) =>
+            `! ${path}\n  ${reason}.\n${formatRecordFiles(receiptFiles)}`
+        )
+        .join('\n')}`
+    );
+  }
+  if (receiptTestOverlapPaths.length > 0) {
+    sections.push(
+      `Frozen-retirement receipts overlapping live tests:\n${receiptTestOverlapPaths
+        .map(
+          ({ path, receiptFiles }) =>
+            `! ${path}\n  receipt overlaps a live discovered test.\n${formatRecordFiles(receiptFiles)}`
+        )
         .join('\n')}`
     );
   }

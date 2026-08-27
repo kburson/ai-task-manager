@@ -1,6 +1,7 @@
 // @story #876
 
 const STORY_TAG_LINE_RE = /^\/\/ @story #\d+(?:\s|$)/;
+const CHORE_TAG_LINE_RE = /^\/\/ @chore(?:\s|$)/;
 const SHEBANG_RE = /^#!/;
 const CSPELL_PREAMBLE_RE = /^\/\/ cspell:ignore(?: .+)?$/;
 
@@ -20,16 +21,26 @@ function isStoryTag(line) {
   return STORY_TAG_LINE_RE.test(normalizedLine(line));
 }
 
+function isChoreTag(line) {
+  return CHORE_TAG_LINE_RE.test(normalizedLine(line));
+}
+
+// A test's provenance is either a story or a deliberate chore. Both are real
+// provenance; only an unmarked file is a gap.
+function isProvenanceTag(line) {
+  return isStoryTag(line) || isChoreTag(line);
+}
+
 export function hasPermittedStoryTag(content) {
   const lines = String(content).split('\n');
-  if (isStoryTag(lines[0])) {
+  if (isProvenanceTag(lines[0])) {
     for (let index = 1; index < lines.length; index += 1) {
       if (isShebang(lines[index])) return false;
       if (!isCspellPreamble(lines[index])) break;
     }
     return true;
   }
-  return isShebang(lines[0]) && isStoryTag(lines[1]);
+  return isShebang(lines[0]) && isProvenanceTag(lines[1]);
 }
 
 export function moveMalformedStoryTag(content) {

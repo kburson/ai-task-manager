@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "path": "scripts/tests/slow/articles/publish-articles-e2e.test.mjs",
+  "reason": "Publishing subsystem extracted from the AITM package repository.",
+  "lastLiveSha256": "2aa009c996ea91e84f6ce4fc8e525451ad51779df1ba97387cad68944f398ffa",
+  "evidence": "docs/evidence/temporary-test-retirements/2026-08-25-writing-studio-extraction.md"
+}

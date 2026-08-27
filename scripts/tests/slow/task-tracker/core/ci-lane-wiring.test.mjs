@@ -22,7 +22,6 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { laneManifest } from '../../../../task-tracker/lib/test-lanes.mjs';
-import { buildMmdcArgs } from '../../../../articles/lib/diagrams.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(__dir, '../../../..');
@@ -94,42 +93,4 @@ test('#1413: fast CI runs the unit and integration lanes explicitly', () => {
     /name:\s*Unit \+ integration tests[\s\S]*?run:\s*npm test\b/,
     'CI must not label unit-only npm test as unit + integration coverage'
   );
-});
-
-test('#1388: hosted Mermaid sandbox configuration is confined to the slow CI job', () => {
-  const workflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
-  const [fastBlock, slowBlock] = workflow.split(/^ {2}slow:\s*$/m);
-  assert.ok(slowBlock, 'ci.yml must define the slow job');
-  assert.doesNotMatch(
-    fastBlock,
-    /AITM_MERMAID_PUPPETEER_CONFIG/,
-    'fast CI must keep the ordinary Mermaid launch defaults'
-  );
-  assert.match(
-    slowBlock,
-    /AITM_MERMAID_PUPPETEER_CONFIG:\s*\.github\/puppeteer-ci\.json/,
-    'slow CI must opt into the repository-owned Puppeteer configuration'
-  );
-
-  const config = JSON.parse(
-    readFileSync(path.join(repoRoot, '.github', 'puppeteer-ci.json'), 'utf8')
-  );
-  assert.deepEqual(config, {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-});
-
-test('#1388: Mermaid launcher adds the Puppeteer config only when explicitly requested', () => {
-  const ordinary = buildMmdcArgs({ input: 'in.mmd', outPath: 'out.png', configPath: '' });
-  assert.deepEqual(ordinary, ['-i', 'in.mmd', '-o', 'out.png', '-b', 'transparent', '-s', '3']);
-
-  const configured = buildMmdcArgs({
-    input: 'in.mmd',
-    outPath: 'out.png',
-    configPath: '.github/puppeteer-ci.json',
-  });
-  assert.deepEqual(configured.slice(-2), [
-    '--puppeteerConfigFile',
-    path.join(repoRoot, '.github', 'puppeteer-ci.json'),
-  ]);
 });

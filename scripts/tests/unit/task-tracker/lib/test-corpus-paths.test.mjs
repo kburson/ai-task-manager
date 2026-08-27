@@ -37,7 +37,7 @@ test('parseCanonicalTestPath rejects noncanonical paths', () => {
 test('canonicalLayoutViolations returns sorted noncanonical paths', () => {
   assert.deepEqual(
     canonicalLayoutViolations([
-      'scripts/tests/slow/articles/publish-articles-e2e.test.mjs',
+      'scripts/tests/slow/review/co-review-boundaries.test.mjs',
       'scripts/reports/generate-value-report.test.mjs',
     ]),
     ['scripts/reports/generate-value-report.test.mjs']

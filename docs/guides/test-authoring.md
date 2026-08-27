@@ -50,10 +50,11 @@ lane and may remain unit. `trunk-ref.integration.test.mjs` belongs in integratio
 because it coordinates multiple repositories and a remote end to end through clone,
 push, fetch, and close-gate remote synchronization.
 
-Every test has `// @story #NNN` on line 1, or on line 2 immediately after a
-shebang. A `// cspell:ignore ...` preamble follows the story tag; it never precedes
-it. Run
-`npm run lint:test-layout`, `npm run lint:story-tags`, and
+Every test declares its provenance on line 1, or on line 2 immediately after a
+shebang: `// @story #NNN` for work tracked by an issue, or `// @chore` for
+deliberate chore work that has no issue and should not get a phantom one. A
+`// cspell:ignore ...` preamble follows the provenance tag; it never precedes
+it. Run `npm run lint:test-layout`, `npm run lint:story-tags`, and
 `npm run lint:line-cap` before the relevant lane.
 
 ## Shim conventions

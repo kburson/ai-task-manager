@@ -1,0 +1,124 @@
+name: Graduate frozen test retirements
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  graduate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out complete trunk history
+        uses: actions/checkout@v5
+        with:
+          ref: trunk
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check retirement eligibility
+        id: check
+        run: |
+          mkdir -p .tmp
+          npm run --silent graduate:frozen-tests -- --check --json > .tmp/frozen-retirements-check.json
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.tmp/frozen-retirements-check.json', 'utf8'));
+          if (report.eligibleCount === 0) {
+            appendFileSync(process.env.GITHUB_OUTPUT, 'has_work=false\n');
+            console.log('No delivered frozen retirement receipts are eligible.');
+          } else {
+            appendFileSync(process.env.GITHUB_OUTPUT, 'has_work=true\n');
+          }
+          NODE
+
+      - name: Apply the complete eligible batch
+        if: steps.check.outputs.has_work == 'true'
+        run: |
+          git switch -C automation/graduate-frozen-test-retirements origin/trunk
+          npm run --silent graduate:frozen-tests -- --apply --yes --json > .tmp/frozen-retirements-apply.json
+
+      - name: Run retirement authority guards
+        if: steps.check.outputs.has_work == 'true'
+        run: |
+          node --test \
+            scripts/tests/integration/meta/frozen-test-retirements.test.mjs \
+            scripts/tests/integration/meta/test-corpus-membership.test.mjs \
+            scripts/tests/integration/meta/package-test-corpus.test.mjs \
+            scripts/tests/integration/meta/test-tree-layout.test.mjs \
+            scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs \
+            scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
+
+      - name: Run normal quality gate
+        if: steps.check.outputs.has_work == 'true'
+        run: npm run quality
+
+      - name: Build pull request body and commit
+        if: steps.check.outputs.has_work == 'true'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.tmp/frozen-retirements-check.json', 'utf8'));
+          const lines = [
+            '# Frozen test retirement graduation',
+            '',
+            'This weekly batch removes retirement receipts whose deletion evidence is durable in canonical trunk history.',
+            '',
+            '## Graduated receipts',
+            '',
+          ];
+          for (const item of report.eligible) {
+            lines.push(
+              `- receiptFile: \`${item.receiptFile}\``,
+              `  - testPath: \`${item.testPath}\``,
+              `  - lastLiveSha256: \`${item.lastLiveSha256}\``,
+              `  - evidenceFile: \`${item.evidenceFile}\``,
+              `  - deliveryCommit: \`${item.deliveryCommit}\``
+            );
+          }
+          lines.push(
+            '',
+            '## Verification commands',
+            '',
+            '- `npm run graduate:frozen-tests -- --check --json`',
+            '- focused retirement authority test command',
+            '- `npm run quality`',
+            '',
+            'This pull request is intentionally not configured for automatic merge.'
+          );
+          writeFileSync('.tmp/frozen-retirements-pr.md', `${lines.join('\n')}\n`);
+          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/tests/fixtures/test-corpus-frozen-retirements docs/evidence/temporary-test-retirements
+          git commit -m "chore(test-corpus): graduate frozen retirements"
+
+      - name: Publish fixed branch and open or update pull request
+        if: steps.check.outputs.has_work == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          remote_head="$(git ls-remote --heads origin refs/heads/automation/graduate-frozen-test-retirements | cut -f1)"
+          if [ -n "$remote_head" ]; then
+            git push origin HEAD:refs/heads/automation/graduate-frozen-test-retirements --force-with-lease=refs/heads/automation/graduate-frozen-test-retirements:$remote_head
+          else
+            git push origin HEAD:refs/heads/automation/graduate-frozen-test-retirements
+          fi
+          pr_number="$(gh pr list --base trunk --head automation/graduate-frozen-test-retirements --state open --json number --jq '.[0].number')"
+          if [ -n "$pr_number" ]; then
+            gh pr edit "$pr_number" --title "chore: graduate frozen test retirements" --body-file .tmp/frozen-retirements-pr.md
+          else
+            gh pr create --base trunk --head automation/graduate-frozen-test-retirements --title "chore: graduate frozen test retirements" --body-file .tmp/frozen-retirements-pr.md
+          fi

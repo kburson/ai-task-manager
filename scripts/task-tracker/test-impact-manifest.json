@@ -104,6 +104,22 @@
     },
     {
       "sources": [
+        "scripts/tests/fixtures/test-corpus-frozen-retirements/**/*.json",
+        "docs/evidence/temporary-test-retirements/**/*.md",
+        "scripts/maintenance/graduate-frozen-test-retirements.mjs",
+        ".github/workflows/graduate-frozen-test-retirements.yml"
+      ],
+      "tests": [
+        "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
+        "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+        "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "scripts/tests/integration/meta/frozen-test-retirements.test.mjs",
+        "scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs"
+      ],
+      "reason": "frozen retirement authority and graduation workflow change"
+    },
+    {
+      "sources": [
         "bin/cli.mjs",
         "scripts/task-tracker/activity-guard.mjs",
         "scripts/task-tracker/bash-guard.mjs",
