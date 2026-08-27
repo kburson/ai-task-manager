@@ -40,6 +40,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # PR merge refs need both direct parents so the current docs-only
+          # classifier can resolve `git diff trunk...HEAD`. This is not a
+          # full-history or historical-provenance requirement.
+          fetch-depth: 2
       # The real-git close-gate tests (#733) resolve trunk via a LOCAL
       # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
       # merge ref with no such branch, so those tests fail spuriously (#745).
