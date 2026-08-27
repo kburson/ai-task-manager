@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out complete trunk history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: trunk
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -48,17 +48,17 @@ jobs:
         if: steps.check.outputs.has_work == 'true'
         run: |
           git switch -C automation/graduate-frozen-test-retirements origin/trunk
-          npm run --silent graduate:frozen-tests -- --apply --json > .tmp/frozen-retirements-apply.json
+          npm run --silent graduate:frozen-tests -- --apply --yes --json > .tmp/frozen-retirements-apply.json
 
       - name: Run retirement authority guards
         if: steps.check.outputs.has_work == 'true'
         run: |
           node --test \
-            scripts/tests/unit/meta/frozen-test-retirements.test.mjs \
+            scripts/tests/integration/meta/frozen-test-retirements.test.mjs \
             scripts/tests/integration/meta/test-corpus-membership.test.mjs \
             scripts/tests/integration/meta/package-test-corpus.test.mjs \
             scripts/tests/integration/meta/test-tree-layout.test.mjs \
-            scripts/tests/unit/maintenance/graduate-frozen-test-retirements.test.mjs \
+            scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs \
             scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs
 
       - name: Run normal quality gate

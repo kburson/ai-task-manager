@@ -113,9 +113,8 @@
         "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
         "scripts/tests/integration/meta/package-test-corpus.test.mjs",
         "scripts/tests/integration/meta/test-tree-layout.test.mjs",
-        "scripts/tests/unit/meta/frozen-test-retirements.test.mjs",
-        "scripts/tests/unit/maintenance/graduate-frozen-test-retirements.test.mjs",
-        "scripts/tests/unit/meta/graduate-frozen-test-retirements-workflow.test.mjs"
+        "scripts/tests/integration/meta/frozen-test-retirements.test.mjs",
+        "scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs"
       ],
       "reason": "frozen retirement authority and graduation workflow change"
     },

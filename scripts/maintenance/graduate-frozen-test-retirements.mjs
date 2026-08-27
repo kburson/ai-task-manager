@@ -16,8 +16,9 @@ import {
   finalizedFrozenPaths,
   loadPostSnapshotRecords,
 } from '../tests/lib/test-corpus-membership.mjs';
+import { confirmBlastRadius } from '../task-tracker/lib/blast-radius-guard.mjs';
 
-const USAGE = `Usage: npm run graduate:frozen-tests -- (--check|--apply) [--json]`;
+const USAGE = `Usage: npm run graduate:frozen-tests -- (--check|--apply) [--yes] [--json]`;
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 function comparePosix(left, right) {
@@ -66,6 +67,7 @@ function loadRepositoryAuthority(projectRoot) {
 export function parseGraduationArgs(argv) {
   let mode = null;
   let json = false;
+  let yes = false;
   for (const argument of argv) {
     if (argument === '--check' || argument === '--apply') {
       const nextMode = argument.slice(2);
@@ -73,12 +75,14 @@ export function parseGraduationArgs(argv) {
       mode = nextMode;
     } else if (argument === '--json') {
       json = true;
+    } else if (argument === '--yes') {
+      yes = true;
     } else {
-      throw new Error(USAGE);
+      throw new Error(`graduate-frozen-test-retirements: unknown flag: ${argument}\n${USAGE}`);
     }
   }
-  if (!mode) throw new Error(USAGE);
-  return { mode, json };
+  if (!mode || (yes && mode !== 'apply')) throw new Error(USAGE);
+  return { mode, json, yes };
 }
 
 function formatAuthorityErrors(authority) {
@@ -245,21 +249,37 @@ export function formatGraduationReport(plan, { mode, json, application } = {}) {
   return `${lines.join('\n')}\n`;
 }
 
-export function runGraduationCommand({
+export async function runGraduationCommand({
   argv = process.argv.slice(2),
   projectRoot = PROJECT_ROOT,
   loadAuthority,
   proveDelivery,
+  confirmApply = confirmBlastRadius,
   writeOutput = (value) => process.stdout.write(value),
+  writeDiagnostic = (value) => process.stderr.write(value),
 } = {}) {
-  const { mode, json } = parseGraduationArgs(argv);
+  const { mode, json, yes } = parseGraduationArgs(argv);
   const plan = planFrozenRetirementGraduation({
     projectRoot,
     ...(loadAuthority ? { loadAuthority } : {}),
     ...(proveDelivery ? { proveDelivery } : {}),
   });
-  const application =
-    mode === 'apply' ? applyFrozenRetirementGraduation(plan, { projectRoot }) : undefined;
+  let application;
+  if (mode === 'apply') {
+    const decision = await confirmApply({
+      targets: [...plan.eligible.map(({ receiptFile }) => receiptFile), ...plan.evidenceToRemove],
+      targetLabel: 'retirement file',
+      yes,
+      log: writeDiagnostic,
+      warn: writeDiagnostic,
+    });
+    if (!decision.proceed) {
+      throw new Error(
+        `graduate-frozen-test-retirements: apply refused by blast-radius guard (${decision.reason})`
+      );
+    }
+    application = applyFrozenRetirementGraduation(plan, { projectRoot });
+  }
   const report = reportObject(plan, mode, application);
   writeOutput(formatGraduationReport(plan, { mode, json, application }));
   return report;
@@ -267,7 +287,7 @@ export function runGraduationCommand({
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    runGraduationCommand();
+    await runGraduationCommand();
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

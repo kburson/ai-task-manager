@@ -35,16 +35,15 @@ function signals(result, testPath) {
 const CHEAP_MEMBERSHIP_TEST = 'scripts/tests/integration/meta/test-corpus-membership.test.mjs';
 const EXPENSIVE_PACKAGE_TEST = 'scripts/tests/integration/meta/package-test-corpus.test.mjs';
 const TREE_LAYOUT_TEST = 'scripts/tests/integration/meta/test-tree-layout.test.mjs';
-const FROZEN_RETIREMENT_TEST = 'scripts/tests/unit/meta/frozen-test-retirements.test.mjs';
-const GRADUATION_TEST = 'scripts/tests/unit/maintenance/graduate-frozen-test-retirements.test.mjs';
-const WORKFLOW_TEST = 'scripts/tests/unit/meta/graduate-frozen-test-retirements-workflow.test.mjs';
+const FROZEN_RETIREMENT_TEST = 'scripts/tests/integration/meta/frozen-test-retirements.test.mjs';
+const GRADUATION_TEST =
+  'scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs';
 const RETIREMENT_GUARDS = [
   CHEAP_MEMBERSHIP_TEST,
   EXPENSIVE_PACKAGE_TEST,
   TREE_LAYOUT_TEST,
   FROZEN_RETIREMENT_TEST,
   GRADUATION_TEST,
-  WORKFLOW_TEST,
 ].sort();
 const CORPUS_DISCOVERED = [
   ...RETIREMENT_GUARDS,

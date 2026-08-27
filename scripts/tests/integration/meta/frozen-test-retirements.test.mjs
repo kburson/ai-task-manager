@@ -1,4 +1,5 @@
 // @chore
+// Canonical delivery proofs use isolated real-Git histories and belong in the integration lane.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';

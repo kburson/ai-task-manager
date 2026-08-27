@@ -1,4 +1,5 @@
 // @chore
+// Canonical delivery proofs use isolated real-Git histories and belong in the integration lane.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -174,9 +175,19 @@ test('keeps a feature-only active retirement pending canonical delivery', () => 
 });
 
 test('requires exactly one mode and accepts json with either mode', () => {
-  assert.deepEqual(parseGraduationArgs(['--check']), { mode: 'check', json: false });
-  assert.deepEqual(parseGraduationArgs(['--apply', '--json']), { mode: 'apply', json: true });
-  for (const args of [[], ['--json'], ['--check', '--apply'], ['--check', '--wat']]) {
+  assert.deepEqual(parseGraduationArgs(['--check']), { mode: 'check', json: false, yes: false });
+  assert.deepEqual(parseGraduationArgs(['--apply', '--yes', '--json']), {
+    mode: 'apply',
+    json: true,
+    yes: true,
+  });
+  for (const args of [
+    [],
+    ['--json'],
+    ['--check', '--apply'],
+    ['--check', '--yes'],
+    ['--check', '--wat'],
+  ]) {
     assert.throws(() => parseGraduationArgs(args), /Usage:.*--check\|--apply/s);
   }
 });
@@ -323,7 +334,7 @@ test('planning and applying reject deletion targets outside the two owned roots'
   assert.equal(existsSync(path.join(projectRoot, safe.receiptFile)), true);
 });
 
-test('--check reports without deletion and --apply returns the applied report', () => {
+test('--check reports without deletion and guarded --apply returns the applied report', async () => {
   const projectRoot = mkdtempProjectIsolated('graduate-frozen-command-');
   const item = retirement('command');
   createFiles(projectRoot, [item]);
@@ -332,9 +343,10 @@ test('--check reports without deletion and --apply returns the applied report', 
     loadAuthority: () => authority([item]),
     proveDelivery: () => ({ eligible: true, deliveryCommit: 'canonical-delivery' }),
     writeOutput: (value) => output.push(value),
+    writeDiagnostic: () => {},
   };
 
-  const checked = runGraduationCommand({
+  const checked = await runGraduationCommand({
     argv: ['--check', '--json'],
     projectRoot,
     ...dependencies,
@@ -343,14 +355,48 @@ test('--check reports without deletion and --apply returns the applied report', 
   assert.equal(existsSync(path.join(projectRoot, item.receiptFile)), true);
   assert.deepEqual(JSON.parse(output.pop()), checked);
 
-  const applied = runGraduationCommand({
-    argv: ['--apply', '--json'],
+  const confirmations = [];
+  const applied = await runGraduationCommand({
+    argv: ['--apply', '--yes', '--json'],
     projectRoot,
     ...dependencies,
+    confirmApply: async (options) => {
+      confirmations.push(options);
+      return { proceed: true, reason: 'yes-flag', count: options.targets.length };
+    },
   });
   assert.equal(applied.applied, true);
   assert.equal(existsSync(path.join(projectRoot, item.receiptFile)), false);
   assert.deepEqual(applied.removedReceipts, [item.receiptFile]);
+  assert.deepEqual(confirmations, [
+    {
+      targets: [item.receiptFile, item.evidenceFile],
+      targetLabel: 'retirement file',
+      yes: true,
+      log: dependencies.writeDiagnostic,
+      warn: dependencies.writeDiagnostic,
+    },
+  ]);
+});
+
+test('apply refusal leaves the complete validated batch untouched', async () => {
+  const projectRoot = mkdtempProjectIsolated('graduate-frozen-refused-');
+  const item = retirement('refused');
+  createFiles(projectRoot, [item]);
+
+  await assert.rejects(
+    runGraduationCommand({
+      argv: ['--apply'],
+      projectRoot,
+      loadAuthority: () => authority([item]),
+      proveDelivery: () => ({ eligible: true, deliveryCommit: 'canonical-delivery' }),
+      confirmApply: async () => ({ proceed: false, reason: 'non-tty-refused', count: 2 }),
+      writeOutput: () => assert.fail('a refused apply must not emit an applied report'),
+    }),
+    /apply refused by blast-radius guard/
+  );
+  assert.equal(existsSync(path.join(projectRoot, item.receiptFile)), true);
+  assert.equal(existsSync(path.join(projectRoot, item.evidenceFile)), true);
 });
 
 test('apply refuses a plan whose target disappeared after validation', () => {
@@ -381,7 +427,8 @@ test('weekly retirement graduation has bounded triggers and permissions', () => 
 
 test('workflow checks out complete trunk history and installs Node 22 dependencies', () => {
   const text = workflowText();
-  assert.match(text, /uses: actions\/checkout@v4/);
+  assert.match(text, /uses: actions\/checkout@v5/);
+  assert.match(text, /uses: actions\/setup-node@v5/);
   assert.match(text, /ref: trunk/);
   assert.match(text, /fetch-depth: 0/);
   assert.match(text, /node-version: 22/);
@@ -393,7 +440,7 @@ test('workflow checks before applying and exits before branch creation on an emp
   const check = text.indexOf('graduate:frozen-tests -- --check --json');
   const noWork = text.indexOf('eligibleCount === 0');
   const branch = text.indexOf('git switch -C automation/graduate-frozen-test-retirements');
-  const apply = text.indexOf('graduate:frozen-tests -- --apply --json');
+  const apply = text.indexOf('graduate:frozen-tests -- --apply --yes --json');
   assert.ok(check >= 0);
   assert.ok(noWork > check);
   assert.ok(branch > noWork);
@@ -401,7 +448,7 @@ test('workflow checks before applying and exits before branch creation on an emp
   assert.match(text, /has_work=false/);
   assert.match(text, /if: steps\.check\.outputs\.has_work == 'true'/);
   assert.match(text, /npm run --silent graduate:frozen-tests -- --check --json/);
-  assert.match(text, /npm run --silent graduate:frozen-tests -- --apply --json/);
+  assert.match(text, /npm run --silent graduate:frozen-tests -- --apply --yes --json/);
 });
 
 test('workflow runs focused guards and the normal quality gate before publishing', () => {
