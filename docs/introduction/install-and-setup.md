@@ -171,7 +171,7 @@ A successful start should:
 - `config/`
 - `skill/`
 - `hooks/` for legacy compatibility assets
-- `scripts/` (excluding `scripts/tests/**`, `scripts/maintenance/`, `scripts/articles/`, and `*.test.mjs` files)
+- `scripts/` (excluding `scripts/tests/**`, `scripts/maintenance/`, and `*.test.mjs` files)
 - `statusline/`
 - `docs/README.md`, `docs/QUICKSTART.md`, `docs/DESIGN.md`
 - `docs/guides/`

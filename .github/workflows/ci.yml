@@ -118,8 +118,6 @@ jobs:
       (github.event_name == 'pull_request' &&
        contains(github.event.pull_request.labels.*.name, 'ci-slow'))
     runs-on: ubuntu-latest
-    env:
-      AITM_MERMAID_PUPPETEER_CONFIG: .github/puppeteer-ci.json
     steps:
       - uses: actions/checkout@v5
         with:

@@ -1,3 +1,0 @@
-# Image Prompt: Technical Product Operations
-
-Create a polished editorial header image for an article about Technical Product Operations in agentic AI software delivery. Show a product-facing technical operator coordinating several parallel implementation workstreams through a visible backlog control surface. The image should feel like a modern engineering operations environment, not a sci-fi robot scene. Include visual motifs of backlog lanes, dependency lines, code traces, evidence checkmarks, and review gates. Tone: serious, clean, strategic, high-signal. Avoid humanoid robots, glowing brains, generic code rain, and vendor logos.

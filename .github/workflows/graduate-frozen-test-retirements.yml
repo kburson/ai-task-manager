@@ -32,7 +32,7 @@ jobs:
         id: check
         run: |
           mkdir -p .tmp
-          npm run graduate:frozen-tests -- --check --json > .tmp/frozen-retirements-check.json
+          npm run --silent graduate:frozen-tests -- --check --json > .tmp/frozen-retirements-check.json
           node --input-type=module <<'NODE'
           import { appendFileSync, readFileSync } from 'node:fs';
           const report = JSON.parse(readFileSync('.tmp/frozen-retirements-check.json', 'utf8'));
@@ -48,7 +48,7 @@ jobs:
         if: steps.check.outputs.has_work == 'true'
         run: |
           git switch -C automation/graduate-frozen-test-retirements origin/trunk
-          npm run graduate:frozen-tests -- --apply --json > .tmp/frozen-retirements-apply.json
+          npm run --silent graduate:frozen-tests -- --apply --json > .tmp/frozen-retirements-apply.json
 
       - name: Run retirement authority guards
         if: steps.check.outputs.has_work == 'true'

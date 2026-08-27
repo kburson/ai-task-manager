@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "path": "scripts/tests/integration/task-tracker/maintenance/lint-article-citations.test.mjs",
+  "reason": "Publishing subsystem extracted from the AITM package repository.",
+  "lastLiveSha256": "1455189f1bf827d733b1bd4adc8334034793bf588284d8f7d110134987e55b5b",
+  "evidence": "docs/evidence/temporary-test-retirements/2026-08-25-writing-studio-extraction.md"
+}

@@ -43,6 +43,8 @@ test('workflow checks before applying and exits before branch creation on an emp
   assert.ok(apply > branch);
   assert.match(text, /has_work=false/);
   assert.match(text, /if: steps\.check\.outputs\.has_work == 'true'/);
+  assert.match(text, /npm run --silent graduate:frozen-tests -- --check --json/);
+  assert.match(text, /npm run --silent graduate:frozen-tests -- --apply --json/);
 });
 
 test('workflow runs focused guards and the normal quality gate before publishing', () => {

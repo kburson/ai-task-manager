@@ -67,6 +67,7 @@ const retirementAuthority = loadFrozenRetirements({
   postSnapshotRecordPaths: postSnapshotAuthority.records.map(({ path: recordPath }) => recordPath),
   liveDiscoveredPaths: discovered,
 });
+const retiredPaths = new Set(retirementAuthority.retirements.map(({ path: testPath }) => testPath));
 const retiredBasenamesByLane = new Map(LANES.map((lane) => [lane, new Set()]));
 for (const { path: testPath } of retirementAuthority.retirements) {
   const lane = laneOf(testPath);
@@ -259,8 +260,9 @@ test('AC3/AC4: no pre-move file was dropped outside an explicit lane correction'
 
   for (const correction of corpusManifest.laneCorrections) {
     assert.ok(
-      manifest[correction.toLane].includes(correction.finalPath),
-      `${correction.finalPath} realizes the intentional ${correction.fromLane}→${correction.toLane} correction`
+      retiredPaths.has(correction.finalPath) ||
+        manifest[correction.toLane].includes(correction.finalPath),
+      `${correction.finalPath} realizes or validly retires the intentional ${correction.fromLane}→${correction.toLane} correction`
     );
   }
 });
