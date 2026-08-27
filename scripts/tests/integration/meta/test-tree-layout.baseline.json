@@ -3,7 +3,7 @@
   "_comment": "Current live AITM test-corpus regression floor. Every listed path must remain live in its recorded lane. Canonically placed additions are allowed; refresh this file in the same change as an intentional removal or relane.",
   "counts": {
     "unit": 773,
-    "integration": 141,
+    "integration": 138,
     "slow": 52
   },
   "lanes": {
@@ -785,12 +785,9 @@
     "integration": [
       "scripts/tests/integration/dev-env/verify-local-worktree.test.mjs",
       "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
-      "scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs",
       "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
       "scripts/tests/integration/meta/audit-story-tags.test.mjs",
-      "scripts/tests/integration/meta/frozen-test-retirements.test.mjs",
       "scripts/tests/integration/meta/package-test-corpus.test.mjs",
-      "scripts/tests/integration/meta/test-corpus-membership.test.mjs",
       "scripts/tests/integration/meta/test-tree-layout.test.mjs",
       "scripts/tests/integration/providers/transcript-resolver.test.mjs",
       "scripts/tests/integration/review/co-review-finalization.test.mjs",

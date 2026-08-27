@@ -27,7 +27,6 @@
     "test:unit:utc": "TZ=UTC node scripts/run-tests.mjs --lane unit",
     "test:coverage": "c8 node scripts/run-tests.mjs --lane all",
     "test:coverage:fast": "c8 node scripts/run-tests.mjs --lane fast",
-    "graduate:frozen-tests": "node scripts/maintenance/graduate-frozen-test-retirements.mjs",
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",

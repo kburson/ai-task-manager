@@ -32,21 +32,11 @@ function signals(result, testPath) {
     .sort();
 }
 
-const CHEAP_MEMBERSHIP_TEST = 'scripts/tests/integration/meta/test-corpus-membership.test.mjs';
+const CURRENT_TREE_TEST = 'scripts/tests/integration/meta/test-tree-layout.test.mjs';
 const EXPENSIVE_PACKAGE_TEST = 'scripts/tests/integration/meta/package-test-corpus.test.mjs';
-const TREE_LAYOUT_TEST = 'scripts/tests/integration/meta/test-tree-layout.test.mjs';
-const FROZEN_RETIREMENT_TEST = 'scripts/tests/integration/meta/frozen-test-retirements.test.mjs';
-const GRADUATION_TEST =
-  'scripts/tests/integration/maintenance/graduate-frozen-test-retirements.test.mjs';
-const RETIREMENT_GUARDS = [
-  CHEAP_MEMBERSHIP_TEST,
-  EXPENSIVE_PACKAGE_TEST,
-  TREE_LAYOUT_TEST,
-  FROZEN_RETIREMENT_TEST,
-  GRADUATION_TEST,
-].sort();
 const CORPUS_DISCOVERED = [
-  ...RETIREMENT_GUARDS,
+  CURRENT_TREE_TEST,
+  EXPENSIVE_PACKAGE_TEST,
   'scripts/tests/unit/lib/live.test.mjs',
   'scripts/tests/integration/lib/live.test.mjs',
   'scripts/tests/slow/lib/live.test.mjs',
@@ -277,7 +267,7 @@ describe('manifest fail-closed validation', () => {
   }
 });
 
-describe('checked-in corpus membership selection', () => {
+describe('checked-in current-tree selection', () => {
   test('#1413: every literal checked-in manifest test path exists', () => {
     const missing = CHECKED_IN_MANIFEST.rules
       .flatMap((rule) => rule.tests ?? [])
@@ -291,27 +281,27 @@ describe('checked-in corpus membership selection', () => {
     );
   });
 
-  test('a test content edit selects itself and the cheap membership guard', (t) => {
+  test('a test content edit selects itself and the current-tree guard', (t) => {
     const projectRoot = corpusSelectionProject(t);
     const changed = 'scripts/tests/unit/lib/live.test.mjs';
 
     const result = selectCorpus(projectRoot, [changed]);
 
-    assert.deepEqual(result.tests, [changed, CHEAP_MEMBERSHIP_TEST].sort());
+    assert.deepEqual(result.tests, [changed, CURRENT_TREE_TEST].sort());
     assert.ok(signals(result, changed).includes('changed-test'));
-    assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
-      'test corpus membership authority change',
+    assert.deepEqual(manifestReasons(result, CURRENT_TREE_TEST), [
+      'current test tree authority change',
     ]);
     assert.equal(result.escalated, false);
   });
 
-  test('a deleted integration test adds the cheap guard and retains its former lane', (t) => {
+  test('a deleted integration test selects the current-tree guard and retains its former lane', (t) => {
     const projectRoot = corpusSelectionProject(t);
     const deleted = 'scripts/tests/integration/lib/deleted.test.mjs';
 
     const result = selectCorpus(projectRoot, [deleted]);
 
-    assert.ok(result.tests.includes(CHEAP_MEMBERSHIP_TEST));
+    assert.ok(result.tests.includes(CURRENT_TREE_TEST));
     assert.deepEqual(result.lanes, ['integration']);
     assert.equal(result.escalated, true);
     assert.ok(
@@ -319,29 +309,12 @@ describe('checked-in corpus membership selection', () => {
         return changedPath === deleted && signal === 'deleted-test-lane';
       })
     );
-    assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
-      'test corpus membership authority change',
+    assert.deepEqual(manifestReasons(result, CURRENT_TREE_TEST), [
+      'current test tree authority change',
     ]);
   });
 
-  for (const change of ['added', 'modified', 'deleted']) {
-    test(`${change} registry JSON selects the cheap guard without lane escalation`, (t) => {
-      const projectRoot = corpusSelectionProject(t);
-      const record = `scripts/tests/fixtures/test-corpus-post-snapshot/unit/lib/${change}.test.mjs.json`;
-      if (change !== 'deleted') writeFixture(projectRoot, record);
-
-      const result = selectCorpus(projectRoot, [record]);
-
-      assert.deepEqual(result.tests, [CHEAP_MEMBERSHIP_TEST]);
-      assert.deepEqual(result.lanes, []);
-      assert.equal(result.escalated, false);
-      assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
-        'test corpus membership authority change',
-      ]);
-    });
-  }
-
-  test('a rename selects the cheap guard while the old path retains former-lane escalation', (t) => {
+  test('a rename selects the current-tree guard while the old path retains lane escalation', (t) => {
     const projectRoot = corpusSelectionProject(t);
     const oldPath = 'scripts/tests/integration/lib/renamed.test.mjs';
     const newPath = 'scripts/tests/unit/lib/live.test.mjs';
@@ -349,79 +322,21 @@ describe('checked-in corpus membership selection', () => {
     const result = selectCorpus(projectRoot, [oldPath, newPath]);
 
     assert.ok(result.tests.includes(newPath));
-    assert.ok(result.tests.includes(CHEAP_MEMBERSHIP_TEST));
+    assert.ok(result.tests.includes(CURRENT_TREE_TEST));
     assert.deepEqual(result.lanes, ['integration']);
     assert.equal(result.escalated, true);
-    assert.ok(
-      result.reasons.some(({ changedPath, signal }) => {
-        return changedPath === oldPath && signal === 'deleted-test-lane';
-      })
-    );
-    assert.deepEqual(
-      result.reasons
-        .filter(({ signal, test: selected }) => {
-          return signal === 'manifest' && selected === CHEAP_MEMBERSHIP_TEST;
-        })
-        .map(({ changedPath }) => changedPath),
-      [oldPath, newPath].sort()
-    );
   });
 
-  test('the frozen pre-move authority selects both corpus guards', (t) => {
+  test('the current tree baseline selects the current-tree guard', (t) => {
     const projectRoot = corpusSelectionProject(t);
+    const baseline = 'scripts/tests/integration/meta/test-tree-layout.baseline.json';
+    writeFixture(projectRoot, baseline);
+    const result = selectCorpus(projectRoot, [baseline]);
 
-    const result = selectCorpus(projectRoot, ['scripts/tests/fixtures/test-corpus-pre-move.json']);
-
-    assert.deepEqual(result.tests, [CHEAP_MEMBERSHIP_TEST, EXPENSIVE_PACKAGE_TEST].sort());
-    assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
-      'frozen test corpus authority change',
-    ]);
-    assert.deepEqual(manifestReasons(result, EXPENSIVE_PACKAGE_TEST), [
-      'frozen test corpus authority change',
+    assert.deepEqual(result.tests, [CURRENT_TREE_TEST]);
+    assert.deepEqual(manifestReasons(result, CURRENT_TREE_TEST), [
+      'current test tree authority change',
     ]);
     assert.equal(result.escalated, false);
   });
-
-  for (const change of ['added', 'modified', 'deleted']) {
-    test(`${change} frozen retirement receipt selects every focused retirement guard`, (t) => {
-      const projectRoot = corpusSelectionProject(t);
-      const receipt = `scripts/tests/fixtures/test-corpus-frozen-retirements/unit/lib/${change}.test.mjs.json`;
-      if (change !== 'deleted') writeFixture(projectRoot, receipt);
-
-      const result = selectCorpus(projectRoot, [receipt]);
-
-      assert.deepEqual(result.tests, RETIREMENT_GUARDS);
-      assert.deepEqual(result.lanes, []);
-      assert.equal(result.escalated, false);
-    });
-  }
-
-  test('temporary retirement evidence selects every focused retirement guard', (t) => {
-    const projectRoot = corpusSelectionProject(t);
-    const evidence =
-      'docs/evidence/temporary-test-retirements/2026-08-25-writing-studio-extraction.md';
-    writeFixture(projectRoot, evidence);
-
-    const result = selectCorpus(projectRoot, [evidence]);
-
-    assert.deepEqual(result.tests, RETIREMENT_GUARDS);
-    assert.deepEqual(result.lanes, []);
-    assert.equal(result.escalated, false);
-  });
-
-  for (const source of [
-    'scripts/maintenance/graduate-frozen-test-retirements.mjs',
-    '.github/workflows/graduate-frozen-test-retirements.yml',
-  ]) {
-    test(`${source} selects every focused retirement guard`, (t) => {
-      const projectRoot = corpusSelectionProject(t);
-      writeFixture(projectRoot, source);
-
-      const result = selectCorpus(projectRoot, [source]);
-
-      assert.deepEqual(result.tests, RETIREMENT_GUARDS);
-      assert.deepEqual(result.lanes, []);
-      assert.equal(result.escalated, false);
-    });
-  }
 });
