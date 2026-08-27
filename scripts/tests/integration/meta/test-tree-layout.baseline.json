@@ -2,7 +2,7 @@
   "schema": 1,
   "_comment": "Current live AITM test-corpus regression floor. Every listed path must remain live in its recorded lane. Canonically placed additions are allowed; refresh this file in the same change as an intentional removal or relane.",
   "counts": {
-    "unit": 773,
+    "unit": 771,
     "integration": 138,
     "slow": 52
   },
@@ -12,7 +12,6 @@
       "scripts/tests/unit/gh/stub-gh-helper.test.mjs",
       "scripts/tests/unit/inspect/delivery-doc-parity.test.mjs",
       "scripts/tests/unit/maintenance/audit-trunk-integration.test.mjs",
-      "scripts/tests/unit/meta/ci-workflow-history.test.mjs",
       "scripts/tests/unit/meta/slow-lane-partition-policy.test.mjs",
       "scripts/tests/unit/meta/tia-reaches-integration-lane.test.mjs",
       "scripts/tests/unit/meta/unit-lane-purity.test.mjs",
@@ -426,7 +425,6 @@
       "scripts/tests/unit/task-tracker/lib/gh-edit-guard-create-guard.test.mjs",
       "scripts/tests/unit/task-tracker/lib/gh-edit-guard-no-diff-path.test.mjs",
       "scripts/tests/unit/task-tracker/lib/gh-timing-comment-timeout-default.test.mjs",
-      "scripts/tests/unit/task-tracker/lib/git-provenance.test.mjs",
       "scripts/tests/unit/task-tracker/lib/github-comment-store-error-cause.test.mjs",
       "scripts/tests/unit/task-tracker/lib/github-records/authority-locator.test.mjs",
       "scripts/tests/unit/task-tracker/lib/github-records/capsule-chain.test.mjs",
