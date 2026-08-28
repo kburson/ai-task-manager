@@ -75,9 +75,14 @@ test('production runtime fetches and pins one fresh origin/trunk snapshot', asyn
       },
     }
   );
-  assert.equal(await runtime.liveObservationDeps.readTrunkSha(), 'a'.repeat(40));
-  assert.equal(await runtime.liveObservationDeps.readTrunkSha(), 'a'.repeat(40));
-  assert.equal(await runtime.liveObservationDeps.isOnTrunk('b'.repeat(40)), true);
+  const [first, second, onTrunk] = await Promise.all([
+    runtime.liveObservationDeps.readTrunkSha(),
+    runtime.liveObservationDeps.readTrunkSha(),
+    runtime.liveObservationDeps.isOnTrunk('b'.repeat(40)),
+  ]);
+  assert.equal(first, 'a'.repeat(40));
+  assert.equal(second, 'a'.repeat(40));
+  assert.equal(onTrunk, true);
   assert.deepEqual(calls, [
     ['git', 'fetch', 'origin', 'trunk'],
     ['git', 'rev-parse', 'origin/trunk'],

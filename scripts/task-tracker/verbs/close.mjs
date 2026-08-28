@@ -22,7 +22,7 @@ import {
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
-import { runDispose } from '../lib/close-disposition.mjs';
+import { parseDisposition, runDispose } from '../lib/close-disposition.mjs';
 import { readTerminalDisposition, writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import {
   hasReviewApprovedMarker,
@@ -37,7 +37,12 @@ import {
   makeCloseTrunkRefResolver,
 } from '../lib/full-auto-merge-execute.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
-import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
+import {
+  parseVerificationReceipt,
+  parseValidatedVerificationReceipts,
+  requiredTestReceiptClassifications,
+  validateVerificationReceipt,
+} from '../lib/verification-receipt.mjs';
 import {
   parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
@@ -83,9 +88,420 @@ import {
   hasAcceptedReviewEvidence,
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
-import { gql } from '../../gh/lib/github-projects.mjs';
+import { gql, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
+import { parseBlockedByStrict } from '../lib/blocked-marker.mjs';
+import { writeTerminalStatusDone } from '../lib/terminal-disposition.mjs';
+import {
+  authorizeIncorporatedClose,
+  projectExactDeliveryReceipt,
+  projectIncorporatedCloseReviewAuthority,
+  runIncorporatedClose,
+} from '../lib/incorporated-close.mjs';
+import {
+  authorizeIncidentEpicClose,
+  INCIDENT_EPIC_TERMINAL_ISSUES,
+  parseCloseOfAssertion,
+} from '../lib/incident-epic-close.mjs';
+import { resolveApprovedIncidentLedger } from '../lib/delivery-incident-reconciliation.mjs';
+import { createProductionRuntime } from './incident-ledger.mjs';
 
 const closePexec = promisify(execFile);
+const INCIDENT_AUTHORITY_TYPES = new Set([
+  'delivery-incident-ledger',
+  'delivery-incident-ledger-approval-grant',
+  'delivery-incident-ledger-approval',
+  'delivery-incident-ledger-owner',
+  'delivery-incident-incorporated',
+]);
+
+function closeAuditMarker(recordId) {
+  return `<!-- aitm-incorporated-close-audit record-id="${recordId}" -->`;
+}
+
+async function readProjectCloseValues({ cfg, issueNumber, read = projectValuesForIssue }) {
+  return read({
+    cfg,
+    fieldDefs: [
+      { key: 'disposition', type: 'single_select' },
+      { key: 'blockedBy', type: 'text' },
+    ],
+    issueNumber,
+  });
+}
+
+function normalizeIncorporatedReviewAuthorization(value, { requireStanding } = {}) {
+  const coherent =
+    (value?.mode === 'full-auto' && ['session', 'project'].includes(value.source)) ||
+    (value?.mode === 'human' &&
+      ['human-evidence', 'directory-human-evidence'].includes(value.source));
+  if (!coherent || (requireStanding === true && value.standing !== true)) {
+    throw new Error('incorporated-close:review-authorization');
+  }
+  return Object.freeze({ mode: value.mode, source: value.source });
+}
+
+export function resolveIncorporatedReviewEvidence({
+  body,
+  issueNumber,
+  expectedSha,
+  session = loadSession(currentSessionId()),
+  projectConfig = rawProjectConfig(),
+  durableReviewAuthority = null,
+  reviewAuthorizationResolver = resolveReviewAuthorization,
+} = {}) {
+  let receipts;
+  try {
+    receipts = parseValidatedVerificationReceipts(body, { expectedIssue: issueNumber });
+  } catch {
+    throw new Error('incorporated-close:accepted-evidence');
+  }
+  const byStage = (stage) => receipts.filter((receipt) => receipt.stage === stage);
+  const testReceipts = byStage('test');
+  const reviewReceipts = byStage('review');
+  if (testReceipts.length !== 1 || reviewReceipts.length !== 1) {
+    throw new Error('incorporated-close:accepted-evidence');
+  }
+  const validateExact = (receipt, stage, required = []) => {
+    if (receipt.commitSha !== expectedSha) return false;
+    return validateVerificationReceipt({
+      receipt,
+      expectedIssue: issueNumber,
+      expectedStage: stage,
+      fingerprint: { commitSha: expectedSha, environment: receipt.environment },
+      required,
+    }).ok;
+  };
+  if (
+    !validateExact(testReceipts[0], 'test', requiredTestReceiptClassifications(testReceipts[0])) ||
+    !validateExact(reviewReceipts[0], 'review')
+  ) {
+    throw new Error('incorporated-close:accepted-evidence');
+  }
+  let acceptedSha;
+  try {
+    acceptedSha = resolveAcceptedDeliveryHead({
+      localHeadSha: expectedSha,
+      testReceiptSha: testReceipts[0].commitSha,
+      reviewReceiptSha: reviewReceipts[0].commitSha,
+      agentReviewPassed: isAgentReviewComplete(body || ''),
+    });
+  } catch {
+    throw new Error('incorporated-close:accepted-evidence');
+  }
+  let authorization;
+  if (durableReviewAuthority !== null) {
+    if (durableReviewAuthority.acceptedSha !== acceptedSha) {
+      throw new Error('incorporated-close:review-authorization');
+    }
+    authorization = normalizeIncorporatedReviewAuthorization(
+      durableReviewAuthority.reviewAuthorization
+    );
+  } else {
+    const approval = parseReviewApprovedMarker(body || '');
+    authorization = reviewAuthorizationResolver({
+      session,
+      projectConfig,
+      acceptedHeadSha: acceptedSha,
+      humanApprovalEvidence:
+        approval && !approval.fullAuto
+          ? { accepted: true, approvedSha: approval.approvedSha }
+          : null,
+      fullAutoApprovalEvidence: approval?.fullAuto
+        ? { accepted: true, approvedSha: approval.approvedSha }
+        : null,
+    });
+    authorization = normalizeIncorporatedReviewAuthorization(authorization, {
+      requireStanding: true,
+    });
+  }
+  return Object.freeze({
+    acceptedSha,
+    reviewAuthorizationValid: true,
+    reviewAuthorization: authorization,
+  });
+}
+
+export async function prepareIncorporatedCloseAuthorization({
+  ctx,
+  issueNumber,
+  convergenceIssue,
+} = {}) {
+  const { cfg, projectDir } = ctx.projectConfig ?? ctx;
+  const runtime =
+    ctx.incidentRuntime ||
+    createProductionRuntime({
+      cfg,
+      projectDir,
+      getIssueBoardState: (number) => (ctx.githubClient ?? ctx).getIssueBoardState(number),
+    });
+  const [convergenceRecords, ownerRecords, issueRecords] = await Promise.all([
+    runtime.listConvergenceRecords(),
+    runtime.listOwnerRecords(),
+    runtime.listIssueRecords(issueNumber),
+  ]);
+  const records = [...convergenceRecords, ...ownerRecords, ...issueRecords].filter(({ envelope }) =>
+    INCIDENT_AUTHORITY_TYPES.has(envelope.recordType)
+  );
+  const resolve = ctx.resolveApprovedIncidentLedger || resolveApprovedIncidentLedger;
+  const authority = resolve({
+    records,
+    repository: cfg.repo,
+    convergenceIssue,
+    incidentIssue: 939,
+  });
+  const row = authority.ledgerPayload.rows.find(
+    (candidate) => candidate.issueNumber === issueNumber
+  );
+  if (!row) throw new Error('incorporated-close:approved-row');
+  const durableReviewAuthority = projectIncorporatedCloseReviewAuthority({
+    records: issueRecords,
+    repository: cfg.repo,
+    issueNumber,
+    convergenceIssue,
+    ledgerId: authority.ledgerId,
+    acceptedSha: row.acceptedSha,
+  });
+  const trunkSha = await runtime.liveObservationDeps.readTrunkSha();
+  const [issue, pullRequest, sourceOnTrunk, comments, values] = await Promise.all([
+    runtime.liveObservationDeps.fetchIssue(issueNumber),
+    runtime.liveObservationDeps.fetchPullRequest(row.prNumber),
+    runtime.liveObservationDeps.isOnTrunk(row.mergeSha ?? row.acceptedSha),
+    runtime.liveObservationDeps.listComments(issueNumber),
+    readProjectCloseValues({
+      cfg,
+      issueNumber,
+      read: ctx.projectValuesForIssue || projectValuesForIssue,
+    }),
+  ]);
+  const receiptProjection = projectExactDeliveryReceipt({
+    comments,
+    repository: cfg.repo,
+    issueNumber,
+    prNumber: row.prNumber,
+    acceptedSha: row.acceptedSha,
+  });
+  const reviewEvidence = resolveIncorporatedReviewEvidence({
+    body: issue.body || '',
+    issueNumber,
+    expectedSha: row.acceptedSha,
+    session: loadSession(currentSessionId()),
+    projectConfig: rawProjectConfig(),
+    durableReviewAuthority,
+    reviewAuthorizationResolver: ctx.resolveReviewAuthorization || resolveReviewAuthorization,
+  });
+  return (ctx.authorizeIncorporatedClose || authorizeIncorporatedClose)({
+    repository: cfg.repo,
+    issueNumber,
+    convergenceIssue,
+    records,
+    live: {
+      issueNumber,
+      issueState: String(issue.state || '').toUpperCase(),
+      issueStateReason: String(issue.stateReason || '').toUpperCase(),
+      closeTransactionPresent: issueRecords.some(
+        ({ envelope }) => envelope.recordType === 'delivery-incident-incorporated-close'
+      ),
+      acceptedEvidenceValid: reviewEvidence.acceptedSha === row.acceptedSha,
+      acceptedSha: reviewEvidence.acceptedSha,
+      reviewAuthorizationValid: reviewEvidence.reviewAuthorizationValid,
+      reviewAuthorization: reviewEvidence.reviewAuthorization,
+      pullRequest,
+      sourceOnTrunk,
+      trunkSha,
+      deliveryReceiptStatus: receiptProjection.status,
+      blockerCarriers: {
+        labelCleared: !(issue.labels || []).some(
+          (label) => String(label?.name || label).toUpperCase() === 'BLOCKED'
+        ),
+        fieldCleared: String(values.blockedBy || '') === '',
+        bodyCleared: parseBlockedByStrict(issue.body || '').length === 0,
+      },
+    },
+    deps: { resolveApprovedIncidentLedger: () => authority },
+  });
+}
+
+function incorporatedProductionDeps({ ctx, issueNumber, runtime }) {
+  const { cfg, projectDir, pexec } = ctx.projectConfig ?? ctx;
+  const githubClient = ctx.githubClient ?? ctx;
+  const issueRef = `#${issueNumber}`;
+  const listComments = () => runtime.liveObservationDeps.listComments(issueNumber);
+  return {
+    listIssueRecords: () => runtime.listIssueRecords(issueNumber),
+    appendIssueRecord: ({ body }) => runtime.appendIssueRecord({ issueNumber, body }),
+    appendCheckpointRecord: ({ body }) => runtime.appendIssueRecord({ issueNumber, body }),
+    flushTiming: () =>
+      (ctx.timingRecorder ?? ctx).flushAndForgetQueueFor?.(issueRef) ?? Promise.resolve(),
+    readDisposition: () =>
+      (ctx.readTerminalDisposition || readTerminalDisposition)({ cfg, issueNumber }),
+    writeDisposition: ({ disposition }) =>
+      (ctx.writeTerminalDisposition || writeTerminalDisposition)({
+        cfg,
+        issueNumber,
+        disposition,
+      }),
+    readStatus: async () => {
+      const status = await githubClient.getIssueBoardState(issueNumber);
+      return String(status || '').toLowerCase() === 'done' ? 'Done' : status;
+    },
+    writeStatusDone: () =>
+      (ctx.writeTerminalStatusDone || writeTerminalStatusDone)({ cfg, issueNumber }),
+    readIssueCloseState: async () => {
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'state,stateReason'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(stdout);
+    },
+    closeIssueCompleted: async () => {
+      await pexec('gh', ['issue', 'close', String(issueNumber), '-R', cfg.repo], {
+        timeout: GH_API_TIMEOUT_MS,
+      });
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'state,stateReason'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const readback = JSON.parse(stdout);
+      if (
+        String(readback.state).toUpperCase() !== 'CLOSED' ||
+        String(readback.stateReason).toUpperCase() !== 'COMPLETED'
+      ) {
+        throw new Error('incorporated-close:issue-readback');
+      }
+    },
+    hasAudit: async ({ recordId }) =>
+      (await listComments()).some((comment) => comment.body.includes(closeAuditMarker(recordId))),
+    postAudit: ({ authorization, recordId }) =>
+      pexec(
+        'gh',
+        [
+          'issue',
+          'comment',
+          String(issueNumber),
+          '-R',
+          cfg.repo,
+          '--body',
+          `${closeAuditMarker(recordId)}\nClosed as Incorporated under approved convergence ledger ${authorization.ledgerId} on #${authorization.convergenceIssue}.`,
+        ],
+        { timeout: GH_API_TIMEOUT_MS }
+      ),
+    isBindingReleased: async () => {
+      const result = (ctx.inspectTerminalIssueBindingRelease || inspectTerminalIssueBindingRelease)(
+        {
+          projectDir,
+          issue: issueRef,
+        }
+      );
+      if (result.status === 'conflict') throw new Error('incorporated-close:binding-conflict');
+      return result.status === 'released';
+    },
+    releaseBinding: async () => {
+      const inspect = (
+        ctx.inspectTerminalIssueBindingRelease || inspectTerminalIssueBindingRelease
+      )({
+        projectDir,
+        issue: issueRef,
+      });
+      if (inspect.status === 'incomplete') {
+        (ctx.resumeTerminalIssueBindingRelease || resumeTerminalIssueBindingRelease)({
+          projectDir,
+          issue: issueRef,
+        });
+      } else if (inspect.status === 'pending') {
+        releaseClosedBinding({ ctx, projectDir, issue: issueRef });
+      } else if (inspect.status !== 'released') {
+        throw new Error('incorporated-close:binding-conflict');
+      }
+    },
+  };
+}
+
+export async function runCloseIncorporatedLane({ ctx, issueNumber, convergenceIssue } = {}) {
+  const prepare =
+    ctx.prepareIncorporatedCloseAuthorization || prepareIncorporatedCloseAuthorization;
+  const authorization = await prepare({ ctx, issueNumber, convergenceIssue });
+  let mutationDeps = ctx.incorporatedCloseDeps;
+  if (!mutationDeps) {
+    const runtime =
+      ctx.incidentRuntime ||
+      createProductionRuntime({
+        cfg: (ctx.projectConfig ?? ctx).cfg,
+        projectDir: (ctx.projectConfig ?? ctx).projectDir,
+        getIssueBoardState: (number) => (ctx.githubClient ?? ctx).getIssueBoardState(number),
+      });
+    mutationDeps = incorporatedProductionDeps({ ctx, issueNumber, runtime });
+  }
+  return (ctx.runIncorporatedClose || runIncorporatedClose)({
+    authorization,
+    deps: mutationDeps,
+  });
+}
+
+export async function authorizeIncidentEpicCloseForCommand({
+  ctx,
+  issueNumber,
+  explicitConvergenceIssue = null,
+} = {}) {
+  const { cfg, projectDir } = ctx.projectConfig ?? ctx;
+  const githubClient = ctx.githubClient ?? ctx;
+  const runtime =
+    ctx.incidentRuntime ||
+    createProductionRuntime({
+      cfg,
+      projectDir,
+      getIssueBoardState: (number) => githubClient.getIssueBoardState(number),
+    });
+  const ownerRecords = (await runtime.listIssueRecords(issueNumber)).filter(
+    ({ envelope }) => envelope.recordType === 'delivery-incident-ledger-owner'
+  );
+  if (ownerRecords.length === 0) {
+    if (issueNumber === 939) throw new Error('incident-epic-close:missing-owner');
+    if (explicitConvergenceIssue !== null) throw new Error('incident-epic-close:non-incident-of');
+    return null;
+  }
+  const [convergenceRecords, incorporatedSets, liveEntries] = await Promise.all([
+    runtime.listConvergenceRecords(),
+    Promise.all(INCIDENT_EPIC_TERMINAL_ISSUES.map((number) => runtime.listIssueRecords(number))),
+    Promise.all(
+      INCIDENT_EPIC_TERMINAL_ISSUES.map(async (number) => {
+        const [issue, boardState, values] = await Promise.all([
+          runtime.liveObservationDeps.fetchIssue(number),
+          githubClient.getIssueBoardState(number),
+          readProjectCloseValues({
+            cfg,
+            issueNumber: number,
+            read: ctx.projectValuesForIssue || projectValuesForIssue,
+          }),
+        ]);
+        return [
+          number,
+          {
+            issueState: String(issue.state || '').toUpperCase(),
+            issueStateReason: String(issue.stateReason || '').toUpperCase(),
+            boardState: String(boardState || '').toLowerCase() === 'done' ? 'Done' : boardState,
+            disposition: values.disposition || '',
+          },
+        ];
+      })
+    ),
+  ]);
+  return (ctx.authorizeIncidentEpicClose || authorizeIncidentEpicClose)({
+    repository: cfg.repo,
+    incidentIssue: issueNumber,
+    explicitConvergenceIssue,
+    ownerRecords,
+    records: [...convergenceRecords, ...ownerRecords, ...incorporatedSets.flat()].filter(
+      ({ envelope }) => INCIDENT_AUTHORITY_TYPES.has(envelope.recordType)
+    ),
+    liveOutcomes: Object.fromEntries(liveEntries),
+    deps: {
+      resolveApprovedIncidentLedger:
+        ctx.resolveApprovedIncidentLedger || resolveApprovedIncidentLedger,
+    },
+  });
+}
 
 function closeBaseRef(cfg) {
   return (
@@ -582,23 +998,13 @@ export async function verbClose(ctx) {
   // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
   // audit rows that the noop/close-issue short-circuits skip get replayed.
   const repair = rest.includes('--repair');
-
-  // #208 — bind-mismatch check moved to shared preflight (dispatcher).
-  if (!s.active && target) {
-    s = {
-      ...s,
-      active: target,
-      lastActive: target,
-      entryStartTs: nowIso(),
-      wordsAtEntryStart: 0,
-    };
-    saveState(s, statePath);
-  }
   if (!closeTarget) {
     await drainQueueOnce();
     console.log('no active task');
     return;
   }
+
+  const explicitOf = parseCloseOfAssertion(rest);
 
   // #761 — disposition close-lane. `close --as duplicate --of <M>` /
   // `close --as not-planned` close the issue WITHOUT the Done DoD/commit-trace
@@ -607,14 +1013,30 @@ export async function verbClose(ctx) {
   // and return here, before any shared gate state below is read.
   const asIdx = rest.indexOf('--as');
   if (asIdx !== -1) {
-    await drainQueueOnce();
     const disposition = rest[asIdx + 1];
-    const ofIdx = rest.indexOf('--of');
-    const ofRef = ofIdx !== -1 ? rest[ofIdx + 1] : '';
+    const parsedDisposition = parseDisposition({ reason: disposition, of: explicitOf });
+    if (parsedDisposition.key === 'incorporated') {
+      const result = await runCloseIncorporatedLane({
+        ctx,
+        issueNumber: Number(closeIssueNum),
+        convergenceIssue: explicitOf,
+      });
+      try {
+        clearActive(statePath);
+      } catch {
+        /* terminal binding ledger remains authoritative */
+      }
+      console.log(
+        `Closed ${closeTarget} as Incorporated under #${result.convergenceIssue} ` +
+          `(ledger ${result.ledgerId}, record ${result.recordId}).`
+      );
+      return result;
+    }
+    await drainQueueOnce();
     const result = await runDispose({
       issueNumber: closeIssueNum,
-      reason: disposition,
-      of: ofRef,
+      reason: parsedDisposition.key,
+      of: parsedDisposition.of,
       repo: cfg.repo,
       projectId: cfg.projectId,
       cfg,
@@ -644,6 +1066,30 @@ export async function verbClose(ctx) {
         ` — retained in Done, stateReason=${result.stateReason}.`
     );
     return;
+  }
+
+  // Incident-epic terminal authority is additive to the native child guard.
+  // Discover it from the target's owner record before local state, timing,
+  // board, issue, label, or binding mutation. A bare ordinary close is allowed
+  // only when no owner exists; an explicit --of is an exact assertion.
+  if (Number(closeIssueNum) === 939 || explicitOf !== null) {
+    await (ctx.authorizeIncidentEpicCloseForCommand || authorizeIncidentEpicCloseForCommand)({
+      ctx,
+      issueNumber: Number(closeIssueNum),
+      explicitConvergenceIssue: explicitOf,
+    });
+  }
+
+  // #208 — bind-mismatch check moved to shared preflight (dispatcher).
+  if (!s.active && target) {
+    s = {
+      ...s,
+      active: target,
+      lastActive: target,
+      entryStartTs: nowIso(),
+      wordsAtEntryStart: 0,
+    };
+    saveState(s, statePath);
   }
 
   const configuredReviewToDoneGate = resolveGate('reviewToDone', {

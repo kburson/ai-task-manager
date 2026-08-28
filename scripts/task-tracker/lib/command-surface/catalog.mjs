@@ -325,10 +325,10 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   close: contract(
     [
-      'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; disposition close requires a valid --as mode.',
+      'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; Incorporated close requires an exact approved incident ledger and --of owner.',
     ],
     [
-      'Flushes timing and closes through Done, or records a duplicate/not-planned disposition and removes the issue from the board.',
+      'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [

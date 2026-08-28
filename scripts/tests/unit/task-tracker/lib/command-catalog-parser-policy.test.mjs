@@ -30,7 +30,7 @@ test('task metadata matches high-risk verb parser surfaces', () => {
   }
 
   assert.ok(argumentNames('reconcile').some((name) => name.includes('backfill')));
-  for (const expected of ['--as <duplicate|not-planned>', '--of <N>']) {
+  for (const expected of ['--as <duplicate|not-planned|incorporated>', '--of <N>']) {
     assert.ok(argumentNames('close').includes(expected), `close: ${expected}`);
   }
   assert.ok(argumentNames('fleet').includes('[prune | release-closed-binding #N]'));

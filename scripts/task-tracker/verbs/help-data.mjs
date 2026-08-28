@@ -465,7 +465,7 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary: 'Close the active or specified task (runs the pre-close gate).',
     usage:
-      '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned] [--of <N>]',
+      '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
@@ -475,13 +475,22 @@ export const VERB_REFERENCE = {
       },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
       {
-        flag: '--as <duplicate|not-planned>',
-        desc: 'close with a non-Done disposition instead of the delivery gate',
+        flag: '--as <duplicate|not-planned|incorporated>',
+        desc: 'close as duplicate/not-planned, or use the approved Incorporated convergence lane',
       },
-      { flag: '--of <N>', desc: 'canonical issue for the duplicate disposition' },
+      {
+        flag: '--of <N>',
+        desc: 'surviving duplicate, required Incorporated owner, or optional exact incident owner assertion',
+      },
     ],
     exitCodes: [{ code: 1, meaning: 'pre-close gate refused (unchecked boxes / dirty tree)' }],
-    examples: ['/task close', '/task close 667 --answer yes', '/task close 708 --repair'],
+    examples: [
+      '/task close',
+      '/task close 667 --answer yes',
+      '/task close 708 --repair',
+      '/task close 1403 --as incorporated --of 1381',
+      '/task close 939 --of 1381',
+    ],
   },
   'inflate-estimate': {
     topic: 'board',

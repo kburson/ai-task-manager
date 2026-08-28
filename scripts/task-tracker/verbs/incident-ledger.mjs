@@ -78,6 +78,7 @@ export function createProductionRuntime(ctx, deps = {}) {
   const projectDir = ctx.projectDir;
   const repository = ctx.cfg.repo;
   let pinnedTrunkSha = null;
+  let pinnedTrunkPromise = null;
   const graphql = ({ query, variables }) => gql(query, variables).then((data) => ({ data }));
   const listRecords = async (issue) =>
     (
@@ -112,10 +113,21 @@ export function createProductionRuntime(ctx, deps = {}) {
   };
   const liveObservationDeps = {
     async readTrunkSha() {
-      if (pinnedTrunkSha === null) {
-        await run('git', ['fetch', 'origin', 'trunk'], { cwd: projectDir });
-        const { stdout } = await run('git', ['rev-parse', 'origin/trunk'], { cwd: projectDir });
-        pinnedTrunkSha = String(stdout).trim();
+      if (pinnedTrunkSha !== null) return pinnedTrunkSha;
+      if (pinnedTrunkPromise === null) {
+        pinnedTrunkPromise = (async () => {
+          await run('git', ['fetch', 'origin', 'trunk'], { cwd: projectDir });
+          const { stdout } = await run('git', ['rev-parse', 'origin/trunk'], {
+            cwd: projectDir,
+          });
+          return String(stdout).trim();
+        })();
+      }
+      try {
+        pinnedTrunkSha = await pinnedTrunkPromise;
+      } catch (error) {
+        pinnedTrunkPromise = null;
+        throw error;
       }
       return pinnedTrunkSha;
     },
@@ -127,7 +139,7 @@ export function createProductionRuntime(ctx, deps = {}) {
         '-R',
         repository,
         '--json',
-        'state,body,labels',
+        'state,stateReason,body,labels',
       ]);
       return parseGhJson(stdout);
     },
@@ -183,6 +195,7 @@ export function createProductionRuntime(ctx, deps = {}) {
     listOwnerRecords: () => listRecords(939),
     appendConvergenceRecord: ({ body }) => appendRecord({ issue: 1381, body }),
     appendOwnerRecord: ({ body }) => appendRecord({ issue: 939, body }),
+    appendIssueRecord: ({ issueNumber, body }) => appendRecord({ issue: issueNumber, body }),
     observeLedger: ({ payload }) => observeIncidentLedgerLive(payload, liveObservationDeps),
     liveObservationDeps,
     async authenticate() {
