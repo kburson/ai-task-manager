@@ -971,7 +971,26 @@ export async function issueAttributedDiffEvidence({ projectDir, issueNumber } = 
   };
 }
 
-export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = {}) {
+function outcomeVerificationSha({ resolveVerificationSha, issueNumber, diff }) {
+  if (resolveVerificationSha !== undefined && typeof resolveVerificationSha !== 'function') {
+    fail('outcome-verification-sha');
+  }
+  const sha =
+    resolveVerificationSha === undefined
+      ? (diff.verificationSha ?? diff.commitSha)
+      : resolveVerificationSha({ issueNumber, diff: structuredClone(diff) });
+  if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/.test(sha)) {
+    fail('outcome-verification-sha');
+  }
+  return sha;
+}
+
+export function createEstimationOutcomeRuntime({
+  cfg,
+  projectDir,
+  resolveVerificationSha,
+  deps = {},
+} = {}) {
   if (!cfg?.repo || !projectDir) fail('outcome-config');
   const io = deps.recordIo ?? createGitHubEstimationRecordIo(deps);
   const graphql = deps.graphql ?? io.graphql;
@@ -1092,7 +1111,11 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
           ? { expectedIssue: issueNumber }
           : {
               expectedIssue: issueNumber,
-              expectedFinalSha: diff.verificationSha ?? diff.commitSha,
+              expectedFinalSha: outcomeVerificationSha({
+                resolveVerificationSha,
+                issueNumber,
+                diff,
+              }),
             }
       );
       const outcomePayload = buildEstimationOutcome({

@@ -87,6 +87,7 @@ export async function runClose({
   bindingReadError = null,
   bindingResumeError = null,
   force = false,
+  createEstimationOutcomeWriter = null,
   trackEstimationOutcomes = false,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
@@ -303,6 +304,7 @@ export async function runClose({
         return { status: 'released' };
       },
       applyReviewDelta: async () => ({ status: 'skipped' }),
+      ...(createEstimationOutcomeWriter ? { createEstimationOutcomeWriter } : {}),
       ...(trackEstimationOutcomes
         ? {
             estimationOutcomeWriter: async () => {
