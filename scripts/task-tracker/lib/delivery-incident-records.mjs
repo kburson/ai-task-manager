@@ -378,6 +378,19 @@ export function incorporatedRecordIdentity({
   return hashRecordPayload({ repository, issueNumber, convergenceIssue, ledgerId });
 }
 
+export function incorporatedRecordMatchesRow(record, row) {
+  const payload = record?.envelope?.payload;
+  return (
+    payload?.issueNumber === row?.issueNumber &&
+    payload.acceptedSha === row.acceptedSha &&
+    payload.prNumber === row.prNumber &&
+    payload.prHeadSha === row.prHeadSha &&
+    payload.mergeSha === row.mergeSha &&
+    payload.codeOnTrunkBasis === row.codeOnTrunkBasis &&
+    payload.blocker === row.blocker
+  );
+}
+
 function validatedPayloadForEnvelope(envelope) {
   let payload;
   switch (envelope.recordType) {

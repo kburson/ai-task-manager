@@ -15,6 +15,18 @@ const approvalRecordId = '01ARZ3NDEKTSV4RRFFQ69G5FAB';
 const ownerRecordId = '01ARZ3NDEKTSV4RRFFQ69G5FAC';
 const required = [1380, 1382, 1383, 1384];
 
+function incorporatedCarrier(issueNumber) {
+  return {
+    issueNumber,
+    acceptedSha: 'a'.repeat(40),
+    prNumber: 1400 + issueNumber,
+    prHeadSha: 'b'.repeat(40),
+    mergeSha: 'c'.repeat(40),
+    codeOnTrunkBasis: 'shared carrier',
+    blocker: '#1381',
+  };
+}
+
 function owner(overrides = {}) {
   return {
     id: 'owner-comment',
@@ -39,10 +51,12 @@ function owner(overrides = {}) {
 }
 
 function projection() {
+  const incorporated = required.map((issueNumber) => ({
+    envelope: { payload: incorporatedCarrier(issueNumber) },
+  }));
   return {
-    approvedLedgerIncorporated: required.map((issueNumber) => ({
-      envelope: { payload: { issueNumber } },
-    })),
+    incorporated,
+    approvedLedgerIncorporated: incorporated,
   };
 }
 
@@ -56,7 +70,10 @@ function authority() {
     approvalRecordId,
     ownerRecordId,
     ledgerPayload: {
-      rows: required.map((issueNumber) => ({ issueNumber, intendedOutcome: 'incorporated' })),
+      rows: required.map((issueNumber) => ({
+        ...incorporatedCarrier(issueNumber),
+        intendedOutcome: 'incorporated',
+      })),
     },
     projection: projection(),
   };
@@ -145,10 +162,28 @@ test('missing, forked, or byte-conflicting owner authority refuses', () => {
   );
 });
 
-test('approved ledger must contain matching Incorporated records for every required row', () => {
+test('a validated prior-ledger Incorporated record may prove an exact current-ledger carrier', () => {
+  const priorLedger = authority();
+  priorLedger.projection.approvedLedgerIncorporated = [];
+  assert.equal(
+    authorize({ deps: { resolveApprovedIncidentLedger: () => priorLedger } }).convergenceIssue,
+    1381
+  );
+});
+
+test('an Incorporated record must exactly match every current-ledger carrier field', () => {
   const incomplete = authority();
   incomplete.projection = {
-    approvedLedgerIncorporated: projection().approvedLedgerIncorporated.slice(1),
+    ...projection(),
+    incorporated: projection().incorporated.map((record) =>
+      record.envelope.payload.issueNumber === 1380
+        ? {
+            envelope: {
+              payload: { ...record.envelope.payload, mergeSha: 'd'.repeat(40) },
+            },
+          }
+        : record
+    ),
   };
   assert.throws(
     () =>
