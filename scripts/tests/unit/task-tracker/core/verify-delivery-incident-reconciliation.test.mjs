@@ -114,12 +114,48 @@ for (const phase of ['pre-close', 'terminal']) {
             issueNumber: 1403,
             observedGitHubState: 'OPEN',
             observedBoardState: 'develop',
+            acceptedSha: 'c'.repeat(40),
+            prNumber: 1412,
+            prHeadSha: 'c'.repeat(40),
+            mergeSha: 'd'.repeat(40),
+            codeOnTrunkBasis: 'governed-delivery',
+            blocker: '#1381',
             intendedOutcome: 'incorporated',
+          },
+          {
+            issueNumber: 1389,
+            observedGitHubState: 'CLOSED',
+            observedBoardState: 'done',
+            intentUrl: 'https://github.com/kburson/ai-task-manager/issues/1389#issuecomment-intent',
+            receiptUrl:
+              'https://github.com/kburson/ai-task-manager/issues/1389#issuecomment-receipt',
+            intendedOutcome: 'recover-then-close',
+          },
+          {
+            issueNumber: 1378,
+            observedGitHubState: 'CLOSED',
+            observedBoardState: 'done',
+            intendedOutcome: 'retain-superseded',
           },
         ],
       },
       projection: {
-        approvedLedgerIncorporated: [{ envelope: { payload: { issueNumber: 1403 } } }],
+        approvedLedgerIncorporated: [],
+        incorporated: [
+          {
+            envelope: {
+              payload: {
+                issueNumber: 1403,
+                acceptedSha: 'c'.repeat(40),
+                prNumber: 1412,
+                prHeadSha: 'c'.repeat(40),
+                mergeSha: 'd'.repeat(40),
+                codeOnTrunkBasis: 'governed-delivery',
+                blocker: '#1381',
+              },
+            },
+          },
+        ],
       },
     };
     const runtime = {
@@ -160,7 +196,12 @@ for (const phase of ['pre-close', 'terminal']) {
           const blocker = blockerByIssue.get(issue);
           return {
             state: phase === 'terminal' ? 'CLOSED' : 'OPEN',
-            body: blocker === undefined ? '' : `<!-- aitm-blocked-by: #${blocker} -->`,
+            body:
+              issue === 1378
+                ? '<!-- aitm-superseded-by refs="#939" ts="2026-08-28T00:00:00.000Z" -->'
+                : blocker === undefined
+                  ? ''
+                  : `<!-- aitm-blocked-by: #${blocker} -->`,
             labels: blocker === undefined ? [] : [{ name: 'BLOCKED' }],
           };
         },
@@ -205,7 +246,13 @@ for (const phase of ['pre-close', 'terminal']) {
             ? { blockedBy: `#${blockerByIssue.get(issueNumber)}` }
             : {
                 disposition:
-                  phase === 'terminal' ? (issueNumber === 1403 ? 'Incorporated' : 'Delivered') : '',
+                  phase === 'terminal'
+                    ? issueNumber === 1403
+                      ? 'Incorporated'
+                      : issueNumber === 1378
+                        ? 'Replaced'
+                        : 'Delivered'
+                    : '',
               };
         },
         readParentIssue: async () => {
@@ -219,11 +266,14 @@ for (const phase of ['pre-close', 'terminal']) {
         observeIncidentLedgerLive: async () => {
           calls.push(`observe:${phase}`);
         },
-        resolveSingleDeliveredEvidence: () => ({
-          prNumber: 1412,
-          expectedHeadSha: 'c'.repeat(40),
-          mergeCommitSha: 'd'.repeat(40),
-        }),
+        resolveSingleDeliveredEvidence: ({ expectedHeadSha }) => {
+          assert.equal(expectedHeadSha, 'c'.repeat(40));
+          return {
+            prNumber: 1412,
+            expectedHeadSha,
+            mergeCommitSha: 'd'.repeat(40),
+          };
+        },
         readIssueDeliveryAuthority: () => ({
           acceptedSha: 'c'.repeat(40),
           approvalSha: 'c'.repeat(40),
@@ -233,10 +283,22 @@ for (const phase of ['pre-close', 'terminal']) {
           if (phase === 'pre-close') assert.equal(await phaseDeps.verifyPreCloseTopology(), true);
           else assert.equal(await phaseDeps.verifyTerminalAuthority(), true);
           const rows = await phaseDeps.observeRows({ phase });
-          assert.equal(rows.length, 2);
+          assert.equal(rows.length, 4);
           if (phase === 'terminal') {
             assert.equal(
               rows.every(({ terminalMatches }) => terminalMatches),
+              true
+            );
+            assert.equal(
+              rows.find(({ issueNumber }) => issueNumber === 1389)?.outcomeEvidenceMatches,
+              true
+            );
+            assert.equal(
+              rows.find(({ issueNumber }) => issueNumber === 1403)?.outcomeEvidenceMatches,
+              true
+            );
+            assert.equal(
+              rows.find(({ issueNumber }) => issueNumber === 1378)?.outcomeEvidenceMatches,
               true
             );
           }

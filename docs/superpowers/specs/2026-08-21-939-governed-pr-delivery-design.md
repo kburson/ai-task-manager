@@ -679,12 +679,29 @@ accepted by Close.
    without branch rewinding or `--force`.
 5. The governed #939 Test and Review gates, hosted CI, provider delivery, and
    exact receipt verification must pass before the incident ledger is rebuilt.
+6. A terminal-verifier regression proves that a `recover-then-close` row is
+   accepted when its approved ledger was recorded either before receipt
+   recovery (`receiptUrl: null`) or after recovery (the exact live receipt URL).
+7. Reused convergence-owner history selects the single delivered evidence pair
+   matching the issue's accepted SHA, and a replacement ledger reuses prior
+   validated Incorporated records only when every carrier field still matches.
+8. Retained-story terminal evidence uses the canonical lowercase `done` board
+   slug.
 
 ### Incident Ledger Consequence
 
 Delivering this amendment advances trunk after approved ledger v4. A freshly
-observed v5 ledger is therefore mandatory before any remaining incident story
-is closed. The expected ledger-payload changes are its identity and baseline
-trunk SHA; #939's new delivery evidence is verified separately for its eventual
-terminal close. Every incident row must be compared byte-for-byte, and any drift
-must be explained before requesting exact human approval.
+observed v5 ledger is therefore mandatory before the remaining incident owner
+is closed. If recovery stories are already terminal when that ledger is
+recorded, their rows legitimately contain the exact recovered receipt URLs.
+The terminal verifier must accept both approval timings: a pre-recovery ledger
+with a null receipt URL and a post-recovery ledger with the live URL. In either
+case, terminal live observation independently requires and validates the actual
+matching receipt. A replacement ledger may also rely on an earlier validated
+Incorporated record when its accepted SHA, pull request, head, merge, trunk
+basis, and blocker all match the new row exactly; no duplicate terminal record
+is required. The convergence owner selects its one current delivery pair by the
+accepted SHA instead of rejecting valid earlier deliveries on the reused
+branch. These timing and history tolerances do not weaken evidence. Every
+incident row must still be compared byte-for-byte, and any drift must be
+explained before requesting exact human approval.
