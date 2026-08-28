@@ -19,9 +19,10 @@ import {
 
 // Turn a required-anchor regex into a literal line the regex matches. Every
 // anchor in the spec is a plain string plus escaped metacharacters (`\+`, `\/`,
-// `\.`), so dropping the backslashes yields matching content.
+// `\.`) or a `\s+` separator, so normalize separators before dropping the
+// remaining backslashes.
 function sampleFor(re) {
-  return re.source.replace(/\\/g, '');
+  return re.source.replace(/\\s\+/g, ' ').replace(/\\/g, '');
 }
 
 // Write a doc tree under `root` from a { rel: contents } map.

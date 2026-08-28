@@ -358,7 +358,7 @@ export const VERB_REFERENCE = {
   deliver: {
     topic: 'board',
     summary:
-      'Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
+      'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
     usage: '/task deliver #N',
     exitCodes: [{ code: 20, meaning: 'provider action required' }],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
