@@ -336,7 +336,13 @@ test('approval authenticates first and completes approval plus incident owner af
       schema: 'aitm.delivery-incident-ledger/v1',
     },
   };
-  const convergenceRecords = [{ id: 'ledger-comment', envelope: ledgerEnvelope }];
+  const convergenceRecords = [
+    {
+      id: 'forecast-comment',
+      envelope: { recordId: '01ARZ3NDEKTSV4RRFFQ69G5FA9', recordType: 'estimation-forecast' },
+    },
+    { id: 'ledger-comment', envelope: ledgerEnvelope },
+  ];
   const ownerRecords = [];
   const order = [];
   const digest = `sha256:${'e'.repeat(64)}`;
@@ -368,11 +374,17 @@ test('approval authenticates first and completes approval plus incident owner af
       payload,
     }),
     renderIncidentRecord: () => 'body',
-    projectDeliveryIncidentRecords: (records) => ({
-      approvedLedgerOwner: records.find(
-        ({ envelope }) => envelope.recordType === 'delivery-incident-ledger-owner'
-      ),
-    }),
+    projectDeliveryIncidentRecords: (records) => {
+      assert.ok(
+        records.every(({ envelope }) => envelope.recordType.startsWith('delivery-incident-')),
+        'incident projection must exclude unrelated AITM records'
+      );
+      return {
+        approvedLedgerOwner: records.find(
+          ({ envelope }) => envelope.recordType === 'delivery-incident-ledger-owner'
+        ),
+      };
+    },
     appendConvergenceRecord: async ({ envelope }) => {
       const isGrant = envelope.recordType.endsWith('-grant');
       order.push(isGrant ? 'approval-grant' : 'approval');

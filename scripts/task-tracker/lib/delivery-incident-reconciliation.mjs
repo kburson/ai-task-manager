@@ -14,6 +14,13 @@ import { parseDeliveryCommentForPullRequest, projectDeliveryRecords } from './de
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const INCIDENT_RECORD_TYPES = new Set([
+  'delivery-incident-ledger',
+  'delivery-incident-ledger-approval-grant',
+  'delivery-incident-ledger-approval',
+  'delivery-incident-ledger-owner',
+  'delivery-incident-incorporated',
+]);
 
 function fail(category) {
   throw new Error(`delivery-incident:${category}`);
@@ -36,6 +43,11 @@ function sameCanonical(left, right) {
 function recordsOfType(records, recordType) {
   if (!Array.isArray(records)) fail('dependencies');
   return records.filter((record) => record?.envelope?.recordType === recordType);
+}
+
+function incidentRecords(records) {
+  if (!Array.isArray(records)) fail('dependencies');
+  return records.filter((record) => INCIDENT_RECORD_TYPES.has(record?.envelope?.recordType));
 }
 
 function exactEnvelopeRecord(records, envelope) {
@@ -250,10 +262,9 @@ export async function approveIncidentLedger({
       : convergenceRecords;
     let existingProjection;
     try {
-      existingProjection = (deps.projectDeliveryIncidentRecords || projectDeliveryIncidentRecords)([
-        ...recordsForOwnerPreflight,
-        ...initialOwnerRecords,
-      ]);
+      existingProjection = (deps.projectDeliveryIncidentRecords || projectDeliveryIncidentRecords)(
+        incidentRecords([...recordsForOwnerPreflight, ...initialOwnerRecords])
+      );
     } catch {
       fail('conflicting-authority');
     }
@@ -435,10 +446,9 @@ export async function approveIncidentLedger({
   );
   if (finalApprovals.length !== 1 || finalOwners.length !== 1) fail('record-readback');
   try {
-    (deps.projectDeliveryIncidentRecords || projectDeliveryIncidentRecords)([
-      ...(await listConvergence()),
-      ...(await listOwners()),
-    ]);
+    (deps.projectDeliveryIncidentRecords || projectDeliveryIncidentRecords)(
+      incidentRecords([...(await listConvergence()), ...(await listOwners())])
+    );
   } catch {
     fail('conflicting-authority');
   }
