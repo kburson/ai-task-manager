@@ -1,4 +1,5 @@
 // Derived epic commit trail (#884, parent epic #883).
+// cspell:ignore valueonly
 //
 // A container epic has no commit of its own by construction, so it can never
 // satisfy a check that demands its own `### 🔗 Commits` trail. Its trail is
@@ -49,7 +50,13 @@ export function parseEpicTrailIssueIds(subject) {
 // `--all` — because the trail records what is reachable from the thing being
 // closed. `defaultHasAttributingCommit`'s `--all` search answers a different
 // question and would silently admit unmerged sibling-branch commits.
-export const EPIC_TRAIL_LOG_FORMAT = ['%H', '%s', '%an', '%aI'].join(FIELD_SEP);
+export const EPIC_TRAIL_LOG_FORMAT = [
+  '%H',
+  '%s',
+  '%an',
+  '%aI',
+  '%(trailers:key=Attribution,valueonly,separator=%x20)',
+].join(FIELD_SEP);
 
 export function epicTrailLogArgs(epicHead) {
   return ['log', String(epicHead), `--format=${EPIC_TRAIL_LOG_FORMAT}`];
@@ -64,9 +71,15 @@ export function parseEpicTrailLog(stdout) {
     .map((l) => l.trim())
     .filter(Boolean)
     .map((line) => {
-      const [sha, subject, author, ts] = line.split(FIELD_SEP);
+      const [sha, subject, author, ts, attribution] = line.split(FIELD_SEP);
       if (!sha || subject == null) return null;
-      return { sha, subject, author: author || '', ts: ts || '' };
+      return {
+        sha,
+        subject,
+        author: author || '',
+        ts: ts || '',
+        ...(attribution ? { attribution } : {}),
+      };
     })
     .filter(Boolean);
 }
@@ -124,7 +137,11 @@ export function groupCommitsByChild({ children = [], commits = [] } = {}) {
     groups.set(n, { number: n, title: childTitle(child), commits: [] });
   }
   for (const commit of commits) {
-    for (const id of parseEpicTrailIssueIds(commit.subject)) {
+    const issueIds = new Set([
+      ...parseEpicTrailIssueIds(commit.subject),
+      ...parseIssueIds(commit.attribution || ''),
+    ]);
+    for (const id of issueIds) {
       const group = groups.get(Number(id));
       if (group) group.commits.push(commit);
     }
