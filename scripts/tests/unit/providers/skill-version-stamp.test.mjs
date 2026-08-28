@@ -52,6 +52,12 @@ test('#939: deliver JIT rule carries its exact load sentinel', () => {
   assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.0\.0/);
 });
 
+test('#1381: incident-ledger JIT rule carries its exact load sentinel', () => {
+  const root = join(dirname(new URL(import.meta.url).pathname), '../../../..');
+  const rule = readFileSync(join(root, 'skill/shared/rules/incident-ledger.md'), 'utf8');
+  assert.match(rule, /aitm-skill-loaded:rules\/incident-ledger:1\.0\.0/);
+});
+
 test('SKILL_DETAIL_FILES entry ids are unique', () => {
   const ids = SKILL_DETAIL_FILES.map((f) => f.id);
   const unique = new Set(ids);

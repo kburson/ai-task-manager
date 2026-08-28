@@ -362,6 +362,27 @@ export const VERB_REFERENCE = {
     exitCodes: [{ code: 20, meaning: 'provider action required' }],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
   },
+  'incident-ledger': {
+    topic: 'evidence',
+    summary:
+      'Record a verified incident observation or explicitly approve one exact ledger digest.',
+    usage:
+      '/task incident-ledger #1381 (--record <ledger.json> | --approve <ledger-id> --digest <sha256:digest>)',
+    flags: [
+      { flag: '--record <path>', desc: 'validate live observations and append one ledger' },
+      {
+        flag: '--approve <ledger-id>',
+        desc: 'authenticate the GitHub user and explicitly approve one ledger; co-review is not approval',
+      },
+      { flag: '--digest <sha256:digest>', desc: 'exact canonical digest required by --approve' },
+    ],
+    examples: [
+      '/task incident-ledger #1381 --record .tmp/aitm/incident-ledger.json',
+      '/task incident-ledger #1381 --approve 01ARZ3NDEKTSV4RRFFQ69G5FAV --digest sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      'node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase pre-close',
+      'node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase terminal',
+    ],
+  },
   reject: {
     topic: 'board',
     summary: 'Reject an issue under review (returns it for rework). Reason required.',

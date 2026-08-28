@@ -258,6 +258,22 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     [exit(20, 'provider action required'), ...PREFLIGHT_TARGET_EXITS]
   ),
+  'incident-ledger': contract(
+    [
+      'The target must be #1381; record mode requires a strict 19-row ledger matching fresh live observations.',
+      'Approval mode requires an authenticated GitHub user plus the exact recorded ledger ID and canonical digest.',
+    ],
+    [
+      'Record mode appends only an observation ledger; approval mode appends the human approval and exact #939 owner pointer.',
+      'Co-review and Full-Auto standing policy do not approve a later ledger ID or digest.',
+      'Neither mode closes an issue, changes lifecycle state, or manufactures delivery evidence.',
+      'The standalone read-only verifier accepts --phase pre-close before mutations or --phase terminal after closure; terminal is the default.',
+    ],
+    [
+      'Prints the immutable ledger identity and approval command, the authenticated approval and owner record identities, or a phase-specific verification result.',
+    ],
+    PREFLIGHT_TARGET_EXITS
+  ),
   reject: contract(
     ['The target must be in Review, a reason is required, and preflight checks must pass.'],
     ['Records the rejection reason and returns the issue to Develop for rework.'],
@@ -563,6 +579,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   approve: Object.freeze(['review', 'reject', 'close']),
   review: Object.freeze(['approve', 'deliver', 'reject', 'close']),
   deliver: Object.freeze(['review', 'close']),
+  'incident-ledger': Object.freeze(['deliver', 'close']),
   reject: Object.freeze(['review', 'demote']),
   test: Object.freeze(['review', 'demote', 'promote']),
   reconcile: Object.freeze(['board', 'status', 'promote']),
@@ -649,6 +666,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   review: Object.freeze([positional('#N', 'Issue number to move through the review gate.')]),
   deliver: Object.freeze([
     positional('#N', 'Required Review-state issue whose exact pull-request head is delivered.'),
+  ]),
+  'incident-ledger': Object.freeze([
+    positional('#1381', 'Required convergence issue that owns the incident ledger.'),
   ]),
   reject: Object.freeze([positional('#N', 'Issue number whose review is rejected.')]),
   test: Object.freeze([positional('#N', 'Issue number verified in the sandbox.')]),

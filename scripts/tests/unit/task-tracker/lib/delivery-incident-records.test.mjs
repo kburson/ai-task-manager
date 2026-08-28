@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildIncidentLedgerApprovalGrantPayload,
   buildIncidentLedgerApprovalPayload,
   buildIncidentLedgerOwnerPayload,
   buildIncidentLedgerPayload,
@@ -21,7 +22,9 @@ import {
 const SHA = (digit) => digit.repeat(40);
 const LEDGER_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const RECORD_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAA';
+const APPROVAL_GRANT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FA4';
 const APPROVAL_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAB';
+const APPROVED_AT = '2026-08-28T00:01:00.000Z';
 const OUTCOMES = new Map([
   [1378, 'retain-superseded'],
   [1379, 'retain-superseded'],
@@ -84,6 +87,14 @@ function ledger() {
   });
 }
 
+function providerRecord(
+  id,
+  envelope,
+  { authorLogin = 'kpburson', createdAt = APPROVED_AT, updatedAt = createdAt } = {}
+) {
+  return { id, envelope, authorLogin, createdAt, updatedAt };
+}
+
 test('ledger contract requires the exact reviewed set and immutable canonical rows', () => {
   const payload = ledger();
   assert.deepEqual(
@@ -137,9 +148,17 @@ test('ledger contract requires the exact reviewed set and immutable canonical ro
   );
 });
 
-test('approval, owner, and Incorporated records bind one exact approved ledger', () => {
+test('approval grant, approval, owner, and Incorporated records bind one exact approved ledger', () => {
   const ledgerPayload = ledger();
   const digest = hashRecordPayload(ledgerPayload);
+  const approvalGrant = buildIncidentLedgerApprovalGrantPayload({
+    schema: 'aitm.delivery-incident-ledger-approval-grant/v1',
+    repository: ledgerPayload.repository,
+    convergenceIssue: 1381,
+    ledgerId: LEDGER_ID,
+    ledgerDigest: digest,
+    ledgerRecordId: RECORD_ID,
+  });
   const approval = buildIncidentLedgerApprovalPayload({
     schema: 'aitm.delivery-incident-ledger-approval/v1',
     repository: ledgerPayload.repository,
@@ -147,8 +166,9 @@ test('approval, owner, and Incorporated records bind one exact approved ledger',
     ledgerId: LEDGER_ID,
     ledgerDigest: digest,
     ledgerRecordId: RECORD_ID,
+    grantRecordId: APPROVAL_GRANT_ID,
     approvedBy: 'kpburson',
-    approvedAt: '2026-08-28T00:01:00.000Z',
+    approvedAt: APPROVED_AT,
   });
   const owner = buildIncidentLedgerOwnerPayload({
     schema: 'aitm.delivery-incident-ledger-owner/v1',
@@ -174,6 +194,7 @@ test('approval, owner, and Incorporated records bind one exact approved ledger',
     codeOnTrunkBasis: 'carrier-pr',
     blocker: rows().at(-1).blocker,
   });
+  assert.equal(Object.isFrozen(approvalGrant), true);
   assert.equal(Object.isFrozen(approval), true);
   assert.equal(Object.isFrozen(owner), true);
   assert.equal(Object.isFrozen(incorporated), true);
@@ -220,6 +241,24 @@ test('canonical render and projection select one exact approved ledger tip', () 
     grantId: '01ARZ3NDEKTSV4RRFFQ69G5FAC',
     createdAt: '2026-08-28T00:00:00.000Z',
   });
+  const approvalGrantPayload = buildIncidentLedgerApprovalGrantPayload({
+    schema: 'aitm.delivery-incident-ledger-approval-grant/v1',
+    repository: ledgerPayload.repository,
+    convergenceIssue: 1381,
+    ledgerId: LEDGER_ID,
+    ledgerDigest: hashRecordPayload(ledgerPayload),
+    ledgerRecordId: RECORD_ID,
+  });
+  const approvalGrantEnvelope = createAitmRecordEnvelope({
+    recordType: 'delivery-incident-ledger-approval-grant',
+    repository: ledgerPayload.repository,
+    issue: 1381,
+    payload: approvalGrantPayload,
+    actor: 'kpburson',
+    recordId: APPROVAL_GRANT_ID,
+    grantId: '01ARZ3NDEKTSV4RRFFQ69G5FA5',
+    createdAt: APPROVED_AT,
+  });
   const approvalPayload = buildIncidentLedgerApprovalPayload({
     schema: 'aitm.delivery-incident-ledger-approval/v1',
     repository: ledgerPayload.repository,
@@ -227,8 +266,9 @@ test('canonical render and projection select one exact approved ledger tip', () 
     ledgerId: LEDGER_ID,
     ledgerDigest: hashRecordPayload(ledgerPayload),
     ledgerRecordId: RECORD_ID,
+    grantRecordId: APPROVAL_GRANT_ID,
     approvedBy: 'kpburson',
-    approvedAt: '2026-08-28T00:01:00.000Z',
+    approvedAt: APPROVED_AT,
   });
   const approvalEnvelope = createAitmRecordEnvelope({
     recordType: 'delivery-incident-ledger-approval',
@@ -264,13 +304,19 @@ test('canonical render and projection select one exact approved ledger tip', () 
     () =>
       projectDeliveryIncidentRecords([
         { id: 'ledger-comment', envelope: ledgerEnvelope },
-        { id: 'approval-comment', envelope: approvalEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
       ]),
     /missing-owner/
   );
   const projection = projectDeliveryIncidentRecords([
     { id: 'ledger-comment', envelope: ledgerEnvelope },
-    { id: 'approval-comment', envelope: approvalEnvelope },
+    providerRecord('grant-comment', approvalGrantEnvelope),
+    providerRecord('approval-comment', approvalEnvelope, {
+      createdAt: '2026-08-28T00:01:01.000Z',
+    }),
     { id: 'owner-comment', envelope: ownerEnvelope },
   ]);
   assert.equal(projection.approvedLedger.envelope.recordId, RECORD_ID);
@@ -295,7 +341,10 @@ test('canonical render and projection select one exact approved ledger tip', () 
     () =>
       projectDeliveryIncidentRecords([
         { id: 'ledger-comment', envelope: ledgerEnvelope },
-        { id: 'approval-comment', envelope: approvalEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
         { id: 'owner-comment', envelope: conflictingOwnerEnvelope },
       ]),
     /conflicting-owner/
@@ -330,15 +379,32 @@ test('canonical render and projection select one exact approved ledger tip', () 
     () =>
       projectDeliveryIncidentRecords([
         { id: 'ledger-comment', envelope: ledgerEnvelope },
-        { id: 'approval-comment', envelope: approvalEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
         { id: 'owner-comment', envelope: ownerEnvelope },
         { id: 'incorporated-comment', envelope: conflictingIncorporatedEnvelope },
       ]),
     /conflicting-incorporated/
   );
 
+  const forkGrantPayload = buildIncidentLedgerApprovalGrantPayload({
+    ...approvalGrantPayload,
+  });
+  const forkGrantEnvelope = createAitmRecordEnvelope({
+    recordType: 'delivery-incident-ledger-approval-grant',
+    repository: ledgerPayload.repository,
+    issue: 1381,
+    payload: forkGrantPayload,
+    actor: 'kpburson',
+    recordId: '01ARZ3NDEKTSV4RRFFQ69G5FA6',
+    grantId: '01ARZ3NDEKTSV4RRFFQ69G5FA7',
+    createdAt: '2026-08-28T00:02:00.000Z',
+  });
   const forkApprovalPayload = buildIncidentLedgerApprovalPayload({
     ...approvalPayload,
+    grantRecordId: forkGrantEnvelope.recordId,
     approvedAt: '2026-08-28T00:02:00.000Z',
   });
   const forkApprovalEnvelope = createAitmRecordEnvelope({
@@ -355,9 +421,17 @@ test('canonical render and projection select one exact approved ledger tip', () 
     () =>
       projectDeliveryIncidentRecords([
         { id: 'ledger-comment', envelope: ledgerEnvelope },
-        { id: 'approval-comment', envelope: approvalEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
         { id: 'owner-comment', envelope: ownerEnvelope },
-        { id: 'fork-comment', envelope: forkApprovalEnvelope },
+        providerRecord('fork-grant-comment', forkGrantEnvelope, {
+          createdAt: '2026-08-28T00:02:00.000Z',
+        }),
+        providerRecord('fork-comment', forkApprovalEnvelope, {
+          createdAt: '2026-08-28T00:02:01.000Z',
+        }),
       ]),
     /ambiguous-authority/
   );
@@ -365,7 +439,22 @@ test('canonical render and projection select one exact approved ledger tip', () 
   const staleApprovalPayload = buildIncidentLedgerApprovalPayload({
     ...approvalPayload,
     ledgerRecordId: '01ARZ3NDEKTSV4RRFFQ69G5FAG',
+    grantRecordId: '01ARZ3NDEKTSV4RRFFQ69G5FA8',
     approvedAt: '2026-08-28T00:03:00.000Z',
+  });
+  const staleGrantPayload = buildIncidentLedgerApprovalGrantPayload({
+    ...approvalGrantPayload,
+    ledgerRecordId: staleApprovalPayload.ledgerRecordId,
+  });
+  const staleGrantEnvelope = createAitmRecordEnvelope({
+    recordType: 'delivery-incident-ledger-approval-grant',
+    repository: ledgerPayload.repository,
+    issue: 1381,
+    payload: staleGrantPayload,
+    actor: 'kpburson',
+    recordId: staleApprovalPayload.grantRecordId,
+    grantId: '01ARZ3NDEKTSV4RRFFQ69G5FA9',
+    createdAt: staleApprovalPayload.approvedAt,
   });
   const staleApprovalEnvelope = createAitmRecordEnvelope({
     recordType: 'delivery-incident-ledger-approval',
@@ -381,10 +470,81 @@ test('canonical render and projection select one exact approved ledger tip', () 
     () =>
       projectDeliveryIncidentRecords([
         { id: 'ledger-comment', envelope: ledgerEnvelope },
-        { id: 'stale-comment', envelope: staleApprovalEnvelope },
+        providerRecord('stale-grant-comment', staleGrantEnvelope, {
+          createdAt: staleApprovalPayload.approvedAt,
+        }),
+        providerRecord('stale-comment', staleApprovalEnvelope, {
+          createdAt: '2026-08-28T00:03:01.000Z',
+        }),
         { id: 'owner-comment', envelope: ownerEnvelope },
       ]),
-    /stale-approval/
+    /stale-approval-grant/
+  );
+
+  assert.throws(
+    () =>
+      projectDeliveryIncidentRecords([
+        { id: 'ledger-comment', envelope: ledgerEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope, { authorLogin: 'attacker' }),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
+        { id: 'owner-comment', envelope: ownerEnvelope },
+      ]),
+    /approval-authority/
+  );
+  const forgedTimePayload = buildIncidentLedgerApprovalPayload({
+    ...approvalPayload,
+    approvedAt: '2026-08-28T00:00:59.000Z',
+  });
+  const forgedTimeEnvelope = createAitmRecordEnvelope({
+    recordType: 'delivery-incident-ledger-approval',
+    repository: ledgerPayload.repository,
+    issue: 1381,
+    payload: forgedTimePayload,
+    actor: 'kpburson',
+    recordId: '01ARZ3NDEKTSV4RRFFQ69G5FA9',
+    grantId: '01ARZ3NDEKTSV4RRFFQ69G5FA0',
+    createdAt: forgedTimePayload.approvedAt,
+  });
+  assert.throws(
+    () =>
+      projectDeliveryIncidentRecords([
+        { id: 'ledger-comment', envelope: ledgerEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope),
+        providerRecord('forged-time-comment', forgedTimeEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
+        { id: 'owner-comment', envelope: ownerEnvelope },
+      ]),
+    /approval-authority/
+  );
+  assert.throws(
+    () =>
+      projectDeliveryIncidentRecords([
+        { id: 'ledger-comment', envelope: ledgerEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope, {
+          updatedAt: '2026-08-28T00:01:02.000Z',
+        }),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+        }),
+        { id: 'owner-comment', envelope: ownerEnvelope },
+      ]),
+    /approval-authority/
+  );
+  assert.throws(
+    () =>
+      projectDeliveryIncidentRecords([
+        { id: 'ledger-comment', envelope: ledgerEnvelope },
+        providerRecord('grant-comment', approvalGrantEnvelope),
+        providerRecord('approval-comment', approvalEnvelope, {
+          createdAt: '2026-08-28T00:01:01.000Z',
+          updatedAt: '2026-08-28T00:01:02.000Z',
+        }),
+        { id: 'owner-comment', envelope: ownerEnvelope },
+      ]),
+    /approval-authority/
   );
 });
 
@@ -400,6 +560,24 @@ test('linear ledger replacement preserves valid historical owner and Incorporate
     grantId: '01ARZ3NDEKTSV4RRFFQ69G5FAC',
     createdAt: '2026-08-28T00:00:00.000Z',
   });
+  const firstGrantPayload = buildIncidentLedgerApprovalGrantPayload({
+    schema: 'aitm.delivery-incident-ledger-approval-grant/v1',
+    repository: firstLedgerPayload.repository,
+    convergenceIssue: 1381,
+    ledgerId: firstLedgerPayload.ledgerId,
+    ledgerDigest: hashRecordPayload(firstLedgerPayload),
+    ledgerRecordId: firstLedgerEnvelope.recordId,
+  });
+  const firstGrantEnvelope = createAitmRecordEnvelope({
+    recordType: 'delivery-incident-ledger-approval-grant',
+    repository: firstLedgerPayload.repository,
+    issue: 1381,
+    payload: firstGrantPayload,
+    actor: 'kpburson',
+    recordId: APPROVAL_GRANT_ID,
+    grantId: '01ARZ3NDEKTSV4RRFFQ69G5FA5',
+    createdAt: APPROVED_AT,
+  });
   const firstApprovalPayload = buildIncidentLedgerApprovalPayload({
     schema: 'aitm.delivery-incident-ledger-approval/v1',
     repository: firstLedgerPayload.repository,
@@ -407,8 +585,9 @@ test('linear ledger replacement preserves valid historical owner and Incorporate
     ledgerId: firstLedgerPayload.ledgerId,
     ledgerDigest: hashRecordPayload(firstLedgerPayload),
     ledgerRecordId: firstLedgerEnvelope.recordId,
+    grantRecordId: firstGrantEnvelope.recordId,
     approvedBy: 'kpburson',
-    approvedAt: '2026-08-28T00:01:00.000Z',
+    approvedAt: APPROVED_AT,
   });
   const firstApprovalEnvelope = createAitmRecordEnvelope({
     recordType: 'delivery-incident-ledger-approval',
@@ -494,7 +673,26 @@ test('linear ledger replacement preserves valid historical owner and Incorporate
     ledgerId: secondLedgerPayload.ledgerId,
     ledgerDigest: hashRecordPayload(secondLedgerPayload),
     ledgerRecordId: secondLedgerEnvelope.recordId,
+    grantRecordId: '01ARZ3NDEKTSV4RRFFQ69G5FA6',
     approvedAt: '2026-08-28T00:03:00.000Z',
+  });
+  const secondGrantPayload = buildIncidentLedgerApprovalGrantPayload({
+    schema: 'aitm.delivery-incident-ledger-approval-grant/v1',
+    repository: secondLedgerPayload.repository,
+    convergenceIssue: 1381,
+    ledgerId: secondLedgerPayload.ledgerId,
+    ledgerDigest: hashRecordPayload(secondLedgerPayload),
+    ledgerRecordId: secondLedgerEnvelope.recordId,
+  });
+  const secondGrantEnvelope = createAitmRecordEnvelope({
+    recordType: 'delivery-incident-ledger-approval-grant',
+    repository: secondLedgerPayload.repository,
+    issue: 1381,
+    payload: secondGrantPayload,
+    actor: 'kpburson',
+    recordId: secondApprovalPayload.grantRecordId,
+    grantId: '01ARZ3NDEKTSV4RRFFQ69G5FA7',
+    createdAt: secondApprovalPayload.approvedAt,
   });
   const secondApprovalEnvelope = createAitmRecordEnvelope({
     recordType: 'delivery-incident-ledger-approval',
@@ -541,11 +739,19 @@ test('linear ledger replacement preserves valid historical owner and Incorporate
 
   const projection = projectDeliveryIncidentRecords([
     { id: 'ledger-1', envelope: firstLedgerEnvelope },
-    { id: 'approval-1', envelope: firstApprovalEnvelope },
+    providerRecord('grant-1', firstGrantEnvelope),
+    providerRecord('approval-1', firstApprovalEnvelope, {
+      createdAt: '2026-08-28T00:01:01.000Z',
+    }),
     { id: 'owner-1', envelope: firstOwnerEnvelope },
     { id: 'incorporated-1', envelope: firstIncorporatedEnvelope },
     { id: 'ledger-2', envelope: secondLedgerEnvelope },
-    { id: 'approval-2', envelope: secondApprovalEnvelope },
+    providerRecord('grant-2', secondGrantEnvelope, {
+      createdAt: '2026-08-28T00:03:00.000Z',
+    }),
+    providerRecord('approval-2', secondApprovalEnvelope, {
+      createdAt: '2026-08-28T00:03:01.000Z',
+    }),
     { id: 'owner-2', envelope: secondOwnerEnvelope },
     { id: 'incorporated-2', envelope: secondIncorporatedEnvelope },
   ]);

@@ -2,11 +2,13 @@ import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { hashRecordPayload, renderAitmRecord } from './github-records/record-envelope.mjs';
 
 const LEDGER_SCHEMA = 'aitm.delivery-incident-ledger/v1';
+const APPROVAL_GRANT_SCHEMA = 'aitm.delivery-incident-ledger-approval-grant/v1';
 const APPROVAL_SCHEMA = 'aitm.delivery-incident-ledger-approval/v1';
 const OWNER_SCHEMA = 'aitm.delivery-incident-ledger-owner/v1';
 const INCORPORATED_SCHEMA = 'aitm.delivery-incident-incorporated/v1';
 
 const LEDGER_TYPE = 'delivery-incident-ledger';
+const APPROVAL_GRANT_TYPE = 'delivery-incident-ledger-approval-grant';
 const APPROVAL_TYPE = 'delivery-incident-ledger-approval';
 const OWNER_TYPE = 'delivery-incident-ledger-owner';
 const INCORPORATED_TYPE = 'delivery-incident-incorporated';
@@ -37,6 +39,14 @@ const ROW_KEYS = [
   'blocker',
   'intendedOutcome',
 ];
+const APPROVAL_GRANT_KEYS = [
+  'schema',
+  'repository',
+  'convergenceIssue',
+  'ledgerId',
+  'ledgerDigest',
+  'ledgerRecordId',
+];
 const APPROVAL_KEYS = [
   'schema',
   'repository',
@@ -44,6 +54,7 @@ const APPROVAL_KEYS = [
   'ledgerId',
   'ledgerDigest',
   'ledgerRecordId',
+  'grantRecordId',
   'approvedBy',
   'approvedAt',
 ];
@@ -293,8 +304,20 @@ export function buildIncidentLedgerApprovalPayload(input) {
   assertRecordId(input.ledgerId, 'ledger-id');
   assertDigest(input.ledgerDigest, 'ledger-digest');
   assertRecordId(input.ledgerRecordId, 'ledger-record-id');
+  assertRecordId(input.grantRecordId, 'grant-record-id');
   assertBoundedString(input.approvedBy, 'approved-by', 256);
   assertCanonicalInstant(input.approvedAt, 'approved-at');
+  return immutableCopy(input);
+}
+
+export function buildIncidentLedgerApprovalGrantPayload(input) {
+  assertExactKeys(input, APPROVAL_GRANT_KEYS, 'approval-grant-keys');
+  if (input.schema !== APPROVAL_GRANT_SCHEMA) throw incidentError('approval-grant-schema');
+  assertRepository(input.repository);
+  if (input.convergenceIssue !== 1381) throw incidentError('convergence-issue');
+  assertRecordId(input.ledgerId, 'ledger-id');
+  assertDigest(input.ledgerDigest, 'ledger-digest');
+  assertRecordId(input.ledgerRecordId, 'ledger-record-id');
   return immutableCopy(input);
 }
 
@@ -362,13 +385,14 @@ function validatedPayloadForEnvelope(envelope) {
       payload = buildIncidentLedgerPayload(envelope.payload);
       if (envelope.issue !== payload.convergenceIssue) throw incidentError('envelope-issue');
       break;
+    case APPROVAL_GRANT_TYPE:
+      payload = buildIncidentLedgerApprovalGrantPayload(envelope.payload);
+      if (envelope.issue !== payload.convergenceIssue) throw incidentError('envelope-issue');
+      break;
     case APPROVAL_TYPE:
       payload = buildIncidentLedgerApprovalPayload(envelope.payload);
       if (envelope.issue !== payload.convergenceIssue) throw incidentError('envelope-issue');
-      if (
-        envelope.authority.actor !== payload.approvedBy ||
-        envelope.createdAt !== payload.approvedAt
-      ) {
+      if (envelope.authority.actor !== payload.approvedBy) {
         throw incidentError('approval-authority');
       }
       break;
@@ -396,9 +420,71 @@ export function renderIncidentRecord({ envelope, visibleMarkdown = '' } = {}) {
 }
 
 function assertParsedRecord(record) {
-  if (!hasExactlyKeys(record, ['id', 'envelope'])) throw incidentError('project-record');
+  const hasProviderProvenance = hasExactlyKeys(record, [
+    'id',
+    'envelope',
+    'authorLogin',
+    'createdAt',
+    'updatedAt',
+  ]);
+  if (!hasProviderProvenance && !hasExactlyKeys(record, ['id', 'envelope'])) {
+    throw incidentError('project-record');
+  }
   assertBoundedString(record.id, 'comment-id', 256);
   renderIncidentRecord({ envelope: record.envelope });
+  if ([APPROVAL_GRANT_TYPE, APPROVAL_TYPE].includes(record.envelope.recordType)) {
+    if (!hasProviderProvenance) throw incidentError('approval-authority');
+    assertBoundedString(record.authorLogin, 'approval-authority', 256);
+    assertCanonicalInstant(record.createdAt, 'approval-authority');
+    assertCanonicalInstant(record.updatedAt, 'approval-authority');
+    if (
+      record.createdAt !== record.updatedAt ||
+      record.envelope.authority.actor !== record.authorLogin ||
+      (record.envelope.recordType === APPROVAL_TYPE &&
+        record.envelope.payload.approvedBy !== record.authorLogin)
+    ) {
+      throw incidentError('approval-authority');
+    }
+  }
+}
+
+function assertApprovalGrantAuthority({ approvals, grants, ledgerByRecordId }) {
+  const grantsByRecordId = new Map(grants.map((grant) => [grant.envelope.recordId, grant]));
+  const usedGrantIds = new Set();
+  for (const grant of grants) {
+    const payload = grant.envelope.payload;
+    const ledger = ledgerByRecordId.get(payload.ledgerRecordId);
+    const ledgerPayload = ledger?.envelope.payload;
+    if (
+      !ledger ||
+      payload.repository !== ledgerPayload.repository ||
+      payload.convergenceIssue !== ledgerPayload.convergenceIssue ||
+      payload.ledgerId !== ledgerPayload.ledgerId ||
+      payload.ledgerDigest !== hashRecordPayload(ledgerPayload)
+    ) {
+      throw incidentError('stale-approval-grant');
+    }
+  }
+  for (const approval of approvals) {
+    const payload = approval.envelope.payload;
+    const grant = grantsByRecordId.get(payload.grantRecordId);
+    const grantPayload = grant?.envelope.payload;
+    if (
+      !grant ||
+      usedGrantIds.has(payload.grantRecordId) ||
+      payload.repository !== grantPayload.repository ||
+      payload.convergenceIssue !== grantPayload.convergenceIssue ||
+      payload.ledgerId !== grantPayload.ledgerId ||
+      payload.ledgerDigest !== grantPayload.ledgerDigest ||
+      payload.ledgerRecordId !== grantPayload.ledgerRecordId ||
+      payload.approvedBy !== grant.authorLogin ||
+      payload.approvedAt !== grant.createdAt ||
+      approval.authorLogin !== grant.authorLogin
+    ) {
+      throw incidentError('approval-authority');
+    }
+    usedGrantIds.add(payload.grantRecordId);
+  }
 }
 
 function approvalTips(approvals) {
@@ -528,6 +614,9 @@ export function projectDeliveryIncidentRecords(records) {
     return immutableCopy(record);
   });
   const ledgers = copies.filter(({ envelope }) => envelope.recordType === LEDGER_TYPE);
+  const approvalGrants = copies.filter(
+    ({ envelope }) => envelope.recordType === APPROVAL_GRANT_TYPE
+  );
   const approvals = copies.filter(({ envelope }) => envelope.recordType === APPROVAL_TYPE);
   const owners = copies.filter(({ envelope }) => envelope.recordType === OWNER_TYPE);
   const incorporated = copies.filter(({ envelope }) => envelope.recordType === INCORPORATED_TYPE);
@@ -544,6 +633,7 @@ export function projectDeliveryIncidentRecords(records) {
   const approvalsByRecordId = new Map(
     approvals.map((approval) => [approval.envelope.recordId, approval])
   );
+  assertApprovalGrantAuthority({ approvals, grants: approvalGrants, ledgerByRecordId });
   for (const approval of approvals) {
     const payload = approval.envelope.payload;
     const ledgerRecord = ledgerByRecordId.get(payload.ledgerRecordId);
@@ -577,6 +667,7 @@ export function projectDeliveryIncidentRecords(records) {
   });
   return deepFreeze({
     ledgers,
+    approvalGrants,
     approvals,
     owners,
     incorporated,

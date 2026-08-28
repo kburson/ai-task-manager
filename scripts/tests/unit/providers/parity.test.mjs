@@ -177,6 +177,21 @@ test('#939: shared router discovers the deliver JIT rule and installed stubs rea
   }
 });
 
+test('#1381: shared router discovers the provider-neutral incident-ledger rule', () => {
+  const router = readFileSync(path.join(REPO_ROOT, 'skill/shared/router.md'), 'utf8');
+  const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/incident-ledger.md'), 'utf8');
+  assert.match(router, /`\/task incident-ledger #1381`\s*\|\s*`rules\/incident-ledger\.md`/);
+  assert.match(rule, /aitm-skill-loaded:rules\/incident-ledger:1\.0\.0/);
+  assert.match(
+    rule,
+    /verify-delivery-incident-reconciliation\.mjs --issue 1381 \[--phase pre-close\|terminal\]/
+  );
+  assert.match(rule, /terminal[\s\S]*default/i);
+  assert.match(rule, /does not approve the ledger or close anything/i);
+  assert.match(rule, /human explicitly approves those exact immutable values/i);
+  assert.match(rule, /Never use either mode to create delivery intent, delivery receipt/i);
+});
+
 test('#939: checked-in Claude and Codex skills equal installer-generated stubs', () => {
   assert.equal(
     readFileSync(path.join(REPO_ROOT, '.claude/skills/task/SKILL.md'), 'utf8'),

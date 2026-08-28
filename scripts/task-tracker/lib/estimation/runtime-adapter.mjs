@@ -98,7 +98,7 @@ const DONE_ISSUE_RECORDS_QUERY = `
         number
         comments(first: 100) {
           nodes {
-            __typename id body updatedAt
+            __typename id body author { login } createdAt updatedAt
             issue { number repository { nameWithOwner } }
           }
           pageInfo { hasNextPage endCursor }
@@ -120,7 +120,7 @@ const ISSUE_PROJECTION_COMMENTS_QUERY = `
         repository { nameWithOwner }
         comments(first: 100, after: $after) {
           nodes {
-            __typename id databaseId body updatedAt
+            __typename id databaseId body author { login } createdAt updatedAt
             issue { number repository { nameWithOwner } }
           }
           pageInfo { hasNextPage endCursor }
@@ -136,7 +136,7 @@ const ISSUE_PROJECTION_QUERY = `
         body
         comments(first: 100) {
           nodes {
-            __typename id databaseId body updatedAt
+            __typename id databaseId body author { login } createdAt updatedAt
             issue { number repository { nameWithOwner } }
           }
           pageInfo { hasNextPage endCursor }

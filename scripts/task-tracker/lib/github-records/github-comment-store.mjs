@@ -9,6 +9,8 @@ const COMMENTS_BY_NODE_IDS_QUERY = `
       ... on IssueComment {
         id
         body
+        author { login }
+        createdAt
         updatedAt
         issue {
           number
@@ -31,6 +33,8 @@ const ISSUE_COMMENTS_QUERY = `
             ... on IssueComment {
               id
               body
+              author { login }
+              createdAt
               updatedAt
               issue { number repository { nameWithOwner } }
             }
@@ -136,9 +140,18 @@ function validateCommentNode(node, expectedId, repository, issue) {
     throw storeError('correlation');
   }
   if (typeof node.body !== 'string') throw storeError('response-shape');
+  const createdAt = normalizeGitHubInstant(node.createdAt);
   const updatedAt = normalizeGitHubInstant(node.updatedAt);
-  if (updatedAt === null) throw storeError('response-shape');
-  return updatedAt;
+  const authorLogin = isOpaqueId(node.author?.login) ? node.author.login : null;
+  const hasAnyProviderProvenance = node.createdAt !== undefined || node.author !== undefined;
+  if (
+    updatedAt === null ||
+    (hasAnyProviderProvenance && (createdAt === null || authorLogin === null))
+  ) {
+    throw storeError('response-shape');
+  }
+  if (createdAt !== null && updatedAt < createdAt) throw storeError('response-shape');
+  return Object.freeze({ authorLogin, createdAt, updatedAt });
 }
 
 function claimsAitmRecord(body) {
@@ -146,7 +159,7 @@ function claimsAitmRecord(body) {
 }
 
 function parseComment(node, expectedId, repository, issue) {
-  const updatedAt = validateCommentNode(node, expectedId, repository, issue);
+  const provenance = validateCommentNode(node, expectedId, repository, issue);
   try {
     return Object.freeze({
       ...parseAitmRecord({
@@ -156,7 +169,7 @@ function parseComment(node, expectedId, repository, issue) {
         expectedIssue: issue,
       }),
       body: node.body,
-      updatedAt,
+      ...provenance,
     });
   } catch {
     throw storeError('envelope');
