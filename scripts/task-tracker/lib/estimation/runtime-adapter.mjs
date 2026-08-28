@@ -1075,7 +1075,6 @@ export function createEstimationOutcomeRuntime({
         : discoveredChildren.childCount > 0;
       const forecasts = recordsForProjection(records);
       const activeForecasts = forecasts.filter((record) => record.supersededBy === null);
-      if (isEpic && children.length === 0) return { status: 'legacy-no-forecast' };
       if (!isEpic && forecasts.length === 0 && forecastRecordId === null) {
         return { status: 'legacy-no-forecast' };
       }
