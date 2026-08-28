@@ -54,6 +54,7 @@ import { attributingCommits as defaultAttributingCommits } from '../lib/commit-a
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
+const MAX_PULL_REQUEST_SOURCE_COMMITS = 10_000;
 const AUTHORIZED_INTENT_KEYS = Object.freeze([
   'attributionTokens',
   'baseRef',
@@ -97,7 +98,10 @@ function isStructurallyInspectableSourceCommits(pullRequest) {
   return (
     Array.isArray(subjects) &&
     Array.isArray(commits) &&
+    commits.length > 0 &&
     subjects.length === commits.length &&
+    pullRequest.sourceCommitsHeadSha === pullRequest.headRefOid &&
+    commits.at(-1)?.oid === pullRequest.headRefOid &&
     commits.every((commit, index) => {
       if (commit === null || typeof commit !== 'object' || Array.isArray(commit)) return false;
       const keys = Object.keys(commit).sort();
@@ -116,13 +120,32 @@ function isUnattributedMergeCandidate(subject) {
   return typeof subject === 'string' && !subject.includes('[') && !subject.includes('#');
 }
 
-export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommit) {
+function matchesInspectedCommitTitle(observed, inspected) {
+  if (observed === inspected) return true;
+  if (typeof observed !== 'string' || typeof inspected !== 'string' || !observed.endsWith('…')) {
+    return false;
+  }
+  const prefix = observed.slice(0, -1);
+  return prefix.length >= 64 && inspected.length > prefix.length && inspected.startsWith(prefix);
+}
+
+async function classifySourceCommitSubjects(pullRequest, inspectSourceCommit) {
   const strictSubjects = pullRequest?.sourceCommitSubjects;
-  if (!Array.isArray(strictSubjects)) return strictSubjects;
-  if (!strictSubjects.some(isUnattributedMergeCandidate)) return strictSubjects;
-  if (!isStructurallyInspectableSourceCommits(pullRequest)) return strictSubjects;
+  if (!Array.isArray(strictSubjects)) {
+    return { attributableSubjects: strictSubjects, verifiedMergeTitles: [] };
+  }
+  if (pullRequest?.sourceCommitsComplete !== true) {
+    return { attributableSubjects: null, verifiedMergeTitles: [] };
+  }
+  if (!isStructurallyInspectableSourceCommits(pullRequest)) {
+    return { attributableSubjects: null, verifiedMergeTitles: [] };
+  }
+  if (!strictSubjects.some(isUnattributedMergeCandidate)) {
+    return { attributableSubjects: strictSubjects, verifiedMergeTitles: [] };
+  }
 
   const attributableSubjects = [];
+  const verifiedMergeTitles = [];
   for (const commit of pullRequest.sourceCommits) {
     if (!isUnattributedMergeCandidate(commit.messageHeadline)) {
       attributableSubjects.push(commit.messageHeadline);
@@ -136,14 +159,41 @@ export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommi
     }
     const parents = inspection?.parents;
     const verifiedMerge =
-      inspection?.commitTitle === commit.messageHeadline &&
+      matchesInspectedCommitTitle(commit.messageHeadline, inspection?.commitTitle) &&
       Array.isArray(parents) &&
       parents.length >= 2 &&
       parents.every((parent) => SHA_RE.test(parent)) &&
       new Set(parents).size === parents.length;
-    if (!verifiedMerge) attributableSubjects.push(commit.messageHeadline);
+    if (verifiedMerge) {
+      verifiedMergeTitles.push(inspection.commitTitle);
+    } else {
+      attributableSubjects.push(commit.messageHeadline);
+    }
   }
-  return attributableSubjects;
+  return { attributableSubjects, verifiedMergeTitles };
+}
+
+export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommit) {
+  return (await classifySourceCommitSubjects(pullRequest, inspectSourceCommit))
+    .attributableSubjects;
+}
+
+export async function openSourceCommitSubjects(localSubjects, pullRequest, inspectSourceCommit) {
+  if (!Array.isArray(localSubjects)) return localSubjects;
+  const { verifiedMergeTitles } = await classifySourceCommitSubjects(
+    pullRequest,
+    inspectSourceCommit
+  );
+  const remaining = new Map();
+  for (const title of verifiedMergeTitles) {
+    remaining.set(title, (remaining.get(title) ?? 0) + 1);
+  }
+  return localSubjects.filter((subject) => {
+    const count = remaining.get(subject) ?? 0;
+    if (count === 0) return true;
+    remaining.set(subject, count - 1);
+    return false;
+  });
 }
 
 function validateLineageResult(lineage) {
@@ -493,7 +543,11 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const live = initial.projection.liveIntent;
   const commitSubjects = mergedPullRequest
     ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
-    : await listCommitSubjects({ range: 'origin/trunk..HEAD' });
+    : await openSourceCommitSubjects(
+        await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+        selectedPullRequest,
+        deps.inspectSourceCommit
+      );
   const preflightInput = {
     issue: { ...issue, agentReviewPassed, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
@@ -722,6 +776,80 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     }
   };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
+  const fetchCompletePullRequestCommits = async (prNumber, expectedHeadSha) => {
+    const query = `query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid commits(first:100,after:$cursor){totalCount nodes{commit{oid messageHeadline}} pageInfo{hasNextPage endCursor}}}}}`;
+    const commits = [];
+    const seenCommitShas = new Set();
+    const seenCursors = new Set();
+    let cursor = null;
+    let expectedTotal = null;
+    for (;;) {
+      const args = [
+        'api',
+        'graphql',
+        '-f',
+        `query=${query}`,
+        '-f',
+        `owner=${owner}`,
+        '-f',
+        `repo=${repoName}`,
+        '-F',
+        `pr=${prNumber}`,
+      ];
+      if (cursor !== null) args.push('-f', `cursor=${cursor}`);
+      const payload = await json('gh', args);
+      const pullRequest = payload?.data?.repository?.pullRequest;
+      const connection = pullRequest?.commits;
+      const totalCount = connection?.totalCount;
+      const nodes = connection?.nodes;
+      const pageInfo = connection?.pageInfo;
+      if (
+        !Number.isSafeInteger(totalCount) ||
+        totalCount < 1 ||
+        totalCount > MAX_PULL_REQUEST_SOURCE_COMMITS ||
+        !Array.isArray(nodes) ||
+        nodes.length > 100 ||
+        typeof pageInfo?.hasNextPage !== 'boolean' ||
+        !SHA_RE.test(expectedHeadSha || '') ||
+        pullRequest?.headRefOid !== expectedHeadSha
+      ) {
+        throw deliverError('pull-request-commits');
+      }
+      if (expectedTotal === null) expectedTotal = totalCount;
+      else if (expectedTotal !== totalCount) throw deliverError('pull-request-commits');
+      for (const node of nodes) {
+        const commit = node?.commit;
+        if (
+          !SHA_RE.test(commit?.oid || '') ||
+          typeof commit?.messageHeadline !== 'string' ||
+          commit.messageHeadline.length === 0 ||
+          seenCommitShas.has(commit.oid)
+        ) {
+          throw deliverError('pull-request-commits');
+        }
+        seenCommitShas.add(commit.oid);
+        commits.push({ oid: commit.oid, messageHeadline: commit.messageHeadline });
+      }
+      if (commits.length > expectedTotal) throw deliverError('pull-request-commits');
+      if (!pageInfo.hasNextPage) {
+        if (commits.length !== expectedTotal || commits.at(-1)?.oid !== expectedHeadSha) {
+          throw deliverError('pull-request-commits');
+        }
+        return commits;
+      }
+      const nextCursor = pageInfo.endCursor;
+      if (
+        nodes.length === 0 ||
+        typeof nextCursor !== 'string' ||
+        nextCursor.length === 0 ||
+        seenCursors.has(nextCursor)
+      ) {
+        throw deliverError('pull-request-commits');
+      }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    }
+  };
   const directoryEvidence = new Map();
   const resolveDirectoryEvidence = async ({ issue, issueNumber, expectedHeadSha }) => {
     const source = (ctx.locateAuthoritySource || locateAuthoritySource)({
@@ -891,15 +1019,12 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '-R',
         ctx.cfg.repo,
         '--json',
-        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,commits',
+        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit',
       ]);
-      pr.sourceCommitSubjects = Array.isArray(pr.commits)
-        ? pr.commits.map(({ messageHeadline }) => messageHeadline)
-        : null;
-      pr.sourceCommits = Array.isArray(pr.commits)
-        ? pr.commits.map(({ oid, messageHeadline }) => ({ oid, messageHeadline }))
-        : null;
-      delete pr.commits;
+      pr.sourceCommits = await fetchCompletePullRequestCommits(prNumber, pr.headRefOid);
+      pr.sourceCommitSubjects = pr.sourceCommits.map(({ messageHeadline }) => messageHeadline);
+      pr.sourceCommitsComplete = true;
+      pr.sourceCommitsHeadSha = pr.headRefOid;
       pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
       if (pr.merged) {
         const mergedAt = normalizeGitHubInstant(pr.mergedAt);

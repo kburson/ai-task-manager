@@ -14,7 +14,10 @@ const STRICT_SUBJECTS = [ATTRIBUTED_TITLE, MERGE_TITLE];
 
 function pullRequest(overrides = {}) {
   return {
+    headRefOid: SOURCE_MERGE,
     sourceCommitSubjects: STRICT_SUBJECTS,
+    sourceCommitsComplete: true,
+    sourceCommitsHeadSha: SOURCE_MERGE,
     sourceCommits: [
       { oid: SOURCE_COMMIT, messageHeadline: ATTRIBUTED_TITLE },
       { oid: SOURCE_MERGE, messageHeadline: MERGE_TITLE },
@@ -31,6 +34,30 @@ test('omits a matching unattributed source record with two repository parents', 
       commitTitle: MERGE_TITLE,
     };
   });
+
+  assert.deepEqual(subjects, [ATTRIBUTED_TITLE]);
+});
+
+test('accepts GitHub ellipsis truncation when immutable inspection proves the full merge title', async () => {
+  const fullTitle =
+    "Merge remote-tracking branch 'origin/trunk' into codex/1381-governed-delivery-convergence-spec";
+  const truncatedTitle = "Merge remote-tracking branch 'origin/trunk' into codex/1381-governed-…";
+  const subjects = await mergedSourceCommitSubjects(
+    pullRequest({
+      sourceCommitSubjects: [ATTRIBUTED_TITLE, truncatedTitle],
+      sourceCommits: [
+        { oid: SOURCE_COMMIT, messageHeadline: ATTRIBUTED_TITLE },
+        { oid: SOURCE_MERGE, messageHeadline: truncatedTitle },
+      ],
+    }),
+    async ({ commitSha }) => {
+      assert.equal(commitSha, SOURCE_MERGE);
+      return {
+        parents: ['3'.repeat(40), '4'.repeat(40)],
+        commitTitle: fullTitle,
+      };
+    }
+  );
 
   assert.deepEqual(subjects, [ATTRIBUTED_TITLE]);
 });
@@ -72,16 +99,29 @@ test('preserves strict attribution input when immutable records are malformed', 
     }
   );
 
-  assert.deepEqual(subjects, STRICT_SUBJECTS);
+  assert.equal(subjects, null);
   assert.equal(inspected, false);
+});
+
+test('refuses merged attribution when the provider inventory is not proven complete', async () => {
+  const result = await mergedSourceCommitSubjects(
+    pullRequest({ sourceCommitsComplete: false }),
+    async () => {
+      throw new Error('inspection must not run');
+    }
+  );
+
+  assert.equal(result, null);
 });
 
 test('does not inspect attributed source subjects', async () => {
   const subjects = [ATTRIBUTED_TITLE];
   const result = await mergedSourceCommitSubjects(
     pullRequest({
+      headRefOid: SOURCE_COMMIT,
       sourceCommitSubjects: subjects,
       sourceCommits: [{ oid: SOURCE_COMMIT, messageHeadline: ATTRIBUTED_TITLE }],
+      sourceCommitsHeadSha: SOURCE_COMMIT,
     }),
     async () => {
       throw new Error('inspection must not run');

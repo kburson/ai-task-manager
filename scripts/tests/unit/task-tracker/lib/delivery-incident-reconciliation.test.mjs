@@ -5,10 +5,16 @@ import test from 'node:test';
 import {
   approveIncidentLedger,
   observeIncidentLedgerLive,
+  readIssueDeliveryAuthority,
   recordIncidentLedger,
   resolveApprovedIncidentLedger,
+  validateRecordableIncidentLedger,
   verifyIncidentLedgerPhase,
 } from '../../../../task-tracker/lib/delivery-incident-reconciliation.mjs';
+import {
+  createVerificationReceipt,
+  upsertVerificationReceipt,
+} from '../../../../task-tracker/lib/verification-receipt.mjs';
 import {
   buildDeliveryIntent,
   buildDeliveryReceipt,
@@ -26,6 +32,89 @@ const approvedPayload = Object.freeze({
     Object.freeze({ issueNumber: 1381, intendedOutcome: 'convergence-owner' }),
     Object.freeze({ issueNumber: 1403, intendedOutcome: 'incorporated' }),
   ]),
+});
+
+test('issue delivery authority rejects malformed and contradictory accepted-SHA claims', () => {
+  assert.deepEqual(readIssueDeliveryAuthority('', { expectedIssue: 1403 }), {
+    acceptedSha: null,
+    approvalMode: null,
+    approvalSha: null,
+  });
+  assert.throws(
+    () =>
+      readIssueDeliveryAuthority(
+        '<!-- aitm-verification-receipt stage="test" data="not-valid-evidence" -->',
+        { expectedIssue: 1403 }
+      ),
+    /delivery-incident:stale-observation/
+  );
+
+  const reviewHead = 'b'.repeat(40);
+  const reviewReceipt = createVerificationReceipt({
+    issueNumber: 1403,
+    stage: 'review',
+    fingerprint: {
+      commitSha: reviewHead,
+      environment: {
+        node: 'v22.0.0',
+        platform: 'darwin-arm64',
+        lockfileHash: `sha256:${'c'.repeat(64)}`,
+        configHashes: {},
+        sandbox: { kind: 'worktree', identity: '/tmp/task-1403', clean: true },
+      },
+    },
+    commands: [
+      {
+        classification: 'review-probe',
+        command: 'npm',
+        args: ['test'],
+        exitCode: 0,
+        durationMs: 1,
+      },
+    ],
+    now: '2026-08-28T00:01:00.000Z',
+  });
+  const contradictory = upsertVerificationReceipt(
+    '<!-- aitm-test-started sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ts="2026-08-28T00:00:00.000Z" -->',
+    reviewReceipt
+  );
+  assert.throws(
+    () => readIssueDeliveryAuthority(contradictory, { expectedIssue: 1403 }),
+    /delivery-incident:stale-observation/
+  );
+
+  const wrongIssueReceipt = createVerificationReceipt({
+    issueNumber: 999,
+    stage: 'review',
+    fingerprint: {
+      commitSha: reviewHead,
+      environment: {
+        node: 'v22.0.0',
+        platform: 'darwin-arm64',
+        lockfileHash: `sha256:${'c'.repeat(64)}`,
+        configHashes: {},
+        sandbox: { kind: 'worktree', identity: '/tmp/task-999', clean: true },
+      },
+    },
+    commands: [
+      {
+        classification: 'review-probe',
+        command: 'npm',
+        args: ['test'],
+        exitCode: 0,
+        durationMs: 1,
+      },
+    ],
+    now: '2026-08-28T00:02:00.000Z',
+  });
+  const copiedEvidence = upsertVerificationReceipt(
+    `<!-- aitm-test-started sha="${reviewHead}" ts="2026-08-28T00:00:00.000Z" -->`,
+    wrongIssueReceipt
+  );
+  assert.throws(
+    () => readIssueDeliveryAuthority(copiedEvidence, { expectedIssue: 1403 }),
+    /delivery-incident:stale-observation/
+  );
 });
 
 function projection() {
@@ -205,6 +294,37 @@ test('record mode validates live observation before one exact append and recover
   });
   assert.equal(replay.status, 'already-recorded');
   assert.equal(appends, 1);
+});
+
+test('recordable ledger requires complete carrier evidence for every Incorporated outcome', () => {
+  const row = {
+    issueNumber: 1384,
+    intendedOutcome: 'incorporated',
+    prNumber: null,
+    prHeadSha: null,
+    mergeSha: null,
+    codeOnTrunk: false,
+    codeOnTrunkBasis: 'shared-carrier',
+    blocker: 'issue-local delivery provenance absent for #1384',
+  };
+  assert.throws(
+    () => validateRecordableIncidentLedger({ rows: [row] }),
+    /delivery-incident:incomplete-incorporated-carrier/
+  );
+  assert.equal(
+    validateRecordableIncidentLedger({
+      rows: [
+        {
+          ...row,
+          prNumber: 1385,
+          prHeadSha: 'a'.repeat(40),
+          mergeSha: 'b'.repeat(40),
+          codeOnTrunk: true,
+        },
+      ],
+    }).rows[0].prNumber,
+    1385
+  );
 });
 
 test('approval authenticates first and completes approval plus incident owner after interruption', async () => {

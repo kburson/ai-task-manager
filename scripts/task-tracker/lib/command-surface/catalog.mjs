@@ -264,10 +264,12 @@ export const VERB_CONTRACTS = Object.freeze({
   'incident-ledger': contract(
     [
       'The target must be #1381; record mode requires a strict 19-row ledger matching fresh live observations.',
+      'Every Incorporated row must name a concrete carrier pull request, head, merge, on-trunk result, and non-delivery explanation.',
       'Approval mode requires an authenticated GitHub user plus the exact recorded ledger ID and canonical digest.',
     ],
     [
       'Record mode appends only an observation ledger; approval mode appends the human approval and exact #939 owner pointer.',
+      'That exact human ledger approval authorizes fresh Incorporated terminal disposition; durable issue-local authority governs retries.',
       'Co-review and Full-Auto standing policy do not approve a later ledger ID or digest.',
       'Neither mode closes an issue, changes lifecycle state, or manufactures delivery evidence.',
       'The standalone read-only verifier accepts --phase pre-close before mutations or --phase terminal after closure; terminal is the default.',

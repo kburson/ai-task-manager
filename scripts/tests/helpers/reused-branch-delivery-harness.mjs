@@ -101,6 +101,14 @@ export function createReusedBranchDeliveryHarness({ reversePullRequests = false 
       mergeMethod: pr.state === 'MERGED' ? 'squash' : null,
       headRefDeleted: false,
       sourceCommitSubjects: [`[#${pr.issueNumber}] integrated reused-branch work`],
+      sourceCommits: [
+        {
+          oid: pr.headRefOid,
+          messageHeadline: `[#${pr.issueNumber}] integrated reused-branch work`,
+        },
+      ],
+      sourceCommitsComplete: true,
+      sourceCommitsHeadSha: pr.headRefOid,
     };
   }
 

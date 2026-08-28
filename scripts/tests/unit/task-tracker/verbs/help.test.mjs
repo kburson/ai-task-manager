@@ -39,3 +39,11 @@ test('close help distinguishes Incorporated owner assertion from duplicate and i
   assert.match(VERB_CONTRACTS.close.effects.join(' '), /partial terminal recovery/i);
   assert.match(VERB_CONTRACTS.close.effects.join(' '), /already-closed[\s\S]*read-only/i);
 });
+
+test('incident-ledger help requires executable Incorporated carrier authority', () => {
+  const preconditions = VERB_CONTRACTS['incident-ledger'].preconditions.join(' ');
+  const effects = VERB_CONTRACTS['incident-ledger'].effects.join(' ');
+  assert.match(preconditions, /Incorporated row[\s\S]*carrier pull request[\s\S]*on-trunk/i);
+  assert.match(effects, /human ledger approval[\s\S]*Incorporated terminal disposition/i);
+  assert.match(effects, /durable issue-local authority[\s\S]*retries/i);
+});

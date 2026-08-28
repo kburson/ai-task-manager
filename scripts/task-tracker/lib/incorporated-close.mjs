@@ -6,7 +6,7 @@ import {
   renderIncidentRecord,
 } from './delivery-incident-records.mjs';
 import { resolveApprovedIncidentLedger } from './delivery-incident-reconciliation.mjs';
-import { parseDeliveryCommentForPullRequest, projectDeliveryRecords } from './delivery-records.mjs';
+import { parseDeliveryComment, projectDeliveryRecords } from './delivery-records.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 const CLOSE_TRANSACTION_TYPE = 'delivery-incident-incorporated-close';
@@ -91,13 +91,7 @@ function validateReviewAuthorization(value) {
   return deepFreeze({ mode: value.mode, source: value.source });
 }
 
-export function projectExactDeliveryReceipt({
-  comments,
-  repository,
-  issueNumber,
-  prNumber,
-  acceptedSha,
-} = {}) {
+export function projectExactDeliveryReceipt({ comments, repository, issueNumber } = {}) {
   if (!Array.isArray(comments)) fail('delivery-receipt-conflict');
   const claims = comments.filter((comment) =>
     /<!--\s*aitm-delivery-(?:intent|receipt)\b/i.test(comment?.body || '')
@@ -105,30 +99,31 @@ export function projectExactDeliveryReceipt({
   if (claims.length === 0) return deepFreeze({ status: 'absent' });
   let parsed;
   try {
-    parsed = claims
-      .map((comment) =>
-        parseDeliveryCommentForPullRequest(
-          { id: comment.id, body: comment.body, createdAt: comment.createdAt },
-          { repository, issueNumber, prNumber }
-        )
-      )
-      .filter(Boolean);
+    parsed = claims.map((comment) => {
+      const prNumbers = [...String(comment.body).matchAll(/"prNumber":([1-9][0-9]*)/g)].map(
+        (match) => Number(match[1])
+      );
+      if (prNumbers.length !== 1) fail('delivery-receipt-conflict');
+      return parseDeliveryComment(
+        { id: comment.id, body: comment.body, createdAt: comment.createdAt },
+        { repository, issueNumber, prNumber: prNumbers[0] }
+      );
+    });
   } catch {
     fail('delivery-receipt-conflict');
   }
-  if (parsed.length === 0) return deepFreeze({ status: 'absent' });
-  let projection;
-  try {
-    projection = projectDeliveryRecords(parsed);
-  } catch {
-    fail('delivery-receipt-conflict');
+  const byPullRequest = Map.groupBy(parsed, ({ record }) => record.prNumber);
+  const receipts = [];
+  for (const records of byPullRequest.values()) {
+    try {
+      receipts.push(...projectDeliveryRecords(records).receipts);
+    } catch {
+      fail('delivery-receipt-conflict');
+    }
   }
-  const exactReceipts = projection.receipts.filter(
-    ({ record }) => record.expectedHeadSha === acceptedSha
-  );
-  if (exactReceipts.length > 1) fail('delivery-receipt-conflict');
-  if (exactReceipts.length === 1) {
-    return deepFreeze({ status: 'present', receipt: exactReceipts[0].record });
+  if (receipts.length > 1) fail('delivery-receipt-conflict');
+  if (receipts.length === 1) {
+    return deepFreeze({ status: 'present', receipt: receipts[0].record });
   }
   return deepFreeze({ status: 'absent' });
 }

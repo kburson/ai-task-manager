@@ -25,6 +25,9 @@ function pullRequest(number, headRefOid, state = 'OPEN') {
     mergedAt: state === 'MERGED' ? '2026-08-23T03:57:33.000Z' : null,
     headRefDeleted: false,
     sourceCommitSubjects: ['[#1392] exact-head delivery'],
+    sourceCommits: [{ oid: headRefOid, messageHeadline: '[#1392] exact-head delivery' }],
+    sourceCommitsComplete: true,
+    sourceCommitsHeadSha: headRefOid,
     mergeMethod: state === 'MERGED' ? 'squash' : null,
   };
 }

@@ -406,9 +406,14 @@ transaction uses **partial terminal recovery** to execute only its missing suffi
 An **already-closed** completed retry is fully read-only.
 
 Incident convergence uses one explicitly **approved incident ledger**. Each row
-names an exact outcome and owner. `npx aitm close #N --as incorporated --of #M`
-records **Incorporated** only when the issue's row, source SHA, carrier merge, and
-incident owner all match; it never fabricates delivery intent or receipt evidence.
+names an exact outcome and owner. Every Incorporated row names a concrete carrier
+pull request, head, merge, verified on-trunk result, and the reason issue-local
+delivery evidence is absent. `npx aitm close #N --as incorporated --of #M`
+records **Incorporated** only when those carrier bytes and the incident owner all
+match. The authenticated human approval of the exact ledger ID and digest is the
+fresh terminal authorization for this non-delivery outcome. The durable
+issue-local authorization record governs partial and completed retries. Neither
+path fabricates delivery intent or receipt evidence.
 The same `--of` option on the incident epic asserts its exact ledger owner before
 terminal close. Ledger record readback and the phase-aware reconciliation verifier
 must pass before and after the blocker-first close sequence.

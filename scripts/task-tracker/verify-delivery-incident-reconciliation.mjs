@@ -346,7 +346,8 @@ export async function productionVerification(parsed, deps = {}) {
       return false;
     }
     const issueAuthority = (deps.readIssueDeliveryAuthority || readIssueDeliveryAuthority)(
-      issue.body || ''
+      issue.body || '',
+      { expectedIssue: authority.convergenceIssue }
     );
     const pullRequest = await runtime.liveObservationDeps.fetchPullRequest(delivery.prNumber);
     return (

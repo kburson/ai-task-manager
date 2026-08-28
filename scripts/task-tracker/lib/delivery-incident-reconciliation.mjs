@@ -9,7 +9,7 @@ import {
   renderIncidentRecord,
 } from './delivery-incident-records.mjs';
 import { parseReviewApprovedMarker, parseTestStartedMarker } from './markers.mjs';
-import { parseVerificationReceipt } from './verification-receipt.mjs';
+import { parseValidatedVerificationReceipts } from './verification-receipt.mjs';
 import { parseDeliveryCommentForPullRequest, projectDeliveryRecords } from './delivery-records.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -44,6 +44,27 @@ function exactEnvelopeRecord(records, envelope) {
   return matches[0] || null;
 }
 
+export function validateRecordableIncidentLedger(payload) {
+  if (!Array.isArray(payload?.rows)) fail('dependencies');
+  for (const row of payload.rows) {
+    if (row?.intendedOutcome !== 'incorporated') continue;
+    if (
+      !Number.isSafeInteger(row.prNumber) ||
+      row.prNumber <= 0 ||
+      !SHA_RE.test(row.prHeadSha || '') ||
+      !SHA_RE.test(row.mergeSha || '') ||
+      row.codeOnTrunk !== true ||
+      typeof row.codeOnTrunkBasis !== 'string' ||
+      row.codeOnTrunkBasis.length === 0 ||
+      typeof row.blocker !== 'string' ||
+      row.blocker.length === 0
+    ) {
+      fail('incomplete-incorporated-carrier');
+    }
+  }
+  return payload;
+}
+
 async function appendWithRecovery({ append, list, envelope, body }) {
   try {
     const written = await append({ envelope, body });
@@ -71,6 +92,9 @@ export async function recordIncidentLedger({
     fail('dependencies');
   }
   const payload = build(inputPayload);
+  if (payload.schema === 'aitm.delivery-incident-ledger/v1') {
+    (deps.validateRecordableIncidentLedger || validateRecordableIncidentLedger)(payload);
+  }
   if (payload.repository !== repository || payload.convergenceIssue !== convergenceIssue) {
     fail('conflicting-authority');
   }
@@ -427,13 +451,50 @@ export async function approveIncidentLedger({
   });
 }
 
-function acceptedShaFromBody(body) {
-  return (
-    parseVerificationReceipt(body, 'review')?.commitSha ??
-    parseVerificationReceipt(body, 'test')?.commitSha ??
-    parseTestStartedMarker(body)?.sha ??
-    null
-  );
+function acceptedShaFromBody(body, expectedIssue) {
+  if (!Number.isSafeInteger(expectedIssue) || expectedIssue <= 0) fail('dependencies');
+  const src = String(body || '');
+  const receiptStarts = [...src.matchAll(/<!--\s*aitm-verification-receipt\b/g)];
+  const receiptClaims = [...src.matchAll(/<!--\s*aitm-verification-receipt\b[^>]*-->/g)];
+  if (receiptStarts.length !== receiptClaims.length) fail('stale-observation');
+  let receipts;
+  try {
+    receipts = parseValidatedVerificationReceipts(src, { expectedIssue });
+  } catch {
+    fail('stale-observation');
+  }
+  const acceptedReceipts = receipts.filter(({ stage }) => stage === 'test' || stage === 'review');
+  for (const stage of ['test', 'review']) {
+    if (acceptedReceipts.filter((receipt) => receipt.stage === stage).length > 1) {
+      fail('stale-observation');
+    }
+  }
+
+  const startedStarts = [...src.matchAll(/<!--\s*aitm-test-started\b/g)];
+  const startedClaims = [...src.matchAll(/<!--\s*aitm-test-started\b[^>]*-->/g)];
+  if (startedStarts.length !== startedClaims.length || startedClaims.length > 1) {
+    fail('stale-observation');
+  }
+  const started = startedClaims.length === 1 ? parseTestStartedMarker(startedClaims[0][0]) : null;
+  if (startedClaims.length === 1 && started === null) fail('stale-observation');
+
+  const carriers = [
+    ...acceptedReceipts.map(({ commitSha }) => commitSha),
+    ...(started ? [started.sha] : []),
+  ];
+  if (carriers.length === 0) return null;
+  const fullShas = carriers.filter((sha) => SHA_RE.test(sha));
+  if (fullShas.length === 0) fail('stale-observation');
+  const acceptedSha = fullShas[0];
+  if (
+    carriers.some(
+      (sha) =>
+        typeof sha !== 'string' || sha.length < 7 || sha.length > 40 || !acceptedSha.startsWith(sha)
+    )
+  ) {
+    fail('stale-observation');
+  }
+  return acceptedSha;
 }
 
 function approvalFromBody(body) {
@@ -445,8 +506,11 @@ function approvalFromBody(body) {
   };
 }
 
-export function readIssueDeliveryAuthority(body) {
-  return deepFreeze({ acceptedSha: acceptedShaFromBody(body), ...approvalFromBody(body) });
+export function readIssueDeliveryAuthority(body, { expectedIssue } = {}) {
+  return deepFreeze({
+    acceptedSha: acceptedShaFromBody(body, expectedIssue),
+    ...approvalFromBody(body),
+  });
 }
 
 export function resolveSingleDeliveredEvidence({ comments, repository, issueNumber } = {}) {
@@ -522,7 +586,7 @@ export async function observeIncidentLedgerLive(payload, deps = {}, { phase = 'b
     ) {
       fail('stale-observation');
     }
-    const acceptedSha = acceptedShaFromBody(issue.body || '');
+    const acceptedSha = acceptedShaFromBody(issue.body || '', row.issueNumber);
     const approval = approvalFromBody(issue.body || '');
     if (
       acceptedSha !== row.acceptedSha ||
