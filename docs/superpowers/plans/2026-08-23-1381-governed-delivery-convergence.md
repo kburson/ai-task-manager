@@ -29,14 +29,20 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
 - Normative specification:
   `docs/superpowers/specs/2026-08-23-1381-governed-delivery-convergence-design.md`
   at `bc079275f96e1c01e78b41127809c00e349c2426`.
+- Normative blocker-first amendment:
+  `docs/superpowers/specs/2026-08-28-1381-blocker-first-convergence-amendment-design.md`
+  at `52fcd3c5c96a9c4e3b6902438304809f08957249`. The amendment takes precedence
+  for hierarchy, #1403 disposition, live-ledger execution timing, and terminal
+  ordering.
 - Accepted co-review evidence:
   `docs/superpowers/reviews/1381/spec/README.md` at
   `bb94111ce582a224a42ccaf0500e59138df71a6a`.
 - Specification/review branch:
   `codex/1381-governed-delivery-convergence-spec`.
-- Governed return branch:
-  `codex/939-full-auto-merge` at
-  `ec160af0b03df8453fa0a1ad7f91b7138aeda38d` before #1381 hydration.
+- Governed implementation branch:
+  `codex/1381-governed-delivery-convergence-spec`. #1381 is an independent
+  convergence defect; do not move its implementation onto the reused #939
+  incident branch.
 - The accepted specification remains normative. This plan chooses file names,
   interfaces, task boundaries, and test surfaces without changing its policy.
 
@@ -46,8 +52,12 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
   create successor defects for another delivery or close guard discovered here.
 - Do not implement from this plan until its own Codex/Claude co-review is
   accepted and #1381 is hydrated through the governed issue-body mutation path.
-- Finish #1403 through its existing PR #1404 before advancing
-  `codex/939-full-auto-merge` with any #1381 implementation commit.
+- Keep #1403 blocked by #1381 until #1381 reaches Done. #1403 then closes as
+  Incorporated through the approved incident ledger; never fabricate a delivery
+  receipt for PR #1404.
+- Keep #1381 independent of #939. Preserve the related-issue and incident-ledger
+  links, but do not restore the native sub-issue edge that created the sibling
+  WIP cycle with active #1380.
 - Never invoke, wrap, disguise, or fall back to `gh pr merge`.
 - Only a current-head delivery may create an intent or emit a sanctioned
   expected-head provider action.
@@ -79,17 +89,22 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
 ## Pre-implementation Governance Gate
 
 - [ ] Confirm PR #1404 still points to
-      `ec160af0b03df8453fa0a1ad7f91b7138aeda38d`, finish #1403 through Test,
-      Review, approval, delivery, and close, and record its final receipt and
-      merge SHA before changing the return branch.
-- [ ] Complete and archive the plan co-review on the specification/review branch.
+      `ec160af0b03df8453fa0a1ad7f91b7138aeda38d`, merged as
+      `19c6f54b0354699b988c470a99f122edab3aa2ba`, and has no valid governed intent
+      or receipt. Confirm all three #1403 blocker carriers name #1381.
+- [ ] Verify the native #939 -> #1381 sub-issue edge is absent from both parent
+      and child GraphQL views, while #1381's issue body retains related incident
+      provenance.
+- [ ] Complete and archive focused review of this blocker-first amendment and
+      the amended terminal sequence on the specification/review branch.
 - [ ] Re-read the live #1381 body and prepare
       `.tmp/gh/1381-body-operation.json` as an
       `aitm.issue-body-operation/v1` fresh-base operation. The replacement must:
       widen the summary to the full converged set, replace `npm run lint:docs`
-      with `npm run lint:md`, include the accepted specification and plan commit
-      references, preserve all AITM markers, and retain the no-successor-defect
-      rule.
+      with `npm run lint:md`, include the accepted specification, blocker-first
+      amendment, and amended plan commit references, remove #939 parent semantics,
+      classify #1403 as Incorporated, preserve all AITM markers, and retain the
+      no-successor-defect rule.
 - [ ] Apply the hydrated body only through:
 
   ```bash
@@ -105,9 +120,9 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
       approved-plan marker is durable.
 
 - [ ] Show exact ancestry, patch, file-content, local/remote-ref, and clean-tree
-      evidence before returning to `codex/939-full-auto-merge`. Preserve
-      `codex/1381-governed-delivery-convergence-spec` as the immutable reviewed
-      artifact branch.
+      evidence before implementation. Continue on
+      `codex/1381-governed-delivery-convergence-spec`; preserve the reviewed
+      design and plan commits as immutable history on that branch.
 
 ---
 
@@ -558,6 +573,12 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
   issue rows, unsorted rows, rows outside the reviewed set, wrong convergence or
   incident issue, oversized strings/arrays, and mutable return values.
 
+  The reviewed set includes #1403 with `intendedOutcome: 'incorporated'`, PR
+  #1404, accepted SHA `ec160af0b03df8453fa0a1ad7f91b7138aeda38d`, carrier
+  merge SHA `19c6f54b0354699b988c470a99f122edab3aa2ba`, and blocker text explaining
+  that the historical merge method and missing governed intent/receipt prohibit
+  ordinary Delivered close.
+
 - [ ] **Step 2: Test approval and Incorporated projection**
 
   Approval must bind one `ledgerId` and
@@ -1004,7 +1025,7 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   git commit -m "[#1381] Document governed delivery convergence"
   ```
 
-### Task 9: Live incident reconciliation and acceptance
+### Task 9: Blocker-first live reconciliation and terminal closure
 
 **Files:**
 
@@ -1019,8 +1040,8 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
 - Consumes the merged #1381 implementation, approved live ledger, sanctioned
   provider integration, and all issue-local historical evidence.
-- Produces one verified outcome per incident issue and the required live
-  reused-branch close/retry evidence on #1381.
+- Produces a Delivered close for independent #1381, then one verified outcome
+  per dependency-chain issue, followed by the final #939 child and epic results.
 
 - [ ] **Step 1: Deliver #1381 normally**
 
@@ -1043,60 +1064,108 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   byte-for-byte. The implementation worker must not reconstruct, infer, or
   substitute either immutable value.
 
-- [ ] **Step 3: Verify retained historical rows read-only**
+- [ ] **Step 3: Verify the blocker-first ledger before terminal mutation**
 
   Preserve #1378, #1379, #1386, and #1387 as superseded and #1399/#1401 as
-  Delivered. Do not rewrite their records, dispositions, or timing.
+  Delivered. Confirm the approved ledger contains exactly one row for every
+  reviewed issue, names #1403 as Incorporated, and records the dependency order
+  #1381 -> #1403 -> #1397 -> #1395 -> #1393 -> #1392 -> #1390 -> #1389 ->
+  #1388. Do not rewrite closed historical records, dispositions, or timing.
 
-- [ ] **Step 4: Recover historical receipts and close their issues**
+- [ ] **Step 4: Close independent #1381**
 
-  For #1389/PR #1385 and #1392/PR #1391, work from each issue's recorded
-  governed worktree and binding. Capture provider-action counts, run delivery
-  recovery, verify exactly one new receipt and zero provider calls, revalidate
-  current human or standing Full-Auto authority for the accepted SHA, record the
-  approval mode/source/policy state, and run ordinary close. Do not relocate or
-  overwrite an issue worktree to centralize reconciliation.
+  Publish a #1381 execution summary linking its implementation PR, exact source
+  and merge SHAs, CI, intent, receipt, approved ledger ID/digest, hierarchy
+  correction, and the still-pending chain outcomes. Run ordinary close through
+  #1381's exact-head receipt. Retry the same close once and prove it performs no
+  provider, record, timing, estimation, lifecycle, board, disposition,
+  issue-close, label, or binding write.
 
-- [ ] **Step 5: Execute the real reused-branch acceptance**
+- [ ] **Step 5: Close #1403 as Incorporated**
 
-  Use #1397 as issue A/PR #1398 and already-delivered #1401/PR #1402 as issue B.
-  Bind #1397 in its recorded governed worktree and confirm the shared branch is
-  at B or later. Revalidate approval authority for SHA A, record its provenance
-  and standing-policy state, close #1397 from immutable SHA A, then rerun the
-  exact close command. Capture before/after counts proving no duplicate provider,
-  record, timing, estimation, lifecycle, board, disposition, issue-close, label,
-  or binding effect.
+  Verify #1381 Done automatically removed all three #1403 blocker carriers; if
+  any carrier remains, run the sanctioned unblock verb and verify label, board
+  field, and body marker removal. Bind #1403 in its recorded worktree. Require
+  the approved Incorporated ledger row, PR #1404 exact source SHA
+  `ec160af0b03df8453fa0a1ad7f91b7138aeda38d`, carrier merge
+  `19c6f54b0354699b988c470a99f122edab3aa2ba`, fresh trunk reachability, and no
+  valid delivery receipt. Run:
 
-- [ ] **Step 6: Close remaining Delivered issues**
+  ```bash
+  npx aitm close 1403 --as incorporated --of 1381
+  ```
 
-  Revalidate accepted-SHA approval provenance and close #1393 and #1395 through
-  their existing exact-head receipts from their recorded governed worktrees.
-  #1397 was closed in Step 5. Do not create replacement receipts or relocate
-  issue bindings.
+  Preserve the stale later-HEAD human approval marker as observable incident
+  history; do not rewrite it into accepted-SHA approval evidence.
 
-- [ ] **Step 7: Apply Incorporated outcomes**
+- [ ] **Step 6: Execute the real reused-branch acceptance for #1397**
 
-  Run the ledger-authorized lane for #1380, #1382, #1383, #1384, #1388, and
-  #1390. Bind and resume each target in its recorded governed worktree before
-  invoking its issue-local close:
+  Verify #1403 Done unblocks #1397. Use #1397 as issue A/PR #1398 and
+  already-delivered #1401/PR #1402 as issue B. Bind #1397 in its recorded
+  governed worktree and confirm the shared branch is at B or later. Revalidate
+  approval authority for SHA A, record its provenance and standing-policy state,
+  close #1397 from immutable SHA A, then rerun the exact close command. Capture
+  before/after counts proving no duplicate provider, record, timing, estimation,
+  lifecycle, board, disposition, issue-close, label, or binding effect.
+
+- [ ] **Step 7: Close #1395 and #1393 through existing receipts**
+
+  Verify each predecessor's Done transition removes the next blocker carriers.
+  Revalidate accepted-SHA approval provenance and close #1395, then #1393,
+  through their existing exact-head receipts from their recorded governed
+  worktrees. Do not create replacement receipts or relocate issue bindings.
+
+- [ ] **Step 8: Recover and close #1392**
+
+  Bind #1392 in its recorded governed worktree. Capture provider-action counts,
+  run read-only historical delivery recovery for PR #1391, verify exactly one
+  new receipt and zero provider calls, revalidate current human or standing
+  Full-Auto authority for the accepted SHA, record the approval mode/source and
+  policy state, then run ordinary close.
+
+- [ ] **Step 9: Close #1390 as Incorporated**
+
+  Verify #1392 Done unblocks #1390, bind #1390 in its recorded worktree, and run
+  the approved ledger outcome:
+
+  ```bash
+  npx aitm close 1390 --as incorporated --of 1381
+  ```
+
+- [ ] **Step 10: Recover and close #1389**
+
+  Verify #1390 Done unblocks #1389. Bind #1389 in its recorded governed
+  worktree, recover the historical receipt for PR #1385 with zero provider
+  calls, revalidate accepted-SHA approval, and run ordinary close.
+
+- [ ] **Step 11: Close #1388 as Incorporated**
+
+  Verify #1389 Done unblocks #1388, bind #1388 in its recorded worktree, and run:
+
+  ```bash
+  npx aitm close 1388 --as incorporated --of 1381
+  ```
+
+- [ ] **Step 12: Finish #939 children, including #1384**
+
+  After #1388 reaches Done, resume #939 orchestration. Bind each target in its
+  recorded governed worktree and apply only its approved ledger outcome:
 
   ```bash
   npx aitm close 1380 --as incorporated --of 1381
   npx aitm close 1382 --as incorporated --of 1381
   npx aitm close 1383 --as incorporated --of 1381
   npx aitm close 1384 --as incorporated --of 1381
-  npx aitm close 1388 --as incorporated --of 1381
-  npx aitm close 1390 --as incorporated --of 1381
   ```
 
   Verify one distinct issue-local record per issue and no delivery receipt. In
   particular, #1382 and #1383 must not collide despite their shared accepted
-  SHA.
+  SHA. Re-read #939's complete native child graph and refuse to proceed while any
+  other governed child is non-terminal.
 
-- [ ] **Step 8: Verify #1403 and the full ledger**
+- [ ] **Step 13: Verify the full ledger**
 
-  Confirm #1403 completed through its existing PR #1404 and preserved its exact
-  issue-local delivery evidence. Run:
+  Confirm every approved ledger row has its truthful terminal result and run:
 
   ```bash
   node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381
@@ -1105,13 +1174,15 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   Expected: `ok: true`, one outcome for all 19 baseline issues, no missing or
   extra rows, and no mutation.
 
-- [ ] **Step 9: Publish the execution summary and close #1381**
+- [ ] **Step 14: Deliver and close #939**
 
-  Append a #1381 summary linking every unchanged historical result,
-  Incorporated record, recovered receipt, close result, approval provenance,
-  reused-branch first close, and retry side-effect diff. Then close #1381 through
-  its own ordinary exact-head delivery receipt. Do not close, promote, or mutate
-  any incident issue outside the approved ledger outcome.
+  Publish a #939 summary linking #1381, every dependency-chain close, unchanged
+  historical result, Incorporated record, recovered receipt, approval
+  provenance, reused-branch idempotence proof, and full-ledger verification.
+  Complete the epic's remaining Test, Review, approval, delivery, and ordinary
+  close gates. Retry close once and verify no duplicate terminal effects. Do not
+  close, promote, or mutate any incident issue outside the approved ledger
+  outcome or the verified #939 child graph.
 
 ## Claude Review Advisories Carried Forward
 
@@ -1139,7 +1210,8 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 | Truthful disposition for every incident issue        | Task 9                             |
 | Documentation and help parity                        | Task 8                             |
 | No successor guard defects                           | Global constraints and Task 9      |
-| #1403 sequencing prerequisite                        | Pre-implementation gate and Task 9 |
+| #1403 blocker-first Incorporated disposition         | Amendment design and Task 9        |
+| Independent #1381 then chain then #939 ordering      | Pre-implementation gate and Task 9 |
 
 ## Final Self-review Checklist
 
@@ -1148,6 +1220,13 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 - [ ] No task authorizes a provider action for an advanced historical head.
 - [ ] Delivery and close use the same accepted-SHA resolver and field names.
 - [ ] Ledger, approval, Incorporated, intent, and receipt records remain distinct.
+- [ ] #1381 remains independent of #939 and no task restores the removed native
+      sub-issue edge.
+- [ ] #1381 closes before #1403, and every later chain issue closes only after
+      its recorded blocker reaches Done.
+- [ ] #1403 uses Incorporated with PR #1404 carrier evidence and never receives
+      an invented delivery receipt.
+- [ ] #939 finalization includes #1380, #1382, #1383, and #1384 after #1388.
 - [ ] Every implementation task starts red, ends green, and has an independent
       `[#1381]` commit boundary.
 - [ ] Focused verification uses only commands present in `package.json`.
