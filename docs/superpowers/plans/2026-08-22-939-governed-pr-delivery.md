@@ -21,6 +21,7 @@
 - Preserve every required `[#N]` attribution token and exact deterministic commit title/message bytes.
 - Child-to-epic `merge-back` and explicitly authorized `local-trunk-lane` behavior remain unchanged.
 - Fail closed before terminal timing, Done, Delivered, issue closure, or binding release on every unknown, stale, ambiguous, or mismatched input.
+- On a reused branch, the primary Close estimation outcome must select the Test receipt by the live-verified accepted delivery SHA; callers without that authority retain current-`HEAD` selection.
 - Use test-driven development and commit each task independently with `[#939]` attribution.
 
 ---
@@ -559,9 +560,296 @@ npx aitm deliver 939
 
 The PR body must not contain `Closes #939`, `Fixes #939`, or another auto-closing keyword; `/task close` remains the only issue-closure authority. The host adapter must invoke the sanctioned GitHub integration using the emitted expected head and exact commit bytes. Rerun `npx aitm deliver 939` to obtain the verified receipt, then run `npx aitm close 939`. Record repository, PR, source SHA, merge SHA, provider action, CI URL, receipt comment, branch disposition, and close result in #939 evidence. No `gh pr merge` command may appear in the execution trace.
 
+### Task 8: Reused-branch accepted-SHA estimation evidence
+
+**Files:**
+
+- Modify: `scripts/task-tracker/lib/estimation/runtime-adapter.mjs:785-825,1060-1110`
+- Modify: `scripts/task-tracker/verbs/close.mjs:1285-1330`
+- Modify: `scripts/tests/unit/task-tracker/lib/runtime-adapter-receipt-lane-skip.test.mjs`
+- Modify: `scripts/tests/helpers/close-convergence-wiring-helpers.mjs:55-95,285-325`
+- Modify: `scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs`
+
+**Interfaces:**
+
+- Consumes: `resolvedDeliveryGate.gateInput.acceptedSha`, which is available only after Close has live-verified the delivery receipt and trunk inclusion.
+- Produces: optional `createEstimationOutcomeRuntime({ resolveVerificationSha })`, where `resolveVerificationSha({ issueNumber, diff })` returns the exact 40-hex Test-receipt SHA.
+- Preserves: callers that omit `resolveVerificationSha` continue using `diff.verificationSha ?? diff.commitSha`; cascaded child outcome writers omit the resolver.
+
+- [ ] **Step 1: Write the failing runtime test for an accepted-SHA override**
+
+Add a second SHA and a focused runtime case to
+`runtime-adapter-receipt-lane-skip.test.mjs`. The body contains the accepted-SHA
+receipt while diff evidence reports the newer reused-branch head:
+
+```js
+const NEWER_SHA = 'b'.repeat(40);
+
+test('close outcome runtime selects the Test receipt by an explicit accepted SHA', async () => {
+  const accepted = receipt({
+    laneSkip: {
+      reason: 'docs-only-diff',
+      kind: 'docs-only',
+      lanes: ['test-unit', 'test-integration', 'test-slow'],
+      changedPaths: ['docs/DESIGN.md'],
+    },
+  });
+  const fixture = outcomeRuntimeDeps({
+    readDiffEvidence: async () => ({
+      commitSha: SHA,
+      verificationSha: NEWER_SHA,
+      filesChanged: 1,
+      modules: ['docs'],
+      lanes: ['sandbox'],
+      dependencyBreadth: 1,
+    }),
+  });
+  const runtime = createEstimationOutcomeRuntime({
+    cfg: { repo: 'kburson/ai-task-manager' },
+    projectDir: '/tmp/aitm-1200',
+    resolveVerificationSha: ({ issueNumber, diff }) => {
+      assert.equal(issueNumber, ISSUE);
+      assert.equal(diff.verificationSha, NEWER_SHA);
+      return SHA;
+    },
+    deps: fixture.deps,
+  });
+
+  const result = await runtime.ensure({
+    issueNumber: ISSUE,
+    forecastRecordId: fixture.forecastRecordId,
+    body: marker(accepted),
+  });
+
+  assert.equal(result.status, 'written');
+});
+```
+
+Extract the existing deterministic forecast, timing, record-I/O, and write
+fixtures into `outcomeRuntimeDeps({ readDiffEvidence })`, returning exact keys
+`{ deps, forecastRecordId, written }`; do not weaken their assertions or mock
+`verificationEvidence` itself.
+
+- [ ] **Step 2: Run the runtime test and verify the expected red failure**
+
+Run:
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/runtime-adapter-receipt-lane-skip.test.mjs
+```
+
+Expected: FAIL with `verification-receipt: no Test receipt for exact final SHA`
+because the runtime ignores `resolveVerificationSha` and selects `NEWER_SHA`.
+
+- [ ] **Step 3: Implement the minimal runtime override**
+
+Extend the factory signature and select one verification SHA immediately before
+calling `verificationEvidence`:
+
+```js
+function outcomeVerificationSha({ resolveVerificationSha, issueNumber, diff }) {
+  const fallback = diff.verificationSha ?? diff.commitSha;
+  if (resolveVerificationSha === undefined) return fallback;
+  if (typeof resolveVerificationSha !== 'function') fail('outcome-verification-sha');
+  const resolved = resolveVerificationSha({ issueNumber, diff: structuredClone(diff) });
+  if (typeof resolved !== 'string' || !/^[0-9a-f]{40}$/.test(resolved)) {
+    fail('outcome-verification-sha');
+  }
+  return resolved;
+}
+```
+
+Add optional `resolveVerificationSha` to the destructured
+`createEstimationOutcomeRuntime` arguments between `projectDir` and `deps`; do
+not alter its default value or any other factory argument.
+
+Use it in `ensure` without changing diff attribution:
+
+```js
+const expectedFinalSha = outcomeVerificationSha({
+  resolveVerificationSha,
+  issueNumber,
+  diff,
+});
+const verification = verificationEvidence(body, {
+  expectedIssue: issueNumber,
+  expectedFinalSha,
+});
+```
+
+Add assertions that an omitted resolver preserves `NEWER_SHA` behavior and a
+resolver returning `null`, uppercase text, or a non-SHA throws
+`estimation-runtime:outcome-verification-sha`.
+
+- [ ] **Step 4: Run the runtime tests and verify green**
+
+Run:
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/runtime-adapter-receipt-lane-skip.test.mjs scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs
+```
+
+Expected: PASS; the accepted override selects `SHA`, while the child evidence
+test continues reporting its later sibling `HEAD` as `verificationSha`.
+
+- [ ] **Step 5: Write the failing Close wiring regression**
+
+Extend `runClose` in `close-convergence-wiring-helpers.mjs` with an optional
+`createEstimationOutcomeWriter` input and pass it through only when supplied:
+
+```js
+export async function runClose({
+  createEstimationOutcomeWriter = null,
+  trackEstimationOutcomes = false,
+} = {}) {
+  const injectedOutcomeFactory =
+    typeof createEstimationOutcomeWriter === 'function' ? { createEstimationOutcomeWriter } : {};
+}
+```
+
+Add `...injectedOutcomeFactory` to the context object passed to
+`runCloseCommand`, immediately before its existing estimation-writer injection.
+The new option is absent by default, so existing helper callers are unchanged.
+
+In the existing `A to B reused-branch delivery closes historical A` integration
+test, replace the injected ready-made outcome writer for the successful close
+with a factory that captures its construction options and invokes the supplied
+resolver during `ensure`:
+
+```js
+const outcomeFactories = [];
+const firstClose = await runClose({
+  ...closeConfig.options,
+  closeSnapshot: { issueClosed: false, stateReason: null },
+  trackEstimationOutcomes: false,
+  createEstimationOutcomeWriter(options) {
+    outcomeFactories.push(options);
+    return {
+      async ensure({ issueNumber }) {
+        assert.equal(
+          options.resolveVerificationSha({
+            issueNumber,
+            diff: { verificationSha: SHA_B, commitSha: SHA_A },
+          }),
+          SHA_A
+        );
+        return { status: 'existing' };
+      },
+    };
+  },
+});
+
+assert.equal(firstClose.exitCode, 0);
+assert.equal(outcomeFactories.length, 1);
+```
+
+- [ ] **Step 6: Run the Close integration test and verify the expected red failure**
+
+Run:
+
+```bash
+node --test scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs
+```
+
+Expected: FAIL because `options.resolveVerificationSha` is absent from the
+primary estimation outcome factory call.
+
+- [ ] **Step 7: Wire only the primary Close writer to verified delivery authority**
+
+Extend `outcomeWriterForIssue` without changing its child call sites:
+
+```js
+const outcomeWriterForIssue = (
+  issueNumber,
+  { requireDedicated = false, resolveVerificationSha } = {}
+) => {
+  if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
+  if (
+    typeof ctx.createEstimationOutcomeWriter !== 'function' &&
+    (!Number.isInteger(cfg.estimationRubricIssue) || cfg.estimationRubricIssue <= 0)
+  ) {
+    return null;
+  }
+  const outcomeProjectDir = resolveEstimationOutcomeProjectDir({
+    issueNumber,
+    projectDir,
+    issueWorkspaceResolver,
+    requireDedicated,
+  });
+  return outcomeRuntimeFactory({
+    cfg,
+    projectDir: outcomeProjectDir,
+    ...(resolveVerificationSha === undefined ? {} : { resolveVerificationSha }),
+  });
+};
+```
+
+Construct the primary writer with a resolver that reads the already-verified
+delivery gate at `ensure` time:
+
+```js
+const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum, {
+  resolveVerificationSha: ({ issueNumber }) => {
+    if (Number(issueNumber) !== Number(closeIssueNum)) {
+      throw new TypeError('close-estimation-verification-sha:issue-mismatch');
+    }
+    const acceptedSha = resolvedDeliveryGate?.gateInput?.acceptedSha;
+    if (typeof acceptedSha !== 'string' || !/^[0-9a-f]{40}$/.test(acceptedSha)) {
+      throw new TypeError('close-estimation-verification-sha:delivery-authority-missing');
+    }
+    return acceptedSha;
+  },
+});
+```
+
+Do not pass this resolver in the existing cascaded-child call to
+`outcomeWriterForIssue(child.num, { requireDedicated: true })`.
+
+- [ ] **Step 8: Run focused tests and verify green**
+
+Run:
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/runtime-adapter-receipt-lane-skip.test.mjs scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs scripts/tests/unit/task-tracker/verbs/close-delivered-idempotence.test.mjs
+```
+
+Expected: PASS with the historical accepted SHA used only for the primary
+outcome receipt and unchanged child/default semantics.
+
+- [ ] **Step 9: Run repository verification**
+
+Run:
+
+```bash
+npm run format:check
+npm run lint
+npm test
+npm run test:slow
+git diff --check
+```
+
+Expected: all commands PASS.
+
+- [ ] **Step 10: Commit Task 8**
+
+```bash
+git add scripts/task-tracker/lib/estimation/runtime-adapter.mjs scripts/task-tracker/verbs/close.mjs scripts/tests/unit/task-tracker/lib/runtime-adapter-receipt-lane-skip.test.mjs scripts/tests/helpers/close-convergence-wiring-helpers.mjs scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs
+git commit -m "[#939] Bind close estimation to accepted delivery SHA"
+```
+
+- [ ] **Step 11: Execute governed delivery and incident-ledger renewal**
+
+Run `/task test #939`, `/task review #939`, and Full-Auto approval at the final
+source SHA. Publish the preserved `codex/939-full-auto-merge` branch with exact
+lease protection, open a non-auto-closing PR, wait for required hosted CI, and
+perform the exact provider action emitted by `/task deliver #939`. Rerun deliver
+for the live receipt. Rebuild the incident ledger from fresh GitHub, project,
+PR, merge, approval, comment, and trunk evidence; compare every row with v4,
+record v5, and obtain exact human approval before resuming #1397.
+
 ## Final self-review checklist
 
-- [ ] Every accepted-design requirement maps to Tasks 1–7.
+- [ ] Every accepted-design requirement maps to Tasks 1–8.
 - [ ] No step contains a placeholder or asks an implementer to infer an interface.
 - [ ] Intent, action, receipt, and evidence field names are consistent across tasks.
 - [ ] Every implementation task starts red, ends green, and has an independent commit/review boundary.

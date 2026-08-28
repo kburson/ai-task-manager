@@ -2,7 +2,7 @@
 
 **Issue:** #939
 **Date:** 2026-08-21
-**Status:** Approved in discussion; revised after filename feedback; awaiting written-spec review
+**Status:** Approved in discussion; amended for reused-branch close evidence; awaiting written-spec review
 **Branch:** `codex/939-full-auto-merge`
 
 ## Problem
@@ -592,3 +592,99 @@ is required, #939 remains the defect/coordination parent and children own:
 3. provider adapter handling and configuration migration;
 4. `/task close` receipt gate and legacy executor retirement;
 5. cross-component and real-PR verification plus documentation.
+
+## Reused-Branch Estimation Evidence Amendment (2026-08-28)
+
+### Observed Failure
+
+After #1397 was delivered from accepted source SHA
+`2d2f6440db590d1051786592d7edef876f7be7ee`, the shared branch advanced through
+later governed deliveries. Delivery recovery correctly selected PR #1398 by
+that immutable accepted SHA and verified merge
+`a2eb01f02a38bc0fcbab886d62653ff9ca498549` on trunk. Close still refused while
+creating the estimation outcome because `issueAttributedDiffEvidence` supplied
+the branch's newer `HEAD` as `verificationSha`; no #1397 Test receipt can or
+should exist for unrelated later work.
+
+This is a split-authority defect. Close already resolves and live-verifies the
+accepted delivery SHA before terminal mutation, but the estimation subsystem
+independently substitutes current branch position when selecting verification
+evidence.
+
+### Decision
+
+The primary Close path will pass its already-authorized accepted SHA into the
+estimation outcome runtime as an explicit verification-SHA override. The
+runtime will use that SHA only to select and validate the issue's canonical Test
+receipt. It will continue to derive changed files, modules, lanes, dependency
+breadth, and the latest issue-attributed commit from the issue-specific Git
+history.
+
+The override is scoped to the primary issue being closed. Cascaded child
+outcomes and callers that do not possess delivery authority retain the existing
+current-`HEAD` behavior. An override must be a full lowercase Git SHA and must
+equal the accepted SHA from the verified Close delivery gate; missing or invalid
+authority fails closed.
+
+```text
+verified delivery gate
+  -> accepted SHA
+  -> primary estimation outcome writer
+  -> issue-attributed diff evidence + accepted verification SHA
+  -> exact accepted-SHA Test receipt
+  -> durable estimation outcome
+  -> remaining terminal transaction steps
+```
+
+The estimation outcome does not become delivery authority. The delivery receipt
+and live trunk verification remain authoritative; the override only prevents
+unrelated later branch commits from replacing the receipt identity already
+accepted by Close.
+
+### Alternatives Rejected
+
+1. **Globally use the latest issue-attributed commit as verification SHA.** This
+   would alter child and non-delivery accounting semantics and would make the
+   accepted delivery boundary implicit.
+2. **Temporarily rewind the reused branch to each historical accepted SHA.**
+   This rewrites local history, complicates recovery, and makes evidence depend
+   on mutable checkout choreography.
+3. **Use `--force` to bypass the estimation outcome.** Full-Auto does not
+   authorize evidence bypasses, and the approved incident ledger does not
+   fabricate missing estimation records.
+
+### Error Handling and Recovery
+
+- Close must resolve the delivery gate before the primary estimation outcome is
+  written.
+- If the accepted SHA is unavailable, malformed, conflicts with the durable
+  close transaction, or lacks one exact Test receipt, Close refuses without
+  advancing the estimation step.
+- An interrupted retry reuses the durable delivery and close transaction
+  records; it does not recompute authority from the newer branch head.
+- Existing estimation outcomes remain immutable and idempotent. The amendment
+  creates no replacement record when the same authoritative outcome already
+  exists.
+
+### Testing
+
+1. A focused red/green runtime test proves an explicit accepted SHA selects the
+   matching Test receipt even when diff evidence reports a newer branch HEAD.
+2. A default-path regression proves callers without the override still require
+   the current-HEAD Test receipt.
+3. Close wiring coverage proves only the primary outcome writer receives the
+   verified accepted SHA; child writers retain the default behavior.
+4. A reused-branch integration case recovers a historical delivery receipt,
+   writes the estimation outcome, and completes the remaining Close transaction
+   without branch rewinding or `--force`.
+5. The governed #939 Test and Review gates, hosted CI, provider delivery, and
+   exact receipt verification must pass before the incident ledger is rebuilt.
+
+### Incident Ledger Consequence
+
+Delivering this amendment advances trunk after approved ledger v4. A freshly
+observed v5 ledger is therefore mandatory before any remaining incident story
+is closed. The expected ledger-payload changes are its identity and baseline
+trunk SHA; #939's new delivery evidence is verified separately for its eventual
+terminal close. Every incident row must be compared byte-for-byte, and any drift
+must be explained before requesting exact human approval.

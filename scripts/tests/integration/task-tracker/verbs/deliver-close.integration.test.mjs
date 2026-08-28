@@ -192,15 +192,33 @@ test('A to B reused-branch delivery closes historical A through production seams
 
   const closeConfig = productionCloseOptions(harness, { body, standing: true });
   let firstState = null;
+  const outcomeFactoryCalls = [];
   const verificationCountBeforeClose = harness.effects.originFetches;
   const firstClose = await runClose({
     ...closeConfig.options,
+    trackEstimationOutcomes: false,
+    createEstimationOutcomeWriter: (options) => {
+      outcomeFactoryCalls.push(options);
+      return {
+        ensure: async ({ issueNumber }) => {
+          assert.equal(
+            options.resolveVerificationSha({
+              issueNumber,
+              diff: { verificationSha: SHA_B, commitSha: SHA_A },
+            }),
+            SHA_A
+          );
+          return { status: 'existing' };
+        },
+      };
+    },
     closeSnapshot: { issueClosed: false, stateReason: null },
     captureFinalState: (value) => {
       firstState = value;
     },
   });
   assert.equal(firstClose.exitCode, 0);
+  assert.equal(outcomeFactoryCalls.length, 1);
   assert.ok(closeConfig.events.indexOf('load-delivery-pr') >= 0);
   assert.ok(
     closeConfig.events.indexOf('verify-receipt') >

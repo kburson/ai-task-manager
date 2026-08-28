@@ -1285,7 +1285,10 @@ export async function verbClose(ctx) {
     ctx.resolveIssueWorkspace ??
     (({ issueRef, projectDir: invokingDir }) =>
       resolveProjectDir({ issue: issueRef, deps: { invokingDir } }));
-  const outcomeWriterForIssue = (issueNumber, { requireDedicated = false } = {}) => {
+  const outcomeWriterForIssue = (
+    issueNumber,
+    { requireDedicated = false, resolveVerificationSha } = {}
+  ) => {
     if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
     if (
       typeof ctx.createEstimationOutcomeWriter !== 'function' &&
@@ -1299,9 +1302,24 @@ export async function verbClose(ctx) {
       issueWorkspaceResolver,
       requireDedicated,
     });
-    return outcomeRuntimeFactory({ cfg, projectDir: outcomeProjectDir });
+    return outcomeRuntimeFactory({
+      cfg,
+      projectDir: outcomeProjectDir,
+      ...(resolveVerificationSha === undefined ? {} : { resolveVerificationSha }),
+    });
   };
-  const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum);
+  const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum, {
+    resolveVerificationSha: ({ issueNumber }) => {
+      if (Number(issueNumber) !== Number(closeIssueNum)) {
+        throw new TypeError('close-estimation-verification-sha:issue-mismatch');
+      }
+      const acceptedSha = resolvedDeliveryGate?.gateInput?.acceptedSha;
+      if (typeof acceptedSha !== 'string' || !/^[0-9a-f]{40}$/.test(acceptedSha)) {
+        throw new TypeError('close-estimation-verification-sha:delivery-authority-missing');
+      }
+      return acceptedSha;
+    },
+  });
 
   const ensureConvergenceOutcome = async ({ body, targetRef = closeTarget } = {}) => {
     let outcomeBody = String(body ?? '');
