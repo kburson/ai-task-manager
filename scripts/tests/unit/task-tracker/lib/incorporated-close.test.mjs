@@ -328,6 +328,64 @@ test('an exact-head receipt on a superseded intent is present and multiple exact
   );
 });
 
+test('a complete issue-local receipt on another PR is present, never filtered as absent', () => {
+  const intentId = '01ARZ3NDEKTSV4RRFFQ69G5FAX';
+  const historicalPr = 999;
+  const historicalHead = SHA('d');
+  const historicalMerge = SHA('e');
+  const intent = buildDeliveryIntent({
+    intentId,
+    supersedesIntentId: null,
+    issueNumber: 1403,
+    repository,
+    prNumber: historicalPr,
+    baseRef: 'trunk',
+    headRef: 'codex/1403-historical',
+    expectedHeadSha: historicalHead,
+    mergeMethod: 'squash',
+    attributionTokens: ['#1403'],
+    commitTitle: '[#1403] Historical delivery',
+    commitMessage: `PR #${historicalPr} source ${historicalHead}\n\n[#1403]`,
+    provider: 'codex',
+    sessionId: 'session-1403',
+    clientCreatedAt: '2026-08-28T00:00:00.000Z',
+  });
+  const receipt = buildDeliveryReceipt({
+    intentId,
+    issueNumber: 1403,
+    prNumber: historicalPr,
+    expectedHeadSha: historicalHead,
+    mergeCommitSha: historicalMerge,
+    baseRef: 'trunk',
+    mergeMethod: 'squash',
+    verifiedTrunkRef: 'origin/trunk',
+    provider: 'codex',
+    sessionId: 'session-1403',
+    verifiedAt: '2026-08-28T00:02:00.000Z',
+  });
+  assert.equal(
+    projectExactDeliveryReceipt({
+      comments: [
+        {
+          id: 'historical-intent',
+          body: renderDeliveryIntentComment(intent),
+          createdAt: '2026-08-28T00:01:00.000Z',
+        },
+        {
+          id: 'historical-receipt',
+          body: renderDeliveryReceiptComment(receipt),
+          createdAt: '2026-08-28T00:02:00.000Z',
+        },
+      ],
+      repository,
+      issueNumber: 1403,
+      prNumber: 1404,
+      acceptedSha: row.acceptedSha,
+    }).status,
+    'present'
+  );
+});
+
 test('missing accepted Review or Agent Review evidence refuses even when the carrier is merged', () => {
   assert.throws(
     () => authorize({ live: live({ acceptedEvidenceValid: false }) }),

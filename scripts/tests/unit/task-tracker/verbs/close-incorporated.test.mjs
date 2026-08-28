@@ -162,6 +162,74 @@ test('durable review authority permits strict retry evidence after Full-Auto sta
   assert.deepEqual(result.reviewAuthorization, { mode: 'full-auto', source: 'session' });
 });
 
+test('fresh Incorporated preparation uses exact human ledger approval for a carrier-only row', async () => {
+  const repository = 'kburson/ai-task-manager';
+  const row = {
+    issueNumber: 1384,
+    intendedOutcome: 'incorporated',
+    acceptedSha: null,
+    prNumber: 1385,
+    prHeadSha: 'a'.repeat(40),
+    mergeSha: 'b'.repeat(40),
+    codeOnTrunk: true,
+    codeOnTrunkBasis: 'shared-carrier',
+    blocker: 'issue-local delivery provenance absent for #1384',
+  };
+  const approvalRecordId = '01ARZ3NDEKTSV4RRFFQ69G5FAB';
+  const ledger = {
+    repository,
+    convergenceIssue: 1381,
+    incidentIssue: 939,
+    ledgerId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+    ledgerDigest: `sha256:${'d'.repeat(64)}`,
+    approvalRecordId,
+    ledgerPayload: { rows: [row] },
+    projection: {
+      approvedLedgerApproval: {
+        authorLogin: 'kpburson',
+        envelope: {
+          recordId: approvalRecordId,
+          payload: {
+            approvedBy: 'kpburson',
+            ledgerId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+            ledgerDigest: `sha256:${'d'.repeat(64)}`,
+          },
+        },
+      },
+    },
+  };
+  const authorization = await prepareIncorporatedCloseAuthorization({
+    issueNumber: 1384,
+    convergenceIssue: 1381,
+    ctx: {
+      projectConfig: { cfg: { repo: repository }, projectDir: '/tmp/project' },
+      incidentRuntime: {
+        listConvergenceRecords: async () => [],
+        listOwnerRecords: async () => [],
+        listIssueRecords: async () => [],
+        liveObservationDeps: {
+          readTrunkSha: async () => 'c'.repeat(40),
+          fetchIssue: async () => ({ state: 'OPEN', stateReason: '', body: '', labels: [] }),
+          fetchPullRequest: async () => ({
+            number: row.prNumber,
+            headRefOid: row.prHeadSha,
+            mergeCommitSha: row.mergeSha,
+          }),
+          isOnTrunk: async () => true,
+          listComments: async () => [],
+        },
+      },
+      resolveApprovedIncidentLedger: () => ledger,
+      projectValuesForIssue: async () => ({ blockedBy: '', disposition: '' }),
+    },
+  });
+  assert.equal(authorization.acceptedSha, null);
+  assert.deepEqual(authorization.reviewAuthorization, {
+    mode: 'human',
+    source: 'directory-human-evidence',
+  });
+});
+
 test('fresh, partial, and completed preparation normalize or reuse exact review authority', async () => {
   const repository = 'kburson/ai-task-manager';
   const acceptedSha = HEAD;
@@ -184,6 +252,19 @@ test('fresh, partial, and completed preparation normalize or reuse exact review 
     ledgerDigest: `sha256:${'d'.repeat(64)}`,
     approvalRecordId: '01ARZ3NDEKTSV4RRFFQ69G5FAB',
     ledgerPayload: { rows: [row] },
+    projection: {
+      approvedLedgerApproval: {
+        authorLogin: 'kpburson',
+        envelope: {
+          recordId: '01ARZ3NDEKTSV4RRFFQ69G5FAB',
+          payload: {
+            approvedBy: 'kpburson',
+            ledgerId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+            ledgerDigest: `sha256:${'d'.repeat(64)}`,
+          },
+        },
+      },
+    },
   };
   const incorporatedRecordId = '01ARZ3NDEKTSV4RRFFQ69G5FAZ';
   const incorporatedPayload = buildIncorporatedPayload({
@@ -276,11 +357,13 @@ test('fresh, partial, and completed preparation normalize or reuse exact review 
         },
       },
     });
-    assert.equal(resolverCalls, checkpointCount === 0 ? 1 : 0);
-    assert.deepEqual(authorization.reviewAuthorization, {
-      mode: 'full-auto',
-      source: 'session',
-    });
+    assert.equal(resolverCalls, 0);
+    assert.deepEqual(
+      authorization.reviewAuthorization,
+      checkpointCount === 0
+        ? { mode: 'human', source: 'directory-human-evidence' }
+        : { mode: 'full-auto', source: 'session' }
+    );
   }
 });
 

@@ -102,7 +102,10 @@ import {
   INCIDENT_EPIC_TERMINAL_ISSUES,
   parseCloseOfAssertion,
 } from '../lib/incident-epic-close.mjs';
-import { resolveApprovedIncidentLedger } from '../lib/delivery-incident-reconciliation.mjs';
+import {
+  readIssueDeliveryAuthority,
+  resolveApprovedIncidentLedger,
+} from '../lib/delivery-incident-reconciliation.mjs';
 import { createProductionRuntime } from './incident-ledger.mjs';
 
 const closePexec = promisify(execFile);
@@ -221,6 +224,22 @@ export function resolveIncorporatedReviewEvidence({
   });
 }
 
+export function resolveIncorporatedLedgerReviewAuthorization(authority) {
+  const approval = authority?.projection?.approvedLedgerApproval;
+  const payload = approval?.envelope?.payload;
+  if (
+    typeof approval?.authorLogin !== 'string' ||
+    approval.authorLogin.length === 0 ||
+    payload?.approvedBy !== approval.authorLogin ||
+    approval.envelope.recordId !== authority?.approvalRecordId ||
+    payload?.ledgerId !== authority?.ledgerId ||
+    payload?.ledgerDigest !== authority?.ledgerDigest
+  ) {
+    throw new Error('incorporated-close:review-authorization');
+  }
+  return Object.freeze({ mode: 'human', source: 'directory-human-evidence' });
+}
+
 export async function prepareIncorporatedCloseAuthorization({
   ctx,
   issueNumber,
@@ -280,15 +299,20 @@ export async function prepareIncorporatedCloseAuthorization({
     prNumber: row.prNumber,
     acceptedSha: row.acceptedSha,
   });
-  const reviewEvidence = resolveIncorporatedReviewEvidence({
-    body: issue.body || '',
-    issueNumber,
-    expectedSha: row.acceptedSha,
-    session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),
-    projectConfig: (ctx.loadRawProjectConfig || rawProjectConfig)(),
-    durableReviewAuthority,
-    reviewAuthorizationResolver: ctx.resolveReviewAuthorization || resolveReviewAuthorization,
+  const observedAuthority = readIssueDeliveryAuthority(issue.body || '', {
+    expectedIssue: issueNumber,
   });
+  let reviewAuthorization;
+  if (durableReviewAuthority !== null) {
+    if (durableReviewAuthority.acceptedSha !== row.acceptedSha) {
+      throw new Error('incorporated-close:review-authorization');
+    }
+    reviewAuthorization = normalizeIncorporatedReviewAuthorization(
+      durableReviewAuthority.reviewAuthorization
+    );
+  } else {
+    reviewAuthorization = resolveIncorporatedLedgerReviewAuthorization(authority);
+  }
   return (ctx.authorizeIncorporatedClose || authorizeIncorporatedClose)({
     repository: cfg.repo,
     issueNumber,
@@ -301,10 +325,10 @@ export async function prepareIncorporatedCloseAuthorization({
       closeTransactionPresent: issueRecords.some(
         ({ envelope }) => envelope.recordType === 'delivery-incident-incorporated-close'
       ),
-      acceptedEvidenceValid: reviewEvidence.acceptedSha === row.acceptedSha,
-      acceptedSha: reviewEvidence.acceptedSha,
-      reviewAuthorizationValid: reviewEvidence.reviewAuthorizationValid,
-      reviewAuthorization: reviewEvidence.reviewAuthorization,
+      acceptedEvidenceValid: observedAuthority.acceptedSha === row.acceptedSha,
+      acceptedSha: observedAuthority.acceptedSha,
+      reviewAuthorizationValid: true,
+      reviewAuthorization,
       pullRequest,
       sourceOnTrunk,
       trunkSha,

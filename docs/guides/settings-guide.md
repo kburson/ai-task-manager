@@ -310,8 +310,11 @@ An **approved incident ledger** is governed separately from delivery policy.
 Record mode produces an immutable **ledger ID** and **canonical digest** from
 fresh observations. Approval requires an authenticated human to approve those
 exact values; co-review is not approval, and Full-Auto cannot approve a new
-ledger ID or digest. The approval also writes the canonical owner pointer used
-by Incorporated issue close and incident-epic close.
+ledger ID or digest. Every Incorporated row must carry a concrete carrier pull
+request, head, merge, on-trunk result, and non-delivery explanation. The exact
+human ledger approval authorizes the fresh Incorporated terminal disposition and
+writes the canonical owner pointer; an issue-local durable authorization record
+then governs retries. It does not create delivery intent or receipt evidence.
 
 ## Lock primitive
 
