@@ -31,7 +31,7 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
   at `bc079275f96e1c01e78b41127809c00e349c2426`.
 - Normative blocker-first amendment:
   `docs/superpowers/specs/2026-08-28-1381-blocker-first-convergence-amendment-design.md`
-  at `52fcd3c5badee87c1ed24a468edfeeb20ebff836`. The amendment takes precedence
+  at `4ae49430cf3a5a58f13a05c81e8cb2e26a72b356`. The amendment takes precedence
   for hierarchy, #1403 disposition, live-ledger execution timing, and terminal
   ordering.
 - Accepted co-review evidence:
@@ -783,9 +783,11 @@ convergenceIssue, incidentIssue })`.
 **Files:**
 
 - Create: `scripts/task-tracker/lib/incorporated-close.mjs`
+- Create: `scripts/task-tracker/lib/incident-epic-close.mjs`
 - Modify: `scripts/task-tracker/lib/close-disposition.mjs`
 - Modify: `scripts/task-tracker/verbs/close.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs`
+- Create: `scripts/tests/unit/task-tracker/lib/incident-epic-close.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/close-disposition.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/help.test.mjs`
@@ -796,6 +798,10 @@ convergenceIssue, incidentIssue })`.
   `/task close #N --as incorporated --of #1381`.
 - Produces `authorizeIncorporatedClose(input)` as a pure read decision and
   `runIncorporatedClose(input)` as the re-entrant mutation orchestrator.
+- Produces `authorizeIncidentEpicClose(input)` as a pure pre-terminal guard for
+  ordinary close of the ledger's incident issue. It derives the required
+  non-native terminal set from the approved ledger instead of pretending all
+  convergence targets are native epic children.
 - Returns `{ status: 'incorporated'|'already-incorporated', issueNumber,
 convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
@@ -837,15 +843,28 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   terminal effects. A fully converged retry returns `already-incorporated` with
   an empty `mutatedSteps` array.
 
-- [ ] **Step 3: Run focused tests and verify failure**
+- [ ] **Step 3: Write the failing incident-epic close guard tests**
+
+  For incident issue #939 and convergence issue #1381, require #1380, #1382,
+  #1383, and #1384 to have the approved terminal outcome and current terminal
+  project/issue state before any ordinary #939 close mutation. Cover each of the
+  four as the sole pending row, multiple pending rows, missing/forked approval,
+  a terminal state that contradicts the ledger outcome, and the all-terminal
+  success case. Assert every provider, record, timing, estimation, lifecycle,
+  board, issue-close, label, and binding mutation spy remains zero on refusal.
+  Keep the existing native-child guard additive; neither guard substitutes for
+  the other.
+
+- [ ] **Step 4: Run focused tests and verify failure**
 
   ```bash
-  node --test scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs
+  node --test scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs scripts/tests/unit/task-tracker/lib/incident-epic-close.test.mjs scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs
   ```
 
-  Expected: FAIL because the lane does not exist.
+  Expected: FAIL because the Incorporated lane and incident-epic guard do not
+  exist.
 
-- [ ] **Step 4: Implement the pure authorization boundary**
+- [ ] **Step 5: Implement the pure authorization boundaries**
 
   Consume `resolveApprovedIncidentLedger`, the target's accepted evidence,
   carrier PR/merge/trunk observations, and projected delivery records. Return a
@@ -853,7 +872,15 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   issue-local record. Do not let cumulative trunk presence pass the ordinary
   delivery receipt gate.
 
-- [ ] **Step 5: Implement re-entrant terminal mutation**
+  Implement `authorizeIncidentEpicClose` against the same approved ledger
+  projection. Wire it in `close.mjs` after native-child/read-only authority
+  resolution but before every terminal mutation when the target is the
+  ledger's `incidentIssue`. Require the exact approved outcomes for #1380,
+  #1382, #1383, and #1384 and their matching live terminal states. Return a
+  frozen authorization on success and stable refusal details naming every
+  pending or contradictory issue.
+
+- [ ] **Step 6: Implement re-entrant terminal mutation**
 
   Reuse `writeTerminalDisposition`, `writeTerminalStatusDone`, timing flush,
   GitHub close/readback, audit comment, and binding-release boundaries. Do not
@@ -861,20 +888,20 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   Delivered evidence. Record the exact completed step set so partial retries do
   not replay completed writes.
 
-- [ ] **Step 6: Run Task 6 tests**
+- [ ] **Step 7: Run Task 6 tests**
 
   ```bash
-  node --test scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs scripts/tests/unit/task-tracker/lib/close-disposition.test.mjs scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs
+  node --test scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs scripts/tests/unit/task-tracker/lib/incident-epic-close.test.mjs scripts/tests/unit/task-tracker/lib/close-disposition.test.mjs scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs
   ```
 
   Expected: PASS for authorization-before-mutation, exact re-entry, valid receipt
-  refusal, and CLI help.
+  refusal, all #939 incident-child pending combinations, and CLI help.
 
-- [ ] **Step 7: Commit Task 6**
+- [ ] **Step 8: Commit Task 6**
 
   ```bash
-  git add scripts/task-tracker/lib/incorporated-close.mjs scripts/task-tracker/lib/close-disposition.mjs scripts/task-tracker/verbs/close.mjs scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs scripts/tests/unit/task-tracker/lib/close-disposition.test.mjs scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs
-  git commit -m "[#1381] Add Incorporated terminal close lane"
+  git add scripts/task-tracker/lib/incorporated-close.mjs scripts/task-tracker/lib/incident-epic-close.mjs scripts/task-tracker/lib/close-disposition.mjs scripts/task-tracker/verbs/close.mjs scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs scripts/tests/unit/task-tracker/lib/incident-epic-close.test.mjs scripts/tests/unit/task-tracker/lib/close-disposition.test.mjs scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs
+  git commit -m "[#1381] Gate Incorporated and incident terminal close"
   ```
 
 ### Task 7: Deterministic reused-branch integration harness
