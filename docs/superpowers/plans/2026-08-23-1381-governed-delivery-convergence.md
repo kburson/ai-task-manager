@@ -31,7 +31,7 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
   at `bc079275f96e1c01e78b41127809c00e349c2426`.
 - Normative blocker-first amendment:
   `docs/superpowers/specs/2026-08-28-1381-blocker-first-convergence-amendment-design.md`
-  at `52fcd3c5c96a9c4e3b6902438304809f08957249`. The amendment takes precedence
+  at `52fcd3c5badee87c1ed24a468edfeeb20ebff836`. The amendment takes precedence
   for hierarchy, #1403 disposition, live-ledger execution timing, and terminal
   ordering.
 - Accepted co-review evidence:
@@ -99,12 +99,25 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
       the amended terminal sequence on the specification/review branch.
 - [ ] Re-read the live #1381 body and prepare
       `.tmp/gh/1381-body-operation.json` as an
-      `aitm.issue-body-operation/v1` fresh-base operation. The replacement must:
-      widen the summary to the full converged set, replace `npm run lint:docs`
-      with `npm run lint:md`, include the accepted specification, blocker-first
-      amendment, and amended plan commit references, remove #939 parent semantics,
-      classify #1403 as Incorporated, preserve all AITM markers, and retain the
-      no-successor-defect rule.
+      `aitm.issue-body-operation/v1` fresh-base operation. The operation must
+      explicitly replace the root `## Scope`, `## Acceptance Criteria`,
+      `## Story Origin`, `## Verification Commands`, and related verification
+      mappings rather than merely appending plan metadata. The replacement must:
+      widen the summary to the full converged set; replace `npm run lint:docs`
+      with `npm run lint:md`; include the accepted specification, blocker-first
+      amendment, and amended plan commit references; remove the `parent: #939`
+      claim and every native-child semantic; replace the obsolete PR #1404
+      baseline; classify #1403 as Incorporated; preserve all AITM markers; and
+      retain the no-successor-defect rule.
+- [ ] Make the hydrated root contract state the two-phase acceptance boundary
+      without ambiguity: #1381 records and receives exact human approval for the
+      immutable ledger, passes `--phase pre-close` verification, delivers, and
+      closes independently; only then may the orchestrator execute
+      #1403 -> #1388 and finish #939. Downstream rows are approved intended
+      outcomes at #1381 close, not falsely completed outcomes. Remove every live
+      checkbox or sentence that requires all downstream terminal mutations to
+      execute before #1381 closes or requires #1403 to finish through PR #1404
+      as an independently Delivered issue.
 - [ ] Apply the hydrated body only through:
 
   ```bash
@@ -675,6 +688,8 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
 convergenceIssue, incidentIssue })`.
 - Adds a read-only executable verifier with the accepted command:
   `node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381`.
+  The default is terminal verification; `--phase pre-close` verifies the
+  approved baseline before downstream mutation.
 
 - [ ] **Step 1: Write failing ledger-command tests**
 
@@ -700,6 +715,16 @@ convergenceIssue, incidentIssue })`.
   `delivery-incident:ambiguous-authority`, or
   `delivery-incident:conflicting-authority`.
 
+  Add explicit phase tests. `--phase pre-close` must require #1381 to be
+  independent of #939, one approved ledger tip, live observations matching each
+  row, #1403 classified only as Incorporated, and the exact blocker order. It
+  emits `pending-authorized` for an approved downstream row whose terminal
+  outcome is intentionally not yet present and refuses any row already mutated
+  contrary to its approved outcome. The default terminal phase requires the
+  matching terminal record and disposition for every row. Both phases are
+  read-only, and the same approved ledger remains resolvable after #1381 is
+  closed.
+
 - [ ] **Step 3: Run focused tests and verify failure**
 
   ```bash
@@ -724,7 +749,11 @@ convergenceIssue, incidentIssue })`.
   `schema` is `aitm.delivery-incident-verification/v1`; `outcomes` contains one
   sorted `{ issueNumber, intendedOutcome, status, evidence }` result for every
   reviewed issue. The script exits nonzero for missing, extra, stale,
-  ambiguous, or conflicting authority.
+  ambiguous, or conflicting authority. In pre-close phase, `ok: true` means the
+  approved baseline and pending authorization graph are internally consistent;
+  it never means downstream outcomes have executed. In terminal phase,
+  `ok: true` means every approved outcome is present and verified. Reject any
+  phase other than `pre-close` or `terminal`.
 
 - [ ] **Step 6: Add routing and help parity**
 
@@ -777,6 +806,13 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   require exactly one approved `incorporated` row for the target and verify the
   target issue, source evidence, carrier PR, carrier merge SHA, fresh trunk
   reachability, and the row's incomplete-delivery explanation.
+
+  Add #1403-specific tests proving that PR #1404 is carrier evidence only: a
+  stale approval marker, merged PR, or trunk reachability cannot substitute for
+  its approved Incorporated row, and no delivery receipt is created. Add
+  ordering tests proving an Incorporated close refuses before the target's live
+  blocker reaches Done and succeeds only after all three blocker carriers are
+  consistently cleared by the sanctioned unblock path.
 
   Refuse missing/unapproved/forked/stale ledgers, duplicate rows, conflicting
   issue-local Incorporated records, and any valid exact-head delivery receipt.
@@ -900,6 +936,12 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   Include #1382 and #1383 as two incorporated rows sharing
   `e810084f0978de511078403406f008d1683fc10a`; assert their issue-local keys and
   terminal records remain distinct.
+
+  Add amendment-gate scenarios proving the approved ledger still authorizes
+  Phase B after #1381 is Done, the chain refuses to advance while its current
+  blocker is not Done, and #939 refuses terminal close while any of #1380,
+  #1382, #1383, or #1384 remains non-terminal. The #1381 fixture must have no
+  native #939 parent edge.
 
 - [ ] **Step 4: Run the integration test and verify failure**
 
@@ -1072,6 +1114,17 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   #1381 -> #1403 -> #1397 -> #1395 -> #1393 -> #1392 -> #1390 -> #1389 ->
   #1388. Do not rewrite closed historical records, dispositions, or timing.
 
+  Run the explicit pre-close verifier:
+
+  ```bash
+  node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase pre-close
+  ```
+
+  Expected: `ok: true`; every not-yet-executed downstream outcome is reported
+  as `pending-authorized`, the dependency graph is exact, #1381 has no native
+  #939 parent, and the invocation performs no writes. A terminal-mode success is
+  neither expected nor permitted at this point.
+
 - [ ] **Step 4: Close independent #1381**
 
   Publish a #1381 execution summary linking its implementation PR, exact source
@@ -1176,13 +1229,25 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
 - [ ] **Step 14: Deliver and close #939**
 
-  Publish a #939 summary linking #1381, every dependency-chain close, unchanged
-  historical result, Incorporated record, recovered receipt, approval
-  provenance, reused-branch idempotence proof, and full-ledger verification.
-  Complete the epic's remaining Test, Review, approval, delivery, and ordinary
-  close gates. Retry close once and verify no duplicate terminal effects. Do not
-  close, promote, or mutate any incident issue outside the approved ledger
-  outcome or the verified #939 child graph.
+  First execute a fail-closed #939 authority checkpoint in its recorded reused
+  worktree. Fetch `origin/trunk`; show the exact local branch, local and remote
+  heads, ahead/behind counts, merge-base ancestry, clean-tree state, accepted
+  Test/Review SHA, candidate PRs with exact `headRefOid`, and the complete patch
+  and file-content delta against `origin/trunk`. Resolve exactly one truthful
+  current-head delivery path with CI, approval, attribution, durable intent,
+  sanctioned expected-head provider action, independent merged/trunk
+  verification, and receipt. If the recorded branch cannot be synchronized
+  without rewriting or discarding unique work, or no unique exact-head PR path
+  exists, stop with the concrete authority conflict; do not select by recency,
+  cumulative inclusion, or branch name alone.
+
+  Then publish a #939 summary linking #1381, every dependency-chain close,
+  unchanged historical result, Incorporated record, recovered receipt,
+  approval provenance, reused-branch idempotence proof, and full-ledger
+  verification. Complete the epic's remaining Test, Review, approval, delivery,
+  and ordinary close gates. Retry close once and verify no duplicate terminal
+  effects. Do not close, promote, or mutate any incident issue outside the
+  approved ledger outcome or the verified #939 child graph.
 
 ## Claude Review Advisories Carried Forward
 
@@ -1195,23 +1260,26 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
 ## Specification Coverage
 
-| Accepted requirement                                 | Plan coverage                      |
-| ---------------------------------------------------- | ---------------------------------- |
-| Immutable accepted SHA and exact-head PR authority   | Tasks 1–3                          |
-| Current-head provider action remains protected       | Task 2                             |
-| Historical pending-intent receipt recovery           | Task 2                             |
-| Historical close and fully idempotent retry          | Task 3                             |
-| GitHub adapter normalization and strict core parsing | Tasks 2 and 7                      |
-| Squash attribution from authorized merge bytes       | Task 2                             |
-| Incorporated disposition and project repair          | Tasks 4 and 6                      |
-| Canonical ledger and explicit human approval         | Tasks 4 and 5                      |
-| Read-only reconciliation verifier                    | Task 5                             |
-| Reused branch A→B acceptance                         | Tasks 7 and 9                      |
-| Truthful disposition for every incident issue        | Task 9                             |
-| Documentation and help parity                        | Task 8                             |
-| No successor guard defects                           | Global constraints and Task 9      |
-| #1403 blocker-first Incorporated disposition         | Amendment design and Task 9        |
-| Independent #1381 then chain then #939 ordering      | Pre-implementation gate and Task 9 |
+| Accepted requirement                                 | Plan coverage                 |
+| ---------------------------------------------------- | ----------------------------- |
+| Immutable accepted SHA and exact-head PR authority   | Tasks 1–3                     |
+| Current-head provider action remains protected       | Task 2                        |
+| Historical pending-intent receipt recovery           | Task 2                        |
+| Historical close and fully idempotent retry          | Task 3                        |
+| GitHub adapter normalization and strict core parsing | Tasks 2 and 7                 |
+| Squash attribution from authorized merge bytes       | Task 2                        |
+| Incorporated disposition and project repair          | Tasks 4 and 6                 |
+| Canonical ledger and explicit human approval         | Tasks 4 and 5                 |
+| Phase-aware read-only reconciliation verifier        | Tasks 5 and 9                 |
+| Reused branch A→B acceptance                         | Tasks 7 and 9                 |
+| Truthful disposition for every incident issue        | Task 9                        |
+| Documentation and help parity                        | Task 8                        |
+| No successor guard defects                           | Global constraints and Task 9 |
+| #1381 independent-scope gate                         | Tasks 5 and 7                 |
+| Post-#1381 approved-ledger authority                 | Tasks 5, 7, and 9             |
+| #1403 carrier-only Incorporated authorization        | Tasks 4, 6, 7, and 9          |
+| Blocker-ordered chain refusal                        | Tasks 6, 7, and 9             |
+| #939 child-terminal refusal and authority checkpoint | Tasks 7 and 9                 |
 
 ## Final Self-review Checklist
 

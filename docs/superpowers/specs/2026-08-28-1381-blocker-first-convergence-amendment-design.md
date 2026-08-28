@@ -59,7 +59,8 @@ and documentation capabilities. It then completes Test, Review, approval,
 governed delivery, and ordinary Delivered close as an independent issue.
 
 Before #1381 closes, it must record the immutable live incident ledger and pass
-the read-only verifier over the observations available at that point. Ledger
+the read-only verifier in `pre-close` phase over the observations available at
+that point. Ledger
 approval remains a separate authenticated human action over the exact emitted
 ledger ID and digest; Full-Auto authorization does not pre-approve unknown
 future bytes.
@@ -68,6 +69,14 @@ The ledger records intended outcomes but does not need to execute every
 downstream terminal mutation before #1381 closes. This is the deliberate
 amendment to the original in-story execution requirement. Closing #1381 removes
 the first blocker and permits the approved ledger to govern Phase B.
+
+The verifier has two read-only phases. `pre-close` requires the approved
+baseline, exact blocker graph, independent #1381 hierarchy, and matching live
+observations; downstream rows without terminal records are reported as
+`pending-authorized`. `terminal` requires the approved terminal record and
+disposition for every row. `ok: true` in pre-close phase does not claim that
+Phase B has executed, and the approved ledger remains authoritative after #1381
+closes.
 
 ### Phase B: execute the dependency chain
 
