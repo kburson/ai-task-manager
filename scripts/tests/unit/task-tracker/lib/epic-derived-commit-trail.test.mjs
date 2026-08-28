@@ -81,6 +81,29 @@ test('parseEpicTrailLog reads the separated log format and skips blank lines', (
   ]);
 });
 
+test('governed delivery Attribution trailers preserve squash child reachability', () => {
+  const stdout =
+    'dddddd4444444444\x1f[#939] Governed PR delivery\x1fkb\x1f2026-08-28T17:37:49-05:00\x1f[#939] [#1384]';
+  const commits = parseEpicTrailLog(stdout);
+
+  assert.deepEqual(commits, [
+    {
+      sha: 'dddddd4444444444',
+      subject: '[#939] Governed PR delivery',
+      author: 'kb',
+      ts: '2026-08-28T17:37:49-05:00',
+      attribution: '[#939] [#1384]',
+    },
+  ]);
+  assert.deepEqual(
+    groupCommitsByChild({ children: [{ number: 1384 }], commits }).map((group) => [
+      group.number,
+      group.commits.map((commit) => commit.sha),
+    ]),
+    [[1384, ['dddddd4444444444']]]
+  );
+});
+
 // #1177 — historical #1067 children used the retired trailing token convention.
 test('epic trail reads canonical leading attribution and exact historical trailing attribution', () => {
   assert.deepEqual(parseEpicTrailIssueIds('[#1177] fix(epic): canonical subject'), [1177]);
