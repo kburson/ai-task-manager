@@ -44,6 +44,8 @@ function node(id, recordId) {
     __typename: 'IssueComment',
     id,
     body: body(recordId),
+    author: { login: 'kpburson' },
+    createdAt: '2026-08-01T14:01:00.000Z',
     updatedAt: '2026-08-01T14:01:00.000Z',
     issue: { number: issue, repository: { nameWithOwner: repository } },
   };
@@ -75,6 +77,18 @@ test('getCommentsByNodeIds retrieves opaque IDs in one nodes query', async () =>
   assert.deepEqual(
     result.map((comment) => comment.commentNodeId),
     ids
+  );
+  assert.deepEqual(
+    result.map(({ authorLogin, createdAt, updatedAt }) => ({
+      authorLogin,
+      createdAt,
+      updatedAt,
+    })),
+    ids.map(() => ({
+      authorLogin: 'kpburson',
+      createdAt: '2026-08-01T14:01:00.000Z',
+      updatedAt: '2026-08-01T14:01:00.000Z',
+    }))
   );
 });
 
@@ -132,9 +146,15 @@ test('GitHub timestamps without fractional seconds are accepted and normalized',
   assert.equal(comment.updatedAt, '2026-08-02T01:52:38.000Z');
 });
 
-test('GitHub timestamps reject impossible dates and unsupported precision', async () => {
+test('GitHub timestamps and immutable author metadata fail closed', async () => {
   const id = 'IC_kwDOInvalidTimestamp';
-  for (const updatedAt of ['2026-02-30T12:00:00Z', '2026-08-01T14:01:00.0009Z']) {
+  const invalidNodes = [
+    { ...node(id, '01J00000000000000000000017'), updatedAt: '2026-02-30T12:00:00Z' },
+    { ...node(id, '01J00000000000000000000017'), createdAt: '2026-08-01T14:01:00.0009Z' },
+    { ...node(id, '01J00000000000000000000017'), author: null },
+    { ...node(id, '01J00000000000000000000017'), author: { login: ' bad ' } },
+  ];
+  for (const invalidNode of invalidNodes) {
     await assert.rejects(
       getCommentsByNodeIds({
         ids: [id],
@@ -142,12 +162,7 @@ test('GitHub timestamps reject impossible dates and unsupported precision', asyn
         issue,
         graphql: async () => ({
           data: {
-            nodes: [
-              {
-                ...node(id, '01J00000000000000000000017'),
-                updatedAt,
-              },
-            ],
+            nodes: [invalidNode],
           },
         }),
       }),

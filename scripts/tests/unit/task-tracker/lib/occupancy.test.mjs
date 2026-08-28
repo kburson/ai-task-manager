@@ -12,6 +12,7 @@ import {
   heartbeatOccupancy,
   readOccupancy,
   releaseOccupancy,
+  releaseOccupancyAtOrBefore,
   rollbackOccupancyClaim,
   touchOccupancy,
 } from '../../../../task-tracker/lib/occupancy.mjs';
@@ -194,6 +195,32 @@ test('release is exact-session scoped while force release is issue scoped', () =
   assert.equal(forced.status, 'released');
   assert.equal(forced.row.provider, 'codex');
   assert.deepEqual(readOccupancy(file), {});
+});
+
+test('terminal release is locked to the original close timestamp', () => {
+  const { file, claim } = fixture();
+  claim();
+  assert.equal(
+    releaseOccupancyAtOrBefore({
+      occupancyFile: file,
+      issue: 1325,
+      sid: 'codex-a',
+      closedAt: '2026-08-19T00:00:00.000Z',
+    }).status,
+    'released'
+  );
+  claim();
+  assert.throws(
+    () =>
+      releaseOccupancyAtOrBefore({
+        occupancyFile: file,
+        issue: 1325,
+        sid: 'codex-a',
+        closedAt: '2026-08-19T00:00:00.000Z',
+      }),
+    (error) => error.code === 'occupancy-terminal-release-refused'
+  );
+  assert.equal(readOccupancy(file)['1325'].boundAt, '2026-08-19T00:00:01.000Z');
 });
 
 test('rollback restores the exact prior rows after a downstream bind failure', () => {

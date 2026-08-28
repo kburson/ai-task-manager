@@ -7,7 +7,7 @@ description: Bind work sessions to GitHub issues and track time + context words 
 
 # Task Router
 
-Tier-1 router stub. Carries only the hard cross-cutting rules and the verb → rule-file routing table. Every detailed contract is a pointer to a Tier-2 file under `skill/shared/rules/`.
+Tier-1 stub: hard rules plus verb → Tier-2 rule routing.
 
 On first read, emit `aitm-skill-loaded:router:1.1.0` once. Tier-2 rule files announce their own sentinels on JIT load.
 
@@ -50,6 +50,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | `/task #N`, `/task resume #N`                                            | `rules/bind.md` (+ load `.ai-task-manager/templates/pickup-directive.md`) |
 | `/task review #N`                                                        | `rules/review.md`                                                         |
 | `/task deliver #N` | `rules/deliver.md` |
+| `/task incident-ledger #1381`                                           | `rules/incident-ledger.md`                                                |
 | `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
 | `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                                   |

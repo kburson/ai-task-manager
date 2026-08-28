@@ -53,6 +53,7 @@ carveout
 catchable
 chaptr
 checkmarks
+checkpointing
 cheerleading
 chokepoint
 chrono
@@ -176,6 +177,7 @@ makeindex
 maketitle
 Manushree
 markerlint
+markerless
 mediaanalysisd
 menlo
 metachar
@@ -200,6 +202,7 @@ mybuild
 myorg
 mytest
 Nanocluster
+NDEKTSV
 networkidle
 newcommand
 newpage
@@ -264,6 +267,7 @@ pytest
 quotepath
 Qwik
 RDBMS
+RRFFQ
 readback
 realdir
 realpath

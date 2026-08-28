@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // @story #58
-// Tests for the human-gate config flags introduced in #58.
+// Tests for the human-gate config flags introduced in #58 and the immutable
+// review-authorization ordering introduced in #1381.
 //
 //   gateAnalysisToDevelopment (boolean, default true)
 //     - false: runApprove auto-approves without prompt, returns 'gate-bypassed'.
 //
-//   gateReviewToDone (boolean, default true)
-//     - true + no review-approval marker:   verbClose exits 7, prints PROMPT_REQUIRED.
-//     - true + --answer yes + no marker:    verbClose exits 8, refuses --answer bypass.
-//     - false:                              verbClose posts a gate-bypassed audit row.
+//   Before any legacy prompt or bypass path, close resolves immutable accepted
+//   delivery evidence and review authorization. Missing approval evidence is a
+//   deterministic refusal and cannot be manufactured by --answer or a local
+//   gate toggle.
 
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -27,6 +28,7 @@ const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';
+const HEAD = 'a'.repeat(40);
 
 function writeConfig(sandbox, extra = {}) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -44,6 +46,7 @@ function writeConfig(sandbox, extra = {}) {
         kanbanOptionTest: 'OPT_validate',
         kanbanOptionReview: OPT_REVIEW,
         kanbanOptionDone: 'OPT_done',
+        fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
         preferences: { gateAssigneeMatch: false },
         ...extra,
       },
@@ -106,6 +109,22 @@ process.exit(0);
 `
   );
   chmodSync(ghShim, 0o755);
+  const gitShim = path.join(binDir, 'git');
+  writeFileSync(
+    gitShim,
+    `#!/usr/bin/env node
+import fs from 'node:fs';
+const argv = process.argv.slice(2);
+if (argv[0] === 'branch' && argv[1] === '--show-current') fs.writeSync(1, 'trunk\\n');
+else if (argv[0] === 'rev-parse' && argv[1] === 'HEAD') fs.writeSync(1, ${JSON.stringify(`${HEAD}\n`)});
+else if (argv[0] === 'rev-parse' && argv[1] === '--show-toplevel') fs.writeSync(1, ${JSON.stringify(`${sandbox}\n`)});
+else if (argv[0] === 'status') fs.writeSync(1, '');
+else if (argv[0] === 'worktree' && argv[1] === 'list') fs.writeSync(1, ${JSON.stringify(`${sandbox} ${HEAD} [trunk]\n`)});
+else if (argv[0] === 'log') fs.writeSync(1, '[#201] test\\n');
+process.exit(0);
+`
+  );
+  chmodSync(gitShim, 0o755);
   return { binDir, callsLog };
 }
 
@@ -124,6 +143,10 @@ async function run(sandbox, binDir, args) {
   }
 }
 
+const TEST_RECEIPT = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
+  'base64url'
+);
+
 const BODY_NO_MARKER = [
   '## Acceptance Criteria',
   '- [x] all done',
@@ -131,9 +154,16 @@ const BODY_NO_MARKER = [
   '## Pickup Directive',
   '- [x] Deep dive complete',
   '',
+  '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" result="pass" -->',
+  `<!-- aitm-verification-receipt stage="test" data="${TEST_RECEIPT}" -->`,
 ].join('\n');
 
-const BODY_WITH_MARKER = BODY_NO_MARKER + '\n<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->\n';
+const BODY_WITH_MARKER =
+  BODY_NO_MARKER +
+  `\n<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" approved-sha="${HEAD}" -->\n`;
+const BODY_WITH_FULL_AUTO_MARKER =
+  BODY_NO_MARKER +
+  `\n<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" approved-sha="${HEAD}" full-auto="yes" signals="session=1" -->\n`;
 
 function writeState(sandbox, issueNum) {
   writeFileSync(
@@ -147,7 +177,7 @@ function writeState(sandbox, issueNum) {
   );
 }
 
-// ─── Test 1: close with no marker, gateReviewToDone=true → exit 7 ────────────
+// ─── Test 1: missing immutable approval refuses before prompt/mutation ───────
 {
   const sandbox = mkdtempProjectIsolated('tt-gate-1-');
   try {
@@ -158,16 +188,16 @@ function writeState(sandbox, issueNum) {
       stateOptionId: OPT_REVIEW,
     });
     const r = await run(sandbox, binDir, ['close', '#201']);
-    assert.equal(r.code, 7, `expected exit 7; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
-    assert.match(r.stdout, /PROMPT_REQUIRED: review-approval #201/);
-    assert.match(r.stderr, /no human review approval recorded/);
-    console.log('test 1 passed: close without marker → exit 7 + PROMPT_REQUIRED');
+    assert.equal(r.code, 1, `expected exit 1; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
+    assert.match(r.stderr, /review-authorization-missing/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
+    console.log('test 1 passed: missing approval refuses before prompt');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
 }
 
-// ─── Test 2: close with --answer yes and no marker → exit 8 ──────────────────
+// ─── Test 2: --answer cannot manufacture immutable approval ─────────────────
 {
   const sandbox = mkdtempProjectIsolated('tt-gate-2-');
   try {
@@ -178,15 +208,16 @@ function writeState(sandbox, issueNum) {
       stateOptionId: OPT_REVIEW,
     });
     const r = await run(sandbox, binDir, ['close', '#202', '--answer', 'yes']);
-    assert.equal(r.code, 8, `expected exit 8; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
-    assert.match(r.stderr, /--answer yes.*cannot satisfy a human-gate prompt/);
-    console.log('test 2 passed: --answer yes is rejected at review-approval gate');
+    assert.equal(r.code, 1, `expected exit 1; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
+    assert.match(r.stderr, /review-authorization-missing/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
+    console.log('test 2 passed: --answer cannot manufacture approval');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
 }
 
-// ─── Test 3: close with gateReviewToDone=false → bypass audit, no exit 7/8 ───
+// ─── Test 3: gateReviewToDone=false cannot bypass immutable authorization ────
 {
   const sandbox = mkdtempProjectIsolated('tt-gate-3-');
   try {
@@ -197,27 +228,19 @@ function writeState(sandbox, issueNum) {
       stateOptionId: OPT_REVIEW,
     });
     const r = await run(sandbox, binDir, ['close', '#203']);
-    // Close may fail later for other reasons, but it must NOT exit 7 or 8.
-    assert.notEqual(r.code, 7, `should bypass review-approval gate; stderr:\n${r.stderr}`);
-    assert.notEqual(r.code, 8, `should bypass review-approval gate; stderr:\n${r.stderr}`);
-    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
-    // #516 — the bypass is now recorded as a body audit marker
-    // (`aitm-gate-bypassed`) written via `gh issue edit --body-file -`, not a
-    // ⏱ Timing Log row. Proof the bypass branch ran: an issue-edit call whose
-    // body payload carries the marker (and its `gateReviewToDone=false` detail).
+    assert.equal(r.code, 1, `expected authorization refusal; stderr:\n${r.stderr}`);
+    assert.match(r.stderr, /review-authorization-missing/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
+    // Authorization is resolved before any bypass audit/body mutation.
     const calls = existsSync(callsLog) ? readFileSync(callsLog, 'utf8') : '';
-    const bypassEvidence = /aitm-gate-bypassed/.test(calls) && /gateReviewToDone=false/.test(calls);
-    assert.ok(
-      bypassEvidence,
-      `expected aitm-gate-bypassed audit marker in an issue-edit body payload; calls:\n${calls}`
-    );
-    console.log('test 3 passed: gateReviewToDone=false bypasses gate + writes audit marker');
+    assert.doesNotMatch(calls, /aitm-gate-bypassed/);
+    console.log('test 3 passed: gate toggle cannot bypass immutable authorization');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
 }
 
-// ─── Test 4: close with marker present → passes review-approval gate ─────────
+// ─── Test 4: exact-SHA human approval passes immutable authorization ─────────
 {
   const sandbox = mkdtempProjectIsolated('tt-gate-4-');
   try {
@@ -228,11 +251,9 @@ function writeState(sandbox, issueNum) {
       stateOptionId: OPT_REVIEW,
     });
     const r = await run(sandbox, binDir, ['close', '#204']);
-    // The gate itself should not fire — exit 7/8 are reserved for the gate.
-    assert.notEqual(r.code, 7, `marker present must pass gate; stderr:\n${r.stderr}`);
-    assert.notEqual(r.code, 8, `marker present must pass gate; stderr:\n${r.stderr}`);
-    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
-    console.log('test 4 passed: marker present passes review-approval gate');
+    assert.doesNotMatch(r.stderr, /review-authorization-missing/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
+    console.log('test 4 passed: exact-SHA human approval passes authorization');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -242,9 +263,7 @@ function writeState(sandbox, issueNum) {
 //     leak into the gate resolution. The session store resolves its dir via
 //     getProjectDir() (paths.mjs), so with AI_TASK_MANAGER_PROJECT_DIR pointed
 //     at a clean sandbox, a cwd-relative `.tmp/aitm/gates/*.json` that flips
-//     reviewToDone=false is ignored and Test-1's close-without-marker still
-//     yields exit 7. Pre-fix (cwd-relative DEFAULT_DIR) this leaked → the gate
-//     bypassed and the close no longer exited 7. ────────────────────────────
+//     reviewToDone=false cannot create immutable approval evidence. ──────────
 {
   const sandbox = mkdtempProjectIsolated('tt-gate-5-');
   const hostileCwd = mkdtempProjectIsolated('tt-gate-5-cwd-');
@@ -253,7 +272,7 @@ function writeState(sandbox, issueNum) {
     writeConfig(sandbox);
     writeState(sandbox, 205);
     const { binDir } = makeGhShim(sandbox, {
-      bodyOnView: BODY_NO_MARKER,
+      bodyOnView: BODY_WITH_FULL_AUTO_MARKER,
       stateOptionId: OPT_REVIEW,
     });
 
@@ -293,13 +312,10 @@ function writeState(sandbox, issueNum) {
       r = { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
     }
 
-    assert.equal(
-      r.code,
-      7,
-      `hostile cwd session file must not leak; expected exit 7, got ${r.code}; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`
-    );
-    assert.match(r.stdout, /PROMPT_REQUIRED: review-approval #205/);
-    console.log('test 5 passed: hostile cwd session-gate file is isolated (exit 7 preserved)');
+    assert.equal(r.code, 1, `expected exit 1; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
+    assert.match(r.stderr, /review-authorization-missing/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
+    console.log('test 5 passed: hostile cwd session file cannot enable Full-Auto standing');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
     rmSync(hostileCwd, { recursive: true, force: true });

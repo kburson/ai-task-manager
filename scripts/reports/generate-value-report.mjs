@@ -185,6 +185,8 @@ async function fetchProject() {
                       __typename
                       id
                       body
+                      author { login }
+                      createdAt
                       updatedAt
                       issue { number repository { nameWithOwner } }
                     }

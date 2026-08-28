@@ -11,6 +11,7 @@ const HASH_RE = /^[0-9a-f]{64}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MERGE_METHODS = new Set(['merge', 'squash', 'rebase']);
 const VERIFICATION_INPUT_KEYS = [
+  'acceptedSha',
   'acceptedReviewSha',
   'attributingCommits',
   'fetchOriginTrunk',
@@ -111,7 +112,7 @@ function assertAuthorityShas(input, intent) {
   const authorities = [
     input.pullRequest?.headRefOid,
     intent?.expectedHeadSha,
-    input.localHeadSha,
+    input.acceptedSha,
     input.testReceiptSha,
     input.acceptedReviewSha,
   ];
@@ -119,6 +120,12 @@ function assertAuthorityShas(input, intent) {
     throw verificationError('authority-sha');
   }
   if (new Set(authorities).size !== 1) throw verificationError('authority-sha-mismatch');
+  if (typeof input.localHeadSha !== 'string' || !SHA_RE.test(input.localHeadSha)) {
+    throw verificationError('authority-sha');
+  }
+  if (input.localHeadSha !== input.acceptedSha && input.recovery !== true) {
+    throw verificationError('authority-sha-mismatch');
+  }
 }
 
 function assertMergedPullRequest(pullRequest, intent) {
@@ -202,7 +209,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
   assertAuthorityShas(input, intent);
   const { pullRequest } = input;
   const merged = assertMergedPullRequest(pullRequest, intent);
-  if (!recovery) {
+  if (intent.provider !== 'external') {
     if (!isCanonicalInstant(input.intentCreatedAt)) throw verificationError('intent-created-at');
     if (Date.parse(merged.mergedAt) < Date.parse(input.intentCreatedAt)) {
       throw verificationError('merge-before-intent');

@@ -1,5 +1,7 @@
 // @story #761
-// Sanctioned close-lane for **duplicate** / **not-planned** dispositions (#761).
+// Sanctioned close argument parser plus the **duplicate** / **not-planned**
+// mutation lane (#761, #1381). Incorporated is parsed here for one canonical
+// surface but executed only by lib/incorporated-close.mjs.
 //
 // The Done pipeline (`verbs/close.mjs`) enforces the DoD + commit-trace gate and
 // lands the issue in the Done column — correct for delivered work, wrong for an
@@ -26,6 +28,7 @@ const CLOSED_AS_LINE_RE = /^<!--\s*aitm-closed-as(\s|-->).*$/m;
 export const DISPOSITIONS = Object.freeze({
   duplicate: { stateReason: 'DUPLICATE' },
   'not-planned': { stateReason: 'NOT_PLANNED', cliReason: 'not planned' },
+  incorporated: { stateReason: 'COMPLETED' },
 });
 
 const DUPLICATE_NODE_IDS_QUERY = `query($owner:String!,$name:String!,$issue:Int!,$duplicate:Int!){
@@ -173,12 +176,12 @@ export function parseDisposition({ reason, of } = {}) {
   }
   let ofRef = '';
   if (of != null && of !== '') ofRef = normalizeRef(of);
-  if (key === 'duplicate' && !ofRef) {
-    throw new Error('close --as duplicate: --of <M> is required (the surviving issue)');
+  if (['duplicate', 'incorporated'].includes(key) && !ofRef) {
+    throw new Error(`close --as ${key}: --of <M> is required (the governing issue)`);
   }
   // `--of` is meaningful only for `duplicate`; a stray `--of` on not-planned is
   // dropped so the marker never carries a spurious cross-reference.
-  if (key !== 'duplicate') ofRef = '';
+  if (!['duplicate', 'incorporated'].includes(key)) ofRef = '';
   return { key, stateReason: DISPOSITIONS[key].stateReason, of: ofRef };
 }
 
@@ -212,6 +215,9 @@ export async function runDispose({
   } = deps;
 
   const { key, stateReason, of: ofRef } = parseDisposition({ reason, of });
+  if (key === 'incorporated') {
+    throw new Error('close-disposition: incorporated requires the dedicated governed close lane');
+  }
   const ts = now();
   const terminalCfg = cfg || { repo, projectId };
 

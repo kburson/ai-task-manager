@@ -232,6 +232,30 @@ export function releaseOccupancy(input) {
   });
 }
 
+export function releaseOccupancyAtOrBefore(input) {
+  const file = fileFor(input);
+  const issue = issueKey(input.issue);
+  const sid = String(input.sid || '').trim();
+  const closedAt = Date.parse(String(input.closedAt || ''));
+  if (!Number.isFinite(closedAt)) throw new TypeError('occupancy: closedAt must be an ISO instant');
+  return withLock(file, () => {
+    const rows = readOccupancy(file);
+    const row = rows[issue];
+    if (!row) return { status: 'absent', row: null };
+    const boundAt = Date.parse(row.boundAt);
+    if (!sid || row.sid !== sid || !Number.isFinite(boundAt) || boundAt > closedAt) {
+      throw new OccupancyConflictError(
+        `occupancy: terminal release refused for #${issue}; claim supersedes close authority`,
+        'occupancy-terminal-release-refused',
+        row
+      );
+    }
+    delete rows[issue];
+    writeOccupancy(file, rows);
+    return { status: 'released', row: clone(row) };
+  });
+}
+
 export function forceReleaseOccupancy(input) {
   const file = fileFor(input);
   const issue = issueKey(input.issue);

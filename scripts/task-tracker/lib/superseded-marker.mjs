@@ -40,6 +40,29 @@ export function parseSupersededBy(body = '') {
   return null;
 }
 
+export function parseSupersededByStrict(body = '') {
+  const candidates = String(body)
+    .split('\n')
+    .filter((line) => /<!--\s*aitm-superseded-by\b/i.test(line));
+  if (candidates.length !== 1) throw new Error('superseded-marker: ambiguous or missing marker');
+  const line = candidates[0];
+  const parsed = parseMarker(line);
+  const keys = Object.keys(parsed?.props || {}).sort();
+  if (
+    parsed?.name !== 'superseded-by' ||
+    keys.length !== 2 ||
+    keys[0] !== 'refs' ||
+    keys[1] !== 'ts' ||
+    !/^#[1-9][0-9]*$/.test(parsed.props.refs || '') ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(parsed.props.ts || '') ||
+    new Date(parsed.props.ts).toISOString() !== parsed.props.ts ||
+    serializeSupersededBy({ ref: parsed.props.refs, ts: parsed.props.ts }) !== line
+  ) {
+    throw new Error('superseded-marker: malformed marker');
+  }
+  return { ref: parsed.props.refs, ts: parsed.props.ts };
+}
+
 // Insert (or replace) the marker in a body. Appends on first write; replaces the
 // existing line in place on a re-write so the marker stays unique.
 export function addSupersededBy(body = '', { ref, ts }) {

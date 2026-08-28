@@ -79,6 +79,7 @@ async function runConverge({ boardState, reconcileSpy }) {
     }),
     resolveReviewAuthorization: () => ({ mode: 'human', standing: true, source: 'test' }),
     requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
+    verifyCloseDeliveryReceipt: async ({ receiptGate }) => receiptGate,
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';

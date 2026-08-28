@@ -58,6 +58,7 @@ function externalIntentInput() {
 
 function liveInput(commitMessage = COMMIT_MESSAGE) {
   return {
+    acceptedSha: HEAD,
     acceptedReviewSha: HEAD,
     attributingCommits() {
       throw new Error('delivery verification must not use generic subject-only attribution');

@@ -35,6 +35,7 @@ function tmpState(state) {
 }
 
 function makeCtx(statePath, dir, over = {}) {
+  let liveBody = APPROVED_BODY;
   return {
     cfg: { repo: 'o/r', lifecycleCheckboxesRequired: false },
     statePath,
@@ -48,7 +49,10 @@ function makeCtx(statePath, dir, over = {}) {
     safePostTiming: async () => {},
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
+    readTerminalDisposition: async () => null,
     writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
+    readCloseLabels: async () => ['ToDo', 'BLOCKED'],
+    inspectTerminalIssueBindingRelease: async () => ({ status: 'pending', closedAt: null }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
@@ -56,7 +60,14 @@ function makeCtx(statePath, dir, over = {}) {
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
     reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
-    loadCloseDeliveryBody: async () => APPROVED_BODY,
+    applyReviewDelta: async () => ({ status: 'skipped' }),
+    loadCloseDeliveryBody: async () => liveBody,
+    issueBodyMutator: {
+      mutate: async ({ mutate }) => {
+        liveBody = mutate(liveBody);
+        return { status: 'ok', body: liveBody };
+      },
+    },
     loadCloseDeliveryGateInput: async () => ({
       issueNumber: 5,
       lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
@@ -68,6 +79,7 @@ function makeCtx(statePath, dir, over = {}) {
     }),
     resolveReviewAuthorization: () => ({ mode: 'full-auto', standing: true, source: 'test' }),
     requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
+    verifyCloseDeliveryReceipt: async ({ receiptGate }) => receiptGate,
     ...over,
   };
 }
@@ -75,6 +87,7 @@ function makeCtx(statePath, dir, over = {}) {
 async function run({ state = baseState(), over = {} } = {}) {
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   const prevCI = process.env.CI;
+  const previousExitCode = process.exitCode;
   process.env.TT_SKIP_DIRTY_CHECK = '1';
   const { statePath, dir } = tmpState(state);
   const ctx = makeCtx(statePath, dir, over);
@@ -103,6 +116,7 @@ async function run({ state = baseState(), over = {} } = {}) {
     else process.env.TT_SKIP_DIRTY_CHECK = prevSkip;
     if (prevCI === undefined) delete process.env.CI;
     else process.env.CI = prevCI;
+    process.exitCode = previousExitCode;
   }
   return { exitCode, stdout: stdout.join('\n'), stderr: stderr.join('\n'), thrown };
 }
@@ -125,10 +139,17 @@ test('convergence close-issue path strips ToDo/BLOCKED labels after gh close', a
     over: {
       SKIP_NETWORK: false,
       getIssueBoardState: async () => 'done',
-      pexec: async (cmd, args) => (
-        calls.push(`${cmd} ${args.join(' ')}`),
-        { stdout: '', stderr: '' }
-      ),
+      pexec: async (cmd, args) => {
+        calls.push(`${cmd} ${args.join(' ')}`);
+        const a = args.join(' ');
+        if (cmd === 'gh' && a.includes('issue view') && a.includes('--jq')) {
+          return { stdout: APPROVED_BODY, stderr: '' };
+        }
+        if (cmd === 'gh' && a.includes('issue view')) {
+          return { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
     },
   });
   assert.ok(
@@ -171,7 +192,7 @@ test('main close path strips ToDo/BLOCKED labels after gh close', async () => {
   );
 });
 
-test('label-strip failure is best-effort and does not fail the close', async () => {
+test('label-strip failure leaves close incomplete for a truthful retry', async () => {
   const r = await run({
     over: {
       SKIP_NETWORK: false,
@@ -189,7 +210,7 @@ test('label-strip failure is best-effort and does not fail the close', async () 
       },
     },
   });
-  assert.match(r.stdout, /Closed #5/);
+  assert.doesNotMatch(r.stdout, /Closed #5/);
   assert.match(r.stderr, /failed to strip ToDo\/BLOCKED labels/);
 });
 

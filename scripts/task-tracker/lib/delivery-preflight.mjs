@@ -1,4 +1,5 @@
 import { buildDeliveryCommitText } from './delivery-attribution.mjs';
+import { DeliveryAuthorityError, resolveAcceptedDeliveryAuthority } from './delivery-authority.mjs';
 import { resolveMergeMechanism } from './full-auto-merge.mjs';
 
 const INPUT_KEYS = [
@@ -14,6 +15,7 @@ const INPUT_KEYS = [
   'pullRequests',
   'testReceiptSha',
 ];
+const HISTORICAL_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks').concat('intent');
 const SHA_RE = /^[0-9a-f]{40}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MERGE_METHODS = ['merge', 'squash', 'rebase'];
@@ -100,9 +102,7 @@ function validateLineage(lineage, baseRef) {
   }
 }
 
-function validatePullRequest(pullRequests, binding, baseRef, { merged = false } = {}) {
-  if (!Array.isArray(pullRequests) || pullRequests.length !== 1) fail('pull-request-count');
-  const pr = pullRequests[0];
+function validatePullRequest(pr, binding, baseRef, { merged = false } = {}) {
   if (!isPlainObject(pr) || !isPositiveInteger(pr.number)) fail('pull-request-count');
   if (merged) {
     if (pr.merged !== true && String(pr.state || '').toUpperCase() !== 'MERGED') {
@@ -174,7 +174,31 @@ function validatePreflight(input, { merged = false } = {}) {
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
-  const pr = validatePullRequest(input.pullRequests, input.binding, baseRef, { merged });
+  let authority;
+  try {
+    authority = resolveAcceptedDeliveryAuthority({
+      issueNumber: input.issue.number,
+      branch: input.binding.branch,
+      localHeadSha: input.localHeadSha,
+      testReceiptSha: input.testReceiptSha,
+      reviewReceiptSha: input.acceptedReviewSha,
+      agentReviewPassed: input.issue.agentReviewPassed,
+      pullRequests: input.pullRequests,
+    });
+  } catch (error) {
+    if (!(error instanceof DeliveryAuthorityError)) throw error;
+    const category =
+      error.category === 'ambiguous-pr'
+        ? 'pull-request-count'
+        : error.category === 'branch-mismatch'
+          ? 'pull-request-head'
+          : error.category === 'accepted-evidence'
+            ? 'head-mismatch'
+            : 'input';
+    fail(category, error);
+  }
+  if (authority.headRelation !== 'current') fail('head-mismatch');
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged });
   validateExactHead({
     localHeadSha: input.localHeadSha,
     remoteHeadSha: pr.headRefOid,
@@ -214,4 +238,91 @@ export function validateDeliveryPreflight(input = {}) {
 
 export function validateMergedDeliveryPreflight(input = {}) {
   return validatePreflight(input, { merged: true });
+}
+
+export function validateHistoricalRecoveryPreflight(input = {}) {
+  if (!hasExactKeys(input, HISTORICAL_INPUT_KEYS)) fail('input');
+  validateIssueAndBinding(input.issue, input.binding, input.config);
+  const baseRef = trunkBaseRef(input.config);
+  validateLineage(input.lineage, baseRef);
+
+  let authority;
+  try {
+    authority = resolveAcceptedDeliveryAuthority({
+      issueNumber: input.issue.number,
+      branch: input.binding.branch,
+      localHeadSha: input.localHeadSha,
+      testReceiptSha: input.testReceiptSha,
+      reviewReceiptSha: input.acceptedReviewSha,
+      agentReviewPassed: input.issue.agentReviewPassed,
+      pullRequests: input.pullRequests,
+    });
+  } catch (error) {
+    if (!(error instanceof DeliveryAuthorityError)) throw error;
+    const category =
+      error.category === 'ambiguous-pr'
+        ? 'pull-request-count'
+        : error.category === 'branch-mismatch'
+          ? 'pull-request-head'
+          : error.category === 'accepted-evidence'
+            ? 'head-mismatch'
+            : 'input';
+    fail(category, error);
+  }
+  if (authority.headRelation !== 'advanced') fail('head-relation');
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged: true });
+  if (
+    !isSha(input.testReceiptSha) ||
+    !isSha(input.acceptedReviewSha) ||
+    new Set([authority.acceptedSha, pr.headRefOid, input.testReceiptSha, input.acceptedReviewSha])
+      .size !== 1
+  ) {
+    fail('head-mismatch');
+  }
+  if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 0) fail('dirty-overlap');
+  const resolved = validateConfiguration(input.config);
+
+  const intent = input.intent;
+  if (!isPlainObject(intent) || intent.provider === 'external') fail('historical-intent');
+  let commitText;
+  try {
+    commitText = buildDeliveryCommitText({
+      issueNumber: input.issue.number,
+      prNumber: pr.number,
+      expectedHeadSha: authority.acceptedSha,
+      commitSubjects: input.commitSubjects,
+    });
+  } catch (error) {
+    fail('attribution', error);
+  }
+  const expectedIntent = {
+    issueNumber: input.issue.number,
+    repository: input.config.repo,
+    prNumber: pr.number,
+    baseRef,
+    headRef: input.binding.branch,
+    expectedHeadSha: authority.acceptedSha,
+    mergeMethod: resolved.mergeMethod,
+    attributionTokens: commitText.attributionTokens,
+    commitTitle: commitText.commitTitle,
+    commitMessage: commitText.commitMessage,
+  };
+  for (const [key, expected] of Object.entries(expectedIntent)) {
+    const actual = intent[key];
+    const matches = Array.isArray(expected)
+      ? Array.isArray(actual) &&
+        actual.length === expected.length &&
+        actual.every((value, index) => value === expected[index])
+      : actual === expected;
+    if (!matches) fail('historical-intent');
+  }
+
+  return deepFreeze({
+    issue: { ...input.issue, assignees: [...input.issue.assignees] },
+    pr: { ...pr },
+    acceptedSha: authority.acceptedSha,
+    observedLocalHeadSha: authority.observedLocalHeadSha,
+    headRelation: authority.headRelation,
+    intent: { ...intent },
+  });
 }

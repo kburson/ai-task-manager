@@ -113,6 +113,18 @@ test('AC1: runDispose closes without invoking any Done DoD/commit-trace dep', as
   assert.equal(r.reason, 'not-planned');
 });
 
+test('Incorporated is parsed as a distinct owner-bound close lane', () => {
+  assert.deepEqual(parseDisposition({ reason: 'incorporated', of: '1381' }), {
+    key: 'incorporated',
+    stateReason: 'COMPLETED',
+    of: '#1381',
+  });
+  assert.throws(
+    () => parseDisposition({ reason: 'incorporated' }),
+    /close --as incorporated: --of <M> is required/
+  );
+});
+
 // ── AC2 — correct stateReason + timing flush ───────────────────────────────
 test('AC1/AC2: duplicate uses closeIssue with the target and surviving issue node IDs', async () => {
   const { deps, calls } = makeDeps();
