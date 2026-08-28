@@ -35,6 +35,30 @@ test('omits a matching unattributed source record with two repository parents', 
   assert.deepEqual(subjects, [ATTRIBUTED_TITLE]);
 });
 
+test('accepts GitHub ellipsis truncation when immutable inspection proves the full merge title', async () => {
+  const fullTitle =
+    "Merge remote-tracking branch 'origin/trunk' into codex/1381-governed-delivery-convergence-spec";
+  const truncatedTitle = "Merge remote-tracking branch 'origin/trunk' into codex/1381-governed-…";
+  const subjects = await mergedSourceCommitSubjects(
+    pullRequest({
+      sourceCommitSubjects: [ATTRIBUTED_TITLE, truncatedTitle],
+      sourceCommits: [
+        { oid: SOURCE_COMMIT, messageHeadline: ATTRIBUTED_TITLE },
+        { oid: SOURCE_MERGE, messageHeadline: truncatedTitle },
+      ],
+    }),
+    async ({ commitSha }) => {
+      assert.equal(commitSha, SOURCE_MERGE);
+      return {
+        parents: ['3'.repeat(40), '4'.repeat(40)],
+        commitTitle: fullTitle,
+      };
+    }
+  );
+
+  assert.deepEqual(subjects, [ATTRIBUTED_TITLE]);
+});
+
 for (const [label, inspection] of [
   ['one parent', { parents: ['3'.repeat(40)], commitTitle: MERGE_TITLE }],
   [

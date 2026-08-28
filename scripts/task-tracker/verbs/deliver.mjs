@@ -116,6 +116,15 @@ function isUnattributedMergeCandidate(subject) {
   return typeof subject === 'string' && !subject.includes('[') && !subject.includes('#');
 }
 
+function matchesInspectedCommitTitle(observed, inspected) {
+  if (observed === inspected) return true;
+  if (typeof observed !== 'string' || typeof inspected !== 'string' || !observed.endsWith('…')) {
+    return false;
+  }
+  const prefix = observed.slice(0, -1);
+  return prefix.length >= 64 && inspected.length > prefix.length && inspected.startsWith(prefix);
+}
+
 export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommit) {
   const strictSubjects = pullRequest?.sourceCommitSubjects;
   if (!Array.isArray(strictSubjects)) return strictSubjects;
@@ -136,7 +145,7 @@ export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommi
     }
     const parents = inspection?.parents;
     const verifiedMerge =
-      inspection?.commitTitle === commit.messageHeadline &&
+      matchesInspectedCommitTitle(commit.messageHeadline, inspection?.commitTitle) &&
       Array.isArray(parents) &&
       parents.length >= 2 &&
       parents.every((parent) => SHA_RE.test(parent)) &&
