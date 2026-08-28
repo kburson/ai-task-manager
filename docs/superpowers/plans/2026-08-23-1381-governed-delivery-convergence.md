@@ -28,15 +28,15 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
 
 - Normative specification:
   `docs/superpowers/specs/2026-08-23-1381-governed-delivery-convergence-design.md`
-  at `bc079275f96e1c01e78b41127809c00e349c2426`.
+  at `fa2fc631429d4a03253565b346292c6879186d9a`.
 - Normative blocker-first amendment:
   `docs/superpowers/specs/2026-08-28-1381-blocker-first-convergence-amendment-design.md`
-  at `4ae49430cf3a5a58f13a05c81e8cb2e26a72b356`. The amendment takes precedence
+  at `af2ce22042c6799f1b83a50cb47af0b29c808209`. The amendment takes precedence
   for hierarchy, #1403 disposition, live-ledger execution timing, and terminal
   ordering.
 - Accepted co-review evidence:
   `docs/superpowers/reviews/1381/spec/README.md` at
-  `bb94111ce582a224a42ccaf0500e59138df71a6a`.
+  `9a0d681bf93a3bb3ce87bd7a913420632fb75c29`.
 - Specification/review branch:
   `codex/1381-governed-delivery-convergence-spec`.
 - Governed implementation branch:
