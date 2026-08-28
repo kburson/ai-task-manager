@@ -847,6 +847,30 @@ for the live receipt. Rebuild the incident ledger from fresh GitHub, project,
 PR, merge, approval, comment, and trunk evidence; compare every row with v4,
 record v5, and obtain exact human approval before resuming #1397.
 
+### Task 9: Accept post-recovery terminal ledger snapshots
+
+**Files:**
+
+- Modify: `scripts/task-tracker/verify-delivery-incident-reconciliation.mjs`
+- Test: `scripts/tests/unit/task-tracker/core/verify-delivery-incident-reconciliation.test.mjs`
+- Test: `scripts/tests/unit/task-tracker/lib/delivery-incident-delivered-selection.test.mjs`
+
+1. Add a failing production-orchestration regression whose approved
+   `recover-then-close` row already contains its recovered receipt URL.
+2. Keep the terminal live observer authoritative for the actual matching
+   receipt, while allowing the approved row's receipt URL to be either null
+   (approved before recovery) or populated (approved after recovery).
+   Select the convergence owner's delivery pair by its accepted SHA when the
+   reused issue history contains older valid deliveries. Reuse an earlier
+   validated Incorporated record only when all carrier fields match the
+   replacement-ledger row, and compare retained board state with canonical
+   lowercase `done`.
+3. Run the focused reconciliation tests, the live terminal verifier against
+   approved v5, and the complete repository verification suite.
+4. Commit the amendment as `[#939] Accept post-recovery terminal ledger` and
+   repeat governed Test, Review, exact-head provider delivery, receipt
+   verification, and terminal close.
+
 ## Final self-review checklist
 
 - [ ] Every accepted-design requirement maps to Tasks 1–8.

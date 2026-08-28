@@ -523,8 +523,14 @@ export function readIssueDeliveryAuthority(body, { expectedIssue } = {}) {
   });
 }
 
-export function resolveSingleDeliveredEvidence({ comments, repository, issueNumber } = {}) {
+export function resolveSingleDeliveredEvidence({
+  comments,
+  repository,
+  issueNumber,
+  expectedHeadSha = null,
+} = {}) {
   if (!Array.isArray(comments)) fail('stale-observation');
+  if (expectedHeadSha !== null && !SHA_RE.test(expectedHeadSha)) fail('stale-observation');
   const candidatePrNumbers = new Set();
   for (const comment of comments) {
     if (!/<!--\s*aitm-delivery-(?:intent|receipt)\b/i.test(comment?.body || '')) continue;
@@ -560,14 +566,14 @@ export function resolveSingleDeliveredEvidence({ comments, repository, issueNumb
       });
     }
   }
-  if (
-    delivered.length !== 1 ||
-    delivered[0].intentUrl === null ||
-    delivered[0].receiptUrl === null
-  ) {
+  const selected =
+    expectedHeadSha === null
+      ? delivered
+      : delivered.filter((evidence) => evidence.expectedHeadSha === expectedHeadSha);
+  if (selected.length !== 1 || selected[0].intentUrl === null || selected[0].receiptUrl === null) {
     fail('stale-observation');
   }
-  return deepFreeze(delivered[0]);
+  return deepFreeze(selected[0]);
 }
 
 export async function observeIncidentLedgerLive(payload, deps = {}, { phase = 'baseline' } = {}) {

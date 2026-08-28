@@ -141,6 +141,19 @@ function expectedDisposition(outcome) {
   return 'Delivered';
 }
 
+function incorporatedRecordMatchesRow(record, row) {
+  const payload = record?.envelope?.payload;
+  return (
+    payload?.issueNumber === row.issueNumber &&
+    payload.acceptedSha === row.acceptedSha &&
+    payload.prNumber === row.prNumber &&
+    payload.prHeadSha === row.prHeadSha &&
+    payload.mergeSha === row.mergeSha &&
+    payload.codeOnTrunkBasis === row.codeOnTrunkBasis &&
+    payload.blocker === row.blocker
+  );
+}
+
 export async function productionVerification(parsed, deps = {}) {
   const projectDir = deps.projectDir || getProjectDir();
   const cfg = deps.cfg || loadConfig();
@@ -195,9 +208,9 @@ export async function productionVerification(parsed, deps = {}) {
         state === 'done' &&
         disposition === expectedDisposition(row.intendedOutcome);
       const incorporatedIssues = new Set(
-        authority.projection.approvedLedgerIncorporated.map(
-          ({ envelope }) => envelope.payload.issueNumber
-        )
+        (authority.projection.incorporated || [])
+          .filter((record) => incorporatedRecordMatchesRow(record, row))
+          .map(({ envelope }) => envelope.payload.issueNumber)
       );
       let outcomeEvidenceMatches = false;
       if (row.intendedOutcome === 'incorporated') {
@@ -206,14 +219,17 @@ export async function productionVerification(parsed, deps = {}) {
         try {
           parseSupersededByStrict(issue.body || '');
           outcomeEvidenceMatches =
-            row.observedGitHubState === 'CLOSED' && row.observedBoardState === 'Done';
+            row.observedGitHubState === 'CLOSED' && row.observedBoardState === 'done';
         } catch {
           outcomeEvidenceMatches = false;
         }
       } else if (row.intendedOutcome === 'convergence-owner') {
         outcomeEvidenceMatches = true;
       } else if (row.intendedOutcome === 'recover-then-close') {
-        outcomeEvidenceMatches = row.intentUrl !== null && row.receiptUrl === null;
+        // A ledger may be approved either before recovery (receiptUrl null) or
+        // after recovery (receiptUrl populated). The terminal live observer
+        // independently requires the recovered receipt in both cases.
+        outcomeEvidenceMatches = row.intentUrl !== null;
       } else {
         outcomeEvidenceMatches = row.intentUrl !== null && row.receiptUrl !== null;
       }
@@ -329,8 +345,15 @@ export async function productionVerification(parsed, deps = {}) {
       .filter(({ intendedOutcome }) => intendedOutcome === 'incorporated')
       .map(({ issueNumber }) => issueNumber)
       .sort((a, b) => a - b);
-    const actualIncorporated = authority.projection.approvedLedgerIncorporated
-      .map(({ envelope }) => envelope.payload.issueNumber)
+    const actualIncorporated = authority.ledgerPayload.rows
+      .filter(
+        (row) =>
+          row.intendedOutcome === 'incorporated' &&
+          (authority.projection.incorporated || []).some((record) =>
+            incorporatedRecordMatchesRow(record, row)
+          )
+      )
+      .map(({ issueNumber }) => issueNumber)
       .sort((a, b) => a - b);
     if (JSON.stringify(actualIncorporated) !== JSON.stringify(expectedIncorporated)) return false;
     const [comments, issue] = await Promise.all([
@@ -338,19 +361,21 @@ export async function productionVerification(parsed, deps = {}) {
       runtime.liveObservationDeps.fetchIssue(authority.convergenceIssue),
     ]);
     let delivery;
+    let issueAuthority;
     try {
+      issueAuthority = (deps.readIssueDeliveryAuthority || readIssueDeliveryAuthority)(
+        issue.body || '',
+        { expectedIssue: authority.convergenceIssue }
+      );
       delivery = (deps.resolveSingleDeliveredEvidence || resolveSingleDeliveredEvidence)({
         comments,
         repository: authority.repository,
         issueNumber: authority.convergenceIssue,
+        expectedHeadSha: issueAuthority.acceptedSha,
       });
     } catch {
       return false;
     }
-    const issueAuthority = (deps.readIssueDeliveryAuthority || readIssueDeliveryAuthority)(
-      issue.body || '',
-      { expectedIssue: authority.convergenceIssue }
-    );
     const pullRequest = await runtime.liveObservationDeps.fetchPullRequest(delivery.prNumber);
     return (
       issueAuthority.acceptedSha === delivery.expectedHeadSha &&
