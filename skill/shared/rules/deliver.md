@@ -1,8 +1,9 @@
+<!-- aitm-skill-version: 1.1.0 -->
 <!-- aitm-rule-id: delivery -->
 
 # Governed provider delivery
 
-On first read, emit `aitm-skill-loaded:rules/deliver:1.0.0` once.
+On first read, emit `aitm-skill-loaded:rules/deliver:1.1.0` once.
 
 Use this rule only for `/task deliver #N`. Delivery stays in Review and is a
 re-entrant transaction: AITM authorizes exact bytes, the host performs at most
@@ -12,7 +13,7 @@ one declared external action, and AITM independently verifies the live result.
 
 1. Run `npx aitm deliver #N` and preserve its stdout and exit status. Classify
    the result into exactly one envelope:
-   - **Provider-action envelope:** exit `20` with exactly one
+   - **Current-head provider-action envelope:** exit `20` with exactly one
      `AITM_PROVIDER_ACTION_REQUIRED:` JSON line. This is the only envelope that
      permits the remaining provider-action steps, and it authorizes at most one
      provider call.
@@ -22,6 +23,15 @@ one declared external action, and AITM independently verifies the live result.
      `already-delivered` and whose receipt is present and live-verified may
      continue to `npx aitm close #N`. A stable refusal or other result stops at
      that result.
+     An `AITM_DELIVERY_RESULT:` with `mode="historical-recovery"` is historical
+     receipt recovery for an immutable accepted SHA. It never permits a provider
+     call: preserve the result and continue only when its recovered receipt is
+     live-verified. Cumulative inclusion on trunk is not a delivery receipt and
+     must never be promoted into one.
+     An already-merged current-head pull request may instead return
+     `AITM_DELIVERY_RESULT:` with `mode="current-head"`, an external intent and
+     receipt, and no action line. This is also a non-action envelope: never invoke
+     a provider after receiving it.
    - **Mismatched envelope:** exit `20` with zero or multiple action lines, or
      non-`20` with one or multiple action lines. Never invoke a provider. Retry
      once by rerunning `deliver` to reconcile live state; if the envelope is
@@ -32,6 +42,8 @@ one declared external action, and AITM independently verifies the live result.
    `headRef`, `intentId`, `issueNumber`, `mergeMethod`, `prNumber`, `repository`,
    and `schema`. Unknown keys, missing keys, arrays, and non-object values refuse
    the action before capability lookup.
+   This action line is a current-head provider action only. It is never valid for
+   `mode="historical-recovery"`.
 3. Validate the exact action schema before invoking a provider:
    - `schema` is an integer exactly `1`.
    - `issueNumber` and `prNumber` are positive safe integers.

@@ -2428,7 +2428,11 @@ export async function verbClose(ctx) {
     // non-null engagedTime. If it's still null, board fields almost certainly
     // were not written either — refuse to clear active so the user can recover.
     if (!SKIP_NETWORK && closeIssueNum) {
-      await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
+      await (ctx.assertFieldsPersisted || assertFieldsPersisted)({
+        cfg,
+        pexec,
+        issueNum: closeIssueNum,
+      });
     }
     let flushResult;
     try {
@@ -2467,11 +2471,13 @@ export async function verbClose(ctx) {
   }
   let lifecycleTickResult = { ok: true };
   if (needsDeliveredCloseStep('lifecycle')) {
-    lifecycleTickResult = await reconcileLifecycleBoxes({
-      cfg,
-      issueNum: closeIssueNum,
-      pexec,
-    });
+    lifecycleTickResult = SKIP_NETWORK
+      ? { ok: true, skipped: true }
+      : await reconcileLifecycleBoxes({
+          cfg,
+          issueNum: closeIssueNum,
+          pexec,
+        });
     if (lifecycleTickResult && lifecycleTickResult.ok === false) {
       console.error(
         `[task-tracker] ⛔ Refusing to close ${closeTarget}: lifecycle checkboxes did not converge. ` +
@@ -2761,7 +2767,7 @@ export async function verbClose(ctx) {
 // no line anchor) caught literal `<!-- aitm-fields: {...} -->` placeholders
 // inside body prose and failed `JSON.parse` on the `{...}` capture. See #298
 // for the production case that surfaced this.
-async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
+export async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
   let body = '';
   try {
     const { stdout } = await pexec(

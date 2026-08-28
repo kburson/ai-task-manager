@@ -247,14 +247,17 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   deliver: contract(
     [
-      'The target must remain open in Review with a running binding, accepted exact-head Test and review evidence, one current-branch pull request, and green checks.',
+      'The target must remain open in Review with a running binding, accepted exact-head Test and review evidence, and exact accepted-head pull-request evidence.',
       'Every retry re-reads live issue, pull-request, check, repository-setting, commit-range, and server-timestamped comment evidence before acting.',
     ],
     [
-      'Appends or reconciles one exact-head delivery intent and emits a sanctioned provider action; performs no lifecycle transition.',
+      'For an open current-head pull request, appends or reconciles one exact-head delivery intent and emits a sanctioned provider action.',
+      'For an already-merged current-head pull request, external recovery appends the exact external intent and receipt with no provider action.',
+      'For an advanced local head, historical receipt recovery requires the prior accepted-SHA intent and appends its exact receipt with no provider action.',
+      'Delivery performs no lifecycle transition.',
     ],
     [
-      'Prints the byte-stable provider action, an explicit child-lineage result, or a fail-closed diagnostic; recover with npx aitm deliver #N.',
+      'Prints the byte-stable AITM_PROVIDER_ACTION_REQUIRED or AITM_DELIVERY_RESULT envelope, an explicit child-lineage result, or a fail-closed diagnostic; recover with npx aitm deliver #N.',
     ],
     [exit(20, 'provider action required'), ...PREFLIGHT_TARGET_EXITS]
   ),
@@ -329,6 +332,7 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     [
       'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
+      'Partial terminal recovery resumes only the missing suffix from durable transaction authority; an already-closed completed retry is read-only.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [

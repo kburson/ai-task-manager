@@ -49,7 +49,7 @@ test('SKILL_DETAIL_FILES has 5 entries', () => {
 test('#939: deliver JIT rule carries its exact load sentinel', () => {
   const root = join(dirname(new URL(import.meta.url).pathname), '../../../..');
   const rule = readFileSync(join(root, 'skill/shared/rules/deliver.md'), 'utf8');
-  assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.0\.0/);
+  assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.1\.0/);
 });
 
 test('#1381: incident-ledger JIT rule carries its exact load sentinel', () => {

@@ -357,7 +357,8 @@ export const VERB_REFERENCE = {
   },
   deliver: {
     topic: 'board',
-    summary: 'Review-only, re-entrant exact-head delivery handoff with no lifecycle transition.',
+    summary:
+      'Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
     usage: '/task deliver #N',
     exitCodes: [{ code: 20, meaning: 'provider action required' }],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
@@ -463,7 +464,8 @@ export const VERB_REFERENCE = {
   },
   close: {
     topic: 'board',
-    summary: 'Close the active or specified task (runs the pre-close gate).',
+    summary:
+      'Close through a durable terminal transaction; partial work recovers, and an already-closed retry is read-only.',
     usage:
       '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
