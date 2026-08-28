@@ -112,6 +112,65 @@ function optionWriteShape(option, existing) {
   return next;
 }
 
+const PROJECT_OPTION_COLORS = new Set([
+  'GRAY',
+  'BLUE',
+  'GREEN',
+  'YELLOW',
+  'ORANGE',
+  'RED',
+  'PINK',
+  'PURPLE',
+]);
+
+function isBoundedProviderString(value, maximumBytes, { allowEmpty = false } = {}) {
+  return (
+    typeof value === 'string' &&
+    (allowEmpty || value.length > 0) &&
+    value === value.trim() &&
+    value.isWellFormed() &&
+    Buffer.byteLength(value, 'utf8') <= maximumBytes &&
+    ![...value].some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 0x1f || code === 0x7f;
+    })
+  );
+}
+
+function validateObservedOptions(field, definitionName) {
+  if (!isBoundedProviderString(field.id, 256)) {
+    throw new Error(`init-repair: field "${definitionName}" has a malformed id; refusing repair`);
+  }
+  const ids = new Set();
+  const names = new Set();
+  for (const option of field.options) {
+    const keys =
+      option && typeof option === 'object' && !Array.isArray(option)
+        ? Object.keys(option).sort()
+        : [];
+    const expectedKeys = ['color', 'description', 'id', 'name'];
+    const exactShape =
+      keys.length === expectedKeys.length &&
+      keys.every((key, index) => key === expectedKeys[index]);
+    const normalizedName = typeof option?.name === 'string' ? option.name.toLowerCase() : '';
+    if (
+      !exactShape ||
+      !isBoundedProviderString(option.id, 256) ||
+      ids.has(option.id) ||
+      !isBoundedProviderString(option.name, 256) ||
+      names.has(normalizedName) ||
+      !PROJECT_OPTION_COLORS.has(option.color) ||
+      !isBoundedProviderString(option.description, 1024, { allowEmpty: true })
+    ) {
+      throw new Error(
+        `init-repair: field "${definitionName}" has malformed or ambiguous options; refusing repair`
+      );
+    }
+    ids.add(option.id);
+    names.add(normalizedName);
+  }
+}
+
 export async function ensureDispositionField({ projectId, definition, gqlFn = deps.gql } = {}) {
   if (!projectId) throw new Error('ensureDispositionField: projectId is required');
   if (!definition?.name || !Array.isArray(definition.options)) {
@@ -119,9 +178,15 @@ export async function ensureDispositionField({ projectId, definition, gqlFn = de
   }
 
   const fields = await fetchProjectFields(projectId, gqlFn);
-  const field = fields.find(
+  const matchingFields = fields.filter(
     (candidate) => String(candidate?.name || '').toLowerCase() === definition.name.toLowerCase()
   );
+  if (matchingFields.length > 1) {
+    throw new Error(
+      `init-repair: ambiguous duplicate "${definition.name}" fields; refusing repair`
+    );
+  }
+  const field = matchingFields[0];
   if (!field) {
     const data = await gqlFn(
       `
@@ -157,23 +222,39 @@ export async function ensureDispositionField({ projectId, definition, gqlFn = de
     );
   }
 
-  const existingByName = new Map(
-    field.options.map((option) => [String(option.name).toLowerCase(), option])
-  );
-  const canonical = definition.options.map((option) =>
-    optionWriteShape(option, existingByName.get(option.name.toLowerCase()))
-  );
-  const canonicalNames = new Set(definition.options.map((option) => option.name.toLowerCase()));
-  const extras = field.options.filter(
-    (option) => !canonicalNames.has(String(option.name).toLowerCase())
-  );
-  const desired = [...canonical, ...extras];
+  validateObservedOptions(field, definition.name);
+
+  const existingByName = new Map();
+  for (const option of field.options) {
+    const normalizedName = String(option?.name || '').toLowerCase();
+    existingByName.set(normalizedName, option);
+  }
+  for (const option of definition.options) {
+    const existing = existingByName.get(option.name.toLowerCase());
+    if (
+      existing &&
+      (existing.name !== option.name ||
+        existing.color !== option.color ||
+        existing.description !== option.description)
+    ) {
+      throw new Error(
+        `init-repair: existing "${option.name}" option differs from the canonical definition; refusing repair`
+      );
+    }
+  }
   const currentComparable = field.options.map(({ id, name, color, description }) => ({
-    ...(id ? { id } : {}),
+    id,
     name,
     color,
     description,
   }));
+  const missingCanonical = definition.options.filter(
+    (option) => !existingByName.has(option.name.toLowerCase())
+  );
+  const desired = [
+    ...currentComparable,
+    ...missingCanonical.map((option) => optionWriteShape(option)),
+  ];
   if (JSON.stringify(currentComparable) === JSON.stringify(desired)) {
     return { fieldId: field.id, created: false, optionsUpdated: false };
   }

@@ -24,6 +24,12 @@ const expectedDisposition = {
     { name: 'Replaced', color: 'PURPLE', description: 'Work was superseded by another issue' },
     { name: 'Discarded', color: 'GRAY', description: 'Closed without retained delivery' },
     { name: 'Duplicate', color: 'YELLOW', description: 'Duplicates another issue' },
+    {
+      name: 'Incorporated',
+      color: 'BLUE',
+      description:
+        'Implementation retained on trunk without complete issue-local delivery authority',
+    },
   ],
 };
 
