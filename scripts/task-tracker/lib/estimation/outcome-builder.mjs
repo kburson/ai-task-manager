@@ -55,7 +55,6 @@ export function buildEstimationOutcome({
   )
     fail('children');
   if (kind === 'story' && childOutcomeRecordIds.length > 0) fail('children');
-  if (kind === 'epic-orchestration' && childOutcomeRecordIds.length === 0) fail('children');
   const payload = {
     schema: 'aitm.estimation-outcome/v1',
     issue,

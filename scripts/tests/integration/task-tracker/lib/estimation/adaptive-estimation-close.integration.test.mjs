@@ -381,6 +381,58 @@ test('mixed legacy/adaptive epics reference adaptive child outcomes and ignore f
   assert.deepEqual(writtenPayload.landscape.childOutcomeRecordIds, [adaptiveOutcomeId]);
 });
 
+test('an epic with only forecast-free legacy children writes an empty aggregation outcome', async () => {
+  let writtenPayload = null;
+  const runtime = createEstimationOutcomeRuntime({
+    cfg: { repo: repository },
+    projectDir: '/tmp/fake-adaptive-project',
+    deps: {
+      graphql: async () => ({
+        data: {
+          repository: {
+            issue: {
+              number: 1067,
+              repository: { nameWithOwner: repository },
+              subIssues: {
+                nodes: [{ number: 101 }],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      }),
+      recordIo: {
+        graphql: async () => {},
+        listIssueRecords: async () => [],
+        write: async ({ envelope }) => {
+          writtenPayload = envelope.payload;
+          return { commentNodeId: 'IC_epic', envelope };
+        },
+      },
+      readTimingCommentBody: async () => ({
+        status: 'found',
+        body: [
+          '| 2026-08-02 10:00:00 -05:00 | plan:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+          '| 2026-08-02 10:01:00 -05:00 | develop:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+          '| 2026-08-02 10:02:00 -05:00 | test:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+          '| 2026-08-02 10:03:00 -05:00 | review:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+        ].join('\n'),
+      }),
+      readDiffEvidence: async () => ({
+        filesChanged: 0,
+        modules: ['epic-orchestration'],
+        lanes: ['sandbox'],
+        dependencyBreadth: 0,
+      }),
+    },
+  });
+
+  const result = await runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: '' });
+
+  assert.equal(result.status, 'written');
+  assert.deepEqual(writtenPayload.landscape.childOutcomeRecordIds, []);
+});
+
 test('epic close fails closed when an adaptive child has a forecast but no outcome', async () => {
   const runtime = createEstimationOutcomeRuntime({
     cfg: { repo: repository },
