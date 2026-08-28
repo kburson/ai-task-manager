@@ -14,7 +14,10 @@ const STRICT_SUBJECTS = [ATTRIBUTED_TITLE, MERGE_TITLE];
 
 function pullRequest(overrides = {}) {
   return {
+    headRefOid: SOURCE_MERGE,
     sourceCommitSubjects: STRICT_SUBJECTS,
+    sourceCommitsComplete: true,
+    sourceCommitsHeadSha: SOURCE_MERGE,
     sourceCommits: [
       { oid: SOURCE_COMMIT, messageHeadline: ATTRIBUTED_TITLE },
       { oid: SOURCE_MERGE, messageHeadline: MERGE_TITLE },
@@ -96,16 +99,29 @@ test('preserves strict attribution input when immutable records are malformed', 
     }
   );
 
-  assert.deepEqual(subjects, STRICT_SUBJECTS);
+  assert.equal(subjects, null);
   assert.equal(inspected, false);
+});
+
+test('refuses merged attribution when the provider inventory is not proven complete', async () => {
+  const result = await mergedSourceCommitSubjects(
+    pullRequest({ sourceCommitsComplete: false }),
+    async () => {
+      throw new Error('inspection must not run');
+    }
+  );
+
+  assert.equal(result, null);
 });
 
 test('does not inspect attributed source subjects', async () => {
   const subjects = [ATTRIBUTED_TITLE];
   const result = await mergedSourceCommitSubjects(
     pullRequest({
+      headRefOid: SOURCE_COMMIT,
       sourceCommitSubjects: subjects,
       sourceCommits: [{ oid: SOURCE_COMMIT, messageHeadline: ATTRIBUTED_TITLE }],
+      sourceCommitsHeadSha: SOURCE_COMMIT,
     }),
     async () => {
       throw new Error('inspection must not run');

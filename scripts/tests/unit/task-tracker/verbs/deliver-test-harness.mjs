@@ -76,6 +76,20 @@ export function makeHarness(options = {}) {
     commitSubjects: options.commitSubjects ?? ['[#939] Add governed delivery intent verb'],
     prCommitSubjects: options.prCommitSubjects ??
       options.commitSubjects ?? ['[#939] Add governed delivery intent verb'],
+    prSourceCommits:
+      options.prSourceCommits ??
+      (
+        options.prCommitSubjects ??
+        options.commitSubjects ?? ['[#939] Add governed delivery intent verb']
+      ).map((messageHeadline, index, subjects) => ({
+        oid:
+          index === subjects.length - 1
+            ? (options.prHead ?? options.head ?? HEAD)
+            : (index + 1).toString(16).padStart(40, '0'),
+        messageHeadline,
+      })),
+    sourceCommitsComplete: options.sourceCommitsComplete ?? true,
+    sourceCommitsHeadSha: options.sourceCommitsHeadSha ?? options.prHead ?? options.head ?? HEAD,
     prState: options.prState ?? 'OPEN',
     prHead: options.prHead ?? null,
     mergeCommitSha: options.mergeCommitSha === undefined ? MERGE_HEAD : options.mergeCommitSha,
@@ -144,6 +158,10 @@ export function makeHarness(options = {}) {
         mergedAt: data.prState === 'MERGED' ? data.mergedAt : null,
         headRefDeleted: data.headRefDeleted,
         sourceCommitSubjects: [...data.prCommitSubjects],
+        sourceCommits:
+          data.prSourceCommits === null ? undefined : structuredClone(data.prSourceCommits),
+        sourceCommitsComplete: data.sourceCommitsComplete,
+        sourceCommitsHeadSha: data.sourceCommitsHeadSha,
       };
       if (!options.omitPrMergeMethod) {
         pullRequest.mergeMethod = data.prState === 'MERGED' ? data.prMergeMethod : null;
@@ -241,8 +259,11 @@ export function makeHarness(options = {}) {
         commitMessage,
       };
     },
-    async inspectSourceCommit() {
+    async inspectSourceCommit({ commitSha }) {
       calls.inspectSourceCommit += 1;
+      if (options.sourceInspections?.[commitSha]) {
+        return structuredClone(options.sourceInspections[commitSha]);
+      }
       throw new Error('unexpected source commit inspection');
     },
     async attributingCommits(issueNumber, { refs }) {
