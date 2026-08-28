@@ -11,7 +11,7 @@
 // The system `/tmp/` is out-of-scope for writes per `bash-guard-tmp-contract`.
 // All callers in `scripts/` MUST go through this helper.
 
-import { mkdirSync, mkdtempSync, existsSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, existsSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir as systemTmpdir } from 'node:os';
 import path from 'node:path';
@@ -65,8 +65,34 @@ export function resolveScratchRoot(projectDir, deps = {}) {
 // under test) walks up via `git rev-parse --show-toplevel` / `findMainWorktreePath`
 // — without the init, those walkers escape the sandbox and resolve to this
 // repo's real root, corrupting the live `.ai-task-manager/` state.
-export function mkdtempProjectIsolated(prefix, purpose = 'test') {
-  const dir = mkdtempSync(path.join(projectScratchDir(purpose), prefix));
+// #1412 — the sandbox contract is "a directory that is its own git-worktree root
+// carrying one commit". Callers cannot observe HOW it got that way, which is what
+// makes the prototype-and-copy below safe.
+//
+// It matters because this used to spawn three `git` processes per call. A traced
+// unit-lane run counted 1976 `git` spawns and ~900s of aggregate `git` time, of
+// which this helper was the single largest contributor at ~540 spawns / ~380s.
+// At that saturation individual calls inflate wildly — a bare `git init -q -b
+// trunk` was measured at 10.5s — until something trips the 10s `GIT_TIMEOUT_MS`
+// and a test fails for reasons unrelated to the code under test.
+//
+// So: build the prototype once per process, then copy it. First call pays three
+// spawns, every later call pays a directory copy and none. A `git init`
+// repository is self-contained — no worktree links, no absolute paths inside
+// `.git` — so a copy is a valid independent repository rather than a second
+// reference to the first.
+const GIT_TEST_IDENTITY = {
+  GIT_AUTHOR_NAME: 'aitm-test',
+  GIT_AUTHOR_EMAIL: 'aitm-test@example.com',
+  GIT_COMMITTER_NAME: 'aitm-test',
+  GIT_COMMITTER_EMAIL: 'aitm-test@example.com',
+};
+
+let prototypeDir = null;
+let prototypeBuilds = 0;
+
+function buildSandboxPrototype(purpose) {
+  const dir = mkdtempSync(path.join(projectScratchDir(purpose), 'aitm-sandbox-prototype-'));
   execFileSync('git', ['init', '-q', '-b', 'trunk'], { cwd: dir });
   // Stop Node's module-type resolver from walking out of the sandbox and
   // inheriting this repo's `"type": "module"` package.json. Tests that drop
@@ -77,15 +103,26 @@ export function mkdtempProjectIsolated(prefix, purpose = 'test') {
   // to trip on transient state files (`.ai-task-manager/`, shims, etc.).
   // Sandboxes that need specific tracking can override .gitignore after.
   writeFileSync(path.join(dir, '.gitignore'), '*\n!.gitignore\n');
-  const env = {
-    ...process.env,
-    GIT_AUTHOR_NAME: 'aitm-test',
-    GIT_AUTHOR_EMAIL: 'aitm-test@example.com',
-    GIT_COMMITTER_NAME: 'aitm-test',
-    GIT_COMMITTER_EMAIL: 'aitm-test@example.com',
-  };
+  const env = { ...process.env, ...GIT_TEST_IDENTITY };
   execFileSync('git', ['add', '.gitignore'], { cwd: dir, env });
   execFileSync('git', ['commit', '-q', '--no-verify', '-m', 'init'], { cwd: dir, env });
+  prototypeBuilds += 1;
+  return dir;
+}
+
+// Test-only accessor: how many times this process built the prototype. The
+// contract test asserts it stays at one across repeated sandbox creation, which
+// is the whole point of the change.
+export function sandboxPrototypeBuildCount() {
+  return prototypeBuilds;
+}
+
+export function mkdtempProjectIsolated(prefix, purpose = 'test') {
+  if (prototypeDir === null || !existsSync(prototypeDir)) {
+    prototypeDir = buildSandboxPrototype(purpose);
+  }
+  const dir = mkdtempSync(path.join(projectScratchDir(purpose), prefix));
+  cpSync(prototypeDir, dir, { recursive: true });
   return dir;
 }
 

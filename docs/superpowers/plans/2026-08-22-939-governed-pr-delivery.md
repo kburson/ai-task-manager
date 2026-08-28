@@ -230,7 +230,7 @@ git commit -m "[#939] Define exact-head provider delivery"
 - Modify: `scripts/task-tracker/verbs/help-data.mjs`
 - Modify: `scripts/task-tracker/lib/command-surface/catalog.mjs`
 - Create: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/verbs/help.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/verbs/help.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/core/command-manifest.test.mjs`
 
 **Interfaces:**
@@ -270,7 +270,7 @@ Route `deliver` directly to `verbDeliver`; do not alias it to `close`, `review`,
 - [ ] **Step 5: Run Task 3 tests**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs
+node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/integration/task-tracker/verbs/help.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs
 ```
 
 Expected: PASS.
@@ -278,7 +278,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit Task 3**
 
 ```bash
-git add scripts/task-tracker/verbs/deliver.mjs scripts/task-tracker/task-tracker.mjs scripts/task-tracker/verbs/help-data.mjs scripts/task-tracker/lib/command-surface/catalog.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs
+git add scripts/task-tracker/verbs/deliver.mjs scripts/task-tracker/task-tracker.mjs scripts/task-tracker/verbs/help-data.mjs scripts/task-tracker/lib/command-surface/catalog.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/integration/task-tracker/verbs/help.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs
 git commit -m "[#939] Add governed delivery intent verb"
 ```
 

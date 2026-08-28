@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { join } from 'node:path';
 
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
+import { readDeliveredCloseTransactions } from '../../task-tracker/lib/close-convergence.mjs';
 import { tickLifecycleOnClose, verbClose } from '../../task-tracker/verbs/close.mjs';
 
 export function closeBody({ agentReview = 'x', finalReview = 'x' } = {}) {
@@ -34,10 +35,10 @@ export function closeBody({ agentReview = 'x', finalReview = 'x' } = {}) {
   ].join('\n');
 }
 
-export function baseState() {
+export function baseState(issueNumber = 925) {
   return {
-    active: '#925',
-    lastActive: '#925',
+    active: `#${issueNumber}`,
+    lastActive: `#${issueNumber}`,
     entryStartTs: new Date(Date.now() - 60_000).toISOString(),
     wordsAtEntryStart: 0,
     lastWordMarker: 0,
@@ -45,6 +46,8 @@ export function baseState() {
 }
 
 export async function runClose({
+  issueNumber = 925,
+  repository = 'o/r',
   boardState = 'review',
   closeSnapshot = { issueClosed: true, stateReason: 'completed' },
   body = closeBody(),
@@ -59,7 +62,7 @@ export async function runClose({
   delegateLifecycleHelper = false,
   captureCalls,
   captureFinalState,
-  initialState = baseState(),
+  initialState = baseState(issueNumber),
   deliveryRefusal = null,
   deliveryGateInput = null,
   reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
@@ -67,10 +70,26 @@ export async function runClose({
   useInjectedReviewAuthorization = true,
   useInjectedDeliveryGateInput = true,
   useInjectedDeliveryReceipt = true,
+  useInjectedFreshDeliveryVerification = useInjectedDeliveryReceipt,
+  deliveryVerificationDeps = null,
   lifecycleEvidence = null,
+  localHeadSha = 'a'.repeat(40),
+  loadCurrentSession = null,
+  loadRawProjectConfig = null,
+  pexecOverride = null,
+  terminalDisposition,
+  terminalDispositionError = null,
+  liveLabels = ['ToDo', 'BLOCKED'],
+  labelReadError = null,
+  labelWriteError = null,
+  bindingReleased = false,
+  bindingReleaseStatus = bindingReleased ? 'released' : 'pending',
+  bindingReadError = null,
+  bindingResumeError = null,
   force = false,
+  trackEstimationOutcomes = false,
 } = {}) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
+  const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
   const statePath = join(dir, 'state.json');
   writeFileSync(statePath, JSON.stringify(initialState));
 
@@ -84,21 +103,32 @@ export async function runClose({
     drains: 0,
     flushes: 0,
     issueCloses: 0,
+    labelReads: 0,
+    labelWrites: 0,
+    bindingReads: 0,
+    bindingResumes: 0,
     lifecycleFallbacks: 0,
+    lifecycleExpectedShas: [],
+    lifecycleReconciles: 0,
     logIssueTime: 0,
     movesToDone: [],
     movesToReview: [],
     mutations: 0,
     networkCalls: 0,
+    providerActions: 0,
+    issueRecordCreates: 0,
     reopens: 0,
     timingReads: 0,
     timingRows: [],
     terminalDispositions: 0,
+    estimationOutcomes: 0,
+    freshDeliveryVerifications: 0,
+    freshDeliveryInputs: [],
   };
   captureCalls?.(calls);
   const projectConfig = {
     cfg: {
-      repo: 'o/r',
+      repo: repository,
       trunkRef: 'trunk',
       fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
     },
@@ -109,6 +139,10 @@ export async function runClose({
     nowIso: () => new Date().toISOString(),
     pexec: async (command, args = []) => {
       calls.networkCalls += 1;
+      if (pexecOverride) {
+        const overridden = await pexecOverride(command, args);
+        if (overridden !== undefined) return overridden;
+      }
       if (command === 'git' && args[0] === 'branch') {
         return { stdout: 'trunk\n', stderr: '' };
       }
@@ -121,9 +155,16 @@ export async function runClose({
       if (args[0] === 'issue' && args[1] === 'view' && args.includes('body')) {
         calls.bodyReads += 1;
         if (bodyReadError) throw bodyReadError;
-        return { stdout: JSON.stringify({ body: liveBody }), stderr: '' };
+        return {
+          stdout: args.includes('--jq') ? liveBody : JSON.stringify({ body: liveBody }),
+          stderr: '',
+        };
       }
       if (args[0] === 'issue' && args[1] === 'close') calls.issueCloses += 1;
+      if (args[0] === 'issue' && args[1] === 'edit' && args.includes('--remove-label')) {
+        if (labelWriteError) throw labelWriteError;
+        calls.labelWrites += 1;
+      }
       if (args[0] === 'issue' && args[1] === 'reopen') calls.reopens += 1;
       return { stdout: '{}', stderr: '' };
     },
@@ -198,7 +239,7 @@ export async function runClose({
   let result;
   try {
     result = await verbClose({
-      rest: force ? ['#925', '--force'] : ['#925'],
+      rest: force ? [`#${issueNumber}`, '--force'] : [`#${issueNumber}`],
       projectConfig,
       timingRecorder,
       stateRunner,
@@ -223,7 +264,10 @@ export async function runClose({
                 sleep: async () => {},
               },
             })
-        : async () => ({ ok: true }),
+        : async () => {
+            calls.lifecycleReconciles += 1;
+            return { ok: true };
+          },
       readTimingCommentBody: async () => {
         calls.timingReads += 1;
         return {
@@ -237,6 +281,36 @@ export async function runClose({
         calls.terminalDispositions += 1;
         return { status: 'ok' };
       },
+      readTerminalDisposition: async () => {
+        if (terminalDispositionError) throw terminalDispositionError;
+        if (terminalDisposition !== undefined) return terminalDisposition;
+        const initial = readDeliveredCloseTransactions(body);
+        return initial[0]?.completedSteps.includes('disposition') ? 'Delivered' : null;
+      },
+      readCloseLabels: async () => {
+        calls.labelReads += 1;
+        if (labelReadError) throw labelReadError;
+        return [...liveLabels];
+      },
+      inspectTerminalIssueBindingRelease: async () => {
+        calls.bindingReads += 1;
+        if (bindingReadError) throw bindingReadError;
+        return { status: bindingReleaseStatus, closedAt: '2026-08-28T00:00:00.000Z' };
+      },
+      resumeTerminalIssueBindingRelease: async () => {
+        calls.bindingResumes += 1;
+        if (bindingResumeError) throw bindingResumeError;
+        return { status: 'released' };
+      },
+      applyReviewDelta: async () => ({ status: 'skipped' }),
+      ...(trackEstimationOutcomes
+        ? {
+            estimationOutcomeWriter: async () => {
+              calls.estimationOutcomes += 1;
+              return { status: 'existing' };
+            },
+          }
+        : {}),
       releaseIssueBindings: () => {
         calls.bindingReleases += 1;
         return { released: [] };
@@ -247,16 +321,22 @@ export async function runClose({
       locateAuthoritySource: lifecycleEvidence
         ? () => ({ kind: 'github-records/v1' })
         : () => ({ kind: 'legacy-body/v1' }),
-      getHeadSha: async () => 'a'.repeat(40),
-      resolveLifecycleEvidence: async () => lifecycleEvidence,
+      getHeadSha: async () => localHeadSha,
+      resolveLifecycleEvidence: async (input) => {
+        calls.lifecycleExpectedShas.push(input.expectedSha);
+        return lifecycleEvidence;
+      },
       resolveCloseParentIssue: async () => null,
+      ...(loadCurrentSession ? { loadCurrentSession } : {}),
+      ...(loadRawProjectConfig ? { loadRawProjectConfig } : {}),
+      ...(deliveryVerificationDeps ?? {}),
       ...(useInjectedDeliveryGateInput
         ? {
             loadCloseDeliveryGateInput: async () =>
               deliveryGateInput ?? {
-                issueNumber: 925,
+                issueNumber,
                 lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
-                branch: 'feature/925',
+                branch: `feature/${issueNumber}`,
                 acceptedSha: 'a'.repeat(40),
                 localHeadSha: 'a'.repeat(40),
                 pullRequests: [],
@@ -274,6 +354,15 @@ export async function runClose({
             requireDeliveryReceipt: () => {
               if (deliveryRefusal) throw deliveryRefusal;
               return { skipped: false, receipt: {} };
+            },
+          }
+        : {}),
+      ...(useInjectedFreshDeliveryVerification
+        ? {
+            verifyCloseDeliveryReceipt: async ({ gateInput, receiptGate }) => {
+              calls.freshDeliveryVerifications += 1;
+              calls.freshDeliveryInputs.push(gateInput);
+              return { skipped: false, receipt: receiptGate.receipt, gateInput };
             },
           }
         : {}),

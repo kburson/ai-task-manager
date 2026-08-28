@@ -1,3 +1,0 @@
-# Image Prompt: The Agentic Concurrency Deficiency
-
-Create an editorial isometric illustration on a dark navy background, in electric-blue and amber accent lighting, of several translucent agent silhouettes working in isolated glowing lanes with circuit-line texture that converge into a single narrow glowing merge gate, with a visible queue backing up behind the gate. The image should communicate contention and a validation bottleneck rather than smooth, unlimited parallel throughput. Tone: cautionary, technical, honest about limits. Avoid chaotic robot swarms, glowing brain imagery, vendor logos, and any dashboard panels, UI mockups, charts, index numbers, section headers, or readable text of any kind — the image must be completely textless.

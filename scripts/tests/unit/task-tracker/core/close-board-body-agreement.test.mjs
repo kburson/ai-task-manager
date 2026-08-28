@@ -32,7 +32,10 @@ assert.ok(
 
 // Ordering: runLogIssueTime → assertFieldsPersisted → clearActive
 const flushIdx = closeSrc.indexOf('await runLogIssueTime(closeTarget)');
-const assertIdx = closeSrc.indexOf('await assertFieldsPersisted(');
+const assertCall = closeSrc.match(
+  /await\s+(?:\(ctx\.assertFieldsPersisted\s*\|\|\s*)?assertFieldsPersisted\)?\s*\(/
+);
+const assertIdx = assertCall?.index ?? -1;
 // There are multiple clearActive call sites (cross-close branch + main close).
 // We care about the one that runs after assertFieldsPersisted on the main path.
 const clearIdx = closeSrc.indexOf('clearActive(statePath)', assertIdx);

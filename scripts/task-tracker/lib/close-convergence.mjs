@@ -1,3 +1,6 @@
+import { parseMarker } from './marker-grammar.mjs';
+import { stripFencedCodeBlocks, upsertProgressMarker } from './markers.mjs';
+
 // Close-convergence decision (#425).
 //
 // The project-board Status field and the GitHub open/closed state are
@@ -36,6 +39,158 @@
 // state. The pipeline is safe to replay: `gh issue close` no-ops on an
 // already-closed issue and `runMoveStateDone` Done→Done is swallowed as benign
 // (#385). When `repair` is falsy the noop/close-issue branches are unchanged.
+const SHA_RE = /^[0-9a-f]{40}$/;
+const CLOSE_TRANSACTION_KEYS = Object.freeze([
+  'acceptedSha',
+  'completedSteps',
+  'issueNumber',
+  'reviewAuthority',
+  'schema',
+  'transactionId',
+]);
+const CLOSE_TRANSACTION_PROP_KEYS = Object.freeze([
+  'accepted-sha',
+  'completed',
+  'issue',
+  'review-authority',
+  'schema',
+  'tx',
+]);
+const DELIVERED_CLOSE_RE = /<!--\s*aitm-delivered-close\b[^>]*-->/gi;
+
+export const TERMINAL_CLOSE_STEPS = Object.freeze([
+  'timing',
+  'estimation',
+  'lifecycle',
+  'board',
+  'disposition',
+  'issue',
+  'labels',
+  'binding',
+]);
+
+function closeConvergenceError(category) {
+  return new TypeError(`close-convergence:${category}`);
+}
+
+function isPlainObject(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function hasExactKeys(value, expected) {
+  if (!isPlainObject(value)) return false;
+  const actual = Object.keys(value).sort();
+  const keys = [...expected].sort();
+  return actual.length === keys.length && actual.every((key, index) => key === keys[index]);
+}
+
+function freeze(value) {
+  if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freeze(child);
+  return Object.freeze(value);
+}
+
+export function resolveDeliveredCloseTransaction({ issueNumber, acceptedSha, transactions } = {}) {
+  if (
+    !Number.isSafeInteger(issueNumber) ||
+    issueNumber <= 0 ||
+    !SHA_RE.test(acceptedSha || '') ||
+    !Array.isArray(transactions)
+  ) {
+    throw closeConvergenceError('terminal-transaction-input');
+  }
+  if (transactions.length === 0) {
+    return freeze({ transaction: null, remainingSteps: [...TERMINAL_CLOSE_STEPS] });
+  }
+  if (transactions.length > 1) {
+    const bytes = new Set(transactions.map((transaction) => JSON.stringify(transaction)));
+    throw closeConvergenceError(
+      bytes.size === 1 ? 'duplicate-terminal-transaction' : 'conflicting-terminal-transaction'
+    );
+  }
+  const transaction = transactions[0];
+  if (
+    !hasExactKeys(transaction, CLOSE_TRANSACTION_KEYS) ||
+    transaction.schema !== 'aitm.delivered-close/v1' ||
+    typeof transaction.transactionId !== 'string' ||
+    transaction.transactionId.length === 0 ||
+    transaction.issueNumber !== issueNumber ||
+    transaction.acceptedSha !== acceptedSha ||
+    !['human-gate', 'gate-bypassed'].includes(transaction.reviewAuthority) ||
+    !Array.isArray(transaction.completedSteps) ||
+    transaction.completedSteps.length > TERMINAL_CLOSE_STEPS.length ||
+    !transaction.completedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index])
+  ) {
+    throw closeConvergenceError('malformed-terminal-transaction');
+  }
+  return freeze({
+    transaction: structuredClone(transaction),
+    remainingSteps: TERMINAL_CLOSE_STEPS.slice(transaction.completedSteps.length),
+  });
+}
+
+export function readDeliveredCloseTransactions(body) {
+  const matches = [...stripFencedCodeBlocks(body).matchAll(DELIVERED_CLOSE_RE)].map(
+    (match) => match[0]
+  );
+  const transactions = matches.map((marker) => {
+    const parsed = parseMarker(marker);
+    const props = parsed?.props;
+    if (parsed?.name !== 'delivered-close' || !hasExactKeys(props, CLOSE_TRANSACTION_PROP_KEYS)) {
+      throw closeConvergenceError('malformed-terminal-transaction');
+    }
+    let completedSteps;
+    try {
+      completedSteps = JSON.parse(props.completed);
+    } catch {
+      throw closeConvergenceError('malformed-terminal-transaction');
+    }
+    return {
+      schema: props.schema,
+      transactionId: props.tx,
+      issueNumber: Number(props.issue),
+      acceptedSha: props['accepted-sha'],
+      reviewAuthority: props['review-authority'],
+      completedSteps,
+    };
+  });
+  if (transactions.length > 1) {
+    const bytes = new Set(transactions.map((transaction) => JSON.stringify(transaction)));
+    throw closeConvergenceError(
+      bytes.size === 1 ? 'duplicate-terminal-transaction' : 'conflicting-terminal-transaction'
+    );
+  }
+  if (transactions.length === 1) {
+    resolveDeliveredCloseTransaction({
+      issueNumber: transactions[0].issueNumber,
+      acceptedSha: transactions[0].acceptedSha,
+      transactions,
+    });
+  }
+  return freeze(transactions);
+}
+
+export function upsertDeliveredCloseTransaction(body, transaction) {
+  resolveDeliveredCloseTransaction({
+    issueNumber: transaction?.issueNumber,
+    acceptedSha: transaction?.acceptedSha,
+    transactions: [transaction],
+  });
+  return upsertProgressMarker(body, {
+    kind: 'delivered-close',
+    props: {
+      schema: transaction.schema,
+      tx: transaction.transactionId,
+      issue: transaction.issueNumber,
+      'accepted-sha': transaction.acceptedSha,
+      'review-authority': transaction.reviewAuthority,
+      completed: JSON.stringify(transaction.completedSteps),
+    },
+  });
+}
+
 export function decideCloseConvergence(input = {}) {
   const {
     boardState,
@@ -63,10 +218,62 @@ export function decideCloseConvergence(input = {}) {
     const normalizedReason =
       typeof stateReason === 'string' ? stateReason.trim().toLowerCase() : null;
     if (normalizedReason !== 'completed') return { action: 'dead' };
+    if (Object.prototype.hasOwnProperty.call(input, 'closeTransactions')) {
+      const resolved = resolveDeliveredCloseTransaction({
+        issueNumber: input.expectedIssueNumber,
+        acceptedSha: input.expectedAcceptedSha,
+        transactions: input.closeTransactions,
+      });
+      const completed = resolved.transaction?.completedSteps ?? [];
+      const dispositionPending = resolved.remainingSteps.includes('disposition');
+      const liveDisposition = String(input.terminalDisposition || '').trim();
+      if (
+        (completed.includes('board') && !boardDone) ||
+        (completed.includes('disposition') && liveDisposition !== 'Delivered') ||
+        (dispositionPending && liveDisposition && liveDisposition !== 'Delivered')
+      ) {
+        throw closeConvergenceError('terminal-state-conflict');
+      }
+      if (boardDone && liveDisposition === 'Delivered' && resolved.remainingSteps.length === 0) {
+        return { action: 'already-closed', status: 'completed', mutated: false };
+      }
+      return {
+        action: 'resume-delivered-close',
+        remainingSteps: resolved.remainingSteps,
+      };
+    }
     if (boardDone) return { action: 'noop', boardDrift: false };
     return nonLifecycleBoxesAllTicked ? { action: 'finalize' } : { action: 'aberration' };
   }
-  if (issueClosed === false && boardDone) return { action: 'close-issue' };
+  if (issueClosed === false) {
+    const hasTerminalTransactionSignals = Object.prototype.hasOwnProperty.call(
+      input,
+      'closeTransactions'
+    );
+    if (hasTerminalTransactionSignals) {
+      const resolved = resolveDeliveredCloseTransaction({
+        issueNumber: input.expectedIssueNumber,
+        acceptedSha: input.expectedAcceptedSha,
+        transactions: input.closeTransactions,
+      });
+      const completed = resolved.transaction?.completedSteps ?? [];
+      const dispositionPending = resolved.remainingSteps.includes('disposition');
+      const liveDisposition = String(input.terminalDisposition || '').trim();
+      if (
+        (completed.includes('board') && !boardDone) ||
+        (completed.includes('disposition') && liveDisposition !== 'Delivered') ||
+        (dispositionPending && liveDisposition && liveDisposition !== 'Delivered') ||
+        completed.includes('issue')
+      ) {
+        throw closeConvergenceError('terminal-state-conflict');
+      }
+      return {
+        action: 'resume-delivered-close',
+        remainingSteps: resolved.remainingSteps,
+      };
+    }
+    if (boardDone) return { action: 'close-issue' };
+  }
   return { action: 'proceed' };
 }
 

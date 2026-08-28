@@ -56,7 +56,7 @@ Keep `initializeProtocol` caller-rooted. Replace the bare caller-root lookup in 
 
 ```bash
 node --test scripts/tests/slow/review/co-review-boundaries.test.mjs
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: PASS, including the new cross-worktree and repository-identity cases.
@@ -74,7 +74,7 @@ git commit -m "fix: resolve co-review runtime worktree [#1369]"
 
 - Modify: `scripts/review/lib/start.mjs`
 - Modify: `scripts/task-tracker/lib/reviewer-co-review-command.mjs`
-- Test: `scripts/tests/unit/review/co-review.test.mjs`
+- Test: `scripts/tests/integration/review/co-review.test.mjs`
 - Test: `scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs`
 
 **Interfaces:**
@@ -89,7 +89,7 @@ Assert author and reviewer handoffs render `--dir <runtimeAbsolute>`, absolute r
 - [ ] **Step 2: Run the focused tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
 ```
 
@@ -106,9 +106,9 @@ Replace the absolute-path blanket refusal with a literal-path predicate that per
 - [ ] **Step 5: Run focused tests GREEN and commit**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
-git add scripts/review/lib/start.mjs scripts/task-tracker/lib/reviewer-co-review-command.mjs scripts/tests/unit/review/co-review.test.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
+git add scripts/review/lib/start.mjs scripts/task-tracker/lib/reviewer-co-review-command.mjs scripts/tests/integration/review/co-review.test.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
 git commit -m "fix: render absolute co-review handoffs [#1369]"
 ```
 
@@ -119,7 +119,7 @@ git commit -m "fix: render absolute co-review handoffs [#1369]"
 - Modify: `scripts/review/lib/index.mjs`
 - Modify: `scripts/task-tracker/lib/co-review-write-policy.mjs`
 - Test: `scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs`
-- Test: `scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
+- Test: `scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
 
 **Interfaces:**
 
@@ -154,8 +154,8 @@ Extend the real boundary test so a Bash guard invoked from a foreign checkout ac
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
-node --test scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
-git add scripts/review/lib/index.mjs scripts/task-tracker/lib/co-review-write-policy.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+git add scripts/review/lib/index.mjs scripts/task-tracker/lib/co-review-write-policy.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 git commit -m "fix: bind reviewer grants to target runtime [#1369]"
 ```
 
@@ -173,10 +173,10 @@ git commit -m "fix: bind reviewer grants to target runtime [#1369]"
 - [ ] **Step 1: Run all focused co-review and guard suites**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node --test scripts/tests/slow/review/co-review-boundaries.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
-node --test scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: PASS.

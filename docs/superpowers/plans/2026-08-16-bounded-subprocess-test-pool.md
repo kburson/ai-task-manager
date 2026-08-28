@@ -29,7 +29,7 @@
 - Modify: `scripts/run-tests-pool.mjs`
 - Create: `scripts/run-tests-schedule.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/test-parallel-safety.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs`
 
 **Interfaces:**
@@ -76,7 +76,7 @@ Assert `subprocessPoolConcurrency(10) === 2`, values at or below two cores yield
 
 - [ ] **Step 5: Run pool and schedule RED**
 
-Run: `node --test scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs`
+Run: `node --test scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs`
 
 Expected: FAIL because `subprocessPoolConcurrency` and `partitionTestEntries` do not exist.
 
@@ -94,7 +94,7 @@ Create `partitionTestEntries()` so only unit entries can enter either pool; `ser
 
 - [ ] **Step 7: Run focused GREEN and commit**
 
-Run: `node --test scripts/tests/unit/task-tracker/lib/test-parallel-safety.test.mjs scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs`
+Run: `node --test scripts/tests/unit/task-tracker/lib/test-parallel-safety.test.mjs scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs`
 
 Expected: PASS.
 
@@ -149,7 +149,7 @@ Measure each phase independently, insert every result into the existing label ma
 
 - [ ] **Step 5: Run cumulative focused GREEN and commit**
 
-Run: `node --test scripts/tests/unit/task-tracker/lib/test-parallel-safety.test.mjs scripts/tests/unit/task-tracker/core/run-tests-pool.test.mjs scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs scripts/tests/unit/task-tracker/core/run-tests-timing.test.mjs scripts/tests/unit/task-tracker/core/run-tests-elapsed.test.mjs scripts/tests/unit/task-tracker/core/run-tests-unit-section-split.test.mjs`
+Run: `node --test scripts/tests/unit/task-tracker/lib/test-parallel-safety.test.mjs scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs scripts/tests/unit/task-tracker/core/run-tests-timing.test.mjs scripts/tests/unit/task-tracker/core/run-tests-elapsed.test.mjs scripts/tests/unit/task-tracker/core/run-tests-unit-section-split.test.mjs`
 
 Expected: PASS.
 

@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  renameSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -104,10 +97,12 @@ export function registerProtocol(input) {
 
 export function recordReviewerClaim(input) {
   const file = fileFor(input);
-  const protocolId = String(input.protocolId || '').trim();
-  const provider = String(input.provider || '').trim();
-  const sid = String(input.sid || '').trim();
-  const round = Number(input.round);
+  const state = input.state;
+  const claim = input.claim;
+  const protocolId = String(state?.protocolId ?? input.protocolId ?? '').trim();
+  const provider = String(claim?.provider ?? input.provider ?? '').trim();
+  const sid = String(claim?.sid ?? input.sid ?? '').trim();
+  const round = Number(state?.round ?? input.round);
   if (!protocolId || !provider || !sid || !Number.isInteger(round) || round < 1) {
     throw new TypeError(
       'co-review-index: reviewer claim requires protocol, provider, sid, and round'
@@ -115,8 +110,19 @@ export function recordReviewerClaim(input) {
   }
   return withLock(file, () => {
     const rows = readProtocolIndex(file);
-    const row = rows[protocolId];
-    if (!row) throw new Error(`co-review-index: protocol ${protocolId} is not registered`);
+    const authoritative = state ? baseRow(state) : null;
+    let row = rows[protocolId];
+    if (!row) {
+      if (!authoritative) {
+        throw new Error(`co-review-index: protocol ${protocolId} is not registered`);
+      }
+      row = authoritative;
+    } else if (authoritative) {
+      if (!isDeepStrictEqual(registrationIdentity(row), registrationIdentity(authoritative))) {
+        throw new Error(`co-review-index: conflicting registration for ${protocolId}`);
+      }
+      row = { ...authoritative, ...row, lifecycle: authoritative.lifecycle };
+    }
     if (row.lifecycle !== 'active') {
       throw new Error(`co-review-index: protocol ${protocolId} is ${row.lifecycle}`);
     }
@@ -127,7 +133,9 @@ export function recordReviewerClaim(input) {
       claimedProvider: provider,
       claimedSid: sid,
     };
-    if (isDeepStrictEqual(row, next)) return { status: 'unchanged', row: clone(row) };
+    if (isDeepStrictEqual(rows[protocolId], next)) {
+      return { status: 'unchanged', row: clone(next) };
+    }
     if (
       row.claimedSid &&
       row.claimedSid !== sid &&
@@ -186,63 +194,13 @@ function liveReviewerClaim(row, statusProtocol) {
     live.currentRole !== 'reviewer' ||
     live.turnState !== 'claimed' ||
     live.claim?.role !== 'reviewer' ||
-    live.claim?.actor !== row.reviewer
+    live.claim?.actor !== row.reviewer ||
+    live.claim?.provider !== row.claimedProvider ||
+    live.claim?.sid !== row.claimedSid
   ) {
     return null;
   }
   return live;
-}
-
-export function hasLiveReviewerClaim(input) {
-  const statusProtocol = input.statusProtocol || defaultStatusProtocol;
-  return Boolean(liveReviewerClaim(input.row, statusProtocol));
-}
-
-export function resolveReviewerGrant(input) {
-  const file = fileFor(input);
-  const rows = readProtocolIndex(file);
-  const worktreePath = path.resolve(input.worktreePath || input.projectDir || process.cwd());
-  const runtimeDir = input.runtimeDir ? realpathSync(path.resolve(input.runtimeDir)) : null;
-  const runtimeRoot = input.runtimeRoot ? realpathSync(path.resolve(input.runtimeRoot)) : null;
-  const provider = String(input.provider || '').trim();
-  const sid = String(input.sid || '').trim();
-  const statusProtocol = input.statusProtocol || defaultStatusProtocol;
-  const candidates = [];
-  for (const row of Object.values(rows)) {
-    if (
-      row.lifecycle !== 'active' ||
-      row.claimedRole !== 'reviewer' ||
-      row.claimedProvider !== provider ||
-      row.claimedSid !== sid ||
-      !row.pendingReviewPath ||
-      (runtimeDir
-        ? realpathSync(path.resolve(row.dir)) !== runtimeDir ||
-          !runtimeRoot ||
-          realpathSync(path.resolve(row.worktree)) !== runtimeRoot
-        : !input.anyWorktree && path.resolve(row.worktree) !== worktreePath)
-    ) {
-      continue;
-    }
-    const live = liveReviewerClaim(row, statusProtocol);
-    if (!live) continue;
-    const ownerHandoffCommit =
-      live.lastHandoff?.from === 'owner' && typeof live.lastHandoff.commit === 'string'
-        ? live.lastHandoff.commit
-        : null;
-    if (!ownerHandoffCommit) continue;
-    candidates.push(
-      Object.freeze({
-        ...clone(row),
-        liveRevision: live.revision,
-        round: live.round,
-        ownerHandoffCommit,
-      })
-    );
-  }
-  if (candidates.length > 1) {
-    throw new Error(`co-review-index: ambiguous reviewer grant for ${runtimeDir ?? worktreePath}`);
-  }
-  return candidates[0] ?? null;
 }
 
 export function isActiveCoReviewWorktree(input) {

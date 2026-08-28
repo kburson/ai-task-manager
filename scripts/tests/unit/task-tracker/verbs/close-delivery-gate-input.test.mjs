@@ -1,4 +1,5 @@
-// @story #1397 #1399
+// @story #1397 #1399 #1406
+// cspell:ignore NQDRXH
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -26,30 +27,35 @@ function body() {
   );
 }
 
-function deliveryComments() {
+function deliveryComments({
+  intentId = INTENT_ID,
+  prNumber = 1400,
+  expectedHeadSha = HEAD,
+  mergeCommitSha = MERGE,
+} = {}) {
   const intent = buildDeliveryIntent({
-    intentId: INTENT_ID,
+    intentId,
     supersedesIntentId: null,
     issueNumber: 1397,
     repository: 'kburson/ai-task-manager',
-    prNumber: 1400,
+    prNumber,
     baseRef: 'trunk',
     headRef: 'codex/939-full-auto-merge',
-    expectedHeadSha: HEAD,
+    expectedHeadSha,
     mergeMethod: 'squash',
     attributionTokens: ['#1397'],
     commitTitle: '[#1397] Governed PR delivery',
-    commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#1397]`,
+    commitMessage: `PR #${prNumber}\nSource: ${expectedHeadSha}\n\nAttribution: [#1397]`,
     provider: 'codex',
     sessionId: 'session-1',
     clientCreatedAt: '2026-08-23T00:00:00.000Z',
   });
   const receipt = buildDeliveryReceipt({
-    intentId: INTENT_ID,
+    intentId,
     issueNumber: 1397,
-    prNumber: 1400,
-    expectedHeadSha: HEAD,
-    mergeCommitSha: MERGE,
+    prNumber,
+    expectedHeadSha,
+    mergeCommitSha,
     baseRef: 'trunk',
     mergeMethod: 'squash',
     verifiedTrunkRef: 'origin/trunk',
@@ -83,11 +89,11 @@ function pullRequest(number, headRefOid, mergeCommitSha = MERGE) {
   };
 }
 
-async function load(pullRequests, { comments = deliveryComments() } = {}) {
+async function load(pullRequests, { comments = deliveryComments(), localHeadSha = HEAD } = {}) {
   let commentReads = 0;
   const pexec = async (command, args) => {
     if (command === 'git' && args[0] === 'branch') return { stdout: 'codex/939-full-auto-merge\n' };
-    if (command === 'git' && args[0] === 'rev-parse') return { stdout: `${HEAD}\n` };
+    if (command === 'git' && args[0] === 'rev-parse') return { stdout: `${localHeadSha}\n` };
     if (command === 'gh' && args[0] === 'pr') return { stdout: JSON.stringify(pullRequests) };
     if (command === 'gh' && args[0] === 'api') {
       commentReads += 1;
@@ -107,6 +113,27 @@ async function load(pullRequests, { comments = deliveryComments() } = {}) {
   return { result, commentReads };
 }
 
+test('#1381 close carries immutable accepted authority after the reused branch advances', async () => {
+  const accepted = pullRequest(1400, HEAD);
+  const later = pullRequest(1401, HISTORICAL_HEAD, 'd'.repeat(40));
+
+  for (const pullRequests of [
+    [accepted, later],
+    [later, accepted],
+  ]) {
+    const { result, commentReads } = await load(pullRequests, {
+      localHeadSha: HISTORICAL_HEAD,
+    });
+
+    assert.equal(commentReads, 1);
+    assert.equal(result.acceptedSha, HEAD);
+    assert.equal(result.observedLocalHeadSha, HISTORICAL_HEAD);
+    assert.equal(result.headRelation, 'advanced');
+    assert.equal(result.pullRequest.number, 1400);
+    assert.equal(result.records.matchingReceipt.record.expectedHeadSha, HEAD);
+  }
+});
+
 test('#1397 projects delivery records under the unique accepted-head PR in either order', async () => {
   const current = pullRequest(1400, HEAD);
   const historical = pullRequest(1396, HISTORICAL_HEAD, 'd'.repeat(40));
@@ -123,6 +150,21 @@ test('#1397 projects delivery records under the unique accepted-head PR in eithe
   }
 });
 
+test('#1406 ignores valid delivery records from an earlier pull request', async () => {
+  const historicalComments = deliveryComments({
+    intentId: '01M0VM3K9D909E3SP8NQDRXH0R',
+    prNumber: 1396,
+    expectedHeadSha: HISTORICAL_HEAD,
+    mergeCommitSha: 'd'.repeat(40),
+  });
+  const { result } = await load([pullRequest(1400, HEAD)], {
+    comments: [...historicalComments, ...deliveryComments()],
+  });
+
+  assert.equal(result.records.liveIntent.record.prNumber, 1400);
+  assert.equal(result.records.matchingReceipt.record.expectedHeadSha, HEAD);
+});
+
 test('#1399 rejects an invalid GitHub comment timestamp before record projection', async () => {
   const comments = deliveryComments();
   comments[0].created_at = 'not-an-instant';
@@ -132,13 +174,11 @@ test('#1399 rejects an invalid GitHub comment timestamp before record projection
   );
 });
 
-test('#1397 does not read comments for zero or duplicate accepted-head candidates', async () => {
+test('#1397 refuses zero or duplicate accepted-head candidates before projection', async () => {
   for (const pullRequests of [
     [pullRequest(1396, HISTORICAL_HEAD)],
     [pullRequest(1400, HEAD), pullRequest(1401, HEAD)],
   ]) {
-    const { result, commentReads } = await load(pullRequests);
-    assert.equal(commentReads, 0);
-    assert.equal(result.records.matchingReceipt, null);
+    await assert.rejects(load(pullRequests), /delivery-authority:ambiguous-pr/);
   }
 });

@@ -357,10 +357,32 @@ export const VERB_REFERENCE = {
   },
   deliver: {
     topic: 'board',
-    summary: 'Review-only, re-entrant exact-head delivery handoff with no lifecycle transition.',
+    summary:
+      'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
     usage: '/task deliver #N',
     exitCodes: [{ code: 20, meaning: 'provider action required' }],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
+  },
+  'incident-ledger': {
+    topic: 'evidence',
+    summary:
+      'Record a verified incident observation or explicitly approve one exact ledger digest.',
+    usage:
+      '/task incident-ledger #1381 (--record <ledger.json> | --approve <ledger-id> --digest <sha256:digest>)',
+    flags: [
+      { flag: '--record <path>', desc: 'validate live observations and append one ledger' },
+      {
+        flag: '--approve <ledger-id>',
+        desc: 'authenticate the GitHub user and explicitly approve one ledger; co-review is not approval',
+      },
+      { flag: '--digest <sha256:digest>', desc: 'exact canonical digest required by --approve' },
+    ],
+    examples: [
+      '/task incident-ledger #1381 --record .tmp/aitm/incident-ledger.json',
+      '/task incident-ledger #1381 --approve 01ARZ3NDEKTSV4RRFFQ69G5FAV --digest sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      'node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase pre-close',
+      'node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase terminal',
+    ],
   },
   reject: {
     topic: 'board',
@@ -442,9 +464,10 @@ export const VERB_REFERENCE = {
   },
   close: {
     topic: 'board',
-    summary: 'Close the active or specified task (runs the pre-close gate).',
+    summary:
+      'Close through a durable terminal transaction; partial work recovers, and an already-closed retry is read-only.',
     usage:
-      '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned] [--of <N>]',
+      '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
@@ -454,13 +477,22 @@ export const VERB_REFERENCE = {
       },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
       {
-        flag: '--as <duplicate|not-planned>',
-        desc: 'close with a non-Done disposition instead of the delivery gate',
+        flag: '--as <duplicate|not-planned|incorporated>',
+        desc: 'close as duplicate/not-planned, or use the approved Incorporated convergence lane',
       },
-      { flag: '--of <N>', desc: 'canonical issue for the duplicate disposition' },
+      {
+        flag: '--of <N>',
+        desc: 'surviving duplicate, required Incorporated owner, or optional exact incident owner assertion',
+      },
     ],
     exitCodes: [{ code: 1, meaning: 'pre-close gate refused (unchecked boxes / dirty tree)' }],
-    examples: ['/task close', '/task close 667 --answer yes', '/task close 708 --repair'],
+    examples: [
+      '/task close',
+      '/task close 667 --answer yes',
+      '/task close 708 --repair',
+      '/task close 1403 --as incorporated --of 1381',
+      '/task close 939 --of 1381',
+    ],
   },
   'inflate-estimate': {
     topic: 'board',

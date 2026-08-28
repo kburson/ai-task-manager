@@ -16,6 +16,26 @@ function normalize(relative) {
   return String(relative).split(path.sep).join('/').replace(/^\.\//, '');
 }
 
+function sameBytes(left, right) {
+  return left !== undefined && right !== undefined && left.equals(right);
+}
+
+function sortedSnapshotDifferences(left, right) {
+  const candidates = new Set([...(left?.keys() ?? []), ...(right?.keys() ?? [])]);
+  return [...candidates].filter((name) => !sameBytes(left?.get(name), right?.get(name))).sort();
+}
+
+function sortedTrackedDifferences(worktree, index, head) {
+  const tracked = new Set([...(index?.keys() ?? []), ...(head?.keys() ?? [])]);
+  return [...tracked]
+    .filter(
+      (name) =>
+        !sameBytes(worktree.get(name), index?.get(name)) ||
+        !sameBytes(index?.get(name), head?.get(name))
+    )
+    .sort();
+}
+
 export function createMemoryRepository({
   root,
   branch = 'trunk',
@@ -87,6 +107,14 @@ export function createMemoryRepository({
       };
     },
 
+    trackedChanges() {
+      return sortedTrackedDifferences(worktree, index, commits.get(head));
+    },
+
+    changedPathsBetween(_root, from, to) {
+      return sortedSnapshotDifferences(commits.get(from), commits.get(to));
+    },
+
     trackedArtifact(_root, relative) {
       const normalized = normalize(relative);
       const headBytes = commits.get(head)?.get(normalized);
@@ -127,6 +155,14 @@ export function createMemoryRepository({
     commit(relative, value, message = 'revise artifact') {
       const normalized = write(relative, value);
       index.set(normalized, Buffer.from(value));
+      return publish(message);
+    },
+
+    commitFiles(entries, message = 'revise tracked files') {
+      for (const [relative, value] of entries) {
+        const normalized = write(relative, value);
+        index.set(normalized, Buffer.from(value));
+      }
       return publish(message);
     },
   });

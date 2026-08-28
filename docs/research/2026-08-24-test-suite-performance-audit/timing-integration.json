@@ -1,0 +1,217 @@
+{
+  "schema": 4,
+  "generatedAt": "2026-08-24T17:06:04.257Z",
+  "lane": "integration",
+  "count": 30,
+  "elapsed": {
+    "runnerMs": 17189.8,
+    "poolMs": 0,
+    "subprocessPoolMs": 0,
+    "slowPoolMs": 0,
+    "serialMs": 17189.6
+  },
+  "sums": {
+    "fileWallMs": 17189.3,
+    "inProcessMs": 6215.5,
+    "estimatedSpawnIoMs": 10973.9
+  },
+  "pareto": {
+    "p50": 3,
+    "p80": 11
+  },
+  "slowBucket": {
+    "thresholdMs": 2000,
+    "overThreshold": 2,
+    "slowBucketFiles": 0,
+    "slowBucketStillSlow": 0,
+    "slowBucketNowFast": 0,
+    "fastLaneOverThreshold": 2,
+    "demotionCandidates": [],
+    "promotionCandidates": [
+      "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs"
+    ]
+  },
+  "files": {
+    "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs",
+      "wallMs": 193.6,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+      "wallMs": 2537.8,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs",
+      "wallMs": 295,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs",
+      "wallMs": 546.1,
+      "inProcMs": 366.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs",
+      "wallMs": 190.8,
+      "inProcMs": 32.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs",
+      "wallMs": 248.1,
+      "inProcMs": 33.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs",
+      "wallMs": 164.4,
+      "inProcMs": 3.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs",
+      "wallMs": 155.5,
+      "inProcMs": 10.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs",
+      "wallMs": 245.3,
+      "inProcMs": 47,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-record-singleton-projections.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-record-singleton-projections.test.mjs",
+      "wallMs": 183.2,
+      "inProcMs": 27,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-records-capsules.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-records-capsules.test.mjs",
+      "wallMs": 151.5,
+      "inProcMs": 15.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-records-comment-store.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-records-comment-store.test.mjs",
+      "wallMs": 107.1,
+      "inProcMs": 9.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-records-coordinator-replacement.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-records-coordinator-replacement.test.mjs",
+      "wallMs": 497.3,
+      "inProcMs": 378.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-records-cross-platform-handoff.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-records-cross-platform-handoff.test.mjs",
+      "wallMs": 198.6,
+      "inProcMs": 55,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-records-initialization.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-records-initialization.test.mjs",
+      "wallMs": 175,
+      "inProcMs": 37.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/github-records-transition-repair.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/github-records-transition-repair.test.mjs",
+      "wallMs": 234.4,
+      "inProcMs": 64.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs",
+      "wallMs": 138.4,
+      "inProcMs": 5.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
+      "wallMs": 1260.2,
+      "inProcMs": 1141.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs",
+      "wallMs": 232.3,
+      "inProcMs": 14.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs",
+      "wallMs": 209.3,
+      "inProcMs": 20.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs",
+      "wallMs": 231.8,
+      "inProcMs": 73.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs",
+      "wallMs": 260.8,
+      "inProcMs": 54.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs",
+      "wallMs": 4379.5,
+      "inProcMs": 1037.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs",
+      "wallMs": 2860,
+      "inProcMs": 2726.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+      "wallMs": 411,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+      "wallMs": 486.8,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/adopt-github-records.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/adopt-github-records.test.mjs",
+      "wallMs": 110.2,
+      "inProcMs": 12.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+      "wallMs": 219.1,
+      "inProcMs": 20,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs",
+      "wallMs": 124.6,
+      "inProcMs": 20.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+      "wallMs": 141.7,
+      "inProcMs": 9.3,
+      "status": 0
+    }
+  }
+}

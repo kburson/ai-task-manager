@@ -11,9 +11,12 @@ import { test } from 'node:test';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { verbClose, tickLifecycleOnClose } from '../../../../task-tracker/verbs/close.mjs';
+import {
+  assertFieldsPersisted,
+  verbClose,
+  tickLifecycleOnClose,
+} from '../../../../task-tracker/verbs/close.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
 
 // Review-approval marker + populated aitm-fields (engagedTime non-null) so
 // assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
@@ -66,6 +69,10 @@ function makeCtx(statePath, dir, over = {}) {
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
     writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
+    readTerminalDisposition: async () => null,
+    readCloseLabels: async () => [],
+    inspectTerminalIssueBindingRelease: async () => ({ status: 'pending' }),
+    resumeTerminalIssueBindingRelease: async () => ({ status: 'released' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
@@ -76,6 +83,9 @@ function makeCtx(statePath, dir, over = {}) {
     // The real approval reconciler is covered by approve-timing-boundary and
     // requires a populated Review timing log that these legacy fixtures omit.
     reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
+    applyReviewDelta: async () => ({ status: 'skipped-test' }),
+    assertFieldsPersisted: async () => {},
+    tickLifecycleOnClose: async () => ({ ok: true }),
     loadCloseDeliveryBody: async () => APPROVED_BODY,
     locateAuthoritySource: () => ({ kind: 'legacy-body/v1' }),
     loadCloseDeliveryGateInput: async () => ({
@@ -88,12 +98,22 @@ function makeCtx(statePath, dir, over = {}) {
       records: null,
     }),
     resolveReviewAuthorization: () => ({ mode: 'human', standing: true, source: 'test' }),
-    requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
+    // Receipt enforcement has dedicated #1381 coverage. This broad legacy close
+    // harness models the explicit no-PR local lane so unrelated close branches
+    // remain observable without manufacturing delivery evidence.
+    requireDeliveryReceipt: () => ({ skipped: true, receipt: null }),
     ...over,
   };
-  ctx.issueBodyMutator ??= {
-    mutate: (args) => mutateIssueBody({ ...args, deps: { pexec: ctx.pexec } }),
-  };
+  if (!ctx.issueBodyMutator) {
+    let currentBody = ctx.closeBody || APPROVED_BODY;
+    ctx.issueBodyMutator = {
+      mutate: async (args) => {
+        currentBody = args.mutate(currentBody);
+        ctx.closeBody = currentBody;
+        return { status: 'ok', body: currentBody };
+      },
+    };
+  }
   return ctx;
 }
 
@@ -174,6 +194,7 @@ const forceFieldsOver = (opts) => ({
   getIssueBoardState: async () => 'review',
   fetchSubIssues: async () => [],
   pexec: forceFieldsPexec(opts),
+  assertFieldsPersisted,
 });
 
 // --- Early returns ---
@@ -190,6 +211,7 @@ test('target adopted into empty state → Closed', async () => {
     state: { active: null },
     over: { rest: ['#7'], closeBody: APPROVED_BODY },
   });
+  assert.ifError(r.thrown);
   assert.match(r.stdout, /Closed #7/);
 });
 
@@ -218,7 +240,8 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
       },
     },
   });
-  assert.match(r.stdout, /board was Done but the GitHub issue was still OPEN/);
+  assert.ifError(r.thrown);
+  assert.match(r.stdout, /Closed #5/);
   const dispositionIndex = calls.indexOf('disposition 5 Delivered');
   const outcomeIndex = calls.indexOf('outcome 5');
   const closeIndex = calls.findIndex((c) => c.includes('issue close 5'));
@@ -390,10 +413,10 @@ test('final move non-benign failure + board not Done → exit 1', async () => {
     },
   });
   assert.equal(exitOf(r), 1);
-  assert.match(r.stderr, /board move to "done" failed/);
+  assert.match(r.stderr, /Refusing offline close #5: move failed/);
   resetExit();
 });
-test('final move non-benign but board already Done → swallow, Closed', async () => {
+test('offline final move cannot verify board Done → refuses non-benign failure', async () => {
   const r = await run({
     over: {
       closeBody: APPROVED_BODY,
@@ -401,7 +424,9 @@ test('final move non-benign but board already Done → swallow, Closed', async (
       getIssueBoardState: async () => 'done',
     },
   });
-  assert.match(r.stdout, /Closed #5/);
+  assert.equal(exitOf(r), 1);
+  assert.match(r.stderr, /Refusing offline close #5: race/);
+  resetExit();
 });
 
 // --- Dirty-workspace block: real dirty git repo, TT_SKIP_DIRTY_CHECK unset ---
@@ -520,10 +545,9 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
       parentCloseIndex > parentDispositionIndex,
     `expected parent outcome before Done, Delivered write, and close; got ${calls}`
   );
-  assert.equal(parentDoneOptions.length, 2, 'forced pre-move and final move must both run');
+  assert.equal(parentDoneOptions.length, 1, 'durable board step must not repeat the final move');
   assert.deepEqual(parentDoneOptions[0].extraArgs, ['--force']);
   assert.equal(parentDoneOptions[0].reviewAuthority, 'human-gate');
-  assert.equal(parentDoneOptions[1].reviewAuthority, 'human-gate');
 });
 test('cascade: disposition failure leaves child and parent OPEN and active', async () => {
   resetExit();

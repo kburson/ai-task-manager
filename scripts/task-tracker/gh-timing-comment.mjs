@@ -19,6 +19,7 @@ import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
 import { shouldSuppressTimingAppend } from './lib/terminal-review-handoff.mjs';
 import {
+  closesTerminalReviewHandoff,
   EVENT_CLASS,
   classifyTimingEvent,
   isEmittableTimingEvent,
@@ -598,7 +599,11 @@ function appendRow(body, row) {
   // Interpose the sole canonical closer at the same recording instant. Its
   // adjacent marker growth remains visible on `resumed`; the lifecycle opener
   // then sees a flat marker and renders zero.
-  if (lastOpenInterruption(body) && LIFECYCLE_OPENERS.has(rowEventSlug(effectiveRow))) {
+  if (
+    lastOpenInterruption(body) &&
+    LIFECYCLE_OPENERS.has(rowEventSlug(effectiveRow)) &&
+    !closesTerminalReviewHandoff(rowEventSlug(effectiveRow))
+  ) {
     const withResume = appendRow(body, resumedBoundaryFrom(effectiveRow));
     return appendRow(withResume, effectiveRow);
   }

@@ -262,41 +262,59 @@ full policy and inventory of label-string matches.
 
 ### `fullAutoMerge` (default absent → Full-Auto PR merge disabled)
 
-Enables the agent to complete the PR-based close flow — merge the reviewed PR and
-re-sync local trunk — without a human clicking **Merge**. Delivered by story
-`#908` under epic `#912`; see the "Full-Auto PR merge + local-trunk sync" section
-in [`workflow.md`](workflow.md). Absent by default: a Full-Auto batch that reaches
-a PR merge with no `fullAutoMerge` block halts with an actionable error rather
-than a mid-drive classifier denial.
+Configures governed Full-Auto delivery. Delivered by story `#908` under epic
+`#912`; see the "Full-Auto PR merge + local-trunk sync" section in
+[`workflow.md`](workflow.md). Absent by default: a Full-Auto batch that reaches
+delivery with no `fullAutoMerge` block halts with an actionable error.
 
 ```jsonc
 "fullAutoMerge": {
-  // "gh-auto-merge": enable GitHub auto-merge (agent runs
-  //   `gh pr merge <N> --auto --<method>`; GitHub merges once checks pass).
+  // "provider-action": /task deliver emits one expected-head provider action.
   // "local-trunk-lane": operator-authorized no-push/no-PR local merge to trunk.
-  "mechanism": "gh-auto-merge",
-  "mergeMethod": "merge",        // gh-auto-merge only: merge | squash | rebase
+  "mechanism": "provider-action",
+  "mergeMethod": "merge",        // provider-action only: merge | squash
   "operatorAuthorized": false    // local-trunk-lane only: must be true to use it
 }
 ```
 
-**Required repo settings for `gh-auto-merge`:** the repository must have
-**Allow auto-merge** enabled (Settings → General → Pull Requests) and a
-**branch-protection rule** on trunk with at least one required status check —
-GitHub only performs an auto-merge once required checks pass. Without these,
-`gh pr merge --auto` errors; the flow surfaces that as an actionable message.
+With `provider-action`, `/task deliver` requires a Review-state accepted head,
+green required checks, an exact pull request, and a provider adapter that supports
+`github.merge-pull-request` with expected-head enforcement. The command emits the
+exact merge method and authorized bytes; the host must use only that integration
+and rerun `deliver` before close. `gh-auto-merge` is retired: existing configs are
+refused with instructions to change the mechanism to `provider-action`.
+Although the shared configuration schema still recognizes `rebase` for legacy
+compatibility, `/task deliver` refuses it as `merge-method-unverifiable` because
+the resulting commit cannot preserve the immutable accepted-SHA proof.
 
-**Optional Bash permission rule.** An operator who prefers the direct path may
-add a `gh pr merge` allowlist entry (analogous to the human-gate toggles asked
-about before parallel fan-out) for the duration of a Full-Auto batch, and remove
-it afterward. `gh-auto-merge` avoids needing this because it never issues the
-immediate local merge — it only enables GitHub's own auto-merge, which lands the
-PR after required checks pass.
+`local-trunk-lane` remains an explicit no-PR alternative. It requires
+`operatorAuthorized: true`; it does not inherit provider-action authorization or
+manufacture a delivery receipt.
 
 **Trunk re-sync.** `close` reads `origin/trunk` (never local `trunk`) when it runs
 inside a linked worktree, so the merged `[#N]` commit is seen without desyncing
 the main worktree. Set `trunkRef` here to override the ref used for the
 close-attribution query.
+
+### Delivery and incident authority
+
+`fullAutoMerge` applies only to an **open current-head provider action** emitted
+by `npx aitm deliver #N`. It does not authorize the host to invent or replay an
+action. An **already-merged current-head external recovery** emits
+`mode="current-head"` with no action. **Advanced-head historical receipt
+recovery** emits `mode="historical-recovery"` with **no provider action**: AITM
+re-reads the accepted SHA's existing pull request and trunk evidence and emits a
+result only after exact verification.
+
+An **approved incident ledger** is governed separately from delivery policy.
+Record mode produces an immutable **ledger ID** and **canonical digest** from
+fresh observations. Approval requires an authenticated human to approve those
+exact values; co-review is not approval, and Full-Auto cannot approve a new
+ledger ID or digest. Every Incorporated row must carry a concrete carrier pull
+request, head, merge, on-trunk result, and non-delivery explanation. The exact
+human ledger approval authorizes the fresh Incorporated terminal disposition and
+writes the canonical owner pointer; an issue-local durable authorization record
+then governs retries. It does not create delivery intent or receipt evidence.
 
 ## Lock primitive
 

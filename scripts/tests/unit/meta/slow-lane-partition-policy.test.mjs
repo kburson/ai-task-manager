@@ -17,7 +17,6 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 const AUDITED_PARALLEL_SLOW_FILES = Object.freeze([
-  'scripts/tests/slow/articles/publish-articles-e2e.test.mjs',
   'scripts/tests/slow/review/co-review-boundaries.test.mjs',
   'scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs',
 ]);

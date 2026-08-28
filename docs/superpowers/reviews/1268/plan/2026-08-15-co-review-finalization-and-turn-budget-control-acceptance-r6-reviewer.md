@@ -38,7 +38,7 @@ No new defects are introduced by this revision. The diff is confined to the two 
 ## Whole-plan re-verification
 
 - **Executability.** Every command appearing in a Verification Commands or commit block resolves in
-  this repository: `node --test scripts/tests/unit/review/co-review.test.mjs`,
+  this repository: `node --test scripts/tests/integration/review/co-review.test.mjs`,
   `node --test scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs`, and
   `node scripts/task-tracker/verify-develop.mjs` all exist on disk; `test`, `test:slow`, `lint`,
   `lint:spell`, and `format:check` are all defined in `package.json`. No undefined script name

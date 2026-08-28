@@ -11,6 +11,7 @@ export const TERMINAL_DISPOSITIONS = Object.freeze([
   'Replaced',
   'Discarded',
   'Duplicate',
+  'Incorporated',
 ]);
 
 function assertTerminalConfig(cfg, issueNumber) {

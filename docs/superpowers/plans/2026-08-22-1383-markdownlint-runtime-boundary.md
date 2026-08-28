@@ -20,7 +20,7 @@
 
 ## File Structure
 
-- Create `scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs`: real-tool regression for the shared local-runtime quality boundary.
+- Create `scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs`: real-tool regression for the shared local-runtime quality boundary.
 - Create `scripts/tests/fixtures/test-corpus-post-snapshot/unit/maintenance/markdownlint-runtime-ignore.test.mjs.json`: canonical test-corpus membership record for the new regression.
 - Modify `.markdownlint-cli2.jsonc`: exclude `.superpowers/**` from Markdownlint discovery.
 - Modify `.prettierignore`: exclude `.superpowers/` from repository-wide Prettier discovery.
@@ -30,7 +30,7 @@
 
 **Files:**
 
-- Create: `scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs`
+- Create: `scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs`
 - Create: `scripts/tests/fixtures/test-corpus-post-snapshot/unit/maintenance/markdownlint-runtime-ignore.test.mjs.json`
 - Modify: `.markdownlint-cli2.jsonc`
 - Modify: `.prettierignore`
@@ -54,7 +54,7 @@ Expected: local runtime entries are ignored except any intentionally force-added
 
 - [ ] **Step 2: Write the failing real-tool regression**
 
-Create `scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs` with an isolated fixture that copies the three canonical quality config files, writes the same invalid Markdown to `.superpowers/sdd/runtime.md` and `docs/governed.md`, invokes each installed CLI with `spawnSync`, and asserts:
+Create `scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs` with an isolated fixture that copies the three canonical quality config files, writes the same invalid Markdown to `.superpowers/sdd/runtime.md` and `docs/governed.md`, invokes each installed CLI with `spawnSync`, and asserts:
 
 ```js
 assert.equal(markdownlint.status, 1);
@@ -73,7 +73,7 @@ Add the membership record:
 ```json
 {
   "schema": 1,
-  "path": "scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs"
+  "path": "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs"
 }
 ```
 
@@ -82,7 +82,7 @@ Add the membership record:
 Run:
 
 ```bash
-node --test scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs
+node --test scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs
 ```
 
 Expected: FAIL because the current Markdownlint and Prettier outputs both include `.superpowers/sdd/runtime.md`.
@@ -110,7 +110,7 @@ Change only the beginning of line 84:
 Run:
 
 ```bash
-node --test scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs scripts/tests/unit/meta/test-corpus-membership.test.mjs
+node --test scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs scripts/tests/integration/meta/test-corpus-membership.test.mjs
 npm run lint:md
 npm run format:check
 ```
@@ -133,7 +133,7 @@ Expected: hashes are byte-identical, no ignored runtime file appears in tracked 
 ```bash
 git add .markdownlint-cli2.jsonc .prettierignore \
   docs/superpowers/reviews/939/spec/2026-08-21-939-governed-pr-delivery-design-r3-reviewer-claude-review.md \
-  scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs \
+  scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs \
   scripts/tests/fixtures/test-corpus-post-snapshot/unit/maintenance/markdownlint-runtime-ignore.test.mjs.json
 git commit -m "[#1383] fix: exclude local Superpowers runtime from quality checks"
 ```
@@ -152,7 +152,7 @@ git commit -m "[#1383] fix: exclude local Superpowers runtime from quality check
 - [ ] **Step 1: Run the issue-specific and quality checks**
 
 ```bash
-node --test scripts/tests/unit/maintenance/markdownlint-runtime-ignore.test.mjs
+node --test scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs
 npm run lint:md
 npm run lint
 npm run format:check

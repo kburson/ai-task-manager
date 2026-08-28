@@ -343,50 +343,80 @@ thing:
 ### Full-Auto PR merge + local-trunk sync
 
 Delivered by [#908](https://github.com/kburson/ai-task-manager/issues/908) (epic
-[#912](https://github.com/kburson/ai-task-manager/issues/912)). The interactive
-flow above assumes a human clicks **Merge** and then `git pull`s trunk. Two steps
-in that chain cannot be completed by the agent in a Full-Auto batch, so the drive
-would otherwise stall at every story's merge step:
+[#912](https://github.com/kburson/ai-task-manager/issues/912)). Full-Auto PR
+delivery uses the `provider-action` mechanism. In Review, `/task deliver #N`
+validates the accepted head and required checks, appends an immutable intent, and
+emits one structured provider action containing the exact expected-head SHA and
+merge bytes. The host executes only that sanctioned provider integration, then
+reruns `deliver`; only AITM's independent live verification and receipt permit
+`close` to proceed. Close never performs the PR mutation.
 
-1. **The human normally clicks Merge; a batch drive has nobody there.** Having the
-   agent perform the merge itself (`gh pr merge <N> --merge`) is an immediate
-   outward, irreversible act — the kind of unattended step an auto-mode safety
-   classifier may refuse, and one that should not fire blind regardless. The
-   sanctioned path sidesteps it entirely: **GitHub-native auto-merge**. The agent
-   runs `gh pr merge <N> --auto --<method>`, which only _enables_ auto-merge —
-   GitHub performs the actual merge once required checks pass. This is safe to
-   issue unattended for two independent reasons: enabling auto-merge is
-   **idempotent** (re-running it is a no-op, so a retried batch never
-   double-merges), and the merge itself stays **gated on CI**, not on the agent —
-   nothing lands until required checks are green. A repo without auto-merge enabled
-   / branch protection configured cannot use this path; see the `fullAutoMerge`
-   config in the settings guide. An operator who wants a local-only batch instead
-   authorizes the **local-trunk lane** (no push, no PR — the existing
-   merge-to-trunk close path).
+The earlier `gh-auto-merge` mechanism is retired and is refused with migration
+guidance; AITM does not silently translate it or run `gh pr merge --auto`. An
+operator who wants a no-PR batch may instead explicitly authorize the separate
+**local-trunk lane**. That lane is not provider delivery and requires
+`operatorAuthorized: true`.
 
-2. **Local `trunk` cannot be fast-forwarded from a worktree** without desyncing the
-   main worktree (`git update-ref refs/heads/trunk …` advances the shared ref but
-   leaves the main worktree's tree/index behind). The fix is to **not touch local
-   `trunk`**: when `close` runs inside a linked worktree, its trunk-attribution
-   query targets **`origin/trunk`** — a remote-tracking ref that is never checked
-   out, so reading it can never dirty the main worktree. An explicit
-   `cfg.trunkRef` override always wins; the main-worktree path still reads local
-   `trunk`.
+Local `trunk` still cannot be fast-forwarded from a worktree without desynchronizing
+the main worktree. When `close` runs inside a linked worktree, its attribution
+query therefore targets **`origin/trunk`**, a remote-tracking ref that is never
+checked out. An explicit `cfg.trunkRef` override wins; the main-worktree path may
+still read local `trunk`.
 
 Policy lives in pure functions in `scripts/task-tracker/lib/full-auto-merge.mjs`
-(`resolveMergeMechanism`, `planFullAutoMerge`, `resolveCloseTrunkRef`); the impure
-executor `scripts/task-tracker/lib/full-auto-merge-execute.mjs` performs the side
-effects (detect the linked worktree, resolve the open PR, run the permitted `gh`
-enable) and the `close` verb calls it after its close gates pass. The trunk-ref
-resolver is injected into `lineageDoneGate` via the `deps.closeGates.resolveTrunkRef`
-override so a worktree close attributes against `origin/trunk`. The step is inert
-unless an **open PR exists for the branch** — a branch-based or interactive close
-never triggers it. When a PR is present under Full-Auto but `fullAutoMerge` is
-unconfigured, resolution fails **closed** with an actionable message naming the
-missing key and pointing at the settings guide, and the issue is left OPEN — the
-batch halts with a clear error instead of silently stalling at the merge step.
-This changes only the Full-Auto PR path; the interactive human-merge flow is
-unchanged.
+(`resolveMergeMechanism`, `planFullAutoMerge`, `resolveCloseTrunkRef`). The legacy
+executor in `full-auto-merge-execute.mjs` now retains only linked-worktree
+classification and the explicit local lane; provider-mediated PR delivery belongs
+to `/task deliver`. Missing, retired, or invalid configuration fails closed and
+leaves the issue open.
+
+### Governed delivery convergence
+
+The terminal delivery sequence is **Review → deliver → receipt → close**.
+Review accepts one immutable commit identity (the **accepted SHA**); every later
+delivery and close decision is tied to those exact bytes, not to whichever commit
+the branch happens to name now.
+
+`npx aitm deliver #N` reports two mode values across three operational cases:
+
+- An **open current-head provider action** appends an intent and emits one exact
+  `AITM_PROVIDER_ACTION_REQUIRED` envelope. The host may perform only that
+  sanctioned action. Rerunning `deliver` re-reads the provider and trunk and
+  appends the live-verified receipt.
+- An **already-merged current-head external recovery** emits
+  `mode="current-head"` with no action. After validating current-head preflight,
+  including required checks, AITM writes an external intent and exact receipt for
+  the observed merge.
+- **Advanced-head historical receipt recovery** requires the prior exact intent
+  for the accepted SHA and emits `mode="historical-recovery"` with **no provider
+  action**. It proves the exact pull request, accepted head, merge commit, method,
+  attribution, intent bytes, and trunk reachability. It does not reapply the
+  current-head required-check gate to the historical path.
+
+Branch reuse does not weaken either mode. Pull-request selection uses the exact
+accepted-head SHA, so a later pull request from the same branch cannot capture an
+earlier story. Mere **cumulative inclusion** of the accepted bytes somewhere in
+trunk is not a delivery receipt and is never converted into one.
+
+Close revalidates the receipt and approval provenance before any binding, body,
+timing, lifecycle, board, label, disposition, or issue-close mutation. Full-Auto
+approval is standing policy, so it is revalidated against the current project
+configuration; it is not a timeless approval marker. A partially written terminal
+transaction uses **partial terminal recovery** to execute only its missing suffix.
+An **already-closed** completed retry is fully read-only.
+
+Incident convergence uses one explicitly **approved incident ledger**. Each row
+names an exact outcome and owner. Every Incorporated row names a concrete carrier
+pull request, head, merge, verified on-trunk result, and the reason issue-local
+delivery evidence is absent. `npx aitm close #N --as incorporated --of #M`
+records **Incorporated** only when those carrier bytes and the incident owner all
+match. The authenticated human approval of the exact ledger ID and digest is the
+fresh terminal authorization for this non-delivery outcome. The durable
+issue-local authorization record governs partial and completed retries. Neither
+path fabricates delivery intent or receipt evidence.
+The same `--of` option on the incident epic asserts its exact ledger owner before
+terminal close. Ledger record readback and the phase-aware reconciliation verifier
+must pass before and after the blocker-first close sequence.
 
 ### Epic #727 — VCS-process-agnostic commit attribution
 
@@ -439,6 +469,8 @@ Every closed issue remains tracked in the project with Status **Done**. The
 single-select **Disposition** field records the terminal outcome:
 
 - **Delivered** — verified work shipped to trunk through `/task close`.
+- **Incorporated** — accepted work already present through an explicitly approved
+  incident-ledger owner, without a delivery receipt.
 - **Replaced** — work was performed but later superseded through
   `/task supersede`.
 - **Discarded** — the issue closed through `/task close --as not-planned`

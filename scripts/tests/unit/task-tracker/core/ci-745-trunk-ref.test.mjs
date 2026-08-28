@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // @story #745
-// Content assertions for the CI-environment fix (#745, child of epic #727) that
-// materializes a local `refs/heads/trunk` on `pull_request` checkouts so the
-// real-git close-gate tests (#733) resolve trunk in a detached merge-ref
-// checkout. Backs AC1 (both lanes materialize the ref), AC2 (the step is
-// pull_request-scoped), and AC4 (trunk-resolution logic + gate assertions
-// intact — #927 later relocated that logic from `close-gates.mjs` into the
-// shared `lib/trunk-ref.mjs`, which close-gates now delegates to).
+// Content assertions for the current CI contract: #745 materializes a local
+// `refs/heads/trunk` on `pull_request` checkouts so real-git close-gate tests
+// (#733) resolve trunk in a detached merge ref. Fast checkout depth 2 also
+// retains the PR merge parents needed for current `trunk...HEAD` docs-only
+// diff classification; it is not a historical-provenance requirement. Backs
+// AC1 (both lanes materialize the ref), AC2 (pull_request-only), and AC4
+// (trunk resolution + gate assertions intact — #927 relocated that logic into
+// shared `lib/trunk-ref.mjs`, which close-gates delegates to).
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -24,14 +25,13 @@ const trunkRef = read('scripts/task-tracker/lib/trunk-ref.mjs');
 const closeGateTests = read('scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs');
 
 const STEP_NAME = 'Materialize local trunk ref for real-git tests (#745)';
-// #949 dropped the `--depth=1` this fetch used to carry. The #745 contract is
-// "both lanes materialize a local trunk ref, on pull_request only" — the depth
-// flag was incidental to it, and actively harmful: grafting a shallow trunk
-// re-introduced the truncated history that made #868's `git log --follow`
-// provenance check unanswerable. `meta/ci-workflow-history.test.mjs` now fails
-// the build if any `git fetch` in the workflow forces a `--depth` again.
+// The #745 contract is that both lanes materialize a local trunk ref only on
+// pull_request events, where the checkout is a detached merge ref.
 const MATERIALIZE_RUN = 'git fetch --no-tags origin trunk:trunk';
 const PR_GUARD = "if: github.event_name == 'pull_request'";
+const DOCS_ONLY_DIFF = 'git diff --name-only trunk...HEAD';
+const FAST_JOB = ci.slice(ci.indexOf('  fast:'), ci.indexOf('\n  slow:'));
+const SLOW_JOB = ci.slice(ci.indexOf('  slow:'));
 
 test('AC1: both Fast and Slow lanes materialize a local trunk ref', () => {
   const runs = ci.split(MATERIALIZE_RUN).length - 1;
@@ -53,6 +53,26 @@ test('AC2: the materialize step is scoped to pull_request events only', () => {
       'guard precedes the fetch run'
     );
   }
+});
+
+test('AC3: Fast checkout retains the PR merge base for docs-only classification', () => {
+  assert.equal(
+    ci.split('fetch-depth: 2').length - 1,
+    1,
+    'only the Fast checkout uses depth 2 for the current PR merge base'
+  );
+  assert.equal(ci.split('fetch-depth: 0').length - 1, 0, 'no full-history checkout remains');
+  assert.ok(
+    FAST_JOB.indexOf('fetch-depth: 2') > FAST_JOB.indexOf('- uses: actions/checkout@v5'),
+    'Fast checkout declares depth 2'
+  );
+  assert.ok(!SLOW_JOB.includes('fetch-depth:'), 'Slow checkout keeps its default depth 1');
+  assert.ok(FAST_JOB.includes(DOCS_ONLY_DIFF), 'docs-only classifier keeps its trunk...HEAD diff');
+  assert.equal(
+    ci.split(MATERIALIZE_RUN).length - 1,
+    2,
+    'both #745 local-trunk materialization steps remain'
+  );
 });
 
 test('AC4: production trunk resolution and gate assertions are intact (now via the shared resolver)', () => {

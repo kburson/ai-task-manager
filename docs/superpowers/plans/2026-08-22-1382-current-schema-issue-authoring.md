@@ -153,7 +153,7 @@ Add a `story` file to shared fixtures and pass `--user-story-file` in every exis
 Run:
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs scripts/tests/unit/gh/create-issue.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs scripts/tests/unit/gh/create-issue.test.mjs
 ```
 
 Expected: PASS.
@@ -284,7 +284,7 @@ Run the repository-owned installer/parity mechanism used by the existing provide
 - [ ] **Step 5: Run all focused issue-authoring tests**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs scripts/tests/unit/task-tracker/lib/defect-shape.test.mjs scripts/tests/unit/task-tracker/lib/refine-exit-vc-citation-guardrail.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs scripts/tests/unit/gh/create-issue.test.mjs scripts/tests/unit/providers/parity.test.mjs scripts/tests/unit/providers/skill-version-stamp.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs scripts/tests/unit/task-tracker/lib/refine-exit-vc-citation-guardrail.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs scripts/tests/unit/gh/create-issue.test.mjs scripts/tests/unit/providers/parity.test.mjs scripts/tests/unit/providers/skill-version-stamp.test.mjs
 ```
 
 Expected: PASS.

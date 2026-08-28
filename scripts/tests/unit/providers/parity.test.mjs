@@ -168,13 +168,28 @@ test('#939: shared router discovers the deliver JIT rule and installed stubs rea
   const router = readFileSync(path.join(REPO_ROOT, 'skill/shared/router.md'), 'utf8');
   const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/deliver.md'), 'utf8');
   assert.match(router, /`\/task deliver #N`\s*\|\s*`rules\/deliver\.md`/);
-  assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.0\.0/);
+  assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.1\.0/);
   for (const installed of ['.agents/skills/task/SKILL.md', '.claude/skills/task/SKILL.md']) {
     assert.match(
       readFileSync(path.join(REPO_ROOT, installed), 'utf8'),
       /node_modules\/ai-task-manager\/skill\/adapters\/(?:codex|claude)\/SKILL\.md/
     );
   }
+});
+
+test('#1381: shared router discovers the provider-neutral incident-ledger rule', () => {
+  const router = readFileSync(path.join(REPO_ROOT, 'skill/shared/router.md'), 'utf8');
+  const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/incident-ledger.md'), 'utf8');
+  assert.match(router, /`\/task incident-ledger #1381`\s*\|\s*`rules\/incident-ledger\.md`/);
+  assert.match(rule, /aitm-skill-loaded:rules\/incident-ledger:1\.0\.0/);
+  assert.match(
+    rule,
+    /verify-delivery-incident-reconciliation\.mjs --issue 1381 \[--phase pre-close\|terminal\]/
+  );
+  assert.match(rule, /terminal[\s\S]*default/i);
+  assert.match(rule, /does not approve the ledger or close anything/i);
+  assert.match(rule, /human explicitly approves those exact immutable values/i);
+  assert.match(rule, /Never use either mode to create delivery intent, delivery receipt/i);
 });
 
 test('#939: checked-in Claude and Codex skills equal installer-generated stubs', () => {
@@ -254,6 +269,19 @@ test('#939: delivery rule is an exact, fail-closed host contract', () => {
   assert.match(rule, /never[^\n]*shell/i);
   assert.match(rule, /success, refusal, timeout, or ambiguity/i);
   assert.match(rule, /live-verified delivery receipt/i);
+  assert.match(rule, /AITM_DELIVERY_RESULT:/);
+  assert.match(rule, /mode="historical-recovery"/);
+  assert.match(
+    rule,
+    /historical\s+receipt\s+recovery[\s\S]{0,180}never\s+permits\s+a\s+provider[\s\S]{0,30}call/i
+  );
+  assert.match(rule, /current-head[\s\S]*AITM_PROVIDER_ACTION_REQUIRED:/i);
+  assert.match(
+    rule,
+    /already-merged current-head[\s\S]{0,180}mode="current-head"[\s\S]{0,180}never invoke[\s\S]{0,40}provider/i
+  );
+  assert.match(rule, /accepted SHA/i);
+  assert.match(rule, /cumulative inclusion[\s\S]*(?:not|never)[\s\S]*delivery receipt/i);
 });
 
 // ---- Run. ----

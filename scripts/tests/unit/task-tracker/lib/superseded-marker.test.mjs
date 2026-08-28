@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import {
   serializeSupersededBy,
   parseSupersededBy,
+  parseSupersededByStrict,
   addSupersededBy,
 } from '../../../../task-tracker/lib/superseded-marker.mjs';
 
@@ -35,6 +36,22 @@ test('parse: round-trips ref + ts', () => {
 
 test('parse: returns null when absent', () => {
   assert.equal(parseSupersededBy('no marker here'), null);
+});
+
+test('strict parse accepts one canonical marker and rejects malformed or ambiguous evidence', () => {
+  const canonical = serializeSupersededBy({
+    ref: 399,
+    ts: '2026-06-14T00:00:00.000Z',
+  });
+  assert.deepEqual(parseSupersededByStrict(`top\n${canonical}\nbottom`), {
+    ref: '#399',
+    ts: '2026-06-14T00:00:00.000Z',
+  });
+  assert.throws(() => parseSupersededByStrict('<!-- aitm-superseded-by -->'));
+  assert.throws(() => parseSupersededByStrict(`${canonical}\n${canonical}`));
+  assert.throws(() =>
+    parseSupersededByStrict('<!-- aitm-superseded-by refs="#399" ts="not-an-instant" -->')
+  );
 });
 
 test('add: appends on first write', () => {

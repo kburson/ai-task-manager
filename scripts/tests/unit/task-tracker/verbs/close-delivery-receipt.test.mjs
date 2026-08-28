@@ -11,6 +11,7 @@ import {
 import {
   requireDeliveryReceipt,
   resolveAcceptedDeliveryHead,
+  verifyCloseDeliveryReceipt,
 } from '../../../../task-tracker/lib/close-delivery-receipt.mjs';
 
 const HEAD = 'a'.repeat(40);
@@ -67,6 +68,8 @@ function input(overrides = {}) {
     lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
     branch: 'codex/939-full-auto-merge',
     acceptedSha: HEAD,
+    observedLocalHeadSha: HEAD,
+    headRelation: 'current',
     pullRequests: [
       {
         number: 1400,
@@ -88,6 +91,94 @@ test('valid exact-head delivery receipt authorizes close', () => {
   assert.equal(result.skipped, false);
   assert.equal(result.receipt.expectedHeadSha, HEAD);
   assert.ok(Object.isFrozen(result));
+});
+
+test('close freshly verifies receipt reachability and authorized attribution bytes', async () => {
+  const gateInput = input();
+  gateInput.pullRequest = {
+    ...gateInput.pullRequests[0],
+    mergedAt: '2026-08-22T00:02:00.000Z',
+  };
+  const receiptGate = requireDeliveryReceipt(gateInput);
+  const intent = gateInput.records.liveIntent.record;
+  const calls = { fetches: 0, ancestors: 0, inspections: 0 };
+  const result = await verifyCloseDeliveryReceipt({
+    gateInput,
+    receiptGate,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    deps: {
+      fetchOriginTrunk: async () => {
+        calls.fetches += 1;
+      },
+      isAncestor: async ({ ancestor, descendant }) => {
+        calls.ancestors += 1;
+        assert.equal(ancestor, MERGE);
+        assert.equal(descendant, 'origin/trunk');
+        return true;
+      },
+      inspectMergeCommit: async () => {
+        calls.inspections += 1;
+        return {
+          parents: ['e'.repeat(40)],
+          commitTitle: intent.commitTitle,
+          commitMessage: intent.commitMessage,
+        };
+      },
+      attributingCommits: async () => [],
+    },
+  });
+
+  assert.equal(result.receipt.expectedHeadSha, HEAD);
+  assert.deepEqual(calls, { fetches: 1, ancestors: 1, inspections: 1 });
+});
+
+test('close fresh verification refuses unreachable trunk or altered attribution bytes', async () => {
+  const gateInput = input();
+  gateInput.pullRequest = {
+    ...gateInput.pullRequests[0],
+    mergedAt: '2026-08-22T00:02:00.000Z',
+  };
+  const receiptGate = requireDeliveryReceipt(gateInput);
+  const intent = gateInput.records.liveIntent.record;
+  const baseDeps = {
+    fetchOriginTrunk: async () => {},
+    isAncestor: async () => true,
+    inspectMergeCommit: async () => ({
+      parents: ['e'.repeat(40)],
+      commitTitle: intent.commitTitle,
+      commitMessage: intent.commitMessage,
+    }),
+    attributingCommits: async () => [],
+  };
+
+  await assert.rejects(
+    verifyCloseDeliveryReceipt({
+      gateInput,
+      receiptGate,
+      testReceiptSha: HEAD,
+      acceptedReviewSha: HEAD,
+      deps: { ...baseDeps, isAncestor: async () => false },
+    }),
+    /trunk-reachability/
+  );
+  await assert.rejects(
+    verifyCloseDeliveryReceipt({
+      gateInput,
+      receiptGate,
+      testReceiptSha: HEAD,
+      acceptedReviewSha: HEAD,
+      deps: {
+        ...baseDeps,
+        inspectMergeCommit: async () => ({
+          parents: ['e'.repeat(40)],
+          commitTitle: intent.commitTitle,
+          commitMessage: `${intent.commitMessage}\nAttribution: [#999]`,
+        }),
+      },
+    }),
+    /merge-commit-bytes|attribution/
+  );
 });
 
 test('#1395 close selects the unique accepted-head PR regardless of branch history order', () => {

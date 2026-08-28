@@ -173,7 +173,7 @@ git commit -m "[#1321] feat: register the Grok provider adapter"
 - Modify: `bin/cli.mjs`
 - Modify: `skill/adapters/codex/SKILL.md`
 - Modify: `scripts/tests/unit/task-tracker/lib/install.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs`
 - Modify: `scripts/tests/unit/providers/registry.test.mjs`
 
 **Interfaces:**
@@ -205,7 +205,7 @@ Add temporary-project integration cases proving default install creates all thre
 - [ ] **Step 2: Run focused installer tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs
 ```
 
 Expected: failures on the default, Grok target, repeated option, and `both` refusal cases.
@@ -270,9 +270,9 @@ Compute `selectedNames.includes('codex')` once. Run Codex Superpowers setup only
 - [ ] **Step 6: Run focused tests and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs
 node scripts/tests/unit/providers/registry.test.mjs
-git add bin/cli.mjs bin/lib/provider-selection.mjs skill/adapters/codex/SKILL.md scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs scripts/tests/unit/providers/registry.test.mjs
+git add bin/cli.mjs bin/lib/provider-selection.mjs skill/adapters/codex/SKILL.md scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs scripts/tests/unit/providers/registry.test.mjs
 git commit -m "[#1321] feat: install registered providers additively"
 ```
 
@@ -282,8 +282,8 @@ git commit -m "[#1321] feat: install registered providers additively"
 
 - Create: `scripts/task-tracker/hooks/grok-wire.mjs`
 - Modify: `bin/cli.mjs`
-- Create: `scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs`
+- Create: `scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs`
 
 **Interfaces:**
 
@@ -324,7 +324,7 @@ handler crash.
 - [ ] **Step 2: Run the hook tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs
+node --test scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs
 ```
 
 Expected: module-not-found and missing native deny behavior.
@@ -381,8 +381,8 @@ Run installer hook tests twice in one temporary project and assert one exact com
 - [ ] **Step 6: Run focused tests and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs
-git add scripts/task-tracker/hooks/grok-wire.mjs scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs bin/cli.mjs
+node --test scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs
+git add scripts/task-tracker/hooks/grok-wire.mjs scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs bin/cli.mjs
 git commit -m "[#1321] feat: bridge native Grok hooks"
 ```
 
@@ -392,7 +392,7 @@ git commit -m "[#1321] feat: bridge native Grok hooks"
 
 - Create: `scripts/task-tracker/lib/hook-idempotency.mjs`
 - Modify: `scripts/task-tracker/hook-handler.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs`
 - Modify: `scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs`
 
 **Interfaces:**
@@ -415,7 +415,7 @@ Assert two worktrees resolve the same main-anchored stamp and that an injected s
 - [ ] **Step 2: Run focused hook-handler tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs
 ```
 
 - [ ] **Step 3: Implement stable hashing and exclusive creation**
@@ -429,8 +429,8 @@ After parsing the payload, normalize `event_timestamp ?? eventTimestamp ?? times
 - [ ] **Step 5: Run focused tests and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs
-git add scripts/task-tracker/lib/hook-idempotency.mjs scripts/task-tracker/hook-handler.mjs scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs
+git add scripts/task-tracker/lib/hook-idempotency.mjs scripts/task-tracker/hook-handler.mjs scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs
 git commit -m "[#1321] fix: deduplicate provider timing hooks"
 ```
 
@@ -443,7 +443,7 @@ git commit -m "[#1321] fix: deduplicate provider timing hooks"
 - Modify: `scripts/providers/transcript-normalizer.mjs`
 - Modify: `scripts/task-tracker/word-counter.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs`
-- Modify: `scripts/tests/unit/providers/transcript-resolver.test.mjs`
+- Modify: `scripts/tests/integration/providers/transcript-resolver.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs`
 
 **Interfaces:**
@@ -478,7 +478,7 @@ For normalization, assert text from strings and `{type:'text', text}` arrays, on
 - [ ] **Step 3: Run focused tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/unit/providers/transcript-resolver.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/integration/providers/transcript-resolver.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs
 ```
 
 - [ ] **Step 4: Implement declarative session fallback and Grok home resolution**
@@ -508,7 +508,7 @@ Select Claude when `record.message` exists, Codex when `record.type === 'respons
 - [ ] **Step 7: Run focused and bounded-memory regressions, then commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/unit/providers/transcript-resolver.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-codex.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-bounded-memory.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/integration/providers/transcript-resolver.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-codex.test.mjs scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs
 git add scripts/providers scripts/task-tracker/lib/session-id.mjs scripts/task-tracker/word-counter.mjs scripts/tests/unit/providers scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs
 git commit -m "[#1321] feat: read Grok session transcripts"
 ```
@@ -594,7 +594,7 @@ git commit -m "[#1321] feat: enforce local issue occupancy"
 - Modify: `scripts/review/co-review.mjs`
 - Modify: `scripts/task-tracker/lib/occupancy.mjs`
 - Create: `scripts/tests/unit/review/co-review-index.test.mjs`
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/tests/fixtures/co-review-fixture.mjs`
 
 **Interfaces:**
@@ -627,7 +627,7 @@ Prove a different sid/provider in the same worktree receives no grant.
 - [ ] **Step 3: Run focused co-review tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/integration/review/co-review.test.mjs
 ```
 
 - [ ] **Step 4: Implement lock-protected registration and lifecycle projection**
@@ -645,8 +645,8 @@ Replace Task 6's default-false predicate with `isActiveCoReviewWorktree({ worktr
 - [ ] **Step 7: Run focused tests and commit**
 
 ```bash
-node --test scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/unit/review/co-review.test.mjs scripts/tests/unit/task-tracker/lib/occupancy.test.mjs
-git add scripts/review/lib/index.mjs scripts/review/lib/protocol.mjs scripts/review/lib/start.mjs scripts/review/lib/archive.mjs scripts/review/co-review.mjs scripts/task-tracker/paths.mjs scripts/task-tracker/lib/occupancy.mjs scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/unit/review/co-review.test.mjs scripts/tests/fixtures/co-review-fixture.mjs scripts/tests/unit/task-tracker/lib/occupancy.test.mjs
+node --test scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/integration/review/co-review.test.mjs scripts/tests/unit/task-tracker/lib/occupancy.test.mjs
+git add scripts/review/lib/index.mjs scripts/review/lib/protocol.mjs scripts/review/lib/start.mjs scripts/review/lib/archive.mjs scripts/review/co-review.mjs scripts/task-tracker/paths.mjs scripts/task-tracker/lib/occupancy.mjs scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/integration/review/co-review.test.mjs scripts/tests/fixtures/co-review-fixture.mjs scripts/tests/unit/task-tracker/lib/occupancy.test.mjs
 git commit -m "[#1321] feat: index session-bound co-review claims"
 ```
 
@@ -659,9 +659,9 @@ git commit -m "[#1321] feat: index session-bound co-review claims"
 - Modify: `scripts/task-tracker/source-edit-gate.mjs`
 - Modify: `scripts/task-tracker/activity-guard.mjs`
 - Modify: `scripts/task-tracker/bash-guard.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs`
 - Modify: `scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs`
 
 **Interfaces:**
@@ -694,7 +694,7 @@ Also prove another `.tmp/**` file is denied during the reviewer claim and first 
 - [ ] **Step 3: Run focused guard tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs
 ```
 
 - [ ] **Step 4: Implement shared target extraction and authority ordering**
@@ -712,8 +712,8 @@ Move Bash write-target extraction into the shared helper, normalize relative pat
 - [ ] **Step 7: Run focused guards and commit**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs
-git add scripts/task-tracker/lib/mutation-targets.mjs scripts/task-tracker/lib/co-review-write-policy.mjs scripts/task-tracker/source-edit-gate.mjs scripts/task-tracker/activity-guard.mjs scripts/task-tracker/bash-guard.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs
+git add scripts/task-tracker/lib/mutation-targets.mjs scripts/task-tracker/lib/co-review-write-policy.mjs scripts/task-tracker/source-edit-gate.mjs scripts/task-tracker/activity-guard.mjs scripts/task-tracker/bash-guard.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs scripts/tests/integration/task-tracker/core/bash-guard-tmp-contract.test.mjs
 git commit -m "[#1321] fix: enforce co-review writer isolation"
 ```
 
@@ -727,7 +727,7 @@ git commit -m "[#1321] fix: enforce co-review writer isolation"
 - Create: `docs/guides/grok-provider.md`
 - Modify: `docs/guides/github-native-coordination.md`
 - Modify: `scripts/tests/unit/providers/coverage-provider-adapter.test.mjs`
-- Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs`
+- Modify: `scripts/tests/integration/meta/package-test-corpus.test.mjs`
 
 **Interfaces:** none; this task documents and verifies the completed public behavior.
 
@@ -738,7 +738,7 @@ Pin that package coverage reaches `grok.mjs`, `grok-wire.mjs`, occupancy/index m
 - [ ] **Step 2: Run documentation/package tests and verify RED**
 
 ```bash
-node --test scripts/tests/unit/providers/coverage-provider-adapter.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs
+node --test scripts/tests/unit/providers/coverage-provider-adapter.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs
 ```
 
 - [ ] **Step 3: Update install and architecture documentation**
@@ -754,8 +754,8 @@ Document project trust via `/hooks-trust` or `--trust`, native `.grok/hooks/aitm
 ```bash
 node scripts/tests/unit/providers/registry.test.mjs
 node scripts/tests/unit/providers/parity.test.mjs
-node --test scripts/tests/unit/providers/transcript-resolver.test.mjs scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs scripts/tests/unit/task-tracker/lib/occupancy.test.mjs scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/lib/install-hooks.test.mjs scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs
+node --test scripts/tests/integration/providers/transcript-resolver.test.mjs scripts/tests/unit/task-tracker/lib/session-id-resolution.test.mjs scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs scripts/tests/unit/task-tracker/lib/occupancy.test.mjs scripts/tests/unit/review/co-review-index.test.mjs scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs
 ```
 
 Expected: all named tests pass with no live Grok home access.
@@ -776,7 +776,7 @@ Expected: all commands exit 0. Do not substitute `npm run test:all` for the repo
 git diff --check
 git status --short
 git diff --name-status
-git add README.md docs/README.md docs/DESIGN.md docs/guides/grok-provider.md docs/guides/github-native-coordination.md scripts/tests/unit/providers/coverage-provider-adapter.test.mjs scripts/tests/unit/meta/package-test-corpus.test.mjs
+git add README.md docs/README.md docs/DESIGN.md docs/guides/grok-provider.md docs/guides/github-native-coordination.md scripts/tests/unit/providers/coverage-provider-adapter.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs
 git commit -m "[#1321] docs: publish the Grok provider workflow"
 ```
 

@@ -13,292 +13,23 @@ import {
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
 import { serializeProviderActionRequired } from '../../../../task-tracker/lib/delivery-provider-action.mjs';
-import { runDeliver, verbDeliver } from '../../../../task-tracker/verbs/deliver.mjs';
-
-const HEAD = 'a'.repeat(40);
-const NEXT_HEAD = 'b'.repeat(40);
-const MERGE_HEAD = 'c'.repeat(40);
-const NOW = '2026-08-22T14:00:00.000Z';
-const SERVER_NOW = '2026-08-22T14:00:01.000Z';
-const MERGED_AT = '2026-08-22T14:01:00.000Z';
-const RECEIPT_SERVER_NOW = '2026-08-22T14:01:01.000Z';
-const INTENT_IDS = [
-  '01ARZ3NDEKTSV4RRFFQ69G5FAV',
-  '01ARZ3NDEKTSV4RRFFQ69G5FAW',
-  '01ARZ3NDEKTSV4RRFFQ69G5FAX',
-];
-
-function cfg() {
-  return {
-    repo: 'kburson/ai-task-manager',
-    assignee: 'kburson',
-    trunkRef: 'origin/trunk',
-    fullAutoMerge: {
-      mechanism: 'provider-action',
-      mergeMethod: 'squash',
-    },
-  };
-}
-
-function trackerState() {
-  return {
-    active: '#939',
-    entryStartTs: '2026-08-22T13:00:00.000Z',
-  };
-}
-
-function makeHarness(options = {}) {
-  const calls = {
-    events: [],
-    listIssueComments: 0,
-    createIssueComment: 0,
-    listPullRequests: 0,
-    fetchPullRequest: 0,
-    fetchRequiredChecks: 0,
-    fetchOriginTrunk: 0,
-    isAncestor: 0,
-    inspectMergeCommit: 0,
-    attributingCommits: [],
-    terminalTiming: 0,
-    terminalBoard: 0,
-    terminalDisposition: 0,
-    terminalClosure: 0,
-    terminalBinding: 0,
-  };
-  const data = {
-    head: options.head ?? HEAD,
-    testReceiptSha: options.testReceiptSha ?? options.head ?? HEAD,
-    acceptedReviewSha: options.acceptedReviewSha ?? options.head ?? HEAD,
-    lineage: options.lineage ?? { parentIssueNumber: null, deliveryTarget: 'trunk' },
-    comments: [...(options.comments ?? [])],
-    checks: {
-      readable: true,
-      required: [
-        {
-          name: 'ci',
-          headSha: options.head ?? HEAD,
-          status: 'COMPLETED',
-          conclusion: 'SUCCESS',
-        },
-      ],
-    },
-    commitSubjects: options.commitSubjects ?? ['[#939] Add governed delivery intent verb'],
-    prCommitSubjects: options.prCommitSubjects ??
-      options.commitSubjects ?? ['[#939] Add governed delivery intent verb'],
-    prState: options.prState ?? 'OPEN',
-    prHead: options.prHead ?? null,
-    mergeCommitSha: options.mergeCommitSha === undefined ? MERGE_HEAD : options.mergeCommitSha,
-    mergedAt: options.mergedAt ?? MERGED_AT,
-    prMergeMethod: options.prMergeMethod === undefined ? 'squash' : options.prMergeMethod,
-    headRefDeleted: options.headRefDeleted ?? false,
-    fetchFailure: options.fetchFailure ?? false,
-    historyMergeMethod: options.historyMergeMethod ?? 'squash',
-  };
-  let intentIdIndex = 0;
-
-  const deps = {
-    resolveReviewAuthorization() {
-      return Object.freeze({ mode: 'full-auto', standing: true, source: 'test' });
-    },
-    async fetchIssue() {
-      return {
-        number: 939,
-        state: 'OPEN',
-        projectState: 'Review',
-        assignees: ['kburson'],
-        agentReviewPassed: true,
-        body: 'governed issue body',
-      };
-    },
-    async resolveLineage() {
-      return { ...data.lineage };
-    },
-    async getCurrentBranch() {
-      return 'codex/939-full-auto-merge';
-    },
-    async getLocalHeadSha() {
-      return data.head;
-    },
-    async resolveTestReceiptSha() {
-      return data.testReceiptSha;
-    },
-    async resolveAcceptedReviewSha() {
-      return data.acceptedReviewSha;
-    },
-    async listPullRequests({ headRef }) {
-      calls.listPullRequests += 1;
-      assert.equal(headRef, 'codex/939-full-auto-merge');
-      return [{ number: 1400 }];
-    },
-    async fetchPullRequest({ prNumber }) {
-      calls.fetchPullRequest += 1;
-      assert.equal(prNumber, 1400);
-      const pullRequest = {
-        number: 1400,
-        state: data.prState,
-        merged: data.prState === 'MERGED',
-        isDraft: false,
-        baseRefName: 'trunk',
-        headRefName: 'codex/939-full-auto-merge',
-        headRefOid: data.prHead ?? data.head,
-        mergeable: data.prState === 'OPEN' ? 'MERGEABLE' : 'UNKNOWN',
-        mergeCommit: data.mergeCommitSha === null ? null : { oid: data.mergeCommitSha },
-        mergedAt: data.prState === 'MERGED' ? data.mergedAt : null,
-        headRefDeleted: data.headRefDeleted,
-        sourceCommitSubjects: [...data.prCommitSubjects],
-      };
-      if (!options.omitPrMergeMethod) {
-        pullRequest.mergeMethod = data.prState === 'MERGED' ? data.prMergeMethod : null;
-      }
-      return pullRequest;
-    },
-    async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
-      calls.fetchRequiredChecks += 1;
-      assert.equal(prNumber, 1400);
-      assert.equal(expectedHeadSha, data.head);
-      return structuredClone(data.checks);
-    },
-    async fetchRepositoryMergeMethods() {
-      return ['merge', 'squash', 'rebase'];
-    },
-    async listCommitSubjects({ range }) {
-      assert.equal(range, 'origin/trunk..HEAD');
-      return [...data.commitSubjects];
-    },
-    async listDirtyPaths() {
-      return [];
-    },
-    async listIssueComments() {
-      calls.listIssueComments += 1;
-      calls.events.push('comments:read');
-      return structuredClone(data.comments);
-    },
-    async createIssueComment({ body }) {
-      calls.createIssueComment += 1;
-      const kind = body.startsWith('<!-- aitm-delivery-receipt ') ? 'receipt' : 'intent';
-      calls.events.push(`${kind}:post`);
-      data.comments.push({
-        id: `comment-${data.comments.length + 1}`,
-        createdAt: kind === 'receipt' ? RECEIPT_SERVER_NOW : SERVER_NOW,
-        body,
-      });
-      if (
-        (options.losePostResponse === true && calls.createIssueComment === 1) ||
-        (options.loseReceiptPostResponse === true && kind === 'receipt')
-      ) {
-        throw new Error('transport response lost');
-      }
-      return { id: data.comments.at(-1).id };
-    },
-    async fetchOriginTrunk({ remote, branch }) {
-      calls.fetchOriginTrunk += 1;
-      assert.equal(remote, 'origin');
-      assert.equal(branch, 'trunk');
-      if (data.fetchFailure) throw new Error('fetch unavailable');
-    },
-    async isAncestor({ ancestor, descendant }) {
-      calls.isAncestor += 1;
-      assert.equal(ancestor, data.mergeCommitSha);
-      assert.equal(descendant, 'origin/trunk');
-      return options.mergeReachable ?? true;
-    },
-    async inspectMergeCommit({
-      mergeCommitSha,
-      expectedHeadSha,
-      authorizedCommitTitle,
-      authorizedCommitMessage,
-    }) {
-      calls.inspectMergeCommit += 1;
-      assert.equal(mergeCommitSha, data.mergeCommitSha);
-      const intent = data.comments
-        .map(({ body }) => body.match(/^<!-- aitm-delivery-intent (.+) -->/))
-        .find(Boolean);
-      const parsed = intent === undefined ? null : JSON.parse(intent[1]);
-      const commitTitle =
-        options.historyCommitTitle ??
-        parsed?.commitTitle ??
-        authorizedCommitTitle ??
-        '[#939] Governed PR delivery';
-      const commitMessage =
-        options.historyCommitMessage ??
-        parsed?.commitMessage ??
-        authorizedCommitMessage ??
-        `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`;
-      if (options.historyBytesMismatch) {
-        return { parents: ['d'.repeat(40)], commitTitle, commitMessage: 'wrong bytes' };
-      }
-      if (data.historyMergeMethod === 'merge') {
-        return {
-          parents: ['d'.repeat(40), expectedHeadSha],
-          commitTitle,
-          commitMessage,
-        };
-      }
-      if (data.historyMergeMethod === 'squash') {
-        return { parents: ['d'.repeat(40)], commitTitle, commitMessage };
-      }
-      return {
-        parents: ['d'.repeat(40), 'e'.repeat(40), 'f'.repeat(40)],
-        commitTitle,
-        commitMessage,
-      };
-    },
-    async attributingCommits(issueNumber, { refs }) {
-      calls.attributingCommits.push(issueNumber);
-      assert.deepEqual(refs, ['origin/trunk']);
-      const missing = new Set(options.missingAttribution ?? []);
-      return missing.has(issueNumber)
-        ? []
-        : [{ sha: data.mergeCommitSha, subject: `[#${issueNumber}] delivered`, ts: data.mergedAt }];
-    },
-    now() {
-      return NOW;
-    },
-    createIntentId() {
-      return INTENT_IDS[intentIdIndex++];
-    },
-    providerId() {
-      return 'codex';
-    },
-    sessionId() {
-      return 'session-939';
-    },
-    async flushTerminalTiming() {
-      calls.terminalTiming += 1;
-    },
-    async moveBoardToDone() {
-      calls.terminalBoard += 1;
-    },
-    async setTerminalDisposition() {
-      calls.terminalDisposition += 1;
-    },
-    async closeIssue() {
-      calls.terminalClosure += 1;
-    },
-    async releaseBinding() {
-      calls.terminalBinding += 1;
-    },
-  };
-
-  return { calls, data, deps };
-}
-
-async function mergePendingIntent(harness, overrides = {}) {
-  const pending = await deliver(harness, overrides);
-  assert.equal(pending.status, 'action-required');
-  harness.data.prState = 'MERGED';
-  return pending;
-}
-
-async function deliver(harness, overrides = {}) {
-  return runDeliver({
-    issueNumber: 939,
-    cfg: cfg(),
-    state: trackerState(),
-    deps: harness.deps,
-    ...overrides,
-  });
-}
+import { verbDeliver } from '../../../../task-tracker/verbs/deliver.mjs';
+import {
+  HEAD,
+  INTENT_IDS,
+  MERGE_HEAD,
+  MERGED_AT,
+  NEXT_HEAD,
+  NOW,
+  RECEIPT_SERVER_NOW,
+  SERVER_NOW,
+  advancePendingDelivery,
+  cfg,
+  deliver,
+  makeHarness,
+  mergePendingIntent,
+  trackerState,
+} from './deliver-test-harness.mjs';
 
 test('first open-PR call posts one exact intent before emitting one action and exits 20', async () => {
   const harness = makeHarness();
@@ -457,16 +188,15 @@ test('merged verification rejects the wrong recorded pre-merge head', async () =
   const harness = makeHarness();
   await mergePendingIntent(harness);
   harness.data.prHead = NEXT_HEAD;
-  await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
+  await assert.rejects(() => deliver(harness), /delivery-preflight:pull-request-count/);
   assert.equal(harness.calls.createIssueComment, 1);
 });
 
-for (const authority of ['local', 'test', 'review']) {
+for (const authority of ['test', 'review']) {
   test(`merged delivery refuses a ${authority} SHA disagreement without appending a receipt`, async () => {
     const harness = makeHarness();
     await mergePendingIntent(harness);
     harness.data.prHead = HEAD;
-    if (authority === 'local') harness.data.head = NEXT_HEAD;
     if (authority === 'test') harness.data.testReceiptSha = NEXT_HEAD;
     if (authority === 'review') harness.data.acceptedReviewSha = NEXT_HEAD;
 
@@ -577,6 +307,242 @@ test('repeated exact receipt re-verifies live PR and trunk without creating anot
   assert.deepEqual(repeated.receipt, delivered.receipt);
   assert.equal(harness.calls.createIssueComment, postsAfterDelivery);
   assert.equal(harness.calls.fetchOriginTrunk, 2);
+});
+
+test('advanced local head recovers one historical receipt from a prior durable intent', async () => {
+  const harness = makeHarness();
+  const pending = await advancePendingDelivery(harness);
+  assert.equal(pending.mode, 'current-head');
+
+  const recovered = await deliver(harness);
+  assert.equal(recovered.mode, 'historical-recovery');
+  assert.equal(recovered.status, 'delivered');
+  assert.equal(recovered.intent.expectedHeadSha, HEAD);
+  assert.equal(recovered.receipt.expectedHeadSha, HEAD);
+  assert.equal(recovered.action, null);
+  assert.equal(harness.calls.createIssueComment, 2);
+
+  const retry = await deliver(harness);
+  assert.equal(retry.mode, 'historical-recovery');
+  assert.equal(retry.status, 'already-delivered');
+  assert.equal(retry.action, null);
+  assert.equal(harness.calls.createIssueComment, 2);
+});
+
+test('advanced local head refuses historical recovery while the accepted PR is open', async () => {
+  const harness = makeHarness();
+  await deliver(harness);
+  harness.data.prHead = HEAD;
+  harness.data.head = NEXT_HEAD;
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:pull-request-not-merged/);
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('advanced local head requires accepted Agent Review and standing approval', async () => {
+  for (const invalid of ['agent-review', 'approval']) {
+    const harness = makeHarness();
+    await advancePendingDelivery(harness);
+    if (invalid === 'agent-review') harness.data.agentReviewPassed = false;
+    if (invalid === 'approval') {
+      harness.data.reviewAuthorization = { mode: 'full-auto', standing: false, source: 'test' };
+    }
+
+    await assert.rejects(
+      () => deliver(harness),
+      invalid === 'agent-review'
+        ? /delivery-preflight:agent-review-evidence/
+        : /delivery-preflight:approval-evidence/
+    );
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
+});
+
+test('advanced local head refuses wrong-SHA Test or Review evidence', async () => {
+  for (const invalid of ['test', 'review']) {
+    const harness = makeHarness();
+    await advancePendingDelivery(harness);
+    if (invalid === 'test') harness.data.testReceiptSha = NEXT_HEAD;
+    if (invalid === 'review') harness.data.acceptedReviewSha = NEXT_HEAD;
+
+    await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
+});
+
+test('advanced local head enforces intent-time ordering and trunk reachability', async () => {
+  for (const invalid of ['merge-time', 'reachability']) {
+    const harness = makeHarness();
+    await advancePendingDelivery(harness);
+    if (invalid === 'merge-time') harness.data.mergedAt = '2026-08-22T13:59:59.000Z';
+    if (invalid === 'reachability') harness.deps.isAncestor = async () => false;
+
+    await assert.rejects(
+      () => deliver(harness),
+      invalid === 'merge-time'
+        ? /delivery-verification:merge-before-intent/
+        : /delivery-verification:trunk-reachability/
+    );
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
+});
+
+for (const [label, override] of [
+  ['repository', { repository: 'kburson/wrong-repository' }],
+  [
+    'issue',
+    {
+      issueNumber: 940,
+      attributionTokens: ['#940'],
+      commitTitle: '[#940] Governed PR delivery',
+      commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#940]`,
+    },
+  ],
+  [
+    'pull request',
+    { prNumber: 1401, commitMessage: `PR #1401\nSource: ${HEAD}\n\nAttribution: [#939]` },
+  ],
+  ['base', { baseRef: 'main' }],
+  ['branch', { headRef: 'codex/wrong-branch' }],
+  [
+    'head',
+    {
+      expectedHeadSha: NEXT_HEAD,
+      commitMessage: `PR #1400\nSource: ${NEXT_HEAD}\n\nAttribution: [#939]`,
+    },
+  ],
+  ['method', { mergeMethod: 'merge' }],
+  [
+    'attribution',
+    {
+      attributionTokens: ['#938', '#939'],
+      commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939] [#938]`,
+    },
+  ],
+  ['title', { commitTitle: '[#939] Wrong title' }],
+  ['message', { commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939] wrong` }],
+]) {
+  test(`advanced local head rejects divergent prior intent ${label} bytes`, async () => {
+    const harness = makeHarness();
+    const pending = await advancePendingDelivery(harness);
+    const intentInput = structuredClone(pending.intent);
+    for (const key of ['schema', 'state', 'commitTitleSha256', 'commitMessageSha256']) {
+      delete intentInput[key];
+    }
+    const divergent = buildDeliveryIntent({ ...intentInput, ...override });
+    harness.data.comments[0] = {
+      ...harness.data.comments[0],
+      body: renderDeliveryIntentComment(divergent),
+    };
+
+    await assert.rejects(
+      () => deliver(harness),
+      /(?:delivery-preflight:historical-intent|delivery-records:|deliver:)/
+    );
+    assert.equal(harness.calls.createIssueComment, 1);
+  });
+}
+
+test('advanced local head refuses historical recovery when Full-Auto delivery is disabled', async () => {
+  const harness = makeHarness();
+  await advancePendingDelivery(harness);
+  const disabled = cfg();
+  disabled.fullAutoMerge.mechanism = 'manual';
+
+  await assert.rejects(
+    () => deliver(harness, { cfg: disabled }),
+    /delivery-preflight:configuration/
+  );
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('advanced local head rejects duplicate and divergent historical receipts', async () => {
+  for (const invalid of ['duplicate', 'divergent']) {
+    const harness = makeHarness();
+    const pending = await advancePendingDelivery(harness);
+    const recovered = await deliver(harness);
+    const receipt =
+      invalid === 'duplicate'
+        ? recovered.receipt
+        : buildDeliveryReceipt({
+            intentId: pending.intent.intentId,
+            issueNumber: 939,
+            prNumber: 1400,
+            expectedHeadSha: HEAD,
+            mergeCommitSha: NEXT_HEAD,
+            baseRef: 'trunk',
+            mergeMethod: 'squash',
+            verifiedTrunkRef: 'origin/trunk',
+            provider: 'codex',
+            sessionId: 'session-939',
+            verifiedAt: MERGED_AT,
+          });
+    harness.data.comments.push({
+      id: `comment-${invalid}`,
+      createdAt: RECEIPT_SERVER_NOW,
+      body: renderDeliveryReceiptComment(receipt),
+    });
+
+    await assert.rejects(
+      () => deliver(harness),
+      /delivery-records:(?:duplicate-receipt|receipt-conflict)/
+    );
+    assert.equal(harness.calls.createIssueComment, 2);
+  }
+});
+
+test('advanced local head refuses historical recovery without a prior intent', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prHead: HEAD,
+    head: NEXT_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+  });
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+});
+
+test('advanced local head refuses an external recovery intent', async () => {
+  const externalIntent = buildDeliveryIntent({
+    intentId: INTENT_IDS[0],
+    supersedesIntentId: null,
+    issueNumber: 939,
+    repository: 'kburson/ai-task-manager',
+    prNumber: 1400,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    expectedHeadSha: HEAD,
+    mergeMethod: 'squash',
+    attributionTokens: ['#939'],
+    commitTitle: '[#939] Governed PR delivery',
+    commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`,
+    provider: 'external',
+    sessionId: 'session-previous',
+    clientCreatedAt: '2026-08-22T13:59:00.000Z',
+  });
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prHead: HEAD,
+    head: NEXT_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    comments: [
+      {
+        id: 'comment-existing',
+        createdAt: SERVER_NOW,
+        body: renderDeliveryIntentComment(externalIntent),
+      },
+    ],
+  });
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 1);
 });
 
 test('lost receipt POST response is reconciled from the single server-visible receipt', async () => {
@@ -802,7 +768,7 @@ test('changed head requires fresh Test and review evidence then supersedes the p
   harness.data.head = NEXT_HEAD;
   harness.data.checks.required[0].headSha = NEXT_HEAD;
 
-  await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
+  await assert.rejects(() => deliver(harness), /delivery-preflight:pull-request-count/);
   assert.equal(harness.calls.createIssueComment, 1);
 
   harness.data.testReceiptSha = NEXT_HEAD;

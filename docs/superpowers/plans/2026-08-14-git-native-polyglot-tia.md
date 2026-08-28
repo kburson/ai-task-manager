@@ -219,7 +219,7 @@ would fail against the pre-change implementation and pass against this commit.
 - Create: `scripts/tests/fixtures/non-js-affected/Sources/App.swift`
 - Modify: `scripts/task-tracker/verify-develop.mjs`
 - Modify: `scripts/task-tracker/lib/verification-receipt.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs`
 - Modify: `package.json`
 
 **Tests:** The fixture uses shell-only `lint:affected`, `format:affected`, and
@@ -632,7 +632,7 @@ counterfactuals demonstrate stable identities and zero floor subtraction.
 - Create: `scripts/tests/unit/task-tracker/lib/tia/provider-contract.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/tia/node-provider.test.mjs`
 - Modify: `scripts/task-tracker/lib/test-impact-selector.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs`
 
 **Tests:** Capture the legacy selector outputs for direct/transitive imports,
 changed/new/deleted tests, basename matching, manifest rules, and all lane
@@ -642,7 +642,7 @@ escalations. The Node provider must return the same test set and reasons.
       namespaced test IDs, candidate union, incompatible provider failure, and
       complete-suite fallback.
 - [ ] Run
-      `node --test scripts/tests/unit/task-tracker/lib/tia/provider-contract.test.mjs scripts/tests/unit/task-tracker/lib/tia/node-provider.test.mjs scripts/tests/unit/task-tracker/lib/test-impact-selector.test.mjs`.
+      `node --test scripts/tests/unit/task-tracker/lib/tia/provider-contract.test.mjs scripts/tests/unit/task-tracker/lib/tia/node-provider.test.mjs scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs`.
       Expected: FAIL because the legacy implementation is not behind a provider.
 - [ ] Implement the provider object with `discover`, `staticImpact`, `execute`,
       and `parseResults`. Pin its config/version/capabilities in a canonical lock
@@ -764,7 +764,7 @@ heuristics indefinitely; activation is never forced by version upgrade.
 - Modify: `bin/lib/template-manifest.mjs`
 - Modify: `scripts/lib/self-doc.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/install.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/verbs/help.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/verbs/help.test.mjs`
 - Modify: `package.json`
 
 **Tests:** In sandbox repositories, cover bootstrap, protected and cooperative
@@ -776,7 +776,7 @@ Node/iOS union, and learned-state deletion.
       transport and real Git repositories; never mutate a live ruleset or source
       project from the test.
 - [ ] Run
-      `node --test scripts/tests/slow/task-tracker/tia/tia-e2e.test.mjs scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs`.
+      `node --test scripts/tests/slow/task-tracker/tia/tia-e2e.test.mjs scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/integration/task-tracker/verbs/help.test.mjs`.
       Expected: FAIL on missing documentation/install/doctor parity.
 - [ ] Document normal install/init, provider configuration, policy defaults,
       receipts, health meanings, repair lease, protected/cooperative guarantees,

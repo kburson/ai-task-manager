@@ -36,7 +36,7 @@
 - Create: `scripts/review/lib/help.mjs` — mutation-free top-level and per-command recovery documentation.
 - Modify: `scripts/lib/self-doc.mjs` — canonical routed-command metadata for `co-review`.
 - Modify: `scripts/task-tracker/lib/command-surface/entrypoints.mjs` — classify the new executable as `agent-callable-standalone`.
-- Create: `scripts/tests/unit/review/co-review.test.mjs` — focused CLI, protocol, help, failure-atomicity, and end-to-end tests in temporary Git repositories.
+- Create: `scripts/tests/integration/review/co-review.test.mjs` — focused CLI, protocol, help, failure-atomicity, and end-to-end tests in temporary Git repositories.
 - Preserve: `docs/superpowers/specs/2026-08-14-cross-agent-spec-review-handshake-design.md` — approved behavior and source provenance.
 - Preserve: `/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1117-state-components/.tmp/1117-review/r1-claude-review.md` — external immutable input; tests use their own fixture and never alter this file.
 
@@ -78,7 +78,7 @@ export function renderHelp(command);
 
 **Files:**
 
-- Create: `scripts/tests/unit/review/co-review.test.mjs`
+- Create: `scripts/tests/integration/review/co-review.test.mjs`
 - Create: `scripts/review/lib/help.mjs`
 - Create: `scripts/review/co-review.mjs`
 - Modify: `scripts/lib/self-doc.mjs`
@@ -171,7 +171,7 @@ Fixture cleanup runs in `test.afterEach` with
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: FAIL because `scripts/review/co-review.mjs` and `help.mjs` do not exist and
@@ -228,7 +228,7 @@ Add `['scripts/review/co-review.mjs', 'co-review']` to the standalone entrypoint
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs
 npx aitm help co-review
@@ -242,7 +242,7 @@ creating a runtime directory.
 ```bash
 git add scripts/review/co-review.mjs scripts/review/lib/help.mjs \
   scripts/lib/self-doc.mjs scripts/task-tracker/lib/command-surface/entrypoints.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1266] feat: add co-review recovery help surface"
 ```
 
@@ -250,7 +250,7 @@ git commit -m "[#1266] feat: add co-review recovery help surface"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Create: `scripts/review/lib/protocol.mjs`
 - Modify: `scripts/review/co-review.mjs`
 
@@ -380,7 +380,7 @@ prints the validated state plus computed integrity and next action.
 - [ ] **Step 6: Run focused tests and verify GREEN**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: initialization and help tests PASS; no refusal changes state/events.
@@ -389,7 +389,7 @@ Expected: initialization and help tests PASS; no refusal changes state/events.
 
 ```bash
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1266] feat: initialize co-review protocols"
 ```
 
@@ -397,7 +397,7 @@ git commit -m "[#1266] feat: initialize co-review protocols"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 - Modify: `scripts/review/co-review.mjs`
 
@@ -456,7 +456,7 @@ and prints the observed state and next action.
 - [ ] **Step 5: Run focused tests and verify GREEN**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: claim, status integrity, and wait cases PASS.
@@ -465,7 +465,7 @@ Expected: claim, status integrity, and wait cases PASS.
 
 ```bash
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1266] feat: add co-review claims and bounded waits"
 ```
 
@@ -473,7 +473,7 @@ git commit -m "[#1266] feat: add co-review claims and bounded waits"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 - Modify: `scripts/review/co-review.mjs`
 
@@ -556,7 +556,7 @@ On refusal, print the invariant, “no state changed,” and the relevant handof
 - [ ] **Step 6: Run focused tests and verify GREEN**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: every owner handoff and refusal test PASS.
@@ -565,7 +565,7 @@ Expected: every owner handoff and refusal test PASS.
 
 ```bash
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1266] feat: verify owner co-review handoffs"
 ```
 
@@ -573,7 +573,7 @@ git commit -m "[#1266] feat: verify owner co-review handoffs"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 - Modify: `scripts/review/co-review.mjs`
 
@@ -676,7 +676,7 @@ Reject role-inapplicable or unknown flags with exit 2 before state mutation.
 - [ ] **Step 7: Run focused tests and verify GREEN**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: explicit decisions, acceptance precedence, interception, cumulative
@@ -686,7 +686,7 @@ continuation, and refocus tests PASS.
 
 ```bash
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
-  scripts/tests/unit/review/co-review.test.mjs
+  scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1266] feat: govern co-review acceptance and turn budgets"
 ```
 
@@ -694,7 +694,7 @@ git commit -m "[#1266] feat: govern co-review acceptance and turn budgets"
 
 **Files:**
 
-- Modify: `scripts/tests/unit/review/co-review.test.mjs`
+- Modify: `scripts/tests/integration/review/co-review.test.mjs`
 - Modify if test evidence exposes a defect: `scripts/review/co-review.mjs`
 - Modify if test evidence exposes a defect: `scripts/review/lib/protocol.mjs`
 - Modify if help evidence exposes a defect: `scripts/review/lib/help.mjs`
@@ -747,7 +747,7 @@ and a recovery command.
 - [ ] **Step 4: Run focused and command-surface verification**
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs
 npx aitm co-review --help
@@ -776,7 +776,7 @@ If Task 6 produced changes:
 
 ```bash
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
-  scripts/review/lib/help.mjs scripts/tests/unit/review/co-review.test.mjs
+  scripts/review/lib/help.mjs scripts/tests/integration/review/co-review.test.mjs
 git commit -m "[#1266] test: prove complete co-review workflow"
 ```
 

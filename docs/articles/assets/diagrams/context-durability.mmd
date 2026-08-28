@@ -1,9 +1,0 @@
-flowchart TB
-    Shim["Tier 0 shim"] --> Router["Tier 1 router"]
-    Router --> Rule["Tier 2 rule\nloaded on verb"]
-    Rule --> Work["Agent work"]
-    Work --> Compact["Compaction"]
-    Compact --> Boot["Session boot contract"]
-    Boot --> Source["Reload source rules + issue truth"]
-    Source --> Work
-

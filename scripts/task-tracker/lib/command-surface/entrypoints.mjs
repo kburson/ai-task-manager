@@ -39,6 +39,10 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
     ['scripts/task-tracker/preflight-issue.mjs', 'preflight-issue'],
     ['scripts/task-tracker/sync-epic.mjs', 'sync-epic'],
     ['scripts/task-tracker/verify-develop.mjs', 'verify-develop'],
+    [
+      'scripts/task-tracker/verify-delivery-incident-reconciliation.mjs',
+      'verify-delivery-incident-reconciliation',
+    ],
   ]),
   ...publicRows('agent-callable-verb', [
     ['scripts/task-tracker/verbs/approve.mjs', 'approve'],

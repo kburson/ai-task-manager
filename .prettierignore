@@ -8,6 +8,7 @@ coverage/
 package-lock.json
 docs/postmortems/
 docs/ai-memory/
+docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md
 docs/superpowers/reviews/**/README.md
 .ai-task-manager/memory/
 .superpowers/

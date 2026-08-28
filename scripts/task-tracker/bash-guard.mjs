@@ -103,11 +103,6 @@ async function evaluate(input) {
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
-  const { extractBashWriteTargets } = await import('./lib/mutation-targets.mjs');
-  const { classifyReviewerCoReviewCommand } = await import('./lib/reviewer-co-review-command.mjs');
-  const { evaluateCoReviewWrite } = await import('./lib/co-review-write-policy.mjs');
-  const { detectProvider } = await import('../providers/index.mjs');
-  const { resolveSessionId } = await import('./lib/session-id.mjs');
 
   const command = input?.tool_input?.command ?? '';
   if (!command) process.exit(0);
@@ -126,29 +121,6 @@ async function evaluate(input) {
 
   const homeDir = homedir();
   const claudeDir = join(homeDir, '.claude');
-
-  const coReviewTargets = extractBashWriteTargets(command, projectRoot);
-  const reviewerCommand = classifyReviewerCoReviewCommand(command, {
-    projectDir: projectRoot,
-  });
-  const provider = detectProvider().name;
-  let sid = null;
-  try {
-    sid = resolveSessionId();
-  } catch {
-    // A missing provider session cannot match a reviewer grant.
-  }
-  const coReview = evaluateCoReviewWrite({
-    projectDir: projectRoot,
-    worktreePath: projectRoot,
-    provider,
-    sid,
-    toolName: 'Bash',
-    targets: coReviewTargets.targets,
-    ambiguousMutation: coReviewTargets.ambiguousMutation,
-    reviewerCommand,
-  });
-  if (coReview.decision === 'deny') block(`[task-tracker] ${coReview.reason}`);
 
   // Unconditionally dangerous patterns — block regardless of path.
   const ALWAYS_BLOCK = [

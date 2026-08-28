@@ -573,7 +573,7 @@ git commit -m "[#1365] fix: authorize session-bound reviewer commands"
 **Files:**
 
 - Modify: `scripts/task-tracker/bash-guard.mjs`
-- Create: `scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
+- Create: `scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
 
 **Interfaces:**
 
@@ -582,7 +582,7 @@ git commit -m "[#1365] fix: authorize session-bound reviewer commands"
 
 - [ ] **Step 1: Add the end-to-end failing boundary test**
 
-Create `scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`:
+Create `scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`:
 
 ```js
 // @story #1365
@@ -754,7 +754,7 @@ test('live reviewer command passes the guard and reaches accepted archived state
 Run:
 
 ```bash
-node --test scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: FAIL because the Bash guard emits `reviewer mutation destinations are incomplete or ambiguous` before the command reaches the CLI.
@@ -818,7 +818,7 @@ for (const denied of [
 Run:
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: all tests PASS.
@@ -826,7 +826,7 @@ Expected: all tests PASS.
 - [ ] **Step 6: Commit the hook boundary slice**
 
 ```bash
-git add scripts/task-tracker/bash-guard.mjs scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+git add scripts/task-tracker/bash-guard.mjs scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 git commit -m "[#1365] fix: pass reviewer commands through Bash guard"
 ```
 
@@ -858,7 +858,7 @@ assert.match(reviewer, /live provider.*session.*claim/i);
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 ```
 
 Expected: FAIL on the three new reviewer-handoff assertions.
@@ -899,7 +899,7 @@ decision revalidates live protocol state and event integrity.
 Run:
 
 ```bash
-node --test scripts/tests/unit/review/co-review.test.mjs
+node --test scripts/tests/integration/review/co-review.test.mjs
 npx prettier --check scripts/review/lib/start.mjs scripts/tests/fixtures/co-review-start-cases.mjs docs/guides/github-native-coordination.md
 npx markdownlint-cli2 docs/guides/github-native-coordination.md
 npx cspell docs/guides/github-native-coordination.md scripts/review/lib/start.mjs
@@ -931,8 +931,8 @@ git commit -m "[#1365] docs: explain reviewer command allowance"
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/unit/review/co-review.test.mjs
-node --test scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs scripts/tests/integration/review/co-review.test.mjs
+node --test scripts/tests/integration/task-tracker/core/reviewer-co-review-command-boundary.test.mjs
 ```
 
 Expected: all commands exit 0 with no failed tests.

@@ -12,6 +12,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  profiledEnv,
+  realRepositoryFixture,
+  runCli,
+} from '../../../fixtures/co-review-fixture.mjs';
 import path from 'node:path';
 import url from 'node:url';
 
@@ -24,6 +29,65 @@ const GUARD = path.resolve(
   'task-tracker',
   'activity-guard.mjs'
 );
+const OWNER_ENV = profiledEnv('owner', {
+  ...process.env,
+  AI_TASK_MANAGER_SESSION_ID: 'activity-owner-invariance-1406',
+});
+const REVIEWER_ENV = profiledEnv('reviewer', {
+  ...process.env,
+  AI_TASK_MANAGER_SESSION_ID: 'activity-reviewer-invariance-1406',
+});
+
+function successfulCoReview(args, root, env) {
+  const result = runCli(args, { cwd: root, env });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function prepareReviewerTurn(root, artifact, commit) {
+  const dir = '.tmp/co-review/activity-claim-invariance';
+  successfulCoReview(
+    [
+      'init',
+      '--dir',
+      dir,
+      '--artifact',
+      artifact,
+      '--owner',
+      'owner-agent',
+      '--reviewer',
+      'reviewer-agent',
+      '--max-turns',
+      '3',
+    ],
+    root,
+    OWNER_ENV
+  );
+  successfulCoReview(['claim', '--dir', dir, '--actor', 'owner-agent'], root, OWNER_ENV);
+  const response = `${dir}/round-1-owner-response.md`;
+  writeFileSync(path.join(root, response), '# Owner response\n\nReady for review.\n');
+  successfulCoReview(
+    [
+      'handoff',
+      '--dir',
+      dir,
+      '--actor',
+      'owner-agent',
+      '--response',
+      response,
+      '--artifact',
+      artifact,
+      '--commit',
+      commit,
+      '--message',
+      'owner handoff complete',
+    ],
+    root,
+    OWNER_ENV
+  );
+  return () =>
+    successfulCoReview(['claim', '--dir', dir, '--actor', 'reviewer-agent'], root, REVIEWER_ENV);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,10 +116,11 @@ function makeRepoNoState() {
   return dir;
 }
 
-function runGuard({ cwd, payload, stdinRaw }) {
+function runGuard({ cwd, payload, stdinRaw, env = process.env }) {
   const stdin = stdinRaw !== undefined ? stdinRaw : JSON.stringify(payload);
   const result = spawnSync('node', [GUARD], {
     cwd,
+    env,
     input: stdin,
     encoding: 'utf8',
   });
@@ -411,6 +476,76 @@ test('unknown tool_name → pass-through', () => {
     assert.equal(r.stdout, '');
   } finally {
     cleanup(dir);
+  }
+});
+
+test('a live reviewer claim does not change ordinary activity guard decisions', () => {
+  const fixture = realRepositoryFixture();
+  mkdirSync(path.join(fixture.root, '.tmp', 'aitm', 'state'), { recursive: true });
+  writeFileSync(
+    path.join(fixture.root, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    JSON.stringify({ active: '#1406', lastActive: '#1406', state: 'plan' })
+  );
+  const establishClaim = prepareReviewerTurn(fixture.root, fixture.artifact, fixture.initialCommit);
+  const cases = [
+    {
+      name: 'read-only Bash pipeline',
+      payload: {
+        tool_name: 'Bash',
+        tool_input: { command: 'git status --short | sed -n "1,5p"' },
+      },
+      expectedDecision: null,
+    },
+    {
+      name: 'documentation edit',
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
+      expectedDecision: null,
+    },
+    {
+      name: 'temporary review-file write',
+      payload: {
+        tool_name: 'Write',
+        tool_input: { file_path: '.tmp/reviewer-work/round-2-review.md' },
+      },
+      expectedDecision: null,
+    },
+    {
+      name: 'installed-guard self-edit refusal',
+      payload: {
+        tool_name: 'Edit',
+        tool_input: {
+          file_path: 'node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs',
+        },
+      },
+      expectedDecision: 'block',
+    },
+    {
+      name: 'malformed apply_patch refusal',
+      payload: { tool_name: 'apply_patch', tool_input: { patch: 'not a patch' } },
+      expectedDecision: 'block',
+    },
+  ];
+  const runCases = () =>
+    cases.map(({ name, payload }) => {
+      const result = runGuard({ cwd: fixture.root, payload, env: REVIEWER_ENV });
+      assert.equal(result.code, 0, `${name}: ${result.stderr}`);
+      return result;
+    });
+
+  try {
+    const withoutClaim = runCases();
+    for (const [index, result] of withoutClaim.entries()) {
+      assert.equal(
+        result.decision?.decision ?? null,
+        cases[index].expectedDecision,
+        cases[index].name
+      );
+    }
+    establishClaim();
+    const withClaim = runCases();
+    assert.deepEqual(withClaim, withoutClaim);
+  } finally {
+    cleanup(fixture.root);
   }
 });
 

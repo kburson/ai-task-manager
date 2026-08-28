@@ -89,18 +89,41 @@
     {
       "sources": [
         "scripts/tests/**/*.test.mjs",
-        "scripts/tests/fixtures/test-corpus-post-snapshot/**/*.json"
+        "scripts/tests/integration/meta/test-tree-layout.baseline.json"
       ],
-      "tests": ["scripts/tests/unit/meta/test-corpus-membership.test.mjs"],
-      "reason": "test corpus membership authority change"
+      "tests": ["scripts/tests/integration/meta/test-tree-layout.test.mjs"],
+      "reason": "current test tree authority change"
     },
     {
-      "sources": ["scripts/tests/fixtures/test-corpus-pre-move.json"],
-      "tests": [
-        "scripts/tests/unit/meta/test-corpus-membership.test.mjs",
-        "scripts/tests/unit/meta/package-test-corpus.test.mjs"
+      "sources": [
+        "bin/cli.mjs",
+        "scripts/task-tracker/activity-guard.mjs",
+        "scripts/task-tracker/bash-guard.mjs",
+        "scripts/task-tracker/source-edit-gate.mjs",
+        "scripts/task-tracker/lib/apply-patch-targets.mjs",
+        "scripts/review/co-review.mjs",
+        "scripts/review/lib/provider-session.mjs",
+        "scripts/review/lib/runtime-root.mjs",
+        "scripts/review/lib/repository-boundary.mjs",
+        "scripts/review/lib/protocol.mjs",
+        "scripts/review/lib/start.mjs",
+        "scripts/review/lib/index.mjs",
+        "scripts/review/lib/archive.mjs",
+        "docs/guides/github-native-coordination.md",
+        "docs/guides/grok-provider.md"
       ],
-      "reason": "frozen test corpus authority change"
+      "tests": [
+        "scripts/tests/integration/task-tracker/lib/co-review-reviewer-capability.test.mjs",
+        "scripts/tests/slow/review/co-review-boundaries.test.mjs",
+        "scripts/tests/integration/review/co-review-provider-session.test.mjs",
+        "scripts/tests/unit/review/co-review-index.test.mjs",
+        "scripts/tests/integration/review/co-review-fixture-cost.test.mjs",
+        "scripts/tests/integration/review/co-review.test.mjs",
+        "scripts/tests/integration/review/co-review-finalization.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs"
+      ],
+      "reason": "SHA-bound one-worktree co-review authority, provider-session evidence, and installed guard behavior"
     }
   ]
 }

@@ -392,7 +392,7 @@ function parseMarker(body) {
   return { kind: match[2], record };
 }
 
-export function parseDeliveryComment(comment, context) {
+function parseDeliveryCommentWithPrPolicy(comment, context, { allowHistoricalPr }) {
   if (!isPlainDataObject(comment)) throw deliveryError('comment');
   assertBoundedString(comment.id, MAX_FIELD_BYTES, 'comment-id');
   if (!isCanonicalInstant(comment.createdAt)) throw deliveryError('comment-created-at');
@@ -404,12 +404,23 @@ export function parseDeliveryComment(comment, context) {
   else validateReceipt(parsed.record);
   if (
     parsed.record.issueNumber !== context.issueNumber ||
-    parsed.record.prNumber !== context.prNumber ||
     (parsed.kind === 'intent' && parsed.record.repository !== context.repository)
   ) {
     throw deliveryError('context-mismatch');
   }
+  if (parsed.record.prNumber !== context.prNumber) {
+    if (allowHistoricalPr) return null;
+    throw deliveryError('context-mismatch');
+  }
   return deepFreeze({ id: comment.id, createdAt: comment.createdAt, record: parsed.record });
+}
+
+export function parseDeliveryComment(comment, context) {
+  return parseDeliveryCommentWithPrPolicy(comment, context, { allowHistoricalPr: false });
+}
+
+export function parseDeliveryCommentForPullRequest(comment, context) {
+  return parseDeliveryCommentWithPrPolicy(comment, context, { allowHistoricalPr: true });
 }
 
 function validateParsedRecord(parsed) {

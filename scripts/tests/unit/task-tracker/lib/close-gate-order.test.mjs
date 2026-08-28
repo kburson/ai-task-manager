@@ -93,7 +93,7 @@ test('source: surfaced pre-walk failure refuses and returns before `gh issue clo
   // #752 widened the pre-walk block (the board re-read now goes through the
   // lag-tolerant resolveBoardStateForClose), so the window must reach past the
   // longer assignment to still contain the trailing `process.exitCode`/`return`.
-  const block = closeSrc.slice(guardIdx, guardIdx + 1100);
+  const block = closeSrc.slice(guardIdx, guardIdx + 1800);
   assert.ok(
     /decideBoardMoveFailure\(/.test(block),
     'pre-walk must route its decision through decideBoardMoveFailure'

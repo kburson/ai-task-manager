@@ -108,6 +108,13 @@ const ROUTABLE_SELF_DOC = {
       'AI/operator during Develop. Use iteration while editing; Test invokes final with an issue number.',
     usage: 'aitm verify-develop [--mode iteration|final] [--issue <N>]',
   },
+  'verify-delivery-incident-reconciliation': {
+    group: 'Workflow',
+    path: 'scripts/task-tracker/verify-delivery-incident-reconciliation.mjs',
+    synopsis: 'Read-only verification of the approved #1381 incident ledger and outcomes.',
+    audience: 'AI/operator immediately before incident closure or after every approved outcome.',
+    usage: 'aitm verify-delivery-incident-reconciliation --issue 1381 [--phase pre-close|terminal]',
+  },
   'co-review': {
     group: 'Workflow',
     path: 'scripts/review/co-review.mjs',
@@ -310,6 +317,13 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
   'verify-develop': [
     argument('--mode iteration|final', 'Affected edit loop (default) or exact-SHA finalization.'),
     argument('--issue <N>', 'Required in final mode; binds the receipt to its issue.'),
+  ],
+  'verify-delivery-incident-reconciliation': [
+    argument('--issue 1381', 'Required convergence issue.'),
+    argument(
+      '--phase pre-close|terminal',
+      'Pre-mutation topology check or terminal outcome proof; terminal is the default.'
+    ),
   ],
   'co-review': [
     argument(
@@ -547,6 +561,23 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       'npx aitm verify-develop --mode final --issue 1089',
     ],
     relatedCommands: ['test', 'run-tests'],
+  }),
+  'verify-delivery-incident-reconciliation': routableContract({
+    preconditions: [
+      'The exact incident ledger must be recorded, explicitly approved, and owned by #939.',
+    ],
+    effects: ['Reads GitHub, project, comment, pull-request, and pinned trunk evidence only.'],
+    output: ['Prints one phase-specific immutable verification result or a fail-closed error.'],
+    exitCodes: [
+      exitCode(0, 'the selected verification phase passed'),
+      exitCode(1, 'authority, topology, evidence, or terminal outcome verification failed'),
+      exitCode(2, 'issue or phase arguments are invalid'),
+    ],
+    examples: [
+      'npx aitm verify-delivery-incident-reconciliation --issue 1381 --phase pre-close',
+      'npx aitm verify-delivery-incident-reconciliation --issue 1381',
+    ],
+    relatedCommands: ['incident-ledger', 'close'],
   }),
   'co-review': routableContract({
     preconditions: [

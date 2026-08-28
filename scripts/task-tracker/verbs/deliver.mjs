@@ -28,14 +28,20 @@ import {
   buildDeliveryIntent,
   buildDeliveryReceipt,
   parseDeliveryComment,
+  parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../lib/delivery-records.mjs';
 import {
   validateDeliveryPreflight,
+  validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
+import {
+  DeliveryAuthorityError,
+  resolveAcceptedDeliveryAuthority,
+} from '../lib/delivery-authority.mjs';
 import {
   buildProviderAction,
   serializeProviderActionRequired,
@@ -48,6 +54,7 @@ import { attributingCommits as defaultAttributingCommits } from '../lib/commit-a
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
+const MAX_PULL_REQUEST_SOURCE_COMMITS = 10_000;
 const AUTHORIZED_INTENT_KEYS = Object.freeze([
   'attributionTokens',
   'baseRef',
@@ -85,6 +92,110 @@ function bindingFromState({ branch, state }) {
   };
 }
 
+function isStructurallyInspectableSourceCommits(pullRequest) {
+  const subjects = pullRequest?.sourceCommitSubjects;
+  const commits = pullRequest?.sourceCommits;
+  return (
+    Array.isArray(subjects) &&
+    Array.isArray(commits) &&
+    commits.length > 0 &&
+    subjects.length === commits.length &&
+    pullRequest.sourceCommitsHeadSha === pullRequest.headRefOid &&
+    commits.at(-1)?.oid === pullRequest.headRefOid &&
+    commits.every((commit, index) => {
+      if (commit === null || typeof commit !== 'object' || Array.isArray(commit)) return false;
+      const keys = Object.keys(commit).sort();
+      return (
+        keys.length === 2 &&
+        keys[0] === 'messageHeadline' &&
+        keys[1] === 'oid' &&
+        SHA_RE.test(commit.oid) &&
+        commit.messageHeadline === subjects[index]
+      );
+    })
+  );
+}
+
+function isUnattributedMergeCandidate(subject) {
+  return typeof subject === 'string' && !subject.includes('[') && !subject.includes('#');
+}
+
+function matchesInspectedCommitTitle(observed, inspected) {
+  if (observed === inspected) return true;
+  if (typeof observed !== 'string' || typeof inspected !== 'string' || !observed.endsWith('…')) {
+    return false;
+  }
+  const prefix = observed.slice(0, -1);
+  return prefix.length >= 64 && inspected.length > prefix.length && inspected.startsWith(prefix);
+}
+
+async function classifySourceCommitSubjects(pullRequest, inspectSourceCommit) {
+  const strictSubjects = pullRequest?.sourceCommitSubjects;
+  if (!Array.isArray(strictSubjects)) {
+    return { attributableSubjects: strictSubjects, verifiedMergeTitles: [] };
+  }
+  if (pullRequest?.sourceCommitsComplete !== true) {
+    return { attributableSubjects: null, verifiedMergeTitles: [] };
+  }
+  if (!isStructurallyInspectableSourceCommits(pullRequest)) {
+    return { attributableSubjects: null, verifiedMergeTitles: [] };
+  }
+  if (!strictSubjects.some(isUnattributedMergeCandidate)) {
+    return { attributableSubjects: strictSubjects, verifiedMergeTitles: [] };
+  }
+
+  const attributableSubjects = [];
+  const verifiedMergeTitles = [];
+  for (const commit of pullRequest.sourceCommits) {
+    if (!isUnattributedMergeCandidate(commit.messageHeadline)) {
+      attributableSubjects.push(commit.messageHeadline);
+      continue;
+    }
+    let inspection = null;
+    try {
+      inspection = await inspectSourceCommit({ commitSha: commit.oid });
+    } catch {
+      // Preserve the subject so the existing attribution parser fails closed.
+    }
+    const parents = inspection?.parents;
+    const verifiedMerge =
+      matchesInspectedCommitTitle(commit.messageHeadline, inspection?.commitTitle) &&
+      Array.isArray(parents) &&
+      parents.length >= 2 &&
+      parents.every((parent) => SHA_RE.test(parent)) &&
+      new Set(parents).size === parents.length;
+    if (verifiedMerge) {
+      verifiedMergeTitles.push(inspection.commitTitle);
+    } else {
+      attributableSubjects.push(commit.messageHeadline);
+    }
+  }
+  return { attributableSubjects, verifiedMergeTitles };
+}
+
+export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommit) {
+  return (await classifySourceCommitSubjects(pullRequest, inspectSourceCommit))
+    .attributableSubjects;
+}
+
+export async function openSourceCommitSubjects(localSubjects, pullRequest, inspectSourceCommit) {
+  if (!Array.isArray(localSubjects)) return localSubjects;
+  const { verifiedMergeTitles } = await classifySourceCommitSubjects(
+    pullRequest,
+    inspectSourceCommit
+  );
+  const remaining = new Map();
+  for (const title of verifiedMergeTitles) {
+    remaining.set(title, (remaining.get(title) ?? 0) + 1);
+  }
+  return localSubjects.filter((subject) => {
+    const count = remaining.get(subject) ?? 0;
+    if (count === 0) return true;
+    remaining.set(subject, count - 1);
+    return false;
+  });
+}
+
 function validateLineageResult(lineage) {
   const parent = lineage?.parentIssueNumber;
   if (
@@ -102,10 +213,10 @@ function validateLineageResult(lineage) {
   return lineage;
 }
 
-function parsedDeliveryRecords(comments, context) {
+export function parsedDeliveryRecords(comments, context) {
   if (!Array.isArray(comments)) throw deliverError('comments');
   return comments
-    .map((comment) => parseDeliveryComment(comment, context))
+    .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
     .filter((record) => record !== null);
 }
 
@@ -235,6 +346,8 @@ async function verifyAndFinalize({
   matchingReceipt,
   pullRequest,
   recovery,
+  mode,
+  acceptedSha,
   localHeadSha,
   testReceiptSha,
   acceptedReviewSha,
@@ -243,6 +356,7 @@ async function verifyAndFinalize({
   const verification =
     verified ??
     (await verifyDeliveredPullRequest({
+      acceptedSha,
       intent: liveIntent.record,
       intentCreatedAt: liveIntent.createdAt,
       pullRequest,
@@ -262,6 +376,7 @@ async function verifyAndFinalize({
     }
     return {
       status: 'already-delivered',
+      mode,
       intent: liveIntent.record,
       receipt: matchingReceipt.record,
       action: null,
@@ -293,6 +408,7 @@ async function verifyAndFinalize({
   }
   return {
     status: 'delivered',
+    mode,
     intent: liveIntent.record,
     receipt: readbackReceipt.record,
     action: null,
@@ -353,6 +469,14 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
 
   const branch = await getCurrentBranch();
   const localHeadSha = await getLocalHeadSha();
+  const testReceiptSha = await resolveTestReceiptSha({ issue, issueNumber });
+  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
+    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+  ]);
+  if (agentReviewPassed !== true) {
+    throw new TypeError('delivery-preflight:agent-review-evidence');
+  }
   const pullRequestRefs = await listPullRequests({
     repository: cfg.repo,
     headRef: branch,
@@ -363,40 +487,33 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
     )
   );
-  const exactHeadPullRequests = pullRequests.filter(
-    (pullRequest) => pullRequest.headRefOid === localHeadSha
-  );
-  const selectedPullRequests =
-    exactHeadPullRequests.length === 0 && pullRequests.length === 1
-      ? pullRequests
-      : exactHeadPullRequests;
-  const mergedPullRequest =
-    selectedPullRequests.length === 1 && pullRequestMerged(selectedPullRequests[0]);
-  const prNumber = selectedPullRequests.length === 1 ? selectedPullRequests[0].number : null;
-  const checks =
-    prNumber === null
-      ? { readable: false, required: [] }
-      : await fetchRequiredChecks({
-          repository: cfg.repo,
-          prNumber,
-          expectedHeadSha: localHeadSha,
-        });
-  const commitSubjectsPromise = mergedPullRequest
-    ? Promise.resolve(selectedPullRequests[0].sourceCommitSubjects)
-    : listCommitSubjects({ range: 'origin/trunk..HEAD' });
-  const [
-    testReceiptSha,
-    acceptedReviewSha,
-    agentReviewPassed,
-    repositoryMergeMethods,
-    commitSubjects,
-    dirtyPaths,
-  ] = await Promise.all([
-    resolveTestReceiptSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
-    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
-    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: localHeadSha }),
+  let authority;
+  try {
+    authority = resolveAcceptedDeliveryAuthority({
+      issueNumber,
+      branch,
+      localHeadSha,
+      testReceiptSha,
+      reviewReceiptSha: acceptedReviewSha,
+      agentReviewPassed,
+      pullRequests,
+    });
+  } catch (error) {
+    if (!(error instanceof DeliveryAuthorityError)) throw error;
+    const category =
+      error.category === 'ambiguous-pr'
+        ? 'pull-request-count'
+        : error.category === 'branch-mismatch'
+          ? 'pull-request-head'
+          : error.category === 'accepted-evidence'
+            ? 'head-mismatch'
+            : 'input';
+    throw new TypeError(`delivery-preflight:${category}`, { cause: error });
+  }
+  const selectedPullRequest = authority.pullRequest;
+  const mergedPullRequest = pullRequestMerged(selectedPullRequest);
+  const [repositoryMergeMethods, dirtyPaths] = await Promise.all([
     fetchRepositoryMergeMethods({ repository: cfg.repo }),
-    commitSubjectsPromise,
     listDirtyPaths({ issueNumber }),
   ]);
   const reviewAuthorization = await requiredDependency(
@@ -405,7 +522,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   )({
     issue,
     issueNumber,
-    expectedHeadSha: localHeadSha,
+    expectedHeadSha: authority.acceptedSha,
     acceptedReviewSha,
   });
   const assignee =
@@ -417,29 +534,62 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     assignee,
     repositoryMergeMethods,
   };
+  const context = {
+    repository: cfg.repo,
+    issueNumber,
+    prNumber: selectedPullRequest.number,
+  };
+  const initial = await readProjection({ deps, issueNumber, context });
+  const live = initial.projection.liveIntent;
+  const commitSubjects = mergedPullRequest
+    ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
+    : await openSourceCommitSubjects(
+        await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+        selectedPullRequest,
+        deps.inspectSourceCommit
+      );
   const preflightInput = {
     issue: { ...issue, agentReviewPassed, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
-    pullRequests: selectedPullRequests,
+    pullRequests,
     localHeadSha,
     testReceiptSha,
     acceptedReviewSha,
-    checks,
     dirtyPaths,
     config: deliveryConfig,
     commitSubjects,
   };
-  const preflight = mergedPullRequest
-    ? validateMergedDeliveryPreflight(preflightInput)
-    : validateDeliveryPreflight(preflightInput);
-  const context = {
+  if (authority.headRelation === 'advanced') {
+    const historical = validateHistoricalRecoveryPreflight({
+      ...preflightInput,
+      intent: live?.record ?? null,
+    });
+    return verifyAndFinalize({
+      deps,
+      issueNumber,
+      repository: cfg.repo,
+      context,
+      liveIntent: live,
+      matchingReceipt: initial.projection.matchingReceipt,
+      pullRequest: historical.pr,
+      recovery: true,
+      mode: 'historical-recovery',
+      acceptedSha: historical.acceptedSha,
+      localHeadSha: historical.observedLocalHeadSha,
+      testReceiptSha,
+      acceptedReviewSha,
+    });
+  }
+
+  const checks = await fetchRequiredChecks({
     repository: cfg.repo,
-    issueNumber,
-    prNumber: preflight.pr.number,
-  };
-  const initial = await readProjection({ deps, issueNumber, context });
-  const live = initial.projection.liveIntent;
+    prNumber: selectedPullRequest.number,
+    expectedHeadSha: authority.acceptedSha,
+  });
+  const preflight = mergedPullRequest
+    ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
+    : validateDeliveryPreflight({ ...preflightInput, checks });
   if (mergedPullRequest) {
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
@@ -471,9 +621,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           cfg,
           intentId: createIntentId(),
           sessionId: sessionId(),
-          clientCreatedAt: selectedPullRequests[0].mergedAt,
+          clientCreatedAt: selectedPullRequest.mergedAt,
         }),
-        pullRequest: selectedPullRequests[0],
+        pullRequest: selectedPullRequest,
+        acceptedSha: authority.acceptedSha,
         localHeadSha,
         testReceiptSha,
         acceptedReviewSha,
@@ -497,8 +648,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
         context,
         liveIntent,
         matchingReceipt: null,
-        pullRequest: selectedPullRequests[0],
+        pullRequest: selectedPullRequest,
         recovery,
+        mode: 'current-head',
+        acceptedSha: authority.acceptedSha,
         localHeadSha,
         testReceiptSha,
         acceptedReviewSha,
@@ -512,8 +665,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       context,
       liveIntent,
       matchingReceipt: initial.projection.matchingReceipt,
-      pullRequest: selectedPullRequests[0],
+      pullRequest: selectedPullRequest,
       recovery,
+      mode: 'current-head',
+      acceptedSha: authority.acceptedSha,
       localHeadSha,
       testReceiptSha,
       acceptedReviewSha,
@@ -538,6 +693,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     }
     return {
       status: 'action-required',
+      mode: 'current-head',
       intent: live.record,
       action: buildProviderAction(live.record),
     };
@@ -562,6 +718,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
 
   return {
     status: 'action-required',
+    mode: 'current-head',
     intent: readbackIntent.record,
     action: buildProviderAction(readbackIntent.record),
   };
@@ -585,20 +742,19 @@ function checkRollup(rollup, expectedHeadSha) {
   if (!Array.isArray(rollup)) return { readable: false, required: [] };
   return {
     readable: true,
-    required: rollup.map((check) => ({
-      name: String(check?.name || check?.context || ''),
-      headSha: expectedHeadSha,
-      status:
-        check?.status === 'COMPLETED' || check?.state
-          ? 'COMPLETED'
-          : String(check?.status || '').toUpperCase(),
-      conclusion: String(check?.conclusion || check?.state || '').toUpperCase(),
-    })),
+    required: rollup.map((check) => {
+      const state = String(check?.state || '').toUpperCase();
+      return {
+        name: String(check?.name || ''),
+        headSha: expectedHeadSha,
+        status: state === 'SUCCESS' ? 'COMPLETED' : state,
+        conclusion: state,
+      };
+    }),
   };
 }
 
 export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
-  const prRollups = new Map();
   const run = async (command, args, options = {}) =>
     exec(command, args, {
       cwd: ctx.projectDir,
@@ -611,7 +767,89 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     const { stdout } = await run(command, args, options);
     return JSON.parse(String(stdout || 'null'));
   };
+  const requiredChecksJson = async (args) => {
+    try {
+      return await json('gh', args);
+    } catch (error) {
+      if (Number(error?.code) !== 8 || typeof error?.stdout !== 'string') throw error;
+      return JSON.parse(error.stdout);
+    }
+  };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
+  const fetchCompletePullRequestCommits = async (prNumber, expectedHeadSha) => {
+    const query = `query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid commits(first:100,after:$cursor){totalCount nodes{commit{oid messageHeadline}} pageInfo{hasNextPage endCursor}}}}}`;
+    const commits = [];
+    const seenCommitShas = new Set();
+    const seenCursors = new Set();
+    let cursor = null;
+    let expectedTotal = null;
+    for (;;) {
+      const args = [
+        'api',
+        'graphql',
+        '-f',
+        `query=${query}`,
+        '-f',
+        `owner=${owner}`,
+        '-f',
+        `repo=${repoName}`,
+        '-F',
+        `pr=${prNumber}`,
+      ];
+      if (cursor !== null) args.push('-f', `cursor=${cursor}`);
+      const payload = await json('gh', args);
+      const pullRequest = payload?.data?.repository?.pullRequest;
+      const connection = pullRequest?.commits;
+      const totalCount = connection?.totalCount;
+      const nodes = connection?.nodes;
+      const pageInfo = connection?.pageInfo;
+      if (
+        !Number.isSafeInteger(totalCount) ||
+        totalCount < 1 ||
+        totalCount > MAX_PULL_REQUEST_SOURCE_COMMITS ||
+        !Array.isArray(nodes) ||
+        nodes.length > 100 ||
+        typeof pageInfo?.hasNextPage !== 'boolean' ||
+        !SHA_RE.test(expectedHeadSha || '') ||
+        pullRequest?.headRefOid !== expectedHeadSha
+      ) {
+        throw deliverError('pull-request-commits');
+      }
+      if (expectedTotal === null) expectedTotal = totalCount;
+      else if (expectedTotal !== totalCount) throw deliverError('pull-request-commits');
+      for (const node of nodes) {
+        const commit = node?.commit;
+        if (
+          !SHA_RE.test(commit?.oid || '') ||
+          typeof commit?.messageHeadline !== 'string' ||
+          commit.messageHeadline.length === 0 ||
+          seenCommitShas.has(commit.oid)
+        ) {
+          throw deliverError('pull-request-commits');
+        }
+        seenCommitShas.add(commit.oid);
+        commits.push({ oid: commit.oid, messageHeadline: commit.messageHeadline });
+      }
+      if (commits.length > expectedTotal) throw deliverError('pull-request-commits');
+      if (!pageInfo.hasNextPage) {
+        if (commits.length !== expectedTotal || commits.at(-1)?.oid !== expectedHeadSha) {
+          throw deliverError('pull-request-commits');
+        }
+        return commits;
+      }
+      const nextCursor = pageInfo.endCursor;
+      if (
+        nodes.length === 0 ||
+        typeof nextCursor !== 'string' ||
+        nextCursor.length === 0 ||
+        seenCursors.has(nextCursor)
+      ) {
+        throw deliverError('pull-request-commits');
+      }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    }
+  };
   const directoryEvidence = new Map();
   const resolveDirectoryEvidence = async ({ issue, issueNumber, expectedHeadSha }) => {
     const source = (ctx.locateAuthoritySource || locateAuthoritySource)({
@@ -637,6 +875,24 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     }
     return directoryEvidence.get(key);
   };
+  const inspectCommitObject = async (commitSha) => {
+    const { stdout } = await run('git', ['cat-file', 'commit', commitSha]);
+    const raw = String(stdout || '');
+    const separator = raw.indexOf('\n\n');
+    if (separator < 0) throw deliverError('commit-object');
+    const headers = raw.slice(0, separator).split('\n');
+    const message = raw.slice(separator + 2).replace(/\n$/, '');
+    const [commitTitle, ...bodyLines] = message.split('\n');
+    const commitMessage =
+      bodyLines[0] === '' ? bodyLines.slice(1).join('\n') : bodyLines.join('\n');
+    return {
+      parents: headers
+        .filter((line) => line.startsWith('parent '))
+        .map((line) => line.slice('parent '.length)),
+      commitTitle,
+      commitMessage,
+    };
+  };
 
   return {
     async resolveReviewAuthorization({ issue, issueNumber, expectedHeadSha, acceptedReviewSha }) {
@@ -648,8 +904,8 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       const approval = parseReviewApprovedMarker(issue.body);
       const directoryLane = lifecycleEvidence !== null;
       return resolveReviewAuthorization({
-        session: loadSession(currentSessionId()),
-        projectConfig: rawProjectConfig(),
+        session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),
+        projectConfig: (ctx.loadRawProjectConfig || rawProjectConfig)(),
         acceptedHeadSha: acceptedReviewSha === expectedHeadSha ? expectedHeadSha : null,
         humanApprovalEvidence:
           directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
@@ -763,14 +1019,12 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '-R',
         ctx.cfg.repo,
         '--json',
-        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,statusCheckRollup,commits',
+        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit',
       ]);
-      prRollups.set(Number(prNumber), pr.statusCheckRollup);
-      delete pr.statusCheckRollup;
-      pr.sourceCommitSubjects = Array.isArray(pr.commits)
-        ? pr.commits.map(({ messageHeadline }) => messageHeadline)
-        : null;
-      delete pr.commits;
+      pr.sourceCommits = await fetchCompletePullRequestCommits(prNumber, pr.headRefOid);
+      pr.sourceCommitSubjects = pr.sourceCommits.map(({ messageHeadline }) => messageHeadline);
+      pr.sourceCommitsComplete = true;
+      pr.sourceCommitsHeadSha = pr.headRefOid;
       pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
       if (pr.merged) {
         const mergedAt = normalizeGitHubInstant(pr.mergedAt);
@@ -792,7 +1046,30 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       return pr;
     },
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
-      return checkRollup(prRollups.get(Number(prNumber)), expectedHeadSha);
+      const required = await requiredChecksJson([
+        'pr',
+        'checks',
+        String(prNumber),
+        '-R',
+        ctx.cfg.repo,
+        '--required',
+        '--json',
+        'name,state',
+      ]);
+      const head = await json('gh', [
+        'pr',
+        'view',
+        String(prNumber),
+        '-R',
+        ctx.cfg.repo,
+        '--json',
+        'headRefOid',
+      ]);
+      const liveHeadSha = String(head?.headRefOid || '');
+      if (Array.isArray(required) && required.length === 0 && liveHeadSha !== expectedHeadSha) {
+        return { readable: false, required: [] };
+      }
+      return checkRollup(required, liveHeadSha);
     },
     async fetchRepositoryMergeMethods() {
       const repository = await json('gh', ['api', `repos/${owner}/${repoName}`]);
@@ -856,22 +1133,10 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       }
     },
     async inspectMergeCommit({ mergeCommitSha }) {
-      const { stdout } = await run('git', ['cat-file', 'commit', mergeCommitSha]);
-      const raw = String(stdout || '');
-      const separator = raw.indexOf('\n\n');
-      if (separator < 0) throw deliverError('merge-commit-object');
-      const headers = raw.slice(0, separator).split('\n');
-      const message = raw.slice(separator + 2).replace(/\n$/, '');
-      const [commitTitle, ...bodyLines] = message.split('\n');
-      const commitMessage =
-        bodyLines[0] === '' ? bodyLines.slice(1).join('\n') : bodyLines.join('\n');
-      return {
-        parents: headers
-          .filter((line) => line.startsWith('parent '))
-          .map((line) => line.slice('parent '.length)),
-        commitTitle,
-        commitMessage,
-      };
+      return inspectCommitObject(mergeCommitSha);
+    },
+    async inspectSourceCommit({ commitSha }) {
+      return inspectCommitObject(commitSha);
     },
     async attributingCommits(issueNumber, options) {
       return defaultAttributingCommits(issueNumber, { cwd: ctx.projectDir, ...options });

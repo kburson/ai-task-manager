@@ -247,16 +247,37 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   deliver: contract(
     [
-      'The target must remain open in Review with a running binding, accepted exact-head Test and review evidence, one current-branch pull request, and green checks.',
+      'The target must remain open in Review with a running binding, accepted exact-head Test and review evidence, and exact accepted-head pull-request evidence.',
       'Every retry re-reads live issue, pull-request, check, repository-setting, commit-range, and server-timestamped comment evidence before acting.',
     ],
     [
-      'Appends or reconciles one exact-head delivery intent and emits a sanctioned provider action; performs no lifecycle transition.',
+      'For an open current-head pull request, appends or reconciles one exact-head delivery intent and emits a sanctioned provider action.',
+      'For an already-merged current-head pull request, external recovery appends the exact external intent and receipt with no provider action.',
+      'For an advanced local head, historical receipt recovery requires the prior accepted-SHA intent and appends its exact receipt with no provider action.',
+      'Delivery performs no lifecycle transition.',
     ],
     [
-      'Prints the byte-stable provider action, an explicit child-lineage result, or a fail-closed diagnostic; recover with npx aitm deliver #N.',
+      'Prints the byte-stable AITM_PROVIDER_ACTION_REQUIRED or AITM_DELIVERY_RESULT envelope, an explicit child-lineage result, or a fail-closed diagnostic; recover with npx aitm deliver #N.',
     ],
     [exit(20, 'provider action required'), ...PREFLIGHT_TARGET_EXITS]
+  ),
+  'incident-ledger': contract(
+    [
+      'The target must be #1381; record mode requires a strict 19-row ledger matching fresh live observations.',
+      'Every Incorporated row must name a concrete carrier pull request, head, merge, on-trunk result, and non-delivery explanation.',
+      'Approval mode requires an authenticated GitHub user plus the exact recorded ledger ID and canonical digest.',
+    ],
+    [
+      'Record mode appends only an observation ledger; approval mode appends the human approval and exact #939 owner pointer.',
+      'That exact human ledger approval authorizes fresh Incorporated terminal disposition; durable issue-local authority governs retries.',
+      'Co-review and Full-Auto standing policy do not approve a later ledger ID or digest.',
+      'Neither mode closes an issue, changes lifecycle state, or manufactures delivery evidence.',
+      'The standalone read-only verifier accepts --phase pre-close before mutations or --phase terminal after closure; terminal is the default.',
+    ],
+    [
+      'Prints the immutable ledger identity and approval command, the authenticated approval and owner record identities, or a phase-specific verification result.',
+    ],
+    PREFLIGHT_TARGET_EXITS
   ),
   reject: contract(
     ['The target must be in Review, a reason is required, and preflight checks must pass.'],
@@ -309,10 +330,11 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   close: contract(
     [
-      'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; disposition close requires a valid --as mode.',
+      'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; Incorporated close requires an exact approved incident ledger and --of owner.',
     ],
     [
-      'Flushes timing and closes through Done, or records a duplicate/not-planned disposition and removes the issue from the board.',
+      'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
+      'Partial terminal recovery resumes only the missing suffix from durable transaction authority; an already-closed completed retry is read-only.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [
@@ -563,6 +585,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   approve: Object.freeze(['review', 'reject', 'close']),
   review: Object.freeze(['approve', 'deliver', 'reject', 'close']),
   deliver: Object.freeze(['review', 'close']),
+  'incident-ledger': Object.freeze(['deliver', 'close']),
   reject: Object.freeze(['review', 'demote']),
   test: Object.freeze(['review', 'demote', 'promote']),
   reconcile: Object.freeze(['board', 'status', 'promote']),
@@ -649,6 +672,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   review: Object.freeze([positional('#N', 'Issue number to move through the review gate.')]),
   deliver: Object.freeze([
     positional('#N', 'Required Review-state issue whose exact pull-request head is delivered.'),
+  ]),
+  'incident-ledger': Object.freeze([
+    positional('#1381', 'Required convergence issue that owns the incident ledger.'),
   ]),
   reject: Object.freeze([positional('#N', 'Issue number whose review is rejected.')]),
   test: Object.freeze([positional('#N', 'Issue number verified in the sandbox.')]),

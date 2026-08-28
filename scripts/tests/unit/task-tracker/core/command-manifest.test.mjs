@@ -78,3 +78,14 @@ test('deliver is a directly routed target-required verb', () => {
   assert.equal(routeIdentityForCommand('deliver'), route);
   assert.equal(PREFLIGHT_MODE.deliver, 'target-required');
 });
+
+test('incident-ledger is a directly routed target-required evidence verb', () => {
+  const route = routeIdentityForVerb('incident-ledger');
+  assert.deepEqual(route, {
+    verb: 'incident-ledger',
+    dispatch: 'verbs/incident-ledger.mjs',
+  });
+  assert.equal(commandByName('incident-ledger').routing, 'verbs/incident-ledger.mjs');
+  assert.equal(routeIdentityForCommand('incident-ledger'), route);
+  assert.equal(PREFLIGHT_MODE['incident-ledger'], 'target-required');
+});

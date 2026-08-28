@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const HOOK = 'scripts/task-tracker/hook-handler.mjs';
-const HOOK_TEST = 'scripts/tests/unit/task-tracker/lib/hook-session-start.test.mjs';
+const HOOK_TEST = 'scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs';
 const VALIDATOR = 'scripts/task-tracker/lib/agent-review/validators/timing-log-sequence.mjs';
 
 test('runtime recovery consumers import suspicious-gap policy from the operational leaf', () => {

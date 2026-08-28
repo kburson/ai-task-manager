@@ -3,6 +3,12 @@
 // does no I/O: callers must supply the current live PR snapshot and the strict
 // Task 1 projection.
 
+import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+import { buildDeliveryReceipt } from './delivery-records.mjs';
+import { verifyDeliveredPullRequest } from './delivery-verification.mjs';
+
+export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
+
 const SHA_RE = /^[0-9a-f]{40}$/;
 
 export class CloseDeliveryReceiptError extends TypeError {
@@ -23,24 +29,6 @@ function isObject(value) {
 
 function frozenResult(value) {
   return Object.freeze(value);
-}
-
-export function resolveAcceptedDeliveryHead({
-  localHeadSha,
-  testReceiptSha,
-  reviewReceiptSha = null,
-  agentReviewPassed,
-} = {}) {
-  if (
-    !SHA_RE.test(localHeadSha || '') ||
-    !SHA_RE.test(testReceiptSha || '') ||
-    agentReviewPassed !== true ||
-    (reviewReceiptSha !== null &&
-      (!SHA_RE.test(reviewReceiptSha || '') || reviewReceiptSha !== testReceiptSha))
-  ) {
-    fail('accepted-evidence');
-  }
-  return reviewReceiptSha ?? testReceiptSha;
 }
 
 export function requireDeliveryReceipt({
@@ -114,4 +102,44 @@ export function requireDeliveryReceipt({
   if (receipt.baseRef !== lineage.deliveryTarget) fail('base-mismatch');
   if (receipt.result !== 'delivered') fail('malformed');
   return frozenResult({ skipped: false, receipt });
+}
+
+export async function verifyCloseDeliveryReceipt({
+  gateInput,
+  receiptGate,
+  testReceiptSha,
+  acceptedReviewSha,
+  deps,
+} = {}) {
+  if (receiptGate?.skipped === true) return frozenResult({ skipped: true, receipt: null });
+  const receipt = receiptGate?.receipt;
+  const liveIntent = gateInput?.records?.liveIntent;
+  const intent = liveIntent?.record;
+  const pullRequest = gateInput?.pullRequest;
+  if (!isObject(receipt) || !isObject(intent) || !isObject(pullRequest)) fail('fresh-input');
+  const verified = await verifyDeliveredPullRequest({
+    acceptedSha: gateInput.acceptedSha,
+    acceptedReviewSha,
+    attributingCommits: deps?.attributingCommits,
+    fetchOriginTrunk: deps?.fetchOriginTrunk,
+    inspectMergeCommit: deps?.inspectMergeCommit,
+    intent,
+    intentCreatedAt: liveIntent.createdAt,
+    isAncestor: deps?.isAncestor,
+    localHeadSha: gateInput.observedLocalHeadSha,
+    pullRequest: {
+      ...pullRequest,
+      headRefDeleted: false,
+      mergeMethod: pullRequest.mergeMethod ?? intent.mergeMethod,
+    },
+    recovery: gateInput.headRelation === 'advanced',
+    testReceiptSha,
+  });
+  if (
+    canonicalRecordJson(buildDeliveryReceipt(verified.receiptInput)) !==
+    canonicalRecordJson(receipt)
+  ) {
+    fail('fresh-receipt-mismatch');
+  }
+  return frozenResult({ skipped: false, receipt, verification: verified });
 }

@@ -194,7 +194,7 @@ test('continuation freezes supplements and reviewer handoff requires and consume
     ),
     false
   );
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
 
   for (const reviewText of [
     '# Review\n',
@@ -210,7 +210,7 @@ test('continuation freezes supplements and reviewer handoff requires and consume
     const before = snapshotProtocol(root, options.dir);
     assert.throws(
       () =>
-        api.handoffReviewer({
+        api.profiledHandoffReviewer({
           cwd: root,
           dir: options.dir,
           actor: 'reviewer-agent',
@@ -231,7 +231,7 @@ test('continuation freezes supplements and reviewer handoff requires and consume
     'review-ok.md',
     '# Review\n[supplement:S-001]\n'
   );
-  const handedOff = api.handoffReviewer({
+  const handedOff = api.profiledHandoffReviewer({
     cwd: root,
     dir: options.dir,
     actor: 'reviewer-agent',
@@ -246,10 +246,10 @@ test('continuation freezes supplements and reviewer handoff requires and consume
   );
   assert.equal(api.statusProtocol({ cwd: root, dir: options.dir }).activeSupplements.length, 0);
 
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   const response = writeRuntimeFile(root, options.dir, 'later-response.md', '# Response\n');
   const laterCommit = commitArtifact(root, '# Artifact\n\nLater owner revision.\n');
-  api.handoffOwner({
+  api.profiledHandoffOwner({
     cwd: root,
     dir: options.dir,
     actor: 'owner-agent',
@@ -259,10 +259,10 @@ test('continuation freezes supplements and reviewer handoff requires and consume
     answers: acknowledged,
     message: 'later owner handoff',
   });
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
   const laterReview = writeRuntimeFile(root, options.dir, 'later-review.md', '# Review\n');
   assert.doesNotThrow(() =>
-    api.handoffReviewer({
+    api.profiledHandoffReviewer({
       cwd: root,
       dir: options.dir,
       actor: 'reviewer-agent',
@@ -278,7 +278,7 @@ test('frozen supplements survive a resumed closing owner turn and focus remains 
   const closing = await reviewerTurn({ maxReviewTurns: 1 });
   const { api, root, options, commit } = closing;
   const review = writeRuntimeFile(root, options.dir, 'final-review.md', '# Review\n');
-  api.handoffReviewer({
+  api.profiledHandoffReviewer({
     cwd: root,
     dir: options.dir,
     actor: 'reviewer-agent',
@@ -292,10 +292,10 @@ test('frozen supplements survive a resumed closing owner turn and focus remains 
   const supplement = writeRuntimeFile(root, options.dir, 'closing-context');
   register(api, root, options.dir, supplement);
   api.continueProtocol({ cwd: root, dir: options.dir, humanLogin: 'kendrick' });
-  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  api.profiledClaimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   const response = writeRuntimeFile(root, options.dir, 'closing-response.md', '# Response\n');
   const closingCommit = commitArtifact(root, '# Artifact\n\nClosing owner revision.\n');
-  const afterOwner = api.handoffOwner({
+  const afterOwner = api.profiledHandoffOwner({
     cwd: root,
     dir: options.dir,
     actor: 'owner-agent',
@@ -392,7 +392,11 @@ test('pending and frozen supplement drift blocks continuation and reviewer mutat
     maxReviewTurns: 2,
     humanLogin: 'kendrick',
   });
-  frozen.api.claimTurn({ cwd: frozen.root, dir: frozen.options.dir, actor: 'reviewer-agent' });
+  frozen.api.profiledClaimTurn({
+    cwd: frozen.root,
+    dir: frozen.options.dir,
+    actor: 'reviewer-agent',
+  });
   writeFileSync(path.join(frozen.root, frozenFile), 'drifted frozen context');
   const frozenStatus = frozen.api.statusProtocol({ cwd: frozen.root, dir: frozen.options.dir });
   assert.equal(frozenStatus.integrity.ok, false);
@@ -406,7 +410,7 @@ test('pending and frozen supplement drift blocks continuation and reviewer mutat
   const beforeFrozenHandoff = snapshotProtocol(frozen.root, frozen.options.dir);
   assert.throws(
     () =>
-      frozen.api.handoffReviewer({
+      frozen.api.profiledHandoffReviewer({
         cwd: frozen.root,
         dir: frozen.options.dir,
         actor: 'reviewer-agent',

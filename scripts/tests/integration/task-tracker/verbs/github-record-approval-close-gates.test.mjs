@@ -155,6 +155,9 @@ function runDirectoryDeliver({ projection, body = 'directory body without approv
       headRefOid: SHA,
       mergeable: 'MERGEABLE',
       sourceCommitSubjects: ['[#1144] Directory delivery'],
+      sourceCommits: [{ oid: SHA, messageHeadline: '[#1144] Directory delivery' }],
+      sourceCommitsComplete: true,
+      sourceCommitsHeadSha: SHA,
     }),
     fetchRequiredChecks: async () => ({
       readable: true,

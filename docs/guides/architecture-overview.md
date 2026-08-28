@@ -79,6 +79,35 @@ column on the GitHub Projects board is the source of truth for state.
   marker would disappear. Hand-rolled `gh issue edit --body` writes are refused
   by the PreToolUse Bash guard.
 
+### Delivery authority and incident reconciliation
+
+Delivery authority is keyed by the immutable **accepted SHA**, not by a mutable
+branch name. The resolver selects an **exact accepted-head** pull request and
+distinguishes three operational cases: an open current-head pull request emits a
+provider action; an already-merged current-head pull request recovers a
+`current-head` receipt with no action; and an advanced-head prior intent recovers
+a `historical-recovery` receipt with no action. Intent, receipt, Test, review,
+approval, and close records retain exact identities so a reused branch cannot
+transfer authority between stories.
+
+Approval provenance is independently re-read at close. Explicit human approval
+binds to the accepted SHA; Full-Auto standing policy is revalidated from the same
+live session/project source used by the delivery resolver. This authorization
+runs before any close mutation. A completed transaction makes an already-closed
+retry read-only, while a durable partial transaction can recover only after fresh
+receipt verification.
+
+Provider adapters own **timestamp normalization** at their boundary. The core
+then applies **strict core parsing** to the normalized timestamp and rejects
+malformed or impossible evidence rather than repairing it implicitly.
+
+Incident convergence has a separate authority path: an immutable ledger ID and
+canonical digest must receive explicit human approval. The incident ledger is
+observation and authorization, never delivery evidence. Issue-local outcome
+records use read-after-write **record readback**, and the phase-aware verifier
+runs blocker/dependency, authority, and **reconciliation** checks in `pre-close`
+and terminal modes.
+
 ## 4. Runtime-contract vs support classification
 
 Each major path is labelled below. **runtime-contract** = ships in the published

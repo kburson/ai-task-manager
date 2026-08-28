@@ -14,6 +14,12 @@ const definition = {
     { name: 'Replaced', color: 'PURPLE', description: 'Work was superseded by another issue' },
     { name: 'Discarded', color: 'GRAY', description: 'Closed without retained delivery' },
     { name: 'Duplicate', color: 'YELLOW', description: 'Duplicates another issue' },
+    {
+      name: 'Incorporated',
+      color: 'BLUE',
+      description:
+        'Implementation retained on trunk without complete issue-local delivery authority',
+    },
   ],
 };
 
@@ -36,7 +42,11 @@ function gqlHarness(fields = []) {
 }
 
 test('repair reuses an existing complete Disposition field without mutation', async () => {
-  const field = { id: 'F_EXISTING', name: 'Disposition', options: definition.options };
+  const field = {
+    id: 'F_EXISTING',
+    name: 'Disposition',
+    options: definition.options.map((option, index) => ({ id: `O_${index}`, ...option })),
+  };
   const h = gqlHarness([field]);
   const result = await ensureDispositionField({
     projectId: 'P',
@@ -84,8 +94,82 @@ test('repair appends missing canonical options while preserving existing option 
   });
   assert.deepEqual(
     update.variables.options.slice(1).map((option) => option.name),
-    ['Replaced', 'Discarded', 'Duplicate']
+    ['Replaced', 'Discarded', 'Duplicate', 'Incorporated']
   );
+});
+
+test('repair appends only Incorporated when all historical options are exact', async () => {
+  const field = {
+    id: 'F_EXISTING',
+    name: 'Disposition',
+    options: definition.options.slice(0, -1).map((option, index) => ({
+      id: `O_${index}`,
+      ...option,
+    })),
+  };
+  const h = gqlHarness([field]);
+  const result = await ensureDispositionField({ projectId: 'P', definition, gqlFn: h.gql });
+  assert.equal(result.optionsUpdated, true);
+  const update = h.calls.find((call) => call.query.includes('updateProjectV2Field'));
+  assert.deepEqual(update.variables.options.slice(0, -1), field.options);
+  assert.deepEqual(update.variables.options.at(-1), definition.options.at(-1));
+});
+
+test('repair refuses ambiguous fields and malformed canonical options without writing', async () => {
+  const duplicateFields = gqlHarness([
+    { id: 'F_ONE', name: 'Disposition', options: [] },
+    { id: 'F_TWO', name: 'disposition', options: [] },
+  ]);
+  await assert.rejects(
+    ensureDispositionField({ projectId: 'P', definition, gqlFn: duplicateFields.gql }),
+    /ambiguous duplicate.*refusing repair/i
+  );
+  assert.equal(
+    duplicateFields.calls.some((call) => call.query.includes('updateProjectV2Field')),
+    false
+  );
+
+  const malformedOption = gqlHarness([
+    {
+      id: 'F_EXISTING',
+      name: 'Disposition',
+      options: [{ id: 'O_DELIVERED', ...definition.options[0], color: 'RED' }],
+    },
+  ]);
+  await assert.rejects(
+    ensureDispositionField({ projectId: 'P', definition, gqlFn: malformedOption.gql }),
+    /differs from the canonical definition.*refusing repair/i
+  );
+  assert.equal(
+    malformedOption.calls.some((call) => call.query.includes('updateProjectV2Field')),
+    false
+  );
+
+  for (const options of [
+    [{ ...definition.options[0] }],
+    [
+      { id: 'O_SHARED', ...definition.options[0] },
+      { id: 'O_SHARED', ...definition.options[1] },
+    ],
+    [
+      { id: 'O_DELIVERED', ...definition.options[0] },
+      { id: 'O_EXTRA', name: 'Custom', color: 'GREEN' },
+    ],
+  ]) {
+    const malformedProviderState = gqlHarness([{ id: 'F_EXISTING', name: 'Disposition', options }]);
+    await assert.rejects(
+      ensureDispositionField({
+        projectId: 'P',
+        definition,
+        gqlFn: malformedProviderState.gql,
+      }),
+      /malformed or ambiguous options.*refusing repair/i
+    );
+    assert.equal(
+      malformedProviderState.calls.some((call) => call.query.includes('updateProjectV2Field')),
+      false
+    );
+  }
 });
 
 test('persistDispositionField writes both compatibility and generic projections idempotently', () => {

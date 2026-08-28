@@ -22,6 +22,7 @@ import {
   existsSync,
 } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { statePath as trackerStatePath } from '../../../../task-tracker/paths.mjs';
 import { buildPlanApprovalAuditComment } from '../../../../task-tracker/lib/plan-approval-audit.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -272,12 +273,13 @@ process.exit(0);
   return { binDir, callsLog };
 }
 
-async function run(sandbox, binDir, args) {
+async function run(sandbox, binDir, args, envOverrides = {}) {
   const env = {
     ...process.env,
     PATH: `${binDir}:${process.env.PATH}`,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '',
+    ...envOverrides,
   };
   try {
     const r = await pexec('node', [CLI, ...args], { env, timeout: REVIEW_CLI_TIMEOUT_MS });
@@ -297,7 +299,7 @@ async function run(sandbox, binDir, args) {
       JSON.stringify({
         active: '#101',
         lastActive: '#101',
-        entryStartTs: null,
+        entryStartTs: '2026-05-10T00:00:00.000Z',
         wordsAtEntryStart: 0,
       })
     );
@@ -357,6 +359,20 @@ async function run(sandbox, binDir, args) {
       /PROMPT_REQUIRED: review-approval #101/,
       `expected marker in stdout; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`
     );
+    const liveStatePath = trackerStatePath(sandbox);
+    const humanState = JSON.parse(readFileSync(liveStatePath, 'utf8'));
+    assert.equal(humanState.entryStartTs, null, 'human approval wait pauses the timer');
+
+    humanState.active = '#101';
+    humanState.lastActive = '#101';
+    humanState.entryStartTs = null;
+    humanState.wordsAtEntryStart = 0;
+    writeFileSync(liveStatePath, JSON.stringify(humanState));
+    const fullAuto = await run(sandbox, binDir, ['review', '#101'], { TT_FULL_AUTO: '1' });
+    assert.equal(fullAuto.code, 0, `expected Full-Auto exit 0; stderr:\n${fullAuto.stderr}`);
+    assert.doesNotMatch(fullAuto.stdout, /PROMPT_REQUIRED: review-approval/);
+    const fullAutoState = JSON.parse(readFileSync(liveStatePath, 'utf8'));
+    assert.equal(typeof fullAutoState.entryStartTs, 'string');
     console.log('test 1 passed: verbReview emits marker on success');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
