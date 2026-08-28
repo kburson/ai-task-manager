@@ -796,12 +796,18 @@ convergenceIssue, incidentIssue })`.
 
 - Extends the existing surface with
   `/task close #N --as incorporated --of #1381`.
+- Extends ordinary incident-epic close with the explicit owner pointer
+  `/task close #939 --of #1381`. Without `--as`, `--of` means only "load the
+  approved incident ledger from this convergence issue"; it does not select an
+  Incorporated outcome.
 - Produces `authorizeIncorporatedClose(input)` as a pure read decision and
   `runIncorporatedClose(input)` as the re-entrant mutation orchestrator.
 - Produces `authorizeIncidentEpicClose(input)` as a pure pre-terminal guard for
   ordinary close of the ledger's incident issue. It derives the required
   non-native terminal set from the approved ledger instead of pretending all
-  convergence targets are native epic children.
+  convergence targets are native epic children. The caller must supply the
+  parsed `convergenceIssue` from the exact `--of` argument; lineage, free-form
+  summaries, branch names, and issue search are never discovery authority.
 - Returns `{ status: 'incorporated'|'already-incorporated', issueNumber,
 convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
@@ -855,6 +861,14 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   Keep the existing native-child guard additive; neither guard substitutes for
   the other.
 
+  Add parser and discovery tests for the ordinary `close 939 --of 1381` shape.
+  Refuse a missing/malformed owner argument once incident-ledger close is
+  requested, repeated or conflicting `--of` arguments, a nonexistent owner,
+  zero or forked approved ledger tips on the named owner, a ledger whose
+  `incidentIssue` is not the close target, and a ledger ID/digest mismatch.
+  Every refusal occurs before mutation. Reject `--of` on an ordinary issue that
+  is not the named ledger's `incidentIssue`.
+
 - [ ] **Step 4: Run focused tests and verify failure**
 
   ```bash
@@ -873,12 +887,15 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   delivery receipt gate.
 
   Implement `authorizeIncidentEpicClose` against the same approved ledger
-  projection. Wire it in `close.mjs` after native-child/read-only authority
-  resolution but before every terminal mutation when the target is the
-  ledger's `incidentIssue`. Require the exact approved outcomes for #1380,
-  #1382, #1383, and #1384 and their matching live terminal states. Return a
-  frozen authorization on success and stable refusal details naming every
-  pending or contradictory issue.
+  projection loaded from the exact `--of` convergence issue. Wire it in
+  `close.mjs` after argument parsing and native-child/read-only authority
+  resolution but before every terminal mutation. The loaded approved ledger
+  must name the close target as its `incidentIssue`; otherwise refuse. Require
+  the exact approved outcomes for #1380, #1382, #1383, and #1384 and their
+  matching live terminal states. Return a frozen authorization on success and
+  stable refusal details naming every pending or contradictory issue. Update
+  close help so `--of`'s Incorporated and ordinary incident-owner meanings are
+  unambiguous and cannot be combined accidentally.
 
 - [ ] **Step 6: Implement re-entrant terminal mutation**
 
@@ -1272,9 +1289,15 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   unchanged historical result, Incorporated record, recovered receipt,
   approval provenance, reused-branch idempotence proof, and full-ledger
   verification. Complete the epic's remaining Test, Review, approval, delivery,
-  and ordinary close gates. Retry close once and verify no duplicate terminal
-  effects. Do not close, promote, or mutate any incident issue outside the
-  approved ledger outcome or the verified #939 child graph.
+  and ordinary close gates. Invoke the ledger-aware terminal path explicitly:
+
+  ```bash
+  npx aitm close 939 --of 1381
+  ```
+
+  Retry the same exact command once and verify no duplicate terminal effects.
+  Do not close, promote, or mutate any incident issue outside the approved
+  ledger outcome or the verified #939 child graph.
 
 ## Claude Review Advisories Carried Forward
 
