@@ -13,7 +13,10 @@ import {
   readIssueDeliveryAuthority,
   resolveSingleDeliveredEvidence,
 } from './lib/delivery-incident-reconciliation.mjs';
-import { REVIEWED_INCIDENT_ISSUES } from './lib/delivery-incident-records.mjs';
+import {
+  incorporatedRecordMatchesRow,
+  REVIEWED_INCIDENT_ISSUES,
+} from './lib/delivery-incident-records.mjs';
 import { createProductionRuntime } from './verbs/incident-ledger.mjs';
 import { parseBlockedByStrict } from './lib/blocked-marker.mjs';
 import { formatBlockedByValue } from './lib/blocked-by-field.mjs';
@@ -139,19 +142,6 @@ function expectedDisposition(outcome) {
   if (outcome === 'incorporated') return 'Incorporated';
   if (outcome === 'retain-superseded') return 'Replaced';
   return 'Delivered';
-}
-
-function incorporatedRecordMatchesRow(record, row) {
-  const payload = record?.envelope?.payload;
-  return (
-    payload?.issueNumber === row.issueNumber &&
-    payload.acceptedSha === row.acceptedSha &&
-    payload.prNumber === row.prNumber &&
-    payload.prHeadSha === row.prHeadSha &&
-    payload.mergeSha === row.mergeSha &&
-    payload.codeOnTrunkBasis === row.codeOnTrunkBasis &&
-    payload.blocker === row.blocker
-  );
 }
 
 export async function productionVerification(parsed, deps = {}) {

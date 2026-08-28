@@ -1,5 +1,8 @@
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
-import { buildIncidentLedgerOwnerPayload } from './delivery-incident-records.mjs';
+import {
+  buildIncidentLedgerOwnerPayload,
+  incorporatedRecordMatchesRow,
+} from './delivery-incident-records.mjs';
 import { resolveApprovedIncidentLedger } from './delivery-incident-reconciliation.mjs';
 
 export const INCIDENT_EPIC_TERMINAL_ISSUES = Object.freeze([1380, 1382, 1383, 1384]);
@@ -114,16 +117,17 @@ export function authorizeIncidentEpicClose({
     fail('owner-authority-mismatch');
   }
 
-  const rows = new Map(
-    (authority.ledgerPayload?.rows || []).map((row) => [row.issueNumber, row.intendedOutcome])
-  );
+  const rows = new Map((authority.ledgerPayload?.rows || []).map((row) => [row.issueNumber, row]));
   const recorded = new Set(
-    (authority.projection?.approvedLedgerIncorporated || []).map(
-      ({ envelope }) => envelope.payload.issueNumber
-    )
+    (authority.projection?.incorporated || [])
+      .filter((record) => {
+        const row = rows.get(record?.envelope?.payload?.issueNumber);
+        return row?.intendedOutcome === 'incorporated' && incorporatedRecordMatchesRow(record, row);
+      })
+      .map(({ envelope }) => envelope.payload.issueNumber)
   );
   const missingRows = INCIDENT_EPIC_TERMINAL_ISSUES.filter(
-    (issue) => rows.get(issue) !== 'incorporated'
+    (issue) => rows.get(issue)?.intendedOutcome !== 'incorporated'
   );
   if (missingRows.length > 0) fail('approved-row', missingRows);
   const missingRecords = INCIDENT_EPIC_TERMINAL_ISSUES.filter((issue) => !recorded.has(issue));
