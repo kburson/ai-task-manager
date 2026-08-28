@@ -35,8 +35,13 @@ import {
 } from '../lib/delivery-records.mjs';
 import {
   validateDeliveryPreflight,
+  validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
+import {
+  DeliveryAuthorityError,
+  resolveAcceptedDeliveryAuthority,
+} from '../lib/delivery-authority.mjs';
 import {
   buildProviderAction,
   serializeProviderActionRequired,
@@ -291,6 +296,8 @@ async function verifyAndFinalize({
   matchingReceipt,
   pullRequest,
   recovery,
+  mode,
+  acceptedSha,
   localHeadSha,
   testReceiptSha,
   acceptedReviewSha,
@@ -299,6 +306,7 @@ async function verifyAndFinalize({
   const verification =
     verified ??
     (await verifyDeliveredPullRequest({
+      acceptedSha,
       intent: liveIntent.record,
       intentCreatedAt: liveIntent.createdAt,
       pullRequest,
@@ -318,6 +326,7 @@ async function verifyAndFinalize({
     }
     return {
       status: 'already-delivered',
+      mode,
       intent: liveIntent.record,
       receipt: matchingReceipt.record,
       action: null,
@@ -349,6 +358,7 @@ async function verifyAndFinalize({
   }
   return {
     status: 'delivered',
+    mode,
     intent: liveIntent.record,
     receipt: readbackReceipt.record,
     action: null,
@@ -409,6 +419,14 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
 
   const branch = await getCurrentBranch();
   const localHeadSha = await getLocalHeadSha();
+  const testReceiptSha = await resolveTestReceiptSha({ issue, issueNumber });
+  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
+    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+  ]);
+  if (agentReviewPassed !== true) {
+    throw new TypeError('delivery-preflight:agent-review-evidence');
+  }
   const pullRequestRefs = await listPullRequests({
     repository: cfg.repo,
     headRef: branch,
@@ -419,37 +437,33 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
     )
   );
-  const exactHeadPullRequests = pullRequests.filter(
-    (pullRequest) => pullRequest.headRefOid === localHeadSha
-  );
-  const selectedPullRequests = exactHeadPullRequests;
-  const mergedPullRequest =
-    selectedPullRequests.length === 1 && pullRequestMerged(selectedPullRequests[0]);
-  const prNumber = selectedPullRequests.length === 1 ? selectedPullRequests[0].number : null;
-  const checks =
-    prNumber === null
-      ? { readable: false, required: [] }
-      : await fetchRequiredChecks({
-          repository: cfg.repo,
-          prNumber,
-          expectedHeadSha: localHeadSha,
-        });
-  const commitSubjectsPromise = mergedPullRequest
-    ? mergedSourceCommitSubjects(selectedPullRequests[0], deps.inspectSourceCommit)
-    : listCommitSubjects({ range: 'origin/trunk..HEAD' });
-  const [
-    testReceiptSha,
-    acceptedReviewSha,
-    agentReviewPassed,
-    repositoryMergeMethods,
-    commitSubjects,
-    dirtyPaths,
-  ] = await Promise.all([
-    resolveTestReceiptSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
-    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
-    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: localHeadSha }),
+  let authority;
+  try {
+    authority = resolveAcceptedDeliveryAuthority({
+      issueNumber,
+      branch,
+      localHeadSha,
+      testReceiptSha,
+      reviewReceiptSha: acceptedReviewSha,
+      agentReviewPassed,
+      pullRequests,
+    });
+  } catch (error) {
+    if (!(error instanceof DeliveryAuthorityError)) throw error;
+    const category =
+      error.category === 'ambiguous-pr'
+        ? 'pull-request-count'
+        : error.category === 'branch-mismatch'
+          ? 'pull-request-head'
+          : error.category === 'accepted-evidence'
+            ? 'head-mismatch'
+            : 'input';
+    throw new TypeError(`delivery-preflight:${category}`, { cause: error });
+  }
+  const selectedPullRequest = authority.pullRequest;
+  const mergedPullRequest = pullRequestMerged(selectedPullRequest);
+  const [repositoryMergeMethods, dirtyPaths] = await Promise.all([
     fetchRepositoryMergeMethods({ repository: cfg.repo }),
-    commitSubjectsPromise,
     listDirtyPaths({ issueNumber }),
   ]);
   const reviewAuthorization = await requiredDependency(
@@ -458,7 +472,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   )({
     issue,
     issueNumber,
-    expectedHeadSha: localHeadSha,
+    expectedHeadSha: authority.acceptedSha,
     acceptedReviewSha,
   });
   const assignee =
@@ -470,6 +484,16 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     assignee,
     repositoryMergeMethods,
   };
+  const context = {
+    repository: cfg.repo,
+    issueNumber,
+    prNumber: selectedPullRequest.number,
+  };
+  const initial = await readProjection({ deps, issueNumber, context });
+  const live = initial.projection.liveIntent;
+  const commitSubjects = mergedPullRequest
+    ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
+    : await listCommitSubjects({ range: 'origin/trunk..HEAD' });
   const preflightInput = {
     issue: { ...issue, agentReviewPassed, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
@@ -478,21 +502,40 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     localHeadSha,
     testReceiptSha,
     acceptedReviewSha,
-    checks,
     dirtyPaths,
     config: deliveryConfig,
     commitSubjects,
   };
-  const preflight = mergedPullRequest
-    ? validateMergedDeliveryPreflight(preflightInput)
-    : validateDeliveryPreflight(preflightInput);
-  const context = {
+  if (authority.headRelation === 'advanced') {
+    const historical = validateHistoricalRecoveryPreflight({
+      ...preflightInput,
+      intent: live?.record ?? null,
+    });
+    return verifyAndFinalize({
+      deps,
+      issueNumber,
+      repository: cfg.repo,
+      context,
+      liveIntent: live,
+      matchingReceipt: initial.projection.matchingReceipt,
+      pullRequest: historical.pr,
+      recovery: true,
+      mode: 'historical-recovery',
+      acceptedSha: historical.acceptedSha,
+      localHeadSha: historical.observedLocalHeadSha,
+      testReceiptSha,
+      acceptedReviewSha,
+    });
+  }
+
+  const checks = await fetchRequiredChecks({
     repository: cfg.repo,
-    issueNumber,
-    prNumber: preflight.pr.number,
-  };
-  const initial = await readProjection({ deps, issueNumber, context });
-  const live = initial.projection.liveIntent;
+    prNumber: selectedPullRequest.number,
+    expectedHeadSha: authority.acceptedSha,
+  });
+  const preflight = mergedPullRequest
+    ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
+    : validateDeliveryPreflight({ ...preflightInput, checks });
   if (mergedPullRequest) {
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
@@ -524,9 +567,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           cfg,
           intentId: createIntentId(),
           sessionId: sessionId(),
-          clientCreatedAt: selectedPullRequests[0].mergedAt,
+          clientCreatedAt: selectedPullRequest.mergedAt,
         }),
-        pullRequest: selectedPullRequests[0],
+        pullRequest: selectedPullRequest,
+        acceptedSha: authority.acceptedSha,
         localHeadSha,
         testReceiptSha,
         acceptedReviewSha,
@@ -550,8 +594,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
         context,
         liveIntent,
         matchingReceipt: null,
-        pullRequest: selectedPullRequests[0],
+        pullRequest: selectedPullRequest,
         recovery,
+        mode: 'current-head',
+        acceptedSha: authority.acceptedSha,
         localHeadSha,
         testReceiptSha,
         acceptedReviewSha,
@@ -565,8 +611,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       context,
       liveIntent,
       matchingReceipt: initial.projection.matchingReceipt,
-      pullRequest: selectedPullRequests[0],
+      pullRequest: selectedPullRequest,
       recovery,
+      mode: 'current-head',
+      acceptedSha: authority.acceptedSha,
       localHeadSha,
       testReceiptSha,
       acceptedReviewSha,
@@ -591,6 +639,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     }
     return {
       status: 'action-required',
+      mode: 'current-head',
       intent: live.record,
       action: buildProviderAction(live.record),
     };
@@ -615,6 +664,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
 
   return {
     status: 'action-required',
+    mode: 'current-head',
     intent: readbackIntent.record,
     action: buildProviderAction(readbackIntent.record),
   };

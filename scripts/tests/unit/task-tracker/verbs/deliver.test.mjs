@@ -94,12 +94,16 @@ function makeHarness(options = {}) {
     headRefDeleted: options.headRefDeleted ?? false,
     fetchFailure: options.fetchFailure ?? false,
     historyMergeMethod: options.historyMergeMethod ?? 'squash',
+    agentReviewPassed: options.agentReviewPassed ?? true,
+    reviewAuthorization:
+      options.reviewAuthorization ??
+      Object.freeze({ mode: 'full-auto', standing: true, source: 'test' }),
   };
   let intentIdIndex = 0;
 
   const deps = {
     resolveReviewAuthorization() {
-      return Object.freeze({ mode: 'full-auto', standing: true, source: 'test' });
+      return data.reviewAuthorization;
     },
     async fetchIssue() {
       return {
@@ -107,7 +111,7 @@ function makeHarness(options = {}) {
         state: 'OPEN',
         projectState: 'Review',
         assignees: ['kburson'],
-        agentReviewPassed: true,
+        agentReviewPassed: data.agentReviewPassed,
         body: 'governed issue body',
       };
     },
@@ -125,6 +129,9 @@ function makeHarness(options = {}) {
     },
     async resolveAcceptedReviewSha() {
       return data.acceptedReviewSha;
+    },
+    async resolveAgentReviewPassed() {
+      return data.agentReviewPassed;
     },
     async listPullRequests({ headRef }) {
       calls.listPullRequests += 1;
@@ -305,6 +312,15 @@ async function deliver(harness, overrides = {}) {
   });
 }
 
+async function advancePendingDelivery(harness) {
+  const pending = await deliver(harness);
+  assert.equal(pending.status, 'action-required');
+  harness.data.prState = 'MERGED';
+  harness.data.prHead = HEAD;
+  harness.data.head = NEXT_HEAD;
+  return pending;
+}
+
 test('first open-PR call posts one exact intent before emitting one action and exits 20', async () => {
   const harness = makeHarness();
   let exitCode = null;
@@ -462,16 +478,15 @@ test('merged verification rejects the wrong recorded pre-merge head', async () =
   const harness = makeHarness();
   await mergePendingIntent(harness);
   harness.data.prHead = NEXT_HEAD;
-  await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
+  await assert.rejects(() => deliver(harness), /delivery-preflight:pull-request-count/);
   assert.equal(harness.calls.createIssueComment, 1);
 });
 
-for (const authority of ['local', 'test', 'review']) {
+for (const authority of ['test', 'review']) {
   test(`merged delivery refuses a ${authority} SHA disagreement without appending a receipt`, async () => {
     const harness = makeHarness();
     await mergePendingIntent(harness);
     harness.data.prHead = HEAD;
-    if (authority === 'local') harness.data.head = NEXT_HEAD;
     if (authority === 'test') harness.data.testReceiptSha = NEXT_HEAD;
     if (authority === 'review') harness.data.acceptedReviewSha = NEXT_HEAD;
 
@@ -582,6 +597,242 @@ test('repeated exact receipt re-verifies live PR and trunk without creating anot
   assert.deepEqual(repeated.receipt, delivered.receipt);
   assert.equal(harness.calls.createIssueComment, postsAfterDelivery);
   assert.equal(harness.calls.fetchOriginTrunk, 2);
+});
+
+test('advanced local head recovers one historical receipt from a prior durable intent', async () => {
+  const harness = makeHarness();
+  const pending = await advancePendingDelivery(harness);
+  assert.equal(pending.mode, 'current-head');
+
+  const recovered = await deliver(harness);
+  assert.equal(recovered.mode, 'historical-recovery');
+  assert.equal(recovered.status, 'delivered');
+  assert.equal(recovered.intent.expectedHeadSha, HEAD);
+  assert.equal(recovered.receipt.expectedHeadSha, HEAD);
+  assert.equal(recovered.action, null);
+  assert.equal(harness.calls.createIssueComment, 2);
+
+  const retry = await deliver(harness);
+  assert.equal(retry.mode, 'historical-recovery');
+  assert.equal(retry.status, 'already-delivered');
+  assert.equal(retry.action, null);
+  assert.equal(harness.calls.createIssueComment, 2);
+});
+
+test('advanced local head refuses historical recovery while the accepted PR is open', async () => {
+  const harness = makeHarness();
+  await deliver(harness);
+  harness.data.prHead = HEAD;
+  harness.data.head = NEXT_HEAD;
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:pull-request-not-merged/);
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('advanced local head requires accepted Agent Review and standing approval', async () => {
+  for (const invalid of ['agent-review', 'approval']) {
+    const harness = makeHarness();
+    await advancePendingDelivery(harness);
+    if (invalid === 'agent-review') harness.data.agentReviewPassed = false;
+    if (invalid === 'approval') {
+      harness.data.reviewAuthorization = { mode: 'full-auto', standing: false, source: 'test' };
+    }
+
+    await assert.rejects(
+      () => deliver(harness),
+      invalid === 'agent-review'
+        ? /delivery-preflight:agent-review-evidence/
+        : /delivery-preflight:approval-evidence/
+    );
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
+});
+
+test('advanced local head refuses wrong-SHA Test or Review evidence', async () => {
+  for (const invalid of ['test', 'review']) {
+    const harness = makeHarness();
+    await advancePendingDelivery(harness);
+    if (invalid === 'test') harness.data.testReceiptSha = NEXT_HEAD;
+    if (invalid === 'review') harness.data.acceptedReviewSha = NEXT_HEAD;
+
+    await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
+});
+
+test('advanced local head enforces intent-time ordering and trunk reachability', async () => {
+  for (const invalid of ['merge-time', 'reachability']) {
+    const harness = makeHarness();
+    await advancePendingDelivery(harness);
+    if (invalid === 'merge-time') harness.data.mergedAt = '2026-08-22T13:59:59.000Z';
+    if (invalid === 'reachability') harness.deps.isAncestor = async () => false;
+
+    await assert.rejects(
+      () => deliver(harness),
+      invalid === 'merge-time'
+        ? /delivery-verification:merge-before-intent/
+        : /delivery-verification:trunk-reachability/
+    );
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
+});
+
+for (const [label, override] of [
+  ['repository', { repository: 'kburson/wrong-repository' }],
+  [
+    'issue',
+    {
+      issueNumber: 940,
+      attributionTokens: ['#940'],
+      commitTitle: '[#940] Governed PR delivery',
+      commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#940]`,
+    },
+  ],
+  [
+    'pull request',
+    { prNumber: 1401, commitMessage: `PR #1401\nSource: ${HEAD}\n\nAttribution: [#939]` },
+  ],
+  ['base', { baseRef: 'main' }],
+  ['branch', { headRef: 'codex/wrong-branch' }],
+  [
+    'head',
+    {
+      expectedHeadSha: NEXT_HEAD,
+      commitMessage: `PR #1400\nSource: ${NEXT_HEAD}\n\nAttribution: [#939]`,
+    },
+  ],
+  ['method', { mergeMethod: 'merge' }],
+  [
+    'attribution',
+    {
+      attributionTokens: ['#938', '#939'],
+      commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939] [#938]`,
+    },
+  ],
+  ['title', { commitTitle: '[#939] Wrong title' }],
+  ['message', { commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939] wrong` }],
+]) {
+  test(`advanced local head rejects divergent prior intent ${label} bytes`, async () => {
+    const harness = makeHarness();
+    const pending = await advancePendingDelivery(harness);
+    const intentInput = structuredClone(pending.intent);
+    for (const key of ['schema', 'state', 'commitTitleSha256', 'commitMessageSha256']) {
+      delete intentInput[key];
+    }
+    const divergent = buildDeliveryIntent({ ...intentInput, ...override });
+    harness.data.comments[0] = {
+      ...harness.data.comments[0],
+      body: renderDeliveryIntentComment(divergent),
+    };
+
+    await assert.rejects(
+      () => deliver(harness),
+      /(?:delivery-preflight:historical-intent|delivery-records:|deliver:)/
+    );
+    assert.equal(harness.calls.createIssueComment, 1);
+  });
+}
+
+test('advanced local head refuses historical recovery when Full-Auto delivery is disabled', async () => {
+  const harness = makeHarness();
+  await advancePendingDelivery(harness);
+  const disabled = cfg();
+  disabled.fullAutoMerge.mechanism = 'manual';
+
+  await assert.rejects(
+    () => deliver(harness, { cfg: disabled }),
+    /delivery-preflight:configuration/
+  );
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('advanced local head rejects duplicate and divergent historical receipts', async () => {
+  for (const invalid of ['duplicate', 'divergent']) {
+    const harness = makeHarness();
+    const pending = await advancePendingDelivery(harness);
+    const recovered = await deliver(harness);
+    const receipt =
+      invalid === 'duplicate'
+        ? recovered.receipt
+        : buildDeliveryReceipt({
+            intentId: pending.intent.intentId,
+            issueNumber: 939,
+            prNumber: 1400,
+            expectedHeadSha: HEAD,
+            mergeCommitSha: NEXT_HEAD,
+            baseRef: 'trunk',
+            mergeMethod: 'squash',
+            verifiedTrunkRef: 'origin/trunk',
+            provider: 'codex',
+            sessionId: 'session-939',
+            verifiedAt: MERGED_AT,
+          });
+    harness.data.comments.push({
+      id: `comment-${invalid}`,
+      createdAt: RECEIPT_SERVER_NOW,
+      body: renderDeliveryReceiptComment(receipt),
+    });
+
+    await assert.rejects(
+      () => deliver(harness),
+      /delivery-records:(?:duplicate-receipt|receipt-conflict)/
+    );
+    assert.equal(harness.calls.createIssueComment, 2);
+  }
+});
+
+test('advanced local head refuses historical recovery without a prior intent', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prHead: HEAD,
+    head: NEXT_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+  });
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+});
+
+test('advanced local head refuses an external recovery intent', async () => {
+  const externalIntent = buildDeliveryIntent({
+    intentId: INTENT_IDS[0],
+    supersedesIntentId: null,
+    issueNumber: 939,
+    repository: 'kburson/ai-task-manager',
+    prNumber: 1400,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    expectedHeadSha: HEAD,
+    mergeMethod: 'squash',
+    attributionTokens: ['#939'],
+    commitTitle: '[#939] Governed PR delivery',
+    commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`,
+    provider: 'external',
+    sessionId: 'session-previous',
+    clientCreatedAt: '2026-08-22T13:59:00.000Z',
+  });
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prHead: HEAD,
+    head: NEXT_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    comments: [
+      {
+        id: 'comment-existing',
+        createdAt: SERVER_NOW,
+        body: renderDeliveryIntentComment(externalIntent),
+      },
+    ],
+  });
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 1);
 });
 
 test('lost receipt POST response is reconciled from the single server-visible receipt', async () => {
@@ -807,7 +1058,7 @@ test('changed head requires fresh Test and review evidence then supersedes the p
   harness.data.head = NEXT_HEAD;
   harness.data.checks.required[0].headSha = NEXT_HEAD;
 
-  await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
+  await assert.rejects(() => deliver(harness), /delivery-preflight:pull-request-count/);
   assert.equal(harness.calls.createIssueComment, 1);
 
   harness.data.testReceiptSha = NEXT_HEAD;
