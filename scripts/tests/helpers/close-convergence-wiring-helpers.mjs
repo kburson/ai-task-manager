@@ -35,10 +35,10 @@ export function closeBody({ agentReview = 'x', finalReview = 'x' } = {}) {
   ].join('\n');
 }
 
-export function baseState() {
+export function baseState(issueNumber = 925) {
   return {
-    active: '#925',
-    lastActive: '#925',
+    active: `#${issueNumber}`,
+    lastActive: `#${issueNumber}`,
     entryStartTs: new Date(Date.now() - 60_000).toISOString(),
     wordsAtEntryStart: 0,
     lastWordMarker: 0,
@@ -46,6 +46,8 @@ export function baseState() {
 }
 
 export async function runClose({
+  issueNumber = 925,
+  repository = 'o/r',
   boardState = 'review',
   closeSnapshot = { issueClosed: true, stateReason: 'completed' },
   body = closeBody(),
@@ -60,7 +62,7 @@ export async function runClose({
   delegateLifecycleHelper = false,
   captureCalls,
   captureFinalState,
-  initialState = baseState(),
+  initialState = baseState(issueNumber),
   deliveryRefusal = null,
   deliveryGateInput = null,
   reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
@@ -69,8 +71,12 @@ export async function runClose({
   useInjectedDeliveryGateInput = true,
   useInjectedDeliveryReceipt = true,
   useInjectedFreshDeliveryVerification = useInjectedDeliveryReceipt,
+  deliveryVerificationDeps = null,
   lifecycleEvidence = null,
   localHeadSha = 'a'.repeat(40),
+  loadCurrentSession = null,
+  loadRawProjectConfig = null,
+  pexecOverride = null,
   terminalDisposition,
   terminalDispositionError = null,
   liveLabels = ['ToDo', 'BLOCKED'],
@@ -83,7 +89,7 @@ export async function runClose({
   force = false,
   trackEstimationOutcomes = false,
 } = {}) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
+  const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
   const statePath = join(dir, 'state.json');
   writeFileSync(statePath, JSON.stringify(initialState));
 
@@ -122,7 +128,7 @@ export async function runClose({
   captureCalls?.(calls);
   const projectConfig = {
     cfg: {
-      repo: 'o/r',
+      repo: repository,
       trunkRef: 'trunk',
       fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
     },
@@ -133,6 +139,10 @@ export async function runClose({
     nowIso: () => new Date().toISOString(),
     pexec: async (command, args = []) => {
       calls.networkCalls += 1;
+      if (pexecOverride) {
+        const overridden = await pexecOverride(command, args);
+        if (overridden !== undefined) return overridden;
+      }
       if (command === 'git' && args[0] === 'branch') {
         return { stdout: 'trunk\n', stderr: '' };
       }
@@ -229,7 +239,7 @@ export async function runClose({
   let result;
   try {
     result = await verbClose({
-      rest: force ? ['#925', '--force'] : ['#925'],
+      rest: force ? [`#${issueNumber}`, '--force'] : [`#${issueNumber}`],
       projectConfig,
       timingRecorder,
       stateRunner,
@@ -317,13 +327,16 @@ export async function runClose({
         return lifecycleEvidence;
       },
       resolveCloseParentIssue: async () => null,
+      ...(loadCurrentSession ? { loadCurrentSession } : {}),
+      ...(loadRawProjectConfig ? { loadRawProjectConfig } : {}),
+      ...(deliveryVerificationDeps ?? {}),
       ...(useInjectedDeliveryGateInput
         ? {
             loadCloseDeliveryGateInput: async () =>
               deliveryGateInput ?? {
-                issueNumber: 925,
+                issueNumber,
                 lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
-                branch: 'feature/925',
+                branch: `feature/${issueNumber}`,
                 acceptedSha: 'a'.repeat(40),
                 localHeadSha: 'a'.repeat(40),
                 pullRequests: [],

@@ -7,7 +7,11 @@ import {
   resolveGate,
 } from '../../../../task-tracker/lib/gate-resolve.mjs';
 import { applyChoice } from '../../../../task-tracker/lib/session-store.mjs';
-import { validateDeliveryPreflight } from '../../../../task-tracker/lib/delivery-preflight.mjs';
+import {
+  validateDeliveryPreflight,
+  validateHistoricalRecoveryPreflight,
+} from '../../../../task-tracker/lib/delivery-preflight.mjs';
+import { buildDeliveryCommitText } from '../../../../task-tracker/lib/delivery-attribution.mjs';
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
 
 const HEAD = 'a'.repeat(40);
@@ -89,6 +93,78 @@ test('stale Full-Auto body evidence cannot survive auto off or reset', () => {
     value.issue.reviewAuthorization = decision(session, { gateReviewToDone: true });
     assert.throws(() => validateDeliveryPreflight(value), /approval-evidence/);
   }
+});
+
+test('standing Full-Auto authorizes immutable A while a reused branch is observed at B', () => {
+  const session = applyChoice({ gates: {}, lastPromptedParent: null }, 'review');
+  const reviewAuthorization = decision(session, {}, null, evidence(true, HEAD));
+  const commitSubjects = ['[#939] integrated immutable A'];
+  const commitText = buildDeliveryCommitText({
+    issueNumber: 939,
+    prNumber: 1400,
+    expectedHeadSha: HEAD,
+    commitSubjects,
+  });
+  const result = validateHistoricalRecoveryPreflight({
+    issue: {
+      number: 939,
+      state: 'OPEN',
+      projectState: 'Review',
+      assignees: ['kpburson'],
+      agentReviewPassed: true,
+      approvalEvidence: 'full-auto',
+      reviewAuthorization,
+    },
+    binding: {
+      issueNumber: 939,
+      timerState: 'running',
+      branch: 'codex/reused-branch',
+    },
+    lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+    pullRequests: [
+      {
+        number: 1400,
+        state: 'MERGED',
+        merged: true,
+        mergedAt: '2026-08-28T00:01:00.000Z',
+        isDraft: false,
+        baseRefName: 'trunk',
+        headRefName: 'codex/reused-branch',
+        headRefOid: HEAD,
+        mergeCommit: { oid: 'c'.repeat(40) },
+        mergeCommitSha: 'c'.repeat(40),
+        mergeMethod: 'squash',
+        headRefDeleted: false,
+      },
+    ],
+    localHeadSha: OTHER_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    dirtyPaths: [],
+    config: {
+      repo: 'kburson/ai-task-manager',
+      assignee: 'kpburson',
+      trunkRef: 'origin/trunk',
+      fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+      repositoryMergeMethods: ['squash'],
+    },
+    commitSubjects,
+    intent: {
+      provider: 'codex',
+      issueNumber: 939,
+      repository: 'kburson/ai-task-manager',
+      prNumber: 1400,
+      baseRef: 'trunk',
+      headRef: 'codex/reused-branch',
+      expectedHeadSha: HEAD,
+      mergeMethod: 'squash',
+      attributionTokens: commitText.attributionTokens,
+      commitTitle: commitText.commitTitle,
+      commitMessage: commitText.commitMessage,
+    },
+  });
+  assert.equal(result.acceptedSha, HEAD);
+  assert.equal(result.observedLocalHeadSha, OTHER_HEAD);
 });
 
 function preflight() {

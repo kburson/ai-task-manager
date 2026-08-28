@@ -284,8 +284,8 @@ export async function prepareIncorporatedCloseAuthorization({
     body: issue.body || '',
     issueNumber,
     expectedSha: row.acceptedSha,
-    session: loadSession(currentSessionId()),
-    projectConfig: rawProjectConfig(),
+    session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),
+    projectConfig: (ctx.loadRawProjectConfig || rawProjectConfig)(),
     durableReviewAuthority,
     reviewAuthorizationResolver: ctx.resolveReviewAuthorization || resolveReviewAuthorization,
   });
@@ -957,6 +957,8 @@ export async function verbClose(ctx) {
     getIssueClosedState,
   } = githubClient;
   const mutateBody = issueBodyMutator?.mutate;
+  const loadCurrentSession = ctx.loadCurrentSession || (() => loadSession(currentSessionId()));
+  const loadCurrentProjectConfig = ctx.loadRawProjectConfig || rawProjectConfig;
   const dispositionWriter = ctx.writeTerminalDisposition || writeTerminalDisposition;
   const dispositionReader = ctx.readTerminalDisposition || readTerminalDisposition;
   const closeLabelsReader = ctx.readCloseLabels || readCloseLabels;
@@ -1081,6 +1083,7 @@ export async function verbClose(ctx) {
   }
 
   // #208 — bind-mismatch check moved to shared preflight (dispatcher).
+  let explicitBindingPending = false;
   if (!s.active && target) {
     s = {
       ...s,
@@ -1089,12 +1092,17 @@ export async function verbClose(ctx) {
       entryStartTs: nowIso(),
       wordsAtEntryStart: 0,
     };
-    saveState(s, statePath);
+    explicitBindingPending = true;
   }
+  const persistExplicitBinding = () => {
+    if (!explicitBindingPending) return;
+    saveState(s, statePath);
+    explicitBindingPending = false;
+  };
 
   const configuredReviewToDoneGate = resolveGate('reviewToDone', {
-    session: loadSession(currentSessionId()),
-    projectConfig: rawProjectConfig(),
+    session: loadCurrentSession(),
+    projectConfig: loadCurrentProjectConfig(),
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   let resolvedReviewAuthorization = null;
@@ -1163,8 +1171,8 @@ export async function verbClose(ctx) {
     const authorization = durableTransaction
       ? resolvedReviewAuthorization
       : (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
-          session: loadSession(currentSessionId()),
-          projectConfig: rawProjectConfig(),
+          session: loadCurrentSession(),
+          projectConfig: loadCurrentProjectConfig(),
           acceptedHeadSha: gateInput.acceptedSha,
           humanApprovalEvidence:
             directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
@@ -1567,6 +1575,7 @@ export async function verbClose(ctx) {
       if (['finalize', 'noop'].includes(decision.action)) {
         fullAuto = terminalReviewGateBypassed();
       }
+      persistExplicitBinding();
       await drainQueueOnce();
       const convergence = await runClosedIssueConvergence(
         {
@@ -1790,6 +1799,18 @@ export async function verbClose(ctx) {
     saveState({ ...s, active: null, discoverBucket: null }, statePath);
     return;
   }
+
+  if (
+    await refuseDeliveryGate(
+      resumeDeliveredCloseTransaction
+        ? { durableTransaction: resumeDeliveredCloseTransaction }
+        : undefined
+    )
+  ) {
+    return;
+  }
+
+  persistExplicitBinding();
 
   let dirtyAuditRow = null;
   const terminalResume =
@@ -2143,15 +2164,6 @@ export async function verbClose(ctx) {
     }
   }
 
-  if (
-    await refuseDeliveryGate(
-      resumeDeliveredCloseTransaction
-        ? { durableTransaction: resumeDeliveredCloseTransaction }
-        : undefined
-    )
-  ) {
-    return;
-  }
   let deliveredCloseTransaction = null;
   const persistDeliveredCloseTransaction = async (transaction) => {
     if (typeof mutateBody !== 'function') {

@@ -776,8 +776,8 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       const approval = parseReviewApprovedMarker(issue.body);
       const directoryLane = lifecycleEvidence !== null;
       return resolveReviewAuthorization({
-        session: loadSession(currentSessionId()),
-        projectConfig: rawProjectConfig(),
+        session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),
+        projectConfig: (ctx.loadRawProjectConfig || rawProjectConfig)(),
         acceptedHeadSha: acceptedReviewSha === expectedHeadSha ? expectedHeadSha : null,
         humanApprovalEvidence:
           directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
