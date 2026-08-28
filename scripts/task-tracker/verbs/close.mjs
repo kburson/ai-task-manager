@@ -7,7 +7,11 @@ import { loadSession } from '../lib/session-store.mjs';
 import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
-import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
+import {
+  inspectTerminalIssueBindingRelease,
+  releaseTerminalIssueBinding,
+  resumeTerminalIssueBindingRelease,
+} from '../lib/worktree-binding-lifecycle.mjs';
 import {
   checkDirty,
   formatSummary,
@@ -15,11 +19,11 @@ import {
   resolveWorkspaceForIssue,
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
-import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
+import { readTerminalDisposition, writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import {
   hasReviewApprovedMarker,
   parseReviewApprovedMarker,
@@ -41,7 +45,10 @@ import {
 import {
   requireDeliveryReceipt,
   resolveAcceptedDeliveryHead,
+  verifyCloseDeliveryReceipt,
 } from '../lib/close-delivery-receipt.mjs';
+import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
+import { resolveAcceptedDeliveryAuthority } from '../lib/delivery-authority.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -53,7 +60,11 @@ import {
   decideCloseConvergence,
   decideBoardMoveFailure,
   decideGateEvalFailure,
+  readDeliveredCloseTransactions,
+  resolveDeliveredCloseTransaction,
   shouldEmitReviewApprovedRow,
+  TERMINAL_CLOSE_STEPS,
+  upsertDeliveredCloseTransaction,
   resolveBoardStateForClose,
 } from '../lib/close-convergence.mjs';
 import {
@@ -104,16 +115,13 @@ export async function loadCloseDeliveryGateInput({
   const branch = String(branchOut || '').trim();
   const localHeadSha = String(headOut || '').trim();
   const directoryLane = lifecycleEvidence !== null;
-  const acceptedSha = resolveAcceptedDeliveryHead({
-    localHeadSha,
-    testReceiptSha: parseVerificationReceipt(body, 'test')?.commitSha ?? null,
-    reviewReceiptSha: directoryLane
-      ? lifecycleEvidence.expectedSha
-      : (parseVerificationReceipt(body, 'review')?.commitSha ?? null),
-    agentReviewPassed: directoryLane
-      ? hasAcceptedReviewEvidence(lifecycleEvidence)
-      : isAgentReviewComplete(body),
-  });
+  const testReceiptSha = parseVerificationReceipt(body, 'test')?.commitSha ?? null;
+  const reviewReceiptSha = directoryLane
+    ? lifecycleEvidence.expectedSha
+    : (parseVerificationReceipt(body, 'review')?.commitSha ?? null);
+  const agentReviewPassed = directoryLane
+    ? hasAcceptedReviewEvidence(lifecycleEvidence)
+    : isAgentReviewComplete(body);
   const { stdout: prOut } = await pexec(
     'gh',
     [
@@ -130,11 +138,17 @@ export async function loadCloseDeliveryGateInput({
     ],
     { timeout: GH_API_TIMEOUT_MS }
   );
-  const pullRequests = JSON.parse(String(prOut || '[]')).map((pr) => ({
-    ...pr,
-    merged: String(pr.state || '').toUpperCase() === 'MERGED',
-    mergeCommitSha: pr.mergeCommit?.oid ?? null,
-  }));
+  const pullRequests = JSON.parse(String(prOut || '[]')).map((pr) => {
+    const merged = String(pr.state || '').toUpperCase() === 'MERGED';
+    const mergedAt = merged ? normalizeGitHubInstant(pr.mergedAt) : pr.mergedAt;
+    if (merged && mergedAt === null) throw new TypeError('close-delivery-pr-merged-at');
+    return {
+      ...pr,
+      merged,
+      mergedAt,
+      mergeCommitSha: pr.mergeCommit?.oid ?? null,
+    };
+  });
   const baseRef = closeBaseRef(cfg);
   const lineage = {
     parentIssueNumber,
@@ -143,39 +157,62 @@ export async function loadCloseDeliveryGateInput({
       cfg.fullAutoMerge?.mechanism === 'local-trunk-lane' &&
       cfg.fullAutoMerge?.operatorAuthorized === true,
   };
+  const authority =
+    parentIssueNumber === null && pullRequests.length > 0
+      ? resolveAcceptedDeliveryAuthority({
+          issueNumber,
+          branch,
+          localHeadSha,
+          testReceiptSha,
+          reviewReceiptSha,
+          agentReviewPassed,
+          pullRequests,
+        })
+      : null;
+  const acceptedSha =
+    authority?.acceptedSha ??
+    resolveAcceptedDeliveryHead({
+      localHeadSha,
+      testReceiptSha,
+      reviewReceiptSha,
+      agentReviewPassed,
+    });
+  const selectedPullRequest = authority?.pullRequest ?? null;
   let records = null;
   if (parentIssueNumber === null && pullRequests.length > 0) {
-    const exactHeadPullRequests = pullRequests.filter(
-      (pullRequest) => pullRequest.headRefOid === acceptedSha
+    const { stdout: commentsOut } = await pexec(
+      'gh',
+      ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+      { timeout: GH_API_TIMEOUT_MS }
     );
-    if (exactHeadPullRequests.length !== 1) {
-      records = { intents: [], receipts: [], liveIntent: null, matchingReceipt: null };
-    } else {
-      const selectedPullRequest = exactHeadPullRequests[0];
-      const { stdout: commentsOut } = await pexec(
-        'gh',
-        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      const pages = JSON.parse(String(commentsOut || '[]'));
-      const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
-        const createdAt = normalizeGitHubInstant(comment.created_at);
-        if (createdAt === null) throw new TypeError('close-delivery-comment-created-at');
-        return {
-          id: String(comment.id),
-          body: comment.body,
-          createdAt,
-        };
-      });
-      const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
-      records = projectDeliveryRecords(
-        comments
-          .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
-          .filter(Boolean)
-      );
-    }
+    const pages = JSON.parse(String(commentsOut || '[]'));
+    const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
+      const createdAt = normalizeGitHubInstant(comment.created_at);
+      if (createdAt === null) throw new TypeError('close-delivery-comment-created-at');
+      return {
+        id: String(comment.id),
+        body: comment.body,
+        createdAt,
+      };
+    });
+    const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
+    records = projectDeliveryRecords(
+      comments
+        .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
+        .filter(Boolean)
+    );
   }
-  return { issueNumber, lineage, branch, acceptedSha, localHeadSha, pullRequests, records };
+  return {
+    issueNumber,
+    lineage,
+    branch,
+    acceptedSha,
+    observedLocalHeadSha: authority?.observedLocalHeadSha ?? localHeadSha,
+    headRelation: authority?.headRelation ?? 'current',
+    pullRequest: selectedPullRequest,
+    pullRequests,
+    records,
+  };
 }
 
 function defaultLifecycleGraphql({ query, variables }) {
@@ -187,6 +224,27 @@ async function defaultCloseHeadSha({ projectDir }) {
   return String(stdout || '').trim();
 }
 
+async function inspectCloseMergeCommit({ pexec, projectDir, mergeCommitSha }) {
+  const { stdout } = await pexec('git', ['cat-file', 'commit', mergeCommitSha], {
+    cwd: projectDir,
+    timeout: GIT_TIMEOUT_MS,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  const raw = String(stdout || '');
+  const separator = raw.indexOf('\n\n');
+  if (separator < 0) throw new Error('close-delivery-commit-object');
+  const headers = raw.slice(0, separator).split('\n');
+  const message = raw.slice(separator + 2).replace(/\n$/, '');
+  const [commitTitle, ...bodyLines] = message.split('\n');
+  return {
+    parents: headers
+      .filter((line) => line.startsWith('parent '))
+      .map((line) => line.slice('parent '.length)),
+    commitTitle,
+    commitMessage: bodyLines[0] === '' ? bodyLines.slice(1).join('\n') : bodyLines.join('\n'),
+  };
+}
+
 export async function resolveCloseLifecycleEvidence({
   body,
   issueNumber,
@@ -196,7 +254,9 @@ export async function resolveCloseLifecycleEvidence({
 } = {}) {
   const source = (deps.locateAuthoritySource || locateAuthoritySource)({ issueBody: body });
   if (source.kind !== 'github-records/v1') return null;
-  const expectedSha = await (deps.getHeadSha || defaultCloseHeadSha)({ projectDir });
+  const testReceiptSha = parseVerificationReceipt(body, 'test')?.commitSha ?? null;
+  const expectedSha =
+    testReceiptSha ?? (await (deps.getHeadSha || defaultCloseHeadSha)({ projectDir }));
   const lifecycleEvidence = await (deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence)({
     repository,
     issue: Number(issueNumber),
@@ -236,11 +296,24 @@ async function stripCloseLabels({ pexec, cfg, issueNum }) {
     await pexec('gh', [...closeLabelRemoveArgs(issueNum), '-R', cfg.repo], {
       timeout: GH_API_TIMEOUT_MS,
     });
+    return true;
   } catch (err) {
     console.error(
       `[task-tracker] warn: failed to strip ToDo/BLOCKED labels on #${issueNum}: ${err.message}`
     );
+    return false;
   }
+}
+
+async function readCloseLabels({ pexec, cfg, issueNum }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'labels'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const parsed = JSON.parse(stdout);
+  if (!Array.isArray(parsed?.labels)) throw new Error('close labels response was malformed');
+  return parsed.labels.map((label) => label?.name).filter((name) => typeof name === 'string');
 }
 
 function escapeRegExp(value) {
@@ -469,6 +542,12 @@ export async function verbClose(ctx) {
   } = githubClient;
   const mutateBody = issueBodyMutator?.mutate;
   const dispositionWriter = ctx.writeTerminalDisposition || writeTerminalDisposition;
+  const dispositionReader = ctx.readTerminalDisposition || readTerminalDisposition;
+  const closeLabelsReader = ctx.readCloseLabels || readCloseLabels;
+  const bindingReleaseInspector =
+    ctx.inspectTerminalIssueBindingRelease || inspectTerminalIssueBindingRelease;
+  const bindingReleaseResumer =
+    ctx.resumeTerminalIssueBindingRelease || resumeTerminalIssueBindingRelease;
   const writeDeliveredOrRefuse = async ({ issueNumber, targetRef }) => {
     try {
       await dispositionWriter({
@@ -573,6 +652,7 @@ export async function verbClose(ctx) {
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   let resolvedReviewAuthorization = null;
+  let resolvedDeliveryGate = null;
   let closeLifecycleEvidenceLoaded = false;
   let cachedCloseLifecycleEvidence = null;
   const loadCloseLifecycleEvidence = async (body) => {
@@ -603,9 +683,9 @@ export async function verbClose(ctx) {
 
   // #939 — resolve the receipt gate lazily after non-terminal convergence
   // inspection, but before any path performs a new terminal mutation.
-  const ensureDeliveryAuthorized = async () => {
-    if (SKIP_NETWORK || !closeIssueNum) return resolvedReviewAuthorization;
-    if (resolvedReviewAuthorization) return resolvedReviewAuthorization;
+  const ensureDeliveryAuthorized = async ({ durableTransaction = null } = {}) => {
+    if (SKIP_NETWORK || !closeIssueNum) return resolvedDeliveryGate;
+    if (resolvedDeliveryGate) return resolvedDeliveryGate;
     const deliveryBody = ctx.loadCloseDeliveryBody
       ? await ctx.loadCloseDeliveryBody({
           issueNumber: Number(closeIssueNum),
@@ -631,38 +711,86 @@ export async function verbClose(ctx) {
     });
     const approval = parseReviewApprovedMarker(deliveryBody);
     const directoryLane = lifecycleEvidence !== null;
-    const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
-      session: loadSession(currentSessionId()),
-      projectConfig: rawProjectConfig(),
-      acceptedHeadSha: gateInput.acceptedSha,
-      humanApprovalEvidence:
-        directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
-          ? {
-              accepted: true,
-              approvedSha: lifecycleEvidence.expectedSha,
-              source: 'directory-human-evidence',
-            }
-          : !directoryLane && approval && !approval.fullAuto
-            ? { accepted: true, approvedSha: approval.approvedSha }
-            : null,
-      fullAutoApprovalEvidence:
-        directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
-          ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
-          : !directoryLane && approval?.fullAuto
-            ? { accepted: true, approvedSha: approval.approvedSha }
-            : null,
-    });
+    if (durableTransaction && durableTransaction.acceptedSha !== gateInput.acceptedSha) {
+      throw new Error('delivered-close-transaction-accepted-sha-mismatch');
+    }
+    const authorization = durableTransaction
+      ? resolvedReviewAuthorization
+      : (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
+          session: loadSession(currentSessionId()),
+          projectConfig: rawProjectConfig(),
+          acceptedHeadSha: gateInput.acceptedSha,
+          humanApprovalEvidence:
+            directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
+              ? {
+                  accepted: true,
+                  approvedSha: lifecycleEvidence.expectedSha,
+                  source: 'directory-human-evidence',
+                }
+              : !directoryLane && approval && !approval.fullAuto
+                ? { accepted: true, approvedSha: approval.approvedSha }
+                : null,
+          fullAutoApprovalEvidence:
+            directoryLane &&
+            hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
+              ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
+              : !directoryLane && approval?.fullAuto
+                ? { accepted: true, approvedSha: approval.approvedSha }
+                : null,
+        });
     if (authorization.mode === 'missing') {
       throw new Error('review-authorization-missing');
     }
     const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
-    receiptGate(gateInput);
+    const receipt = receiptGate(gateInput);
+    const freshReceiptVerifier = ctx.verifyCloseDeliveryReceipt || verifyCloseDeliveryReceipt;
+    const freshReceipt = await freshReceiptVerifier({
+      gateInput,
+      receiptGate: receipt,
+      testReceiptSha: parseVerificationReceipt(deliveryBody, 'test')?.commitSha ?? null,
+      acceptedReviewSha:
+        lifecycleEvidence?.expectedSha ??
+        parseVerificationReceipt(deliveryBody, 'review')?.commitSha ??
+        gateInput.acceptedSha,
+      deps: {
+        fetchOriginTrunk:
+          ctx.fetchOriginTrunk ??
+          (async ({ remote, branch }) => {
+            await pexec('git', ['fetch', remote, branch], {
+              cwd: projectDir,
+              timeout: GIT_TIMEOUT_MS,
+            });
+          }),
+        isAncestor:
+          ctx.isAncestor ??
+          (async ({ ancestor, descendant }) => {
+            try {
+              await pexec('git', ['merge-base', '--is-ancestor', ancestor, descendant], {
+                cwd: projectDir,
+                timeout: GIT_TIMEOUT_MS,
+              });
+              return true;
+            } catch (error) {
+              if (Number(error?.code) === 1) return false;
+              throw error;
+            }
+          }),
+        inspectMergeCommit:
+          ctx.inspectMergeCommit ??
+          (({ mergeCommitSha }) => inspectCloseMergeCommit({ pexec, projectDir, mergeCommitSha })),
+        attributingCommits:
+          ctx.attributingCommits ??
+          ((issueNumber, options) =>
+            defaultAttributingCommits(issueNumber, { cwd: projectDir, ...options })),
+      },
+    });
     resolvedReviewAuthorization = authorization;
-    return authorization;
+    resolvedDeliveryGate = { authorization, gateInput, receipt: freshReceipt };
+    return resolvedDeliveryGate;
   };
-  const refuseDeliveryGate = async () => {
+  const refuseDeliveryGate = async (options) => {
     try {
-      await ensureDeliveryAuthorized();
+      await ensureDeliveryAuthorized(options);
       return false;
     } catch (error) {
       console.error(
@@ -727,6 +855,9 @@ export async function verbClose(ctx) {
   // #425 / #925 — converge the independent GitHub issue and project-board
   // signals. The additive close snapshot lets a CLOSED + not-Done issue be
   // classified as delivered, dead, or unauthorized before any mutation.
+  let resumeDeliveredCloseTransaction = null;
+  let resumeMarkerlessOpenDone = false;
+  let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
     const hasExpandedCloseSnapshot = typeof getIssueCloseSnapshot === 'function';
     const [boardState, closeSnapshot] = await Promise.all([
@@ -788,11 +919,12 @@ export async function verbClose(ctx) {
         // A close-for-cause is dead before any issue-body or child read.
         decision = decideCloseConvergence(decisionInput);
       } else if (boardState === 'done') {
-        // Completed + Done is already authoritative. Housekeeping below may
-        // make one best-effort body read so a pending durable recovery can
-        // outrank noop; a read outage cannot reinterpret the terminal state.
+        // Completed + Done is already authoritative, but a durable terminal
+        // transaction can still have a pending suffix. Its body is therefore
+        // required authority rather than best-effort housekeeping.
         fullAuto = configuredFullAuto;
         authoritativeDoneBodyInspected = true;
+        let closeTransactions = [];
         try {
           convergeBody = await readConvergenceBody();
           const inspectedRecovery = readUnauthorizedCloseRecovery(convergeBody);
@@ -800,9 +932,41 @@ export async function verbClose(ctx) {
           Object.assign(decisionInput, {
             recoveryPhase: inspectedRecovery?.phase ?? null,
           });
-        } catch {
-          // Best-effort by design: closed + completed + Done remains noop when
-          // its body is temporarily unreadable.
+          closeTransactions = readDeliveredCloseTransactions(convergeBody);
+        } catch (error) {
+          if (/close-convergence:.*terminal-transaction/.test(error?.message || '')) {
+            return failInspection(
+              'readDeliveredCloseTransaction',
+              error,
+              `${closeTarget} has invalid delivered-close transaction authority`
+            );
+          }
+          return failInspection(
+            'readIssueBody',
+            error,
+            `${closeTarget} is closed and Done but its body could not be read for transaction inspection`
+          );
+        }
+        if (closeTransactions.length > 0) {
+          let terminalDisposition;
+          try {
+            terminalDisposition = await dispositionReader({
+              cfg,
+              issueNumber: Number(closeIssueNum),
+            });
+          } catch (error) {
+            return failInspection(
+              'readTerminalDisposition',
+              error,
+              `${closeTarget} terminal disposition could not be read after transaction discovery`
+            );
+          }
+          Object.assign(decisionInput, {
+            terminalDisposition,
+            expectedIssueNumber: Number(closeIssueNum),
+            expectedAcceptedSha: closeTransactions[0].acceptedSha,
+            closeTransactions,
+          });
         }
         decision = decideCloseConvergence(decisionInput);
       } else {
@@ -822,7 +986,34 @@ export async function verbClose(ctx) {
           recoveryPhase: inspectedRecovery?.phase ?? null,
         });
 
-        if (recovery) {
+        let closeTransactions;
+        try {
+          closeTransactions = readDeliveredCloseTransactions(convergeBody);
+          if (closeTransactions.length > 0) {
+            const terminalDisposition = await dispositionReader({
+              cfg,
+              issueNumber: Number(closeIssueNum),
+            });
+            Object.assign(decisionInput, {
+              terminalDisposition,
+              expectedIssueNumber: Number(closeIssueNum),
+              expectedAcceptedSha: closeTransactions[0].acceptedSha,
+              closeTransactions,
+            });
+          }
+        } catch (error) {
+          return failInspection(
+            error?.message?.includes('terminal-transaction')
+              ? 'readDeliveredCloseTransaction'
+              : 'readTerminalDisposition',
+            error,
+            `${closeTarget} terminal transaction authority could not be inspected`
+          );
+        }
+
+        if (closeTransactions?.length > 0) {
+          decision = decideCloseConvergence(decisionInput);
+        } else if (recovery) {
           // A durable pending transaction has already established recovery
           // authority. Resume it before unrelated child inventory can fail.
           decision = decideCloseConvergence(decisionInput);
@@ -878,69 +1069,51 @@ export async function verbClose(ctx) {
       Object.assign(decisionInput, {
         recoveryPhase: inspectedRecovery?.phase ?? null,
       });
+      try {
+        const closeTransactions = readDeliveredCloseTransactions(convergeBody);
+        if (closeTransactions.length > 0) {
+          const terminalDisposition = await dispositionReader({
+            cfg,
+            issueNumber: Number(closeIssueNum),
+          });
+          Object.assign(decisionInput, {
+            terminalDisposition,
+            expectedIssueNumber: Number(closeIssueNum),
+            expectedAcceptedSha: closeTransactions[0].acceptedSha,
+            closeTransactions,
+          });
+        }
+      } catch (error) {
+        return failInspection(
+          'readDeliveredCloseTransaction',
+          error,
+          `${closeTarget} has invalid delivered-close transaction authority`
+        );
+      }
       decision = decideCloseConvergence(decisionInput);
     } else {
       decision = decideCloseConvergence(decisionInput);
     }
 
     if (decision.action === 'close-issue') {
-      if (await refuseDeliveryGate()) return;
-      fullAuto = terminalReviewGateBypassed();
-      await drainQueueOnce();
-      // Board reads Done but the issue is still OPEN — the Projects auto-close
-      // workflow did not fire. Close the primary explicitly. On failure, surface
-      // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
-      try {
-        await emitReviewToDoneClosePair({
-          closeTarget,
-          closeIssueNum,
-          cfg,
-          hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
-          issueBody: convergeBody,
-          reviewGateBypassed: fullAuto,
-          lastWordMarker: s.lastWordMarker,
-          lastFullWordMarker: stateFullWordMarker(s),
-          ctx,
-          SKIP_NETWORK,
-          nowIso,
-          safePostTiming,
-        });
-        await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
-      } catch (err) {
-        return failInspection(
-          'emitClosePair',
-          err,
-          `${closeTarget} terminal timing did not synchronize before outcome creation`
-        );
-      }
-      if (!(await ensureConvergenceOutcome({ body: convergeBody }))) return;
-      if (
-        !(await writeDeliveredOrRefuse({
-          issueNumber: closeIssueNum,
-          targetRef: closeTarget,
-        }))
-      ) {
-        return;
-      }
-      try {
-        await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
-          timeout: GH_API_TIMEOUT_MS,
-        });
-      } catch (err) {
-        console.error(
-          `Failed to close ${closeTarget} on GitHub (board is Done but the issue was still OPEN): ${err.message}\n` +
-            `Local state left intact — re-run \`/task close ${closeTarget}\` once GitHub is reachable.`
-        );
-        process.exitCode = 1;
-        return;
-      }
-      await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
-      releaseClosedBinding({ ctx, projectDir, issue: closeTarget });
-      clearActive(statePath);
-      console.log(
-        `${closeTarget} board was Done but the GitHub issue was still OPEN — closed it now; local state and fleet cleaned up.`
-      );
-      return;
+      resumeMarkerlessOpenDone = true;
+      resumeConvergeBody = convergeBody;
+    }
+
+    if (decision.action === 'resume-delivered-close') {
+      resumeDeliveredCloseTransaction = decisionInput.closeTransactions[0];
+      resumeConvergeBody = convergeBody;
+      resolvedReviewAuthorization = {
+        mode:
+          resumeDeliveredCloseTransaction.reviewAuthority === 'human-gate' ? 'human' : 'full-auto',
+        standing: true,
+        source: 'delivered-close-transaction',
+      };
+    }
+
+    if (decision.action === 'already-closed') {
+      console.log(`${closeTarget} is already fully closed; no terminal writes were repeated.`);
+      return decision;
     }
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
@@ -1173,10 +1346,12 @@ export async function verbClose(ctx) {
   }
 
   let dirtyAuditRow = null;
+  const terminalResume =
+    resumeDeliveredCloseTransaction !== null || resumeMarkerlessOpenDone === true;
   // #655 — `?? ctx.closeBody` lets a SKIP_NETWORK fixture seed the live body the
   // `!SKIP_NETWORK` block would otherwise fetch, so the review:approved emission
   // gate (which predicates on the approval marker) is exercisable in-process.
-  let closeBody = ctx.closeBody ?? '';
+  let closeBody = resumeConvergeBody ?? ctx.closeBody ?? '';
   let closeLifecycleEvidence = null;
   // #655 — hoisted out of the `!SKIP_NETWORK` gate-evaluation block (where
   // `_resolvedReviewGate` is scoped) so the later `review:approved` timing-row
@@ -1184,7 +1359,7 @@ export async function verbClose(ctx) {
   // disabled (session/project override), which carries its own
   // `aitm-gate-bypassed` audit row.
   let reviewGateBypassed = terminalReviewGateBypassed();
-  if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
+  if (!terminalResume && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
     const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
@@ -1254,7 +1429,7 @@ export async function verbClose(ctx) {
     }
   }
 
-  if (!SKIP_NETWORK) {
+  if (!SKIP_NETWORK && !terminalResume) {
     try {
       const { stdout } = await pexec(
         'gh',
@@ -1522,239 +1697,332 @@ export async function verbClose(ctx) {
     }
   }
 
-  if (await refuseDeliveryGate()) return;
-  await drainQueueOnce();
-
-  if (!SKIP_NETWORK && closeIssueNum) {
-    const subNums = await fetchSubIssues(closeIssueNum);
-    if (subNums.length > 0) {
-      const childStates = await Promise.all(
-        subNums.map(async (n) => ({ num: n, state: await getIssueBoardState(n) }))
+  if (
+    await refuseDeliveryGate(
+      resumeDeliveredCloseTransaction
+        ? { durableTransaction: resumeDeliveredCloseTransaction }
+        : undefined
+    )
+  ) {
+    return;
+  }
+  let deliveredCloseTransaction = null;
+  const persistDeliveredCloseTransaction = async (transaction) => {
+    if (typeof mutateBody !== 'function') {
+      throw new Error('delivered close transaction requires issueBodyMutator.mutate');
+    }
+    const mutation = await mutateBody({
+      issueNumber: Number(closeIssueNum),
+      repo: cfg.repo,
+      mutate: (base) => upsertDeliveredCloseTransaction(base, transaction),
+    });
+    if (mutation?.status !== 'ok' || typeof mutation.body !== 'string') {
+      throw new Error('delivered close transaction write did not return authoritative body');
+    }
+    const readback = readDeliveredCloseTransactions(mutation.body);
+    const resolved = resolveDeliveredCloseTransaction({
+      issueNumber: Number(closeIssueNum),
+      acceptedSha: transaction.acceptedSha,
+      transactions: readback,
+    });
+    if (
+      resolved.transaction === null ||
+      JSON.stringify(resolved.transaction) !== JSON.stringify(transaction)
+    ) {
+      throw new Error('delivered close transaction readback mismatch');
+    }
+    closeBody = mutation.body;
+    deliveredCloseTransaction = resolved.transaction;
+  };
+  const markDeliveredCloseStep = async (step) => {
+    if (!deliveredCloseTransaction) return;
+    const nextIndex = deliveredCloseTransaction.completedSteps.length;
+    if (TERMINAL_CLOSE_STEPS[nextIndex] !== step) {
+      throw new Error(
+        `delivered close transaction expected ${TERMINAL_CLOSE_STEPS[nextIndex] ?? 'completion'}, got ${step}`
       );
-      const notReady = childStates.filter((c) => c.state !== 'review' && c.state !== 'done');
-      if (notReady.length > 0 && !force) {
-        console.error(
-          `[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in Review:`
+    }
+    await persistDeliveredCloseTransaction({
+      ...deliveredCloseTransaction,
+      completedSteps: [...deliveredCloseTransaction.completedSteps, step],
+    });
+  };
+  const needsDeliveredCloseStep = (step) =>
+    deliveredCloseTransaction === null || !deliveredCloseTransaction.completedSteps.includes(step);
+  if (!SKIP_NETWORK && closeIssueNum) {
+    const acceptedSha = resolvedDeliveryGate?.gateInput?.acceptedSha;
+    const existing = readDeliveredCloseTransactions(closeBody);
+    const resolved = resolveDeliveredCloseTransaction({
+      issueNumber: Number(closeIssueNum),
+      acceptedSha,
+      transactions: existing,
+    });
+    deliveredCloseTransaction = resolved.transaction;
+    if (deliveredCloseTransaction === null) {
+      await persistDeliveredCloseTransaction({
+        schema: 'aitm.delivered-close/v1',
+        transactionId: randomUUID(),
+        issueNumber: Number(closeIssueNum),
+        acceptedSha,
+        reviewAuthority: terminalReviewAuthority(),
+        completedSteps: [],
+      });
+    }
+  }
+  if (needsDeliveredCloseStep('timing')) {
+    await drainQueueOnce();
+
+    if (!SKIP_NETWORK && closeIssueNum) {
+      const subNums = await fetchSubIssues(closeIssueNum);
+      if (subNums.length > 0) {
+        const childStates = await Promise.all(
+          subNums.map(async (n) => ({ num: n, state: await getIssueBoardState(n) }))
         );
-        notReady.forEach((c) => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
-        console.error('All sub-issues must reach Review before the epic can close.');
-        process.exit(3);
-      }
-      const reviewChildren = childStates.filter((c) => c.state === 'review');
-      if (reviewChildren.length > 0) {
-        console.log(`[task-tracker] Cascade closing ${reviewChildren.length} child issue(s)...`);
-        const { buildRow: br } = await import('../gh-timing-comment.mjs');
-        const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
-        for (const child of reviewChildren) {
-          try {
-            // Cascade close: per-child body not fetched here; activeSec=0 is
-            // honest because no per-child timing context is loaded.
-            const childTarget = `#${child.num}`;
-            const terminalTiming = await safePostTiming(
-              childTarget,
-              br({
-                ts: nowIso(),
-                event: _PEcascade.done.enter.event,
-                activeSec: 0,
-                idleSec: 0,
-                deltaWords: 0,
-                // #475 AC1 — stamp the epic session's durable marker (the session
-                // performing the cascade); the per-log monotonic-max in
-                // rollupTotals protects each child's own running total.
-                wordMarker: s.lastWordMarker ?? 0,
-                fullWordMarker: stateFullWordMarker(s),
-                description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
-              })
-            );
-            if (
-              terminalTiming === false ||
-              terminalTiming?.ok === false ||
-              terminalTiming?.queued
-            ) {
-              console.error(
-                `  ⛔ Could not prepare #${child.num} for close: terminal timing issue:wrap was not durably posted`
-              );
-              process.exitCode = 1;
-              return;
-            }
-            let childFlush;
+        const notReady = childStates.filter((c) => c.state !== 'review' && c.state !== 'done');
+        if (notReady.length > 0 && !force) {
+          console.error(
+            `[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in Review:`
+          );
+          notReady.forEach((c) => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
+          console.error('All sub-issues must reach Review before the epic can close.');
+          process.exit(3);
+        }
+        const reviewChildren = childStates.filter((c) => c.state === 'review');
+        if (reviewChildren.length > 0) {
+          console.log(`[task-tracker] Cascade closing ${reviewChildren.length} child issue(s)...`);
+          const { buildRow: br } = await import('../gh-timing-comment.mjs');
+          const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
+          for (const child of reviewChildren) {
             try {
-              childFlush = await flushCloseTimingOrThrow({
-                closeTarget: childTarget,
-                flushQueueFor,
+              // Cascade close: per-child body not fetched here; activeSec=0 is
+              // honest because no per-child timing context is loaded.
+              const childTarget = `#${child.num}`;
+              const terminalTiming = await safePostTiming(
+                childTarget,
+                br({
+                  ts: nowIso(),
+                  event: _PEcascade.done.enter.event,
+                  activeSec: 0,
+                  idleSec: 0,
+                  deltaWords: 0,
+                  // #475 AC1 — stamp the epic session's durable marker (the session
+                  // performing the cascade); the per-log monotonic-max in
+                  // rollupTotals protects each child's own running total.
+                  wordMarker: s.lastWordMarker ?? 0,
+                  fullWordMarker: stateFullWordMarker(s),
+                  description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
+                })
+              );
+              if (
+                terminalTiming === false ||
+                terminalTiming?.ok === false ||
+                terminalTiming?.queued
+              ) {
+                console.error(
+                  `  ⛔ Could not prepare #${child.num} for close: terminal timing issue:wrap was not durably posted`
+                );
+                process.exitCode = 1;
+                return;
+              }
+              let childFlush;
+              try {
+                childFlush = await flushCloseTimingOrThrow({
+                  closeTarget: childTarget,
+                  flushQueueFor,
+                });
+              } catch (err) {
+                console.error(`  ⛔ Could not prepare #${child.num} for close: ${err.message}`);
+                process.exitCode = 1;
+                return;
+              }
+              // Cascaded children are independently estimated stories. Freeze
+              // their completion outcome after the close-time timing row and
+              // before any terminal board/disposition/issue mutation, exactly as
+              // the primary close path does.
+              let childBody;
+              try {
+                const { stdout } = await pexec(
+                  'gh',
+                  [
+                    'issue',
+                    'view',
+                    String(child.num),
+                    '-R',
+                    cfg.repo,
+                    '--json',
+                    'body',
+                    '--jq',
+                    '.body',
+                  ],
+                  { timeout: GH_API_TIMEOUT_MS }
+                );
+                childBody = String(stdout ?? '');
+                await ensureCloseEstimationOutcome({
+                  issueNumber: child.num,
+                  body: childBody,
+                  writer: outcomeWriterForIssue(child.num, { requireDedicated: true }),
+                });
+              } catch (err) {
+                console.error(
+                  `  ⛔ Could not create completion outcome for #${child.num}: ${err.message}`
+                );
+                process.exitCode = 1;
+                return;
+              }
+              // #385 — structured result; a genuine per-child board-move failure
+              // is surfaced (with its real stderr) but does not abort the cascade.
+              // The benign `done → done` no-op stays silent.
+              const childMove = await runMoveState(child.num, 'done', {
+                env: { AITM_CASCADE: '1' },
+                silent: true,
               });
+              // #512 — fail CLOSED: a genuine non-benign board-move failure must NOT
+              // be followed by `gh issue close`, or the child is left CLOSED while
+              // its board card is not Done (split-brain). The benign done→done no-op
+              // still closes. One stuck child must not abort the cascade, so skip it
+              // and continue with actionable recovery guidance.
+              const { decideCascadeChildClose } = await import('../lib/cascade-child-close.mjs');
+              const childCloseDecision = decideCascadeChildClose({ childMove });
+              if (!childCloseDecision.shouldClose) {
+                console.warn(
+                  `  ⚠ #${child.num} NOT closed — board move to "done" failed: ${childCloseDecision.detail}`
+                );
+                console.warn(
+                  `     Recovery: retry \`/task close ${child.num}\` after the board is reachable.`
+                );
+                continue;
+              }
+              // #1041 — Delivered is terminal classification for cascaded
+              // children too. Write it only after the board move has succeeded,
+              // matching the primary close path and avoiding an OPEN child that
+              // is classified Delivered when its Done move fails.
+              if (
+                !(await writeDeliveredOrRefuse({
+                  issueNumber: child.num,
+                  targetRef: `#${child.num}`,
+                }))
+              ) {
+                return;
+              }
+              await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
+                timeout: GH_API_TIMEOUT_MS,
+              });
+              releaseClosedBinding({ ctx, projectDir, issue: `#${child.num}` });
+              const childSuffix = childFlush?.delivered
+                ? ` (queue: delivered ${childFlush.delivered})`
+                : '';
+              console.log(`  ✓ #${child.num} closed${childSuffix}`);
             } catch (err) {
-              console.error(`  ⛔ Could not prepare #${child.num} for close: ${err.message}`);
+              console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
               process.exitCode = 1;
               return;
             }
-            // Cascaded children are independently estimated stories. Freeze
-            // their completion outcome after the close-time timing row and
-            // before any terminal board/disposition/issue mutation, exactly as
-            // the primary close path does.
-            let childBody;
-            try {
-              const { stdout } = await pexec(
-                'gh',
-                [
-                  'issue',
-                  'view',
-                  String(child.num),
-                  '-R',
-                  cfg.repo,
-                  '--json',
-                  'body',
-                  '--jq',
-                  '.body',
-                ],
-                { timeout: GH_API_TIMEOUT_MS }
-              );
-              childBody = String(stdout ?? '');
-              await ensureCloseEstimationOutcome({
-                issueNumber: child.num,
-                body: childBody,
-                writer: outcomeWriterForIssue(child.num, { requireDedicated: true }),
-              });
-            } catch (err) {
-              console.error(
-                `  ⛔ Could not create completion outcome for #${child.num}: ${err.message}`
-              );
-              process.exitCode = 1;
-              return;
-            }
-            // #385 — structured result; a genuine per-child board-move failure
-            // is surfaced (with its real stderr) but does not abort the cascade.
-            // The benign `done → done` no-op stays silent.
-            const childMove = await runMoveState(child.num, 'done', {
-              env: { AITM_CASCADE: '1' },
-              silent: true,
-            });
-            // #512 — fail CLOSED: a genuine non-benign board-move failure must NOT
-            // be followed by `gh issue close`, or the child is left CLOSED while
-            // its board card is not Done (split-brain). The benign done→done no-op
-            // still closes. One stuck child must not abort the cascade, so skip it
-            // and continue with actionable recovery guidance.
-            const { decideCascadeChildClose } = await import('../lib/cascade-child-close.mjs');
-            const childCloseDecision = decideCascadeChildClose({ childMove });
-            if (!childCloseDecision.shouldClose) {
-              console.warn(
-                `  ⚠ #${child.num} NOT closed — board move to "done" failed: ${childCloseDecision.detail}`
-              );
-              console.warn(
-                `     Recovery: re-run \`/task close ${child.num}\` once the board is reachable, ` +
-                  `or move the card to Done manually, then re-run the epic close.`
-              );
-              continue;
-            }
-            // #1041 — Delivered is terminal classification for cascaded
-            // children too. Write it only after the board move has succeeded,
-            // matching the primary close path and avoiding an OPEN child that
-            // is classified Delivered when its Done move fails.
-            if (
-              !(await writeDeliveredOrRefuse({
-                issueNumber: child.num,
-                targetRef: `#${child.num}`,
-              }))
-            ) {
-              return;
-            }
-            await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
-              timeout: GH_API_TIMEOUT_MS,
-            });
-            releaseClosedBinding({ ctx, projectDir, issue: `#${child.num}` });
-            const childSuffix = childFlush?.delivered
-              ? ` (queue: delivered ${childFlush.delivered})`
-              : '';
-            console.log(`  ✓ #${child.num} closed${childSuffix}`);
-          } catch (err) {
-            console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
-            process.exitCode = 1;
-            return;
           }
         }
       }
     }
-  }
-  if (!SKIP_NETWORK && closeIssueNum) {
-    try {
-      const { applyReviewDelta: defaultApplyReviewDelta } =
-        await import('../lib/apply-review-delta.mjs');
-      const applyReviewDelta = ctx.applyReviewDelta || defaultApplyReviewDelta;
-      await applyReviewDelta({ cfg, issueNumber: closeIssueNum, body: closeBody });
-    } catch (err) {
-      process.stderr.write(`⚠ review-delta hook failed: ${err.message}\n`);
+    if (!SKIP_NETWORK && closeIssueNum) {
+      try {
+        const { applyReviewDelta: defaultApplyReviewDelta } =
+          await import('../lib/apply-review-delta.mjs');
+        const applyReviewDelta = ctx.applyReviewDelta || defaultApplyReviewDelta;
+        await applyReviewDelta({ cfg, issueNumber: closeIssueNum, body: closeBody });
+      } catch (err) {
+        process.stderr.write(`⚠ review-delta hook failed: ${err.message}\n`);
+      }
     }
+    if (dirtyAuditRow) {
+      await safePostTiming(closeTarget, dirtyAuditRow);
+    }
+    // #801 — emit the review→done close pair through the shared helper (also
+    // invoked by the converge/no-op fast-path). `review:approved` is gated on the
+    // live approval marker in the fetched body, OR an explicitly-bypassed review
+    // gate (`aitm-gate-bypassed` already logged); `issue:wrap` is unconditional.
+    try {
+      await emitReviewToDoneClosePair({
+        closeTarget,
+        closeIssueNum,
+        cfg,
+        hasApprovalMarker:
+          hasReviewApprovedMarker(closeBody) ||
+          hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'human' }) ||
+          hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'full-auto' }),
+        issueBody: closeBody,
+        reviewGateBypassed,
+        lastWordMarker: s.lastWordMarker,
+        lastFullWordMarker: stateFullWordMarker(s),
+        ctx,
+        SKIP_NETWORK,
+        nowIso,
+        safePostTiming,
+      });
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+          'Issue left OPEN; retry after timing evidence is reachable.'
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (runLogIssueTime) await runLogIssueTime(closeTarget);
+    // Post-close board/body agreement check (#180 defect 1 guard). After
+    // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
+    // non-null engagedTime. If it's still null, board fields almost certainly
+    // were not written either — refuse to clear active so the user can recover.
+    if (!SKIP_NETWORK && closeIssueNum) {
+      await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
+    }
+    let flushResult;
+    try {
+      flushResult = await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+          'Issue left OPEN; queued timing evidence was retained for retry.'
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (flushResult.delivered) {
+      console.log(
+        `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
+      );
+    }
+    await markDeliveredCloseStep('timing');
   }
-  if (dirtyAuditRow) {
-    await safePostTiming(closeTarget, dirtyAuditRow);
+  if (needsDeliveredCloseStep('estimation')) {
+    try {
+      await ensureCloseEstimationOutcome({
+        issueNumber: closeIssueNum,
+        body: closeBody,
+        writer: estimationOutcomeWriter,
+      });
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+          'Issue left OPEN; repair outcome evidence and retry.'
+      );
+      process.exitCode = 1;
+      return;
+    }
+    await markDeliveredCloseStep('estimation');
   }
-  // #801 — emit the review→done close pair through the shared helper (also
-  // invoked by the converge/no-op fast-path). `review:approved` is gated on the
-  // live approval marker in the fetched body, OR an explicitly-bypassed review
-  // gate (`aitm-gate-bypassed` already logged); `issue:wrap` is unconditional.
-  try {
-    await emitReviewToDoneClosePair({
-      closeTarget,
-      closeIssueNum,
+  let lifecycleTickResult = { ok: true };
+  if (needsDeliveredCloseStep('lifecycle')) {
+    lifecycleTickResult = await reconcileLifecycleBoxes({
       cfg,
-      hasApprovalMarker:
-        hasReviewApprovedMarker(closeBody) ||
-        hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'human' }) ||
-        hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'full-auto' }),
-      issueBody: closeBody,
-      reviewGateBypassed,
-      lastWordMarker: s.lastWordMarker,
-      lastFullWordMarker: stateFullWordMarker(s),
-      ctx,
-      SKIP_NETWORK,
-      nowIso,
-      safePostTiming,
+      issueNum: closeIssueNum,
+      pexec,
     });
-  } catch (err) {
-    console.error(
-      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
-        'Issue left OPEN; retry after timing evidence is reachable.'
-    );
-    process.exitCode = 1;
-    return;
-  }
-  if (runLogIssueTime) await runLogIssueTime(closeTarget);
-  // Post-close board/body agreement check (#180 defect 1 guard). After
-  // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
-  // non-null engagedTime. If it's still null, board fields almost certainly
-  // were not written either — refuse to clear active so the user can recover.
-  if (!SKIP_NETWORK && closeIssueNum) {
-    await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
-  }
-  let flushResult;
-  try {
-    flushResult = await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
-  } catch (err) {
-    console.error(
-      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
-        'Issue left OPEN; queued timing evidence was retained for retry.'
-    );
-    process.exitCode = 1;
-    return;
-  }
-  if (flushResult.delivered) {
-    console.log(
-      `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
-    );
-  }
-  try {
-    await ensureCloseEstimationOutcome({
-      issueNumber: closeIssueNum,
-      body: closeBody,
-      writer: estimationOutcomeWriter,
-    });
-  } catch (err) {
-    console.error(
-      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
-        'Issue left OPEN; repair outcome evidence and retry.'
-    );
-    process.exitCode = 1;
-    return;
+    if (lifecycleTickResult && lifecycleTickResult.ok === false) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: lifecycle checkboxes did not converge. ` +
+          'Issue left OPEN; repair the body mutation and retry.'
+      );
+      process.exitCode = 1;
+      return;
+    }
+    await markDeliveredCloseStep('lifecycle');
   }
   // #505 — atomic forced close. A `--force` close deliberately bypasses the
   // close gate (above), but the *terminal board move* used to run only AFTER
@@ -1770,28 +2038,36 @@ export async function verbClose(ctx) {
   // closed-but-not-Done. (The post-close move below then degrades to a benign
   // `done → done` no-op on this path; the non-force path is unchanged.)
   if (force && !SKIP_NETWORK && closeIssueNum) {
-    const forcedMove = await runMoveStateDone(s.active, {
-      silent: true,
-      extraArgs: ['--force'],
-      reviewAuthority: terminalReviewAuthority(),
-    });
-    // Same swallow-vs-surface rule as the post-close move (#435): re-read the
-    // board and only refuse when the move genuinely failed AND the board is not
-    // Done. A benign `done → done` (board already converged out-of-band) passes.
-    const forcedBoardState =
-      forcedMove && !forcedMove.ok && !forcedMove.benign
-        ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
-        : 'done';
-    if (decideBoardMoveFailure({ moveResult: forcedMove, boardState: forcedBoardState }).surface) {
-      const detail =
-        (forcedMove.stderr || '').trim() ||
-        `move-state.mjs exited ${forcedMove.status ?? 'non-zero'}`;
-      console.error(
-        `[task-tracker] ⛔ Refusing to close ${closeTarget}: forced board move to "done" failed (${detail}). ` +
-          `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move and re-run \`/task close ${closeTarget} --force\`.`
-      );
-      process.exitCode = 1;
-      return;
+    if (needsDeliveredCloseStep('board')) {
+      const observedBoardState = await getIssueBoardState(closeIssueNum);
+      if (observedBoardState === 'done') await markDeliveredCloseStep('board');
+    }
+    if (needsDeliveredCloseStep('board')) {
+      const forcedMove = await runMoveStateDone(s.active, {
+        silent: true,
+        extraArgs: ['--force'],
+        reviewAuthority: terminalReviewAuthority(),
+      });
+      // Same swallow-vs-surface rule as the post-close move (#435): re-read the
+      // board and only refuse when the move genuinely failed AND the board is not
+      // Done. A benign `done → done` (board already converged out-of-band) passes.
+      const forcedBoardState =
+        forcedMove && !forcedMove.ok && !forcedMove.benign
+          ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
+          : 'done';
+      if (
+        decideBoardMoveFailure({ moveResult: forcedMove, boardState: forcedBoardState }).surface
+      ) {
+        const detail =
+          (forcedMove.stderr || '').trim() ||
+          `move-state.mjs exited ${forcedMove.status ?? 'non-zero'}`;
+        console.error(
+          `[task-tracker] ⛔ Refusing to close ${closeTarget}: forced board move to "done" failed (${detail}). ` +
+            `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move and re-run \`/task close ${closeTarget} --force\`.`
+        );
+        process.exitCode = 1;
+        return;
+      }
     }
   }
 
@@ -1814,31 +2090,76 @@ export async function verbClose(ctx) {
   // recovers. The post-close move (#385) then degrades to a benign `done → done`
   // no-op, exactly as on the force path.
   if (!force && !SKIP_NETWORK && closeIssueNum) {
-    const preMove = await runMoveStateDone(s.active, {
+    if (needsDeliveredCloseStep('board')) {
+      const observedBoardState = await getIssueBoardState(closeIssueNum);
+      if (observedBoardState === 'done') await markDeliveredCloseStep('board');
+    }
+    if (needsDeliveredCloseStep('board')) {
+      const preMove = await runMoveStateDone(s.active, {
+        silent: true,
+        reviewAuthority: terminalReviewAuthority(),
+      });
+      const preBoardState =
+        preMove && !preMove.ok && !preMove.benign
+          ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
+          : 'done';
+      if (decideBoardMoveFailure({ moveResult: preMove, boardState: preBoardState }).surface) {
+        const detail =
+          (preMove.stderr || '').trim() || `move-state.mjs exited ${preMove.status ?? 'non-zero'}`;
+        console.error(
+          `[task-tracker] ⛔ Refusing to close ${closeTarget}: board move to "done" failed (${detail}). ` +
+            `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move ` +
+            `(e.g. record review approval with \`/task approve ${closeTarget}\`) and re-run \`/task close ${closeTarget}\`.`
+        );
+        process.exitCode = 1;
+        return;
+      }
+    }
+  }
+  if (needsDeliveredCloseStep('board') && SKIP_NETWORK) {
+    const offlineMove = await runMoveStateDone(s.active, {
       silent: true,
+      ...(force ? { extraArgs: ['--force'] } : {}),
       reviewAuthority: terminalReviewAuthority(),
     });
-    const preBoardState =
-      preMove && !preMove.ok && !preMove.benign
-        ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
-        : 'done';
-    if (decideBoardMoveFailure({ moveResult: preMove, boardState: preBoardState }).surface) {
+    if (offlineMove && !offlineMove.ok && !offlineMove.benign) {
       const detail =
-        (preMove.stderr || '').trim() || `move-state.mjs exited ${preMove.status ?? 'non-zero'}`;
+        (offlineMove.stderr || '').trim() ||
+        `move-state.mjs exited ${offlineMove.status ?? 'non-zero'}`;
+      console.error(`[task-tracker] ⛔ Refusing offline close ${closeTarget}: ${detail}.`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  if (needsDeliveredCloseStep('board')) await markDeliveredCloseStep('board');
+
+  // #1035 — Delivered is terminal classification, so write it only after the
+  // board has verifiably reached Done. This prevents a failed outcome or move
+  // from leaving an open issue classified as delivered.
+  if (needsDeliveredCloseStep('disposition') && !SKIP_NETWORK && closeIssueNum) {
+    let observedDisposition;
+    try {
+      observedDisposition = String(
+        (await dispositionReader({ cfg, issueNumber: Number(closeIssueNum) })) || ''
+      ).trim();
+    } catch (err) {
       console.error(
-        `[task-tracker] ⛔ Refusing to close ${closeTarget}: board move to "done" failed (${detail}). ` +
-          `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move ` +
-          `(e.g. record review approval with \`/task approve ${closeTarget}\`) and re-run \`/task close ${closeTarget}\`.`
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: terminal disposition could not be read (${err.message}).`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (observedDisposition === 'Delivered') {
+      await markDeliveredCloseStep('disposition');
+    } else if (observedDisposition) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: terminal disposition is already ${observedDisposition}; refusing to overwrite it with Delivered.`
       );
       process.exitCode = 1;
       return;
     }
   }
-
-  // #1035 — Delivered is terminal classification, so write it only after the
-  // board has verifiably reached Done. This prevents a failed outcome or move
-  // from leaving an open issue classified as delivered.
-  if (!SKIP_NETWORK && closeIssueNum) {
+  if (needsDeliveredCloseStep('disposition') && !SKIP_NETWORK && closeIssueNum) {
     if (
       !(await writeDeliveredOrRefuse({
         issueNumber: closeIssueNum,
@@ -1848,6 +2169,7 @@ export async function verbClose(ctx) {
       return;
     }
   }
+  if (needsDeliveredCloseStep('disposition')) await markDeliveredCloseStep('disposition');
 
   // #425 — explicitly close the primary issue rather than relying on the
   // GitHub Projects auto-close workflow firing off the board move below. The
@@ -1857,7 +2179,25 @@ export async function verbClose(ctx) {
   // exit non-zero WITHOUT clearing local state, so a re-run finishes the job
   // (and the short-circuit above will converge the lagging side). `gh issue
   // close` is idempotent — closing an already-closed issue is a no-op.
-  if (!SKIP_NETWORK && closeIssueNum) {
+  if (needsDeliveredCloseStep('issue') && !SKIP_NETWORK && closeIssueNum) {
+    const observedIssue = getIssueCloseSnapshot
+      ? await getIssueCloseSnapshot(closeIssueNum)
+      : { issueClosed: await getIssueClosedState(closeIssueNum), stateReason: null };
+    if (observedIssue?.issueClosed === true) {
+      if (
+        observedIssue.stateReason !== null &&
+        String(observedIssue.stateReason || '').toLowerCase() !== 'completed'
+      ) {
+        console.error(
+          `[task-tracker] ⛔ Refusing to close ${closeTarget}: GitHub reports a non-completed close reason.`
+        );
+        process.exitCode = 1;
+        return;
+      }
+      await markDeliveredCloseStep('issue');
+    }
+  }
+  if (needsDeliveredCloseStep('issue') && !SKIP_NETWORK && closeIssueNum) {
     try {
       await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
         timeout: GH_API_TIMEOUT_MS,
@@ -1870,43 +2210,75 @@ export async function verbClose(ctx) {
       process.exitCode = 1;
       return;
     }
-    await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
+    await markDeliveredCloseStep('issue');
   }
-  releaseClosedBinding({ ctx, projectDir, issue: s.active });
-  clearActive(statePath);
-  // #385 — branch on the structured result. A genuine board-move failure must
-  // NOT be reported as a clean "Closed": the issue was just closed on GitHub
-  // (the explicit `gh issue close` above), but if the board never reached
-  // `done` the user needs to see the real reason and a non-zero exit. The
-  // benign `done → done` no-op (auto-close already moved the board) is treated
-  // as success and produces no warning.
-  const moveResult = await runMoveStateDone(s.active, {
-    silent: true,
-    reviewAuthority: terminalReviewAuthority(),
-  });
-  const lifecycleTickResult = await reconcileLifecycleBoxes({
-    cfg,
-    issueNum: closeIssueNum,
-    pexec,
-  });
-  if (moveResult && !moveResult.ok && !moveResult.benign) {
-    // #435 — the move reported a non-benign failure, but a race can leave the
-    // board already at Done (the auto-close workflow or a prior converge moved
-    // it out-of-band between the decision above and this move). Re-read the
-    // board: swallow when it is verifiably Done (the close succeeded), surface
-    // only when it is NOT Done (a genuine board-move failure).
-    const postBoardState = await getIssueBoardState(s.active);
-    if (decideBoardMoveFailure({ moveResult, boardState: postBoardState }).surface) {
-      const detail =
-        (moveResult.stderr || '').trim() ||
-        `move-state.mjs exited ${moveResult.status ?? 'non-zero'}`;
+  if (needsDeliveredCloseStep('labels') && !SKIP_NETWORK && closeIssueNum) {
+    let observedLabels;
+    try {
+      observedLabels = await closeLabelsReader({ pexec, cfg, issueNum: closeIssueNum });
+    } catch (err) {
       console.error(
-        `[task-tracker] ✗ #${s.active.replace(/^#/, '')} closed on GitHub but the board move to "done" failed: ${detail}`
+        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: labels could not be inspected (${err.message}).`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (!observedLabels.some((label) => label === 'ToDo' || label === 'BLOCKED')) {
+      await markDeliveredCloseStep('labels');
+    }
+  }
+  if (needsDeliveredCloseStep('labels') && !SKIP_NETWORK && closeIssueNum) {
+    const labelsRemoved = await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
+    if (!labelsRemoved) {
+      process.exitCode = 1;
+      return;
+    }
+    await markDeliveredCloseStep('labels');
+  }
+  if (needsDeliveredCloseStep('binding')) {
+    let bindingRelease;
+    try {
+      bindingRelease = await bindingReleaseInspector({ projectDir, issue: s.active });
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: binding release could not be inspected (${err.message}).`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (bindingRelease?.status === 'conflict') {
+      console.error(
+        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: a newer binding or occupancy claim supersedes the terminal cleanup authority.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (bindingRelease?.status === 'incomplete') {
+      try {
+        await bindingReleaseResumer({ projectDir, issue: s.active });
+      } catch (err) {
+        console.error(
+          `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: stale binding cleanup could not be resumed (${err.message}).`
+        );
+        process.exitCode = 1;
+        return;
+      }
+      await markDeliveredCloseStep('binding');
+    } else if (bindingRelease?.status === 'released') {
+      await markDeliveredCloseStep('binding');
+    } else if (bindingRelease?.status !== 'pending') {
+      console.error(
+        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: binding release inspection returned an unknown state.`
       );
       process.exitCode = 1;
       return;
     }
   }
+  if (needsDeliveredCloseStep('binding')) {
+    releaseClosedBinding({ ctx, projectDir, issue: s.active });
+    await markDeliveredCloseStep('binding');
+  }
+  clearActive(statePath);
   // #672 — a lifecycle-tick failure that exhausts its retries previously
   // only surfaced on stderr, easy to miss among the surrounding console.log
   // lines. Fold it

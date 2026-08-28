@@ -89,11 +89,11 @@ function pullRequest(number, headRefOid, mergeCommitSha = MERGE) {
   };
 }
 
-async function load(pullRequests, { comments = deliveryComments() } = {}) {
+async function load(pullRequests, { comments = deliveryComments(), localHeadSha = HEAD } = {}) {
   let commentReads = 0;
   const pexec = async (command, args) => {
     if (command === 'git' && args[0] === 'branch') return { stdout: 'codex/939-full-auto-merge\n' };
-    if (command === 'git' && args[0] === 'rev-parse') return { stdout: `${HEAD}\n` };
+    if (command === 'git' && args[0] === 'rev-parse') return { stdout: `${localHeadSha}\n` };
     if (command === 'gh' && args[0] === 'pr') return { stdout: JSON.stringify(pullRequests) };
     if (command === 'gh' && args[0] === 'api') {
       commentReads += 1;
@@ -112,6 +112,27 @@ async function load(pullRequests, { comments = deliveryComments() } = {}) {
   });
   return { result, commentReads };
 }
+
+test('#1381 close carries immutable accepted authority after the reused branch advances', async () => {
+  const accepted = pullRequest(1400, HEAD);
+  const later = pullRequest(1401, HISTORICAL_HEAD, 'd'.repeat(40));
+
+  for (const pullRequests of [
+    [accepted, later],
+    [later, accepted],
+  ]) {
+    const { result, commentReads } = await load(pullRequests, {
+      localHeadSha: HISTORICAL_HEAD,
+    });
+
+    assert.equal(commentReads, 1);
+    assert.equal(result.acceptedSha, HEAD);
+    assert.equal(result.observedLocalHeadSha, HISTORICAL_HEAD);
+    assert.equal(result.headRelation, 'advanced');
+    assert.equal(result.pullRequest.number, 1400);
+    assert.equal(result.records.matchingReceipt.record.expectedHeadSha, HEAD);
+  }
+});
 
 test('#1397 projects delivery records under the unique accepted-head PR in either order', async () => {
   const current = pullRequest(1400, HEAD);
@@ -153,13 +174,11 @@ test('#1399 rejects an invalid GitHub comment timestamp before record projection
   );
 });
 
-test('#1397 does not read comments for zero or duplicate accepted-head candidates', async () => {
+test('#1397 refuses zero or duplicate accepted-head candidates before projection', async () => {
   for (const pullRequests of [
     [pullRequest(1396, HISTORICAL_HEAD)],
     [pullRequest(1400, HEAD), pullRequest(1401, HEAD)],
   ]) {
-    const { result, commentReads } = await load(pullRequests);
-    assert.equal(commentReads, 0);
-    assert.equal(result.records.matchingReceipt, null);
+    await assert.rejects(load(pullRequests), /delivery-authority:ambiguous-pr/);
   }
 });

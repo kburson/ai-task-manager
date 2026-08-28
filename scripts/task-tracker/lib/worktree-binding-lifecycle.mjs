@@ -9,9 +9,10 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import path from 'node:path';
 
 import { deregisterTask, fleetRegistryPath, readFleet, withLock } from '../fleet-registry.mjs';
-import { closedBindingsPath } from '../paths.mjs';
-import { compareAndClearActiveTask } from '../session-state.mjs';
+import { closedBindingsPath, occupancyPath } from '../paths.mjs';
+import { compareAndClearActiveTask, getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
+import { readOccupancy, releaseOccupancyAtOrBefore } from './occupancy.mjs';
 import { releaseBindingOccupancy } from './occupancy-lifecycle.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 
@@ -223,4 +224,94 @@ export function releaseTerminalIssueBinding({ projectDir, issue, deps = {} } = {
     { releaseOccupancy: deps.releaseOccupancy }
   );
   return { bindings, occupancy };
+}
+
+// A terminal close can crash after publishing the main-anchored closed-binding
+// ledger entry but before checkpointing its delivered-close transaction. A
+// retry must recognize that durable effect instead of replaying cleanup. The
+// ledger entry proves a release occurred; scanning every known candidate also
+// ensures a later same-session rebind is not mistaken for the old release.
+export function inspectTerminalIssueBindingRelease({ projectDir, issue, deps = {} } = {}) {
+  const issueRef = normalizeBindingIssue(issue);
+  const sessionId = deps.sessionId ?? currentSessionId();
+  if (!issueRef || !sessionId) throw new Error('closed-bindings:inspection-input');
+  const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
+  const mainWorktreePath = resolveMain(projectDir, deps);
+  const ledger = (deps.readLedger || readClosedBindingLedger)(mainWorktreePath, deps);
+  const closedAt = ledger.sessions?.[sessionId]?.[issueRef]?.closedAt;
+  if (!closedAt) return { status: 'pending', closedAt: null };
+  const closedMs = timestamp(closedAt, 'ledger-closed-at');
+  const occupancyFile = (deps.occupancyPath || occupancyPath)(mainWorktreePath);
+  const occupancy = (deps.readOccupancy || readOccupancy)(occupancyFile);
+  const occupancyRow = occupancy[String(Number(issueRef.slice(1)))] ?? null;
+  if (
+    occupancyRow &&
+    (occupancyRow.sid !== sessionId ||
+      timestamp(occupancyRow.boundAt, 'occupancy-bound-at') > closedMs)
+  ) {
+    return { status: 'conflict', closedAt };
+  }
+  const collected = deps.collectCandidates
+    ? { mainWorktreePath, candidates: deps.collectCandidates({ projectDir, deps }) }
+    : collectBindingCandidateWorktrees({ projectDir, deps });
+  const candidates = Array.isArray(collected.candidates)
+    ? collected.candidates
+    : [...collected.candidates];
+  const readActive = deps.getActiveTask || getActiveTask;
+  let staleBinding = false;
+  for (const candidate of candidates) {
+    const record = readActive(sessionId, candidate);
+    if (normalizeBindingIssue(record?.issue) !== issueRef) continue;
+    if (!isBindingRecordClosed({ record, sessionId, ledger })) {
+      return { status: 'conflict', closedAt };
+    }
+    staleBinding = true;
+  }
+  return {
+    status: occupancyRow || staleBinding ? 'incomplete' : 'released',
+    closedAt,
+  };
+}
+
+export function resumeTerminalIssueBindingRelease({ projectDir, issue, deps = {} } = {}) {
+  const issueRef = normalizeBindingIssue(issue);
+  const sessionId = deps.sessionId ?? currentSessionId();
+  if (!issueRef || !sessionId) throw new Error('closed-bindings:resume-input');
+  const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
+  const mainWorktreePath = resolveMain(projectDir, deps);
+  const ledger = (deps.readLedger || readClosedBindingLedger)(mainWorktreePath, deps);
+  if (!ledger.sessions?.[sessionId]?.[issueRef]?.closedAt) {
+    throw new Error('closed-bindings:resume-authority-missing');
+  }
+  const collected = deps.collectCandidates
+    ? { mainWorktreePath, candidates: deps.collectCandidates({ projectDir, deps }) }
+    : collectBindingCandidateWorktrees({ projectDir, deps });
+  const candidates = Array.isArray(collected.candidates)
+    ? collected.candidates
+    : [...collected.candidates];
+  const compareAndClear = deps.compareAndClearActiveTask || compareAndClearActiveTask;
+  for (const candidate of candidates) {
+    const result = compareAndClear(sessionId, candidate, (record) => {
+      if (normalizeBindingIssue(record?.issue) !== issueRef) return false;
+      return isBindingRecordClosed({ record, sessionId, ledger });
+    });
+    if (
+      result?.status === 'superseded' &&
+      normalizeBindingIssue(result.record?.issue) === issueRef
+    ) {
+      throw new Error('closed-bindings:resume-conflict');
+    }
+  }
+  try {
+    (deps.deregisterTask || deregisterTask)(projectDir, issueRef);
+  } catch {
+    // Fleet registration remains advisory during recovery.
+  }
+  const occupancy = (deps.releaseOccupancyAtOrBefore || releaseOccupancyAtOrBefore)({
+    projectDir,
+    issue: issueRef,
+    sid: sessionId,
+    closedAt: ledger.sessions[sessionId][issueRef].closedAt,
+  });
+  return { status: 'released', occupancy };
 }

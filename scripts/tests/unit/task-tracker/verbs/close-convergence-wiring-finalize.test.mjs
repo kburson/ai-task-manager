@@ -97,7 +97,8 @@ test('#1403 close authorizes review against accepted delivery SHA after local HE
       lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
       branch: 'feature/925',
       acceptedSha: HEAD,
-      localHeadSha: laterHead,
+      observedLocalHeadSha: laterHead,
+      headRelation: 'advanced',
       pullRequests: [],
       records: null,
     },
@@ -109,6 +110,9 @@ test('#1403 close authorizes review against accepted delivery SHA after local HE
 
   assert.equal(run.exitCode, 0);
   assert.equal(authorizationInput.acceptedHeadSha, HEAD);
+  assert.equal(run.calls.freshDeliveryVerifications, 1);
+  assert.equal(run.calls.freshDeliveryInputs[0].acceptedSha, HEAD);
+  assert.equal(run.calls.freshDeliveryInputs[0].observedLocalHeadSha, laterHead);
 });
 
 test('close consumes marker-free exact-head directory human authority', async () => {
@@ -135,6 +139,21 @@ test('production close derives accepted head from marker-free directory Review e
   assert.equal(run.exitCode, 0);
   assert.equal(run.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
   assert.equal(run.calls.mutations, 0, 'directory authority must remain marker-free');
+});
+
+test('production close resolves directory authority from immutable Test SHA after local HEAD advances', async () => {
+  const run = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n${testReceiptMarker(HEAD)}`,
+    lifecycleEvidence: directoryEvidence(),
+    localHeadSha: 'b'.repeat(40),
+    useInjectedReviewAuthorization: false,
+    useInjectedDeliveryGateInput: false,
+    useInjectedDeliveryReceipt: false,
+  });
+
+  assert.equal(run.exitCode, 0);
+  assert.deepEqual(run.calls.lifecycleExpectedShas, [HEAD]);
 });
 
 test('production close refuses directory Review without directory Approval despite body approval', async () => {

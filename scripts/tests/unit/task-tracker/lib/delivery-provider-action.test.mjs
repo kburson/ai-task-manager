@@ -241,8 +241,8 @@ const REFUSALS = [
     },
   },
   {
-    name: 'remote pull request head mismatch',
-    category: 'head-mismatch',
+    name: 'remote pull request head mismatch leaves zero accepted-head pull requests',
+    category: 'pull-request-count',
     mutate: (input) => {
       input.pullRequests[0].headRefOid = OTHER_HEAD;
     },

@@ -28,7 +28,6 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 import { verbHelp } from '../../../../task-tracker/verbs/help.mjs';
-import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
 
 // #1408 — "offline, injected collaborators" above was aspiration, not fact. A
 // census counted 12 live `gh` invocations from this file. They already fail
@@ -77,13 +76,13 @@ function withRealStateFile({ active }) {
 // every `gh` shape the offline pipeline touches; all collaborators record their
 // invocation into `sideEffects` so we can assert which halves of the close ran.
 function buildCtx({ statePath, rest, sideEffects }) {
+  let liveBody = CLOSE_BODY;
   const pexec = async (_cmd, args = []) => {
     const a = args.join(' ');
     if (a.includes('rev-parse')) return { stdout: 'abc1234', stderr: '' };
     // `gh issue view … --json body --jq .body` → raw body; `--json body` → JSON.
-    if (a.includes('issue view') && a.includes('--jq')) return { stdout: CLOSE_BODY, stderr: '' };
-    if (a.includes('issue view'))
-      return { stdout: JSON.stringify({ body: CLOSE_BODY }), stderr: '' };
+    if (a.includes('issue view') && a.includes('--jq')) return { stdout: liveBody, stderr: '' };
+    if (a.includes('issue view')) return { stdout: JSON.stringify({ body: liveBody }), stderr: '' };
     return { stdout: '', stderr: '' };
   };
   return {
@@ -94,7 +93,10 @@ function buildCtx({ statePath, rest, sideEffects }) {
     SKIP_NETWORK: false,
     pexec,
     issueBodyMutator: {
-      mutate: (args) => mutateIssueBody({ ...args, deps: { pexec } }),
+      mutate: async ({ mutate }) => {
+        liveBody = mutate(liveBody);
+        return { status: 'ok', body: liveBody };
+      },
     },
     // Real now: the timing rows go through buildRow's anti-backdating guard,
     // which refuses a `ts` more than 60s from wall-clock (data-fabrication
@@ -120,6 +122,7 @@ function buildCtx({ statePath, rest, sideEffects }) {
       sideEffects.push('runMoveStateDone');
       return { ok: true };
     },
+    readTerminalDisposition: async () => null,
     writeTerminalDisposition: async ({ disposition }) => {
       sideEffects.push(`writeTerminalDisposition:${disposition}`);
       return { disposition };
@@ -138,9 +141,12 @@ function buildCtx({ statePath, rest, sideEffects }) {
     },
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'done',
+    getIssueCloseSnapshot: async () => ({ issueClosed: true, stateReason: 'completed' }),
     getIssueClosedState: async () => true,
+    readCloseLabels: async () => ['ToDo', 'BLOCKED'],
+    inspectTerminalIssueBindingRelease: async () => ({ status: 'pending', closedAt: null }),
     uncheckedPreCloseCheckboxes: () => [],
-    loadCloseDeliveryBody: async () => CLOSE_BODY,
+    loadCloseDeliveryBody: async () => liveBody,
     loadCloseDeliveryGateInput: async () => ({
       issueNumber: 708,
       lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
@@ -152,6 +158,7 @@ function buildCtx({ statePath, rest, sideEffects }) {
     }),
     resolveReviewAuthorization: () => ({ mode: 'full-auto', standing: true, source: 'test' }),
     requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
+    verifyCloseDeliveryReceipt: async ({ receiptGate }) => receiptGate,
   };
 }
 
@@ -247,8 +254,8 @@ test('#708 AC2: same state WITH --repair → bypasses noop and replays the full 
     'repair must replay the review→done audit rows (safePostTiming)'
   );
   assert.ok(
-    sideEffects.includes('runMoveStateDone'),
-    'repair must replay the terminal board move to Done'
+    !sideEffects.includes('runMoveStateDone'),
+    'repair adopts the already-Done board effect instead of replaying it'
   );
   assert.ok(
     sideEffects.includes('writeTerminalDisposition:Delivered'),

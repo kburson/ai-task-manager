@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { join } from 'node:path';
 
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
+import { readDeliveredCloseTransactions } from '../../task-tracker/lib/close-convergence.mjs';
 import { tickLifecycleOnClose, verbClose } from '../../task-tracker/verbs/close.mjs';
 
 export function closeBody({ agentReview = 'x', finalReview = 'x' } = {}) {
@@ -67,8 +68,20 @@ export async function runClose({
   useInjectedReviewAuthorization = true,
   useInjectedDeliveryGateInput = true,
   useInjectedDeliveryReceipt = true,
+  useInjectedFreshDeliveryVerification = useInjectedDeliveryReceipt,
   lifecycleEvidence = null,
+  localHeadSha = 'a'.repeat(40),
+  terminalDisposition,
+  terminalDispositionError = null,
+  liveLabels = ['ToDo', 'BLOCKED'],
+  labelReadError = null,
+  labelWriteError = null,
+  bindingReleased = false,
+  bindingReleaseStatus = bindingReleased ? 'released' : 'pending',
+  bindingReadError = null,
+  bindingResumeError = null,
   force = false,
+  trackEstimationOutcomes = false,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
   const statePath = join(dir, 'state.json');
@@ -84,16 +97,27 @@ export async function runClose({
     drains: 0,
     flushes: 0,
     issueCloses: 0,
+    labelReads: 0,
+    labelWrites: 0,
+    bindingReads: 0,
+    bindingResumes: 0,
     lifecycleFallbacks: 0,
+    lifecycleExpectedShas: [],
+    lifecycleReconciles: 0,
     logIssueTime: 0,
     movesToDone: [],
     movesToReview: [],
     mutations: 0,
     networkCalls: 0,
+    providerActions: 0,
+    issueRecordCreates: 0,
     reopens: 0,
     timingReads: 0,
     timingRows: [],
     terminalDispositions: 0,
+    estimationOutcomes: 0,
+    freshDeliveryVerifications: 0,
+    freshDeliveryInputs: [],
   };
   captureCalls?.(calls);
   const projectConfig = {
@@ -121,9 +145,16 @@ export async function runClose({
       if (args[0] === 'issue' && args[1] === 'view' && args.includes('body')) {
         calls.bodyReads += 1;
         if (bodyReadError) throw bodyReadError;
-        return { stdout: JSON.stringify({ body: liveBody }), stderr: '' };
+        return {
+          stdout: args.includes('--jq') ? liveBody : JSON.stringify({ body: liveBody }),
+          stderr: '',
+        };
       }
       if (args[0] === 'issue' && args[1] === 'close') calls.issueCloses += 1;
+      if (args[0] === 'issue' && args[1] === 'edit' && args.includes('--remove-label')) {
+        if (labelWriteError) throw labelWriteError;
+        calls.labelWrites += 1;
+      }
       if (args[0] === 'issue' && args[1] === 'reopen') calls.reopens += 1;
       return { stdout: '{}', stderr: '' };
     },
@@ -223,7 +254,10 @@ export async function runClose({
                 sleep: async () => {},
               },
             })
-        : async () => ({ ok: true }),
+        : async () => {
+            calls.lifecycleReconciles += 1;
+            return { ok: true };
+          },
       readTimingCommentBody: async () => {
         calls.timingReads += 1;
         return {
@@ -237,6 +271,36 @@ export async function runClose({
         calls.terminalDispositions += 1;
         return { status: 'ok' };
       },
+      readTerminalDisposition: async () => {
+        if (terminalDispositionError) throw terminalDispositionError;
+        if (terminalDisposition !== undefined) return terminalDisposition;
+        const initial = readDeliveredCloseTransactions(body);
+        return initial[0]?.completedSteps.includes('disposition') ? 'Delivered' : null;
+      },
+      readCloseLabels: async () => {
+        calls.labelReads += 1;
+        if (labelReadError) throw labelReadError;
+        return [...liveLabels];
+      },
+      inspectTerminalIssueBindingRelease: async () => {
+        calls.bindingReads += 1;
+        if (bindingReadError) throw bindingReadError;
+        return { status: bindingReleaseStatus, closedAt: '2026-08-28T00:00:00.000Z' };
+      },
+      resumeTerminalIssueBindingRelease: async () => {
+        calls.bindingResumes += 1;
+        if (bindingResumeError) throw bindingResumeError;
+        return { status: 'released' };
+      },
+      applyReviewDelta: async () => ({ status: 'skipped' }),
+      ...(trackEstimationOutcomes
+        ? {
+            estimationOutcomeWriter: async () => {
+              calls.estimationOutcomes += 1;
+              return { status: 'existing' };
+            },
+          }
+        : {}),
       releaseIssueBindings: () => {
         calls.bindingReleases += 1;
         return { released: [] };
@@ -247,8 +311,11 @@ export async function runClose({
       locateAuthoritySource: lifecycleEvidence
         ? () => ({ kind: 'github-records/v1' })
         : () => ({ kind: 'legacy-body/v1' }),
-      getHeadSha: async () => 'a'.repeat(40),
-      resolveLifecycleEvidence: async () => lifecycleEvidence,
+      getHeadSha: async () => localHeadSha,
+      resolveLifecycleEvidence: async (input) => {
+        calls.lifecycleExpectedShas.push(input.expectedSha);
+        return lifecycleEvidence;
+      },
       resolveCloseParentIssue: async () => null,
       ...(useInjectedDeliveryGateInput
         ? {
@@ -274,6 +341,15 @@ export async function runClose({
             requireDeliveryReceipt: () => {
               if (deliveryRefusal) throw deliveryRefusal;
               return { skipped: false, receipt: {} };
+            },
+          }
+        : {}),
+      ...(useInjectedFreshDeliveryVerification
+        ? {
+            verifyCloseDeliveryReceipt: async ({ gateInput, receiptGate }) => {
+              calls.freshDeliveryVerifications += 1;
+              calls.freshDeliveryInputs.push(gateInput);
+              return { skipped: false, receipt: receiptGate.receipt, gateInput };
             },
           }
         : {}),

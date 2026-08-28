@@ -5,10 +5,12 @@ import test from 'node:test';
 
 import {
   isBindingRecordClosed,
+  inspectTerminalIssueBindingRelease,
   markClosedBinding,
   readClosedBindingLedger,
   releaseIssueBindings,
   resolveBindingAuthorityMain,
+  resumeTerminalIssueBindingRelease,
 } from '../../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
 import { resolveCurrentSessionWorktreeBinding } from '../../../../task-tracker/lib/worktree-binding-guard.mjs';
 import { closedBindingsPath } from '../../../../task-tracker/paths.mjs';
@@ -62,7 +64,7 @@ test('terminal authority refuses a fallback linked-worktree anchor', () => {
 });
 
 test('terminal timestamp closes only records that were bound before it', () => {
-  assert.equal(
+  assert.deepEqual(
     isBindingRecordClosed({
       record: { issue: '#1297', boundAt: '2026-08-19T14:00:00.000Z' },
       sessionId: 'session',
@@ -70,7 +72,7 @@ test('terminal timestamp closes only records that were bound before it', () => {
     }),
     true
   );
-  assert.equal(
+  assert.deepEqual(
     isBindingRecordClosed({
       record: { issue: '#1297', boundAt: '2026-08-19T16:00:00.000Z' },
       sessionId: 'session',
@@ -79,6 +81,132 @@ test('terminal timestamp closes only records that were bound before it', () => {
     false,
     'a post-reopen bind supersedes the older closure'
   );
+});
+
+test('terminal release observation accepts the ledger unless a newer binding exists', () => {
+  const records = new Map([
+    ['/repo', null],
+    ['/repo/wt', { issue: '#1297', boundAt: '2026-08-19T14:00:00.000Z' }],
+  ]);
+  const deps = {
+    sessionId: 'session',
+    resolveMain: () => '/repo',
+    readLedger: () => ledger(),
+    readOccupancy: () => ({}),
+    collectCandidates: () => [...records.keys()],
+    getActiveTask: (_sid, candidate) => records.get(candidate),
+  };
+  assert.deepEqual(
+    inspectTerminalIssueBindingRelease({ projectDir: '/repo/wt', issue: '#1297', deps }),
+    { status: 'incomplete', closedAt: CLOSED_AT }
+  );
+  records.set('/repo/wt', { issue: '#1297', boundAt: '2026-08-19T16:00:00.000Z' });
+  assert.deepEqual(
+    inspectTerminalIssueBindingRelease({ projectDir: '/repo/wt', issue: '#1297', deps }),
+    { status: 'conflict', closedAt: CLOSED_AT },
+    'a later rebind must not be adopted as already released'
+  );
+  records.set('/repo/wt', null);
+  deps.readOccupancy = () => ({
+    1297: {
+      issue: 1297,
+      sid: 'session',
+      provider: 'codex',
+      worktreePath: '/repo/wt',
+      boundAt: '2026-08-19T14:00:00.000Z',
+      lastHeartbeatAt: '2026-08-19T14:00:00.000Z',
+    },
+  });
+  assert.deepEqual(
+    inspectTerminalIssueBindingRelease({ projectDir: '/repo/wt', issue: '#1297', deps }),
+    { status: 'incomplete', closedAt: CLOSED_AT },
+    'a stale occupancy claim proves terminal binding cleanup is incomplete'
+  );
+});
+
+test('terminal release resume reuses original ledger authority and clears only stale residue', () => {
+  const records = new Map([
+    ['/repo/wt-old', { issue: '#1297', boundAt: '2026-08-19T14:00:00.000Z' }],
+    ['/repo/wt-new', { issue: '#1297', boundAt: '2026-08-19T16:00:00.000Z' }],
+  ]);
+  let occupancyReleases = 0;
+  assert.throws(
+    () =>
+      resumeTerminalIssueBindingRelease({
+        projectDir: '/repo/wt-new',
+        issue: '#1297',
+        deps: {
+          sessionId: 'session',
+          resolveMain: () => '/repo',
+          readLedger: () => ledger(),
+          collectCandidates: () => [...records.keys()],
+          compareAndClearActiveTask: (_sid, candidate, predicate) => {
+            const record = records.get(candidate);
+            if (!predicate(record)) return { status: 'superseded', record };
+            records.delete(candidate);
+            return { status: 'cleared', record };
+          },
+          releaseOccupancyAtOrBefore: () => {
+            occupancyReleases += 1;
+            return { status: 'released' };
+          },
+          deregisterTask: () => {},
+        },
+      }),
+    /closed-bindings:resume-conflict/
+  );
+  assert.equal(records.has('/repo/wt-new'), true);
+  assert.equal(occupancyReleases, 0);
+
+  records.delete('/repo/wt-new');
+  let newerOccupancyPresent = true;
+  assert.throws(
+    () =>
+      resumeTerminalIssueBindingRelease({
+        projectDir: '/repo/wt-old',
+        issue: '#1297',
+        deps: {
+          sessionId: 'session',
+          resolveMain: () => '/repo',
+          readLedger: () => ledger(),
+          collectCandidates: () => [...records.keys()],
+          compareAndClearActiveTask: () => ({ status: 'absent', record: null }),
+          releaseOccupancyAtOrBefore: ({ closedAt }) => {
+            assert.equal(closedAt, CLOSED_AT);
+            if (newerOccupancyPresent) throw new Error('occupancy-terminal-release-refused');
+            return { status: 'released' };
+          },
+          deregisterTask: () => {},
+        },
+      }),
+    /occupancy-terminal-release-refused/
+  );
+  assert.equal(newerOccupancyPresent, true, 'newer occupancy survives the resume race');
+  newerOccupancyPresent = false;
+  const resumed = resumeTerminalIssueBindingRelease({
+    projectDir: '/repo/wt-old',
+    issue: '#1297',
+    deps: {
+      sessionId: 'session',
+      resolveMain: () => '/repo',
+      readLedger: () => ledger(),
+      collectCandidates: () => [...records.keys()],
+      compareAndClearActiveTask: (_sid, candidate, predicate) => {
+        const record = records.get(candidate);
+        if (!predicate(record)) return { status: 'superseded', record };
+        records.delete(candidate);
+        return { status: 'cleared', record };
+      },
+      releaseOccupancyAtOrBefore: () => {
+        occupancyReleases += 1;
+        return { status: 'released' };
+      },
+      deregisterTask: () => {},
+    },
+  });
+  assert.equal(resumed.status, 'released');
+  assert.equal(records.has('/repo/wt-old'), false);
+  assert.equal(occupancyReleases, 1);
 });
 
 function resolverFixture(records, closedLedger) {

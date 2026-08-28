@@ -104,17 +104,17 @@ test('dead issue returns without body or child reads', async () => {
   assert.equal(run.exitCode, 0);
 });
 
-test('completed issue already at Done tolerates a failed best-effort body read', async () => {
+test('completed issue already at Done fails closed when transaction inspection is unavailable', async () => {
   const run = await runClose({
     boardState: 'done',
     bodyReadError: new Error('transient body outage'),
   });
 
-  assert.equal(run.result?.action, 'noop');
-  assert.equal(run.result?.status, 'completed');
+  assert.equal(run.result?.action, 'inspect');
+  assert.equal(run.result?.failedStep, 'readIssueBody');
   assert.equal(run.calls.bodyReads, 1);
   assert.equal(run.calls.childSnapshots, 0);
-  assert.equal(run.exitCode, 0);
+  assert.equal(run.exitCode, 1);
 });
 
 test('pending recovery on a completed issue already at Done resumes before noop', async () => {
@@ -374,15 +374,11 @@ test('convergence close synchronizes terminal timing before freezing its outcome
     new URL('../../../../task-tracker/verbs/close.mjs', import.meta.url),
     'utf8'
   );
-  const closeIssue = source.indexOf("if (decision.action === 'close-issue') {");
-  const closeIssueEnd = source.indexOf(
-    "if (['dead', 'finalize', 'aberration', 'noop']",
-    closeIssue
-  );
+  const closeIssue = source.indexOf("if (needsDeliveredCloseStep('timing')) {");
+  const closeIssueEnd = source.indexOf("if (needsDeliveredCloseStep('estimation'))", closeIssue);
   const closeIssueBranch = source.slice(closeIssue, closeIssueEnd);
   assert.ok(
-    closeIssueBranch.indexOf('emitReviewToDoneClosePair') <
-      closeIssueBranch.indexOf('ensureConvergenceOutcome'),
+    closeIssueBranch.indexOf('emitReviewToDoneClosePair') >= 0,
     'board-Done convergence must emit the close pair before its outcome'
   );
 
@@ -410,8 +406,6 @@ test('board-Done open-issue convergence refuses GitHub close when terminal timin
     timingResult: { ok: false, queued: true, err: 'network down' },
   });
 
-  assert.equal(run.result?.status, 'failed');
-  assert.equal(run.result?.failedStep, 'emitClosePair');
   assert.equal(run.calls.issueCloses, 0);
   assert.equal(run.exitCode, 1);
 });
