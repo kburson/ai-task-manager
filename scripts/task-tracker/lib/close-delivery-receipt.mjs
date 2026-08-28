@@ -3,6 +3,8 @@
 // does no I/O: callers must supply the current live PR snapshot and the strict
 // Task 1 projection.
 
+export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
+
 const SHA_RE = /^[0-9a-f]{40}$/;
 
 export class CloseDeliveryReceiptError extends TypeError {
@@ -23,24 +25,6 @@ function isObject(value) {
 
 function frozenResult(value) {
   return Object.freeze(value);
-}
-
-export function resolveAcceptedDeliveryHead({
-  localHeadSha,
-  testReceiptSha,
-  reviewReceiptSha = null,
-  agentReviewPassed,
-} = {}) {
-  if (
-    !SHA_RE.test(localHeadSha || '') ||
-    !SHA_RE.test(testReceiptSha || '') ||
-    agentReviewPassed !== true ||
-    (reviewReceiptSha !== null &&
-      (!SHA_RE.test(reviewReceiptSha || '') || reviewReceiptSha !== testReceiptSha))
-  ) {
-    fail('accepted-evidence');
-  }
-  return reviewReceiptSha ?? testReceiptSha;
 }
 
 export function requireDeliveryReceipt({

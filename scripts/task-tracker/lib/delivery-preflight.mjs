@@ -1,4 +1,5 @@
 import { buildDeliveryCommitText } from './delivery-attribution.mjs';
+import { DeliveryAuthorityError, resolveAcceptedDeliveryAuthority } from './delivery-authority.mjs';
 import { resolveMergeMechanism } from './full-auto-merge.mjs';
 
 const INPUT_KEYS = [
@@ -100,9 +101,7 @@ function validateLineage(lineage, baseRef) {
   }
 }
 
-function validatePullRequest(pullRequests, binding, baseRef, { merged = false } = {}) {
-  if (!Array.isArray(pullRequests) || pullRequests.length !== 1) fail('pull-request-count');
-  const pr = pullRequests[0];
+function validatePullRequest(pr, binding, baseRef, { merged = false } = {}) {
   if (!isPlainObject(pr) || !isPositiveInteger(pr.number)) fail('pull-request-count');
   if (merged) {
     if (pr.merged !== true && String(pr.state || '').toUpperCase() !== 'MERGED') {
@@ -174,7 +173,31 @@ function validatePreflight(input, { merged = false } = {}) {
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
-  const pr = validatePullRequest(input.pullRequests, input.binding, baseRef, { merged });
+  let authority;
+  try {
+    authority = resolveAcceptedDeliveryAuthority({
+      issueNumber: input.issue.number,
+      branch: input.binding.branch,
+      localHeadSha: input.localHeadSha,
+      testReceiptSha: input.testReceiptSha,
+      reviewReceiptSha: input.acceptedReviewSha,
+      agentReviewPassed: input.issue.agentReviewPassed,
+      pullRequests: input.pullRequests,
+    });
+  } catch (error) {
+    if (!(error instanceof DeliveryAuthorityError)) throw error;
+    const category =
+      error.category === 'ambiguous-pr'
+        ? 'pull-request-count'
+        : error.category === 'branch-mismatch'
+          ? 'pull-request-head'
+          : error.category === 'accepted-evidence'
+            ? 'head-mismatch'
+            : 'input';
+    fail(category, error);
+  }
+  if (authority.headRelation !== 'current') fail('head-mismatch');
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged });
   validateExactHead({
     localHeadSha: input.localHeadSha,
     remoteHeadSha: pr.headRefOid,

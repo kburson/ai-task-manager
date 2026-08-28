@@ -422,10 +422,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const exactHeadPullRequests = pullRequests.filter(
     (pullRequest) => pullRequest.headRefOid === localHeadSha
   );
-  const selectedPullRequests =
-    exactHeadPullRequests.length === 0 && pullRequests.length === 1
-      ? pullRequests
-      : exactHeadPullRequests;
+  const selectedPullRequests = exactHeadPullRequests;
   const mergedPullRequest =
     selectedPullRequests.length === 1 && pullRequestMerged(selectedPullRequests[0]);
   const prNumber = selectedPullRequests.length === 1 ? selectedPullRequests[0].number : null;
@@ -477,7 +474,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     issue: { ...issue, agentReviewPassed, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
-    pullRequests: selectedPullRequests,
+    pullRequests,
     localHeadSha,
     testReceiptSha,
     acceptedReviewSha,
