@@ -2,12 +2,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import * as verifierModule from '../../../../task-tracker/verify-delivery-incident-reconciliation.mjs';
 import {
   parseVerificationArgs,
   productionVerification,
   readSubIssueNumbersStrict,
   verificationErrorExitCode,
 } from '../../../../task-tracker/verify-delivery-incident-reconciliation.mjs';
+
+test('live project board options use canonical incident-ledger state slugs', () => {
+  const cfg = {
+    kanbanOptionBacklog: 'backlog-id',
+    kanbanOptionRefine: 'refine-id',
+    kanbanOptionReadyForPlan: 'ready-id',
+    kanbanOptionPlan: 'plan-id',
+    kanbanOptionDevelop: 'develop-id',
+    kanbanOptionTest: 'test-id',
+    kanbanOptionReview: 'review-id',
+    kanbanOptionDone: 'done-id',
+  };
+  assert.deepEqual(
+    Object.values(cfg).map((optionId) =>
+      verifierModule.canonicalBoardStateForOption(cfg, optionId)
+    ),
+    ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review', 'done']
+  );
+});
 
 test('read-only verifier accepts only convergence issue 1381 and known phases', () => {
   assert.deepEqual(parseVerificationArgs(['--issue', '1381']), {
@@ -87,13 +107,13 @@ for (const phase of ['pre-close', 'terminal']) {
           {
             issueNumber: 1381,
             observedGitHubState: 'OPEN',
-            observedBoardState: 'Develop',
+            observedBoardState: 'develop',
             intendedOutcome: 'convergence-owner',
           },
           {
             issueNumber: 1403,
             observedGitHubState: 'OPEN',
-            observedBoardState: 'Develop',
+            observedBoardState: 'develop',
             intendedOutcome: 'incorporated',
           },
         ],
@@ -146,7 +166,7 @@ for (const phase of ['pre-close', 'terminal']) {
         },
         fetchBoardState: async (issue) => {
           calls.push(`status:${issue}`);
-          return phase === 'terminal' ? 'Done' : 'Develop';
+          return phase === 'terminal' ? 'done' : 'develop';
         },
         listComments: async (issue) => {
           calls.push(`comments:${issue}`);
@@ -183,7 +203,10 @@ for (const phase of ['pre-close', 'terminal']) {
           calls.push(`project:${fieldDefs[0].key}:${issueNumber}`);
           return fieldDefs[0].key === 'blockedBy'
             ? { blockedBy: `#${blockerByIssue.get(issueNumber)}` }
-            : { disposition: phase === 'terminal' ? 'Delivered' : '' };
+            : {
+                disposition:
+                  phase === 'terminal' ? (issueNumber === 1403 ? 'Incorporated' : 'Delivered') : '',
+              };
         },
         readParentIssue: async () => {
           calls.push('parent:1381');
@@ -211,6 +234,12 @@ for (const phase of ['pre-close', 'terminal']) {
           else assert.equal(await phaseDeps.verifyTerminalAuthority(), true);
           const rows = await phaseDeps.observeRows({ phase });
           assert.equal(rows.length, 2);
+          if (phase === 'terminal') {
+            assert.equal(
+              rows.every(({ terminalMatches }) => terminalMatches),
+              true
+            );
+          }
           return { ok: true };
         },
       }

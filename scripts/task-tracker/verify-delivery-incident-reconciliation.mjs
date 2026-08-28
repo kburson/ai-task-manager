@@ -95,17 +95,19 @@ export async function readSubIssueNumbersStrict(fetchPage, { maximumPages = 1000
   throw new Error('delivery-incident:stale-observation');
 }
 
-function statusMap(cfg) {
-  return new Map([
-    [cfg.kanbanOptionBacklog, 'Backlog'],
-    [cfg.kanbanOptionRefine, 'Refine'],
-    [cfg.kanbanOptionReadyForPlan, 'Ready for Planning'],
-    [cfg.kanbanOptionPlan, 'Plan'],
-    [cfg.kanbanOptionDevelop, 'Develop'],
-    [cfg.kanbanOptionTest, 'Test'],
-    [cfg.kanbanOptionReview, 'Review'],
-    [cfg.kanbanOptionDone, 'Done'],
-  ]);
+export function canonicalBoardStateForOption(cfg, optionId) {
+  return (
+    new Map([
+      [cfg.kanbanOptionBacklog, 'backlog'],
+      [cfg.kanbanOptionRefine, 'refine'],
+      [cfg.kanbanOptionReadyForPlan, 'ready-for-plan'],
+      [cfg.kanbanOptionPlan, 'plan'],
+      [cfg.kanbanOptionDevelop, 'develop'],
+      [cfg.kanbanOptionTest, 'test'],
+      [cfg.kanbanOptionReview, 'review'],
+      [cfg.kanbanOptionDone, 'done'],
+    ]).get(optionId) ?? null
+  );
 }
 
 async function boardState(cfg, issueNumber) {
@@ -130,7 +132,7 @@ async function boardState(cfg, issueNumber) {
   const item = data?.repository?.issue?.projectItems?.nodes?.find(
     (node) => node.project?.id === cfg.projectId
   );
-  return statusMap(cfg).get(item?.fieldValueByName?.optionId) ?? null;
+  return canonicalBoardStateForOption(cfg, item?.fieldValueByName?.optionId);
 }
 
 function expectedDisposition(outcome) {
@@ -190,7 +192,7 @@ export async function productionVerification(parsed, deps = {}) {
       const disposition = values.disposition || '';
       const terminalMatches =
         String(issue.state).toUpperCase() === 'CLOSED' &&
-        state === 'Done' &&
+        state === 'done' &&
         disposition === expectedDisposition(row.intendedOutcome);
       const incorporatedIssues = new Set(
         authority.projection.approvedLedgerIncorporated.map(
