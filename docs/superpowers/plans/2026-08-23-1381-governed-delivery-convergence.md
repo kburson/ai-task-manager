@@ -537,13 +537,15 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
 **Interfaces:**
 
 - Envelope `recordType` values are `delivery-incident-ledger`,
-  `delivery-incident-ledger-approval`, and `delivery-incident-incorporated`.
+  `delivery-incident-ledger-approval`, `delivery-incident-ledger-owner`, and
+  `delivery-incident-incorporated`.
 - Payload schemas are `aitm.delivery-incident-ledger/v1`,
-  `aitm.delivery-incident-ledger-approval/v1`, and
+  `aitm.delivery-incident-ledger-approval/v1`,
+  `aitm.delivery-incident-ledger-owner/v1`, and
   `aitm.delivery-incident-incorporated/v1`.
 - Produces `buildIncidentLedgerPayload`, `buildIncidentLedgerApprovalPayload`,
-  `buildIncorporatedPayload`, `renderIncidentRecord`, and
-  `projectDeliveryIncidentRecords`.
+  `buildIncidentLedgerOwnerPayload`, `buildIncorporatedPayload`,
+  `renderIncidentRecord`, and `projectDeliveryIncidentRecords`.
 - Adds exact terminal disposition `Incorporated`.
 
 - [ ] **Step 1: Write strict record-contract tests**
@@ -598,6 +600,13 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
   `ledgerDigest = hashRecordPayload(ledgerPayload)`. Projection accepts exactly
   one approved ledger tip and refuses missing, forked, stale, unknown, or
   conflicting approval records.
+
+  The durable owner payload is written on the ledger's `incidentIssue` and has
+  exactly `schema`, `repository`, `incidentIssue`, `convergenceIssue`,
+  `ledgerId`, `ledgerDigest`, and `approvalRecordId`. Its deterministic identity
+  is over `repository + incidentIssue + convergenceIssue`; it must match one
+  approved ledger on the named convergence issue. Reject missing, unknown,
+  malformed, forked, stale, or conflicting owner records.
 
   Incorporated record identity is deterministic over:
 
@@ -683,7 +692,10 @@ AITM canonical GitHub-record envelopes, GitHub Projects v2, Markdown task skills
   one observed ledger.
 - Adds `/task incident-ledger #1381 --approve LEDGER_ID --digest SHA256_DIGEST` as
   the authenticated human approval action. A successful `--record` invocation
-  prints the exact approval command with both immutable values populated.
+  prints the exact approval command with both immutable values populated. The
+  approval transaction also appends and reads back the canonical
+  `delivery-incident-ledger-owner` record on the ledger's `incidentIssue` before
+  reporting success.
 - Produces `resolveApprovedIncidentLedger({ records, repository,
 convergenceIssue, incidentIssue })`.
 - Adds a read-only executable verifier with the accepted command:
@@ -700,9 +712,13 @@ convergenceIssue, incidentIssue })`.
 
   Assert `--approve` authenticates the current GitHub login first, reloads the
   exact ledger by ID, recomputes its digest, compares the supplied digest, then
-  writes one approval carrying that login. It must refuse a partial login,
-  unknown ledger, mismatched digest, already-approved divergent ledger, or more
-  than one approved tip.
+  writes one approval carrying that login and one exact owner record on the
+  incident issue. It must refuse a partial login, unknown ledger, mismatched
+  digest, already-approved divergent ledger, or more than one approved tip.
+  Cover interruptions after either write: retry adopts byte-identical approval
+  or owner records, completes only the missing write, and refuses divergent or
+  forked owner state. Approval is not complete until both exact read-back checks
+  pass.
 
 - [ ] **Step 2: Write failing verifier tests**
 
@@ -717,13 +733,13 @@ convergenceIssue, incidentIssue })`.
 
   Add explicit phase tests. `--phase pre-close` must require #1381 to be
   independent of #939, one approved ledger tip, live observations matching each
-  row, #1403 classified only as Incorporated, and the exact blocker order. It
-  emits `pending-authorized` for an approved downstream row whose terminal
-  outcome is intentionally not yet present and refuses any row already mutated
-  contrary to its approved outcome. The default terminal phase requires the
-  matching terminal record and disposition for every row. Both phases are
-  read-only, and the same approved ledger remains resolvable after #1381 is
-  closed.
+  row, one exact owner record on #939, #1403 classified only as Incorporated,
+  and the exact blocker order. It emits `pending-authorized` for an approved
+  downstream row whose terminal outcome is intentionally not yet present and
+  refuses any row already mutated contrary to its approved outcome. The default
+  terminal phase requires the matching terminal record and disposition for every
+  row. Both phases are read-only, and the same approved ledger remains
+  resolvable after #1381 is closed.
 
 - [ ] **Step 3: Run focused tests and verify failure**
 
@@ -797,17 +813,19 @@ convergenceIssue, incidentIssue })`.
 - Extends the existing surface with
   `/task close #N --as incorporated --of #1381`.
 - Extends ordinary incident-epic close with the explicit owner pointer
-  `/task close #939 --of #1381`. Without `--as`, `--of` means only "load the
-  approved incident ledger from this convergence issue"; it does not select an
-  Incorporated outcome.
+  `/task close #939 --of #1381`. Without `--as`, `--of` is an optional exact
+  assertion against the durable owner record; it does not enable the guard or
+  select an Incorporated outcome. Bare `close 939` must discover the same owner
+  record and run the same guard.
 - Produces `authorizeIncorporatedClose(input)` as a pure read decision and
   `runIncorporatedClose(input)` as the re-entrant mutation orchestrator.
 - Produces `authorizeIncidentEpicClose(input)` as a pure pre-terminal guard for
   ordinary close of the ledger's incident issue. It derives the required
   non-native terminal set from the approved ledger instead of pretending all
-  convergence targets are native epic children. The caller must supply the
-  parsed `convergenceIssue` from the exact `--of` argument; lineage, free-form
-  summaries, branch names, and issue search are never discovery authority.
+  convergence targets are native epic children. It discovers exactly one
+  canonical owner record on the target issue, then loads that exact approved
+  ledger from the named convergence issue. Lineage, free-form summaries, branch
+  names, and issue search are never discovery authority.
 - Returns `{ status: 'incorporated'|'already-incorporated', issueNumber,
 convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
@@ -861,13 +879,15 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   Keep the existing native-child guard additive; neither guard substitutes for
   the other.
 
-  Add parser and discovery tests for the ordinary `close 939 --of 1381` shape.
-  Refuse a missing/malformed owner argument once incident-ledger close is
-  requested, repeated or conflicting `--of` arguments, a nonexistent owner,
-  zero or forked approved ledger tips on the named owner, a ledger whose
-  `incidentIssue` is not the close target, and a ledger ID/digest mismatch.
-  Every refusal occurs before mutation. Reject `--of` on an ordinary issue that
-  is not the named ledger's `incidentIssue`.
+  Add parser and discovery tests for both bare `close 939` and
+  `close 939 --of 1381`. With an owner record present, bare close must
+  automatically load #1381 and refuse while any required row is pending. Refuse
+  missing, malformed, forked, stale, or conflicting owner records; an explicit
+  `--of` that disagrees with the record; repeated or conflicting `--of`
+  arguments; a nonexistent owner; zero or forked approved ledger tips on the
+  named owner; a ledger whose `incidentIssue` is not the close target; and any
+  ledger ID/digest mismatch. Every refusal occurs before mutation. Reject `--of`
+  on an ordinary issue that is not the named ledger's `incidentIssue`.
 
 - [ ] **Step 4: Run focused tests and verify failure**
 
@@ -886,16 +906,18 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
   issue-local record. Do not let cumulative trunk presence pass the ordinary
   delivery receipt gate.
 
-  Implement `authorizeIncidentEpicClose` against the same approved ledger
-  projection loaded from the exact `--of` convergence issue. Wire it in
-  `close.mjs` after argument parsing and native-child/read-only authority
-  resolution but before every terminal mutation. The loaded approved ledger
-  must name the close target as its `incidentIssue`; otherwise refuse. Require
-  the exact approved outcomes for #1380, #1382, #1383, and #1384 and their
-  matching live terminal states. Return a frozen authorization on success and
-  stable refusal details naming every pending or contradictory issue. Update
-  close help so `--of`'s Incorporated and ordinary incident-owner meanings are
-  unambiguous and cannot be combined accidentally.
+  Implement `authorizeIncidentEpicClose` by projecting the target issue's owner
+  record first, then loading the exact approved ledger from its named
+  convergence issue. Wire it in `close.mjs` after argument parsing and
+  native-child/read-only authority resolution but before every terminal
+  mutation whenever an owner record exists. The loaded approved ledger must
+  match the owner record byte-for-byte and name the close target as its
+  `incidentIssue`; otherwise refuse. Require the exact approved outcomes for
+  #1380, #1382, #1383, and #1384 and their matching live terminal states. Return
+  a frozen authorization on success and stable refusal details naming every
+  pending or contradictory issue. If `--of` is supplied it must match the
+  discovered owner. Update close help so `--of`'s Incorporated and ordinary
+  incident-owner meanings are unambiguous and cannot be combined accidentally.
 
 - [ ] **Step 6: Implement re-entrant terminal mutation**
 
@@ -1166,8 +1188,9 @@ convergenceIssue, ledgerId, recordId, mutatedSteps }`.
 
   Expected: `ok: true`; every not-yet-executed downstream outcome is reported
   as `pending-authorized`, the dependency graph is exact, #1381 has no native
-  #939 parent, and the invocation performs no writes. A terminal-mode success is
-  neither expected nor permitted at this point.
+  #939 parent, #939 carries exactly one canonical owner record for the approved
+  #1381 ledger, and the invocation performs no writes. A terminal-mode success
+  is neither expected nor permitted at this point.
 
 - [ ] **Step 4: Close independent #1381**
 
