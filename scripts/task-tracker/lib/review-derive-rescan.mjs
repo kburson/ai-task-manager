@@ -18,6 +18,7 @@
 // All I/O is injected via `deps` so the path is unit-testable offline.
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { pexec as sharedPexec } from '../../gh/lib/gh-client.mjs';
 
 // Re-fetch the live issue body. Throws on failure (caught by the caller).
 async function fetchLiveBody({ pexec, issueNumber, repo }) {
@@ -42,10 +43,7 @@ async function fetchLiveBody({ pexec, issueNumber, repo }) {
 //   - derived:  the `deriveAndStampFunctionalDod` result, or null if it threw.
 //   - errors:   array of { phase, message } for every non-fatal failure logged.
 export async function deriveAndRescan({ issueNumber, repo, scanBody, deps = {} } = {}) {
-  const pexec = deps.pexec;
-  if (typeof pexec !== 'function') {
-    throw new TypeError('deriveAndRescan: deps.pexec is required');
-  }
+  const pexec = deps.pexec || sharedPexec;
   const deriveAndStampFunctionalDod = deps.deriveAndStampFunctionalDod;
   if (typeof deriveAndStampFunctionalDod !== 'function') {
     throw new TypeError('deriveAndRescan: deps.deriveAndStampFunctionalDod is required');

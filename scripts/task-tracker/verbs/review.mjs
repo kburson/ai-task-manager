@@ -1,7 +1,6 @@
-import { execFile } from 'node:child_process';
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
+import { pexec as reviewPexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState, saveState, pauseTimingKeepBinding, stateFullWordMarker } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
@@ -65,8 +64,6 @@ import {
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
-const reviewPexec = promisify(execFile);
-
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
 }

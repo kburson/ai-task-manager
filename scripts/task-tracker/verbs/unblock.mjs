@@ -12,8 +12,7 @@
 //
 // Pure core: `runUnblock({ args, cfg, deps })`. All I/O is injectable.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -21,8 +20,6 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { removeBlockedBy, parseBlockedBy, blockedLabelRemoveArgs } from '../lib/blocked-marker.mjs';
 import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
 import { parseByList, resolveTargetIssue } from './block.mjs';
-
-const pexec = promisify(execFile);
 
 export function parseArgs(rest, activeIssue) {
   let by = null;

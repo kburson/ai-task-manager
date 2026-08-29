@@ -6,8 +6,7 @@
 // verbs/approve.mjs can invoke it without dragging the whole CLI surface in.
 // Deps are injectable for tests.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import {
   projectValuesForIssue,
@@ -21,8 +20,6 @@ import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { warnMissingFieldId } from './field-config-warn.mjs';
-
-const pexec = promisify(execFile);
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {

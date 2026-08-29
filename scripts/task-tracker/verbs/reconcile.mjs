@@ -21,8 +21,7 @@
 // the resulting transition (e.g. manual board fix to a non-adjacent state) and
 // the user has explicitly opted into the gap.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
@@ -57,8 +56,6 @@ import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
-
-const pexec = promisify(execFile);
 
 const MODES = new Set(['accept-live', 'revert-to-recorded', 'revert-to-sentinel', 'backfill']);
 const DEMOTION_RECOVERY_SOURCES = new Set(['test', 'review']);

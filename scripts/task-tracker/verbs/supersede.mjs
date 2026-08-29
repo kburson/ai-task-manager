@@ -26,8 +26,7 @@
 // Pure core: `runSupersede({ deadIssue, byIssue, cfg, deps })`. All I/O is
 // injectable for offline tests.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -36,8 +35,6 @@ import { addSupersededBy } from '../lib/superseded-marker.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
-
-const pexec = promisify(execFile);
 
 function parseIssueArg(tok) {
   const m = String(tok ?? '').match(/^#?(\d+)$/);

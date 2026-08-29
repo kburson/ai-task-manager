@@ -11,13 +11,10 @@
 // request; the next reconcile re-adds it from the surviving marker. Cancellation
 // is only via completing the discussion (`markDiscussed`).
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec as defaultPexec } from '../../gh/lib/gh-client.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { convergeDiscuss, isDiscussPending } from './discuss-marker.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-
-const defaultPexec = promisify(execFile);
 
 // Resolve the configured label name, falling back to the package default.
 export function getDiscussLabel(cfg) {

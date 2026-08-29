@@ -17,8 +17,7 @@
 //
 // All side-effecting I/O is injectable via deps for unit tests.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -67,8 +66,6 @@ import {
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
-
-const pexec = promisify(execFile);
 
 // cspell:ignore metachar
 // #973 — `validateVerificationCommand` rejects a command for one of two

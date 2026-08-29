@@ -13,13 +13,10 @@
 // live in lib/blocked-marker.mjs; this module only orchestrates the side effect
 // through injected `deps` (defaults wrap `gh`).
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import { parseBlockedBy, removeBlockedBy, blockedLabelRemoveArgs } from './blocked-marker.mjs';
 import { writeBlockedByField } from './blocked-by-field.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
-
-const pexec = promisify(execFile);
 
 // --- default gh-backed deps -------------------------------------------------
 
@@ -87,7 +84,7 @@ function defaultRunLabel({ repo, exec = pexec }) {
  *   - mutateBody(n, mutate): Promise<void>     atomically mutate issue body via closure
  *   - runLabel(args): Promise<void>            run a gh label-arg array
  *   - exec(cmd, args): Promise<{stdout}>       low-level exec seam for the
- *       default gh-backed factories (defaults to promisified execFile); a
+ *       default gh-backed factories (defaults to the shared gh client); a
  *       provided listCandidates/fetchBody/mutateBody/runLabel still overrides.
  * @returns {Promise<Array<{issue:number, cleared?:'full'|'partial', error?:string}>>}
  *   one entry per candidate that referenced the Done issue (plus any that

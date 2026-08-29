@@ -1,5 +1,5 @@
-import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import { ghClient } from './gh-client.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
 
@@ -8,7 +8,7 @@ import { GH_API_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
 // exercise gh()/gql() and every caller offline without touching the network or
 // the live GitHub project board. Behaviour-preserving — the default path is
 // byte-identical to a direct execFile/spawn call.
-export const deps = { execFile, spawn };
+export const deps = ghClient;
 
 export async function gh(args, options = {}) {
   const { input, ...rest } = options;

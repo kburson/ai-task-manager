@@ -8,8 +8,7 @@
 // Idempotent: re-invocation with the marker already present is a no-op.
 // Refuses if the issue is not in `plan` state.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,8 +49,6 @@ const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?(?::|\s+ts=")/i;
 const FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
 const R4P_ENTRY_RE = /<!--\s*aitm-entered-ready-for-plan(?:-\d+)?(?:\s+|:)/i;
-
-const pexec = promisify(execFile);
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);

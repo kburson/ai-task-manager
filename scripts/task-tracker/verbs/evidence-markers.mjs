@@ -1,12 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import { auditEvidenceMarkers, buildEvidenceBackfill } from '../lib/evidence-markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readDirectoryContract } from '../lib/github-records/contract-write.mjs';
-
-const pexec = promisify(execFile);
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { stdout } = await pexec(

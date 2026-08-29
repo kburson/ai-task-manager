@@ -3,8 +3,7 @@
 // history with the invoking checkout before local task state or verb preflight
 // is allowed to govern the command.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { mutateIssueBody as defaultMutateIssueBody } from './issue-body-mutate.mjs';
 import {
@@ -15,8 +14,6 @@ import {
 import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { currentSessionId } from '../word-counter.mjs';
-
-const pexec = promisify(execFile);
 
 const LOCATION_GUARDED_VERBS = new Set([
   'ac-stamp',
