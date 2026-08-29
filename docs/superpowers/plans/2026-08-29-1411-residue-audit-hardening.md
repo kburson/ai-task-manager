@@ -157,6 +157,9 @@ import {
 Then append these tests to `scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs`:
 
 ```js
+const LEGACY_STATE = ['On', 'Deck'].join(' ');
+const RESIDUE_LINE = `const currentState = '${LEGACY_STATE}';`;
+
 test('legacy matcher catches a state name split across comment lines', () => {
   assert.deepEqual(legacyMatches('current state: On\n// Deck waiting room'), [
     '1:split:On // Deck',
@@ -168,19 +171,17 @@ test('audit reports product residue but ignores generated research data', () => 
     entries: [
       {
         file: 'scripts/product-state.mjs',
-        source: "const currentState = 'On Deck';",
+        source: RESIDUE_LINE,
       },
       {
         file: 'docs/research/audit/inventory.json',
-        source: "const currentState = 'On Deck';",
+        source: RESIDUE_LINE,
       },
     ],
     allowlist: new Map(),
   });
 
-  assert.deepEqual(failures, [
-    "UNEXPECTED scripts/product-state.mjs\n  1:const currentState = 'On Deck';",
-  ]);
+  assert.deepEqual(failures, [`UNEXPECTED scripts/product-state.mjs\n  1:${RESIDUE_LINE}`]);
 });
 
 test('audit preserves exact count and missing allowlist failures', () => {
@@ -188,7 +189,7 @@ test('audit preserves exact count and missing allowlist failures', () => {
     entries: [
       {
         file: 'scripts/compatibility.mjs',
-        source: "const currentState = 'On Deck';",
+        source: RESIDUE_LINE,
       },
     ],
     allowlist: new Map([
@@ -198,7 +199,7 @@ test('audit preserves exact count and missing allowlist failures', () => {
   });
 
   assert.deepEqual(failures, [
-    "COUNT scripts/compatibility.mjs: expected 2, found 1 (compatibility seam)\n  1:const currentState = 'On Deck';",
+    `COUNT scripts/compatibility.mjs: expected 2, found 1 (compatibility seam)\n  1:${RESIDUE_LINE}`,
     'MISSING docs/migration-history.md: expected 1 (expected historical carrier)',
   ]);
 });
@@ -299,7 +300,7 @@ import { evaluateResidueAudit } from '../../../lib/residue-audit-scope.mjs';
 
 Delete `LEGACY_TOKEN`, `SPLIT_LEGACY_TOKEN`, the local `legacyMatches` function, and the standalone split-line matcher test. Preserve `SELF` and the complete `ALLOWLIST` byte-for-byte.
 
-Replace the body of `legacy On Deck vocabulary exists only in the audited compatibility allowlist` after the `files` collection with:
+Replace the body of the live compatibility-allowlist audit test after the `files` collection with:
 
 ```js
 const entries = [];
