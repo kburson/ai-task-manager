@@ -4,10 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-import { isGeneratedResearchArtifact } from '../../../lib/residue-audit-scope.mjs';
+import { evaluateResidueAudit } from '../../../lib/residue-audit-scope.mjs';
 
-const LEGACY_TOKEN = /on[- _]?deck/i;
-const SPLIT_LEGACY_TOKEN = /on[ \t]*\r?\n[ \t]*(?:(?:\/\/|#|\*)[ \t]*)?deck/gi;
 const SELF = 'scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs';
 
 // Exact path + matching-line counts are intentional compatibility surface.
@@ -172,25 +170,6 @@ const ALLOWLIST = new Map(
   })
 );
 
-function legacyMatches(source) {
-  const text = String(source || '');
-  const matches = [];
-  text.split('\n').forEach((line, index) => {
-    if (LEGACY_TOKEN.test(line)) matches.push(`${index + 1}:${line.trim()}`);
-  });
-  for (const match of text.matchAll(SPLIT_LEGACY_TOKEN)) {
-    const line = text.slice(0, match.index).split('\n').length;
-    matches.push(`${line}:split:${match[0].replace(/\s+/g, ' ')}`);
-  }
-  return matches;
-}
-
-test('residue matcher catches a legacy state name split across comment lines', () => {
-  assert.deepEqual(legacyMatches('current state: On\n// Deck waiting room'), [
-    '1:split:On // Deck',
-  ]);
-});
-
 test('legacy On Deck vocabulary exists only in the audited compatibility allowlist', () => {
   const files = execFileSync(
     'git',
@@ -199,34 +178,17 @@ test('legacy On Deck vocabulary exists only in the audited compatibility allowli
   )
     .split('\0')
     .filter(Boolean);
-  const residue = new Map();
+  const entries = [];
   for (const file of files) {
     if (file === SELF) continue;
-    if (isGeneratedResearchArtifact(file)) continue;
-    let source;
     try {
-      source = readFileSync(file, 'utf8');
+      entries.push({ file, source: readFileSync(file, 'utf8') });
     } catch {
       continue;
     }
-    const matches = legacyMatches(source);
-    if (matches.length > 0) residue.set(file, matches);
   }
 
-  const failures = [];
-  for (const [file, matches] of residue) {
-    const allowed = ALLOWLIST.get(file);
-    if (!allowed) {
-      failures.push(`UNEXPECTED ${file}\n  ${matches.join('\n  ')}`);
-    } else if (matches.length !== allowed[0]) {
-      failures.push(
-        `COUNT ${file}: expected ${allowed[0]}, found ${matches.length} (${allowed[1]})\n  ${matches.join('\n  ')}`
-      );
-    }
-  }
-  for (const [file, [count, reason]] of ALLOWLIST) {
-    if (!residue.has(file)) failures.push(`MISSING ${file}: expected ${count} (${reason})`);
-  }
+  const failures = evaluateResidueAudit({ entries, allowlist: ALLOWLIST });
 
   assert.deepEqual(
     failures,
