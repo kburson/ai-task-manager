@@ -24,6 +24,8 @@
 
 const RESEARCH_ROOT = 'docs/research/';
 const GENERATED_DATA_EXTENSIONS = ['.json', '.txt', '.csv', '.ndjson'];
+const LEGACY_TOKEN = /on[- _]?deck/i;
+const SPLIT_LEGACY_TOKEN = /on[ \t]*\r?\n[ \t]*(?:(?:\/\/|#|\*)[ \t]*)?deck/gi;
 
 /**
  * @param {unknown} file candidate repo-relative path
@@ -33,9 +35,7 @@ function isCanonicalRepositoryPath(file) {
   if (typeof file !== 'string' || file.length === 0) return false;
   if (file.includes('\\') || file.startsWith('/')) return false;
 
-  return file
-    .split('/')
-    .every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+  return file.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
 }
 
 /**
@@ -47,4 +47,54 @@ export function isGeneratedResearchArtifact(file) {
   if (!isCanonicalRepositoryPath(file)) return false;
   if (!file.startsWith(RESEARCH_ROOT)) return false;
   return GENERATED_DATA_EXTENSIONS.some((ext) => file.endsWith(ext));
+}
+
+/**
+ * @param {unknown} source file contents
+ * @returns {string[]} matching line descriptions
+ */
+export function legacyMatches(source) {
+  const text = String(source || '');
+  const matches = [];
+  text.split('\n').forEach((line, index) => {
+    if (LEGACY_TOKEN.test(line)) matches.push(`${index + 1}:${line.trim()}`);
+  });
+  for (const match of text.matchAll(SPLIT_LEGACY_TOKEN)) {
+    const line = text.slice(0, match.index).split('\n').length;
+    matches.push(`${line}:split:${match[0].replace(/\s+/g, ' ')}`);
+  }
+  return matches;
+}
+
+/**
+ * @param {{
+ *   entries: Array<{ file: string, source: string }>,
+ *   allowlist: Map<string, [number, string]>
+ * }} input explicit audit inputs
+ * @returns {string[]} deterministic policy failures
+ */
+export function evaluateResidueAudit({ entries, allowlist }) {
+  const residue = new Map();
+  for (const { file, source } of entries) {
+    if (isGeneratedResearchArtifact(file)) continue;
+    const matches = legacyMatches(source);
+    if (matches.length > 0) residue.set(file, matches);
+  }
+
+  const failures = [];
+  for (const [file, matches] of residue) {
+    const allowed = allowlist.get(file);
+    if (!allowed) {
+      failures.push(`UNEXPECTED ${file}\n  ${matches.join('\n  ')}`);
+    } else if (matches.length !== allowed[0]) {
+      failures.push(
+        `COUNT ${file}: expected ${allowed[0]}, found ${matches.length} (${allowed[1]})\n  ${matches.join('\n  ')}`
+      );
+    }
+  }
+  for (const [file, [count, reason]] of allowlist) {
+    if (!residue.has(file)) failures.push(`MISSING ${file}: expected ${count} (${reason})`);
+  }
+
+  return failures;
 }

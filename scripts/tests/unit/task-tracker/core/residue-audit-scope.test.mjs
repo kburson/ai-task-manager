@@ -15,7 +15,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { isGeneratedResearchArtifact } from '../../../lib/residue-audit-scope.mjs';
+import * as residueAudit from '../../../lib/residue-audit-scope.mjs';
+
+const { isGeneratedResearchArtifact } = residueAudit;
+
+function requiredFunction(name) {
+  assert.equal(typeof residueAudit[name], 'function', `${name} must be exported`);
+  return residueAudit[name];
+}
+
+const LEGACY_STATE = ['On', 'Deck'].join(' ');
+const RESIDUE_LINE = `const currentState = '${LEGACY_STATE}';`;
 
 test('generated data under docs/research is exempt', () => {
   assert.equal(
@@ -73,4 +83,51 @@ test('non-canonical research paths are audited rather than exempted', () => {
 test('non-string paths are audited rather than coerced', () => {
   assert.equal(isGeneratedResearchArtifact(undefined), false);
   assert.equal(isGeneratedResearchArtifact({ toString: () => 'docs/research/data.json' }), false);
+});
+
+test('legacy matcher catches a state name split across comment lines', () => {
+  const legacyMatches = requiredFunction('legacyMatches');
+  assert.deepEqual(legacyMatches('current state: On\n// Deck waiting room'), [
+    '1:split:On // Deck',
+  ]);
+});
+
+test('audit reports product residue but ignores generated research data', () => {
+  const evaluateResidueAudit = requiredFunction('evaluateResidueAudit');
+  const failures = evaluateResidueAudit({
+    entries: [
+      {
+        file: 'scripts/product-state.mjs',
+        source: RESIDUE_LINE,
+      },
+      {
+        file: 'docs/research/audit/inventory.json',
+        source: RESIDUE_LINE,
+      },
+    ],
+    allowlist: new Map(),
+  });
+
+  assert.deepEqual(failures, [`UNEXPECTED scripts/product-state.mjs\n  1:${RESIDUE_LINE}`]);
+});
+
+test('audit preserves exact count and missing allowlist failures', () => {
+  const evaluateResidueAudit = requiredFunction('evaluateResidueAudit');
+  const failures = evaluateResidueAudit({
+    entries: [
+      {
+        file: 'scripts/compatibility.mjs',
+        source: RESIDUE_LINE,
+      },
+    ],
+    allowlist: new Map([
+      ['scripts/compatibility.mjs', [2, 'compatibility seam']],
+      ['docs/migration-history.md', [1, 'expected historical carrier']],
+    ]),
+  });
+
+  assert.deepEqual(failures, [
+    `COUNT scripts/compatibility.mjs: expected 2, found 1 (compatibility seam)\n  1:${RESIDUE_LINE}`,
+    'MISSING docs/migration-history.md: expected 1 (expected historical carrier)',
+  ]);
 });
