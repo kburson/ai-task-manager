@@ -59,12 +59,16 @@ function rollbackClaim(ctx, claim) {
 
 function rollbackFailedBind(ctx, { claim, priorState, savedState }, originalError) {
   const recoveryErrors = [];
+  let rollbackResult;
   try {
-    rollbackClaim(ctx, claim);
+    rollbackResult = rollbackClaim(ctx, claim);
   } catch (rollbackError) {
     recoveryErrors.push(rollbackError);
   }
-  if (savedState) {
+  const localRestoreIsSafe =
+    rollbackResult?.status === 'rolled-back' ||
+    (claim?.status === 'unchanged' && rollbackResult?.status === 'not-applicable');
+  if (savedState && localRestoreIsSafe) {
     try {
       const current = loadState(ctx.statePath);
       if (isDeepStrictEqual(current, savedState)) saveState(priorState, ctx.statePath);

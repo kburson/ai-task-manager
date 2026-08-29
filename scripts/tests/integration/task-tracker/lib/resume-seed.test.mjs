@@ -209,7 +209,11 @@ function makeCtx({
   const SID = 'resume-seed-already';
   process.env.AI_TASK_MANAGER_SESSION_ID = SID;
   setActiveTask(SID, { issue: '#999' }, tmp);
-  const statePath = writeState({ active: '#999', lastActive: '#999' });
+  const statePath = writeState({
+    active: '#999',
+    lastActive: '#999',
+    entryStartTs: new Date().toISOString(),
+  });
 
   const seedCalls = [];
   const { ctx } = makeCtx({
