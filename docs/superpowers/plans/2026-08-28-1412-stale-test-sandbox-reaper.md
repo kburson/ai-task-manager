@@ -553,8 +553,8 @@ npx aitm test 1412
 ```
 
 Expected: the sandbox runs the current VC list, stamps fresh evidence, and moves
-#1412 from Develop to Test. If it fails, preserve diagnostics and return to the
-RED-GREEN cycle; do not tick acceptance criteria manually.
+issue #1412 from Develop to Test. If it fails, preserve diagnostics and return
+to the RED-GREEN cycle; do not tick acceptance criteria manually.
 
 - [ ] **Step 6: Record the roadmap checkpoint**
 
