@@ -13,8 +13,7 @@
 //
 // Pure core: `runRefine({ args, cfg, deps })`. All I/O is injectable for tests.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,8 +35,6 @@ import {
   REFINEMENT_SNAPSHOT_MARKER_RE,
   stampRefinementSnapshot,
 } from '../lib/refinement-snapshot.mjs';
-
-const pexec = promisify(execFile);
 
 const SIZE_ENUM = ['XS', 'S', 'M', 'L', 'XL'];
 const PRIORITY_ENUM = ['p0', 'p1', 'p2'];

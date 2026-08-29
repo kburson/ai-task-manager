@@ -16,8 +16,7 @@
 // decaying into a generic "I looked at this" stamp and losing its epic-only
 // meaning.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec as pexecDefault } from '../../gh/lib/gh-client.mjs';
 
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -26,8 +25,6 @@ import { fetchEpicChildren } from '../lib/epic-children-gate.mjs';
 import { bijectionReport, formatBijectionReport } from '../lib/epic-ac-child-bijection.mjs';
 import { parseFromCommentArg } from '../lib/deep-dive.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-
-const pexecDefault = promisify(execFile);
 
 function epicReconcileError(category) {
   return new TypeError(`epic-reconcile:${category}`);

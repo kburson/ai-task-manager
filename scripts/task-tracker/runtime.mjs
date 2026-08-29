@@ -6,8 +6,8 @@
 // issue #10 so each lifecycle verb can live in its own file under verbs/.
 
 import path from 'node:path';
-import { execFile, execFileSync } from 'node:child_process';
-import { promisify } from 'node:util';
+import { execFileSync } from 'node:child_process';
+import { pexec } from '../gh/lib/gh-client.mjs';
 import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
 import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
@@ -47,8 +47,6 @@ import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 import { postTimingSafely } from './lib/timing-post-outcome.mjs';
-
-const pexec = promisify(execFile);
 
 export function nowIso() {
   return new Date().toISOString();

@@ -10,14 +10,11 @@
 //
 // Pure core: `runUserStory({ target, story, cfg, deps })`. All I/O injectable.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { setUserStory } from '../lib/user-story-author.mjs';
-
-const pexec = promisify(execFile);
 
 // Resolve the target issue: explicit positional `#N` / `N` wins, else the
 // bound active issue. Returns a positive integer or null.

@@ -18,8 +18,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { actionPolicyFor, normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
@@ -47,7 +46,6 @@ import {
 } from '../lib/agent-review/review-gate.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 
-const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 // #336 — refusal-id → verb-status translation. promote.mjs delegates pre-

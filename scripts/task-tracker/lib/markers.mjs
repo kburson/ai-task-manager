@@ -772,9 +772,7 @@ export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } 
   if (!issueNumber) throw new Error('markDeepDiveComplete: issueNumber is required');
   if (!cfg?.repo) throw new Error('markDeepDiveComplete: cfg.repo is required');
 
-  const { execFile } = await import('node:child_process');
-  const { promisify } = await import('node:util');
-  const pexec = promisify(execFile);
+  const { pexec } = await import('../../gh/lib/gh-client.mjs');
 
   // #295 — the idempotency check (was the marker already present?) and the
   // insertion both run inside the mutate closure against the freshly-fetched

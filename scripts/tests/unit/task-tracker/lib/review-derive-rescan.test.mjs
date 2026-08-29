@@ -167,13 +167,9 @@ test('promote.mjs gates the derive to the test→review transition only', () => 
   );
 });
 
-test('deriveAndRescan: missing required deps throws', async () => {
+test('deriveAndRescan: derive dependency remains required with the shared process default', async () => {
   await assert.rejects(
     () => deriveAndRescan({ issueNumber: 1, repo: 'o/r', deps: {} }),
-    /pexec is required/
-  );
-  await assert.rejects(
-    () => deriveAndRescan({ issueNumber: 1, repo: 'o/r', deps: { pexec: async () => ({}) } }),
     /deriveAndStampFunctionalDod is required/
   );
 });

@@ -8,8 +8,7 @@
 // Refuses if the issue is not in `review` state.
 
 // cspell:ignore optout optouts Optouts
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,8 +49,6 @@ import {
   hasAcceptedReviewEvidence,
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
-
-const pexec = promisify(execFile);
 
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));

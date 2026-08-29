@@ -5,8 +5,7 @@
 //
 // Each invocation appends a dated block; re-runs do NOT overwrite prior inflations.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
@@ -28,8 +27,6 @@ import {
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
-
-const pexec = promisify(execFile);
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL'];
 const SIZE_CEILINGS = { XS: 2, S: 4, M: 10, L: 20 };

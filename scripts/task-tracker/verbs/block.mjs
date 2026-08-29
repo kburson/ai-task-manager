@@ -9,16 +9,13 @@
 //
 // Pure core: `runBlock({ args, cfg, deps })`. All I/O is injectable for tests.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { addBlockedBy, parseBlockedBy, blockedLabelAddArgs } from '../lib/blocked-marker.mjs';
 import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
-
-const pexec = promisify(execFile);
 
 // Parse the `--by` flag value into a sorted unique list of positive ints.
 // Accepts `"5"`, `"5,7"`, `"#5"`, `"#5, #7"`. Returns [] on garbage.

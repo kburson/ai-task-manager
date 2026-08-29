@@ -23,13 +23,9 @@
 // All I/O is injectable for offline unit tests.
 
 import { writeFileSync as fsWriteFileSync, unlinkSync as fsUnlinkSync } from 'node:fs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
+import { pexec as defaultPexec } from '../../gh/lib/gh-client.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { versionedWriteBody } from './versioned-issue-write.mjs';
-
-const defaultPexec = promisify(execFile);
 
 // Module-scoped flag — emit the deprecation warning at most once per process
 // (per #293). Tests reset this via the `deps.resetDeprecationWarning` knob.

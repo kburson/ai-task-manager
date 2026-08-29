@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec as closePexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState, saveState, clearActive, stateFullWordMarker } from '../state.mjs';
 import { loadSession } from '../lib/session-store.mjs';
@@ -108,7 +107,6 @@ import {
 } from '../lib/delivery-incident-reconciliation.mjs';
 import { createProductionRuntime } from './incident-ledger.mjs';
 
-const closePexec = promisify(execFile);
 const INCIDENT_AUTHORITY_TYPES = new Set([
   'delivery-incident-ledger',
   'delivery-incident-ledger-approval-grant',

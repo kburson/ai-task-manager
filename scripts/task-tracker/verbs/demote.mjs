@@ -19,8 +19,7 @@
 // disagrees with the recorded lastKnownState, refuse and point at
 // `/task reconcile`.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,8 +37,6 @@ import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
-
-const pexec = promisify(execFile);
 
 // Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
 // assert `refusalVerbHint`'s named verb actually declares the hinted target

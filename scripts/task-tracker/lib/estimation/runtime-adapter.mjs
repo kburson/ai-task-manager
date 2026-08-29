@@ -1,5 +1,4 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { pexec } from '../../../gh/lib/gh-client.mjs';
 
 import {
   fieldOptionMap,
@@ -41,7 +40,6 @@ import {
 import { writeEstimationRecord } from './renderers.mjs';
 import { loadOrRefreshRubric } from './rubric-refresh.mjs';
 
-const pexec = promisify(execFile);
 const SINCE_EPOCH = '1970-01-01T00:00:00.000Z';
 const PROJECT_RECORDS_QUERY = `
   query AitmEstimationCorpus($project: ID!, $after: String) {
