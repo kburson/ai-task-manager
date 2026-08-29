@@ -22,6 +22,8 @@ const { buildRow } = await import('../../../../task-tracker/gh-timing-comment.mj
 const { appendRow, buildInitialComment } =
   await import('../../../../task-tracker/gh-timing-comment.internals.mjs');
 const { parseTimingRow } = await import('../../../../task-tracker/lib/timing-row-reader.mjs');
+const { DeliveryPreflightError, validateDeliveryPreflight } =
+  await import('../../../../task-tracker/lib/delivery-preflight.mjs');
 
 const terminalTimingBody = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
@@ -101,6 +103,102 @@ test('stop keeps a stale worktree bound after durable review:passed', async () =
   assert.ok(stopLines.some((line) => line.includes('review handoff')));
   assert.ok(stopLines.some((line) => line.includes('/task close 1077')));
   assert.ok(afterStop.some((line) => line.includes('already active: #1077')));
+});
+
+test('numbered start reopens one local span after terminal Review handoff', async () => {
+  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'resume-review-state.json');
+  saveState(
+    {
+      ...EMPTY_STATE,
+      active: '#1421',
+      lastActive: '#1421',
+      entryStartTs: null,
+      wordsAtEntryStart: 0,
+      lastWordMarker: 101167,
+    },
+    statePath
+  );
+
+  const posts = [];
+  const ctx = {
+    cfg: { repo: 'owner/repo' },
+    statePath,
+    projectDir: sandbox,
+    rest: ['#1421'],
+    role: 'orchestrator',
+    drainQueueIfAny: async () => {},
+    safePostTiming: async (...args) => posts.push(args),
+    nowIso: () => '2026-08-04T21:30:00.000Z',
+    readTimingCommentBody: async () => ({
+      status: 'found',
+      body: terminalTimingBody,
+      error: null,
+    }),
+    collectResumeActivityEvidence: async () => ({ status: 'none', timestamps: [] }),
+    seedKanban: async () => ({ kanbanState: 'review' }),
+  };
+
+  const deliveryInput = (timerState) => {
+    const head = 'a'.repeat(40);
+    return {
+      issue: {
+        number: 1421,
+        state: 'OPEN',
+        projectState: 'Review',
+        assignees: ['kburson'],
+        agentReviewPassed: true,
+        reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+      },
+      binding: { issueNumber: 1421, branch: 'codex/1421-resume-review-timer', timerState },
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      pullRequests: [
+        {
+          number: 1436,
+          state: 'OPEN',
+          isDraft: false,
+          baseRefName: 'trunk',
+          headRefName: 'codex/1421-resume-review-timer',
+          headRefOid: head,
+          mergeable: 'MERGEABLE',
+        },
+      ],
+      localHeadSha: head,
+      testReceiptSha: head,
+      acceptedReviewSha: head,
+      checks: {
+        readable: true,
+        required: [{ name: 'ci', headSha: head, status: 'COMPLETED', conclusion: 'SUCCESS' }],
+      },
+      dirtyPaths: [],
+      config: {
+        repo: 'kburson/ai-task-manager',
+        assignee: 'kburson',
+        trunkRef: 'origin/trunk',
+        repositoryMergeMethods: ['merge', 'squash'],
+        fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+      },
+      commitSubjects: ['[#1421] Resume terminal Review timer'],
+    };
+  };
+
+  assert.throws(
+    () => validateDeliveryPreflight(deliveryInput('paused')),
+    (error) => error instanceof DeliveryPreflightError && error.category === 'timer-not-running'
+  );
+
+  const first = await captureLog(() => verbStart(ctx));
+  const reopenedState = loadState(statePath);
+  const second = await captureLog(() => verbStart(ctx));
+  const repeatedState = loadState(statePath);
+
+  assert.equal(reopenedState.active, '#1421');
+  assert.equal(reopenedState.entryStartTs, '2026-08-04T21:30:00.000Z');
+  assert.equal(posts.length, 0, 'review:passed tail suppresses a duplicate resumed row');
+  assert.ok(first.some((line) => line.includes('Resumed #1421')));
+  assert.doesNotThrow(() => validateDeliveryPreflight(deliveryInput('running')));
+  assert.equal(repeatedState.entryStartTs, reopenedState.entryStartTs);
+  assert.equal(posts.length, 0, 'repeat writes no timing row');
+  assert.ok(second.some((line) => line.includes('already active: #1421')));
 });
 
 test('locked append reduces the #1077 handoff to canonical terminal rows', () => {

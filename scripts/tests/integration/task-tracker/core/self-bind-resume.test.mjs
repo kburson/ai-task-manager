@@ -116,7 +116,15 @@ test('same-issue resume restores fleet evidence without timing writes', async ()
     const { setActiveTask } = await import('../../../../task-tracker/session-state.mjs');
     setActiveTask(process.env.AI_TASK_MANAGER_SESSION_ID, { issue: '#1140' }, tmp);
     const statePath = path.join(tmp, 'state.json');
-    writeFileSync(statePath, JSON.stringify({ active: '#1140', lastActive: '#1140' }), 'utf8');
+    writeFileSync(
+      statePath,
+      JSON.stringify({
+        active: '#1140',
+        lastActive: '#1140',
+        entryStartTs: '2026-08-07T06:59:00Z',
+      }),
+      'utf8'
+    );
 
     const registrations = [];
     let drained = 0;

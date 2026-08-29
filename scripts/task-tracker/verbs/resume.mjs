@@ -38,6 +38,7 @@ import {
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
+import { isTerminalReviewHandoffOpen } from '../lib/terminal-review-handoff.mjs';
 
 function claimForBind(ctx, issue) {
   const claim = ctx.claimBindingOccupancy ?? claimBindingOccupancy;
@@ -64,7 +65,10 @@ function rollbackFailedBind(ctx, { claim, priorState, savedState }, originalErro
   } catch (rollbackError) {
     recoveryErrors.push(rollbackError);
   }
-  if (savedState && rollbackResult?.status === 'rolled-back') {
+  const localRestoreIsSafe =
+    rollbackResult?.status === 'rolled-back' ||
+    (claim?.status === 'unchanged' && rollbackResult?.status === 'not-applicable');
+  if (savedState && localRestoreIsSafe) {
     try {
       const current = loadState(ctx.statePath);
       if (isDeepStrictEqual(current, savedState)) saveState(priorState, ctx.statePath);
@@ -266,11 +270,12 @@ export async function verbResume(ctx) {
   // through to the fresh-bind path below.
   const switchVerb = ctx.verbSwitch ?? verbSwitch;
   const ownIssue = ownBoundIssue(projectDir);
+  const reopeningBoundTimer = ownIssue === normalizedTarget && !s.entryStartTs;
   if (ownIssue && ownIssue !== normalizedTarget) {
     await switchVerb(ctx, normalizedTarget);
     return;
   }
-  if (ownIssue === normalizedTarget) {
+  if (ownIssue === normalizedTarget && !reopeningBoundTimer) {
     const occupancyClaim = claimForBind(ctx, normalizedTarget);
     try {
       const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
@@ -407,6 +412,7 @@ export async function verbResume(ctx) {
       timingBody: cfg?.repo ? tcBody : null,
       readStatus,
     });
+    const terminalReviewHandoff = reopeningBoundTimer && isTerminalReviewHandoffOpen(tcBody);
     // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
     // open interruption AND no prior `start` to pair against.
     // #568 — downgrade to `start` ONLY on positive confirmation the log is empty
@@ -426,7 +432,7 @@ export async function verbResume(ctx) {
     // defect class). Insert a synthetic departure row first so the gap
     // reclassifies as idle — `buildBackdatedDepartureRow` can only ever emit a
     // zero-delta marker row, never fabricate active time.
-    if (cfg?.repo && !isStart && readStatus !== 'error') {
+    if (cfg?.repo && !isStart && readStatus !== 'error' && !terminalReviewHandoff) {
       let gap = detectUnmarkedDepartureGap(tcBody, ts);
       if (gap) {
         const collectResumeActivityEvidence =
@@ -470,12 +476,14 @@ export async function verbResume(ctx) {
         await safePostTiming(normalizedTarget, departureRow);
       }
     }
-    const suppressBindEvent = shouldSuppressActiveBindEvent({
-      timingBody: tcBody,
-      readStatus,
-      paused: !!s.pausedAtTs,
-      nowTs: ts,
-    });
+    const suppressBindEvent =
+      terminalReviewHandoff ||
+      shouldSuppressActiveBindEvent({
+        timingBody: tcBody,
+        readStatus,
+        paused: !!s.pausedAtTs,
+        nowTs: ts,
+      });
     if (!suppressBindEvent) {
       const row = buildRow({
         ts,
@@ -497,9 +505,11 @@ export async function verbResume(ctx) {
       cfg,
     });
     console.log(
-      suppressBindEvent
-        ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
-        : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
+      reopeningBoundTimer
+        ? `Resumed ${normalizedTarget}.`
+        : suppressBindEvent
+          ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
+          : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
     );
   } catch (error) {
     rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
