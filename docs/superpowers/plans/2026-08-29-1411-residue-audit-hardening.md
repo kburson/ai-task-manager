@@ -144,14 +144,17 @@ git commit -m "[#1411] fix(test): reject noncanonical residue paths"
 
 - [ ] **Step 1: Add focused failing tests for the wished-for evaluator**
 
-Change the unit-test import to:
+Change the unit-test import and add a failing-export helper:
 
 ```js
-import {
-  evaluateResidueAudit,
-  isGeneratedResearchArtifact,
-  legacyMatches,
-} from '../../../lib/residue-audit-scope.mjs';
+import * as residueAudit from '../../../lib/residue-audit-scope.mjs';
+
+const { isGeneratedResearchArtifact } = residueAudit;
+
+function requiredFunction(name) {
+  assert.equal(typeof residueAudit[name], 'function', `${name} must be exported`);
+  return residueAudit[name];
+}
 ```
 
 Then append these tests to `scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs`:
@@ -161,12 +164,14 @@ const LEGACY_STATE = ['On', 'Deck'].join(' ');
 const RESIDUE_LINE = `const currentState = '${LEGACY_STATE}';`;
 
 test('legacy matcher catches a state name split across comment lines', () => {
+  const legacyMatches = requiredFunction('legacyMatches');
   assert.deepEqual(legacyMatches('current state: On\n// Deck waiting room'), [
     '1:split:On // Deck',
   ]);
 });
 
 test('audit reports product residue but ignores generated research data', () => {
+  const evaluateResidueAudit = requiredFunction('evaluateResidueAudit');
   const failures = evaluateResidueAudit({
     entries: [
       {
@@ -185,6 +190,7 @@ test('audit reports product residue but ignores generated research data', () => 
 });
 
 test('audit preserves exact count and missing allowlist failures', () => {
+  const evaluateResidueAudit = requiredFunction('evaluateResidueAudit');
   const failures = evaluateResidueAudit({
     entries: [
       {
@@ -213,7 +219,7 @@ Run:
 node --test scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs
 ```
 
-Expected: FAIL during module loading because `evaluateResidueAudit` and `legacyMatches` are not exported yet. This is the missing pure seam required by the approved design.
+Expected: FAIL with `legacyMatches must be exported` and `evaluateResidueAudit must be exported`. These assertion failures identify the missing pure seam required by the approved design without turning the red phase into a module-loading error.
 
 - [ ] **Step 3: Move matching and classification into the pure helper**
 
