@@ -56,6 +56,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
+import { reapStaleTestSandboxes as defaultReapStaleTestSandboxes } from '../lib/test-sandbox-reaper.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
@@ -416,6 +417,8 @@ export async function runVerbTest({
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
   const createWorktree = deps.createWorktree || defaultCreateWorktree;
   const removeWorktree = deps.removeWorktree || defaultRemoveWorktree;
+  const recoverStaleTestSandboxes =
+    deps.reapStaleTestSandboxes || (async () => ({ candidates: [], attempted: [] }));
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const runDevelopFinalization = deps.runDevelopFinalization;
@@ -444,6 +447,7 @@ export async function runVerbTest({
     issueNumber: issueNum,
   });
   const sha = await getHeadSha({ projectDir });
+  await recoverStaleTestSandboxes({ projectDir, removeWorktree });
   let authoritySource;
   try {
     authoritySource = locateAuthoritySource({ issueBody: body });
@@ -1238,6 +1242,7 @@ export async function verbTest(ctx) {
         logIssueTime,
         postNewAutomatedTestsComment,
         runDevelopFinalization: defaultRunDevelopFinalization,
+        reapStaleTestSandboxes: defaultReapStaleTestSandboxes,
         forceRerun: rest.includes('--force'),
       },
     });

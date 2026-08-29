@@ -1,4 +1,4 @@
-// @story #310 #1089
+// @story #310 #1089 #1412
 // Unit tests for scripts/task-tracker/verbs/test.mjs — the sandboxed /task test
 // runner (#137). All I/O is stubbed; no real worktree, npm, or gh.
 
@@ -45,6 +45,8 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
     worktreesCreated: 0,
     worktreesRemoved: 0,
     npmCiCalls: 0,
+    events: [],
+    reaperRuns: 0,
   };
   const deps = {
     fetchBody: async () => bodyWithVc(['node scripts/run-tests.mjs', 'npm run lint']),
@@ -64,7 +66,15 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
       calls.comments.push(body);
     },
     getHeadSha: async () => 'abc1234deadbeef',
+    reapStaleTestSandboxes: async ({ projectDir: recoveredProjectDir, removeWorktree }) => {
+      assert.equal(recoveredProjectDir.length > 0, true);
+      assert.equal(typeof removeWorktree, 'function');
+      calls.reaperRuns += 1;
+      calls.events.push('reap');
+      return { candidates: [], attempted: [] };
+    },
     createWorktree: async () => {
+      calls.events.push('create');
       calls.worktreesCreated++;
     },
     removeWorktree: async () => {
@@ -141,6 +151,16 @@ test('parseVerificationCommands: extracts VC checkboxes only, in order', () => {
   assert.equal(vcs[0].checked, false);
   assert.equal(vcs[1].command, 'npm run lint');
   assert.equal(vcs[1].checked, true);
+});
+
+test('verbTest #1412: crash recovery runs before the current sandbox is created', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    const result = await runVerbTest({ cfg, issueNumber: 1412, projectDir, deps });
+    assert.equal(result.status, 'passed');
+    assert.equal(calls.reaperRuns, 1);
+    assert.deepEqual(calls.events.slice(0, 2), ['reap', 'create']);
+  });
 });
 
 test('verbTest: green path stamps marker, posts success comment, moves develop→test, logs time', async () => {
