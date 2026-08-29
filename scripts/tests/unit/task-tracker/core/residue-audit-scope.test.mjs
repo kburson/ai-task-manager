@@ -56,6 +56,21 @@ test('generated-looking files outside docs/research are still audited', () => {
   assert.equal(isGeneratedResearchArtifact('scripts/docs/research/thing.json'), false);
 });
 
-test('backslash-separated paths normalize before the prefix check', () => {
-  assert.equal(isGeneratedResearchArtifact('docs\\research\\audit\\overlap.json'), true);
+test('non-canonical research paths are audited rather than exempted', () => {
+  const nonCanonicalPaths = [
+    'docs\\research\\audit\\overlap.json',
+    '/docs/research/audit/overlap.json',
+    'docs/research//overlap.json',
+    'docs/research/./overlap.json',
+    'docs/research/../src/overlap.json',
+  ];
+
+  for (const file of nonCanonicalPaths) {
+    assert.equal(isGeneratedResearchArtifact(file), false, file);
+  }
+});
+
+test('non-string paths are audited rather than coerced', () => {
+  assert.equal(isGeneratedResearchArtifact(undefined), false);
+  assert.equal(isGeneratedResearchArtifact({ toString: () => 'docs/research/data.json' }), false);
 });

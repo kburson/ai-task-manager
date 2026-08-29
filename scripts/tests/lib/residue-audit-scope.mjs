@@ -26,12 +26,25 @@ const RESEARCH_ROOT = 'docs/research/';
 const GENERATED_DATA_EXTENSIONS = ['.json', '.txt', '.csv', '.ndjson'];
 
 /**
- * @param {string} file repo-relative path
+ * @param {unknown} file candidate repo-relative path
+ * @returns {file is string} true only for canonical Git repository paths
+ */
+function isCanonicalRepositoryPath(file) {
+  if (typeof file !== 'string' || file.length === 0) return false;
+  if (file.includes('\\') || file.startsWith('/')) return false;
+
+  return file
+    .split('/')
+    .every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+}
+
+/**
+ * @param {unknown} file repo-relative path
  * @returns {boolean} true when the path is a generated research artifact and so
  *   is exempt from the residue walk
  */
 export function isGeneratedResearchArtifact(file) {
-  const normalized = String(file).replaceAll('\\', '/');
-  if (!normalized.startsWith(RESEARCH_ROOT)) return false;
-  return GENERATED_DATA_EXTENSIONS.some((ext) => normalized.endsWith(ext));
+  if (!isCanonicalRepositoryPath(file)) return false;
+  if (!file.startsWith(RESEARCH_ROOT)) return false;
+  return GENERATED_DATA_EXTENSIONS.some((ext) => file.endsWith(ext));
 }
