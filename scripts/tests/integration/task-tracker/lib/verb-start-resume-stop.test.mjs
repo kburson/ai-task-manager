@@ -237,6 +237,31 @@ function captureLog(fn) {
   assert.equal(posts.length, 0, 'worktree refusal posts no timing row');
 }
 
+// ─── same bound issue post-save failure restores the closed timer ────────────
+{
+  resetSession();
+  const statePath = writeState({ active: null, lastActive: '#453' });
+  saveState({ ...EMPTY_STATE, active: '#453', lastActive: '#453' }, statePath);
+  const { ctx } = makeCtx({ rest: ['#453'], statePath });
+  const rollbacks = [];
+  ctx.claimBindingOccupancy = () => ({ status: 'unchanged', issue: '#453' });
+  ctx.rollbackBindingOccupancy = (claim) => {
+    rollbacks.push(claim);
+    return { status: 'not-applicable' };
+  };
+  ctx.safePostTiming = async () => {
+    throw new Error('timing unavailable');
+  };
+
+  await assert.rejects(() => verbResume(ctx), /timing unavailable/);
+  assert.deepEqual(rollbacks, [{ status: 'unchanged', issue: '#453' }]);
+  assert.equal(
+    loadState(statePath).entryStartTs,
+    null,
+    'post-save failure restores the pre-existing closed timer'
+  );
+}
+
 // ─── stop → unbinds, keeps lastActive, clears paused ────────────────────────
 {
   resetSession();

@@ -38,6 +38,7 @@ import {
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
+import { isTerminalReviewHandoffOpen } from '../lib/terminal-review-handoff.mjs';
 
 function claimForBind(ctx, issue) {
   const claim = ctx.claimBindingOccupancy ?? claimBindingOccupancy;
@@ -58,13 +59,12 @@ function rollbackClaim(ctx, claim) {
 
 function rollbackFailedBind(ctx, { claim, priorState, savedState }, originalError) {
   const recoveryErrors = [];
-  let rollbackResult;
   try {
-    rollbackResult = rollbackClaim(ctx, claim);
+    rollbackClaim(ctx, claim);
   } catch (rollbackError) {
     recoveryErrors.push(rollbackError);
   }
-  if (savedState && rollbackResult?.status === 'rolled-back') {
+  if (savedState) {
     try {
       const current = loadState(ctx.statePath);
       if (isDeepStrictEqual(current, savedState)) saveState(priorState, ctx.statePath);
@@ -408,6 +408,7 @@ export async function verbResume(ctx) {
       timingBody: cfg?.repo ? tcBody : null,
       readStatus,
     });
+    const terminalReviewHandoff = reopeningBoundTimer && isTerminalReviewHandoffOpen(tcBody);
     // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
     // open interruption AND no prior `start` to pair against.
     // #568 — downgrade to `start` ONLY on positive confirmation the log is empty
@@ -427,7 +428,7 @@ export async function verbResume(ctx) {
     // defect class). Insert a synthetic departure row first so the gap
     // reclassifies as idle — `buildBackdatedDepartureRow` can only ever emit a
     // zero-delta marker row, never fabricate active time.
-    if (cfg?.repo && !isStart && readStatus !== 'error') {
+    if (cfg?.repo && !isStart && readStatus !== 'error' && !terminalReviewHandoff) {
       let gap = detectUnmarkedDepartureGap(tcBody, ts);
       if (gap) {
         const collectResumeActivityEvidence =
@@ -471,12 +472,14 @@ export async function verbResume(ctx) {
         await safePostTiming(normalizedTarget, departureRow);
       }
     }
-    const suppressBindEvent = shouldSuppressActiveBindEvent({
-      timingBody: tcBody,
-      readStatus,
-      paused: !!s.pausedAtTs,
-      nowTs: ts,
-    });
+    const suppressBindEvent =
+      terminalReviewHandoff ||
+      shouldSuppressActiveBindEvent({
+        timingBody: tcBody,
+        readStatus,
+        paused: !!s.pausedAtTs,
+        nowTs: ts,
+      });
     if (!suppressBindEvent) {
       const row = buildRow({
         ts,
