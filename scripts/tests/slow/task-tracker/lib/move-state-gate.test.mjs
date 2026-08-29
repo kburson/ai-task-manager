@@ -170,6 +170,7 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
       AITM_INTERNAL: '1',
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
       PATH: `${binDir}:${process.env.PATH}`,
+      AITM_GH_TEST_DOUBLE_BIN: binDir,
       ...extraEnv,
     },
   });

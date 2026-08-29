@@ -7,6 +7,7 @@
 // review had not run (and which the later gate run then rejected).
 
 import { test } from 'node:test';
+import '../../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import path from 'node:path';

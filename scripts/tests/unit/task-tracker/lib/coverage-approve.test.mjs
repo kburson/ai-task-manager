@@ -58,6 +58,7 @@ writeFileSync(
 );
 chmodSync(join(FAKE_GH_DIR, 'gh'), 0o755);
 process.env.PATH = `${FAKE_GH_DIR}:${process.env.PATH}`;
+process.env.AITM_GH_TEST_DOUBLE_BIN = FAKE_GH_DIR;
 
 const REVIEW_BODY =
   [

@@ -75,6 +75,7 @@ function runWorker(label, event) {
       env: {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,
+        AITM_GH_TEST_DOUBLE_BIN: binDir,
         FAKE_GH_STORE: store,
         FAKE_GH_DELAY_MS: '50', // widen race window
         AI_TASK_MANAGER_PROJECT_DIR: tmp,

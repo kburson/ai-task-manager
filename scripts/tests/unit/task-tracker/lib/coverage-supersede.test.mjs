@@ -292,6 +292,7 @@ writeFileSync(
   { mode: 0o755 }
 );
 process.env.PATH = `${FAKE_GH_DIR}:${process.env.PATH}`;
+process.env.AITM_GH_TEST_DOUBLE_BIN = FAKE_GH_DIR;
 
 test('runSupersede: default I/O helpers drive a fake gh end-to-end', async () => {
   process.env.FAKE_GH_BODY_FILE = BODY_FILE;

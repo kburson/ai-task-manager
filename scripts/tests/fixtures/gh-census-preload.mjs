@@ -1,7 +1,7 @@
 // @story #1410
 import childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -31,6 +31,7 @@ function encodedOutput(value, options) {
 
 export function installGhCensusPreload({ env = process.env } = {}) {
   const censusBin = env.AITM_GH_CENSUS_BIN || '';
+  const censusLog = censusBin ? path.join(censusBin, 'calls.log') : '';
   const original = {
     execFile: childProcess.execFile,
     execFileSync: childProcess.execFileSync,
@@ -39,23 +40,34 @@ export function installGhCensusPreload({ env = process.env } = {}) {
   };
   const originalPexec = promisify(original.execFile);
 
-  // A test-owned project-local gh placed before the census sentinel is an
-  // intentional offline fixture and remains authoritative. Otherwise every
-  // child-process surface is absorbed here; a bypass using another API still
-  // reaches the PATH sentinel and is counted.
+  // Only an explicitly declared test double remains authoritative. Merely
+  // placing another gh earlier on PATH is not enough: it could be the real
+  // binary, so the census must absorb and record it.
   const delegatesToPathDouble = (file) =>
-    file === 'gh' && censusBin && path.dirname(firstGhOnPath(env)) !== censusBin;
+    file === 'gh' &&
+    censusBin &&
+    env.AITM_GH_TEST_DOUBLE_BIN &&
+    path.resolve(path.dirname(firstGhOnPath(env))) === path.resolve(env.AITM_GH_TEST_DOUBLE_BIN);
   const shouldAbsorb = (file) => file === 'gh' && !delegatesToPathDouble(file);
+  const record = (argv) => {
+    if (censusLog) {
+      appendFileSync(censusLog, `${env.AITM_GH_CENSUS_CALLER ?? ''}\t${argv.slice(1).join(' ')}\n`);
+    }
+  };
 
   const censusPexec = (file, args = [], options) => {
     if (!shouldAbsorb(file)) return originalPexec(file, args, options);
-    return Promise.reject(refusal([file, ...args]));
+    const argv = [file, ...args];
+    record(argv);
+    return Promise.reject(refusal(argv));
   };
 
   const censusExecFile = (file, args = [], options, callback) => {
     if (!shouldAbsorb(file)) return original.execFile(file, args, options, callback);
     const done = typeof options === 'function' ? options : callback;
-    const error = refusal([file, ...args]);
+    const argv = [file, ...args];
+    record(argv);
+    const error = refusal(argv);
     queueMicrotask(() => done(error, error.stdout, error.stderr));
     return new EventEmitter();
   };
@@ -63,7 +75,9 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusSpawn = (file, args = [], options) => {
     if (!shouldAbsorb(file)) return original.spawn(file, args, options);
-    const error = refusal([file, ...args]);
+    const argv = [file, ...args];
+    record(argv);
+    const error = refusal(argv);
     const child = new EventEmitter();
     child.stdout = Readable.from([]);
     child.stderr = Readable.from([error.stderr]);
@@ -74,12 +88,16 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusExecFileSync = (file, args = [], options) => {
     if (!shouldAbsorb(file)) return original.execFileSync(file, args, options);
-    throw refusal([file, ...args]);
+    const argv = [file, ...args];
+    record(argv);
+    throw refusal(argv);
   };
 
   const censusSpawnSync = (file, args = [], options) => {
     if (!shouldAbsorb(file)) return original.spawnSync(file, args, options);
-    const error = refusal([file, ...args]);
+    const argv = [file, ...args];
+    record(argv);
+    const error = refusal(argv);
     const stdout = encodedOutput('', options);
     const stderr = encodedOutput(error.stderr, options);
     return {

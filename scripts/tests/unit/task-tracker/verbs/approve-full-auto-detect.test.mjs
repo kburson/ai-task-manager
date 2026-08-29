@@ -14,6 +14,7 @@
 //   8. Legacy-encoded body is normalized to new encoding.
 
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import {
   runApprove,
   buildMarker,

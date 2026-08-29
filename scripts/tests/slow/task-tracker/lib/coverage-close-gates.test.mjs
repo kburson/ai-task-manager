@@ -6,6 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { promisify } from 'node:util';
 
 import {

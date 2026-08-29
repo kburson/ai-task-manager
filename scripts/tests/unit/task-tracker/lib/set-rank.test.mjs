@@ -104,6 +104,7 @@ function rankWrites(argvLog) {
 
   const r = await run(['807', '42'], {
     PATH: `${binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   assert.match(r.stdout, /✓ #807 → rank 42/, 'prints the confirmation line');
@@ -125,6 +126,7 @@ function rankWrites(argvLog) {
 
   await run(['807', '7'], {
     PATH: `${binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   const writes = rankWrites(argvLog);
@@ -162,6 +164,7 @@ function rankWrites(argvLog) {
 
   const r = await run(['807', '9'], {
     PATH: `${binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   assert.match(r.stderr, /no Rank field id configured/i, 'warns about unconfigured Rank field');

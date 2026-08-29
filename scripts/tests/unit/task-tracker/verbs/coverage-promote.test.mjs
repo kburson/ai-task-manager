@@ -5,6 +5,7 @@
 // `verbPromote(rest, cfg, deps = {})` forwards `deps` so every arm runs offline).
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';

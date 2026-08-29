@@ -24,6 +24,7 @@
 // a false `promoted` and not as a demote.
 
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';

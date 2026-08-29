@@ -71,7 +71,7 @@ export async function runLaneCensus(lane, { runLane = runCanonicalLane } = {}) {
     executable,
     [
       '#!/bin/sh',
-      `printf '%s\\n' "$*" >> ${shellSingleQuote(logPath)}`,
+      `printf '%s\\t%s\\n' "\${AITM_GH_CENSUS_CALLER:-}" "$*" >> ${shellSingleQuote(logPath)}`,
       `printf 'gh-call-census: refused real gh: %s\\n' "$*" >&2`,
       'exit 86',
       '',
@@ -96,7 +96,12 @@ export async function runLaneCensus(lane, { runLane = runCanonicalLane } = {}) {
       ? readFileSync(logPath, 'utf8')
           .split('\n')
           .filter(Boolean)
-          .map((args) => `gh ${args}`)
+          .map((line) => {
+            const separator = line.indexOf('\t');
+            const caller = separator === -1 ? '' : line.slice(0, separator);
+            const args = separator === -1 ? line : line.slice(separator + 1);
+            return `${caller ? `${caller}: ` : ''}gh ${args}`;
+          })
           .sort()
       : [];
     if (exitCode !== 0 && existsSync(outputPath)) {
@@ -118,7 +123,9 @@ export function formatCensus(results) {
     lines.push(
       `gh-call-census: ${lane}: ${calls.length} real gh invocation(s); lane exit ${exitCode}`
     );
-    for (const call of calls) lines.push(`  ${call}`);
+    const counts = new Map();
+    for (const call of calls) counts.set(call, (counts.get(call) ?? 0) + 1);
+    for (const [call, count] of counts) lines.push(`  ${count}x ${call}`);
     for (const line of laneOutput) lines.push(`  lane: ${line}`);
   }
   lines.push(`gh-call-census: ${censusPassed(results) ? 'PASS' : 'FAIL'}`);

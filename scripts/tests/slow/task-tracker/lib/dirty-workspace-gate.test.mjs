@@ -4,6 +4,7 @@
 // Uses PATH-based git shim to control porcelain output; SKIP_NETWORK skips gh.
 
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, realpathSync } from 'node:fs';

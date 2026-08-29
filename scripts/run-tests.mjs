@@ -164,11 +164,13 @@ const timingRecords = [];
 // carry forward unchanged into every child, serial or pooled.
 async function runEntry(entry) {
   const t0 = process.hrtime.bigint();
+  const env = { ...process.env, [TEST_NO_RETRY_ENV]: '1' };
+  if (process.env.AITM_GH_CENSUS_BIN) env.AITM_GH_CENSUS_CALLER = entry.label;
   const res = await spawnTestChild({
     full: entry.full,
     timeout: TEST_FILE_TIMEOUT_MS,
     maxBuffer: RUN_TESTS_MAX_BUFFER,
-    env: { ...process.env, [TEST_NO_RETRY_ENV]: '1' },
+    env,
   });
   const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
   return { res, elapsedMs };

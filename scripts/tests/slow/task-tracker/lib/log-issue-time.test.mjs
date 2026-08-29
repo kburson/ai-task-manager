@@ -104,7 +104,11 @@ function makeEnv({ initialBody, fieldNodes }) {
     })
   );
 
-  const env = { ...process.env, PATH: `${binDir}:${process.env.PATH}` };
+  const env = {
+    ...process.env,
+    PATH: `${binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: binDir,
+  };
   return { temp, callLog, stateBody, env };
 }
 

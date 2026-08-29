@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @story #251
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';

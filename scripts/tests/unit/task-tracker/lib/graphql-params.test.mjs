@@ -63,6 +63,7 @@ await tt.getIssueBoardState(42);
   const env = {
     ...process.env,
     PATH: `${binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '',
   };

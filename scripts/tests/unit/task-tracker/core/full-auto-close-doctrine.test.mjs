@@ -1,6 +1,7 @@
 // @story #939
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 
 import {
   resolveReviewAuthorization,

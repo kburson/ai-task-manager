@@ -11,6 +11,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 
 import { commitsOnTrunkGate, runCloseGates } from '../../../../task-tracker/lib/close-gates.mjs';
 

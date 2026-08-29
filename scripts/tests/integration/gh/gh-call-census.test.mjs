@@ -2,7 +2,8 @@
 // Integration lane: this contract intentionally resolves a child-process PATH sentinel.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
@@ -12,6 +13,7 @@ import {
   parseLanes,
   runLaneCensus,
 } from '../../tools/gh-call-census.mjs';
+import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 const pexec = promisify(execFile);
 
@@ -42,6 +44,7 @@ test('runLaneCensus reports zero and removes its project-local sentinel', async 
 test('runLaneCensus records and refuses every resolved gh argv', async () => {
   const result = await runLaneCensus('slow', {
     runLane: async ({ env }) => {
+      delete env.AITM_GH_CENSUS_CALLER;
       await assert.rejects(
         () => pexec('gh', ['issue', 'view', '1410'], { env }),
         /gh-call-census: refused real gh/
@@ -51,6 +54,63 @@ test('runLaneCensus records and refuses every resolved gh argv', async () => {
   });
   assert.deepEqual(result.calls, ['gh issue view 1410']);
   assert.equal(existsSync(result.scratchDir), false);
+});
+
+test('preload records an absorbed gh call even when the caller catches the refusal', async () => {
+  const result = await runLaneCensus('unit', {
+    runLane: async ({ env }) => {
+      delete env.AITM_GH_CENSUS_CALLER;
+      const script = [
+        "import { execFile } from 'node:child_process';",
+        "import { promisify } from 'node:util';",
+        "try { await promisify(execFile)('gh', ['issue', 'view', '1410']); } catch {}",
+      ].join('\n');
+      await pexec(process.execPath, ['--input-type=module', '--eval', script], { env });
+      return 0;
+    },
+  });
+  assert.deepEqual(result.calls, ['gh issue view 1410']);
+  assert.equal(censusPassed([result]), false);
+});
+
+test('preload refuses an undeclared earlier PATH gh and permits an explicitly declared double', async () => {
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'gh-census-double-'));
+  const bin = path.join(dir, 'bin');
+  const marker = path.join(dir, 'executed');
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\nprintf executed > '${marker}'\n`);
+  chmodSync(path.join(bin, 'gh'), 0o755);
+  const script = [
+    "import { execFile } from 'node:child_process';",
+    "import { promisify } from 'node:util';",
+    "try { await promisify(execFile)('gh', ['api', 'rate_limit']); } catch {}",
+  ].join('\n');
+  try {
+    const undeclared = await runLaneCensus('integration', {
+      runLane: async ({ env }) => {
+        delete env.AITM_GH_CENSUS_CALLER;
+        env.PATH = `${bin}${path.delimiter}${env.PATH}`;
+        await pexec(process.execPath, ['--input-type=module', '--eval', script], { env });
+        return 0;
+      },
+    });
+    assert.deepEqual(undeclared.calls, ['gh api rate_limit']);
+    assert.equal(existsSync(marker), false);
+
+    const declared = await runLaneCensus('integration', {
+      runLane: async ({ env }) => {
+        delete env.AITM_GH_CENSUS_CALLER;
+        env.PATH = `${bin}${path.delimiter}${env.PATH}`;
+        env.AITM_GH_TEST_DOUBLE_BIN = bin;
+        await pexec(process.execPath, ['--input-type=module', '--eval', script], { env });
+        return 0;
+      },
+    });
+    assert.deepEqual(declared.calls, []);
+    assert.equal(existsSync(marker), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('formatCensus is deterministic and the result fails closed', () => {
@@ -65,7 +125,7 @@ test('formatCensus is deterministic and the result fails closed', () => {
     [
       'gh-call-census: unit: 0 real gh invocation(s); lane exit 0',
       'gh-call-census: integration: 1 real gh invocation(s); lane exit 0',
-      '  gh api rate_limit',
+      '  1x gh api rate_limit',
       'gh-call-census: slow: 0 real gh invocation(s); lane exit 1',
       'gh-call-census: FAIL',
     ].join('\n')

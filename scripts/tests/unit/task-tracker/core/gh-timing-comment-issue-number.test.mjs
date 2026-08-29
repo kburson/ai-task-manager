@@ -39,6 +39,7 @@ test('Timing Log GitHub helpers accept numeric, string, and hash-prefixed issue 
   const priorPath = process.env.PATH;
   const priorLog = process.env.AITM_1138_GH_LOG;
   process.env.PATH = `${dir}${delimiter}${priorPath ?? ''}`;
+  process.env.AITM_GH_TEST_DOUBLE_BIN = dir;
   process.env.AITM_1138_GH_LOG = logPath;
   try {
     const row = buildRow({
@@ -69,6 +70,7 @@ test('Timing Log GitHub helpers accept numeric, string, and hash-prefixed issue 
   } finally {
     if (priorPath === undefined) delete process.env.PATH;
     else process.env.PATH = priorPath;
+    delete process.env.AITM_GH_TEST_DOUBLE_BIN;
     if (priorLog === undefined) delete process.env.AITM_1138_GH_LOG;
     else process.env.AITM_1138_GH_LOG = priorLog;
     rmSync(dir, { recursive: true, force: true });
