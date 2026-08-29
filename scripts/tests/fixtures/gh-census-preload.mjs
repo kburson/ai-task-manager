@@ -29,6 +29,14 @@ function encodedOutput(value, options) {
   return options?.encoding && options.encoding !== 'buffer' ? value : Buffer.from(value);
 }
 
+function normalizedArgv(file, args) {
+  return [file, ...(Array.isArray(args) ? args : [])];
+}
+
+function normalizedOptions(args, options) {
+  return Array.isArray(args) ? options : args;
+}
+
 export function installGhCensusPreload({ env = process.env } = {}) {
   const censusBin = env.AITM_GH_CENSUS_BIN || '';
   const censusLog = censusBin ? path.join(censusBin, 'calls.log') : '';
@@ -55,27 +63,34 @@ export function installGhCensusPreload({ env = process.env } = {}) {
     }
   };
 
-  const censusPexec = (file, args = [], options) => {
-    if (!shouldAbsorb(file)) return originalPexec(file, args, options);
-    const argv = [file, ...args];
+  const censusPexec = (...callArgs) => {
+    const [file, args] = callArgs;
+    if (!shouldAbsorb(file)) return originalPexec(...callArgs);
+    const argv = normalizedArgv(file, args);
     record(argv);
     return Promise.reject(refusal(argv));
   };
 
-  const censusExecFile = (file, args = [], options, callback) => {
-    if (!shouldAbsorb(file)) return original.execFile(file, args, options, callback);
-    const done = typeof options === 'function' ? options : callback;
-    const argv = [file, ...args];
+  const censusExecFile = (...callArgs) => {
+    const [file, args] = callArgs;
+    if (!shouldAbsorb(file)) return original.execFile(...callArgs);
+    const done = callArgs.findLast((arg) => typeof arg === 'function');
+    const argv = normalizedArgv(file, args);
     record(argv);
     const error = refusal(argv);
-    queueMicrotask(() => done(error, error.stdout, error.stderr));
-    return new EventEmitter();
+    const child = new EventEmitter();
+    queueMicrotask(() => {
+      if (done) done(error, error.stdout, error.stderr);
+      else child.emit('error', error);
+    });
+    return child;
   };
   censusExecFile[promisify.custom] = censusPexec;
 
-  const censusSpawn = (file, args = [], options) => {
-    if (!shouldAbsorb(file)) return original.spawn(file, args, options);
-    const argv = [file, ...args];
+  const censusSpawn = (...callArgs) => {
+    const [file, args] = callArgs;
+    if (!shouldAbsorb(file)) return original.spawn(...callArgs);
+    const argv = normalizedArgv(file, args);
     record(argv);
     const error = refusal(argv);
     const child = new EventEmitter();
@@ -86,20 +101,23 @@ export function installGhCensusPreload({ env = process.env } = {}) {
     return child;
   };
 
-  const censusExecFileSync = (file, args = [], options) => {
-    if (!shouldAbsorb(file)) return original.execFileSync(file, args, options);
-    const argv = [file, ...args];
+  const censusExecFileSync = (...callArgs) => {
+    const [file, args] = callArgs;
+    if (!shouldAbsorb(file)) return original.execFileSync(...callArgs);
+    const argv = normalizedArgv(file, args);
     record(argv);
     throw refusal(argv);
   };
 
-  const censusSpawnSync = (file, args = [], options) => {
-    if (!shouldAbsorb(file)) return original.spawnSync(file, args, options);
-    const argv = [file, ...args];
+  const censusSpawnSync = (...callArgs) => {
+    const [file, args, options] = callArgs;
+    if (!shouldAbsorb(file)) return original.spawnSync(...callArgs);
+    const argv = normalizedArgv(file, args);
+    const resolvedOptions = normalizedOptions(args, options);
     record(argv);
     const error = refusal(argv);
-    const stdout = encodedOutput('', options);
-    const stderr = encodedOutput(error.stderr, options);
+    const stdout = encodedOutput('', resolvedOptions);
+    const stderr = encodedOutput(error.stderr, resolvedOptions);
     return {
       pid: 0,
       output: [null, stdout, stderr],

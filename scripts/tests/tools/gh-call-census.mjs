@@ -100,7 +100,8 @@ export async function runLaneCensus(lane, { runLane = runCanonicalLane } = {}) {
             const separator = line.indexOf('\t');
             const caller = separator === -1 ? '' : line.slice(0, separator);
             const args = separator === -1 ? line : line.slice(separator + 1);
-            return `${caller ? `${caller}: ` : ''}gh ${args}`;
+            const call = ['gh', args].filter(Boolean).join(' ');
+            return caller ? `${caller}: ${call}` : call;
           })
           .sort()
       : [];

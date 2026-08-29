@@ -73,6 +73,27 @@ test('preload records an absorbed gh call even when the caller catches the refus
   assert.equal(censusPassed([result]), false);
 });
 
+test('preload records child-process overloads whose argv array is omitted', async () => {
+  const result = await runLaneCensus('unit', {
+    runLane: async ({ env }) => {
+      delete env.AITM_GH_CENSUS_CALLER;
+      const script = [
+        "import { execFile, execFileSync, spawn, spawnSync } from 'node:child_process';",
+        "import { promisify } from 'node:util';",
+        "try { await promisify(execFile)('gh', { encoding: 'utf8' }); } catch {}",
+        "execFile('gh', { encoding: 'utf8' }, () => {});",
+        "spawn('gh', { stdio: 'ignore' });",
+        "try { execFileSync('gh', { encoding: 'utf8' }); } catch {}",
+        "spawnSync('gh', { encoding: 'utf8' });",
+      ].join('\n');
+      await pexec(process.execPath, ['--input-type=module', '--eval', script], { env });
+      return 0;
+    },
+  });
+  assert.deepEqual(result.calls, ['gh', 'gh', 'gh', 'gh', 'gh']);
+  assert.equal(censusPassed([result]), false);
+});
+
 test('preload refuses an undeclared earlier PATH gh and permits an explicitly declared double', async () => {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'gh-census-double-'));
   const bin = path.join(dir, 'bin');
