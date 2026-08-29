@@ -266,11 +266,12 @@ export async function verbResume(ctx) {
   // through to the fresh-bind path below.
   const switchVerb = ctx.verbSwitch ?? verbSwitch;
   const ownIssue = ownBoundIssue(projectDir);
+  const reopeningBoundTimer = ownIssue === normalizedTarget && !s.entryStartTs;
   if (ownIssue && ownIssue !== normalizedTarget) {
     await switchVerb(ctx, normalizedTarget);
     return;
   }
-  if (ownIssue === normalizedTarget) {
+  if (ownIssue === normalizedTarget && !reopeningBoundTimer) {
     const occupancyClaim = claimForBind(ctx, normalizedTarget);
     try {
       const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
@@ -497,9 +498,11 @@ export async function verbResume(ctx) {
       cfg,
     });
     console.log(
-      suppressBindEvent
-        ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
-        : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
+      reopeningBoundTimer
+        ? `Resumed ${normalizedTarget}.`
+        : suppressBindEvent
+          ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
+          : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
     );
   } catch (error) {
     rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);

@@ -173,6 +173,70 @@ function captureLog(fn) {
   assert.equal(posts.length, 1, 'resumed row posted for resume #N');
 }
 
+// ─── same bound issue with no live span → reopen once ────────────────────────
+{
+  resetSession();
+  const statePath = writeState({ active: null, lastActive: '#453' });
+  saveState(
+    {
+      ...EMPTY_STATE,
+      active: '#453',
+      lastActive: '#453',
+      entryStartTs: null,
+      wordsAtEntryStart: 0,
+    },
+    statePath
+  );
+  const { ctx, posts } = makeCtx({ rest: ['#453'], statePath });
+  const first = await captureLog(() => verbResume(ctx));
+  const firstEntryStartTs = loadState(statePath).entryStartTs;
+  const second = await captureLog(() => verbResume(ctx));
+
+  assert.ok(firstEntryStartTs, 'same-issue no-span resume opens a local timing span');
+  assert.equal(posts.length, 1, 'the first no-span resume writes one bind row');
+  assert.ok(first.some((line) => line.includes('Resumed #453')));
+  assert.equal(loadState(statePath).entryStartTs, firstEntryStartTs, 'repeat keeps entry clock');
+  assert.equal(posts.length, 1, 'repeat writes no duplicate timing row');
+  assert.ok(second.some((line) => line.includes('already active: #453')));
+}
+
+// ─── same bound issue no-span path retains occupancy refusal ─────────────────
+{
+  resetSession();
+  const statePath = writeState({ active: null, lastActive: '#453' });
+  saveState({ ...EMPTY_STATE, active: '#453', lastActive: '#453' }, statePath);
+  const { ctx, posts } = makeCtx({ rest: ['#453'], statePath });
+  ctx.claimBindingOccupancy = () => {
+    throw new Error('occupancy mismatch');
+  };
+
+  await assert.rejects(() => verbResume(ctx), /occupancy mismatch/);
+  assert.equal(loadState(statePath).entryStartTs, null, 'occupancy refusal leaves timer closed');
+  assert.equal(posts.length, 0, 'occupancy refusal posts no timing row');
+}
+
+// ─── same bound issue no-span path retains worktree validation ───────────────
+{
+  resetSession();
+  const statePath = writeState({ active: null, lastActive: '#453' });
+  saveState({ ...EMPTY_STATE, active: '#453', lastActive: '#453' }, statePath);
+  const { ctx, posts } = makeCtx({ rest: ['#453'], statePath });
+  const rollbacks = [];
+  ctx.claimBindingOccupancy = () => ({ issue: '#453' });
+  ctx.resolveWorktreeBinding = () => {
+    throw new Error('worktree mismatch');
+  };
+  ctx.rollbackBindingOccupancy = (claim) => {
+    rollbacks.push(claim);
+    return { status: 'rolled-back' };
+  };
+
+  await assert.rejects(() => verbResume(ctx), /worktree mismatch/);
+  assert.deepEqual(rollbacks, [{ issue: '#453' }]);
+  assert.equal(loadState(statePath).entryStartTs, null, 'worktree refusal leaves timer closed');
+  assert.equal(posts.length, 0, 'worktree refusal posts no timing row');
+}
+
 // ─── stop → unbinds, keeps lastActive, clears paused ────────────────────────
 {
   resetSession();

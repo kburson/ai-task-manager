@@ -103,6 +103,52 @@ test('stop keeps a stale worktree bound after durable review:passed', async () =
   assert.ok(afterStop.some((line) => line.includes('already active: #1077')));
 });
 
+test('numbered start reopens one local span after terminal Review handoff', async () => {
+  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'resume-review-state.json');
+  saveState(
+    {
+      ...EMPTY_STATE,
+      active: '#1421',
+      lastActive: '#1421',
+      entryStartTs: null,
+      wordsAtEntryStart: 0,
+      lastWordMarker: 101167,
+    },
+    statePath
+  );
+
+  const posts = [];
+  const ctx = {
+    cfg: { repo: 'owner/repo' },
+    statePath,
+    projectDir: sandbox,
+    rest: ['#1421'],
+    role: 'orchestrator',
+    drainQueueIfAny: async () => {},
+    safePostTiming: async (...args) => posts.push(args),
+    nowIso: () => '2026-08-04T12:30:00.000Z',
+    readTimingCommentBody: async () => ({
+      status: 'found',
+      body: terminalTimingBody,
+      error: null,
+    }),
+    seedKanban: async () => ({ kanbanState: 'review' }),
+  };
+
+  const first = await captureLog(() => verbStart(ctx));
+  const reopenedState = loadState(statePath);
+  const second = await captureLog(() => verbStart(ctx));
+  const repeatedState = loadState(statePath);
+
+  assert.equal(reopenedState.active, '#1421');
+  assert.equal(reopenedState.entryStartTs, '2026-08-04T12:30:00.000Z');
+  assert.equal(posts.length, 0, 'review:passed tail suppresses a duplicate resumed row');
+  assert.ok(first.some((line) => line.includes('Resumed #1421')));
+  assert.equal(repeatedState.entryStartTs, reopenedState.entryStartTs);
+  assert.equal(posts.length, 0, 'repeat writes no timing row');
+  assert.ok(second.some((line) => line.includes('already active: #1421')));
+});
+
 test('locked append reduces the #1077 handoff to canonical terminal rows', () => {
   const entries = [
     { event: 'review:passed', marker: 101167, deltaWords: 0 },
