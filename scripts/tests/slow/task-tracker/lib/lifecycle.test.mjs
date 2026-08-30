@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
@@ -133,6 +134,7 @@ const switchEnv = {
   AI_TASK_MANAGER_PROJECT_DIR: startSwitchSandbox,
   TT_SKIP_NETWORK: '1',
   PATH: `${switchBin}:${process.env.PATH}`,
+  AITM_GH_TEST_DOUBLE_BIN: switchBin,
   FAKE_GH_STORE: switchStore,
 };
 

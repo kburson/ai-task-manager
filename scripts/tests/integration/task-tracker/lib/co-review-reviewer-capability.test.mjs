@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { fileURLToPath } from 'node:url';
 
 import {

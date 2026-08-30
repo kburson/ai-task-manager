@@ -16,6 +16,7 @@
 //     produce the documented refusal mix.
 
 import { describe, it } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';

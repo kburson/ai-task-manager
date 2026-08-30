@@ -47,10 +47,12 @@ before(() => {
   chmodSync(ghPath, 0o755);
   savedPath = process.env.PATH;
   process.env.PATH = `${fakeBin}:${process.env.PATH}`;
+  process.env.AITM_GH_TEST_DOUBLE_BIN = fakeBin;
 });
 
 after(() => {
   process.env.PATH = savedPath;
+  delete process.env.AITM_GH_TEST_DOUBLE_BIN;
   delete process.env.AITM_FAKE_BODY_FILE;
   try {
     rmSync(tmpRoot, { recursive: true, force: true });

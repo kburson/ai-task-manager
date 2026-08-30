@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import test, { after } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 

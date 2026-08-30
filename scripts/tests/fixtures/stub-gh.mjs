@@ -131,7 +131,9 @@ export function installStubGh({
   chmodSync(shimPath, 0o755);
 
   const previousPath = env.PATH;
+  const previousDoubleBin = env.AITM_GH_TEST_DOUBLE_BIN;
   env.PATH = `${binDir}${path.delimiter}${previousPath ?? ''}`;
+  env.AITM_GH_TEST_DOUBLE_BIN = binDir;
 
   // Layer 1 — the in-process seam override.
   const previousExecFile = seam.execFile;
@@ -200,6 +202,8 @@ export function installStubGh({
       seam.spawn = previousSpawn;
       if (previousPath === undefined) delete env.PATH;
       else env.PATH = previousPath;
+      if (previousDoubleBin === undefined) delete env.AITM_GH_TEST_DOUBLE_BIN;
+      else env.AITM_GH_TEST_DOUBLE_BIN = previousDoubleBin;
       rmSync(dir, { recursive: true, force: true });
     },
   };

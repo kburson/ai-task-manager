@@ -11,6 +11,7 @@
 //   4. runGuards('plan','develop', ctx) surfaces refusals from both.
 
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import { planApprovedGuard } from '../../../../task-tracker/lib/plan-approved-guard.mjs';

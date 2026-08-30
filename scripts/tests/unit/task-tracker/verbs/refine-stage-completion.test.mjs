@@ -10,6 +10,7 @@
 //   6. full-auto promote chain works (backlog→done via explicit promote calls)
 
 import assert from 'node:assert/strict';
+import '../../../fixtures/offline-gh-auto.mjs';
 
 import {
   runRefine,

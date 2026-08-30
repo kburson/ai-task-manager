@@ -14,6 +14,7 @@
 //      forwards the dirtyCheckSkipped signal via the warn channel.
 
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import { reviewExitReviewApprovedGuard } from '../../../../task-tracker/lib/review-exit-review-approved-guard.mjs';

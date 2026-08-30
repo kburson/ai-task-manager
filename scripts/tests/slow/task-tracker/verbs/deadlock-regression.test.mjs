@@ -13,6 +13,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -27,6 +27,7 @@
 // through `runGuards` and assert parity with these baselines.
 
 import { describe, it } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

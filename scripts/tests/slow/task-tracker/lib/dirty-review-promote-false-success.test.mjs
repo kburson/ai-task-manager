@@ -18,6 +18,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';

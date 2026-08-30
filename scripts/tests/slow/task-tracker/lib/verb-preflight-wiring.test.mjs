@@ -11,6 +11,8 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import '../../../fixtures/offline-gh-auto.mjs';
+
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');

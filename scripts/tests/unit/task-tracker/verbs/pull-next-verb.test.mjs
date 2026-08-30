@@ -4,6 +4,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import {

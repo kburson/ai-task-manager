@@ -122,6 +122,7 @@ exit 1
         ...process.env,
         AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
+        AITM_GH_TEST_DOUBLE_BIN: ctx.binDir,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
     }
@@ -169,6 +170,7 @@ exit 1
         ...process.env,
         AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
+        AITM_GH_TEST_DOUBLE_BIN: ctx.binDir,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
     }

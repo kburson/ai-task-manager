@@ -91,11 +91,13 @@ chmodSync(path.join(binDir, 'gh'), 0o755);
 before(() => {
   savedPath = process.env.PATH;
   process.env.PATH = `${binDir}${path.delimiter}${savedPath}`;
+  process.env.AITM_GH_TEST_DOUBLE_BIN = binDir;
   process.env.AITM_FAKE_BODY_FILE = fakeBodyFile;
 });
 
 after(() => {
   if (savedPath !== undefined) process.env.PATH = savedPath;
+  delete process.env.AITM_GH_TEST_DOUBLE_BIN;
 });
 
 function setFakeBody(body) {

@@ -13,6 +13,7 @@
 // no-op, it invokes the lifecycle-box reconcile (`tickLifecycleOnClose`).
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { verbClose, tickLifecycleOnClose } from '../../../../task-tracker/verbs/close.mjs';

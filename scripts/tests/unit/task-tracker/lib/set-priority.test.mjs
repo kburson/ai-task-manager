@@ -124,6 +124,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
 
   await run(['123', 'p1'], {
     PATH: `${binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
 

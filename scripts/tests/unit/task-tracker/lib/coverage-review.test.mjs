@@ -11,6 +11,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -261,9 +262,7 @@ test('preflight refusal → exit 4', async () => {
 
 test('validateBody gate refusal → exit 4', async () => {
   const { statePath, dir } = tmpState(baseState());
-  const origPath = process.env.PATH;
   const origProj = process.env.AI_TASK_MANAGER_PROJECT_DIR;
-  process.env.PATH = '';
   process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   try {
     const { ctx } = makeCtx({ statePath, gateBody: '- [x] Dependency Map\n' });
@@ -271,7 +270,6 @@ test('validateBody gate refusal → exit 4', async () => {
     assert.equal(result.code, 4);
     assert.match(result.stderr, /Refusing to move #777 to Review/);
   } finally {
-    process.env.PATH = origPath;
     if (origProj === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = origProj;
     rmSync(dir, { recursive: true, force: true });

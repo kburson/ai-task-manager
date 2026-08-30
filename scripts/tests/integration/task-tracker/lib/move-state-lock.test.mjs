@@ -12,6 +12,7 @@
 //      even when the dir already exists — caller already holds it).
 
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
@@ -87,8 +88,8 @@ function runMoveState(args, envOverrides = {}) {
   rmSync(projDir, { recursive: true, force: true });
 }
 
-// Test 3: contention — pre-create the lock dir with a holder, run move-state
-// pointed at that projDir, expect non-zero exit and locked-by stderr.
+// Test 3: contention — hold the production lock while move-state runs in a
+// child process, then expect a non-zero exit and locked-by stderr.
 {
   const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-issue-lock-'));
   const issue = 7777;
@@ -97,33 +98,27 @@ function runMoveState(args, envOverrides = {}) {
   mkdirSync(cfgDir, { recursive: true });
   const realCfg = readFileSync(path.join(REPO_ROOT, '.ai-task-manager/task-tracker.json'), 'utf8');
   writeFileSync(path.join(cfgDir, 'task-tracker.json'), realCfg, 'utf8');
-  // Pre-create the lock with a foreign holder.
-  const lockPath = issueLockPath(issue, projDir);
-  mkdirSync(lockPath, { recursive: true });
-  writeFileSync(
-    path.join(lockPath, 'holder.json'),
-    JSON.stringify({
-      sessionId: 'other-sess',
-      pid: 99999,
-      acquiredAt: '2026-05-25T15:00:00.000Z',
-      verb: 'promote',
-    }) + '\n',
-    'utf8'
-  );
-  const res = runMoveState([String(issue), 'refine'], {
-    AI_TASK_MANAGER_PROJECT_DIR: projDir,
-    TT_SKIP_NETWORK: '', // unset so the mutation block actually runs (will fail later, but we only care that lock contention fires first)
+  // Hold the production lock primitive while the child attempts acquisition.
+  // runMoveState scrubs the parent's re-entrancy token, so the child must
+  // observe the on-disk holder and report real cross-process contention.
+  let res;
+  await withIssueLock({ issue, verb: 'promote', projDir, sessionId: 'other-sess' }, async () => {
+    res = runMoveState([String(issue), 'refine'], {
+      AI_TASK_MANAGER_PROJECT_DIR: projDir,
+      // Keep pre-lock state discovery and guards offline. Lock acquisition still
+      // wraps the mutation callback; if the lock is missed, the offline callback
+      // exits 0 and the non-zero assertion below catches the false pass.
+      TT_SKIP_NETWORK: '1',
+    });
   });
-  // The contention check happens before SKIP_NETWORK shortcut inside __mutationBlock,
-  // because withIssueLock fires before invoking the fn.
+  // withIssueLock fires before the offline mutation callback.
   assert.notEqual(res.status, 0, 'expected non-zero exit on contention');
   assert.match(
     res.stderr,
-    /issue 7777 locked by session other-sess \(held since 2026-05-25T/,
+    /issue 7777 locked by session other-sess \(held since \d{4}-\d{2}-\d{2}T/,
     `stderr did not match contention pattern:\n${res.stderr}`
   );
   // Cleanup
-  rmSync(lockPath, { recursive: true, force: true });
   rmSync(projDir, { recursive: true, force: true });
 }
 

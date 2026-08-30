@@ -84,6 +84,7 @@ function fixture({ state, jsonlLines = [], marker = null, appName = 'claude' } =
   const env = {
     ...process.env,
     PATH: `${root.binDir}:${process.env.PATH}`,
+    AITM_GH_TEST_DOUBLE_BIN: root.binDir,
     AI_TASK_MANAGER_PROJECT_DIR: proj,
     AI_TASK_MANAGER_TRANSCRIPT_DIR: transcripts,
     AI_TASK_MANAGER_APP_NAME: appName,

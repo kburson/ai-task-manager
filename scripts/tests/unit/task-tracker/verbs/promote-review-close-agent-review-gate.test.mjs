@@ -14,6 +14,7 @@
 // `approve.mjs` already gates human sign-off on (`isAgentReviewComplete`).
 
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';

@@ -5,6 +5,7 @@
 // (driven with stubbed `process.exit`/stdout/stderr). Zero subprocess.
 
 import { test } from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import {

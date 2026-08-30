@@ -12,6 +12,7 @@
 // per-worktree (no shared global), then the chokepoint in move-state.mjs
 // cannot post a child-issue's row against the parent epic's log.
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';

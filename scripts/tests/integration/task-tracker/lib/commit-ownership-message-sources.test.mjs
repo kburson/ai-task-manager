@@ -46,6 +46,7 @@ function runGuard(fixture, command, { expectDecision = true } = {}) {
     env: {
       ...process.env,
       PATH: `${fixture.bin}:${process.env.PATH}`,
+      AITM_GH_TEST_DOUBLE_BIN: fixture.bin,
       AI_TASK_MANAGER_SESSION_ID: 'commit-ownership-message-sources',
     },
     // The governed unit lane runs hundreds of files concurrently; cold Node

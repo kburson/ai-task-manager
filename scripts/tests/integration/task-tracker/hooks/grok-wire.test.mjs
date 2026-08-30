@@ -2,6 +2,7 @@
 // @story #1324
 
 import { strict as assert } from 'node:assert';
+import '../../../fixtures/offline-gh-auto.mjs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

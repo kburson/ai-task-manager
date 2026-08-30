@@ -13,6 +13,7 @@
 //   8. runPromote returns refine-stub-placeholder-refused when AC placeholder blocks
 
 import assert from 'node:assert/strict';
+import '../../../fixtures/offline-gh-auto.mjs';
 
 import {
   refineExitStubPlaceholderGuard,

@@ -1,5 +1,6 @@
 // @story #1007
 import test from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import {

@@ -1,6 +1,7 @@
 // @story #1212
 // @parallel-unsafe (imports subprocess-spawning commit guard coverage below)
 import test from 'node:test';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import {
