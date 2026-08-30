@@ -31,6 +31,17 @@ const fixture = readFileSync(
   assert.equal(args.ts, '2026-08-04 21:33:00 -05:00');
   assert.equal(args.event, 'pause:question');
   assert.equal(parseArgs(['1099']).ts, undefined, '--at is optional');
+  assert.equal(
+    parseArgs(['1296', '--recover-redundant-same-second-pair', '--row-index', '2'])
+      .recoverRedundantSameSecondPair,
+    true,
+    'the exact recovery mode parses explicitly'
+  );
+  assert.equal(
+    parseArgs(['1099']).recoverRedundantSameSecondPair,
+    false,
+    'same-second recovery is opt-in'
+  );
 }
 
 // The usage text advertises --at.
@@ -39,6 +50,7 @@ const fixture = readFileSync(
   printUsage({ write: (chunk) => (text += chunk) });
   assert.match(text, /--at TIMESTAMP/, 'usage lists --at');
   assert.match(text, /strictly between/i, 'usage states the interval rule');
+  assert.match(text, /--recover-redundant-same-second-pair/, 'usage lists exact recovery mode');
 }
 
 // The self-doc entry advertises --at too.
@@ -47,6 +59,7 @@ const fixture = readFileSync(
   emitSelfDoc('heal-timing-departure', (chunk) => (doc += chunk));
   assert.match(doc, /--at TIMESTAMP/, 'self-doc usage lists --at');
   assert.match(doc, /never clamped/i, 'self-doc records the fail-loud effect');
+  assert.match(doc, /--recover-redundant-same-second-pair/, 'self-doc lists exact recovery mode');
 }
 
 function harness(body) {
@@ -126,6 +139,69 @@ function harness(body) {
     'the CLI surfaces the rejection rather than clamping'
   );
   assert.equal(h.updates.length, 0, 'a rejected --at writes nothing');
+}
+
+const malformedSameSecondPair = [
+  '⏱ Timing Log',
+  '',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |',
+  '|---|---|---|---|---|---|---|---|',
+  '| 2026-08-30 11:57:51 -05:00 | plan:completed | 1m 00s |  | 1 | 10 | completed | 20 | <!-- row-sec: a=60 i=0 -->',
+  '| 2026-08-30 11:57:50 -05:00 | pause:other |  |  |  | 10 | repaired handoff | 20 | <!-- row-sec: a=0 i=0 -->',
+  '| 2026-08-30 11:57:51 -05:00 | resumed |  |  | 0 | 10 | resumed | 20 | <!-- row-sec: a=0 i=0 -->',
+  '',
+].join('\n');
+
+// Recovery uses the existing lock/apply path and remains dry-run-first.
+{
+  const h = harness(malformedSameSecondPair);
+  await main(['1296', '--recover-redundant-same-second-pair', '--row-index', '2'], h.deps);
+  assert.deepEqual(h.exits, []);
+  assert.equal(h.updates.length, 0, 'recovery check-only does not write');
+  assert.match(h.stdout(), /dry-run/);
+}
+
+{
+  const h = harness(malformedSameSecondPair);
+  await main(
+    ['1296', '--apply', '--yes', '--recover-redundant-same-second-pair', '--row-index', '2'],
+    h.deps
+  );
+  assert.deepEqual(h.exits, []);
+  assert.equal(h.updates.length, 1, 'recovery apply writes once');
+  assert.doesNotMatch(h.updates[0].body, /repaired handoff|\| resumed \|/);
+  assert.match(h.stdout(), /recovered/);
+}
+
+{
+  const h = harness(malformedSameSecondPair);
+  await main(
+    [
+      '1296',
+      '--recover-redundant-same-second-pair',
+      '--row-index',
+      '2',
+      '--at',
+      '2026-08-30 11:57:49 -05:00',
+    ],
+    h.deps
+  );
+  assert.deepEqual(h.exits, [2], 'recovery refuses insertion-only options');
+  assert.equal(h.updates.length, 0);
+}
+
+{
+  const h = harness(malformedSameSecondPair);
+  await main(
+    ['1296', '--recover-redundant-same-second-pair', '--row-index', '2', '--event', 'pause:other'],
+    h.deps
+  );
+  assert.deepEqual(
+    h.exits,
+    [2],
+    'recovery refuses an explicitly supplied insertion option even when its value is the default'
+  );
+  assert.equal(h.updates.length, 0);
 }
 
 console.log('heal-timing-departure-cli.test.mjs: all passed');

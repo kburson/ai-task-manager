@@ -8,6 +8,9 @@ import {
   repairMissingDeparture,
 } from '../../../../task-tracker/lib/heal-timing-departure.mjs';
 import { runHealDeparture } from '../../../../task-tracker/heal-timing-departure.mjs';
+import { validate as validateTimingSequence } from '../../../../task-tracker/lib/agent-review/validators/timing-log-sequence.mjs';
+
+const repairModule = await import('../../../../task-tracker/lib/heal-timing-departure.mjs');
 
 const fixture = readFileSync(
   new URL('../../../fixtures/timing-departure-gap-1099.txt', import.meta.url),
@@ -123,6 +126,21 @@ function fakeDeps(body) {
   );
 }
 
+// #1442 — whole-second logs can have no representable timestamp between the
+// preceding row and the reengagement. The historical minus-one-second default
+// must refuse instead of manufacturing an out-of-order departure.
+{
+  const sameSecond = fixture.replace(
+    '2026-08-04 21:32:10 -05:00 | issue:wrap',
+    '2026-08-04 21:35:24 -05:00 | issue:wrap'
+  );
+  assert.throws(
+    () => repairMissingDeparture(sameSecond, { event: 'pause:question' }),
+    /no timestamp falls strictly between/i,
+    'the default repair fails before mutation when the interval has no whole second'
+  );
+}
+
 for (const [ts, label] of [
   ['2026-08-04 21:32:10 -05:00', 'equal to the preceding row'],
   ['2026-08-04 21:35:24 -05:00', 'equal to the reengagement'],
@@ -143,6 +161,99 @@ assert.throws(
   /not readable/i,
   'an unparseable timestamp is rejected'
 );
+
+// #1442 — recover the exact malformed pair already written by the old healer.
+{
+  assert.equal(
+    typeof repairModule.recoverRedundantSameSecondPair,
+    'function',
+    'the pure recovery transform is exported'
+  );
+  const malformed = [
+    '⏱ Timing Log',
+    '',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |',
+    '|---|---|---|---|---|---|---|---|',
+    '| 2026-08-30 11:50:39 -05:00 | start |  |  | 0 | 22,701 | agent | 545,320 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-08-30 11:53:54 -05:00 | plan:started |  |  | 1 | 22,752 | plan started | 552,835 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-08-30 11:57:32 -05:00 | pause:other |  |  | 46 | 22,798 | handoff | 559,132 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-08-30 11:57:51 -05:00 | plan:completed | 0h 03m 38s | 0h 00m 19s | 53,605 | 76,403 | plan completed | 1,905,053 | <!-- row-sec: a=218 i=19 -->',
+    '| 2026-08-30 11:57:50 -05:00 | pause:other |  |  |  | 76,403 | repaired handoff | 1,905,053 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-08-30 11:57:51 -05:00 | resumed |  |  | 0 | 76,403 | resumed | 1,905,053 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-08-30 11:57:51 -05:00 | develop:started |  |  | 0 | 76,403 | start development | 1,905,053 | <!-- row-sec: a=0 i=0 -->',
+    '',
+  ].join('\n');
+  const context = (body) => ({
+    comments: [{ body }],
+    markers: { enteredStages: [{ stage: 'plan' }, { stage: 'develop' }] },
+    body: '',
+  });
+  const before = validateTimingSequence(context(malformed));
+  assert.equal(before.pass, false, 'the #1296-shaped malformed log fails Review validation');
+  assert.ok(before.failures.some((failure) => /out-of-order/.test(failure)));
+
+  const recovered = repairModule.recoverRedundantSameSecondPair(malformed, { rowIndex: 5 });
+  assert.doesNotMatch(recovered, /repaired handoff/);
+  assert.equal((recovered.match(/\| resumed \|/g) || []).length, 0);
+  assert.match(recovered, /\| 2026-08-30 11:57:51 -05:00 \| plan:completed \|/);
+  assert.match(recovered, /\| 2026-08-30 11:57:51 -05:00 \| develop:started \|/);
+  assert.deepEqual(validateTimingSequence(context(recovered)), { pass: true, failures: [] });
+  assert.throws(
+    () => repairModule.recoverRedundantSameSecondPair(recovered, { rowIndex: 5 }),
+    /does not identify|not a reengagement/i,
+    'a second recovery refuses rather than deleting another pair'
+  );
+  assert.throws(
+    () =>
+      repairModule.recoverRedundantSameSecondPair(
+        malformed.replace(
+          'row-sec: a=0 i=0 -->\n| 2026-08-30 11:57:51 -05:00 | resumed',
+          'row-sec: a=1 i=0 -->\n| 2026-08-30 11:57:51 -05:00 | resumed'
+        ),
+        { rowIndex: 5 }
+      ),
+    /zero-duration/i,
+    'recovery refuses to erase a pair carrying recorded duration'
+  );
+  assert.throws(
+    () =>
+      repairModule.recoverRedundantSameSecondPair(
+        malformed.replace('11:57:50 -05:00 | pause:other', '11:47:51 -05:00 | pause:other'),
+        { rowIndex: 5 }
+      ),
+    /exactly one second/i,
+    'recovery refuses an older departure that the historical default could not have written'
+  );
+
+  const dryDeps = fakeDeps(malformed);
+  const dry = await runHealDeparture({
+    issueNumber: 1296,
+    repo: 'kburson/ai-task-manager',
+    apply: false,
+    rowIndex: 5,
+    recoverRedundantSameSecondPair: true,
+    deps: dryDeps,
+  });
+  assert.equal(dry.status, 'dry-run');
+  assert.equal(dry.recoveredRows, 2);
+  assert.equal(dryDeps.updates.length, 0, 'recovery remains dry-run-first');
+
+  const applyDeps = fakeDeps(malformed);
+  const applied = await runHealDeparture({
+    issueNumber: 1296,
+    repo: 'kburson/ai-task-manager',
+    apply: true,
+    rowIndex: 5,
+    recoverRedundantSameSecondPair: true,
+    deps: applyDeps,
+  });
+  assert.equal(applied.status, 'recovered');
+  assert.equal(applyDeps.updates.length, 1, 'apply writes the exact recovery once');
+  assert.deepEqual(validateTimingSequence(context(applyDeps.updates[0].body)), {
+    pass: true,
+    failures: [],
+  });
+}
 
 // #1187 — the predecessor-less `start` row is never a repair candidate.
 {

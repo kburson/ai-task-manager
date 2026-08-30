@@ -9,7 +9,11 @@ import {
 import { loadConfig } from './config.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
-import { findUnpairedReengagements, repairMissingDeparture } from './lib/heal-timing-departure.mjs';
+import {
+  findUnpairedReengagements,
+  recoverRedundantSameSecondPair as recoverSameSecondPair,
+  repairMissingDeparture,
+} from './lib/heal-timing-departure.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -27,6 +31,7 @@ export async function runHealDeparture({
   event = 'pause:other',
   description,
   ts,
+  recoverRedundantSameSecondPair = false,
   deps = {},
 } = {}) {
   if (issueNumber == null) throw new Error('runHealDeparture: issueNumber is required');
@@ -36,6 +41,21 @@ export async function runHealDeparture({
   const comment = await findTimingComment(String(issueNumber), repo);
   if (!comment) {
     return { status: 'no-comment', candidatesBefore: 0, candidatesAfter: 0, commentId: null };
+  }
+
+  if (recoverRedundantSameSecondPair) {
+    const candidatesBefore = findUnpairedReengagements(comment.body).length;
+    const healed = recoverSameSecondPair(comment.body, { rowIndex });
+    const candidatesAfter = findUnpairedReengagements(healed).length;
+    const result = {
+      candidatesBefore,
+      candidatesAfter,
+      commentId: comment.id,
+      recoveredRows: 2,
+    };
+    if (!apply) return { status: 'dry-run', ...result };
+    await updateTimingComment(comment.id, repo, healed);
+    return { status: 'recovered', ...result };
   }
 
   const candidatesBefore = findUnpairedReengagements(comment.body).length;
@@ -65,27 +85,38 @@ export function parseArgs(argv) {
     event: 'pause:other',
     description: undefined,
     ts: undefined,
+    recoverRedundantSameSecondPair: false,
+    insertionOptionProvided: false,
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     if (arg === '--apply') out.apply = true;
     else if (arg === '--check-only') out.apply = false;
     else if (arg === '--yes') out.yes = true;
+    else if (arg === '--recover-redundant-same-second-pair')
+      out.recoverRedundantSameSecondPair = true;
     else if (arg === '--help' || arg === '-h') out.help = true;
     else if (arg === '--row-index') out.rowIndex = Number(argv[++index]);
-    else if (arg === '--event') out.event = argv[++index];
-    else if (arg === '--description') out.description = argv[++index];
-    else if (arg === '--at') out.ts = argv[++index];
-    else if (/^#?[1-9]\d*$/.test(arg)) out.issue = arg.replace(/^#/, '');
+    else if (arg === '--event') {
+      out.event = argv[++index];
+      out.insertionOptionProvided = true;
+    } else if (arg === '--description') {
+      out.description = argv[++index];
+      out.insertionOptionProvided = true;
+    } else if (arg === '--at') {
+      out.ts = argv[++index];
+      out.insertionOptionProvided = true;
+    } else if (/^#?[1-9]\d*$/.test(arg)) out.issue = arg.replace(/^#/, '');
   }
   return out;
 }
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--yes]\n' +
+    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--yes]\n' +
       '  row indexes are zero-based Timing Log data-row indexes; dry-run is the default\n' +
-      '  --at places the departure at that timestamp; it must fall strictly between the preceding row and the reengagement\n'
+      '  --at places the departure at that timestamp; it must fall strictly between the preceding row and the reengagement\n' +
+      '  --recover-redundant-same-second-pair removes one exact zero-duration malformed departure/reengagement pair and requires --row-index\n'
   );
 }
 
@@ -100,7 +131,14 @@ export async function main(argv, deps = {}) {
   const exit = deps.exit || ((code) => process.exit(code));
   try {
     assertKnownArgv(argv, {
-      flags: ['--apply', '--check-only', '--yes', '--help', '-h'],
+      flags: [
+        '--apply',
+        '--check-only',
+        '--yes',
+        '--recover-redundant-same-second-pair',
+        '--help',
+        '-h',
+      ],
       options: ['--row-index', '--event', '--description', '--at'],
       positionals: { max: 1 },
     });
@@ -117,6 +155,16 @@ export async function main(argv, deps = {}) {
   }
   if (args.rowIndex !== undefined && (!Number.isInteger(args.rowIndex) || args.rowIndex < 0)) {
     err.write('heal-timing-departure: --row-index must be a non-negative integer\n');
+    return exit(2);
+  }
+  if (args.recoverRedundantSameSecondPair && args.rowIndex === undefined) {
+    err.write('heal-timing-departure: recovery requires --row-index\n');
+    return exit(2);
+  }
+  if (args.recoverRedundantSameSecondPair && args.insertionOptionProvided) {
+    err.write(
+      'heal-timing-departure: recovery cannot be combined with --at, --event, or --description\n'
+    );
     return exit(2);
   }
   const cfg = await (deps.loadConfig || loadConfig)();
@@ -148,6 +196,7 @@ export async function main(argv, deps = {}) {
         event: args.event,
         description: args.description,
         ts: args.ts,
+        recoverRedundantSameSecondPair: args.recoverRedundantSameSecondPair,
       }),
     { timeoutMs: 10_000, retries: 2 }
   );

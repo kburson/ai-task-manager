@@ -1315,7 +1315,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     classification: 'live-maintenance-or-migration',
     synopsis: 'Repair one missing Timing Log departure before an unpaired reengagement.',
     usage:
-      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--yes]',
+      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--yes]',
     arguments: [
       argument('<issue#>', 'Issue whose Timing Log is inspected.'),
       argument(APPLY_FLAG, 'Write the selected missing departure repair.'),
@@ -1327,12 +1327,17 @@ const DIRECT_SELF_DOC = Object.freeze({
         '--at TIMESTAMP',
         'Place the departure at this timestamp; it must fall strictly between the preceding row and the reengagement. Defaults to one second before the reengagement.'
       ),
+      argument(
+        '--recover-redundant-same-second-pair',
+        'Remove one exact zero-duration malformed departure and redundant same-second reengagement; requires --row-index and is mutually exclusive with insertion options.'
+      ),
       argument('--yes', 'Skip confirmation for apply.'),
     ],
     preconditions: ['Configured repository and timing-comment access are required.'],
     effects: [
       'Dry-run by default; --apply inserts one departure row under the timing lock.',
       'An out-of-interval --at is rejected, never clamped; nothing is written.',
+      'Same-second recovery removes exactly two proven zero-duration rows under the same lock.',
     ],
     output: ['Reports unpaired reengagement counts before and after the repair.'],
     relatedCommands: ['heal-timing-log', 'heal-timing-starts'],
