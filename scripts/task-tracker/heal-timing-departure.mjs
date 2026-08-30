@@ -86,6 +86,7 @@ export function parseArgs(argv) {
     description: undefined,
     ts: undefined,
     recoverRedundantSameSecondPair: false,
+    insertionOptionProvided: false,
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -96,10 +97,16 @@ export function parseArgs(argv) {
       out.recoverRedundantSameSecondPair = true;
     else if (arg === '--help' || arg === '-h') out.help = true;
     else if (arg === '--row-index') out.rowIndex = Number(argv[++index]);
-    else if (arg === '--event') out.event = argv[++index];
-    else if (arg === '--description') out.description = argv[++index];
-    else if (arg === '--at') out.ts = argv[++index];
-    else if (/^#?[1-9]\d*$/.test(arg)) out.issue = arg.replace(/^#/, '');
+    else if (arg === '--event') {
+      out.event = argv[++index];
+      out.insertionOptionProvided = true;
+    } else if (arg === '--description') {
+      out.description = argv[++index];
+      out.insertionOptionProvided = true;
+    } else if (arg === '--at') {
+      out.ts = argv[++index];
+      out.insertionOptionProvided = true;
+    } else if (/^#?[1-9]\d*$/.test(arg)) out.issue = arg.replace(/^#/, '');
   }
   return out;
 }
@@ -154,10 +161,7 @@ export async function main(argv, deps = {}) {
     err.write('heal-timing-departure: recovery requires --row-index\n');
     return exit(2);
   }
-  if (
-    args.recoverRedundantSameSecondPair &&
-    (args.ts !== undefined || args.description !== undefined || args.event !== 'pause:other')
-  ) {
+  if (args.recoverRedundantSameSecondPair && args.insertionOptionProvided) {
     err.write(
       'heal-timing-departure: recovery cannot be combined with --at, --event, or --description\n'
     );

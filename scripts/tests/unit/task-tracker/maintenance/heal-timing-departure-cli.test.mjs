@@ -190,4 +190,18 @@ const malformedSameSecondPair = [
   assert.equal(h.updates.length, 0);
 }
 
+{
+  const h = harness(malformedSameSecondPair);
+  await main(
+    ['1296', '--recover-redundant-same-second-pair', '--row-index', '2', '--event', 'pause:other'],
+    h.deps
+  );
+  assert.deepEqual(
+    h.exits,
+    [2],
+    'recovery refuses an explicitly supplied insertion option even when its value is the default'
+  );
+  assert.equal(h.updates.length, 0);
+}
+
 console.log('heal-timing-departure-cli.test.mjs: all passed');

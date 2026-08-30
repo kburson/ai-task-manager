@@ -215,6 +215,15 @@ assert.throws(
     /zero-duration/i,
     'recovery refuses to erase a pair carrying recorded duration'
   );
+  assert.throws(
+    () =>
+      repairModule.recoverRedundantSameSecondPair(
+        malformed.replace('11:57:50 -05:00 | pause:other', '11:47:51 -05:00 | pause:other'),
+        { rowIndex: 5 }
+      ),
+    /exactly one second/i,
+    'recovery refuses an older departure that the historical default could not have written'
+  );
 
   const dryDeps = fakeDeps(malformed);
   const dry = await runHealDeparture({

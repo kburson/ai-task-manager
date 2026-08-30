@@ -210,10 +210,12 @@ export function recoverRedundantSameSecondPair(body, { rowIndex } = {}) {
     !Number.isFinite(activeMs) ||
     !Number.isFinite(departureMs) ||
     !Number.isFinite(selectedMs) ||
-    activeMs !== selectedMs ||
-    departureMs >= activeMs
+    activeMs !== selectedMs
   ) {
     throw new Error('rows do not match the malformed same-second recovery shape');
+  }
+  if (departureMs !== selectedMs - 1000) {
+    throw new Error('repaired departure must be exactly one second before the reengagement');
   }
   if (!/\brepair(?:ed)?\b/i.test(departure.description)) {
     throw new Error('adjacent departure is not identified as a repair artifact');
