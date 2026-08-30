@@ -54,8 +54,12 @@ export function findUnpairedReengagements(body) {
 // and the reengagement; out-of-interval values are rejected, never clamped,
 // because a clamped write looks like a repair and is not one.
 function resolveDepartureMs({ ts, previousMs, reengagementMs, rowIndex }) {
-  if (ts === undefined || ts === null) return reengagementMs - 1000;
-  const departureMs = typeof ts === 'number' ? ts : timingTimestampToMs(ts);
+  const defaulted = ts === undefined || ts === null;
+  const departureMs = defaulted
+    ? reengagementMs - 1000
+    : typeof ts === 'number'
+      ? ts
+      : timingTimestampToMs(ts);
   if (!Number.isFinite(departureMs)) {
     throw new Error(`departure timestamp is not readable: ${String(ts)}`);
   }
@@ -65,6 +69,12 @@ function resolveDepartureMs({ ts, previousMs, reengagementMs, rowIndex }) {
     );
   }
   if (departureMs <= previousMs || departureMs >= reengagementMs) {
+    if (defaulted) {
+      throw new Error(
+        `no timestamp falls strictly between the preceding row and reengagement at ` +
+          `rowIndex ${rowIndex}`
+      );
+    }
     throw new Error(
       `departure timestamp ${new Date(departureMs).toISOString()} must fall strictly between ` +
         `${new Date(previousMs).toISOString()} and ${new Date(reengagementMs).toISOString()}`
@@ -144,5 +154,81 @@ export function repairMissingDeparture(
   });
   const lines = body.split('\n');
   lines.splice(target.lineIndex, 0, insertedRow);
+  return lines.join('\n');
+}
+
+function isZeroDurationRow(row) {
+  const active = row.cells[3] ?? '';
+  const idle = row.cells[4] ?? '';
+  const delta = row.cells[5] ?? '';
+  return (
+    /row-sec:\s*a=0\s+i=0\b/.test(row.marker) &&
+    active === '' &&
+    idle === '' &&
+    (delta === '' || delta === '0')
+  );
+}
+
+// #1442 — recover the exact two-row artifact produced by the historical
+// default when no whole-second timestamp existed between an active predecessor
+// and a redundant reengagement. This is intentionally not a general row-delete
+// API: every durable signal must prove the pair contributes no time or cursor
+// movement before the transform will remove it.
+export function recoverRedundantSameSecondPair(body, { rowIndex } = {}) {
+  if (typeof body !== 'string' || body.length === 0) {
+    throw new Error('no Timing Log body supplied');
+  }
+  if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+    throw new Error('same-second recovery requires a non-negative reengagement rowIndex');
+  }
+
+  const rows = timingRows(body);
+  const selected = rows[rowIndex];
+  if (!selected) throw new Error(`rowIndex ${rowIndex} does not identify a Timing Log row`);
+  if (!isReengagementEvent(selected.event)) {
+    throw new Error(`rowIndex ${rowIndex} is not a reengagement row (${selected.event})`);
+  }
+  const departure = rows[rowIndex - 1];
+  const active = rows[rowIndex - 2];
+  if (!departure || !isDepartureEvent(departure.event)) {
+    throw new Error(`rowIndex ${rowIndex} has no adjacent departure to recover`);
+  }
+  if (!active || isDepartureEvent(active.event) || isReengagementEvent(active.event)) {
+    throw new Error(`rowIndex ${rowIndex} has no active predecessor proving redundancy`);
+  }
+  if (
+    active.lineIndex + 1 !== departure.lineIndex ||
+    departure.lineIndex + 1 !== selected.lineIndex
+  ) {
+    throw new Error('same-second recovery rows must be physically adjacent');
+  }
+
+  const activeMs = timingTimestampToMs(active.ts);
+  const departureMs = timingTimestampToMs(departure.ts);
+  const selectedMs = timingTimestampToMs(selected.ts);
+  if (
+    !Number.isFinite(activeMs) ||
+    !Number.isFinite(departureMs) ||
+    !Number.isFinite(selectedMs) ||
+    activeMs !== selectedMs ||
+    departureMs >= activeMs
+  ) {
+    throw new Error('rows do not match the malformed same-second recovery shape');
+  }
+  if (!/\brepair(?:ed)?\b/i.test(departure.description)) {
+    throw new Error('adjacent departure is not identified as a repair artifact');
+  }
+  if (!isZeroDurationRow(departure) || !isZeroDurationRow(selected)) {
+    throw new Error('same-second recovery refuses rows that are not zero-duration');
+  }
+  for (const cursor of ['wordMarker', 'fullWordMarker']) {
+    if (departure[cursor] !== active[cursor] || selected[cursor] !== active[cursor]) {
+      throw new Error(`same-second recovery refuses changed ${cursor} cursors`);
+    }
+  }
+
+  const lines = body.split('\n');
+  lines.splice(selected.lineIndex, 1);
+  lines.splice(departure.lineIndex, 1);
   return lines.join('\n');
 }
