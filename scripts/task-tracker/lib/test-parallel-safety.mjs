@@ -26,6 +26,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { parse } from 'espree';
 
 /**
  * Matches any use of `node:child_process` — the ESM import, the CJS require, or a
@@ -56,6 +57,14 @@ export function spawnsSubprocess(src) {
 export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
 
 /**
+ * Explicit per-file opt-in for a test that spawns subprocesses transitively
+ * through an imported helper. The required rationale keeps that safety claim
+ * reviewable where the test makes it.
+ */
+export const PARALLEL_SUBPROCESS_MARKER_RE =
+  /@parallel-subprocess\b[ \t]*\([ \t]*[^\s)\r\n][^)\r\n]*\)/;
+
+/**
  * Slow tests are fail-closed serial unless their own source explicitly opts in.
  * The required parenthesized rationale keeps the safety claim reviewable at the
  * file that owns it instead of hiding a growing allowlist in the runner.
@@ -69,6 +78,36 @@ export const TEST_SCHEDULING_CLASSES = Object.freeze({
   SLOW_PARALLEL: 'slow-parallel',
   SERIAL: 'serial',
 });
+
+/**
+ * Read scheduling declarations from source comments only. Source that cannot
+ * be parsed is deliberately unknown: callers fail closed to the serial phase.
+ *
+ * @param {string} src
+ * @returns {{unsafe: boolean, subprocess: boolean, malformedSubprocess: boolean, slowParallel: boolean}|null}
+ */
+function schedulingMarkers(src) {
+  let comments;
+  try {
+    ({ comments } = parse(src, {
+      comment: true,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    }));
+  } catch {
+    return null;
+  }
+
+  const values = comments.map(({ value }) => value);
+  return {
+    unsafe: values.some((value) => PARALLEL_UNSAFE_MARKER_RE.test(value)),
+    subprocess: values.some((value) => PARALLEL_SUBPROCESS_MARKER_RE.test(value)),
+    malformedSubprocess: values.some(
+      (value) => /@parallel-subprocess\b/.test(value) && !PARALLEL_SUBPROCESS_MARKER_RE.test(value)
+    ),
+    slowParallel: values.some((value) => SLOW_PARALLEL_SAFE_MARKER_RE.test(value)),
+  };
+}
 
 /**
  * Classify one slow test for the dedicated bounded phase. Opt-in is explicit;
@@ -85,16 +124,19 @@ export function slowTestSchedulingClass(fullPath, read = readFileSync) {
   } catch {
     return TEST_SCHEDULING_CLASSES.SERIAL;
   }
-  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return TEST_SCHEDULING_CLASSES.SERIAL;
-  return SLOW_PARALLEL_SAFE_MARKER_RE.test(src)
+  const markers = schedulingMarkers(src);
+  if (!markers || markers.unsafe) return TEST_SCHEDULING_CLASSES.SERIAL;
+  return markers.slowParallel
     ? TEST_SCHEDULING_CLASSES.SLOW_PARALLEL
     : TEST_SCHEDULING_CLASSES.SERIAL;
 }
 
 /**
  * Classify one test source for the runner's three sequential unit phases.
- * Explicit unsafe markers and unreadable sources remain fail-closed serial;
- * only readable, unmarked direct subprocess users enter the reduced pool.
+ * Explicit unsafe markers, malformed transitive-subprocess declarations, and
+ * unreadable or unparseable sources remain fail-closed serial. Direct
+ * subprocess users and rationale-bearing transitive declarations enter the
+ * reduced pool.
  *
  * @param {string} fullPath
  * @param {(p: string, enc: string) => string} [read]
@@ -107,8 +149,11 @@ export function testSchedulingClass(fullPath, read = readFileSync) {
   } catch {
     return TEST_SCHEDULING_CLASSES.SERIAL;
   }
-  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return TEST_SCHEDULING_CLASSES.SERIAL;
-  return spawnsSubprocess(src)
+  const markers = schedulingMarkers(src);
+  if (!markers || markers.unsafe || markers.malformedSubprocess) {
+    return TEST_SCHEDULING_CLASSES.SERIAL;
+  }
+  return spawnsSubprocess(src) || markers.subprocess
     ? TEST_SCHEDULING_CLASSES.SUBPROCESS
     : TEST_SCHEDULING_CLASSES.POOLED;
 }
@@ -122,7 +167,9 @@ export function testSchedulingClass(fullPath, read = readFileSync) {
  * treated as UNSAFE — unknown provenance defaults to the serial phase rather than
  * risk a flake. A file carrying the `@parallel-unsafe` marker is always treated as
  * UNSAFE, independent of `SUBPROCESS_RE` — it declares a hazard the own-source scan
- * cannot see (e.g. a transitive subprocess spawn via an imported helper).
+ * cannot see (e.g. a transitive subprocess spawn via an imported helper). A
+ * rationale-bearing `@parallel-subprocess` comment declares the latter hazard
+ * for the reduced subprocess phase instead.
  *
  * @param {string} fullPath - absolute path to the `*.test.mjs` file
  * @param {(p: string, enc: string) => string} [read] - injectable reader (tests)

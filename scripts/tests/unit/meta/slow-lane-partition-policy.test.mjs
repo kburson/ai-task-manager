@@ -59,6 +59,23 @@ test('slow concurrency is an explicit source-local opt-in that fails closed', ()
   );
 });
 
+test('slow scheduling markers are read from comments and fail closed on parser errors', () => {
+  assert.equal(
+    slowTestSchedulingClass(
+      '/x/string-literal-marker.test.mjs',
+      () => "const marker = '@slow-parallel-safe (string literal only)';"
+    ),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+  assert.equal(
+    slowTestSchedulingClass(
+      '/x/unparseable-marked.test.mjs',
+      () => '// @slow-parallel-safe (isolated temporary repository)\nconst =;'
+    ),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+});
+
 test('only marked slow entries enter the bounded slow phase', () => {
   const entries = [
     { label: 'scripts/tests/slow/a.test.mjs', class: 'slow-parallel' },
