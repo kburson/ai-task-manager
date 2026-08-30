@@ -175,10 +175,11 @@ A successful start should:
 - `statusline/`
 - `docs/README.md`, `docs/QUICKSTART.md`, `docs/DESIGN.md`
 - `docs/guides/`
+- `docs/introduction/`
 - `docs/ai-memory/` (excluding `docs/ai-memory/archive/`)
 - `templates/`
 
-Note that `docs/introduction/` — this file included — is **not** listed in `package.json#files`, so it does not ship to npm. Users installing from the registry can read `docs/README.md`, `docs/QUICKSTART.md`, `docs/DESIGN.md`, `docs/guides/`, and `docs/ai-memory/` locally under `node_modules/@kburson/ai-task-manager/docs/`; the introduction docs remain source-repository-only unless a future change adds them to `files`.
+Users installing from the registry can read `docs/README.md`, `docs/QUICKSTART.md`, `docs/DESIGN.md`, `docs/guides/`, `docs/introduction/`, and `docs/ai-memory/` locally under `node_modules/@kburson/ai-task-manager/docs/`.
 
 ## Common Setup Problems
 

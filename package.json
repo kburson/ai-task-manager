@@ -67,6 +67,7 @@
     "docs/QUICKSTART.md",
     "docs/DESIGN.md",
     "docs/guides/",
+    "docs/introduction/",
     "docs/ai-memory/",
     "!docs/ai-memory/archive/**",
     "templates/"
