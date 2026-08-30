@@ -53,6 +53,7 @@ function establishReviewerClaim(root, artifact, commit) {
   successfulCoReview(
     [
       'init',
+      '--low-level',
       '--dir',
       dir,
       '--artifact',
@@ -101,6 +102,7 @@ function createIntervention(root, artifact, commit) {
   successfulCoReview(
     [
       'init',
+      '--low-level',
       '--dir',
       dir,
       '--artifact',

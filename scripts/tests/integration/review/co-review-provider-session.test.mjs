@@ -137,6 +137,7 @@ test('each registered adapter carries both role turns through the CLI boundary',
     const initialized = await invoke(
       [
         'init',
+        '--low-level',
         '--dir',
         dir,
         '--artifact',
@@ -230,6 +231,7 @@ test('CLI refuses every non-native or ambiguous environment without mutation', a
     await runCliDirect(
       [
         'init',
+        '--low-level',
         '--dir',
         dir,
         '--artifact',
@@ -260,6 +262,7 @@ test('reviewer index publication retries after the authoritative claim without d
   await runCliDirect(
     [
       'init',
+      '--low-level',
       '--dir',
       dir,
       '--artifact',
@@ -333,6 +336,7 @@ test('reviewer index authority conflicts are terminal and preserve the durable c
   await runCliDirect(
     [
       'init',
+      '--low-level',
       '--dir',
       dir,
       '--artifact',

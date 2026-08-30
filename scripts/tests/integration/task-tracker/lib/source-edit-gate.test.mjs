@@ -52,6 +52,7 @@ function prepareReviewerTurn(root, artifact, commit) {
   successfulCoReview(
     [
       'init',
+      '--low-level',
       '--dir',
       dir,
       '--artifact',
