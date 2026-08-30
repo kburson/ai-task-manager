@@ -46,6 +46,11 @@ import {
   parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
 } from '../lib/delivery-records.mjs';
+import { isNoCommitKind } from '../lib/issue-kind.mjs';
+import {
+  parseNoCommitDeliveryComment,
+  projectNoCommitDeliveryRecords,
+} from '../lib/no-commit-delivery-record.mjs';
 import {
   requireDeliveryReceipt,
   resolveAcceptedDeliveryHead,
@@ -617,14 +622,17 @@ export async function loadCloseDeliveryGateInput({
     });
   const selectedPullRequest = authority?.pullRequest ?? null;
   let records = null;
-  if (parentIssueNumber === null && pullRequests.length > 0) {
+  let noCommitRecords = null;
+  const noCommitKind = isNoCommitKind(body);
+  let comments = null;
+  if (parentIssueNumber === null && (pullRequests.length > 0 || noCommitKind)) {
     const { stdout: commentsOut } = await pexec(
       'gh',
       ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
       { timeout: GH_API_TIMEOUT_MS }
     );
     const pages = JSON.parse(String(commentsOut || '[]'));
-    const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
+    comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
       const createdAt = normalizeGitHubInstant(comment.created_at);
       if (createdAt === null) throw new TypeError('close-delivery-comment-created-at');
       return {
@@ -633,6 +641,8 @@ export async function loadCloseDeliveryGateInput({
         createdAt,
       };
     });
+  }
+  if (parentIssueNumber === null && pullRequests.length > 0) {
     const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
     records = projectDeliveryRecords(
       comments
@@ -640,8 +650,15 @@ export async function loadCloseDeliveryGateInput({
         .filter(Boolean)
     );
   }
+  if (parentIssueNumber === null && noCommitKind) {
+    noCommitRecords = projectNoCommitDeliveryRecords(
+      comments.map(parseNoCommitDeliveryComment).filter(Boolean)
+    );
+  }
   return {
     issueNumber,
+    repository: cfg.repo,
+    body,
     lineage,
     branch,
     acceptedSha,
@@ -650,6 +667,7 @@ export async function loadCloseDeliveryGateInput({
     pullRequest: selectedPullRequest,
     pullRequests,
     records,
+    noCommitRecords,
   };
 }
 

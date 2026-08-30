@@ -214,6 +214,31 @@ export function hasDeliverableMarker(body) {
   return DELIVERABLE_MARKER_RE.test(progressMarkersSection(body));
 }
 
+/** Read the exact governed no-commit deliverable marker, or null when invalid. */
+export function parseDeliverablePosted(body) {
+  const marker = progressMarkersSection(body).match(DELIVERABLE_MARKER_RE)?.[0];
+  if (!marker) return null;
+  const parsed = parseMarker(marker);
+  if (parsed?.name !== 'deliverable-posted') return null;
+  const { url, ts } = parsed.props ?? {};
+  if (typeof url !== 'string' || typeof ts !== 'string') return null;
+  try {
+    const parsedUrl = new URL(url);
+    const parsedTs = Date.parse(ts);
+    if (
+      parsedUrl.protocol !== 'https:' ||
+      parsedUrl.href !== url ||
+      !Number.isFinite(parsedTs) ||
+      new Date(parsedTs).toISOString() !== ts
+    ) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+  return Object.freeze({ url, ts });
+}
+
 /**
  * Record the exact issue-comment URL that supplies a no-commit deliverable.
  *
