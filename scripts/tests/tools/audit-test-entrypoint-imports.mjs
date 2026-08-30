@@ -5,7 +5,7 @@
 // the imported suite twice.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse, VisitorKeys } from 'espree';
 
 import { discoverTestFiles } from '../../task-tracker/lib/discover-test-files.mjs';
@@ -52,6 +52,14 @@ function relativePath(projectRoot, absolutePath) {
   return path.relative(projectRoot, absolutePath).split(path.sep).join('/');
 }
 
+function resolveRelativeSpecifier(importerPath, specifier) {
+  try {
+    return fileURLToPath(new URL(specifier, pathToFileURL(importerPath)));
+  } catch {
+    return null;
+  }
+}
+
 export function auditTestEntrypointImports({
   projectRoot = process.cwd(),
   discover = discoverTestFiles,
@@ -64,10 +72,9 @@ export function auditTestEntrypointImports({
     const importerPath = path.join(projectRoot, importer);
     const source = read(importerPath, 'utf8');
     for (const edge of moduleEdges(source)) {
-      const target = relativePath(
-        projectRoot,
-        path.resolve(path.dirname(importerPath), edge.specifier)
-      );
+      const targetPath = resolveRelativeSpecifier(importerPath, edge.specifier);
+      if (!targetPath) continue;
+      const target = relativePath(projectRoot, targetPath);
       if (discovered.has(target))
         violations.push({ importer, target, line: edge.line, kind: edge.kind });
     }

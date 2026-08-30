@@ -103,6 +103,47 @@ test('audit ignores source-like strings and comments and permits non-discovered 
   assert.deepEqual(auditTestEntrypointImports({ projectRoot }).violations, []);
 });
 
+test('audit resolves relative specifiers with Node ESM file-URL semantics', () => {
+  const projectRoot = mkdtempProjectIsolated('audit-test-entrypoint-imports-url-');
+  writeFixture(
+    projectRoot,
+    'scripts/tests/unit/core/query-importer.test.mjs',
+    "import './target.test.mjs?duplicate';\n"
+  );
+  writeFixture(
+    projectRoot,
+    'scripts/tests/unit/core/fragment-importer.test.mjs',
+    "await import('./target.test.mjs#duplicate');\n"
+  );
+  writeFixture(
+    projectRoot,
+    'scripts/tests/unit/core/encoded-importer.test.mjs',
+    `export { value } from './target${String.fromCharCode(37, 50, 69)}test.mjs';\n`
+  );
+  writeFixture(projectRoot, 'scripts/tests/unit/core/target.test.mjs');
+
+  assert.deepEqual(auditTestEntrypointImports({ projectRoot }).violations, [
+    {
+      importer: 'scripts/tests/unit/core/encoded-importer.test.mjs',
+      target: 'scripts/tests/unit/core/target.test.mjs',
+      line: 1,
+      kind: 're-export',
+    },
+    {
+      importer: 'scripts/tests/unit/core/fragment-importer.test.mjs',
+      target: 'scripts/tests/unit/core/target.test.mjs',
+      line: 1,
+      kind: 'dynamic import',
+    },
+    {
+      importer: 'scripts/tests/unit/core/query-importer.test.mjs',
+      target: 'scripts/tests/unit/core/target.test.mjs',
+      line: 1,
+      kind: 'import',
+    },
+  ]);
+});
+
 test('audit CLI fails with stable importer, target, and source-line diagnostics', () => {
   const projectRoot = mkdtempProjectIsolated('audit-test-entrypoint-imports-cli-');
   writeFixture(
