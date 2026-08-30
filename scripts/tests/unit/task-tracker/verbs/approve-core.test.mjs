@@ -1,5 +1,4 @@
 // @story #310
-// @parallel-unsafe (shares the real repository issue lock for fixture issue 58)
 // Unit tests for scripts/task-tracker/verbs/approve.mjs.
 //
 // Covers:
@@ -32,6 +31,7 @@ const AGENT_REVIEW_PASSED =
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
 const APPROVED_SHA = 'a'.repeat(40);
+const FIXTURE_ISSUE_NUMBER = 129401;
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
@@ -103,7 +103,7 @@ function makeDeps(overrides = {}) {
 // 2. first call inserts marker
 {
   const { deps, calls, getBody } = makeDeps();
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.ts, FIXED_TS);
   assert.equal(calls.writes.length, 1);
@@ -113,8 +113,8 @@ function makeDeps(overrides = {}) {
 // 3. second call is idempotent
 {
   const { deps, calls } = makeDeps();
-  await runApprove({ issueNumber: 58, cfg, deps });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 1, 'second call must not rewrite the body');
 }
@@ -122,7 +122,7 @@ function makeDeps(overrides = {}) {
 // 4. marker placed before fields-block; legacy fixture normalized to new encoding
 {
   const { deps, getBody } = makeDeps();
-  await runApprove({ issueNumber: 58, cfg, deps });
+  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   const body = getBody();
   const markerIdx = body.indexOf('<!-- aitm-review-approved');
   const fieldsIdx = body.indexOf('<!-- aitm-fields:');
@@ -139,7 +139,7 @@ function makeDeps(overrides = {}) {
 // 5. marker appended at end when no fields-block
 {
   const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
-  await runApprove({ issueNumber: 58, cfg, deps });
+  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.match(
     getBody(),
     new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*-->\\s*$`)
@@ -205,7 +205,7 @@ function makeDeps(overrides = {}) {
     '',
   ].join('\n');
   const { deps, getBody } = makeDeps({ initialBody: body });
-  await runApprove({ issueNumber: 58, cfg, deps });
+  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   const out = getBody();
   assert.match(out, /- \[x\] Passed final human review/);
   assert.match(out, /- \[ \] Story closed and moved to Done/);
@@ -215,7 +215,7 @@ function makeDeps(overrides = {}) {
 // 10. auto-tick is a no-op when there is no Lifecycle section (back-compat)
 {
   const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
-  await runApprove({ issueNumber: 58, cfg, deps });
+  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
   assert.doesNotMatch(getBody(), /Passed final human review/);
 }

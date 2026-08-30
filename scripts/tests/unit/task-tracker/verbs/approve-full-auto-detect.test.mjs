@@ -1,5 +1,4 @@
 // @story #310
-// @parallel-unsafe (shares the real repository issue lock for fixture issue 58)
 // Unit tests for scripts/task-tracker/verbs/approve.mjs.
 //
 // Covers:
@@ -33,6 +32,7 @@ const AGENT_REVIEW_PASSED =
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
 const APPROVED_SHA = 'a'.repeat(40);
+const FIXTURE_ISSUE_NUMBER = 129402;
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
@@ -144,7 +144,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({
     deps: { detectFullAuto: () => ({ fired: true, signals: 'env=1,tty=0,ci=0' }) },
   });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, true);
   // #480 AC6 — full-auto is now folded into the single aitm-review-approved
@@ -166,7 +166,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({
     deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
   });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.equal(r.fullAuto, false);
   assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
   assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
@@ -201,7 +201,7 @@ function makeDeps(overrides = {}) {
     return true;
   };
   try {
-    const r = await runApprove({ issueNumber: 58, cfg, deps });
+    const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
     assert.equal(r.status, 'approved');
   } finally {
     process.stderr.write = origWrite;
@@ -241,7 +241,7 @@ function makeDeps(overrides = {}) {
     initialBody: preTickedBody,
     deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
   });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, false);
   assert.doesNotMatch(getBody(), /full-auto="yes"/);
@@ -255,7 +255,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({
     deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
   });
-  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps, human: true });
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, false);
   assert.doesNotMatch(getBody(), /full-auto="yes"/);
@@ -268,7 +268,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({
     deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
   });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, true);
   assert.match(getBody(), /full-auto="yes"/);
@@ -298,7 +298,7 @@ function makeDeps(overrides = {}) {
     return true;
   };
   try {
-    const r = await runApprove({ issueNumber: 58, cfg, deps });
+    const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
     assert.equal(r.status, 'approved');
   } finally {
     process.stderr.write = origWrite;

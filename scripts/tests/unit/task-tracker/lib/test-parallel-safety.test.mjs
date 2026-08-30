@@ -186,6 +186,8 @@ test('#1294 audited real entrypoints use their intended scheduling classes', () 
     ['guard-registry-review-exit.test.mjs', 'pooled'],
     ['coverage-reconcile.test.mjs', 'subprocess'],
     ['../core/gh-timing-comment-issue-number.test.mjs', 'subprocess'],
+    ['../verbs/approve-core.test.mjs', 'pooled'],
+    ['../verbs/approve-full-auto-detect.test.mjs', 'pooled'],
   ]);
 
   assert.deepEqual(
@@ -199,13 +201,12 @@ test('#1294 audited real entrypoints use their intended scheduling classes', () 
   );
 });
 
-// @story #1139
-test('#1139 approval fixtures that share issue 58 are excluded from the parallel pool', () => {
+test('#1294 approval fixtures with isolated issue locks enter the parallel pool', () => {
   const files = ['../verbs/approve-core.test.mjs', '../verbs/approve-full-auto-detect.test.mjs'];
 
   for (const file of files) {
     const fullPath = fileURLToPath(new URL(file, import.meta.url));
-    assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
+    assert.equal(isParallelSafe(fullPath), true, `${file} must enter the parallel pool`);
   }
 });
 
