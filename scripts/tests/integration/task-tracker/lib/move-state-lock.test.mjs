@@ -19,7 +19,12 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { issueLockPath, withIssueLock } from '../../../../task-tracker/issue-mutator-lock.mjs';
+import {
+  issueLockPath,
+  PROCESS_START_TOKEN,
+  THIS_HOST,
+  withIssueLock,
+} from '../../../../task-tracker/issue-mutator-lock.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 // #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
@@ -105,7 +110,9 @@ function runMoveState(args, envOverrides = {}) {
     path.join(lockPath, 'holder.json'),
     JSON.stringify({
       sessionId: 'other-sess',
-      pid: 99999,
+      pid: process.pid,
+      host: THIS_HOST,
+      startToken: PROCESS_START_TOKEN,
       acquiredAt: '2026-05-25T15:00:00.000Z',
       verb: 'promote',
     }) + '\n',
