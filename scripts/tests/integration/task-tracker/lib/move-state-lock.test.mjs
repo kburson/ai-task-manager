@@ -103,6 +103,15 @@ function runMoveState(args, envOverrides = {}) {
   // observe the on-disk holder and report real cross-process contention.
   let res;
   await withIssueLock({ issue, verb: 'promote', projDir, sessionId: 'other-sess' }, async () => {
+    // Model a holder on another host. Hosted Linux runners can isolate child
+    // PID visibility even though spawnSync keeps this parent alive, so a
+    // same-host holder makes the test depend on runner PID-namespace details.
+    // Cross-host holders use the production freshness/TTL rule and therefore
+    // exercise portable filesystem contention across the process boundary.
+    const holderFile = path.join(issueLockPath(issue, projDir), 'holder.json');
+    const holder = JSON.parse(readFileSync(holderFile, 'utf8'));
+    holder.host = 'aitm-cross-host-fixture.invalid';
+    writeFileSync(holderFile, `${JSON.stringify(holder, null, 2)}\n`, 'utf8');
     res = runMoveState([String(issue), 'refine'], {
       AI_TASK_MANAGER_PROJECT_DIR: projDir,
       TT_SKIP_NETWORK: '', // unset so a missed lock would enter the mutation path
