@@ -1,5 +1,4 @@
 // @story #1212
-// @parallel-unsafe (imports subprocess-spawning commit guard coverage below)
 import test from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
@@ -206,14 +205,3 @@ test('unverifiable identity or ownership fails closed', () => {
   assert.equal(decide({ assignees: null }).kind, 'ownership-unverifiable');
   assert.equal(decide({ state: 'unknown' }).kind, 'ownership-unverifiable');
 });
-
-// The issue's single focused verifier is the durable AC evidence surface.
-// Load the production-boundary and transaction suites so that command proves
-// more than the pure decision table.
-await import('../../../unit/task-tracker/lib/assignment-snapshot.test.mjs');
-await import('../../../unit/task-tracker/verbs/assign.test.mjs');
-await import('../../../unit/task-tracker/verbs/unassign.test.mjs');
-await import('./ownership-boundaries.integration.test.mjs');
-await import('./source-edit-gate.cache.test.mjs');
-await import('./commit-ownership-message-sources.test.mjs');
-await import('../../../unit/task-tracker/lib/gh-edit-guard-body.test.mjs');

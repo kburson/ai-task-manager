@@ -85,9 +85,9 @@ const ALLOWLIST = new Map(
       2,
       'historical regression provenance',
     ],
-    'scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs': [
+    'scripts/tests/fixtures/maintenance-apply-scripts.mjs': [
       1,
-      'explicit migration CLI strict-argument manifest',
+      'explicit migration CLI strict-argument manifest fixture',
     ],
     'scripts/tests/unit/task-tracker/core/coverage-heal-entry-markers.test.mjs': [
       4,

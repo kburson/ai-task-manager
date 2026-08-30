@@ -1149,8 +1149,15 @@ When CSpell flags a legitimate token (project jargon, library name, person name)
 Beyond the four generic tools, `npm run lint` also runs several repo-specific
 "house lints" — a pure detector under `scripts/task-tracker/lib/` plus a thin
 FS-walking runner under `scripts/maintenance/` (or `scripts/tests/unit/task-tracker/`):
-`lint:tmp`, `lint:fleet-sandbox`, `lint:story-tags`, `lint:line-cap`, and
-`lint:test-reach`.
+`lint:tmp`, `lint:fleet-sandbox`, `lint:story-tags`, `lint:line-cap`,
+`lint:test-entrypoint-imports`, and `lint:test-reach`.
+
+`npm run lint:test-entrypoint-imports`
+(`scripts/tests/tools/audit-test-entrypoint-imports.mjs`, issue #1293) enforces
+one discovered test entrypoint per scheduled suite. Canonical discovery schedules
+every `*.test.mjs` independently, so a discovered test may not statically import,
+literally dynamically import, or re-export another discovered test. Shared test
+data belongs in a non-discovered helper or fixture instead.
 
 `npm run lint:test-reach` (`scripts/maintenance/lint-test-coverage-reach.mjs`,
 detector in `scripts/maintenance/lint-test-coverage-reach-detector.mjs`, issue #866)
