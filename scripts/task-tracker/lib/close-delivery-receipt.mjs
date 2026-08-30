@@ -6,6 +6,7 @@
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { buildDeliveryReceipt } from './delivery-records.mjs';
 import { verifyDeliveredPullRequest } from './delivery-verification.mjs';
+import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from './issue-kind.mjs';
 
 export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
 
@@ -33,11 +34,14 @@ function frozenResult(value) {
 
 export function requireDeliveryReceipt({
   issueNumber,
+  repository,
+  body,
   lineage,
   branch,
   acceptedSha,
   pullRequests,
   records,
+  noCommitRecords,
 } = {}) {
   if (!Number.isSafeInteger(issueNumber) || issueNumber <= 0) fail('input');
   if (!isObject(lineage) || typeof lineage.deliveryTarget !== 'string') fail('input');
@@ -51,6 +55,26 @@ export function requireDeliveryReceipt({
       fail('lineage');
     }
     return frozenResult({ skipped: true, receipt: null });
+  }
+
+  if (isNoCommitKind(body)) {
+    const deliverable = parseDeliverablePosted(body);
+    if (!deliverable) fail('no-commit-deliverable');
+    if (typeof repository !== 'string' || repository.length === 0) fail('input');
+    if (!SHA_RE.test(acceptedSha || '')) fail('head-mismatch');
+    if (!isObject(noCommitRecords) || !Array.isArray(noCommitRecords.records)) fail('malformed');
+    if (noCommitRecords.records.length === 0 || noCommitRecords.record === null) fail('missing');
+    if (noCommitRecords.records.length !== 1 || !isObject(noCommitRecords.record?.record)) {
+      fail('malformed');
+    }
+    const receipt = noCommitRecords.record.record;
+    if (receipt.repository !== repository) fail('repository-mismatch');
+    if (receipt.issueNumber !== issueNumber) fail('issue-mismatch');
+    if (receipt.issueKind !== parseIssueKind(body)) fail('kind-mismatch');
+    if (receipt.deliverableUrl !== deliverable.url) fail('deliverable-mismatch');
+    if (receipt.acceptedSha !== acceptedSha) fail('head-mismatch');
+    if (receipt.result !== 'delivered') fail('malformed');
+    return frozenResult({ skipped: false, mode: 'no-commit', receipt });
   }
   if (
     Array.isArray(pullRequests) &&
@@ -112,6 +136,19 @@ export async function verifyCloseDeliveryReceipt({
   deps,
 } = {}) {
   if (receiptGate?.skipped === true) return frozenResult({ skipped: true, receipt: null });
+  if (receiptGate?.mode === 'no-commit') {
+    if (testReceiptSha !== gateInput?.acceptedSha || acceptedReviewSha !== gateInput?.acceptedSha) {
+      fail('head-mismatch');
+    }
+    const fresh = requireDeliveryReceipt(gateInput);
+    if (
+      fresh.mode !== 'no-commit' ||
+      canonicalRecordJson(fresh.receipt) !== canonicalRecordJson(receiptGate.receipt)
+    ) {
+      fail('fresh-receipt-mismatch');
+    }
+    return frozenResult({ mode: 'no-commit', receipt: fresh.receipt });
+  }
   const receipt = receiptGate?.receipt;
   const liveIntent = gateInput?.records?.liveIntent;
   const intent = liveIntent?.record;

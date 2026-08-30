@@ -51,6 +51,14 @@ import {
   verifyExternalDeliveredPullRequest,
 } from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
+import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
+import {
+  buildNoCommitDeliveryRecord,
+  parseNoCommitDeliveryComment,
+  projectNoCommitDeliveryRecords,
+  renderNoCommitDeliveryComment,
+  sameNoCommitDeliveryAuthority,
+} from '../lib/no-commit-delivery-record.mjs';
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -423,6 +431,121 @@ function requiredDependency(deps, name) {
   return dependency;
 }
 
+async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
+  const deliverable = parseDeliverablePosted(issue.body);
+  if (!deliverable) throw new TypeError('delivery-preflight:no-commit-deliverable');
+  if (String(issue.projectState || '').toLowerCase() !== 'review') {
+    throw new TypeError('delivery-preflight:issue-state');
+  }
+  const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
+  const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
+  const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
+  const resolveAgentReviewPassed =
+    typeof deps.resolveAgentReviewPassed === 'function'
+      ? deps.resolveAgentReviewPassed
+      : async () => issue.agentReviewPassed === true;
+  const [localHeadSha, testReceiptSha] = await Promise.all([
+    getLocalHeadSha(),
+    resolveTestReceiptSha({ issue, issueNumber }),
+  ]);
+  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
+    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+    resolveAgentReviewPassed({ issue, issueNumber }),
+  ]);
+  if (
+    agentReviewPassed !== true ||
+    !SHA_RE.test(localHeadSha || '') ||
+    !SHA_RE.test(testReceiptSha || '') ||
+    testReceiptSha !== acceptedReviewSha
+  ) {
+    throw new TypeError('delivery-preflight:no-commit-review-evidence');
+  }
+  const authorization = await requiredDependency(
+    deps,
+    'resolveReviewAuthorization'
+  )({
+    issue,
+    issueNumber,
+    expectedHeadSha: acceptedReviewSha,
+    acceptedReviewSha,
+  });
+  if (!authorization || authorization.mode === 'missing') {
+    throw new TypeError('delivery-preflight:review-authorization');
+  }
+  const expected = buildNoCommitDeliveryRecord({
+    recordId: requiredDependency(deps, 'createIntentId')(),
+    repository: cfg.repo,
+    issueNumber,
+    issueKind: parseIssueKind(issue.body),
+    deliverableUrl: deliverable.url,
+    acceptedSha: acceptedReviewSha,
+    provider: requiredDependency(deps, 'providerId')(),
+    sessionId: requiredDependency(deps, 'sessionId')(),
+    verifiedAt: requiredDependency(deps, 'now')(),
+  });
+  const listRecords = async () => {
+    const comments = await requiredDependency(
+      deps,
+      'listIssueComments'
+    )({
+      issueNumber,
+      repository: cfg.repo,
+    });
+    if (!Array.isArray(comments)) throw deliverError('comments');
+    return {
+      comments,
+      projection: projectNoCommitDeliveryRecords(
+        comments.map(parseNoCommitDeliveryComment).filter(Boolean)
+      ),
+    };
+  };
+  const initial = await listRecords();
+  if (initial.projection.record) {
+    if (!sameNoCommitDeliveryAuthority(initial.projection.record.record, expected)) {
+      throw deliverError('no-commit-record-conflict');
+    }
+    return {
+      status: 'already-delivered',
+      mode: 'no-commit',
+      intent: null,
+      receipt: initial.projection.record.record,
+      action: null,
+    };
+  }
+  const body = renderNoCommitDeliveryComment(expected);
+  let createError = null;
+  try {
+    await requiredDependency(
+      deps,
+      'createIssueComment'
+    )({
+      issueNumber,
+      repository: cfg.repo,
+      body,
+    });
+  } catch (error) {
+    createError = error;
+  }
+  const readback = await listRecords();
+  const record = readback.projection.record;
+  const exact = readback.comments.some(
+    (comment) =>
+      comment.body === body &&
+      parseNoCommitDeliveryComment(comment)?.record.recordId === expected.recordId
+  );
+  if (!record || !sameNoCommitDeliveryAuthority(record.record, expected) || !exact) {
+    if (createError) throw deliverError('comment-create-ambiguous', createError);
+    throw deliverError('comment-readback');
+  }
+  return {
+    status: 'delivered',
+    mode: 'no-commit',
+    intent: null,
+    receipt: record.record,
+    action: null,
+  };
+}
+
 export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
     throw deliverError('issue-number');
@@ -446,6 +569,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       receipt: null,
       action: null,
     };
+  }
+
+  if (isNoCommitKind(issue.body)) {
+    return deliverNoCommit({ deps, issue, issueNumber, cfg });
   }
 
   const getCurrentBranch = requiredDependency(deps, 'getCurrentBranch');
