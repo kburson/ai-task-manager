@@ -175,19 +175,28 @@ test('PARALLEL_SUBPROCESS_MARKER_RE requires a non-blank parenthesized rationale
   );
 });
 
-test('#1014 transitive subprocess guard tests are excluded from the parallel pool', () => {
-  const files = [
-    'guard-parity-done-stages.test.mjs',
-    'guard-parity-mid-stages.test.mjs',
-    'guard-parity-plan-develop.test.mjs',
-    'guard-parity-review-done.test.mjs',
-    'guard-registry-review-exit.test.mjs',
-  ];
+test('#1294 audited real entrypoints use their intended scheduling classes', () => {
+  const expectedClasses = new Map([
+    ['test-parallel-safety.test.mjs', 'pooled'],
+    ['../../meta/slow-lane-partition-policy.test.mjs', 'pooled'],
+    ['guard-parity-done-stages.test.mjs', 'pooled'],
+    ['guard-parity-mid-stages.test.mjs', 'pooled'],
+    ['guard-parity-plan-develop.test.mjs', 'pooled'],
+    ['guard-parity-review-done.test.mjs', 'pooled'],
+    ['guard-registry-review-exit.test.mjs', 'pooled'],
+    ['coverage-reconcile.test.mjs', 'subprocess'],
+    ['../core/gh-timing-comment-issue-number.test.mjs', 'subprocess'],
+  ]);
 
-  for (const file of files) {
-    const fullPath = fileURLToPath(new URL(file, import.meta.url));
-    assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
-  }
+  assert.deepEqual(
+    Object.fromEntries(
+      [...expectedClasses.keys()].map((file) => [
+        file,
+        testSchedulingClass(fileURLToPath(new URL(file, import.meta.url))),
+      ])
+    ),
+    Object.fromEntries(expectedClasses)
+  );
 });
 
 // @story #1139
@@ -198,19 +207,6 @@ test('#1139 approval fixtures that share issue 58 are excluded from the parallel
     const fullPath = fileURLToPath(new URL(file, import.meta.url));
     assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
   }
-});
-
-// @story #1203
-test('#1203 timing-comment issue-number regression is excluded from the parallel pool', () => {
-  const fullPath = fileURLToPath(
-    new URL('../core/gh-timing-comment-issue-number.test.mjs', import.meta.url)
-  );
-
-  assert.equal(
-    isParallelSafe(fullPath),
-    false,
-    'the real timing-comment test spawns gh transitively and must run serially'
-  );
 });
 
 test('#1203 pure source remains eligible for the parallel pool', () => {
