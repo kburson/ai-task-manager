@@ -87,7 +87,15 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         'import-review',
         'review-of',
         'archive-dir',
+        'low-level',
       ]);
+      if (!booleans.has('low-level')) {
+        const error = new Error(
+          'co-review:init-low-level-required: direct init requires explicit --low-level compatibility intent; no state changed; next: npx aitm co-review start --help'
+        );
+        error.exitCode = 2;
+        throw error;
+      }
       result = protocol.initializeProtocol({
         cwd: io.cwd ?? process.cwd(),
         dir: required(values, 'dir'),
@@ -561,7 +569,7 @@ function parseArguments(args) {
     if (!name || Object.hasOwn(values, name) || booleans.has(name)) {
       throw usage(`duplicate or empty option ${token}`);
     }
-    if (name === 'json' || name === 'good-enough') {
+    if (name === 'json' || name === 'good-enough' || name === 'low-level') {
       booleans.add(name);
       continue;
     }

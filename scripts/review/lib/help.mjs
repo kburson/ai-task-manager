@@ -27,7 +27,7 @@ export const COMMANDS = Object.freeze({
       '--artifact-kind <spec|plan>   Optional exact host artifact kind; requires --issue.',
       '--dir <ignored-path>           Optional runtime directory; default is unique below .tmp/co-review/.',
       '--max-turns <N>                Positive reviewer-handoff maximum; default 10.',
-      '--wait-cycles <N>              Positive observed waits per episode; default 20.',
+      '--wait-cycles <N>              Positive observed waits per episode; default 15.',
       '--wait-interval <seconds>      Integer from 1 through 60; default 60.',
     ],
     effects: [
@@ -54,7 +54,7 @@ export const COMMANDS = Object.freeze({
       'npx aitm co-review start',
       'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent',
       'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --issue 1272 --artifact-kind spec',
-      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --dir .tmp/co-review/design-fixed --max-turns 10 --wait-cycles 20 --wait-interval 60',
+      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --dir .tmp/co-review/design-fixed --max-turns 10 --wait-cycles 15 --wait-interval 60',
       'Copy AUTHOR PROMPT to the author agent and REVIEWER PROMPT to the reviewer agent.',
     ],
     recovery:
@@ -66,8 +66,10 @@ export const COMMANDS = Object.freeze({
     ],
   }),
   init: command({
-    purpose: 'Create a new local co-review protocol or import one immutable reviewer round.',
-    caller: 'The artifact owner or human coordinator, before either agent begins a new exchange.',
+    purpose:
+      'Low-level compatibility initialization for internal callers or import of one immutable reviewer round.',
+    caller:
+      'Compatibility automation that cannot use canonical co-review start; ordinary fresh sessions use start.',
     lifecycleStates: ['absent'],
     mutationBoundary:
       'Creates protocol state under the local mutex; it does not publish an evidence archive.',
@@ -77,8 +79,9 @@ export const COMMANDS = Object.freeze({
       'Use distinct non-blank owner and reviewer identities and a positive review-turn budget.',
     ],
     usage:
-      'npx aitm co-review init --dir <path> --artifact <repo-path> --owner <identity> --reviewer <identity> --max-turns <N> [--archive-dir <tracked-repo-path>] [--import-review <file> --review-of <commit>]',
+      'npx aitm co-review init --low-level --dir <path> --artifact <repo-path> --owner <identity> --reviewer <identity> --max-turns <N> [--archive-dir <tracked-repo-path>] [--import-review <file> --review-of <commit>]',
     arguments: [
+      '--low-level                 Required explicit compatibility intent.',
       '--dir <path>                 Ignored local protocol directory.',
       '--artifact <repo-path>       Authoritative tracked artifact.',
       '--owner <identity>           Identity allowed to act as owner.',
@@ -94,6 +97,7 @@ export const COMMANDS = Object.freeze({
       'An imported review therefore requires --max-turns 2 or greater so the owner can answer it and receive another review.',
     ],
     validations: [
+      'Without --low-level, refuses before protocol or filesystem mutation and points to npx aitm co-review start.',
       'Runtime ignore/containment, role separation, budget, Git reachability, artifact blob equality, import pairing, and immutable path separation.',
       'New configured archive leaves must be absent before initialization.',
     ],
@@ -102,8 +106,8 @@ export const COMMANDS = Object.freeze({
     transition: 'Absent -> active owner round 1; imported R1 -> active owner round 2.',
     idempotency: 'An exact configuration/hash retry returns existing state without another event.',
     examples: [
-      'npx aitm co-review init --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6',
-      'npx aitm co-review init --dir .tmp/1117-review --artifact docs/superpowers/specs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of abc1234',
+      'npx aitm co-review init --low-level --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6',
+      'npx aitm co-review init --low-level --dir .tmp/1117-review --artifact docs/superpowers/specs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of abc1234',
     ],
     recovery:
       'If initialization refuses, preserve every input, correct the named invariant, and rerun this exact command. Never delete a surviving lock without human inspection.',
@@ -500,7 +504,7 @@ WHO
   If authentication fails, run gh auth login and rerun the exact recovery command.
 
 WHEN
-  start before review; init remains the low-level primitive; status after context loss; claim before work; wait while the other role acts; handoff after immutable artifacts are complete; set-max-turns only during active state; supplement and continue/finalize only at intervention; finalize after accepted publication failure; stop forever after accepted.
+  start is the canonical fresh-session command; init requires explicit --low-level compatibility intent; status after context loss; claim before work; wait while the other role acts; handoff after immutable artifacts are complete; set-max-turns only during active state; supplement and continue/finalize only at intervention; finalize after accepted publication failure; stop forever after accepted.
 
 WHERE
   The authoritative artifact is a tracked repository path. --dir is a caller-selected or guided-start-derived Git-ignored local directory containing state.json, events.jsonl, generated handoffs, round artifacts, summaries, optional refocus files, and a short-lived .co-review-lock/.
@@ -554,7 +558,7 @@ EXIT CODES
   0 success or help; 1 runtime/integrity/protocol refusal; 2 invalid usage; 3 bounded wait timeout; 4 acceptance durable; archive publication pending.
 
 FRESH EXAMPLE
-  npx aitm co-review init --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6 --archive-dir docs/reviews/design
+  npx aitm co-review start --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6
   npx aitm co-review claim --dir .tmp/design-review --actor owner-agent
   # Owner commits docs/design.md and writes .tmp/design-review/r1-owner-response.md
   npx aitm co-review handoff --dir <path> --actor <owner-identity> --response <response-file> --artifact <artifact-path> --commit <sha> --message <text>
@@ -564,7 +568,7 @@ FRESH EXAMPLE
   # On changes-requested, the owner claims, revises, answers the exact review with --answers, and repeats.
 
 IMPORTED R1 EXAMPLE
-  npx aitm co-review init --dir .tmp/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of <sha>
+  npx aitm co-review init --low-level --dir .tmp/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of <sha>
   The imported review consumes turn 1; used=1, max=6, remaining=5.
   # If the last allowed review requests changes, summary is optional; the owner must still claim, answer, commit, and hand off once before intervention.
   npx aitm co-review set-max-turns --dir <path> --max-turns <N>

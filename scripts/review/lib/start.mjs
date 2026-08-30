@@ -24,7 +24,7 @@ import { registerProtocol } from './index.mjs';
 
 export const START_DEFAULTS = Object.freeze({
   maxReviewTurns: 10,
-  waitCycles: 20,
+  waitCycles: 15,
   waitIntervalSeconds: 60,
 });
 
@@ -188,7 +188,13 @@ Response, review, supplement, and archive evidence inputs are Markdown subject t
 
 ## Bounded wait discipline
 
-When the other role owns the turn, make each wait a separate observed tool call:
+Run structured status before sleeping so a handoff that is already complete is acted on immediately:
+
+\`\`\`text
+${renderCliCommand(['status', '--dir', model.runtimeAbsolute, '--json'])}
+\`\`\`
+
+When that authoritative status says the other role owns the turn, initialize a fresh bounded waiting episode. Make each wait a separate observed tool call:
 
 \`\`\`text
 ${renderCliCommand([
@@ -202,11 +208,11 @@ ${renderCliCommand([
 ])}
 \`\`\`
 
-After every call, record \`wait cycle N/${model.waitCycles}\`. Exit 3 is an ordinary timeout; wait again only while the cycle count remains. Exit 0 is a wake event: run status and act on the reported state. Exit 2 or a non-integrity exit 1 is a refusal: report the exact diagnostic and stop. For an integrity exit 1, follow the one-time settled re-read rule above. After cycle ${model.waitCycles} times out, run status, report it to the human, and stop without starting another batch. A successful handoff starts a new waiting episode for the role that handed off.
+After every call, record \`wait cycle N/${model.waitCycles}\`. Each cycle must wait before you run the next structured status check. Exit 3 is an ordinary timeout: run structured status with \`--json\`, then wait again only while the peer still owns the turn and the cycle count remains. Exit 0 is a wake event: run structured status with \`--json\`, resolve the immutable peer artifact path from \`lastHandoff.artifacts.${model.peerArtifactKind}.path\`, read those exact bytes, and continue only when status assigns this configured role. Exit 2 or a non-integrity exit 1 is a refusal: report the exact diagnostic and stop. For an integrity exit 1, follow the one-time settled re-read rule above. After cycle ${model.waitCycles} times out, run structured status, report the exhaustion to the human, and stop without starting another batch. After every successful nonterminal handoff, the role that handed off must initialize a fresh bounded waiting episode.
 
 After compaction, reread this file, run status, and resume from the last visible wait-cycle marker. If the completed count is uncertain, stop and report the ambiguity instead of resetting it.
 
-Accepted is terminal: verify status and stop forever. Intervention-required is a human decision boundary. Do not adjust the budget, continue/refocus, supplement, or finalize good-enough acceptance unless the authenticated human authorizes the existing command.
+Accepted is terminal: verify status and stop forever. Intervention-required is a human decision boundary: report status and stop. Do not adjust the budget, continue/refocus, supplement, or finalize good-enough acceptance unless the authenticated human authorizes the existing command. Any refusal or exhausted waiting episode also reports its structured status and stops; never begin an unbounded or silently reset batch.
 
 Starting, routing, or continuing a session is operational routing only; it does not create human semantic approval or an approval marker.
 
@@ -248,6 +254,7 @@ function modelFor(state, settings, actor) {
     archiveDir: state.initialization.archiveDir,
     claimProvenance: state.initialization.claimProvenance,
     actor,
+    peerArtifactKind: actor === state.roles.owner ? 'review' : 'response',
   });
 }
 

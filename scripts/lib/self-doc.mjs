@@ -122,7 +122,7 @@ const ROUTABLE_SELF_DOC = {
       'Coordinate immutable owner/reviewer rounds through acceptance and deterministic evidence publication.',
     audience: 'Artifact owner, external reviewer, or authenticated human authority.',
     usage:
-      'aitm co-review <start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize> [--dir <path>] [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--issue <N> --artifact-kind <spec|plan>] [--max-turns <N>] [--wait-cycles <N>] [--wait-interval <seconds>] [--import-review <file>] [--review-of <sha>] [--archive-dir <path>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--file <path>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--good-enough] [--json]',
+      'aitm co-review <start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize> [--low-level] [--dir <path>] [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--issue <N> --artifact-kind <spec|plan>] [--max-turns <N>] [--wait-cycles <N>] [--wait-interval <seconds>] [--import-review <file>] [--review-of <sha>] [--archive-dir <path>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--file <path>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--good-enough] [--json]',
   },
   'value-report': {
     group: 'Reports',
@@ -330,6 +330,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
       'start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize',
       'Protocol subcommand in lifecycle order.'
     ),
+    argument(
+      '--low-level',
+      'Required compatibility opt-in for direct init; ordinary startup uses start.'
+    ),
     argument('--dir <path>', 'Caller-selected or guided-start-derived Git-ignored directory.'),
     argument(
       '--artifact <path>',
@@ -343,7 +347,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
       'Guided-start host artifact kind; paired with --issue.'
     ),
     argument('--max-turns <N>', 'Initial or authenticated absolute reviewer-response maximum.'),
-    argument('--wait-cycles <N>', 'Guided-start observed waits per episode; default 20.'),
+    argument('--wait-cycles <N>', 'Guided-start observed waits per episode; default 15.'),
     argument('--wait-interval <seconds>', 'Guided-start seconds per wait from 1 through 60.'),
     argument('--import-review <file>', 'Existing immutable review; init with --review-of.'),
     argument('--review-of <sha>', 'Exact owner commit reviewed by import or reviewer handoff.'),
@@ -582,6 +586,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
   'co-review': routableContract({
     preconditions: [
       'Normal commands run in the authoritative Git worktree; help is safe before repository discovery.',
+      'Start is the canonical fresh-session path; direct init requires explicit --low-level compatibility intent.',
       'Human budget, supplement, continuation, and good-enough commands require authenticated gh identity.',
     ],
     effects: [
