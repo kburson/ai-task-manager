@@ -102,7 +102,11 @@ function repoRoot() {
 // direction, restores development headroom: 900. Measured surface at this raise
 // is 686. Path exclusions and required-entry assertions remain the controlling
 // guardrails; the count is a coarse tripwire, not an exact inventory.
-const ENTRY_CEILING = 900;
+// #1296 intentionally publishes the reviewed docs/introduction/ set. The
+// post-change dry-run count is 715 entries; 750 retains 35 entries of bounded
+// growth headroom while staying 47 below the 797-entry pre-tightening surface.
+// The exact introduction-set assertion above keeps additions review-visible.
+const ENTRY_CEILING = 750;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -136,16 +140,28 @@ test('package-boundary: excluded directories do not reappear', () => {
   );
 });
 
-// #910 — docs/introduction/ is human onboarding/marketing prose with no runtime
-// or installer consumer; it was dropped from the `files` allowlist. Guard the
-// removal so the directory cannot silently re-enter the tarball.
-test('package-boundary: docs/introduction/ is not packed', () => {
+// #1296 — consumers need the complete onboarding set locally. Keep this exact
+// so future additions to docs/introduction/ are deliberate package-surface
+// decisions rather than silent directory-level allowlist growth.
+test('package-boundary: ships the exact docs/introduction/ set', () => {
   const files = packedFiles();
-  const intro = files.filter((p) => /^docs\/introduction\//.test(p));
+  const intro = files.filter((p) => /^docs\/introduction\//.test(p)).sort();
   assert.deepEqual(
     intro,
-    [],
-    `docs/introduction/ leaked back into the package: ${intro.slice(0, 10).join(', ')}`
+    [
+      'docs/introduction/README.md',
+      'docs/introduction/adoption-guide.md',
+      'docs/introduction/agentic-development-process.md',
+      'docs/introduction/assets/agentic-workflow.png',
+      'docs/introduction/assets/aitm-system-map.png',
+      'docs/introduction/assets/measurement-loop.png',
+      'docs/introduction/bus-factor-executive-brief.md',
+      'docs/introduction/context-management-skill-architecture.md',
+      'docs/introduction/core-workflow.md',
+      'docs/introduction/install-and-setup.md',
+      'docs/introduction/measurement-and-roi.md',
+    ],
+    'docs/introduction/ must ship its complete reviewed Markdown and diagram set'
   );
 });
 
