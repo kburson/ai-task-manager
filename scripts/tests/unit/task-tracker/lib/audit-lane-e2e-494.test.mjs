@@ -17,6 +17,8 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 
+import '../../../fixtures/offline-gh-auto.mjs';
+
 import { GUARDS, registerGuard, runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
 import { developExitCodeCompleteGuard } from '../../../../task-tracker/lib/develop-exit-code-complete-guard.mjs';
