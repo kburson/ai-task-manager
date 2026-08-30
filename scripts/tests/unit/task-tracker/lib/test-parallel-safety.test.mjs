@@ -76,7 +76,10 @@ test('testSchedulingClass distinguishes pooled, subprocess, and serial sources',
     'subprocess'
   );
   assert.equal(
-    testSchedulingClass('/x/marked.test.mjs', () => `// @parallel-unsafe\n${CHILD_PROCESS_TOKEN}.exec()`),
+    testSchedulingClass(
+      '/x/marked.test.mjs',
+      () => `// @parallel-unsafe\n${CHILD_PROCESS_TOKEN}.exec()`
+    ),
     'serial',
     '@parallel-unsafe must override direct subprocess detection'
   );
@@ -123,7 +126,10 @@ test('testSchedulingClass ignores an unsafe marker inside a string literal', () 
 
 test('testSchedulingClass keeps a real unsafe marker serial', () => {
   assert.equal(
-    testSchedulingClass('/x/comment-unsafe-marker.test.mjs', () => '// @parallel-unsafe (shared state)'),
+    testSchedulingClass(
+      '/x/comment-unsafe-marker.test.mjs',
+      () => '// @parallel-unsafe (shared state)'
+    ),
     'serial'
   );
 });
@@ -140,27 +146,31 @@ test('testSchedulingClass sends a rationale-bearing transitive marker to the sub
 
 test('testSchedulingClass keeps a blank transitive-subprocess rationale serial', () => {
   assert.equal(
-    testSchedulingClass('/x/blank-transitive-rationale.test.mjs', () => '// @parallel-subprocess (   )'),
+    testSchedulingClass(
+      '/x/blank-transitive-rationale.test.mjs',
+      () => '// @parallel-subprocess (   )'
+    ),
     'serial'
   );
 });
 
 test('testSchedulingClass gives an unsafe marker precedence over a transitive subprocess marker', () => {
   assert.equal(
-    testSchedulingClass(
-      '/x/conflicting-markers.test.mjs',
-      () =>
-        [
-          '// @parallel-subprocess (spawns through an imported helper)',
-          '// @parallel-unsafe (shared state)',
-        ].join('\n')
+    testSchedulingClass('/x/conflicting-markers.test.mjs', () =>
+      [
+        '// @parallel-subprocess (spawns through an imported helper)',
+        '// @parallel-unsafe (shared state)',
+      ].join('\n')
     ),
     'serial'
   );
 });
 
 test('testSchedulingClass fails closed when source parsing fails', () => {
-  assert.equal(testSchedulingClass('/x/unparseable.test.mjs', () => 'const =;'), 'serial');
+  assert.equal(
+    testSchedulingClass('/x/unparseable.test.mjs', () => 'const =;'),
+    'serial'
+  );
 });
 
 test('PARALLEL_SUBPROCESS_MARKER_RE requires a non-blank parenthesized rationale', () => {
@@ -169,10 +179,7 @@ test('PARALLEL_SUBPROCESS_MARKER_RE requires a non-blank parenthesized rationale
     '@parallel-subprocess (spawns through an imported helper)',
     parallelSafety.PARALLEL_SUBPROCESS_MARKER_RE
   );
-  assert.doesNotMatch(
-    '@parallel-subprocess (   )',
-    parallelSafety.PARALLEL_SUBPROCESS_MARKER_RE
-  );
+  assert.doesNotMatch('@parallel-subprocess (   )', parallelSafety.PARALLEL_SUBPROCESS_MARKER_RE);
 });
 
 test('#1294 audited real entrypoints use their intended scheduling classes', () => {
