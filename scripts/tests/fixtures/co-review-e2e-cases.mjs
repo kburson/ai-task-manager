@@ -47,6 +47,7 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     runCli(
       [
         'init',
+        '--low-level',
         '--dir',
         '.tmp/review',
         '--artifact',
@@ -377,6 +378,7 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   const initialized = runCli(
     [
       'init',
+      '--low-level',
       '--dir',
       '.tmp/review',
       '--artifact',
@@ -561,6 +563,7 @@ test('concurrent identical claims serialize to one claim event without corruptin
     runCli(
       [
         'init',
+        '--low-level',
         '--dir',
         '.tmp/review',
         '--artifact',

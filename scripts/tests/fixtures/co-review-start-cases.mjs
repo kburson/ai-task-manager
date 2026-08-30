@@ -41,7 +41,7 @@ function startDependencies(api, extra = {}) {
 test('start defaults and derived runtime directories are stable and unique by creation id', () => {
   assert.deepEqual(START_DEFAULTS, {
     maxReviewTurns: 10,
-    waitCycles: 20,
+    waitCycles: 15,
     waitIntervalSeconds: 60,
   });
   assert.equal(
@@ -295,9 +295,19 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   for (const bytes of [author, reviewer]) {
     assert.match(bytes, new RegExp(result.state.protocolId));
     assert.match(bytes, new RegExp(path.resolve(fixture.root, '.tmp/review-start')));
-    assert.match(bytes, /wait cycle N\/20/);
+    assert.match(bytes, /wait cycle N\/15/);
     assert.match(bytes, /compaction/i);
     assert.match(bytes, /--timeout 60/);
+    assert.match(bytes, /initialize a fresh bounded waiting episode/i);
+    assert.match(bytes, /run structured status.*--json/is);
+    assert.match(bytes, /wait before.*status/is);
+    assert.match(bytes, /lastHandoff\.artifacts/);
+    assert.match(bytes, /resolve.*immutable peer artifact path/is);
+    assert.match(bytes, /successful nonterminal handoff.*fresh bounded waiting episode/is);
+    assert.match(bytes, /accepted.*stop forever/is);
+    assert.match(bytes, /intervention-required.*stop/is);
+    assert.match(bytes, /refusal.*stop/is);
+    assert.match(bytes, /exhaust.*stop/is);
     assert.match(bytes, /snapshot publication/i);
     assert.match(bytes, /one settled status re-read/i);
     assert.match(bytes, /mismatch persists/i);
@@ -323,6 +333,7 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.match(author, /\[evidence:repository-path-or-command\]/);
   assert.match(reviewer, /reviewer-agent/);
   assert.match(reviewer, /--review/);
+  assert.match(reviewer, /lastHandoff\.artifacts\.response\.path/);
   assert.match(reviewer, new RegExp(`--review ${runtimeAbsolute}/round-N-reviewer-review\\.md`));
   assert.doesNotMatch(author, /--dir \.tmp\/review-start/);
   assert.doesNotMatch(reviewer, /--dir \.tmp\/review-start/);
@@ -406,12 +417,82 @@ test('flagged start records every numeric override in state and startup metadata
   assert.equal(manifest.initialization.claimProvenance, 'provider-session/v1');
   assert.equal(manifest.waitCycles, 7);
   assert.equal(manifest.waitIntervalSeconds, 12);
+  for (const filename of ['author-handoff.md', 'reviewer-handoff.md']) {
+    const handoff = readFileSync(path.join(fixture.root, dir, filename), 'utf8');
+    assert.match(handoff, /Waiting episode: at most 7 separately observed waits of 12 seconds/);
+    assert.match(handoff, /wait cycle N\/7/);
+    assert.match(handoff, /--timeout 12/);
+  }
   assert.equal(state.initialization.archiveDir, 'docs/superpowers/reviews/1272/plan');
   assert.deepEqual(manifest.hostArchive, {
     issue: 1272,
     artifactKind: 'plan',
     archiveDir: 'docs/superpowers/reviews/1272/plan',
   });
+});
+
+test('plain init refuses before mutation while explicit low-level init remains compatible', async () => {
+  const fixture = memoryRepositoryFixture();
+  const common = [
+    '--dir',
+    '.tmp/direct-init',
+    '--artifact',
+    fixture.artifact,
+    '--owner',
+    'author-agent',
+    '--reviewer',
+    'reviewer-agent',
+    '--max-turns',
+    '6',
+  ];
+
+  const refused = await runCliDirect(['init', ...common], {
+    cwd: fixture.root,
+    repository: fixture.repository,
+  });
+  assert.equal(refused.status, 2);
+  assert.match(refused.stderr, /co-review:init-low-level-required/);
+  assert.match(refused.stderr, /no state changed/);
+  assert.match(refused.stderr, /npx aitm co-review start/);
+  assert.equal(existsSync(path.join(fixture.root, '.tmp/direct-init')), false);
+
+  const compatible = await runCliDirect(['init', '--low-level', ...common], {
+    cwd: fixture.root,
+    repository: fixture.repository,
+  });
+  assert.equal(compatible.status, 0, compatible.stderr);
+  assert.equal(JSON.parse(compatible.stdout).currentRole, 'owner');
+  assert.equal(existsSync(path.join(fixture.root, '.tmp/direct-init/state.json')), true);
+
+  const importDir = '.tmp/direct-import';
+  mkdirSync(path.join(fixture.root, importDir), { recursive: true });
+  writeFileSync(
+    path.join(fixture.root, importDir, 'r1-review.md'),
+    '# Review\n\n[finding:F-001] Imported compatibility review.\n'
+  );
+  const imported = await runCliDirect(
+    [
+      'init',
+      '--low-level',
+      '--dir',
+      importDir,
+      '--artifact',
+      fixture.artifact,
+      '--owner',
+      'author-agent',
+      '--reviewer',
+      'reviewer-agent',
+      '--max-turns',
+      '6',
+      '--import-review',
+      `${importDir}/r1-review.md`,
+      '--review-of',
+      fixture.initialCommit,
+    ],
+    { cwd: fixture.root, repository: fixture.repository }
+  );
+  assert.equal(imported.status, 0, imported.stderr);
+  assert.equal(JSON.parse(imported.stdout).round, 2);
 });
 
 test('exact start retry is event-idempotent, reconstructs one missing handoff, and refuses conflicts', async () => {
@@ -734,7 +815,7 @@ test('non-interactive incomplete and invalid flagged start invocations fail befo
   }
 });
 
-test('structured and top-level help fully document guided startup without hiding init', () => {
+test('structured and top-level help make start canonical and init explicitly low-level', () => {
   assert.equal(Object.keys(COMMANDS)[0], 'start');
   const command = renderHelp('start');
   for (const expected of [
@@ -749,7 +830,7 @@ test('structured and top-level help fully document guided startup without hiding
     '--artifact-kind <spec|plan>',
     'docs/superpowers/reviews/<issue>/<spec|plan>/',
     '10',
-    '20',
+    '15',
     '60',
     '.tmp/co-review/',
     'author-handoff.md',
@@ -763,5 +844,9 @@ test('structured and top-level help fully document guided startup without hiding
   }
   const top = renderHelp();
   assert.match(top, /co-review <start\|init\|status/);
-  assert.match(top, /start before review; init remains the low-level primitive/);
+  assert.match(top, /start is the canonical fresh-session command/i);
+  const init = renderHelp('init');
+  assert.match(init, /--low-level/);
+  assert.match(init, /compatibility|import/i);
+  assert.match(init, /npx aitm co-review start/);
 });

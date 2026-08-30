@@ -465,6 +465,7 @@ test('CLI initializes and reports human and JSON status', async () => {
   const initialized = await runCliDirect(
     [
       'init',
+      '--low-level',
       '--dir',
       '.tmp/review',
       '--artifact',
@@ -621,6 +622,7 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', async () =
       await runCliDirect(
         [
           'init',
+          '--low-level',
           '--dir',
           '.tmp/review',
           '--artifact',

@@ -514,6 +514,7 @@ test('CLI routes the owner handoff and rejects reviewer-only flags', async () =>
       await runCliDirect(
         [
           'init',
+          '--low-level',
           '--dir',
           '.tmp/review',
           '--artifact',
@@ -902,6 +903,7 @@ test('CLI routes reviewer acceptance and human continuation flags', async () => 
       await runCliDirect(
         [
           'init',
+          '--low-level',
           '--dir',
           '.tmp/review',
           '--artifact',
