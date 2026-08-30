@@ -37,6 +37,10 @@ function normalizedOptions(args, options) {
   return Array.isArray(args) ? options : args;
 }
 
+function effectiveEnv(args, options, fallbackEnv) {
+  return normalizedOptions(args, options)?.env ?? fallbackEnv;
+}
+
 export function installGhCensusPreload({ env = process.env } = {}) {
   const censusBin = env.AITM_GH_CENSUS_BIN || '';
   const censusLog = censusBin ? path.join(censusBin, 'calls.log') : '';
@@ -51,12 +55,18 @@ export function installGhCensusPreload({ env = process.env } = {}) {
   // Only an explicitly declared test double remains authoritative. Merely
   // placing another gh earlier on PATH is not enough: it could be the real
   // binary, so the census must absorb and record it.
-  const delegatesToPathDouble = (file) =>
-    file === 'gh' &&
-    censusBin &&
-    env.AITM_GH_TEST_DOUBLE_BIN &&
-    path.resolve(path.dirname(firstGhOnPath(env))) === path.resolve(env.AITM_GH_TEST_DOUBLE_BIN);
-  const shouldAbsorb = (file) => file === 'gh' && !delegatesToPathDouble(file);
+  const delegatesToPathDouble = (file, args, options) => {
+    const callEnv = effectiveEnv(args, options, env);
+    return (
+      file === 'gh' &&
+      censusBin &&
+      callEnv.AITM_GH_TEST_DOUBLE_BIN &&
+      path.resolve(path.dirname(firstGhOnPath(callEnv))) ===
+        path.resolve(callEnv.AITM_GH_TEST_DOUBLE_BIN)
+    );
+  };
+  const shouldAbsorb = (file, args, options) =>
+    file === 'gh' && !delegatesToPathDouble(file, args, options);
   const record = (argv) => {
     if (censusLog) {
       appendFileSync(censusLog, `${env.AITM_GH_CENSUS_CALLER ?? ''}\t${argv.slice(1).join(' ')}\n`);
@@ -65,7 +75,7 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusPexec = (...callArgs) => {
     const [file, args] = callArgs;
-    if (!shouldAbsorb(file)) return originalPexec(...callArgs);
+    if (!shouldAbsorb(file, args, callArgs[2])) return originalPexec(...callArgs);
     const argv = normalizedArgv(file, args);
     record(argv);
     return Promise.reject(refusal(argv));
@@ -73,7 +83,7 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusExecFile = (...callArgs) => {
     const [file, args] = callArgs;
-    if (!shouldAbsorb(file)) return original.execFile(...callArgs);
+    if (!shouldAbsorb(file, args, callArgs[2])) return original.execFile(...callArgs);
     const done = callArgs.findLast((arg) => typeof arg === 'function');
     const argv = normalizedArgv(file, args);
     record(argv);
@@ -89,7 +99,7 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusSpawn = (...callArgs) => {
     const [file, args] = callArgs;
-    if (!shouldAbsorb(file)) return original.spawn(...callArgs);
+    if (!shouldAbsorb(file, args, callArgs[2])) return original.spawn(...callArgs);
     const argv = normalizedArgv(file, args);
     record(argv);
     const error = refusal(argv);
@@ -103,7 +113,7 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusExecFileSync = (...callArgs) => {
     const [file, args] = callArgs;
-    if (!shouldAbsorb(file)) return original.execFileSync(...callArgs);
+    if (!shouldAbsorb(file, args, callArgs[2])) return original.execFileSync(...callArgs);
     const argv = normalizedArgv(file, args);
     record(argv);
     throw refusal(argv);
@@ -111,7 +121,7 @@ export function installGhCensusPreload({ env = process.env } = {}) {
 
   const censusSpawnSync = (...callArgs) => {
     const [file, args, options] = callArgs;
-    if (!shouldAbsorb(file)) return original.spawnSync(...callArgs);
+    if (!shouldAbsorb(file, args, options)) return original.spawnSync(...callArgs);
     const argv = normalizedArgv(file, args);
     const resolvedOptions = normalizedOptions(args, options);
     record(argv);

@@ -16,8 +16,17 @@ function externalCallSite() {
   );
 }
 
-function realGhRefusal(file, args) {
-  if (file !== 'gh' || process.env.TT_SKIP_NETWORK !== '1' || resolvesToDeclaredOfflineDouble()) {
+function callOptions(args, options) {
+  return Array.isArray(args) ? options : args;
+}
+
+function realGhRefusal(file, args, options) {
+  const effectiveEnv = callOptions(args, options)?.env ?? process.env;
+  if (
+    file !== 'gh' ||
+    process.env.TT_SKIP_NETWORK !== '1' ||
+    resolvesToDeclaredOfflineDouble(effectiveEnv)
+  ) {
     return null;
   }
   const argv = [file, ...(Array.isArray(args) ? args : [])];
@@ -31,10 +40,10 @@ function realGhRefusal(file, args) {
   );
 }
 
-function resolvesToDeclaredOfflineDouble() {
-  const declaredBin = process.env.AITM_GH_TEST_DOUBLE_BIN;
+function resolvesToDeclaredOfflineDouble(env) {
+  const declaredBin = env.AITM_GH_TEST_DOUBLE_BIN;
   if (!declaredBin) return false;
-  for (const directory of String(process.env.PATH ?? '').split(path.delimiter)) {
+  for (const directory of String(env.PATH ?? '').split(path.delimiter)) {
     if (!directory) continue;
     const candidate = path.join(directory, 'gh');
     if (!existsSync(candidate)) continue;
@@ -44,13 +53,13 @@ function resolvesToDeclaredOfflineDouble() {
 }
 
 function defaultPexec(...args) {
-  const refusal = realGhRefusal(args[0], args[1]);
+  const refusal = realGhRefusal(args[0], args[1], args[2]);
   if (refusal) return Promise.reject(refusal);
   return nodePexec(...args);
 }
 
 function defaultExecFile(...args) {
-  const refusal = realGhRefusal(args[0], args[1]);
+  const refusal = realGhRefusal(args[0], args[1], args[2]);
   if (refusal) throw refusal;
   return nodeExecFile(...args);
 }
@@ -58,7 +67,7 @@ function defaultExecFile(...args) {
 defaultExecFile[promisify.custom] = (...args) => defaultPexec(...args);
 
 function defaultSpawn(...args) {
-  const refusal = realGhRefusal(args[0], args[1]);
+  const refusal = realGhRefusal(args[0], args[1], args[2]);
   if (refusal) throw refusal;
   return nodeSpawn(...args);
 }

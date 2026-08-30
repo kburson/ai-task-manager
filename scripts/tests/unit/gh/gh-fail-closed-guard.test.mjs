@@ -1,6 +1,6 @@
 // @story #1410
 import assert from 'node:assert/strict';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
@@ -111,6 +111,42 @@ test('a declared PATH double remains authoritative under the test signal', async
         (await pexec('gh', ['issue', 'view', '1410'])).stdout,
         'double:issue view 1410\n'
       );
+    });
+  } finally {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (previousDoubleBin === undefined) delete process.env.AITM_GH_TEST_DOUBLE_BIN;
+    else process.env.AITM_GH_TEST_DOUBLE_BIN = previousDoubleBin;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a declared ambient double cannot authorize a different per-call PATH binary', async () => {
+  const previousPath = process.env.PATH;
+  const previousDoubleBin = process.env.AITM_GH_TEST_DOUBLE_BIN;
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'guard-env-override-'));
+  const declaredBin = path.join(dir, 'declared');
+  const overrideBin = path.join(dir, 'override');
+  const marker = path.join(dir, 'override-executed');
+  mkdirSync(declaredBin, { recursive: true });
+  mkdirSync(overrideBin, { recursive: true });
+  for (const bin of [declaredBin, overrideBin]) {
+    writeFileSync(
+      path.join(bin, 'gh'),
+      bin === overrideBin ? `#!/bin/sh\nprintf executed > '${marker}'\n` : '#!/bin/sh\nexit 0\n'
+    );
+    chmodSync(path.join(bin, 'gh'), 0o755);
+  }
+  process.env.PATH = `${declaredBin}${path.delimiter}${previousPath ?? ''}`;
+  process.env.AITM_GH_TEST_DOUBLE_BIN = declaredBin;
+  try {
+    await withSkipNetwork(async () => {
+      const env = { ...process.env, PATH: `${overrideBin}${path.delimiter}${previousPath ?? ''}` };
+      await assert.rejects(
+        () => pexec('gh', ['api', 'rate_limit'], { env }),
+        /refused the real gh/
+      );
+      assert.equal(existsSync(marker), false);
     });
   } finally {
     if (previousPath === undefined) delete process.env.PATH;

@@ -134,6 +134,45 @@ test('preload refuses an undeclared earlier PATH gh and permits an explicitly de
   }
 });
 
+test('preload does not let an ambient declaration authorize a per-call PATH binary', async () => {
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'gh-census-env-override-'));
+  const declaredBin = path.join(dir, 'declared');
+  const overrideBin = path.join(dir, 'override');
+  const marker = path.join(dir, 'override-executed');
+  mkdirSync(declaredBin, { recursive: true });
+  mkdirSync(overrideBin, { recursive: true });
+  for (const bin of [declaredBin, overrideBin]) {
+    writeFileSync(
+      path.join(bin, 'gh'),
+      bin === overrideBin ? `#!/bin/sh\nprintf executed > '${marker}'\n` : '#!/bin/sh\nexit 0\n'
+    );
+    chmodSync(path.join(bin, 'gh'), 0o755);
+  }
+  const script = [
+    "import { execFile } from 'node:child_process';",
+    "import { promisify } from 'node:util';",
+    'const env = { ...process.env, PATH: process.env.OVERRIDE_GH_PATH };',
+    "try { await promisify(execFile)('gh', ['api', 'rate_limit'], { env }); } catch {}",
+  ].join('\n');
+  try {
+    const result = await runLaneCensus('integration', {
+      runLane: async ({ env }) => {
+        delete env.AITM_GH_CENSUS_CALLER;
+        env.PATH = `${declaredBin}${path.delimiter}${env.PATH}`;
+        env.AITM_GH_TEST_DOUBLE_BIN = declaredBin;
+        env.OVERRIDE_GH_PATH = `${overrideBin}${path.delimiter}${env.PATH}`;
+        await pexec(process.execPath, ['--input-type=module', '--eval', script], { env });
+        return 0;
+      },
+    });
+    assert.deepEqual(result.calls, ['gh api rate_limit']);
+    assert.equal(censusPassed([result]), false);
+    assert.equal(existsSync(marker), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('formatCensus is deterministic and the result fails closed', () => {
   const results = [
     { lane: 'unit', exitCode: 0, calls: [] },
