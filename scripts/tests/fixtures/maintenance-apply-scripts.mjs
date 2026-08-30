@@ -1,0 +1,25 @@
+// @story #878
+// Shared non-entrypoint manifest for maintenance-script coverage.
+export const APPLY_SCRIPTS = [
+  'scripts/migrate/assigned-to-ready-for-plan.mjs',
+  'scripts/migrate/rename-on-deck-to-assigned.mjs',
+  'scripts/task-tracker/backfill-disposition.mjs',
+  'scripts/task-tracker/backfill-vc-sections.mjs',
+  'scripts/task-tracker/backfill-plan-metadata.mjs',
+  'scripts/task-tracker/backfill-timing-logs.mjs',
+  'scripts/task-tracker/heal-backlog.mjs',
+  'scripts/task-tracker/heal-entry-markers.mjs',
+  'scripts/task-tracker/heal-functional-dod.mjs',
+  'scripts/task-tracker/heal-lifecycle-dod.mjs',
+  'scripts/task-tracker/heal-refine-entry-marker.mjs',
+  'scripts/task-tracker/heal-timing-departure.mjs',
+  'scripts/task-tracker/heal-timing-interval.mjs',
+  'scripts/task-tracker/heal-timing-log.mjs',
+  'scripts/task-tracker/heal-timing-starts.mjs',
+  'scripts/task-tracker/heal-vc-refs.mjs',
+  'scripts/maintenance/heal-full-auto-footnote.mjs',
+  'scripts/maintenance/heal-stage-rollups.mjs',
+  'scripts/maintenance/migrate-non-demonstrable-tag-position.mjs',
+  'scripts/maintenance/repair-child-outcome-records.mjs',
+  'scripts/reports/heal-backlog-attribution.mjs',
+];

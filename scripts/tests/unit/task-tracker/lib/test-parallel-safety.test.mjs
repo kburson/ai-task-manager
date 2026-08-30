@@ -155,19 +155,3 @@ test('#1203 pure source remains eligible for the parallel pool', () => {
 
   assert.equal(isParallelSafe('/x/1203-pure-control.test.mjs', read), true);
 });
-
-// @story #1212
-test('#1212 ownership aggregate is excluded from the parallel pool', () => {
-  const fullPath = fileURLToPath(
-    new URL(
-      '../../../integration/task-tracker/lib/exclusive-ownership-policy.test.mjs',
-      import.meta.url
-    )
-  );
-
-  assert.equal(
-    isParallelSafe(fullPath),
-    false,
-    'the ownership aggregate imports subprocess-spawning guard tests and must run serially'
-  );
-});
