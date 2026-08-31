@@ -154,6 +154,16 @@ test('testSchedulingClass keeps a blank transitive-subprocess rationale serial',
   );
 });
 
+test('testSchedulingClass keeps mixed valid and malformed transitive markers in one comment serial', () => {
+  assert.equal(
+    testSchedulingClass(
+      '/x/mixed-transitive-rationale.test.mjs',
+      () => '// @parallel-subprocess (spawns through an imported helper) @parallel-subprocess (   )'
+    ),
+    'serial'
+  );
+});
+
 test('testSchedulingClass gives an unsafe marker precedence over a transitive subprocess marker', () => {
   assert.equal(
     testSchedulingClass('/x/conflicting-markers.test.mjs', () =>

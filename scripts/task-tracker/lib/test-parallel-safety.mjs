@@ -102,8 +102,10 @@ function schedulingMarkers(src) {
   return {
     unsafe: values.some((value) => PARALLEL_UNSAFE_MARKER_RE.test(value)),
     subprocess: values.some((value) => PARALLEL_SUBPROCESS_MARKER_RE.test(value)),
-    malformedSubprocess: values.some(
-      (value) => /@parallel-subprocess\b/.test(value) && !PARALLEL_SUBPROCESS_MARKER_RE.test(value)
+    malformedSubprocess: values.some((value) =>
+      [...value.matchAll(/@parallel-subprocess\b/g)].some(
+        ({ index }) => !PARALLEL_SUBPROCESS_MARKER_RE.test(value.slice(index))
+      )
     ),
     slowParallel: values.some((value) => SLOW_PARALLEL_SAFE_MARKER_RE.test(value)),
   };
@@ -125,7 +127,9 @@ export function slowTestSchedulingClass(fullPath, read = readFileSync) {
     return TEST_SCHEDULING_CLASSES.SERIAL;
   }
   const markers = schedulingMarkers(src);
-  if (!markers || markers.unsafe) return TEST_SCHEDULING_CLASSES.SERIAL;
+  if (!markers || markers.unsafe || markers.malformedSubprocess) {
+    return TEST_SCHEDULING_CLASSES.SERIAL;
+  }
   return markers.slowParallel
     ? TEST_SCHEDULING_CLASSES.SLOW_PARALLEL
     : TEST_SCHEDULING_CLASSES.SERIAL;
