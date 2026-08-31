@@ -14,12 +14,13 @@ import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-pare
 import { refinementSnapshotGuard } from '../lib/refinement-snapshot-guard.mjs';
 
 export default Object.freeze({
-  name: 'refine',
+  id: 'refine',
   entryGuards: Object.freeze([
     contiguityEntryGuard,
     backlogExitChildParentStateGuard,
     userStoryWarnGuard,
   ]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     // #357 — the `aitm-refine-complete` marker is the user's "refine is done"
     // signal; check it FIRST so the absence surfaces before downstream gates
@@ -33,5 +34,4 @@ export default Object.freeze({
     // #432 — hard-refuse if ## User Story is missing or still a placeholder.
     userStoryBlockGuard,
   ]),
-  onEnter: Object.freeze([]),
 });

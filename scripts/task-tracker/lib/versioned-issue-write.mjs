@@ -304,6 +304,7 @@ export async function versionedWriteBody({
   deps = {},
   maxRetries = DEFAULT_MAX_RETRIES,
   expectedVersion,
+  validateMutation,
 } = {}) {
   if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
@@ -389,6 +390,7 @@ export async function versionedWriteBody({
       }
       ourBase = remoteBase;
       ourLocal = rebaseOnto({ ourEdit, theirEdit, remote: remoteBase });
+      if (typeof validateMutation === 'function') validateMutation(ourBase, ourLocal);
     }
 
     const targetVersion = remoteVersion + 1;

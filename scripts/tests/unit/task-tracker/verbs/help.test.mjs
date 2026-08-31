@@ -40,6 +40,23 @@ test('close help distinguishes Incorporated owner assertion from duplicate and i
   assert.match(VERB_CONTRACTS.close.effects.join(' '), /already-closed[\s\S]*read-only/i);
 });
 
+test('close help exposes the audited stale pre-terminal transaction restart contract', () => {
+  assert.match(VERB_REFERENCE.close.usage, /--restart-stale-transaction/);
+  const restart = VERB_REFERENCE.close.flags.find(
+    ({ flag }) => flag === '--restart-stale-transaction'
+  );
+  assert.match(restart.desc, /stale pre-terminal/i);
+  assert.match(restart.desc, /fresh exact-SHA Test, Review, delivery/i);
+  assert.match(restart.desc, /immutable supersession evidence/i);
+  assert.ok(VERB_REFERENCE.close.examples.includes('/task close 1461 --restart-stale-transaction'));
+  assert.match(VERB_CONTRACTS.close.preconditions.join(' '), /clean worktree/i);
+  assert.match(VERB_CONTRACTS.close.effects.join(' '), /audit.*before.*protected marker/i);
+  assert.match(
+    VERB_CONTRACTS.close.effects.join(' '),
+    /terminal-boundary or conflicting evidence.*refuses before mutation/i
+  );
+});
+
 test('incident-ledger help requires executable Incorporated carrier authority', () => {
   const preconditions = VERB_CONTRACTS['incident-ledger'].preconditions.join(' ');
   const effects = VERB_CONTRACTS['incident-ledger'].effects.join(' ');

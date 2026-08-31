@@ -10,6 +10,7 @@ function ctxWith(bodyRef) {
   return {
     issueArg: '999',
     stateArg: 'test',
+    transitionId: 'move:test-transition',
     cfg: { repo: 'o/r' },
     _mutateBody: async ({ mutate }) => {
       bodyRef.body = mutate(bodyRef.body);
@@ -23,6 +24,8 @@ test('sentinel is written and re-read-verified as target', async () => {
   const res = await defaultWriteSentinel(ctxWith(bodyRef));
   assert.equal(res.verified, true);
   assert.match(bodyRef.body, /aitm-move-complete state=test/);
+  assert.match(bodyRef.body, /move=move:test-transition/);
+  assert.equal(res.transitionId, 'move:test-transition');
 });
 
 test('SKIP_NETWORK short-circuits: no body write, reported verified', async () => {

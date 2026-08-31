@@ -10,6 +10,7 @@
 
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound-reason.mjs';
 import { appendDefectHint } from './defect-hint.mjs';
+import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
 const ISSUE_URL_NUMBER_RE = /github\.com\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
@@ -22,6 +23,38 @@ const GRAPHQL_ASSIGNEE_MUTATION_RE =
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
+const COMMENT_API_ENDPOINT_RE =
+  /\bgh\s+api\b[\s\S]*?repos\/[\w.-]+\/[\w.-]+\/issues\/comments\/(\d+)\b/i;
+const COMMENT_API_WRITE_RE =
+  /(?:-X\s*(?:DELETE|PATCH)|--method(?:=|\s+)(?:DELETE|PATCH)|(?:-f|-F|--field|--raw-field)(?:=|\s+)body=)/i;
+const AMBIGUOUS_LAST_COMMENT_RE =
+  /\bgh\s+issue\s+comment\s+(?:#)?\d+\b[\s\S]*--(?:edit|delete)-last\b/i;
+const PROTECTED_COMMENT_RE =
+  /<!--\s*(?:aitm-transition-commit|aitm-resident-action-event|aitm-resident-action-head|aitm-resident-action-ledger-damage-carry|aitm-resident-action-ledger-correction)\b/i;
+
+export async function evaluateProtectedCommentMutation({ command, readComment } = {}) {
+  const source = String(command || '');
+  if (/\b(?:npx\s+)?aitm\s+action-ledger\b[\s\S]*\bgc\b/.test(source)) {
+    return { block: false };
+  }
+  if (AMBIGUOUS_LAST_COMMENT_RE.test(source)) {
+    return {
+      block: true,
+      reason:
+        'Ambiguous --edit-last/--delete-last comment mutation is refused because the selected comment may be protected evidence.',
+    };
+  }
+  const match = COMMENT_API_ENDPOINT_RE.exec(source);
+  if (!match || !COMMENT_API_WRITE_RE.test(source)) return { block: false };
+  const body = await readComment?.(match[1]);
+  if (!PROTECTED_COMMENT_RE.test(String(body || ''))) return { block: false };
+  return {
+    block: true,
+    reason:
+      `Comment ${match[1]} is protected AITM evidence and cannot be edited or deleted generically. ` +
+      'Use `npx aitm action-ledger reconcile` for repair or its reachability-proven `gc` mode for superseded spill heads.',
+  };
+}
 
 // #659 AC1 — `gh api` issue-creation interception. `gh issue create` is already
 // refused above, but the equivalent low-level `gh api` calls slip past:
@@ -105,6 +138,10 @@ const MARKER_PATTERNS = [
   { name: 'aitm-session-ref', re: /<!--\s*aitm-session-ref\s+sid="/i },
   // #1191 — presence backstop for append-only issue-resident worktree history.
   { name: 'aitm-worktree-location', re: /<!--\s*aitm-worktree-location\s+worktree="/i },
+  {
+    name: 'aitm-resident-action-ledger-head',
+    re: /<!--\s*aitm-resident-action-ledger-head\s+/i,
+  },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
@@ -166,7 +203,6 @@ function deepDiveEmbeddedCheckboxRefusal({ issueNumber, hit, action }) {
 // refuse such a push at the only choke point that sees the manual flow.
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374).
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 // Stale-snapshot ts reader widened (#378) to extract the timestamp from BOTH
 // the legacy `aitm-last-known-state-ts:` marker and the new single property
 // marker `aitm-last-known-state state="..." ts="..."`.
@@ -176,10 +212,10 @@ const LAST_KNOWN_STATE_NEW_TS_RE =
 
 function enteredStages(body) {
   const set = new Set();
-  for (const m of String(body || '').matchAll(ENTERED_STAGE_RE)) {
+  for (const entry of parseEntryMarkers(body)) {
     // Preserve raw historical stage identity. These audit markers are
     // append-only; a canonical alias may be added but cannot replace one.
-    set.add(m[1].toLowerCase());
+    set.add(entry.state.toLowerCase());
   }
   return set;
 }

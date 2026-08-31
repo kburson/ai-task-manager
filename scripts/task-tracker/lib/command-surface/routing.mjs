@@ -103,6 +103,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/incident-ledger.mjs',
     },
     {
+      verb: 'action-ledger',
+      dispatch: 'verbs/action-ledger.mjs',
+    },
+    {
       verb: 'close',
       dispatch: 'verbs/close.mjs',
     },

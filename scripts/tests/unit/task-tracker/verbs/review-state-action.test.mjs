@@ -1,4 +1,4 @@
-// @story #881
+// @story #881 #1117 #1458
 //
 // The Agent Review Gate is the ACTION of the Review state — not an exit
 // condition of Test, and not an entry condition of Review. That framing fixes
@@ -16,11 +16,176 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { emitReviewGateFailureTimeline } from '../../../../task-tracker/verbs/review.mjs';
+import reviewState from '../../../../task-tracker/states/review.mjs';
+import { reviewAgentValidationAction } from '../../../../task-tracker/lib/resident-actions/review-agent-validation.mjs';
+import {
+  buildReviewCursorRequest,
+  classifyReviewCursorResult,
+  executeReviewCursor,
+} from '../../../../task-tracker/lib/state-cursor.mjs';
 
 const reviewSrc = readFileSync(
   fileURLToPath(new URL('../../../../task-tracker/verbs/review.mjs', import.meta.url)),
   'utf8'
 );
+const actionSrc = readFileSync(
+  fileURLToPath(
+    new URL(
+      '../../../../task-tracker/lib/resident-actions/review-agent-validation.mjs',
+      import.meta.url
+    )
+  ),
+  'utf8'
+);
+const startSrc = readFileSync(
+  fileURLToPath(new URL('../../../../task-tracker/verbs/start.mjs', import.meta.url)),
+  'utf8'
+);
+const resumeSrc = readFileSync(
+  fileURLToPath(new URL('../../../../task-tracker/verbs/resume.mjs', import.meta.url)),
+  'utf8'
+);
+const switchSrc = readFileSync(
+  fileURLToPath(new URL('../../../../task-tracker/verbs/switch.mjs', import.meta.url)),
+  'utf8'
+);
+const trackerSrc = readFileSync(
+  fileURLToPath(new URL('../../../../task-tracker/task-tracker.mjs', import.meta.url)),
+  'utf8'
+);
+
+test('Review installs the agent-validation resident action by direct reference', () => {
+  assert.deepEqual(
+    reviewState.residentActions.map(({ id }) => id),
+    ['review-agent-validation']
+  );
+});
+
+test('fresh Agent Review Passed evidence completes the current Review visit', async () => {
+  const body = [
+    '<!-- aitm-entered-review ts="2026-08-31T12:00:00.000Z" -->',
+    '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-08-31T12:01:00.000Z" sha="sandbox" validators="timing-log-sequence" result="pass" -->',
+  ].join('\n');
+
+  const result = await reviewAgentValidationAction.verify(
+    {},
+    { body: { value: body }, stateVisitId: 'review:1' }
+  );
+
+  assert.equal(result.status, 'complete');
+  assert.equal(result.evidence.reviewEntryTs, '2026-08-31T12:00:00.000Z');
+  assert.equal(result.evidence.passTs, '2026-08-31T12:01:00.000Z');
+});
+
+test('an objection persists failed evidence and returns failed without a board move', async () => {
+  const calls = [];
+  const body = '<!-- aitm-entered-review ts="2026-08-31T12:00:00.000Z" -->';
+  const result = await reviewAgentValidationAction.run(
+    {
+      now: () => Date.parse('2026-08-31T12:01:00.000Z'),
+      review: {
+        readComments: async () => [],
+        computeChangedPaths: async () => ['scripts/task-tracker/verbs/review.mjs'],
+        runAgentReviewGate: () => ({
+          pass: false,
+          failures: ['missing required comment'],
+          validatorsRun: ['required-comments'],
+        }),
+        onFailure: async (input) => calls.push({ name: 'failure', input }),
+        onPass: async (input) => calls.push({ name: 'pass', input }),
+      },
+    },
+    {
+      issue: { value: 999 },
+      body: { value: body },
+      stateVisitId: 'review:1',
+      invocation: { cwd: '/worktree' },
+    },
+    { correlation: { key: 'review:1' } }
+  );
+
+  assert.equal(result.status, 'failed');
+  assert.equal(result.reason, 'missing required comment');
+  assert.deepEqual(
+    calls.map(({ name }) => name),
+    ['failure']
+  );
+  assert.match(calls[0].input.failedBody, /aitm-review-failed/);
+  assert.deepEqual(calls[0].input.failures, ['missing required comment']);
+});
+
+test('Review entry is forward while an in-Review retry is actions-only', () => {
+  assert.deepEqual(buildReviewCursorRequest({ currentState: 'test', issue: 1458, cwd: '/wt' }), {
+    issue: 1458,
+    cwd: '/wt',
+    trigger: 'advance-forward',
+    requestedTarget: 'review',
+    flags: { verb: 'review' },
+  });
+  assert.deepEqual(buildReviewCursorRequest({ currentState: 'review', issue: 1458, cwd: '/wt' }), {
+    issue: 1458,
+    cwd: '/wt',
+    trigger: 'actions-only',
+  });
+});
+
+test('an in-Review retry executes only the Cursor actions-only trigger', async () => {
+  const requests = [];
+  const result = await executeReviewCursor({
+    cursor: {
+      execute: async (request) => {
+        requests.push(request);
+        return { kind: 'resident-complete', state: 'review' };
+      },
+    },
+    currentState: 'review',
+    issue: 1458,
+    cwd: '/wt',
+  });
+
+  assert.deepEqual(result, { kind: 'resident-complete', state: 'review' });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].trigger, 'actions-only');
+  assert.equal('requestedTarget' in requests[0], false);
+});
+
+test('Review classifies resident and boundary Cursor outcomes without swallowing failures', () => {
+  assert.deepEqual(classifyReviewCursorResult({ kind: 'resident-complete', state: 'review' }), {
+    status: 'complete',
+  });
+  assert.deepEqual(
+    classifyReviewCursorResult({
+      kind: 'resident-result',
+      state: 'review',
+      result: { status: 'failed', reason: 'objection' },
+    }),
+    { status: 'action-failed', result: { status: 'failed', reason: 'objection' } }
+  );
+  assert.deepEqual(
+    classifyReviewCursorResult({ kind: 'drift', expectedState: 'review', actualState: 'test' }),
+    {
+      status: 'cursor-refused',
+      result: { kind: 'drift', expectedState: 'review', actualState: 'test' },
+    }
+  );
+});
+
+test('start, resume, and switch wake Review resident work through the dispatcher callback', () => {
+  assert.match(startSrc, /resumeReviewActionsAfterBind/);
+  assert.match(resumeSrc, /resumeReviewActionsAfterBind/);
+  assert.match(switchSrc, /resumeReviewActionsAfterBind/);
+  assert.match(trackerSrc, /resumeReviewActionsAfterBind/);
+  assert.match(trackerSrc, /state !== 'review'/);
+});
+
+test('a passing Review probe continues into actions-only resident execution', () => {
+  const passBranch = reviewSrc.slice(
+    reviewSrc.indexOf("if (probeResult.status === 'passed')"),
+    reviewSrc.indexOf('const reasons = (probeResult.reasons || [])')
+  );
+  assert.doesNotMatch(passBranch, /\breturn;/);
+  assert.match(reviewSrc, /await executeReviewCursor\(/);
+});
 
 // Drive the failure timeline with fakes that append to one ordered log. Any
 // board move is recorded, so "no move happened" is an assertion, not an
@@ -110,15 +275,16 @@ test('the failure path never passes --demote to anything', async () => {
 // a regression that reinstates gate-before-move is a textual reordering and this
 // catches it.
 
-test('verbReview performs the authoritative Test → Review move BEFORE running the gate', () => {
+test('verbReview delegates the authoritative Test → Review move and gate to the Cursor', () => {
   const moveIdx = reviewSrc.indexOf("await runMoveState(target, 'review'");
-  const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
+  const cursorIdx = reviewSrc.indexOf('await executeReviewCursor({');
   assert.notEqual(moveIdx, -1, 'the authoritative move call must exist');
-  assert.notEqual(gateIdx, -1, 'the gate call must exist');
+  assert.notEqual(cursorIdx, -1, 'the Cursor execution must exist');
   assert.ok(
-    moveIdx < gateIdx,
-    'entering Review is unconditional — the move must precede the Agent Review Gate'
+    moveIdx < cursorIdx,
+    'the legacy boundary adapter must be installed before Cursor execution'
   );
+  assert.doesNotMatch(reviewSrc, /const gate = runAgentReviewGate\(/);
 });
 
 test('there is exactly ONE authoritative move-to-review call site', () => {
@@ -156,28 +322,16 @@ test('the operator is told to fix in place and re-run, not to fix in Develop', (
 // marker in the body — and the failure stamp, derived from the same stale copy,
 // then threw `MarkerLossError` for dropping that marker. Observed live on #881.
 
-test('the gate is handed a body fetched AFTER the move, not the pre-move scanBody', () => {
-  const moveIdx = reviewSrc.indexOf("await runMoveState(target, 'review'");
-  const refetchIdx = reviewSrc.indexOf("'body,comments'");
-  const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
-  assert.notEqual(refetchIdx, -1, 'the post-move body+comments re-fetch must exist');
-  assert.ok(moveIdx < refetchIdx, 're-fetch must happen after the move that stamps the marker');
-  assert.ok(refetchIdx < gateIdx, 're-fetch must happen before the gate consumes it');
-  assert.match(
-    reviewSrc.slice(gateIdx, gateIdx + 200),
-    /body:\s*gateBody/,
-    'the gate must consume the post-move snapshot'
-  );
+test('the resident action consumes the Cursor-hydrated body and comments snapshot', () => {
+  assert.match(actionSrc, /valueOf\(snapshot\?\.body\)/);
+  assert.match(reviewSrc, /'body,comments'/);
+  assert.match(reviewSrc, /reviewComments:\s*comments/);
 });
 
 test('both gate outcome paths derive their write from the post-move body', () => {
-  const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
-  const tail = reviewSrc.slice(gateIdx);
-  // The fail path stamps aitm-review-failed; the pass path stamps the tick.
-  // Either deriving from `scanBody` reintroduces the dropped-marker throw.
-  assert.doesNotMatch(
-    tail.slice(0, 2500),
-    /:\s*scanBody;/,
-    'neither baseBody nor passBase may fall back to the pre-move scanBody'
-  );
+  assert.match(actionSrc, /const body = String\(valueOf\(snapshot\?\.body\)/);
+  assert.match(actionSrc, /const base = .*gate\.normalizedBody.*: body/);
+  assert.match(actionSrc, /stampReviewFailed\(base,/);
+  assert.match(actionSrc, /stampAgentReviewPassed\(clearReviewFailed\(base\)/);
+  assert.doesNotMatch(actionSrc, /scanBody/);
 });

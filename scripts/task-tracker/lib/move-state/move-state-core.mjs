@@ -11,7 +11,16 @@ import {
 } from './github-mutation.mjs';
 import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
 import { runPostCommitTail as defaultRunPostCommitTail } from './post-commit-tail.mjs';
-import { writeMoveCompleteMarker, readMoveCompleteState, isMoveComplete } from './sentinel.mjs';
+import { writeMoveCompleteMarker, readMoveCompleteMarker, isMoveComplete } from './sentinel.mjs';
+import {
+  parseEntryMarkers as parseGrammarEntryMarkers,
+  serializeEntryMarker,
+} from '../stage-entry-grammar.mjs';
+import {
+  createTransitionId as defaultCreateTransitionId,
+  repairTransitionCommit as defaultRepairTransitionCommit,
+  writeTransitionCommit as defaultWriteTransitionCommit,
+} from './transition-commit.mjs';
 import { getStageVisitCount } from '../stage-entry-markers.mjs';
 import { parseTimingRows } from '../timing-ladder.mjs';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
@@ -66,7 +75,8 @@ export async function defaultProbeCompletion(ctx) {
     return notComplete;
   }
 
-  const sentinelState = readMoveCompleteState(body);
+  const sentinelMarker = readMoveCompleteMarker(body);
+  const sentinelState = sentinelMarker?.state ?? '';
   // The sentinel is the LAST write of a complete move; if it does not already
   // name the target the move is definitively incomplete — skip the board read.
   if (sentinelState !== stateArg) return { ...notComplete, sentinelState };
@@ -79,7 +89,11 @@ export async function defaultProbeCompletion(ctx) {
     statusState = '';
   }
 
-  const entryMarkerPresent = getStageVisitCount(body, stateArg) > 0;
+  const entries = parseGrammarEntryMarkers(body).filter((entry) => entry.state === stateArg);
+  const selectedEntry = entries.at(-1) ?? null;
+  const identityConsistent =
+    !sentinelMarker?.move || !selectedEntry?.move || sentinelMarker.move === selectedEntry.move;
+  const entryMarkerPresent = getStageVisitCount(body, stateArg) > 0 && identityConsistent;
 
   const rows = parseTimingRows(body);
   const enterEvent = PHASE_EVENTS[stateArg]?.enter?.event;
@@ -89,7 +103,23 @@ export async function defaultProbeCompletion(ctx) {
   const exitRowPresent =
     entryTs != null && rows.some((r) => r.ts === entryTs && COMPLETE_EVENT_RE.test(r.event));
 
-  return { sentinelState, statusState, entryMarkerPresent, exitRowPresent, entryRowPresent };
+  return {
+    sentinelState,
+    statusState,
+    entryMarkerPresent,
+    exitRowPresent,
+    entryRowPresent,
+    transitionId: identityConsistent ? (sentinelMarker?.move ?? selectedEntry?.move ?? null) : null,
+    visitMarker: selectedEntry
+      ? serializeEntryMarker({
+          state: selectedEntry.state,
+          visit: selectedEntry.visit,
+          ts: selectedEntry.ts,
+          move: selectedEntry.move,
+        })
+      : null,
+    sentinelMarker: sentinelMarker?.match ?? null,
+  };
 }
 
 // Write the aitm-move-complete sentinel and re-read-verify it landed at target
@@ -102,11 +132,11 @@ export async function defaultProbeCompletion(ctx) {
 // clobbered), and returns the VERIFIED live body — the re-read is the same
 // round-trip, not a second one. Verification reads that returned body.
 export async function defaultWriteSentinel(ctx) {
-  const { issueArg, stateArg, cfg, SKIP_NETWORK } = ctx;
+  const { issueArg, stateArg, transitionId, cfg, SKIP_NETWORK } = ctx;
   // Offline/test mode writes nothing to the board (runStatusWrite likewise
   // short-circuits under SKIP_NETWORK). With no board write there is no
   // sentinel to stamp or verify, so report verified and let the saga proceed.
-  if (SKIP_NETWORK) return { verified: true };
+  if (SKIP_NETWORK) return { verified: true, transitionId };
   const ts = new Date().toISOString();
   const mutateBody =
     ctx._mutateBody ||
@@ -114,8 +144,18 @@ export async function defaultWriteSentinel(ctx) {
       const { mutateIssueBody } = await import('../issue-body-mutate.mjs');
       return mutateIssueBody({ issueNumber: issueArg, repo: cfg.repo, mutate });
     });
-  const res = await mutateBody({ mutate: (base) => writeMoveCompleteMarker(base, stateArg, ts) });
-  if (readMoveCompleteState(res?.body ?? '') === stateArg) return { verified: true };
+  const res = await mutateBody({
+    mutate: (base) => writeMoveCompleteMarker(base, stateArg, ts, transitionId),
+  });
+  const verified = readMoveCompleteMarker(res?.body ?? '');
+  if (verified?.state === stateArg && (!transitionId || verified.move === transitionId)) {
+    return {
+      verified: true,
+      transitionId: verified.move,
+      sentinelMarker: verified.match,
+      ts: verified.ts,
+    };
+  }
   process.stderr.write(
     `⛔ #${issueArg} → ${stateArg}: board moved but aitm-move-complete sentinel did NOT ` +
       `confirm on re-read. Move is NOT stamped complete; re-run to converge.\n`
@@ -139,6 +179,9 @@ export async function moveState(ctx) {
   const runStatusWrite = ctx._runStatusWrite || defaultRunStatusWrite;
   const writeSentinel = ctx._writeSentinel || defaultWriteSentinel;
   const runPostCommitTail = ctx._runPostCommitTail || defaultRunPostCommitTail;
+  const createTransitionId = ctx._createTransitionId || defaultCreateTransitionId;
+  const writeTransitionCommit = ctx._writeTransitionCommit || defaultWriteTransitionCommit;
+  const repairTransitionCommit = ctx._repairTransitionCommit || defaultRepairTransitionCommit;
   const rollbackRecordedState = ctx._rollbackRecordedState || defaultRollbackRecordedState;
   const assertBoardMarkerConsistent =
     ctx._assertBoardMarkerConsistent || defaultAssertBoardMarkerConsistent;
@@ -161,6 +204,13 @@ export async function moveState(ctx) {
   // dependents/fields that a crash between Status and tail may have skipped.
   const probe = await probeCompletion(ctx);
   if (isMoveComplete({ ...probe, target: ctx.stateArg })) {
+    ctx.transitionId = probe.transitionId ?? ctx.transitionId ?? null;
+    ctx.transitionEvidence = {
+      visitMarker: probe.visitMarker ?? null,
+      sentinelMarker: probe.sentinelMarker ?? null,
+    };
+    ctx.repairTransitionCommit = repairTransitionCommit;
+    ctx.transitionCommitRepairRequested = true;
     const tail = await runPostCommitTail(ctx);
     return {
       exit: null,
@@ -170,8 +220,11 @@ export async function moveState(ctx) {
       phase: 'complete',
       sentinelPresent: true,
       boardMoved: true,
+      warnings: [],
     };
   }
+
+  ctx.transitionId = ctx.transitionId || createTransitionId();
 
   // Pre-Status evidence: exit-flush the departing row + entry row, then the
   // entry markers. Both are individually idempotent and re-read-verified.
@@ -229,6 +282,11 @@ export async function moveState(ctx) {
     };
   }
 
+  ctx.transitionEvidence = {
+    visitMarker: stampResult?.visitMarker ?? null,
+    sentinelMarker: sentinel?.sentinelMarker ?? null,
+  };
+
   // #741 — success-path post-condition: the board is confirmed at target and the
   // sentinel verified, so the authoritative `aitm-last-known-state` marker MUST
   // also read the target. Assert board == marker; a mismatch means a regression
@@ -253,6 +311,16 @@ export async function moveState(ctx) {
     }
   }
 
+  const warnings = [];
+  try {
+    ctx.transitionCommit = await writeTransitionCommit(ctx, ctx.transitionEvidence);
+  } catch (error) {
+    warnings.push({ code: 'commit-provenance-missing', message: error.message });
+    process.stderr.write(
+      `[move-state:warn] #${ctx.issueArg}: transition commit provenance missing: ${error.message}\n`
+    );
+  }
+
   const tail = await runPostCommitTail(ctx);
   return {
     exit: null,
@@ -261,5 +329,6 @@ export async function moveState(ctx) {
     phase: 'complete',
     sentinelPresent: true,
     boardMoved: true,
+    warnings,
   };
 }

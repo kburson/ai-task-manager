@@ -21,9 +21,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { hasPlanApprovedMarker, parsePlanApprovedMarker } from './markers.mjs';
+import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 const pexec = promisify(execFile);
-const R4P_ENTRY_RE = /<!--\s*aitm-entered-ready-for-plan(?:-\d+)?(?:\s+|:)/i;
 
 export async function defaultResolveTrunkSha({ cfg, projectDir }) {
   const ref = cfg?.trunkRef || 'origin/trunk';
@@ -41,7 +41,9 @@ export const planApprovedGuard = {
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     const body = ctx?.body ?? '';
     if (hasPlanApprovedMarker(body)) {
-      if (!R4P_ENTRY_RE.test(body)) return { ok: true };
+      if (!parseEntryMarkers(body).some((entry) => entry.state === 'ready-for-plan')) {
+        return { ok: true };
+      }
       const approved = parsePlanApprovedMarker(body);
       if (!approved?.trunkSha) {
         return { ok: false, reason: 'plan approval is missing current-trunk provenance' };

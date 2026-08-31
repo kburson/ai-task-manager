@@ -1,0 +1,369 @@
+// @story #1452
+
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildMoveContext,
+  normalizeMovementIntent,
+} from '../../../../task-tracker/lib/state-cursor.mjs';
+
+import {
+  createTaskSnapshot,
+  deriveStateVisitId,
+  provenance,
+  reconcileCurrentState,
+  requireFresh,
+} from '../../../../task-tracker/lib/task-snapshot.mjs';
+import {
+  decodeCanonical,
+  encodeCanonical,
+  parseBodyLedgerHead,
+  fingerprint,
+  renderBodyLedgerHead,
+  renderEventComment,
+  renderSpillHeadComment,
+} from '../../../../task-tracker/lib/resident-action-ledger-codec.mjs';
+import {
+  bodyPointingAt,
+  seededRepository,
+  validSpillHead,
+} from '../../../helpers/in-memory-repository-adapter.mjs';
+
+const COMPLETE_REVIEW = Object.freeze({
+  sentinelState: 'review',
+  statusState: 'review',
+  entryMarkerPresent: true,
+  exitRowPresent: true,
+  entryRowPresent: true,
+});
+
+test('movement intent is evidence-free, normalized, and immutable', () => {
+  const flags = { force: true, reason: 'operator recovery' };
+  const intent = normalizeMovementIntent({
+    trigger: 'bypass',
+    requestedTarget: 'DONE',
+    flags,
+  });
+  flags.reason = 'changed later';
+  assert.deepEqual(intent, {
+    trigger: 'bypass',
+    target: 'done',
+    flags: { force: true, reason: 'operator recovery' },
+    verb: 'bypass',
+  });
+  assert.equal(Object.isFrozen(intent), true);
+  assert.equal(Object.isFrozen(intent.flags), true);
+  assert.throws(
+    () => normalizeMovementIntent({ trigger: 'advance-forward', requestedTarget: ['review'] }),
+    /exactly one target/
+  );
+});
+
+test('move context freezes the final snapshot and skipped-action audit', () => {
+  const snapshot = { currentState: { value: 'test' }, stateVisitId: 'test:1' };
+  const context = buildMoveContext({
+    snapshot,
+    fromState: 'test',
+    movementIntent: normalizeMovementIntent({
+      trigger: 'bypass',
+      requestedTarget: 'done',
+      flags: { force: true },
+    }),
+    damageCarry: null,
+    skippedResidentActions: ['review-agent-validation'],
+  });
+  assert.deepEqual(context.skippedResidentActions, ['review-agent-validation']);
+  assert.equal(context.snapshot, snapshot);
+  assert.equal(Object.isFrozen(context), true);
+  assert.equal(Object.isFrozen(context.skippedResidentActions), true);
+});
+
+function snapshotInput({ checksFresh = true } = {}) {
+  return {
+    currentState: provenance('review', 'move-completion-reconciliation', {
+      fresh: true,
+      signals: COMPLETE_REVIEW,
+    }),
+    headSha: provenance('abc123', 'git-head', { fresh: true }),
+    checks: provenance([{ name: 'fast', status: 'passed' }], 'check-runs', {
+      fresh: checksFresh,
+    }),
+    derived: { refinementPlan: { estimate: 5 } },
+    actionLedger: { status: 'damaged', diagnostics: [{ code: 'missing-event' }] },
+    invocation: { mode: 'online', reads: ['issue', 'git'] },
+  };
+}
+
+test('confirmed movement selects the target from all five signals', () => {
+  const current = reconcileCurrentState({
+    target: 'review',
+    signals: COMPLETE_REVIEW,
+    lastKnownState: 'review',
+  });
+  assert.deepEqual(current, { status: 'current', state: 'review', recovery: null });
+  assert.equal(Object.isFrozen(current), true);
+});
+
+test('no single move-completion signal may be omitted', () => {
+  for (const [key, value] of [
+    ['sentinelState', 'test'],
+    ['statusState', 'test'],
+    ['entryMarkerPresent', false],
+    ['exitRowPresent', false],
+    ['entryRowPresent', false],
+  ]) {
+    const result = reconcileCurrentState({
+      target: 'review',
+      signals: { ...COMPLETE_REVIEW, [key]: value },
+      lastKnownState: 'review',
+    });
+    assert.notEqual(result.status, 'current', key);
+  }
+});
+
+test('marker-ahead-of-board is an incomplete move that must be replayed', () => {
+  const current = reconcileCurrentState({
+    target: 'review',
+    signals: {
+      sentinelState: 'test',
+      statusState: 'test',
+      entryMarkerPresent: true,
+      exitRowPresent: true,
+      entryRowPresent: true,
+    },
+    lastKnownState: 'review',
+  });
+  assert.deepEqual(current, {
+    status: 'incomplete-move',
+    state: 'test',
+    recovery: 'retry the same /task movement command',
+  });
+});
+
+test('Status at target without the terminal sentinel remains incomplete', () => {
+  const current = reconcileCurrentState({
+    target: 'review',
+    signals: { ...COMPLETE_REVIEW, sentinelState: 'test' },
+    lastKnownState: 'review',
+  });
+  assert.equal(current.status, 'incomplete-move');
+  assert.equal(current.state, 'review');
+});
+
+test('sentinel post-condition contradiction is drift', () => {
+  const current = reconcileCurrentState({
+    target: 'review',
+    signals: { ...COMPLETE_REVIEW, statusState: 'test' },
+    lastKnownState: 'review',
+  });
+  assert.deepEqual(current, {
+    status: 'drift',
+    state: 'review',
+    recovery: '/task reconcile accept-live #N',
+  });
+});
+
+test('modern visit identity selects the marker transition ID and diagnoses missing commit provenance', () => {
+  assert.deepEqual(
+    deriveStateVisitId({
+      state: 'review',
+      marker: { visit: 2, occurrence: 17, move: 'transition-review-2' },
+      occurrence: 17,
+      transitionCommit: null,
+    }),
+    {
+      id: 'transition-review-2',
+      kind: 'transition',
+      commitProvenance: 'missing',
+      diagnostics: ['commit-provenance-missing'],
+    }
+  );
+
+  const verified = deriveStateVisitId({
+    state: 'review',
+    marker: { visit: 2, move: 'transition-review-2' },
+    occurrence: 17,
+    transitionCommit: { transitionId: 'transition-review-2', verified: true },
+  });
+  assert.equal(verified.commitProvenance, 'verified');
+  assert.deepEqual(verified.diagnostics, []);
+  assert.equal(Object.isFrozen(verified), true);
+});
+
+test('legacy visit identity uses state, visit suffix, and durable occurrence but not timestamp', () => {
+  const first = deriveStateVisitId({
+    state: 'review',
+    marker: { visit: 2, ts: '2026-08-31T01:02:03Z' },
+    occurrence: 17,
+  });
+  const second = deriveStateVisitId({
+    state: 'review',
+    marker: { visit: 2, ts: '2030-01-01T00:00:00Z' },
+    occurrence: 17,
+  });
+  assert.deepEqual(first, second);
+  assert.equal(first.id, 'legacy:review:2:17');
+  assert.equal(first.kind, 'legacy');
+});
+
+test('snapshot freshness is field-scoped and immutable', () => {
+  const input = snapshotInput({ checksFresh: false });
+  const snapshot = createTaskSnapshot(input);
+  assert.deepEqual(requireFresh(snapshot, ['currentState', 'headSha']), {
+    ok: true,
+    missing: [],
+  });
+  assert.deepEqual(requireFresh(snapshot, ['checks']), { ok: false, missing: ['checks'] });
+  assert.deepEqual(requireFresh(snapshot, ['checks', 'absent']), {
+    ok: false,
+    missing: ['checks', 'absent'],
+  });
+  assert.throws(() => {
+    snapshot.currentState.value = 'done';
+  }, TypeError);
+  assert.throws(() => {
+    snapshot.derived.refinementPlan.estimate = 99;
+  }, TypeError);
+  assert.throws(() => {
+    snapshot.actionLedger.diagnostics.push({ code: 'other' });
+  }, TypeError);
+  assert.throws(() => {
+    snapshot.invocation.reads.push('checks');
+  }, TypeError);
+  assert.equal(input.derived.refinementPlan.estimate, 5, 'caller-owned input is not mutated');
+});
+
+test('provenance copies and deeply freezes details', () => {
+  const details = { fresh: true, evidence: { comments: ['101'] } };
+  const field = provenance('review', 'issue-record', details);
+  details.evidence.comments.push('102');
+  assert.deepEqual(field.evidence.comments, ['101']);
+  assert.equal(Object.isFrozen(field), true);
+  assert.equal(Object.isFrozen(field.evidence), true);
+  assert.equal(Object.isFrozen(field.evidence.comments), true);
+});
+
+test('ledger codecs are canonical, strict, and preserve inline heads', () => {
+  const left = encodeCanonical({ z: 1, a: { y: 2, x: 3 } });
+  const right = encodeCanonical({ a: { x: 3, y: 2 }, z: 1 });
+  assert.equal(left, right);
+  assert.deepEqual(decodeCanonical(left), { a: { x: 3, y: 2 }, z: 1 });
+  assert.throws(() => decodeCanonical(`${left}=`), /base64url/);
+
+  const head = {
+    mode: 'inline',
+    visit: 'review:1',
+    commit: '101:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    definition: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    audit: '101:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    actions: {},
+  };
+  assert.deepEqual(parseBodyLedgerHead(renderBodyLedgerHead(head)), head);
+});
+
+test('spill collection race retries once from the fresh body pointer', async () => {
+  const firstHead = validSpillHead({ visit: 'review:1' });
+  const secondHead = validSpillHead({
+    visit: 'review:1',
+    definition: `sha256:${'d'.repeat(64)}`,
+  });
+  const repository = seededRepository({
+    body: bodyPointingAt('101', firstHead),
+    missingComments: ['101'],
+  });
+  repository.onMissingComment('101', () => repository.setBody(bodyPointingAt('102', secondHead)));
+  repository.addComment('102', secondHead);
+
+  const snapshot = await repository.hydrateTask({ issue: 1117, cwd: '/worktree' });
+  assert.equal(snapshot.actionLedger.status, 'clean');
+  assert.equal(snapshot.actionLedger.visitStatus, 'current');
+  assert.deepEqual(repository.reads.commentIds, ['101', '102']);
+  assert.equal(repository.reads.issueBody, 2);
+  assert.equal(repository.reads.timeline, 0);
+});
+
+test('current-attempt hydration follows at most three point-read links', async () => {
+  function event(commentId, previousCommentId, previousHash, phase) {
+    return renderEventComment({
+      schema: 'aitm.resident-action-event/v1',
+      eventId: `event-${commentId}`,
+      previousCommentId,
+      previousHash,
+      actionPreviousCommentId: previousCommentId,
+      actionPreviousHash: previousHash,
+      issue: 1117,
+      state: 'review',
+      stateVisitId: 'review:1',
+      actionId: 'review-step',
+      attemptId: 1,
+      phase,
+      correlation: { kind: 'test', value: 'one' },
+      ts: '2026-08-31T00:00:00Z',
+    });
+  }
+  const event100 = event('100', null, null, 'intent');
+  const event101 = event('101', '100', fingerprint(event100), 'intent');
+  const event102 = event('102', '101', fingerprint(event101), 'waiting');
+  const event103 = event('103', '102', fingerprint(event102), 'resolved');
+  const repository = seededRepository({
+    body: renderBodyLedgerHead({
+      mode: 'inline',
+      visit: 'review:1',
+      commit: '100:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      definition: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      audit: '103:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      actions: {
+        'review-step': {
+          commentId: '103',
+          hash: fingerprint(event103),
+          attemptId: 1,
+          phase: 'resolved',
+        },
+      },
+    }),
+    actionId: 'review-step',
+  });
+  repository.addComment('103', event103);
+  repository.addComment('102', event102);
+  repository.addComment('101', event101);
+  repository.addComment('100', event100);
+
+  const snapshot = await repository.hydrateTask({ issue: 1117, cwd: '/worktree' });
+  assert.deepEqual(repository.reads.commentIds, ['103', '102', '101']);
+  assert.equal(snapshot.actionLedger.events.length, 3);
+  assert.equal(snapshot.actionLedger.truncated, true);
+  assert.equal(repository.reads.timeline, 0);
+});
+
+test('a still-current missing spill is an observation diagnostic, not a hydration throw', async () => {
+  const spill = validSpillHead();
+  const repository = seededRepository({
+    body: bodyPointingAt('404', spill),
+    missingComments: ['404'],
+  });
+  const snapshot = await repository.hydrateTask({ issue: 1117, cwd: '/worktree' });
+  assert.equal(snapshot.actionLedger.status, 'damaged');
+  assert.equal(snapshot.actionLedger.diagnostics[0].code, 'spill-head-missing');
+  assert.deepEqual(repository.reads.commentIds, ['404']);
+  assert.equal(repository.reads.issueBody, 2);
+});
+
+test('offline hydration performs no GitHub operation', async () => {
+  const repository = seededRepository({ rejectNetwork: true });
+  await repository.hydrateTask({ issue: 1117, cwd: '/worktree', mode: 'offline' });
+  assert.deepEqual(repository.networkOperations, []);
+  await assert.rejects(() => repository.requestTransition({}), /offline-boundary-refused/);
+});
+
+test('spill-head comments round-trip independently of body pointers', () => {
+  const rendered = renderSpillHeadComment({
+    schema: 'aitm.resident-action-head/v1',
+    visit: 'review:1',
+    commit: null,
+    definition: `sha256:${'d'.repeat(64)}`,
+    audit: null,
+    actions: {},
+  });
+  assert.match(rendered, /AITM resident-action head/);
+});

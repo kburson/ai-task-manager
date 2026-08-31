@@ -384,6 +384,24 @@ export const VERB_REFERENCE = {
       'node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase terminal',
     ],
   },
+  'action-ledger': {
+    topic: 'evidence',
+    summary:
+      'Audit resident-action evidence, collect a proven unreachable spill head, or reconcile damaged evidence with named human approval.',
+    usage:
+      '/task action-ledger #N <audit|gc|reconcile> [--comment <id>] [--accept-live --reason <text> --approved-by <login>]',
+    flags: [
+      { flag: '--comment <id>', desc: 'spill-head comment considered for reachability-proven GC' },
+      { flag: '--accept-live', desc: 'explicitly choose the human-approved correction path' },
+      { flag: '--reason <text>', desc: 'required explanation for reconciliation' },
+      { flag: '--approved-by <login>', desc: 'named human approver required for reconciliation' },
+    ],
+    examples: [
+      '/task action-ledger 1117 audit',
+      '/task action-ledger 1117 gc --comment 42',
+      '/task action-ledger 1117 reconcile --accept-live --reason "deleted event" --approved-by kendrick',
+    ],
+  },
   reject: {
     topic: 'board',
     summary: 'Reject an issue under review (returns it for rework). Reason required.',
@@ -467,13 +485,17 @@ export const VERB_REFERENCE = {
     summary:
       'Close through a durable terminal transaction; partial work recovers, and an already-closed retry is read-only.',
     usage:
-      '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
+      '/task close [#N] [--force] [--repair] [--restart-stale-transaction] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
       {
         flag: '--repair',
         desc: 'replay the full atomic close from Done (timing flush, board fields, lifecycle boxes, audit rows) when a PR closing-reference auto-closed the issue and bypassed the gated chain',
+      },
+      {
+        flag: '--restart-stale-transaction',
+        desc: 'restart a stale pre-terminal Delivered close transaction only after fresh exact-SHA Test, Review, delivery, clean-worktree, and live-state checks; writes immutable supersession evidence before replacing the protected marker',
       },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
       {
@@ -490,6 +512,7 @@ export const VERB_REFERENCE = {
       '/task close',
       '/task close 667 --answer yes',
       '/task close 708 --repair',
+      '/task close 1461 --restart-stale-transaction',
       '/task close 1403 --as incorporated --of 1381',
       '/task close 939 --of 1381',
     ],

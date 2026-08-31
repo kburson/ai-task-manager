@@ -12,6 +12,73 @@ import {
   ensureCloseEstimationOutcome,
   resolveEstimationOutcomeProjectDir,
 } from '../../../../task-tracker/verbs/close.mjs';
+import {
+  authorizeDeliveredCloseRestart,
+  renderDeliveredCloseSupersessionComment,
+  resolveDeliveredCloseSupersession,
+} from '../../../../task-tracker/lib/delivered-close-supersession.mjs';
+import {
+  readDeliveredCloseTransactions,
+  TERMINAL_CLOSE_STEPS,
+  upsertDeliveredCloseTransaction,
+} from '../../../../task-tracker/lib/close-convergence.mjs';
+
+const RESTART_HEAD = 'a'.repeat(40);
+const STALE_HEAD = 'b'.repeat(40);
+
+function staleRestartTransaction(completedSteps = ['timing']) {
+  return {
+    schema: 'aitm.delivered-close/v1',
+    transactionId: 'stale-close-transaction',
+    issueNumber: 925,
+    acceptedSha: STALE_HEAD,
+    reviewAuthority: 'gate-bypassed',
+    completedSteps,
+  };
+}
+
+function supersessionComment(stale = staleRestartTransaction(), id = 77) {
+  const authorization = authorizeDeliveredCloseRestart({
+    repository: 'o/r',
+    issueNumber: 925,
+    oldTransaction: stale,
+    newAcceptedSha: RESTART_HEAD,
+    newReviewAuthority: 'gate-bypassed',
+    live: {
+      boardState: 'review',
+      issueClosed: false,
+      terminalDisposition: null,
+      labels: ['ToDo'],
+      bindingStatus: 'pending',
+    },
+  });
+  const { record } = resolveDeliveredCloseSupersession({
+    authorization,
+    comments: [],
+    randomUUIDFn: () => 'replacement-close-transaction',
+  });
+  return {
+    id,
+    body: renderDeliveredCloseSupersessionComment(record),
+    user: { login: 'kburson' },
+    created_at: '2026-08-31T21:00:00Z',
+    updated_at: '2026-08-31T21:00:00Z',
+    issue_url: 'https://api.github.com/repos/o/r/issues/925',
+  };
+}
+
+function assertNoTerminalWrites(run) {
+  assert.deepEqual(
+    {
+      board: run.calls.movesToDone.length,
+      disposition: run.calls.terminalDispositions,
+      issue: run.calls.issueCloses,
+      labels: run.calls.labelWrites,
+      binding: run.calls.bindingReleases,
+    },
+    { board: 0, disposition: 0, issue: 0, labels: 0, binding: 0 }
+  );
+}
 
 test('close asks the outcome runtime about forecast-free epics and permits a legacy skip', async () => {
   const calls = [];
@@ -265,6 +332,213 @@ test('complete recovery is not reused when a later close is a new aberration', a
   assert.ok(run.calls.mutations > 0);
   assert.notEqual(readUnauthorizedCloseRecovery(run.body)?.tx, 'tx-prior-complete');
   assert.equal(run.exitCode, 0);
+});
+
+test('stale restart refuses unsafe live state before audit or terminal mutation', async () => {
+  const staleBody = upsertDeliveredCloseTransaction(closeBody(), staleRestartTransaction());
+  const cases = [
+    ['no transaction', { body: closeBody() }],
+    [
+      'same SHA',
+      {
+        body: upsertDeliveredCloseTransaction(closeBody(), {
+          ...staleRestartTransaction(),
+          acceptedSha: RESTART_HEAD,
+        }),
+      },
+    ],
+    ['board not Review', { body: staleBody, boardState: 'backlog' }],
+    [
+      'issue closed',
+      { body: staleBody, closeSnapshot: { issueClosed: true, stateReason: 'completed' } },
+    ],
+    ['Delivered disposition', { body: staleBody, terminalDisposition: 'Delivered' }],
+    ['no close-managed labels', { body: staleBody, liveLabels: [] }],
+    ['released binding', { body: staleBody, bindingReleaseStatus: 'released' }],
+    ['unknown binding', { body: staleBody, bindingReleaseStatus: 'unknown' }],
+    [
+      'dirty checkout',
+      { body: staleBody, dirtyWorkspace: { dirty: true, total: 1, files: ['x'] } },
+    ],
+  ];
+
+  for (const [name, options] of cases) {
+    const run = await runClose({
+      boardState: 'review',
+      closeSnapshot: { issueClosed: false, stateReason: null },
+      restartStaleTransaction: true,
+      acceptedSha: RESTART_HEAD,
+      gateReviewToDone: false,
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+      ...options,
+    });
+    assert.equal(run.exitCode, 1, name);
+    assert.equal(run.calls.supersessionCommentCreates, 0, name);
+    assert.equal(run.calls.mutations, 0, name);
+    assertNoTerminalWrites(run);
+  }
+});
+
+test('stale restart refuses terminal prefixes and stale delivery authority', async () => {
+  const terminal = await runClose({
+    boardState: 'done',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(
+      closeBody(),
+      staleRestartTransaction(TERMINAL_CLOSE_STEPS.slice(0, 4))
+    ),
+    restartStaleTransaction: true,
+    acceptedSha: RESTART_HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+  });
+  assert.equal(terminal.exitCode, 1);
+  assert.equal(terminal.calls.supersessionCommentCreates, 0);
+  assert.equal(terminal.calls.mutations, 0);
+  assertNoTerminalWrites(terminal);
+
+  const staleAuthority = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), staleRestartTransaction()),
+    restartStaleTransaction: true,
+    acceptedSha: RESTART_HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+    deliveryRefusal: new Error('close-delivery-receipt:test-sha-mismatch'),
+  });
+  assert.equal(staleAuthority.exitCode, 1);
+  assert.equal(staleAuthority.calls.supersessionCommentLists, 0);
+  assert.equal(staleAuthority.calls.mutations, 0);
+  assertNoTerminalWrites(staleAuthority);
+});
+
+test('stale restart fails closed across comment and body persistence failures', async () => {
+  const body = upsertDeliveredCloseTransaction(closeBody(), staleRestartTransaction());
+  const cases = [
+    ['list', { supersessionCommentListError: new Error('list unavailable') }, ['comment:list']],
+    [
+      'create',
+      { supersessionCommentCreateError: new Error('create unavailable') },
+      ['comment:list', 'comment:create'],
+    ],
+    [
+      'read',
+      { supersessionCommentReadError: new Error('read unavailable') },
+      ['comment:list', 'comment:create', 'comment:read'],
+    ],
+    [
+      'readback',
+      {
+        supersessionCommentReadTransform: (comment) => ({
+          ...comment,
+          body: `${comment.body}\nmodified`,
+        }),
+      },
+      ['comment:list', 'comment:create', 'comment:read'],
+    ],
+    [
+      'body refusal',
+      { mutationResult: { status: 'refused' } },
+      ['comment:list', 'comment:create', 'comment:read', 'body:mutate'],
+    ],
+    [
+      'body readback',
+      { mutationResult: ({ currentBody }) => ({ status: 'ok', body: currentBody }) },
+      ['comment:list', 'comment:create', 'comment:read', 'body:mutate'],
+    ],
+  ];
+
+  for (const [name, options, expectedOrder] of cases) {
+    const run = await runClose({
+      boardState: 'review',
+      closeSnapshot: { issueClosed: false, stateReason: null },
+      body,
+      restartStaleTransaction: true,
+      acceptedSha: RESTART_HEAD,
+      gateReviewToDone: false,
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+      ...options,
+    });
+    assert.equal(run.exitCode, 1, name);
+    assert.deepEqual(run.calls.order, expectedOrder, name);
+    assertNoTerminalWrites(run);
+  }
+});
+
+test('stale restart reuses matching evidence and rejects duplicates before body mutation', async () => {
+  const stale = staleRestartTransaction();
+  const comment = supersessionComment(stale);
+  const retry = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), stale),
+    restartStaleTransaction: true,
+    supersessionComments: [comment],
+    acceptedSha: RESTART_HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+  });
+  assert.equal(retry.exitCode, 0);
+  assert.deepEqual(retry.calls.order.slice(0, 2), ['comment:list', 'body:mutate']);
+  assert.equal(retry.calls.supersessionCommentCreates, 0);
+  assert.equal(
+    readDeliveredCloseTransactions(retry.body)[0].transactionId,
+    'replacement-close-transaction'
+  );
+
+  const duplicate = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), stale),
+    restartStaleTransaction: true,
+    supersessionComments: [comment, { ...comment, id: 78 }],
+    acceptedSha: RESTART_HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+  });
+  assert.equal(duplicate.exitCode, 1);
+  assert.equal(duplicate.calls.supersessionCommentCreates, 0);
+  assert.equal(duplicate.calls.mutations, 0);
+  assertNoTerminalWrites(duplicate);
+});
+
+test('stale restart is incompatible with force, repair, answer, and disposition lanes', async () => {
+  for (const extraRest of [['--force'], ['--repair'], ['--answer', 'yes'], ['--as', 'duplicate']]) {
+    await assert.rejects(
+      runClose({ restartStaleTransaction: true, extraRest }),
+      /delivered-close-supersession:incompatible-flags/
+    );
+  }
+});
+
+test('ordinary close retains same-SHA resume and stale-SHA refusal without restart writes', async () => {
+  const sameSha = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), {
+      ...staleRestartTransaction(),
+      acceptedSha: RESTART_HEAD,
+    }),
+    acceptedSha: RESTART_HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+  });
+  assert.equal(sameSha.exitCode, 0);
+  assert.equal(sameSha.calls.supersessionCommentLists, 0);
+  assert.equal(sameSha.calls.supersessionCommentCreates, 0);
+
+  const staleSha = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), staleRestartTransaction()),
+    acceptedSha: RESTART_HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+  });
+  assert.equal(staleSha.exitCode, 1);
+  assert.deepEqual(staleSha.calls.order, []);
+  assertNoTerminalWrites(staleSha);
 });
 
 for (const [name, mutationResult, expected] of [

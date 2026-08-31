@@ -127,6 +127,7 @@ async function invoke(guard, ctx) {
       // etc.) without the guard itself doing I/O.
       const out = { ok: true };
       if (result.warn != null) out.warn = result.warn;
+      if (result.derived && typeof result.derived === 'object') out.derived = result.derived;
       return out;
     }
     if (result && result.ok === false) {
@@ -137,6 +138,7 @@ async function invoke(guard, ctx) {
       const out = { ok: false, reason: result.reason ?? '(no reason given)' };
       if (Array.isArray(result.blockers)) out.blockers = result.blockers;
       if (result.warn != null) out.warn = result.warn;
+      if (result.derived && typeof result.derived === 'object') out.derived = result.derived;
       return out;
     }
     return {
@@ -156,8 +158,22 @@ export async function runGuards(
 ) {
   const refusals = [];
   const warns = [];
+  let derived = Object.freeze({});
   const fromSlot = GUARDS[fromState];
   const toSlot = GUARDS[toState];
+
+  function finish(out) {
+    if (warns.length > 0) out.warns = warns;
+    if (Object.keys(derived).length > 0) out.derived = derived;
+    if (
+      ctx &&
+      typeof ctx === 'object' &&
+      Object.prototype.hasOwnProperty.call(derived, 'refinementPlan')
+    ) {
+      Reflect.set(ctx, 'refinementPlan', derived.refinementPlan);
+    }
+    return out;
+  }
 
   function consume(g, r) {
     if (!r.ok) {
@@ -166,6 +182,7 @@ export async function runGuards(
       refusals.push(entry);
     }
     if (r.warn != null) warns.push({ id: g.id, warn: r.warn });
+    if (r.derived) derived = Object.freeze({ ...derived, ...r.derived });
   }
 
   // Unknown states are *not* fatal here — runGuards is called from already-
@@ -183,13 +200,9 @@ export async function runGuards(
   }
 
   if (refusals.length === 0) {
-    const out = { ok: true, refusals: [] };
-    if (warns.length > 0) out.warns = warns;
-    return out;
+    return finish({ ok: true, refusals: [] });
   }
-  const out = { ok: false, refusals };
-  if (warns.length > 0) out.warns = warns;
-  return out;
+  return finish({ ok: false, refusals });
 }
 
 // Exposed for tests; not part of the public registration API.

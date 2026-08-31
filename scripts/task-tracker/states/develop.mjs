@@ -13,8 +13,9 @@ import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
-  name: 'develop',
+  id: 'develop',
   entryGuards: Object.freeze([contiguityEntryGuard]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,
     developExitCodeCompleteGuard,
@@ -23,5 +24,4 @@ export default Object.freeze({
     developExitEpicChildrenDoneGuard,
     childCannotLeadEpicExitGuard,
   ]),
-  onEnter: Object.freeze([]),
 });

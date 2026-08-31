@@ -22,6 +22,7 @@ import {
   postReentryAuditComment,
   STAGES,
 } from '../stage-entry-markers.mjs';
+import { serializeEntryMarker } from '../stage-entry-grammar.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -180,7 +181,7 @@ export async function runStatusWrite(ctx) {
 // verbs must NOT stamp these markers themselves. Failures surface via
 // `writeIssueBodyWithRetry`'s audit-comment path (#168).
 export async function stampEntryMarkers(ctx) {
-  const { issueArg, stateArg, cfg, SKIP_NETWORK, gh, pexec } = ctx;
+  const { issueArg, stateArg, transitionId, cfg, SKIP_NETWORK, gh, pexec } = ctx;
   if (!(!SKIP_NETWORK && STAGES.includes(stateArg))) return { priorState: undefined };
   try {
     const [{ writeIssueBodyWithRetry }, { writeLastKnownState, readLastKnownState }] =
@@ -198,7 +199,7 @@ export async function stampEntryMarkers(ctx) {
     const priorState = readLastKnownState(beforeBody).state;
     const stampTs = new Date().toISOString();
     const priorVisitCount = getStageVisitCount(beforeBody, stateArg);
-    let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs);
+    let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs, transitionId);
     nextBody = writeLastKnownState(nextBody, stateArg);
     // Visit number this stamp produced. If stampEntryMarker treated the call
     // as a no-op (same ts re-stamp), the count is unchanged and we should
@@ -242,7 +243,19 @@ export async function stampEntryMarkers(ctx) {
         ts: stampTs,
       });
     }
-    return { priorState };
+    const visitMarker = serializeEntryMarker({
+      state: stateArg,
+      visit: nextVisitCount,
+      ts: stampTs,
+      move: transitionId,
+    });
+    return {
+      priorState,
+      visitMarker,
+      visit: nextVisitCount,
+      ts: stampTs,
+      transitionId: transitionId ?? null,
+    };
   } catch (err) {
     // #544 — a stamp failure here is non-atomic with the already-committed
     // board move (runStatusWrite ran first): the board now shows `stateArg`

@@ -7,10 +7,38 @@ import assert from 'node:assert/strict';
 
 import {
   INVARIANT_MARKER_PATTERNS,
+  MarkerAdvanceError,
   findLostMarkers,
   findNewMalformedVerifiedCmds,
   findAcsWithoutVerifierOrInvalidTag,
+  validateMarkerAdvances,
 } from '../../../../task-tracker/lib/body-invariants.mjs';
+import { renderBodyLedgerHead } from '../../../../task-tracker/lib/resident-action-ledger-codec.mjs';
+
+const HASH_A = `sha256:${'a'.repeat(64)}`;
+const HASH_B = `sha256:${'b'.repeat(64)}`;
+const HASH_C = `sha256:${'c'.repeat(64)}`;
+
+function inlineHead({ visit = 'review:1', phase = 'intent', attemptId = 1, hash = HASH_A } = {}) {
+  return renderBodyLedgerHead({
+    mode: 'inline',
+    visit,
+    commit: `10:${hash}`,
+    definition: HASH_B,
+    audit: `10:${hash}`,
+    actions: { review: { commentId: '10', hash, attemptId, phase } },
+  });
+}
+
+function spillHead({ visit = 'review:1', headHash = HASH_C } = {}) {
+  return renderBodyLedgerHead({
+    mode: 'spill',
+    visit,
+    commit: `11:${HASH_B}`,
+    audit: `11:${HASH_B}`,
+    head: `20:${headHash}`,
+  });
+}
 
 test('INVARIANT_MARKER_PATTERNS includes the canonical invariant marker set', () => {
   const names = INVARIANT_MARKER_PATTERNS.map((p) => p.name);
@@ -30,6 +58,103 @@ test('INVARIANT_MARKER_PATTERNS includes the canonical invariant marker set', ()
   ]) {
     assert.ok(names.includes(required), `missing pattern: ${required}`);
   }
+  assert.equal(
+    INVARIANT_MARKER_PATTERNS.find((pattern) => pattern.name === 'aitm-resident-action-ledger-head')
+      ?.kind,
+    'advance'
+  );
+});
+
+test('resident-action ledger advance is narrow and phase monotonic', () => {
+  const base = inlineHead();
+  const waiting = inlineHead({ phase: 'waiting', hash: HASH_B });
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances(base, waiting, {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+  assert.throws(
+    () => validateMarkerAdvances(waiting, base, { allowMarkerAdvance: [] }),
+    (error) => error instanceof MarkerAdvanceError && error.reason === 'unauthorized'
+  );
+  assert.throws(
+    () =>
+      validateMarkerAdvances(waiting, base, {
+        allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+      }),
+    (error) => error instanceof MarkerAdvanceError && error.reason === 'phase-regression'
+  );
+});
+
+test('same-visit spill to inline is refused but new-visit reset is permitted', () => {
+  const spilled = spillHead();
+  assert.throws(
+    () =>
+      validateMarkerAdvances(spilled, inlineHead(), {
+        allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+      }),
+    (error) => error instanceof MarkerAdvanceError && error.reason === 'spill-regression'
+  );
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances(spilled, inlineHead({ visit: 'review:2' }), {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+});
+
+test('same-visit inline to spill and spill to spill are permitted', () => {
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances(inlineHead(), spillHead(), {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances(spillHead(), spillHead({ headHash: HASH_A }), {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+});
+
+test('inline marker and final-body limits accept the boundary and refuse overflow', () => {
+  const marker = inlineHead({ visit: 'review:2' });
+  const atMarkerLimit = marker.replace('-->', `${' '.repeat(8192 - marker.length)}-->`);
+  const overMarkerLimit = atMarkerLimit.replace('-->', ' -->');
+  assert.equal(atMarkerLimit.length, 8192);
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances('', atMarkerLimit, {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+  assert.throws(
+    () =>
+      validateMarkerAdvances('', overMarkerLimit, {
+        allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+      }),
+    (error) => error instanceof MarkerAdvanceError && error.reason === 'inline-budget'
+  );
+
+  const atBodyLimit = `${'x'.repeat(57344 - marker.length)}${marker}`;
+  assert.equal(atBodyLimit.length, 57344);
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances('', atBodyLimit, {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+  assert.throws(
+    () =>
+      validateMarkerAdvances('', `x${atBodyLimit}`, {
+        allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+      }),
+    (error) => error instanceof MarkerAdvanceError && error.reason === 'inline-budget'
+  );
+});
+
+test('findLostMarkers treats the advancing ledger marker as presence-only', () => {
+  assert.deepEqual(
+    findLostMarkers(inlineHead(), inlineHead({ phase: 'waiting', hash: HASH_B })),
+    []
+  );
+  assert.deepEqual(findLostMarkers(inlineHead(), ''), ['aitm-resident-action-ledger-head']);
 });
 
 test('findLostMarkers returns empty list when next preserves all markers', () => {

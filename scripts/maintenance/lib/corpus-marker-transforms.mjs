@@ -33,6 +33,10 @@ import {
 } from '../../task-tracker/lib/markers.mjs';
 import { serializeProofMarker, parseProofMarker } from '../../task-tracker/lib/proof-marker.mjs';
 import { buildHumanReviewerMarker } from '../../task-tracker/lib/human-reviewer-audit.mjs';
+import {
+  LEGACY_COLON_ENTRY_MARKER_RE,
+  serializeEntryMarker,
+} from '../../task-tracker/lib/stage-entry-grammar.mjs';
 
 // A JSON-ish payload begins (after trim) with `{` — the structured deep-dive
 // verdict relics C2 handled. The generic lifecycle transform must skip these.
@@ -43,11 +47,9 @@ function isJsonPayload(value) {
 // ---------------------------------------------------------------------------
 // 1. stage-entry — `aitm-entered-<stage>[-<visit>]: <ts>` → ts="<ts>" (#374)
 // ---------------------------------------------------------------------------
-const ENTERED_LEGACY_RE = /<!--\s*aitm-entered-([a-z]+)(?:-(\d+))?:\s*([^>\n]+?)\s*-->/gi;
-
 export function migrateStageEntry(body) {
-  return String(body ?? '').replace(ENTERED_LEGACY_RE, (_m, stage, visit, ts) =>
-    serializeMarker(`entered-${stage}${visit ? `-${visit}` : ''}`, { ts })
+  return String(body ?? '').replace(LEGACY_COLON_ENTRY_MARKER_RE, (_m, state, visit, ts) =>
+    serializeEntryMarker({ state, visit: visit ? Number(visit) : 1, ts })
   );
 }
 

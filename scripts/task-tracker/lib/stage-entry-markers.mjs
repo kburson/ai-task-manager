@@ -7,7 +7,13 @@ import { promisify } from 'node:util';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
+import { serializeMarker } from './marker-grammar.mjs';
+import {
+  ENTRY_MARKER_RE,
+  parseEntryMarker,
+  parseEntryMarkers as parseGrammarEntryMarkers,
+  serializeEntryMarker,
+} from './stage-entry-grammar.mjs';
 import { PROGRESS_MARKERS_HEADING } from './markers.mjs';
 import { stateIds, isEntryHistoryEdge } from './lifecycle-policy/index.mjs';
 
@@ -47,22 +53,8 @@ function buildLegalTransitions() {
 }
 export const LEGAL_TRANSITIONS = buildLegalTransitions();
 
-// Reader tolerates BOTH the legacy colon form `aitm-entered-<stage>[-N]: <iso>`
-// AND the new property-grammar form `aitm-entered-<stage>[-N] ts="<iso>"` (#374).
-// Group 1 = stage, group 2 = optional visit, group 3 = legacy ts, group 4 = new
-// ts (which may carry `&quot;`-escaped quotes — unescaped by parseEntryMarkers).
-// The migration widens the reader strictly: every body that parsed before still
-// parses. The corpus rewrite of historical bodies is deferred to #369.
-// Stage group accepts hyphenated legacy slugs via `[a-z]+(?:-[a-z]+)*`
-// — this matches whole alpha-hyphen words but stops before the `-<digits>` visit
-// suffix. The historical `aitm-entered-on-deck[-N]` spelling is retained in
-// issue bodies and projected to canonical `ready-for-plan` by the reader below.
-const ENTRY_RE_GLOBAL =
-  /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-(\d+))?(?::\s*([^>\s]+)|\s+ts="((?:[^"]|&quot;)*)")\s*-->/gi;
-
-function entryMarker(stage, ts, visit = 1) {
-  const suffix = visit > 1 ? `-${visit}` : '';
-  return serializeMarker(`entered-${stage}${suffix}`, { ts });
+function entryMarker(stage, ts, visit = 1, move = null) {
+  return serializeEntryMarker({ state: stage, visit, ts, move });
 }
 
 function backfillAuditMarker(stage, reason, ts) {
@@ -72,11 +64,9 @@ function backfillAuditMarker(stage, reason, ts) {
   return serializeMarker('backfill', { stage, reason: safeReason, ts });
 }
 
-function stageMarkerRe(stage) {
-  // Matches both legacy `: <iso>` and new `ts="<iso>"` forms (#374).
-  return new RegExp(
-    `<!--\\s*aitm-entered-${markerStagePattern(stage)}(?:-\\d+)?(?::\\s*[^>]*?|\\s+ts="[^"]*")\\s*-->`,
-    'i'
+function hasStageEntryMarker(body, stage) {
+  return parseGrammarEntryMarkers(body).some(
+    (entry) => canonicalStage(entry.state) === canonicalStage(stage)
   );
 }
 
@@ -110,38 +100,41 @@ function insertBeforeFieldDb(body, marker) {
   return `${placeUnderProgressHeading(src, marker)}\n`;
 }
 
-export function stampEntryMarker(body, stage, ts) {
+export function stampEntryMarker(body, stage, ts, move = null) {
   if (!KNOWN_STAGES.has(stage)) {
     throw new Error(`stampEntryMarker: unknown stage "${stage}"`);
   }
   if (!ts) throw new Error('stampEntryMarker: ts is required');
   const src = String(body || '');
-  const tuples = parseEntryMarkers(src);
+  const tuples = parseGrammarEntryMarkers(src).map((entry) => ({
+    ...entry,
+    stage: canonicalStage(entry.state),
+  }));
   let maxVisit = 0;
   for (const t of tuples) {
     if (t.stage === stage && t.visit > maxVisit) maxVisit = t.visit;
   }
-  // Idempotency: re-stamping the exact same (stage, ts) pair is a no-op.
-  // Distinct ts always advances the visit count.
-  if (tuples.some((t) => t.stage === stage && t.ts === ts)) return src;
+  // Modern idempotency keys on stable transition identity, not timestamp.
+  // Legacy callers retain the exact historical (stage, ts) behavior.
+  if (
+    tuples.some((tuple) =>
+      move ? tuple.stage === stage && tuple.move === move : tuple.stage === stage && tuple.ts === ts
+    )
+  ) {
+    return src;
+  }
   const nextVisit = maxVisit + 1;
-  return insertBeforeFieldDb(src, entryMarker(stage, ts, nextVisit));
+  return insertBeforeFieldDb(src, entryMarker(stage, ts, nextVisit, move));
 }
 
 // Returns an ordered list of `{stage, visit, ts}` tuples in document order.
 // Legacy markers without a visit suffix parse as `visit: 1`.
 export function parseEntryMarkers(body) {
-  const src = String(body || '');
-  const out = [];
-  ENTRY_RE_GLOBAL.lastIndex = 0;
-  let m;
-  while ((m = ENTRY_RE_GLOBAL.exec(src)) !== null) {
-    const [, rawStage, visitStr, legacyTs, newTs] = m;
-    const visit = visitStr ? Number(visitStr) : 1;
-    const ts = legacyTs !== undefined ? legacyTs : unescapeValue(newTs);
-    out.push({ stage: canonicalStage(rawStage), visit, ts });
-  }
-  return out;
+  return parseGrammarEntryMarkers(body).map(({ state, visit, ts }) => ({
+    stage: canonicalStage(state),
+    visit,
+    ts,
+  }));
 }
 
 // First-visit-only view as a `{stage: ts}` map. For callers that only need
@@ -239,20 +232,17 @@ export function stripEntryMarkersAfter(body, stage) {
   const src = String(body || '');
   const idx = STAGE_INDEX[stage];
   const stripped = [];
-  let out = src;
-  for (let i = idx + 1; i < STAGES.length; i++) {
-    const future = STAGES[i];
-    // Strip both legacy `: <iso>` and new `ts="<iso>"` forms, including any
-    // numeric re-entry suffix (`-N`) on the future-stage marker (#374).
-    const re = new RegExp(
-      `[ \\t]*<!--\\s*aitm-entered-${markerStagePattern(future)}(?:-\\d+)?(?::[^>]*?|\\s+ts="[^"]*")\\s*-->[ \\t]*\\n?`,
-      'gi'
-    );
-    if (re.test(out)) {
-      out = out.replace(re, '');
-      stripped.push(future);
-    }
-  }
+  const futureStages = new Set(STAGES.slice(idx + 1));
+  const removed = new Set();
+  const matcher = new RegExp(ENTRY_MARKER_RE.source, ENTRY_MARKER_RE.flags);
+  let out = src.replace(matcher, (marker) => {
+    const parsed = parseEntryMarker(marker);
+    const canonical = parsed ? canonicalStage(parsed.state) : null;
+    if (!canonical || !futureStages.has(canonical)) return marker;
+    removed.add(canonical);
+    return '';
+  });
+  stripped.push(...STAGES.filter((candidate) => removed.has(candidate)));
   if (stripped.length > 0) {
     out = out.replace(/\n{3,}/g, '\n\n');
   }
@@ -451,7 +441,7 @@ export function backfillEntryMarker(body, stage, ts, reason) {
   if (!ts) throw new Error('backfillEntryMarker: ts is required');
   if (!reason) throw new Error('backfillEntryMarker: reason is required');
   const src = String(body || '');
-  const hasEntry = stageMarkerRe(stage).test(src);
+  const hasEntry = hasStageEntryMarker(src, stage);
   const hasAudit = backfillMarkerRe(stage).test(src);
   if (hasEntry && hasAudit) return src;
 

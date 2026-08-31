@@ -30,16 +30,17 @@ import { parseAcEvidence } from './ac-evidence.mjs';
 import { parseAcCommitCitation } from './epic-ac-commit-citation.mjs';
 import { isAcWaived } from './issue-kind.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
+import { fingerprint, parseBodyLedgerHead } from './resident-action-ledger-codec.mjs';
 import {
   resolveCitedOrLiteralCommands,
   parseVcRefIndexes,
   resolveVcRefCommands,
 } from './vc-ref.mjs';
+import { ENTRY_MARKER_RE, parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
 // so dropped entry markers are detected under either grammar.
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 
 // #476 — global counter for the append-only session-ref family. Kept separate
 // from the non-global presence pattern in `lib/session-ref.mjs` because
@@ -47,6 +48,107 @@ const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-\d+)?(?:\s
 const SESSION_REF_COUNT_RE = /<!--\s*aitm-session-ref\s+sid="/gi;
 const WORKTREE_LOCATION_COUNT_RE = /<!--\s*aitm-worktree-location\s+worktree="/gi;
 const AC_STRUCK_COUNT_RE = /<!--\s*aitm-ac-struck\b/gi;
+const RESIDENT_ACTION_LEDGER_HEAD_RE = /<!--\s*aitm-resident-action-ledger-head\s+[^]*?-->/i;
+
+const PHASE_ADVANCES = Object.freeze({
+  intent: new Set(['waiting', 'resolved', 'failed']),
+  waiting: new Set(['resolved', 'failed']),
+  resolved: new Set(),
+  failed: new Set(),
+});
+
+export class MarkerAdvanceError extends Error {
+  constructor(markerId, baseMatch, nextMatch, reason, details = {}) {
+    super(`marker-advance:${markerId}:${reason}`);
+    this.name = 'MarkerAdvanceError';
+    this.markerId = markerId;
+    this.baseFingerprint = baseMatch ? fingerprint(baseMatch) : null;
+    this.nextFingerprint = nextMatch ? fingerprint(nextMatch) : null;
+    this.reason = reason;
+    this.details = Object.freeze({ ...details });
+  }
+}
+
+function rejectAdvance(markerId, baseMatch, nextMatch, reason, details) {
+  throw new MarkerAdvanceError(markerId, baseMatch, nextMatch, reason, details);
+}
+
+function sameActionEntry(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
+  let base;
+  let next;
+  try {
+    base = baseMatch ? parseBodyLedgerHead(baseMatch) : null;
+    next = nextMatch ? parseBodyLedgerHead(nextMatch) : null;
+  } catch (error) {
+    rejectAdvance(markerId, baseMatch, nextMatch, 'malformed', { message: error.message });
+  }
+  if (!next) rejectAdvance(markerId, baseMatch, nextMatch, 'missing');
+  if (next.mode === 'inline') {
+    if (nextMatch.length > 8192 || String(nextBody || '').length > 57344) {
+      rejectAdvance(markerId, baseMatch, nextMatch, 'inline-budget');
+    }
+  }
+  if (!base) return;
+  if (base.visit !== next.visit) return;
+  if (base.mode === 'spill' && next.mode === 'inline') {
+    rejectAdvance(markerId, baseMatch, nextMatch, 'spill-regression');
+  }
+  if (base.mode === 'spill' || next.mode === 'spill') {
+    if (base.mode === next.mode && base.head === next.head) {
+      rejectAdvance(markerId, baseMatch, nextMatch, 'non-advancing');
+    }
+    return;
+  }
+
+  let changes = 0;
+  let correctionChanges = 0;
+  for (const [actionId, prior] of Object.entries(base.actions)) {
+    const current = next.actions[actionId];
+    if (!current) rejectAdvance(markerId, baseMatch, nextMatch, 'action-removed', { actionId });
+    if (sameActionEntry(prior, current)) continue;
+    changes += 1;
+    if (current.attemptId < prior.attemptId || current.attemptId > prior.attemptId + 1) {
+      rejectAdvance(markerId, baseMatch, nextMatch, 'attempt-regression', { actionId });
+    }
+    if (current.attemptId === prior.attemptId) {
+      const correctionBaseline =
+        current.phase === prior.phase && current.proof === 'unproven' && prior.proof !== 'unproven';
+      if (correctionBaseline) correctionChanges += 1;
+      if (!correctionBaseline && !PHASE_ADVANCES[prior.phase]?.has(current.phase)) {
+        rejectAdvance(markerId, baseMatch, nextMatch, 'phase-regression', { actionId });
+      }
+    } else if (current.phase !== 'intent' || !['resolved', 'failed'].includes(prior.phase)) {
+      rejectAdvance(markerId, baseMatch, nextMatch, 'attempt-sequence', { actionId });
+    }
+  }
+  for (const [actionId, current] of Object.entries(next.actions)) {
+    if (base.actions[actionId]) continue;
+    changes += 1;
+    if (current.attemptId !== 1 || current.phase !== 'intent') {
+      rejectAdvance(markerId, baseMatch, nextMatch, 'action-genesis', { actionId });
+    }
+  }
+  if (changes !== 1 && correctionChanges !== changes) {
+    rejectAdvance(markerId, baseMatch, nextMatch, 'non-advancing', { changes });
+  }
+  const changed = Object.entries(next.actions).find(
+    ([actionId, entry]) => !sameActionEntry(base.actions[actionId], entry)
+  );
+  const changedEntry = changed?.[1];
+  const correctionBaseline =
+    changedEntry?.proof === 'unproven' && base.actions[changed?.[0]]?.proof !== 'unproven';
+  if (
+    changedEntry &&
+    !correctionBaseline &&
+    next.commit !== `${changedEntry.commentId}:${changedEntry.hash}`
+  ) {
+    rejectAdvance(markerId, baseMatch, nextMatch, 'commit-mismatch');
+  }
+}
 
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
@@ -124,7 +226,7 @@ export const INVARIANT_MARKER_PATTERNS = [
     re: /<!--\s*aitm-last-known-state(?:-ts\s*:|\s+state=")/i,
     kind: 'single',
   },
-  { name: 'aitm-entered-<stage>', re: ENTERED_STAGE_RE, kind: 'multi' },
+  { name: 'aitm-entered-<stage>', re: ENTRY_MARKER_RE, kind: 'multi' },
   // #476 — append-only session-reference chain. Entries accumulate and are
   // never removed; the invariant is "occurrence count must not decrease". A
   // dropped prior entry on an unrelated edit is a loss. Uses the `count` kind
@@ -140,6 +242,12 @@ export const INVARIANT_MARKER_PATTERNS = [
   // hatch — the intended asymmetry, since quietly deleting the record of dropped
   // scope is exactly what this marker exists to prevent.
   { name: 'aitm-ac-struck', re: AC_STRUCK_COUNT_RE, kind: 'count' },
+  {
+    name: 'aitm-resident-action-ledger-head',
+    re: RESIDENT_ACTION_LEDGER_HEAD_RE,
+    kind: 'advance',
+    validateAdvance: validateLedgerAdvance,
+  },
 ];
 
 function countMarkers(body, re) {
@@ -149,12 +257,11 @@ function countMarkers(body, re) {
 
 function enteredStages(body) {
   const set = new Set();
-  // matchAll requires a global regex; ENTERED_STAGE_RE is /g.
-  for (const m of String(body || '').matchAll(ENTERED_STAGE_RE)) {
+  for (const entry of parseEntryMarkers(body)) {
     // Preserve raw historical stage identity. Entry markers are append-only
     // audit bytes: adding a canonical alias does not authorize removing the
     // marker that actually recorded the historical transition.
-    set.add(m[1].toLowerCase());
+    set.add(entry.state.toLowerCase());
   }
   return set;
 }
@@ -168,7 +275,7 @@ export function findLostMarkers(base, next) {
   const nextStr = String(next || '');
   const lost = [];
   for (const { name, re, kind } of INVARIANT_MARKER_PATTERNS) {
-    if (kind === 'single') {
+    if (kind === 'single' || kind === 'advance') {
       if (re.test(baseStr) && !re.test(nextStr)) lost.push(name);
     } else if (kind === 'multi' && name === 'aitm-entered-<stage>') {
       const baseStages = enteredStages(baseStr);
@@ -182,6 +289,25 @@ export function findLostMarkers(base, next) {
     }
   }
   return lost;
+}
+
+export function validateMarkerAdvances(baseBody, nextBody, { allowMarkerAdvance = [] } = {}) {
+  const allowed = new Set(allowMarkerAdvance);
+  for (const marker of INVARIANT_MARKER_PATTERNS.filter((entry) => entry.kind === 'advance')) {
+    const baseMatch = marker.re.exec(String(baseBody || ''))?.[0] ?? null;
+    const nextMatch = marker.re.exec(String(nextBody || ''))?.[0] ?? null;
+    if (baseMatch === nextMatch) continue;
+    if (!allowed.has(marker.name)) {
+      rejectAdvance(marker.name, baseMatch, nextMatch, 'unauthorized');
+    }
+    marker.validateAdvance({
+      markerId: marker.name,
+      baseMatch,
+      nextMatch,
+      baseBody,
+      nextBody,
+    });
+  }
 }
 
 // #362 — checkbox proof-marker invariant. Every transition from `- [ ]` to

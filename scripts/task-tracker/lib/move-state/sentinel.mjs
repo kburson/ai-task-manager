@@ -8,8 +8,9 @@
 
 import { normalizeStateId } from '../lifecycle-policy/index.mjs';
 
-export const MOVE_COMPLETE_RE = /<!-- aitm-move-complete state=(\S+) ts=(\S+) -->/;
-const GLOBAL_RE = /<!-- aitm-move-complete state=\S+ ts=\S+ -->\n?/g;
+export const MOVE_COMPLETE_RE =
+  /<!-- aitm-move-complete state=([^\s>]+) ts=([^\s>]+)(?: move=([^\s>]+))? -->/;
+const GLOBAL_RE = /<!-- aitm-move-complete state=[^\s>]+ ts=[^\s>]+(?: move=[^\s>]+)? -->\n?/g;
 
 /**
  * Upsert the single move-complete sentinel: strip any prior sentinel, then
@@ -19,9 +20,21 @@ const GLOBAL_RE = /<!-- aitm-move-complete state=\S+ ts=\S+ -->\n?/g;
  * @param {string} ts ISO timestamp
  * @returns {string}
  */
-export function writeMoveCompleteMarker(body, state, ts) {
+export function writeMoveCompleteMarker(body, state, ts, transitionId = null) {
   const stripped = body.replace(GLOBAL_RE, '').replace(/\s+$/, '');
-  return `${stripped}\n<!-- aitm-move-complete state=${normalizeStateId(state)} ts=${ts} -->\n`;
+  const move = transitionId ? ` move=${transitionId}` : '';
+  return `${stripped}\n<!-- aitm-move-complete state=${normalizeStateId(state)} ts=${ts}${move} -->\n`;
+}
+
+export function readMoveCompleteMarker(body) {
+  const match = MOVE_COMPLETE_RE.exec(body || '');
+  if (!match) return null;
+  return Object.freeze({
+    state: normalizeStateId(match[1]),
+    ts: match[2],
+    move: match[3] ?? null,
+    match: match[0],
+  });
 }
 
 /**
@@ -29,8 +42,7 @@ export function writeMoveCompleteMarker(body, state, ts) {
  * @returns {string} the state the sentinel records, or '' when absent.
  */
 export function readMoveCompleteState(body) {
-  const m = MOVE_COMPLETE_RE.exec(body || '');
-  return m ? normalizeStateId(m[1]) : '';
+  return readMoveCompleteMarker(body)?.state ?? '';
 }
 
 /**

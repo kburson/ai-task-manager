@@ -43,6 +43,11 @@ import {
   safeBackfillTs,
   normalizeTs,
 } from './lib/stage-entry-markers.mjs';
+import {
+  ENTRY_MARKER_RE,
+  LEGACY_COLON_ENTRY_MARKER_RE,
+  parseEntryMarker,
+} from './lib/stage-entry-grammar.mjs';
 
 // #675 AC4 — safeBackfillTs/normalizeTs now live in lib/stage-entry-markers.mjs
 // so reconcile.mjs's backfill mode shares the same interval-safe timestamp
@@ -162,18 +167,18 @@ export function stripStageMarkers(body, stage) {
   // are append-only evidence; in particular, `assigned` must never cause an
   // existing `on-deck` marker to be deleted and rewritten.
   const stagePattern = stage;
-  const entryRe = new RegExp(
-    `[ \\t]*<!--\\s*aitm-entered-${stagePattern}(?:-\\d+)?(?::[^>]*?|\\s+ts="[^"]*")\\s*-->[ \\t]*\\n?`,
-    'gi'
-  );
   // Strip both legacy `aitm-backfill: <stage>:…` and new
   // `aitm-backfill stage="<stage>" …` forms (#380).
   const auditRe = new RegExp(
     `[ \\t]*<!--\\s*aitm-backfill(?::\\s*${stagePattern}:[^>]*?|\\s+stage="${stagePattern}"[^>]*?)-->[ \\t]*\\n?`,
     'gi'
   );
+  const entryRe = new RegExp(ENTRY_MARKER_RE.source, ENTRY_MARKER_RE.flags);
   return body
-    .replace(entryRe, '')
+    .replace(entryRe, (marker) => {
+      const parsed = parseEntryMarker(marker);
+      return parsed?.state === stagePattern ? '' : marker;
+    })
     .replace(auditRe, '')
     .replace(/\n{3,}/g, '\n\n');
 }
@@ -346,10 +351,17 @@ export function planStageHeal({ stage, body, createdAt }) {
     return { action: 'skip', reason: 'no-heal-needed' };
   }
   if (hasEntry && hasLater && !hasAudit) {
-    const m = new RegExp(`<!--\\s*aitm-entered-${stage}:\\s*([^\\s-][^\\s]*?)\\s*-->`, 'i').exec(
-      body
+    // Preserve this healer's historical fail-closed contract: audit-only
+    // repair accepts a legacy colon timestamp, while a property-form-only
+    // entry remains unparseable for this path.
+    const legacyMatcher = new RegExp(
+      LEGACY_COLON_ENTRY_MARKER_RE.source,
+      LEGACY_COLON_ENTRY_MARKER_RE.flags
     );
-    const ts = m ? normalizeTs(m[1]) : null;
+    const legacy = [...String(body || '').matchAll(legacyMatcher)].find(
+      (match) => match[1] === stage
+    );
+    const ts = legacy ? normalizeTs(legacy[3]) : null;
     if (!ts) return { action: 'skip', reason: 'entry-marker-unparseable' };
     return { action: 'audit-only', ts, reason: 'audit-only-unaudited-entry', mode: 'audit-only' };
   }

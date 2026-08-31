@@ -87,6 +87,16 @@ export async function runClose({
   bindingReadError = null,
   bindingResumeError = null,
   force = false,
+  extraRest = [],
+  restartStaleTransaction = false,
+  supersessionComments = [],
+  supersessionCommentListError = null,
+  supersessionCommentCreateError = null,
+  supersessionCommentReadError = null,
+  supersessionCommentReadTransform = null,
+  replacementTransactionId = 'replacement-close-transaction',
+  dirtyWorkspace = { dirty: false, total: 0, files: [] },
+  acceptedSha = 'a'.repeat(40),
   createEstimationOutcomeWriter = null,
   trackEstimationOutcomes = false,
 } = {}) {
@@ -125,6 +135,10 @@ export async function runClose({
     estimationOutcomes: 0,
     freshDeliveryVerifications: 0,
     freshDeliveryInputs: [],
+    order: [],
+    supersessionCommentLists: 0,
+    supersessionCommentCreates: 0,
+    supersessionCommentReads: 0,
   };
   captureCalls?.(calls);
   const projectConfig = {
@@ -214,6 +228,7 @@ export async function runClose({
   const issueBodyMutator = {
     mutate: async ({ mutate }) => {
       calls.mutations += 1;
+      calls.order.push('body:mutate');
       const nextBody = mutate(liveBody);
       const result =
         typeof mutationResult === 'function'
@@ -226,6 +241,7 @@ export async function runClose({
       return result;
     },
   };
+  const liveSupersessionComments = structuredClone(supersessionComments);
   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
   const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const previousExitCode = process.exitCode;
@@ -240,7 +256,12 @@ export async function runClose({
   let result;
   try {
     result = await verbClose({
-      rest: force ? [`#${issueNumber}`, '--force'] : [`#${issueNumber}`],
+      rest: [
+        `#${issueNumber}`,
+        ...(restartStaleTransaction ? ['--restart-stale-transaction'] : []),
+        ...(force ? ['--force'] : []),
+        ...extraRest,
+      ],
       projectConfig,
       timingRecorder,
       stateRunner,
@@ -248,6 +269,40 @@ export async function runClose({
       ...(!omitIssueBodyMutator ? { issueBodyMutator } : {}),
       convergenceTailProfile,
       preserveActiveOnConvergence: true,
+      checkDirtyWorkspace: async () => dirtyWorkspace,
+      randomUUIDFn: () => replacementTransactionId,
+      listDeliveredCloseSupersessionComments: async () => {
+        calls.supersessionCommentLists += 1;
+        calls.order.push('comment:list');
+        if (supersessionCommentListError) throw supersessionCommentListError;
+        return structuredClone(liveSupersessionComments);
+      },
+      createDeliveredCloseSupersessionComment: async (commentBody) => {
+        calls.supersessionCommentCreates += 1;
+        calls.order.push('comment:create');
+        if (supersessionCommentCreateError) throw supersessionCommentCreateError;
+        const comment = {
+          id: 77,
+          body: commentBody,
+          user: { login: 'kburson' },
+          created_at: '2026-08-31T21:00:00Z',
+          updated_at: '2026-08-31T21:00:00Z',
+          issue_url: `https://api.github.com/repos/${repository}/issues/${issueNumber}`,
+        };
+        liveSupersessionComments.push(comment);
+        return structuredClone(comment);
+      },
+      readDeliveredCloseSupersessionComment: async (id) => {
+        calls.supersessionCommentReads += 1;
+        calls.order.push('comment:read');
+        if (supersessionCommentReadError) throw supersessionCommentReadError;
+        const comment = structuredClone(
+          liveSupersessionComments.find((candidate) => String(candidate.id) === String(id))
+        );
+        return supersessionCommentReadTransform
+          ? supersessionCommentReadTransform(comment)
+          : comment;
+      },
       tickLifecycleOnClose: delegateLifecycleHelper
         ? async (args) =>
             tickLifecycleOnClose({
@@ -339,8 +394,8 @@ export async function runClose({
                 issueNumber,
                 lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
                 branch: `feature/${issueNumber}`,
-                acceptedSha: 'a'.repeat(40),
-                localHeadSha: 'a'.repeat(40),
+                acceptedSha,
+                localHeadSha: acceptedSha,
                 pullRequests: [],
                 records: null,
               },
@@ -373,6 +428,7 @@ export async function runClose({
       result,
       calls,
       body: liveBody,
+      supersessionComments: liveSupersessionComments,
       exitCode: process.exitCode,
     };
   } finally {

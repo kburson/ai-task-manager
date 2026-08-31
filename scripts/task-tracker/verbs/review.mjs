@@ -36,18 +36,20 @@ import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 import { isAcWaived } from '../lib/issue-kind.mjs';
-// #809 — Agent Review Gate. `bootstrap` registers every built-in validator on
-// the shared singleton registry as an import side effect; `runAgentReviewGate`
-// runs them inline in `verbReview` and the marker helpers stamp/clear the
-// `aitm-review-failed` record on a failing gate.
+// #809/#1458 — Agent Review Gate. `bootstrap` registers every built-in validator
+// on the shared singleton registry as an import side effect. The Review resident
+// action runs the gate; this verb supplies its command-level mutation/timing
+// capabilities while the Cursor owns entry and actions-only retry ordering.
 import '../lib/agent-review/bootstrap.mjs';
-import {
-  runAgentReviewGate,
-  stampReviewFailed,
-  clearReviewFailed,
-  stampAgentReviewPassed,
-} from '../lib/agent-review/review-gate.mjs';
+import { runAgentReviewGate } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
+import {
+  classifyReviewCursorResult,
+  createStateCursor,
+  executeReviewCursor,
+} from '../lib/state-cursor.mjs';
+import { STATE_MACHINE } from '../states/index.mjs';
+import { parseEntryMarkers } from '../lib/stage-entry-markers.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import {
   buildVerificationFingerprint,
@@ -843,15 +845,15 @@ export async function verbReview(ctx) {
         console.log(
           `✓ #${issueNum} recorded ${probeResult.probes.length} Review probe(s) in receipt ${probeResult.receipt.receiptId}.`
         );
-        return;
+      } else {
+        const reasons = (probeResult.reasons || [])
+          .map(({ code, reason }) => `${code}${reason ? `: ${reason}` : ''}`)
+          .join(', ');
+        process.stderr.write(
+          `⛔ #${issueNum} Review probe ${probeResult.status}: ${reasons || 'one or more probes exited nonzero'}\n`
+        );
+        process.exit(probeResult.status === 'failed' ? 3 : 4);
       }
-      const reasons = (probeResult.reasons || [])
-        .map(({ code, reason }) => `${code}${reason ? `: ${reason}` : ''}`)
-        .join(', ');
-      process.stderr.write(
-        `⛔ #${issueNum} Review probe ${probeResult.status}: ${reasons || 'one or more probes exited nonzero'}\n`
-      );
-      process.exit(probeResult.status === 'failed' ? 3 : 4);
     }
     if (body) {
       const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
@@ -922,7 +924,8 @@ export async function verbReview(ctx) {
       { timeout: GH_API_TIMEOUT_MS }
     );
     const rawBody = JSON.parse(stdout).body ?? '';
-
+    const reviewCommandState = readLastKnownState(rawBody).state;
+    const effectiveReviewCommandState = reviewCommandState || 'test';
     // #267 — Early test→review guard fast-path. Evaluate ONLY the
     // `test-exit-dod-verified` guard here so we refuse missing-sandbox-proof
     // bodies before doing the full AC verification pass below. The full
@@ -935,7 +938,7 @@ export async function verbReview(ctx) {
     } catch {
       // The authoritative resolver below renders a precise fail-closed reason.
     }
-    if (!directoryEvidenceLane) {
+    if (effectiveReviewCommandState === 'test' && !directoryEvidenceLane) {
       const dodResult = await runGuardsFn('test', 'review', {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
@@ -1346,7 +1349,7 @@ export async function verbReview(ctx) {
     // derived-DoD refresh above). Refusal surface preserved bit-for-bit:
     // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
     // one indented line per offending checkbox, retry hint, exit 4.
-    {
+    if (effectiveReviewCommandState === 'test') {
       const guardResult = await runGuardsFn('test', 'review', {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
@@ -1409,153 +1412,157 @@ export async function verbReview(ctx) {
     // gating on this result is the only correct check. A re-run while already in
     // Review is a satisfied no-op (#882) and passes here, which is what makes the
     // state action re-runnable in place.
-    const reviewMove = await runMoveState(target, 'review', {
-      silent: true,
-      lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+    const reviewActionContext = {
+      now: () => Date.parse(nowIso()),
+      review: {
+        repo: cfg.repo,
+        readComments: async ({ snapshot }) => snapshot.reviewComments || [],
+        computeChangedPaths: () => computeReviewChangedPaths({ cfg, projectDir, deps: { pexec } }),
+        runAgentReviewGate,
+        onFailure: async ({ failures: objections, failedBody, ts }) => {
+          await emitReviewGateFailureTimeline({
+            target,
+            issueNum,
+            repo: cfg.repo,
+            failures: objections,
+            failedBody,
+            ts,
+            delta: deriveStateMoveDelta(rawBody, ts),
+            wordMarker: s.lastWordMarker ?? 0,
+            fullWordMarker: stateFullWordMarker(s),
+            deps: { runMoveState, safePostTiming, mutateBodyFn, pexec },
+          });
+        },
+        onPass: async ({ validators, passedBody, originalBody, ts }) => {
+          if (passedBody !== originalBody) {
+            try {
+              await mutateBodyFn({
+                issueNumber: issueNum,
+                repo: cfg.repo,
+                mutate: () => passedBody,
+                timeout: GH_API_TIMEOUT_MS,
+                deps: { pexec },
+                evidenceStamp: true,
+              });
+            } catch (error) {
+              console.error(`[task-tracker] failed to stamp Agent Review Passed: ${error.message}`);
+            }
+          }
+          await emitReviewGatePassTimeline({
+            target,
+            ts,
+            delta: deriveStateMoveDelta(rawBody, ts),
+            wordMarker: s.lastWordMarker ?? 0,
+            fullWordMarker: stateFullWordMarker(s),
+            validators,
+            deps: { safePostTiming, buildRow },
+          });
+        },
+      },
+    };
+    let fallbackBody = scanBody;
+    // Legacy/offline review fixtures can omit the durable state marker. The
+    // command preflight already treats that bootstrap shape as Test; retain
+    // the same compatibility inside Cursor without overriding explicit state.
+    let cursorFallbackState = effectiveReviewCommandState;
+    const repository = {
+      async hydrateTask() {
+        let body = fallbackBody;
+        let comments = [];
+        try {
+          const { stdout: snapshotJson } = await pexec(
+            'gh',
+            ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'body,comments'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          const parsed = JSON.parse(snapshotJson || '{}');
+          comments = Array.isArray(parsed.comments) ? parsed.comments : [];
+          if (typeof parsed.body === 'string' && parsed.body.trim()) body = parsed.body;
+        } catch {
+          comments = [];
+        }
+        fallbackBody = body;
+        const state = readLastKnownState(body).state || cursorFallbackState;
+        const visit = parseEntryMarkers(body)
+          .filter(({ stage }) => stage === state)
+          .at(-1);
+        return {
+          issue: { value: Number(issueNum) },
+          currentState: { value: state },
+          stateVisitId: visit ? `${state}:${visit.visit}:${visit.ts}` : `legacy:${state}:1`,
+          body: { value: body },
+          reviewComments: comments,
+          invocation: { issue: Number(issueNum), cwd: projectDir },
+        };
+      },
+      async requestLegacyBoundary() {
+        const move = await runMoveState(target, 'review', {
+          silent: true,
+          lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+        });
+        if (move && move.ok === false && move.benign !== true) {
+          return { ...move, kind: 'move-refused', phase: 'status-write', exit: move.status || 4 };
+        }
+        cursorFallbackState = 'review';
+        return { kind: 'moved', phase: 'commit', exit: 0 };
+      },
+    };
+    const actions = {
+      async resume(residents, snapshot) {
+        for (const action of residents) {
+          const verified = await action.verify(reviewActionContext, snapshot);
+          if (verified.status === 'complete') continue;
+          const result = await action.run(reviewActionContext, snapshot, {
+            correlation: { stateVisitId: snapshot.stateVisitId, actionId: action.id },
+          });
+          if (result.status !== 'complete') return result;
+        }
+        return { status: 'complete' };
+      },
+    };
+    const cursor = createStateCursor({ machine: STATE_MACHINE, repository, actions });
+    const cursorResult = await executeReviewCursor({
+      cursor,
+      currentState: effectiveReviewCommandState,
+      issue: Number(issueNum),
+      cwd: projectDir,
     });
-    if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
+    const reviewOutcome = classifyReviewCursorResult(cursorResult);
+    const actionResult = reviewOutcome.status === 'action-failed' ? reviewOutcome.result : null;
+    if (cursorResult.kind === 'move-refused') {
       process.stderr.write('\n');
       process.stderr.write(
         `⛔ ${target} verification passed but the move to Review was refused:\n`
       );
-      for (const line of String(reviewMove.stderr || '').split('\n')) {
+      for (const line of String(cursorResult.stderr || '').split('\n')) {
         if (line.trim()) process.stderr.write(`   ${line}\n`);
       }
       process.stderr.write('\n');
-      process.exit(reviewMove.status || 4);
+      process.exit(cursorResult.exit || 4);
     }
-    // #809 — Agent Review Gate: the Review state's action, run on arrival. This
-    // is the objective, machine-checkable half of review sign-off: a pass ticks
-    // the "Agent Review Passed" DoD item and review continues to the human gate;
-    // a failure writes a `review:failed` timing row + an `aitm-review-failed`
-    // body marker listing every objection and LEAVES THE ISSUE IN REVIEW (#881)
-    // with its state action incomplete, to be fixed in place and re-run. With
-    // zero validators registered the gate is a vacuous pass.
-    {
-      // #881 — re-fetch the body HERE, after the move, not before it. `scanBody`
-      // was captured upstream of `runMoveState`, which stamps `aitm-entered-review`
-      // and writes the `review:started` timing row. Handing the gate that stale
-      // copy made `timing-log-sequence` object against every issue: it read the
-      // new `review:started` row from the live timing log but no matching
-      // `aitm-entered-review` marker in the body, and the failure stamp derived
-      // from the same stale copy then threw `MarkerLossError` for dropping that
-      // very marker. Fetch body and comments together so both halves of the
-      // gate's input come from one post-move snapshot.
-      let comments = [];
-      let gateBody = scanBody;
-      try {
-        const { stdout } = await pexec(
-          'gh',
-          ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'body,comments'],
-          { timeout: GH_API_TIMEOUT_MS }
-        );
-        const parsed = JSON.parse(stdout || '{}');
-        comments = Array.isArray(parsed.comments) ? parsed.comments : [];
-        if (typeof parsed.body === 'string' && parsed.body.trim()) gateBody = parsed.body;
-      } catch {
-        // Best-effort: a fetch failure leaves `comments` empty and `gateBody` on
-        // the pre-move `scanBody`. Any validator that requires a comment reports
-        // its own failure, so the gate never silently passes on missing evidence.
-        comments = [];
-      }
-      // #940 — the `trunk...HEAD` changed-path set makes the V2 "New Automated
-      // Tests" required-comment diff-aware for `docs-only` issues. Best-effort:
-      // any failure yields [], which is default-deny at the consumer (an unknown
-      // diff keeps the NAT requirement).
-      const changedPaths = await computeReviewChangedPaths({
-        cfg,
-        projectDir,
-        deps: { pexec },
-      });
-      const gate = runAgentReviewGate({
-        body: gateBody,
-        issueNumber: Number(issueNum),
-        repo: cfg.repo,
-        comments,
-        changedPaths,
-      });
-      if (!gate.pass) {
-        // FAIL — the Review state's action did not complete. The issue STAYS IN
-        // REVIEW (#881); the objection is fixed in place and `review <N>` re-run.
-        // EPIC #823 timing model v2 (C7 / defect D2) is preserved: the move above
-        // already laid down `test:passed` + `review:started`, so the
-        // `review:failed` row has its preceding `review:started` and the timeline
-        // reads
-        //
-        //   test:passed → review:started → review:failed
-        //
-        // with no `demoted:develop` / `develop:started` pair and (by design) no
-        // `review:approved`.
-        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
-        const _tsRF = nowIso();
-        const failedBody = stampReviewFailed(baseBody, gate.failures, { ts: _tsRF });
-        const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
-        await emitReviewGateFailureTimeline({
-          target,
-          issueNum,
-          repo: cfg.repo,
-          failures: gate.failures,
-          failedBody,
-          ts: _tsRF,
-          delta: _dRF,
-          wordMarker: s.lastWordMarker ?? 0,
-          fullWordMarker: stateFullWordMarker(s),
-          deps: { runMoveState, safePostTiming, mutateBodyFn, pexec },
-        });
-        process.stderr.write('\n');
-        process.stderr.write(
-          `⛔ Agent Review Gate failed for ${target} — ${gate.failures.length} objection(s):\n`
-        );
-        for (const f of gate.failures) process.stderr.write(`   ${f}\n`);
-        process.stderr.write(
-          `\n${target} stays in Review with its state action incomplete. Fix the objections\nabove in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of\nfix every registered validator asks for — then re-run \`/task review ${target}\`.\n\n`
-        );
-        process.exit(3);
-      }
-      // PASS — adopt any normalizer rewrite, clear a stale review-failed marker,
-      // and stamp the PROVEN "Agent Review Passed" box: tick it AND append the
-      // gate's own run-evidence marker (#841). The box now carries execution
-      // proof (ts + validators + result=pass, sha=`sandbox` since the gate runs
-      // in-process), so the write goes through as a sanctioned `evidenceStamp`
-      // — honest because the gate genuinely ran — WITHOUT the old
-      // `allowUnverifiedTicks` bypass. A body with no such line (old template)
-      // stamps to a noop and skips the write, which the close gate tolerates.
-      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
-      const tickedBody = stampAgentReviewPassed(clearReviewFailed(passBase), {
-        ts: nowIso(),
-        validators: gate.validatorsRun,
-      });
-      if (tickedBody !== gateBody) {
-        try {
-          await mutateBodyFn({
-            issueNumber: issueNum,
-            repo: cfg.repo,
-            mutate: () => tickedBody,
-            timeout: GH_API_TIMEOUT_MS,
-            deps: { pexec },
-            evidenceStamp: true,
-          });
-        } catch (e) {
-          console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
-        }
-      }
-      // #904 — emit the symmetric `review:passed` timing row, mirroring the fail
-      // path's `review:failed`. Emitted UNCONDITIONALLY on pass (outside the
-      // stamp `if` above, which is skipped for old-template bodies that tick to a
-      // no-op). The Test→Review move already laid down `test:passed` +
-      // `review:started` above the gate block, so this row is strictly monotonic
-      // after `review:started` and lands before `runLogIssueTime`.
-      const _tsRP = nowIso();
-      const _dRP = deriveStateMoveDelta(rawBody, _tsRP);
-      await emitReviewGatePassTimeline({
-        target,
-        ts: _tsRP,
-        delta: _dRP,
-        wordMarker: s.lastWordMarker ?? 0,
-        fullWordMarker: stateFullWordMarker(s),
-        validators: gate.validatorsRun,
-        deps: { safePostTiming, buildRow },
-      });
+    if (actionResult?.status === 'failed') {
+      const objections = actionResult.failures || [actionResult.reason || 'agent review failed'];
+      process.stderr.write('\n');
+      process.stderr.write(
+        `⛔ Agent Review Gate failed for ${target} — ${objections.length} objection(s):\n`
+      );
+      for (const objection of objections) process.stderr.write(`   ${objection}\n`);
+      process.stderr.write(
+        `\n${target} stays in Review with its state action incomplete. Fix the objections\nabove in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of\nfix every registered validator asks for — then re-run \`/task review ${target}\`.\n\n`
+      );
+      process.exit(3);
+    }
+    if (reviewOutcome.status === 'action-failed') {
+      process.stderr.write(
+        `review: resident action ${actionResult?.status || 'unknown'} for ${target}: ${actionResult?.reason || 'no reason reported'}\n`
+      );
+      process.exit(4);
+    }
+    if (reviewOutcome.status === 'cursor-refused') {
+      process.stderr.write(
+        `review: Cursor refused ${target}: ${cursorResult.kind || 'unknown-result'}\n`
+      );
+      process.exit(cursorResult.exit || 4);
     }
     // #881 — the authoritative Test→Review move used to sit HERE, after the
     // Agent Review Gate, which made the gate a precondition of the transition.

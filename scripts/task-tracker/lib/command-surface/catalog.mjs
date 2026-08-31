@@ -279,6 +279,19 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     PREFLIGHT_TARGET_EXITS
   ),
+  'action-ledger': contract(
+    [
+      'The target must match the active issue; audit is read-only, GC requires a candidate spill comment, and reconcile requires --accept-live plus a reason and named human approver.',
+      'GC and reconcile re-read current issue-body and comment evidence under the issue lock before mutating.',
+    ],
+    [
+      'Audit paginates the complete resident-action evidence set without changing it.',
+      'GC deletes only a spill snapshot proven unreachable from the fresh body head and backed by a verified successor.',
+      'Reconcile appends an immutable correction and marks affected proof unproven without recreating missing event bytes.',
+    ],
+    ['Prints the audit, collection, or correction result and stable recovery diagnostics.'],
+    PREFLIGHT_TARGET_EXITS
+  ),
   reject: contract(
     ['The target must be in Review, a reason is required, and preflight checks must pass.'],
     ['Records the rejection reason and returns the issue to Develop for rework.'],
@@ -331,10 +344,12 @@ export const VERB_CONTRACTS = Object.freeze({
   close: contract(
     [
       'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; Incorporated close requires an exact approved incident ledger and --of owner.',
+      'A stale-transaction restart requires an explicit flag, one stale pre-terminal transaction, fresh exact-SHA Test, Review, and delivery authority, an open Review issue, a clean worktree, close-managed labels, and a pending recorded binding.',
     ],
     [
       'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
       'Partial terminal recovery resumes only the missing suffix from durable transaction authority; an already-closed completed retry is read-only.',
+      'Stale-transaction restart writes and verifies immutable supersession audit evidence before replacing the protected marker and replaying the ordinary close saga; terminal-boundary or conflicting evidence refuses before mutation.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [
@@ -586,6 +601,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   review: Object.freeze(['approve', 'deliver', 'reject', 'close']),
   deliver: Object.freeze(['review', 'close']),
   'incident-ledger': Object.freeze(['deliver', 'close']),
+  'action-ledger': Object.freeze(['review', 'reconcile']),
   reject: Object.freeze(['review', 'demote']),
   test: Object.freeze(['review', 'demote', 'promote']),
   reconcile: Object.freeze(['board', 'status', 'promote']),
@@ -675,6 +691,10 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   'incident-ledger': Object.freeze([
     positional('#1381', 'Required convergence issue that owns the incident ledger.'),
+  ]),
+  'action-ledger': Object.freeze([
+    positional('#N', 'Issue number whose resident-action ledger is inspected or repaired.'),
+    positional('<audit|gc|reconcile>', 'Selected ledger maintenance mode.'),
   ]),
   reject: Object.freeze([positional('#N', 'Issue number whose review is rejected.')]),
   test: Object.freeze([positional('#N', 'Issue number verified in the sandbox.')]),

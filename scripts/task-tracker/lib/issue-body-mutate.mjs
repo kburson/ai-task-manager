@@ -54,6 +54,7 @@ import {
   IncompleteProofError,
   findUnexpectedSectionLoss,
   UnexpectedSectionLossError,
+  validateMarkerAdvances,
 } from './body-invariants.mjs';
 import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
 import { formatDefectHint } from './defect-hint.mjs';
@@ -64,6 +65,7 @@ export {
   FabricatedProofError,
   IncompleteProofError,
   UnexpectedSectionLossError,
+  MarkerAdvanceError,
 } from './body-invariants.mjs';
 
 export class MarkerLossError extends Error {
@@ -95,6 +97,8 @@ export async function mutateIssueBody({
   evidenceStamp = false,
   expectedRemovedHeadings = [],
   allowLargeShrink = false,
+  allowMarkerAdvance = [],
+  validateFreshBase,
   expectedVersion,
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
@@ -109,13 +113,14 @@ export async function mutateIssueBody({
   // throws `MarkerLossError` when any marker disappears (unless explicitly
   // overridden). Returning `next` preserves `versionedWriteBody`'s retry
   // semantics — the check runs on every retry's fresh base.
-  const guardedMutate = (baseBody) => {
-    const next = mutate(baseBody);
+  const validateMutation = (baseBody, next) => {
+    if (typeof validateFreshBase === 'function') validateFreshBase(baseBody, next);
     if (typeof next === 'string') {
       if (!allowMarkerLoss) {
         const lost = findLostMarkers(baseBody, next);
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
       }
+      validateMarkerAdvances(baseBody, next, { allowMarkerAdvance });
       // #725 — generic unbounded-deletion guardrail. Independent of the fixed
       // marker allowlist above: refuses when a mutation silently drops a
       // pre-existing `## ` heading or shrinks the body past the threshold
@@ -180,6 +185,11 @@ export async function mutateIssueBody({
         );
       }
     }
+  };
+
+  const guardedMutate = (baseBody) => {
+    const next = mutate(baseBody);
+    validateMutation(baseBody, next);
     return next;
   };
 
@@ -190,5 +200,6 @@ export async function mutateIssueBody({
     deps,
     maxRetries,
     expectedVersion,
+    validateMutation,
   });
 }

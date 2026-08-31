@@ -21,6 +21,7 @@ import {
   assertVerbHomeState,
 } from '../../../../task-tracker/lib/verb-home-state-guard.mjs';
 import { PHASE_EVENTS } from '../../../../task-tracker/phase-events.mjs';
+import { STATE_MACHINE } from '../../../../task-tracker/states/index.mjs';
 import { ALIAS_VERB, runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
 import {
@@ -43,6 +44,15 @@ test('the production lifecycle keeps eight states and canonically names Ready fo
     'review',
     'done',
   ]);
+});
+
+test('the factory machine projects navigation only through lifecycle policy', () => {
+  assert.deepEqual([...STATE_MACHINE.order], PRODUCTION_STATES);
+  for (const state of PRODUCTION_STATES) {
+    const index = PRODUCTION_STATES.indexOf(state);
+    assert.equal(STATE_MACHINE.previous(state), PRODUCTION_STATES[index - 1]);
+    assert.equal(STATE_MACHINE.next(state), PRODUCTION_STATES[index + 1]);
+  }
 });
 
 function orderedPairKeys() {
