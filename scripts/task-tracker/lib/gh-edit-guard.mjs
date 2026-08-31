@@ -10,6 +10,7 @@
 
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound-reason.mjs';
 import { appendDefectHint } from './defect-hint.mjs';
+import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
 const ISSUE_URL_NUMBER_RE = /github\.com\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
@@ -202,7 +203,6 @@ function deepDiveEmbeddedCheckboxRefusal({ issueNumber, hit, action }) {
 // refuse such a push at the only choke point that sees the manual flow.
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374).
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 // Stale-snapshot ts reader widened (#378) to extract the timestamp from BOTH
 // the legacy `aitm-last-known-state-ts:` marker and the new single property
 // marker `aitm-last-known-state state="..." ts="..."`.
@@ -212,10 +212,10 @@ const LAST_KNOWN_STATE_NEW_TS_RE =
 
 function enteredStages(body) {
   const set = new Set();
-  for (const m of String(body || '').matchAll(ENTERED_STAGE_RE)) {
+  for (const entry of parseEntryMarkers(body)) {
     // Preserve raw historical stage identity. These audit markers are
     // append-only; a canonical alias may be added but cannot replace one.
-    set.add(m[1].toLowerCase());
+    set.add(entry.state.toLowerCase());
   }
   return set;
 }

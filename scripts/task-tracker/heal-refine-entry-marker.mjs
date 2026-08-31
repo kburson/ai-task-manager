@@ -25,6 +25,7 @@ import { projectScratchDir } from './lib/scratch-dir.mjs';
 
 import { loadConfig } from './config.mjs';
 import { backfillEntryMarker } from './lib/stage-entry-markers.mjs';
+import { parseEntryMarkers } from './lib/stage-entry-grammar.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
@@ -44,9 +45,6 @@ export const USAGE =
 
 const pexec = promisify(execFile);
 
-const LATER_STAGE_RE = /<!--\s*aitm-entered-(plan|develop|test|review|done):/i;
-const REFINE_ENTRY_RE = /<!--\s*aitm-entered-refine:/i;
-const REFINE_ENTRY_TS_RE = /<!--\s*aitm-entered-refine:\s*([^\s-][^\s]*?)\s*-->/i;
 // Widened (#380) to detect both legacy `aitm-backfill: refine:…` and new
 // `aitm-backfill stage="refine" …` forms.
 const REFINE_BACKFILL_AUDIT_RE = /<!--\s*aitm-backfill(?::\s*refine:|\s+stage="refine")/i;
@@ -118,8 +116,11 @@ export async function postComment(repo, num, body, deps = {}) {
 //       the entry was hand-fabricated (or otherwise injected without an audit
 //       trail) and needs retroactive auditing.
 export function needsBackfill(body) {
-  const hasLater = LATER_STAGE_RE.test(body);
-  const hasEntry = REFINE_ENTRY_RE.test(body);
+  const entries = parseEntryMarkers(body);
+  const hasLater = entries.some((entry) =>
+    ['plan', 'develop', 'test', 'review', 'done'].includes(entry.state)
+  );
+  const hasEntry = entries.some((entry) => entry.state === 'refine');
   const hasAudit = REFINE_BACKFILL_AUDIT_RE.test(body);
   if (hasLater && !hasEntry) return true;
   if (hasEntry && hasLater && !hasAudit) return true;
@@ -131,8 +132,8 @@ function normalizeTs(iso) {
 }
 
 function extractRefineEntryTs(body) {
-  const m = REFINE_ENTRY_TS_RE.exec(body || '');
-  return m ? normalizeTs(m[1]) : null;
+  const entry = parseEntryMarkers(body).find((marker) => marker.state === 'refine');
+  return entry ? normalizeTs(entry.ts) : null;
 }
 
 export async function healOne({ repo, num, apply, deps = {} }) {

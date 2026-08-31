@@ -112,7 +112,10 @@ check('AC6 conversion covers prose, code fences, and AC example strings', () => 
   const { body: out, families } = migrateBodyWithFamilies(body);
   assert.match(out, /aitm-body-version version="7"/, 'prose marker converted');
   assert.match(out, /aitm-blocked-by refs="#12, #13"/, 'code-fence marker converted');
-  assert.match(out, /aitm-entered-develop ts="2026-06-01T00:00:00\.000Z"/, 'AC example converted');
+  assert.ok(
+    out.includes('aitm-entered-develop ts="2026-06-01T00:00:00.000Z"'),
+    'AC example converted'
+  );
   assert.ok(
     families.includes('body-version') &&
       families.includes('blocked-by') &&

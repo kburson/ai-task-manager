@@ -7,6 +7,7 @@
 
 import { unescapeValue } from './marker-grammar.mjs';
 import { parseDuration } from './duration.mjs';
+import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 // Normalize an engaged-time field to MINUTES. Two callers feed this detector:
 //   - the approve verb passes board values, where engagedTime is a Text
@@ -29,7 +30,6 @@ function engagedToMinutes(v) {
 /** @typedef {{ body:string, comments:Array<{body:string,createdAt:string}>, fields:Record<string,any> }} Signals */
 
 const SANDBOX_FAIL_RE = /##\s+✗\s+Sandboxed verification failed/;
-const ENTERED_DEVELOP_RE = /<!--\s*aitm-entered-develop[: ]/g;
 // Dual-grammar (#381): legacy colon CSV + new quoted-attribute `shas="..."`.
 const COMMITS_MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([\s\S]*?)\s*-->/;
 const COMMITS_MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s*-->/;
@@ -66,8 +66,8 @@ export function detectSandboxRetries({ comments }) {
 /** Re-pickup — emits when develop-entry marker appears more than once. */
 export function detectRepickup({ body }) {
   if (typeof body !== 'string') return null;
-  const matches = body.match(ENTERED_DEVELOP_RE);
-  if (matches && matches.length > 1) {
+  const visits = parseEntryMarkers(body).filter((entry) => entry.state === 'develop');
+  if (visits.length > 1) {
     return 'develop-stage re-entry detected';
   }
   return null;

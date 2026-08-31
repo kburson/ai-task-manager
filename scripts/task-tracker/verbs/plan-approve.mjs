@@ -38,6 +38,7 @@ import {
   verifyEpicOrchestrationPlan,
 } from '../lib/epic-orchestration-plan.mjs';
 import { defaultResolveTrunkSha } from '../lib/plan-approved-guard.mjs';
+import { parseEntryMarkers } from '../lib/stage-entry-grammar.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -45,10 +46,12 @@ import { defaultResolveTrunkSha } from '../lib/plan-approved-guard.mjs';
 // not synthesize a phantom visit-1 marker. Tolerant of BOTH the legacy
 // `:`-delimited form and the new `ts="..."` property grammar (#374) so the
 // idempotency check still fires after the writer flip.
-const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?(?::|\s+ts=")/i;
 const FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
-const R4P_ENTRY_RE = /<!--\s*aitm-entered-ready-for-plan(?:-\d+)?(?:\s+|:)/i;
+
+function hasEntry(body, state) {
+  return parseEntryMarkers(body).some((entry) => entry.state === state);
+}
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
@@ -102,7 +105,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-  const requiresTrunkProvenance = R4P_ENTRY_RE.test(body);
+  const requiresTrunkProvenance = hasEntry(body, 'ready-for-plan');
   const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
   const epicChildren = await fetchChildren({
     cfg,
@@ -216,7 +219,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     return { status: 'directory-approved', ts, mode: requestedMode, audit };
   }
 
-  const hasPlanEntry = PLAN_ENTRY_RE.test(body);
+  const hasPlanEntry = hasEntry(body, 'plan');
 
   // Both markers present — true no-op. (Diagnostic fast-path; the closure
   // below would re-check the FRESH base anyway. The audit still runs here:
@@ -259,7 +262,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     repo: cfg.repo,
     mutate: (base) => {
       let n = base;
-      if (!PLAN_ENTRY_RE.test(n)) {
+      if (!hasEntry(n, 'plan')) {
         n = stampEntryMarker(n, 'plan', ts);
       }
       const freshForecastRecordId = n.match(FORECAST_READY_RE)?.[1] ?? null;

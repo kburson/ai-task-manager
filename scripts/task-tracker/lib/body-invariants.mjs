@@ -36,11 +36,11 @@ import {
   parseVcRefIndexes,
   resolveVcRefCommands,
 } from './vc-ref.mjs';
+import { ENTRY_MARKER_RE, parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
 // so dropped entry markers are detected under either grammar.
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 
 // #476 — global counter for the append-only session-ref family. Kept separate
 // from the non-global presence pattern in `lib/session-ref.mjs` because
@@ -226,7 +226,7 @@ export const INVARIANT_MARKER_PATTERNS = [
     re: /<!--\s*aitm-last-known-state(?:-ts\s*:|\s+state=")/i,
     kind: 'single',
   },
-  { name: 'aitm-entered-<stage>', re: ENTERED_STAGE_RE, kind: 'multi' },
+  { name: 'aitm-entered-<stage>', re: ENTRY_MARKER_RE, kind: 'multi' },
   // #476 — append-only session-reference chain. Entries accumulate and are
   // never removed; the invariant is "occurrence count must not decrease". A
   // dropped prior entry on an unrelated edit is a loss. Uses the `count` kind
@@ -257,12 +257,11 @@ function countMarkers(body, re) {
 
 function enteredStages(body) {
   const set = new Set();
-  // matchAll requires a global regex; ENTERED_STAGE_RE is /g.
-  for (const m of String(body || '').matchAll(ENTERED_STAGE_RE)) {
+  for (const entry of parseEntryMarkers(body)) {
     // Preserve raw historical stage identity. Entry markers are append-only
     // audit bytes: adding a canonical alias does not authorize removing the
     // marker that actually recorded the historical transition.
-    set.add(m[1].toLowerCase());
+    set.add(entry.state.toLowerCase());
   }
   return set;
 }

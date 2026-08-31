@@ -30,6 +30,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gql } from '../gh/lib/github-projects.mjs';
 import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
+import { LEGACY_COLON_ENTRY_MARKER_RE } from '../task-tracker/lib/stage-entry-grammar.mjs';
 import {
   migrateBodyWithFamilies,
   stripSpuriousProseMarkers,
@@ -50,7 +51,7 @@ const STATE_PATH = new URL('../../.tmp/heal/migrate-markers-corpus.state.json', 
 // now prose-safe `migrateProofMarkers` transform.
 // ---------------------------------------------------------------------------
 const RESIDUAL_DETECTORS = [
-  ['stage-entry', /<!--\s*aitm-entered-[a-z]+(?:-\d+)?:\s/i],
+  ['stage-entry', LEGACY_COLON_ENTRY_MARKER_RE],
   [
     'lifecycle',
     /<!--\s*aitm-(?:refine-complete|deep-dive-posted|deep-dive-complete|plan-approved|review-approved):\s/i,
@@ -118,6 +119,7 @@ export function residualFamilies(body) {
   // The deep-dive-complete JSON-payload relics are intentionally NOT migrated
   // (C2/#388 handled them by hand); a `{`-payload marker is not residual.
   const fams = RESIDUAL_DETECTORS.filter(([name, re]) => {
+    re.lastIndex = 0;
     if (!re.test(src)) return false;
     if (name === 'lifecycle' && /<!--\s*aitm-deep-dive-complete:\s*\{/.test(src)) {
       // Re-test excluding the JSON relic form.

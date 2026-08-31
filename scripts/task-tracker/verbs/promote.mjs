@@ -32,7 +32,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { appendAuditMarker } from '../lib/markers.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
-import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
@@ -449,7 +449,7 @@ export async function runPromote({
           target,
           mutate: (base) => {
             const { state: stateAfter } = readLastKnownState(base);
-            const hasEntry = new RegExp(`<!--\\s*aitm-entered-${target}(?::|\\s+ts=")`).test(base);
+            const hasEntry = parseEntryMarkers(base).some((entry) => entry.stage === target);
             if (stateAfter === target && hasEntry) return base;
             const nowTs = now();
             let repaired = base;

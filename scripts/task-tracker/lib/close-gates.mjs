@@ -28,6 +28,7 @@ import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mj
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 import { resolveTrunkRef as defaultResolveTrunkRef, fetchTrunk } from './trunk-ref.mjs';
 import { lineageDoneGate } from './close-gates-lineage.mjs';
+import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 
 const pexec = promisify(execFile);
 
@@ -76,15 +77,8 @@ export async function shaFreshGate(body, headSha, deps = {}) {
 export function chainIntegrityGate(body) {
   const result = verifyChainIntegrity(body, 'review');
   // Strict variant: require every REQUIRED_CHAIN_STAGES marker (any visit).
-  const holes = [];
-  for (const stage of REQUIRED_CHAIN_STAGES) {
-    // Tolerate both legacy `: <iso>` and new `ts="<iso>"` entry-marker forms (#374).
-    const re = new RegExp(
-      `<!--\\s*aitm-entered-${stage}(?:-\\d+)?(?::\\s*[^>]*?|\\s+ts="[^"]*")\\s*-->`,
-      'i'
-    );
-    if (!re.test(String(body || ''))) holes.push(stage);
-  }
+  const present = new Set(parseEntryMarkers(body).map((entry) => entry.state));
+  const holes = REQUIRED_CHAIN_STAGES.filter((stage) => !present.has(stage));
   const illegal = result.illegalArcs || [];
   if (holes.length === 0 && illegal.length === 0) return { ok: true };
   const blockers = [];

@@ -69,7 +69,11 @@ const ALLOWLIST = new Map(
       'historical state-position projection',
     ],
     'scripts/task-tracker/lib/move-state/policy.mjs': [1, 'raw CLI aliases'],
-    'scripts/task-tracker/lib/stage-entry-markers.mjs': [4, 'historical marker reader aliases'],
+    'scripts/task-tracker/lib/stage-entry-markers.mjs': [3, 'historical marker reader aliases'],
+    'scripts/tests/unit/task-tracker/lib/stage-entry-grammar-ownership.test.mjs': [
+      3,
+      'shared grammar historical-alias characterization',
+    ],
     'scripts/tests/unit/task-tracker/lib/timing-event-map.test.mjs': [
       1,
       'historical timing fixture',
