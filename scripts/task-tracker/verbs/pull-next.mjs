@@ -11,6 +11,9 @@
 // If no dependency-ready R4P child exists, the verb is a no-op success.
 // If the epic is not in `develop`, the verb errors.
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { loadConfig } from '../config.mjs';
 import {
   fetchEpicChildren,
@@ -29,6 +32,30 @@ import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { runPreflight } from '../lib/verb-preflight.mjs';
 import { withIssueLock } from '../issue-mutator-lock.mjs';
 import { stateIds } from '../lib/lifecycle-policy/index.mjs';
+
+const pexec = promisify(execFile);
+
+export function formatPlanningBaseGuidance({ parentIssueNumber = null, parentBranch = null } = {}) {
+  if (parentIssueNumber === null) return 'current trunk';
+  const branch = typeof parentBranch === 'string' ? parentBranch.trim() : '';
+  return branch
+    ? `epic integration branch \`${branch}\``
+    : `the live integration branch for epic #${parentIssueNumber}`;
+}
+
+export async function defaultResolveEpicPlanningBranch({ projectDir, deps = {} } = {}) {
+  if (typeof projectDir !== 'string' || !projectDir.trim()) {
+    throw new Error('epic planning branch requires the bound project directory');
+  }
+  const run = deps.execFile || pexec;
+  const { stdout } = await run('git', ['branch', '--show-current'], {
+    cwd: projectDir,
+    timeout: 10_000,
+  });
+  const branch = String(stdout || '').trim();
+  if (!branch) throw new Error('bound epic worktree has no current branch');
+  return branch;
+}
 
 export async function defaultGetLiveState({ issueNumber, cfg, deps = {} }) {
   const fetchSnapshot = deps.fetchSnapshot || fetchAssignmentSnapshot;
@@ -317,13 +344,31 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
         '.',
     };
   }
+  let epicBranch = null;
+  try {
+    const resolveEpicPlanningBranch =
+      deps.resolveEpicPlanningBranch || defaultResolveEpicPlanningBranch;
+    epicBranch = await resolveEpicPlanningBranch({
+      epicNumber: Number(epicNumber),
+      projectDir,
+      cfg,
+      deps: deps.planningBaseDeps,
+    });
+  } catch {
+    // Promotion is already verified. Degrade only the informational wording,
+    // and never misidentify trunk as an epic child's planning base.
+  }
+  const planningBase = formatPlanningBaseGuidance({
+    parentIssueNumber: Number(epicNumber),
+    parentBranch: epicBranch,
+  });
   return {
     status: 'pulled',
     childNumber: next.number,
     childRank: next.rank,
     promoteResult,
     sweep,
-    message: `Pulled #${next.number} (rank=${next.rank}) ready-for-plan→plan. Refresh JIT planning against current trunk, then run /task promote ${next.number}; Plan→Develop will verify exclusive ownership.`,
+    message: `Pulled #${next.number} (rank=${next.rank}) ready-for-plan→plan. Refresh JIT planning against ${planningBase}, then run /task promote ${next.number}; Plan→Develop will verify exclusive ownership.`,
   };
 }
 
