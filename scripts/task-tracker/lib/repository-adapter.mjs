@@ -48,6 +48,7 @@ export function createActionCapabilityContext({ repository, actionContext = {} }
     checks: freezeAdapter(actionContext.checks),
     receipts: freezeAdapter(actionContext.receipts),
     instructions: freezeAdapter(actionContext.instructions),
+    review: freezeAdapter(actionContext.review),
   };
   return Object.freeze(context);
 }
@@ -220,6 +221,11 @@ export class RepositoryAdapter {
   now() {
     const fn = this.capabilities.now;
     return typeof fn === 'function' ? fn() : Date.now();
+  }
+
+  checkpoint(point, details) {
+    const fn = this.capabilities.checkpoint;
+    return typeof fn === 'function' ? fn(point, details) : undefined;
   }
 
   withIssueLock(args, operation) {

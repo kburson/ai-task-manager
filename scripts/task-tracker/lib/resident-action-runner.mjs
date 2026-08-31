@@ -83,7 +83,8 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
   const context = createActionCapabilityContext({ repository, actionContext });
 
   async function append(snapshot, action, phase, input = {}) {
-    return repository.appendActionEvent({
+    await repository.checkpoint?.(`before-${phase}`, { actionId: action.id, phase });
+    const result = await repository.appendActionEvent({
       ...eventIdentity(snapshot, action),
       phase,
       correlation: input.correlation,
@@ -93,6 +94,8 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
       evidenceFingerprint: input.evidenceFingerprint,
       ts: new Date(repository.now()).toISOString(),
     });
+    await repository.checkpoint?.(`after-${phase}`, { actionId: action.id, phase, result });
+    return result;
   }
 
   async function verify(action, snapshot) {
@@ -174,9 +177,18 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
         return { status: 'paused', reason: 'stale-state-visit' };
       }
 
+      await repository.checkpoint?.('before-provider-submission', {
+        actionId: action.id,
+        correlation: winningCorrelation,
+      });
       const outcome = await action.run(context, beforeEffect, {
         trigger,
         correlation: winningCorrelation,
+      });
+      await repository.checkpoint?.('after-provider-submission', {
+        actionId: action.id,
+        correlation: winningCorrelation,
+        outcome,
       });
       if (!outcome || !ACTION_OUTCOME_SET.has(outcome.status)) {
         return { status: 'paused', reason: 'invalid-action-outcome' };

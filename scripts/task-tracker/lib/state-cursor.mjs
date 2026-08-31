@@ -232,6 +232,15 @@ export function createStateCursor({ machine, repository, actions } = {}) {
       if (BOUNDARY_REFUSALS.has(boundary?.kind)) return Object.freeze({ ...boundary });
       if (boundary?.kind !== 'moved') return invalidBoundaryResult(boundary);
 
+      await repository.checkpoint?.('after-confirmed-move', {
+        issue,
+        fromState: current.id,
+        targetState: movementIntent.target,
+      });
+      await repository.checkpoint?.('before-target-hydration', {
+        issue,
+        targetState: movementIntent.target,
+      });
       snapshot = await repository.hydrateTask({ issue, cwd });
       const targetState = currentStateValue(snapshot);
       if (targetState !== movementIntent.target) {
@@ -241,6 +250,10 @@ export function createStateCursor({ machine, repository, actions } = {}) {
           actualState: targetState,
         });
       }
+      await repository.checkpoint?.('before-first-target-action', {
+        issue,
+        targetState,
+      });
       const result = await actions.resume(machine.get(targetState).residentActions, snapshot, {
         trigger: 'resident-entry',
         writeAuthorized: true,

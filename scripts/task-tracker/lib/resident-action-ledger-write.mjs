@@ -81,6 +81,10 @@ function pairFromHead(value) {
   return value ? parseCommentPair(value) : { commentId: null, hash: null };
 }
 
+async function checkpoint(deps, point, details = {}) {
+  if (typeof deps.checkpoint === 'function') await deps.checkpoint(point, details);
+}
+
 function deterministicEventId({ repository, issue, stateVisitId, actionId, attemptId, phase }) {
   return fingerprint({ repository, issue, stateVisitId, actionId, attemptId, phase });
 }
@@ -144,6 +148,7 @@ export async function advanceActionLedgerHead({
 
   const initialBody = await deps.fetchBody(repo, issue);
   const initialActual = parseBodyLedgerHead(initialBody);
+  if (!expectedMatches(expectedHead, initialActual)) throw new Error('stale-expected-head');
   const initialInlineBody = replaceHead(initialBody, inline);
   const mustSpill =
     inline.length > INLINE_HEAD_MARKER_LIMIT ||
@@ -155,9 +160,11 @@ export async function advanceActionLedgerHead({
       throw new Error('resident-action-spill-capability-unavailable');
     }
     const spillBody = renderSpillHeadComment(complete);
+    await checkpoint(deps, 'before-spill-write', { issue, visit: complete.visit });
     const created = await createComment(issue, spillBody);
     const id = commentId(created);
     await readVerifiedSpill({ issue, id, body: spillBody, readComment });
+    await checkpoint(deps, 'after-spill-write', { issue, visit: complete.visit, commentId: id });
     commentVerifications += 1;
     spill = {
       id,
@@ -172,6 +179,7 @@ export async function advanceActionLedgerHead({
     };
   }
 
+  await checkpoint(deps, 'before-body-head-advance', { issue, visit: complete.visit });
   const write = await mutateIssueBody({
     issueNumber: issue,
     repo,
@@ -184,6 +192,7 @@ export async function advanceActionLedgerHead({
       }
     },
   });
+  await checkpoint(deps, 'after-body-head-advance', { issue, visit: complete.visit, mode });
 
   const verifiedHead = parseBodyLedgerHead(write.body);
   if (!verifiedHead || verifiedHead.mode !== mode) {
@@ -236,6 +245,7 @@ export async function appendActionEvent(input = {}) {
   let bodyHead = parseBodyLedgerHead(body);
   if (!bodyHead) {
     const genesis = createGenesisHead({ visit: stateVisitId, definition });
+    await checkpoint(deps, 'before-genesis', { issue, stateVisitId, actionId });
     const created = await advanceActionLedgerHead({
       issue,
       repo: repository,
@@ -245,6 +255,7 @@ export async function appendActionEvent(input = {}) {
     });
     bodyHead = created.head;
     body = created.write.body;
+    await checkpoint(deps, 'after-genesis', { issue, stateVisitId, actionId });
   }
   if (bodyHead.visit !== stateVisitId) throw new Error('stale-state-visit');
   const completeHead = await resolveCompleteHead({ issue, bodyHead, deps });
