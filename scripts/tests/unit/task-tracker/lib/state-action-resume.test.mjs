@@ -1,4 +1,4 @@
-// @story #1117 #1454 #1455
+// @story #1117 #1454 #1455 #1456
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,6 +23,12 @@ import {
 } from '../../../../task-tracker/lib/resident-action-ledger-codec.mjs';
 import { stampBodyVersion } from '../../../../task-tracker/lib/body-version.mjs';
 import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
+import {
+  ACTION_OUTCOMES,
+  VERIFY_STATUSES,
+  createResidentActionRunner,
+} from '../../../../task-tracker/lib/resident-action-runner.mjs';
+import { RepositoryAdapter } from '../../../../task-tracker/lib/repository-adapter.mjs';
 
 const HASH_A = `sha256:${'a'.repeat(64)}`;
 const HASH_B = `sha256:${'b'.repeat(64)}`;
@@ -381,4 +387,325 @@ test('audit paginates fully and spill GC requires fresh unreachable proof', asyn
     },
   });
   assert.equal(warning.warnings[0].code, 'orphaned-spill-snapshot');
+});
+
+function runnerSnapshot(overrides = {}) {
+  return {
+    issue: { value: 1117 },
+    currentState: { value: 'review' },
+    stateVisitId: 'review:1',
+    invocation: { issue: 1117, cwd: '/tmp/task-1117', mode: 'online', maxLinks: 3 },
+    actionLedger: { status: 'clean', events: [] },
+    ...overrides,
+  };
+}
+
+function runnerRepository({ snapshots = [], now = Date.parse('2026-08-31T12:00:00Z') } = {}) {
+  const appended = [];
+  let hydrateIndex = 0;
+  const repository = new RepositoryAdapter({
+    now: () => now,
+    hydrateTask: async () => snapshots[Math.min(hydrateIndex++, snapshots.length - 1)],
+    resolveCorrelation: ({ action }) => ({ key: `${action.id}:correlation` }),
+    withCorrelationIntent: async ({ correlation }, operation) => operation(correlation),
+    appendActionEvent: async (event) => {
+      appended.push(event);
+      return { status: 'appended', event };
+    },
+  });
+  repository.hydrateTask = repository.capabilities.hydrateTask;
+  return {
+    repository,
+    appended,
+    get hydrateCalls() {
+      return hydrateIndex;
+    },
+  };
+}
+
+function actionDouble({ id = 'review-check', serialization = 'correlation', verify, run } = {}) {
+  const calls = { verify: 0, run: 0, contexts: [] };
+  return {
+    id,
+    serialization,
+    calls,
+    async verify(context, snapshot) {
+      calls.verify += 1;
+      calls.contexts.push(context);
+      return typeof verify === 'function' ? verify(calls.verify, snapshot) : verify;
+    },
+    async run(context, snapshot, input) {
+      calls.run += 1;
+      calls.contexts.push(context);
+      return typeof run === 'function' ? run(calls.run, snapshot, input) : run;
+    },
+  };
+}
+
+test('runner exports closed status vocabularies and a frozen narrow capability context', async () => {
+  assert.deepEqual(VERIFY_STATUSES, ['complete', 'incomplete']);
+  assert.deepEqual(ACTION_OUTCOMES, ['complete', 'waiting', 'paused', 'failed']);
+  const base = runnerSnapshot();
+  const fixture = runnerRepository({ snapshots: [base] });
+  const action = actionDouble({ verify: { status: 'complete', evidence: { sha: 'abc' } } });
+  await createResidentActionRunner({
+    repository: fixture.repository,
+    actionContext: { git: { readHead: () => 'abc' }, gh: { raw: true }, lockDirectory: '/tmp/x' },
+  }).resume([action], base, { trigger: 'actions-only', writeAuthorized: true });
+  const [context] = action.calls.contexts;
+  assert.ok(Object.isFrozen(context));
+  assert.ok(Object.isFrozen(context.git));
+  assert.equal(context.git.readHead(), 'abc');
+  assert.equal(context.gh, undefined);
+  assert.equal(context.lockDirectory, undefined);
+  assert.equal(context.requestTransition, undefined);
+});
+
+test('verify-first traversal scans from start and never runs fresh completion', async () => {
+  const base = runnerSnapshot();
+  const fixture = runnerRepository({ snapshots: [base, base] });
+  const first = actionDouble({
+    id: 'first',
+    verify: { status: 'complete', evidence: { sha: 'a' } },
+  });
+  const second = actionDouble({
+    id: 'second',
+    verify: { status: 'complete', evidence: { sha: 'b' } },
+  });
+  const runner = createResidentActionRunner({ repository: fixture.repository });
+  assert.deepEqual(
+    await runner.resume([first, second], base, { trigger: 'actions-only', writeAuthorized: true }),
+    { status: 'complete' }
+  );
+  assert.deepEqual(
+    await runner.resume([first, second], base, { trigger: 'actions-only', writeAuthorized: true }),
+    { status: 'complete' }
+  );
+  assert.equal(first.calls.verify, 2);
+  assert.equal(second.calls.verify, 2);
+  assert.equal(first.calls.run + second.calls.run, 0);
+});
+
+test('stale resolved evidence reruns, rehydrates after the effect, and verifies finally', async () => {
+  const resolved = {
+    phase: 'resolved',
+    correlation: { key: 'old' },
+    evidenceFingerprint: HASH_A,
+  };
+  const before = runnerSnapshot({ actionLedger: { status: 'clean', events: [resolved] } });
+  const after = runnerSnapshot({ actionLedger: { status: 'clean', events: [resolved] } });
+  const fixture = runnerRepository({ snapshots: [before, after] });
+  const action = actionDouble({
+    verify: (call) =>
+      call === 1 ? { status: 'incomplete' } : { status: 'complete', evidence: { sha: 'new' } },
+    run: { status: 'complete' },
+  });
+  const result = await createResidentActionRunner({ repository: fixture.repository }).resume(
+    [action],
+    before,
+    { trigger: 'resident-entry', writeAuthorized: true }
+  );
+  assert.deepEqual(result, { status: 'complete' });
+  assert.equal(action.calls.run, 1);
+  assert.equal(action.calls.verify, 2);
+  assert.ok(fixture.hydrateCalls >= 2);
+  assert.equal(fixture.appended.at(-1).phase, 'resolved');
+});
+
+test('verified open attempts close as correlated or observed without calling run', async () => {
+  for (const [evidenceCorrelation, attribution] of [
+    [{ key: 'A' }, 'correlated'],
+    [{ key: 'B' }, 'observed'],
+  ]) {
+    const open = { phase: 'waiting', correlation: { key: 'A' }, deadline: '2026-09-01T00:00:00Z' };
+    const base = runnerSnapshot({ actionLedger: { status: 'clean', events: [open] } });
+    const fixture = runnerRepository({ snapshots: [base] });
+    const action = actionDouble({
+      verify: { status: 'complete', evidence: { correlation: evidenceCorrelation } },
+    });
+    const result = await createResidentActionRunner({ repository: fixture.repository }).resume(
+      [action],
+      base,
+      { trigger: 'actions-only', writeAuthorized: true }
+    );
+    assert.deepEqual(result, { status: 'complete' });
+    assert.equal(action.calls.run, 0);
+    assert.equal(fixture.appended[0].phase, 'resolved');
+    assert.equal(fixture.appended[0].attribution, attribution);
+  }
+});
+
+test('waiting deadlines remain read-only before expiry and fail exactly at expiry when authorized', async () => {
+  const waiting = {
+    phase: 'waiting',
+    correlation: { key: 'A' },
+    deadline: '2026-08-31T12:00:00.000Z',
+  };
+  const base = runnerSnapshot({ actionLedger: { status: 'clean', events: [waiting] } });
+  const action = actionDouble({ verify: { status: 'incomplete' } });
+  const before = runnerRepository({
+    snapshots: [base],
+    now: Date.parse('2026-08-31T11:59:59.999Z'),
+  });
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: before.repository }).resume([action], base, {
+      trigger: 'actions-only',
+      writeAuthorized: true,
+    }),
+    { status: 'waiting', deadline: waiting.deadline, correlation: waiting.correlation }
+  );
+  assert.equal(before.appended.length, 0);
+
+  const readOnly = runnerRepository({ snapshots: [base] });
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: readOnly.repository }).resume([action], base, {
+      trigger: 'actions-only',
+      writeAuthorized: false,
+    }),
+    {
+      status: 'waiting',
+      deadline: waiting.deadline,
+      correlation: waiting.correlation,
+      expired: true,
+    }
+  );
+  assert.equal(readOnly.appended.length, 0);
+
+  const expired = runnerRepository({ snapshots: [base] });
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: expired.repository }).resume([action], base, {
+      trigger: 'actions-only',
+      writeAuthorized: true,
+    }),
+    { status: 'failed', reason: 'waiting-deadline-expired' }
+  );
+  assert.equal(expired.appended[0].phase, 'failed');
+});
+
+test('malformed waiting evidence fails closed', async () => {
+  const malformed = runnerSnapshot({
+    actionLedger: {
+      status: 'clean',
+      events: [{ phase: 'waiting', correlation: {}, deadline: 'not-a-date' }],
+    },
+  });
+  const fixture = runnerRepository({ snapshots: [malformed] });
+  const action = actionDouble({ verify: { status: 'incomplete' } });
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: fixture.repository }).resume(
+      [action],
+      malformed,
+      { trigger: 'actions-only', writeAuthorized: true }
+    ),
+    { status: 'paused', reason: 'malformed-waiting-event' }
+  );
+  assert.equal(action.calls.run, 0);
+});
+
+test('correlation intent revalidates visit immediately before provider effect', async () => {
+  const before = runnerSnapshot({ stateVisitId: 'review:1' });
+  const changed = runnerSnapshot({ stateVisitId: 'review:2' });
+  const fixture = runnerRepository({ snapshots: [before, changed] });
+  const action = actionDouble({ verify: { status: 'incomplete' }, run: { status: 'complete' } });
+  const result = await createResidentActionRunner({ repository: fixture.repository }).resume(
+    [action],
+    before,
+    { trigger: 'resident-entry', writeAuthorized: true }
+  );
+  assert.deepEqual(result, { status: 'paused', reason: 'stale-state-visit' });
+  assert.equal(action.calls.run, 0);
+});
+
+test('correlation serialization shares one winner and lock contention pauses', async () => {
+  const base = runnerSnapshot();
+  let winner;
+  const seen = [];
+  const capabilities = {
+    now: () => Date.parse('2026-08-31T12:00:00Z'),
+    hydrateTask: async () => base,
+    resolveCorrelation: () => ({ key: Math.random().toString(16) }),
+    withCorrelationIntent: async ({ correlation }, operation) => {
+      winner ??= correlation;
+      return operation(winner);
+    },
+    appendActionEvent: async () => ({ status: 'appended' }),
+  };
+  const repository = new RepositoryAdapter(capabilities);
+  repository.hydrateTask = capabilities.hydrateTask;
+  const action = actionDouble({
+    verify: (call) => (call <= 2 ? { status: 'incomplete' } : { status: 'complete' }),
+    run: (_call, _snapshot, input) => {
+      seen.push(input.correlation);
+      return { status: 'complete' };
+    },
+  });
+  const runner = createResidentActionRunner({ repository });
+  await Promise.all([
+    runner.resume([action], base, { trigger: 'actions-only', writeAuthorized: true }),
+    runner.resume([action], base, { trigger: 'actions-only', writeAuthorized: true }),
+  ]);
+  assert.equal(seen.length, 2);
+  assert.deepEqual(seen[0], seen[1]);
+
+  const blocked = new RepositoryAdapter({
+    hydrateTask: async () => base,
+    resolveCorrelation: () => ({ key: 'A' }),
+    withCorrelationIntent: async () => {
+      const error = new Error('lock busy');
+      error.code = 'EBUSY';
+      throw error;
+    },
+  });
+  blocked.hydrateTask = blocked.capabilities.hydrateTask;
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: blocked }).resume(
+      [actionDouble({ verify: { status: 'incomplete' } })],
+      base,
+      {
+        trigger: 'actions-only',
+        writeAuthorized: true,
+      }
+    ),
+    { status: 'paused', reason: 'action-lock-contention' }
+  );
+});
+
+test('waiting outcomes require correlation and ISO deadline', async () => {
+  const base = runnerSnapshot();
+  const fixture = runnerRepository({ snapshots: [base, base] });
+  const action = actionDouble({ verify: { status: 'incomplete' }, run: { status: 'waiting' } });
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: fixture.repository }).resume([action], base, {
+      trigger: 'actions-only',
+      writeAuthorized: true,
+    }),
+    { status: 'paused', reason: 'invalid-waiting-outcome' }
+  );
+  assert.equal(
+    fixture.appended.some((event) => event.phase === 'waiting'),
+    false
+  );
+});
+
+test('waiting is returned only after the durable event is rehydrated and verified', async () => {
+  const base = runnerSnapshot();
+  const deadline = '2026-09-01T00:00:00.000Z';
+  const durable = runnerSnapshot({
+    actionLedger: {
+      status: 'clean',
+      events: [{ phase: 'waiting', correlation: { key: 'review-check:correlation' }, deadline }],
+    },
+  });
+  const fixture = runnerRepository({ snapshots: [base, base, base, durable] });
+  const action = actionDouble({
+    verify: { status: 'incomplete' },
+    run: { status: 'waiting', deadline },
+  });
+  assert.deepEqual(
+    await createResidentActionRunner({ repository: fixture.repository }).resume([action], base, {
+      trigger: 'actions-only',
+      writeAuthorized: true,
+    }),
+    { status: 'waiting', deadline, correlation: { key: 'review-check:correlation' } }
+  );
 });

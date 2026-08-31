@@ -1,4 +1,4 @@
-// @story #1117 #1453
+// @story #1117 #1453 #1456
 
 import { readResidentActionLedger } from './resident-action-ledger-read.mjs';
 import { readMoveCompleteState } from './move-state/sentinel.mjs';
@@ -18,6 +18,38 @@ function lastKnownState(body) {
 
 function unavailable(name) {
   throw new Error(`repository-capability-unavailable:${name}`);
+}
+
+function freezeAdapter(value) {
+  if (!value || typeof value !== 'object') return Object.freeze({});
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        nested && typeof nested === 'object' ? freezeAdapter(nested) : nested,
+      ])
+    )
+  );
+}
+
+export function createActionCapabilityContext({ repository, actionContext = {} } = {}) {
+  if (!repository) throw new TypeError('createActionCapabilityContext: repository is required');
+  const context = {
+    now: () => repository.now(),
+    hydrateTask: (args) => repository.hydrateTask(args),
+    resolveCorrelation: (args) => repository.resolveCorrelation(args),
+    withCorrelationIntent: (args, operation) => repository.withCorrelationIntent(args, operation),
+    appendActionEvent: (args) => repository.appendActionEvent(args),
+    advanceActionLedgerHead: (args) => repository.advanceActionLedgerHead(args),
+    recordLedgerDamageCarry: (args) => repository.recordLedgerDamageCarry(args),
+    mutateActionEvidence: (args) => repository.mutateActionEvidence(args),
+    git: freezeAdapter(actionContext.git),
+    pullRequests: freezeAdapter(actionContext.pullRequests),
+    checks: freezeAdapter(actionContext.checks),
+    receipts: freezeAdapter(actionContext.receipts),
+    instructions: freezeAdapter(actionContext.instructions),
+  };
+  return Object.freeze(context);
 }
 
 export class RepositoryAdapter {
@@ -173,6 +205,11 @@ export class RepositoryAdapter {
   withCorrelationIntent(args, operation) {
     const fn = this.capabilities.withCorrelationIntent;
     return typeof fn === 'function' ? fn(args, operation) : unavailable('withCorrelationIntent');
+  }
+
+  resolveCorrelation(args) {
+    const fn = this.capabilities.resolveCorrelation;
+    return typeof fn === 'function' ? fn(args) : unavailable('resolveCorrelation');
   }
 
   mutateActionEvidence(args) {
