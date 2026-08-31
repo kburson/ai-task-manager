@@ -548,6 +548,8 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     }
     out.push({
       number: sub.number,
+      title: String(sub.title || '').trim(),
+      body: String(sub.body || ''),
       rank,
       state,
       boardState,

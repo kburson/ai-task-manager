@@ -29,10 +29,16 @@ function wbsChild({
   sourcePlanCommit = 'child-plan-commit',
   sourcePlanSection = task.heading,
   title = task.title,
+  rank = number,
+  blockedBy = [],
+  hasCurrentRefinement = true,
 } = {}) {
   return {
     number,
     title,
+    rank,
+    blockedBy,
+    hasCurrentRefinement,
     body: [
       '## Plan Metadata',
       `- **Source-plan**: ${sourcePlan}`,
@@ -246,6 +252,21 @@ test('plan exit admits a must-split epic with complete linked WBS coverage', asy
   const result = await decompositionPlanExitGuard.run(completeEpicContext());
   assert.equal(result.ok, true);
   assert.match(result.warn, /WBS instantiated \(6\/6\)/);
+  assert.match(result.warn, /delivery-ready/);
+});
+
+test('plan exit consumes live WBS planning evidence rather than coverage alone', async () => {
+  const ctx = completeEpicContext();
+  const children = await ctx.deps.decomposition.fetchWbsChildren();
+  children[0].rank = null;
+  children[1].hasCurrentRefinement = false;
+  ctx.deps.decomposition.fetchWbsChildren = async () => children;
+
+  const result = await decompositionPlanExitGuard.run(ctx);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((item) => /planning-rank/.test(item)));
+  assert.ok(result.blockers.some((item) => /planning-evidence/.test(item)));
 });
 
 test('plan exit reconciles the exact accepted-plan snapshot used for classification', async () => {
@@ -513,6 +534,24 @@ test('read-only command returns structured classification without mutation', asy
   assert.equal(result.classification.status, 'story-ok');
   assert.equal(result.issueNumber, 1052);
   assert.equal(result.exitCode, 0);
+  assert.equal(result.readiness, null);
+});
+
+test('decompose-check reports must-split plans as decomposition-ready, not delivery-ready', async () => {
+  const ctx = context({ size: 'L', estimate: 16, text: planText(6, 6) });
+  const result = await runDecomposeCheck({
+    issueNumber: 1052,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+
+  assert.equal(result.readiness.status, 'decomposition-ready');
+  assert.equal(result.readiness.deliveryReady, false);
+  assert.equal(result.readiness.expectedWbs.length, 6);
+  assert.equal(result.exitCode, 3, 'live WBS admission has not been proven');
 });
 
 test('decompose-check rejects a missing --plan value instead of consuming another option', () => {

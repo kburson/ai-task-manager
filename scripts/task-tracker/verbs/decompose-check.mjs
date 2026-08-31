@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { describePreSplitReadiness } from '../lib/decomposition-delivery-readiness.mjs';
 import { evaluateIssueDecomposition } from '../lib/decomposition-plan-exit-guard.mjs';
 
 const pexec = promisify(execFile);
@@ -32,7 +33,11 @@ export async function runDecomposeCheck({ issueNumber, cfg, planOverride = null,
   const blocked =
     !evaluated.planSelection.ok ||
     (evaluated.classification.status === 'must-split' && !evaluated.waiver.ok);
-  return { issueNumber: Number(issueNumber), ...evaluated, exitCode: blocked ? 3 : 0 };
+  const readiness =
+    evaluated.classification.status === 'must-split'
+      ? describePreSplitReadiness({ classification: evaluated.classification })
+      : null;
+  return { issueNumber: Number(issueNumber), ...evaluated, readiness, exitCode: blocked ? 3 : 0 };
 }
 
 export function formatDecomposeCheck(result) {
@@ -49,6 +54,12 @@ export function formatDecomposeCheck(result) {
     lines.push(`- source-plan-section: ${result.planSelection.diagnostic}`);
   } else if (result.planSelection.applied) {
     lines.push(`- source-plan-section: ${result.planSelection.heading}`);
+  }
+  if (result.readiness) {
+    lines.push(`- readiness: ${result.readiness.status} (delivery-ready=false)`);
+    lines.push(
+      `- expected-wbs: ${result.readiness.expectedWbs.map((task) => task.heading).join('; ')}`
+    );
   }
   lines.push(`- waiver: ${result.waiver.ok ? 'valid' : result.waiver.reason}`);
   return lines.join('\n');
