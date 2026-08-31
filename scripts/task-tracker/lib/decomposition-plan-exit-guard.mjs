@@ -2,7 +2,6 @@ import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 
-import { fetchAllSubIssueNodes } from '../../gh/lib/wave-admission.mjs';
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
@@ -14,7 +13,8 @@ import {
   resolvePlanPath,
   selectDecompositionPlanSection,
 } from './decomposition-policy.mjs';
-import { reconcileWbsCoverage } from './decomposition-wbs-coverage.mjs';
+import { evaluateMaterializedWbsReadiness } from './decomposition-delivery-readiness.mjs';
+import { fetchEpicChildren } from './epic-children-gate.mjs';
 import { parseIssueKind } from './issue-kind.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
@@ -23,10 +23,7 @@ export const DECOMPOSITION_PLAN_EXIT_GUARD_ID = 'plan-exit-decomposition';
 const pexec = promisify(execFile);
 
 async function defaultFetchWbsChildren({ issueNumber, cfg }) {
-  return fetchAllSubIssueNodes({
-    parentEpicNumber: Number(issueNumber),
-    repo: cfg.repo,
-  });
+  return fetchEpicChildren({ cfg, parentEpicNumber: Number(issueNumber) });
 }
 
 async function defaultReadPlanAtCommit({ projectDir, planCommit, planPath }) {
@@ -164,23 +161,26 @@ export const decompositionPlanExitGuard = {
           issueNumber: Number(ctx.issueNumber),
           cfg: ctx.cfg,
         });
-        const coverage = await reconcileWbsCoverage({
+        const readiness = await evaluateMaterializedWbsReadiness({
+          issueNumber: Number(ctx.issueNumber),
           tasks: result.classification.tasks,
           acceptedPlanPath,
           acceptedPlanText,
+          epicBody: ctx.body || '',
           children,
           readPlanAtCommit: ({ planCommit, planPath }) =>
             readPlanAtCommit({ projectDir, planCommit, planPath }),
         });
-        if (coverage.ok) {
+        if (readiness.deliveryReady) {
+          const coverage = readiness.boundaries.coverage;
           return {
             ok: true,
-            warn: `plan-exit-decomposition: WBS instantiated (${coverage.coveredCount}/${coverage.expectedCount})`,
+            warn: `plan-exit-decomposition: delivery-ready; WBS instantiated (${coverage.coveredCount}/${coverage.expectedCount}); epic branch ${readiness.epicBranch}`,
           };
         }
         const blockers = [
-          `plan-exit-decomposition: must-split (${codes}); WBS incomplete`,
-          ...coverage.blockers,
+          `plan-exit-decomposition: must-split (${codes}); materialized WBS refused`,
+          ...readiness.blockers,
         ];
         return { ok: false, reason: blockers.join('; '), blockers };
       } catch (error) {

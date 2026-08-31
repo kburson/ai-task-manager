@@ -160,7 +160,16 @@ function stub(siblings) {
 const BOARD = 'PVT_board';
 
 // Build a GraphQL sub-issue node in the exact shape defaultFetchSiblings selects.
-function node({ number, state = 'OPEN', stateReason = null, column, rank, projectId = BOARD }) {
+function node({
+  number,
+  title = '',
+  body = '',
+  state = 'OPEN',
+  stateReason = null,
+  column,
+  rank,
+  projectId = BOARD,
+}) {
   const fieldValues = { nodes: [] };
   if (column !== undefined) {
     fieldValues.nodes.push({ name: column, field: { name: 'Status' } });
@@ -170,6 +179,8 @@ function node({ number, state = 'OPEN', stateReason = null, column, rank, projec
   }
   return {
     number,
+    title,
+    body,
     state,
     stateReason,
     projectItems:
@@ -177,6 +188,17 @@ function node({ number, state = 'OPEN', stateReason = null, column, rank, projec
         ? { nodes: [] }
         : { nodes: [{ project: { id: projectId }, fieldValues }] },
   };
+}
+
+// #1287: the shared live descriptor carries the immutable child material that
+// the read-only WBS readiness evaluator consumes.
+{
+  const [c] = mapSubIssueNodes(
+    [node({ number: 1287, title: 'Bounded child', body: '## Plan Metadata' })],
+    BOARD
+  );
+  assert.equal(c.title, 'Bounded child');
+  assert.equal(c.body, '## Plan Metadata');
 }
 
 // 11. CLOSED child ON the board, parked in Backlog → terminal. This is the
