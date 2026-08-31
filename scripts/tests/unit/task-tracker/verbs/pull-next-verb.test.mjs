@@ -9,6 +9,8 @@ import '../../../fixtures/offline-gh-auto.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import {
   defaultGetLiveState,
+  defaultResolveEpicPlanningBranch,
+  formatPlanningBaseGuidance,
   promoteSelectedChild,
   runPullNext,
 } from '../../../../task-tracker/verbs/pull-next.mjs';
@@ -132,6 +134,56 @@ test('runPullNext promotes lowest-rank R4P child', async () => {
   assert.equal(result.childRank, 3);
   assert.deepEqual(calls.promotes, [['103']]);
   assert.deepEqual(calls.childStateLookups, [103]);
+});
+
+test('#1260 pulled epic child names the bound epic integration branch', async () => {
+  const { deps } = makeDeps({ children: [ready(103, 3)] });
+  deps.resolveEpicPlanningBranch = async ({ epicNumber, projectDir }) => {
+    assert.equal(epicNumber, 100);
+    assert.equal(projectDir, '/repo/worktrees/epic-100');
+    return 'feature/epic/100';
+  };
+
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+
+  assert.equal(result.status, 'pulled');
+  assert.match(result.message, /epic integration branch `feature\/epic\/100`/);
+  assert.doesNotMatch(result.message, /current trunk/);
+});
+
+test('#1260 solo-story planning guidance remains current trunk', () => {
+  assert.equal(formatPlanningBaseGuidance({ parentIssueNumber: null }), 'current trunk');
+});
+
+test('#1260 missing epic branch authority fails closed to generic epic guidance', async () => {
+  const { deps } = makeDeps({ children: [ready(103, 3)] });
+  deps.resolveEpicPlanningBranch = async () => {
+    throw new Error('branch authority unavailable');
+  };
+
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+
+  assert.equal(result.status, 'pulled');
+  assert.match(result.message, /live integration branch for epic #100/);
+  assert.doesNotMatch(result.message, /current trunk/);
+});
+
+test('#1260 default epic branch resolver reads the already-bound project directory', async () => {
+  const calls = [];
+  const branch = await defaultResolveEpicPlanningBranch({
+    projectDir: '/repo/worktrees/epic-100',
+    deps: {
+      execFile: async (command, args, options) => {
+        calls.push({ command, args, options });
+        return { stdout: 'codex/100-live-epic\n' };
+      },
+    },
+  });
+
+  assert.equal(branch, 'codex/100-live-epic');
+  assert.equal(calls[0].command, 'git');
+  assert.deepEqual(calls[0].args, ['branch', '--show-current']);
+  assert.equal(calls[0].options.cwd, '/repo/worktrees/epic-100');
 });
 
 test('runPullNext refuses false success when the selected child did not reach Plan', async () => {
