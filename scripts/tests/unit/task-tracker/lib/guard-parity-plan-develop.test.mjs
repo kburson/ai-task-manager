@@ -1,5 +1,4 @@
 // @story #277
-// @parallel-unsafe (production guard imports spawn subprocesses transitively)
 // Parity test for the plan → develop guard-registry migration (#277).
 //
 // Before #277, plan → develop was gated by inline checks at two call sites

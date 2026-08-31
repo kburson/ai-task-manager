@@ -52,9 +52,41 @@ test('slow concurrency is an explicit source-local opt-in that fails closed', ()
     TEST_SCHEDULING_CLASSES.SERIAL
   );
   assert.equal(
+    slowTestSchedulingClass(
+      '/x/malformed-transitive.test.mjs',
+      () => '// @slow-parallel-safe (isolated)\n// @parallel-subprocess (   )'
+    ),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+  assert.equal(
+    slowTestSchedulingClass(
+      '/x/malformed-first-transitive.test.mjs',
+      () =>
+        '// @slow-parallel-safe (isolated) @parallel-subprocess (   ) @parallel-subprocess (spawns through an imported helper)'
+    ),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+  assert.equal(
     slowTestSchedulingClass('/x/unreadable.test.mjs', () => {
       throw new Error('unreadable');
     }),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+});
+
+test('slow scheduling markers are read from comments and fail closed on parser errors', () => {
+  assert.equal(
+    slowTestSchedulingClass(
+      '/x/string-literal-marker.test.mjs',
+      () => "const marker = '@slow-parallel-safe (string literal only)';"
+    ),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+  assert.equal(
+    slowTestSchedulingClass(
+      '/x/unparseable-marked.test.mjs',
+      () => '// @slow-parallel-safe (isolated temporary repository)\nconst =;'
+    ),
     TEST_SCHEDULING_CLASSES.SERIAL
   );
 });

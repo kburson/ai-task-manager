@@ -13,14 +13,7 @@
 // fetch/live helpers run offline. Lock-acquiring verb tests use unique issue
 // numbers so the real withIssueLock never collides (the #618 lesson).
 //
-// @parallel-unsafe (#974) — "default read helpers fetch body + live state via
-// gh" exercises runReconcile's DEFAULT read helpers (no injected deps), which
-// call scripts/gh/lib/github-projects.mjs's gh() — a real `spawn('gh', ...)`.
-// This file never imports node:child_process itself, so
-// test-parallel-safety.mjs's own-source SUBPROCESS_RE scan can't see the
-// transitive spawn and would otherwise misclassify this file as pool-eligible;
-// under real pool contention the fake `gh` shim gets CPU-starved and blows
-// github-projects.mjs's GH_API_TIMEOUT_MS kill ceiling (#973's flake).
+// @parallel-subprocess (runReconcile default helpers reach github-projects.mjs's real gh spawn)
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, writeFileSync, chmodSync } from 'node:fs';

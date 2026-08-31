@@ -1,5 +1,4 @@
 // @story #279
-// @parallel-unsafe (production guard imports spawn subprocesses transitively)
 // Unit tests for the review-exit guards introduced in #279:
 //   - reviewExitReviewApprovedGuard (lib/review-exit-review-approved-guard.mjs)
 //   - reviewExitCloseGatesGuard     (lib/review-exit-close-gates-guard.mjs)
