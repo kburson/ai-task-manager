@@ -1,4 +1,4 @@
-// @story #820
+// @story #820 #1117 #1458
 // #820 — `promote` from Test must delegate to the `review` verb so the Agent
 // Review Gate runs. Before this fix `ALIAS_VERB` was `{develop:'test',
 // review:'close'}` — no `test` entry — so a Test source fell through to the
@@ -30,6 +30,8 @@ import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createStateCursor } from '../../../../task-tracker/lib/state-cursor.mjs';
+import { STATE_MACHINE } from '../../../../task-tracker/states/index.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 // Keep the verb's withIssueLock dir off the live project tree.
@@ -152,6 +154,51 @@ test('AC3 — #881 model: a gate objection after entry leaves the issue in Revie
   assert.equal(r.to, 'review');
   assert.equal(r.delegate, 'review');
   assert.deepEqual(calls.moves, [], 'the in-Review objection must not trigger a direct move');
+});
+
+test('#1458 — Cursor enters Review before validation and leaves an objection resident there', async () => {
+  let state = 'test';
+  const calls = [];
+  const cursor = createStateCursor({
+    machine: STATE_MACHINE,
+    repository: {
+      hydrateTask: async () => ({
+        issue: { value: 1458 },
+        currentState: { value: state },
+        stateVisitId: `${state}:1`,
+      }),
+      requestLegacyBoundary: async ({ fromState, target }) => {
+        calls.push(`boundary:${fromState}->${target}`);
+        state = target;
+        return { kind: 'moved' };
+      },
+    },
+    actions: {
+      resume: async (residents) => {
+        if (residents.some(({ id }) => id === 'review-agent-validation')) {
+          calls.push('action:review-agent-validation');
+          return { status: 'failed', reason: 'objection' };
+        }
+        return { status: 'complete' };
+      },
+    },
+  });
+
+  const result = await cursor.execute({
+    issue: 1458,
+    cwd: '/worktree',
+    trigger: 'advance-forward',
+    requestedTarget: 'review',
+    flags: { verb: 'review' },
+  });
+
+  assert.equal(state, 'review');
+  assert.deepEqual(calls, ['boundary:test->review', 'action:review-agent-validation']);
+  assert.deepEqual(result, {
+    kind: 'resident-result',
+    state: 'review',
+    result: { status: 'failed', reason: 'objection' },
+  });
 });
 
 test('AC3 — #710 defense: delegate exits 0 but board never reached Review', async () => {

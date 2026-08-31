@@ -164,35 +164,32 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 }
 
 // ---------------------------------------------------------------------------
-// #406: review.mjs must capture the structured `runMoveState` result and gate
-// the success banner on it. Before #406 the call discarded its return value and
-// printed "✓ … moved to Review — all verification passed." unconditionally —
-// even when the matrix gate (`validateTransition`) refused the move live (the
-// #233 illegal-transition case), which review's inline guards do NOT replicate.
-// Source-level pins so a future refactor cannot silently restore the noisy-
-// success path.
+// #406/#1458: Cursor's legacy-boundary adapter must capture the structured
+// `runMoveState` result and classify a genuine refusal. The verb then exits on
+// the Cursor refusal before its success banner. Source-level pins prevent the
+// extraction from silently restoring the old noisy-success path.
 // ---------------------------------------------------------------------------
 {
-  // The move result is captured into a named binding, not discarded.
+  // The boundary adapter captures the move result into a named binding.
   assert.match(
     reviewSource,
-    /const\s+reviewMove\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true,\s*lifecycleEvidence:\s*reviewEvidence\.lifecycleEvidence,?\s*\}\)/,
-    'review.mjs captures the runMoveState result into `reviewMove`'
+    /const\s+move\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true,\s*lifecycleEvidence:\s*reviewEvidence\.lifecycleEvidence,?\s*\}\)/,
+    'review.mjs boundary adapter captures the runMoveState result'
   );
 
   // A genuine refusal (ok:false, not the benign done→done self-loop) gates the
   // banner: it writes a refusal and exits before any success line.
   assert.match(
     reviewSource,
-    /if\s*\(reviewMove\s*&&\s*reviewMove\.ok\s*===\s*false\s*&&\s*reviewMove\.benign\s*!==\s*true\)/,
-    'review.mjs gates on `ok === false && benign !== true`'
+    /if\s*\(move\s*&&\s*move\.ok\s*===\s*false\s*&&\s*move\.benign\s*!==\s*true\)\s*\{\s*return\s*\{\s*\.\.\.move,\s*kind:\s*'move-refused'/,
+    'review.mjs classifies `ok === false && benign !== true` as move-refused'
   );
 
-  // The refusal must process.exit before the success banner is reachable.
-  const gateIdx = reviewSource.indexOf('reviewMove.ok === false');
-  const exitIdx = reviewSource.indexOf('process.exit(reviewMove.status', gateIdx);
+  // The classified refusal must process.exit before the success banner.
+  const gateIdx = reviewSource.indexOf("cursorResult.kind === 'move-refused'");
+  const exitIdx = reviewSource.indexOf('process.exit(cursorResult.exit', gateIdx);
   const bannerIdx = reviewSource.indexOf('moved to Review — all verification passed', gateIdx);
-  assert.ok(gateIdx > 0, 'refusal gate exists');
+  assert.ok(gateIdx > 0, 'Cursor refusal gate exists');
   assert.ok(exitIdx > gateIdx, 'gate exits non-zero on refusal');
   assert.ok(
     bannerIdx > exitIdx,

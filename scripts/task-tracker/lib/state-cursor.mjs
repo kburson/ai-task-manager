@@ -50,6 +50,44 @@ function skippedActionIds(stateDefinition, bypass) {
   return stateDefinition.residentActions.map(({ id }) => id);
 }
 
+export function buildReviewCursorRequest({ currentState, issue, cwd } = {}) {
+  const base = { issue, cwd };
+  if (currentState === 'test') {
+    return Object.freeze({
+      ...base,
+      trigger: 'advance-forward',
+      requestedTarget: 'review',
+      flags: Object.freeze({ verb: 'review' }),
+    });
+  }
+  if (currentState === 'review') {
+    return Object.freeze({ ...base, trigger: 'actions-only' });
+  }
+  throw new TypeError(`review cursor: expected test or review, received ${String(currentState)}`);
+}
+
+export function executeReviewCursor({ cursor, currentState, issue, cwd } = {}) {
+  if (!cursor || typeof cursor.execute !== 'function') {
+    throw new TypeError('executeReviewCursor: cursor is required');
+  }
+  return cursor.execute(buildReviewCursorRequest({ currentState, issue, cwd }));
+}
+
+export function classifyReviewCursorResult(result) {
+  if (result?.kind === 'resident-complete' || result?.kind === 'noop') {
+    return Object.freeze({ status: 'complete' });
+  }
+  if (result?.kind === 'resident-result') {
+    return result.result?.status === 'complete'
+      ? Object.freeze({ status: 'complete' })
+      : Object.freeze({ status: 'action-failed', result: result.result });
+  }
+  if (result?.kind === 'dormant') {
+    return Object.freeze({ status: 'action-failed', result: result.result });
+  }
+  return Object.freeze({ status: 'cursor-refused', result });
+}
+
 export function normalizeMovementIntent({ trigger, requestedTarget, flags = {} } = {}) {
   if (!TRIGGERS.has(trigger) || trigger === 'actions-only') {
     throw new TypeError(`normalizeMovementIntent: unsupported movement trigger ${String(trigger)}`);

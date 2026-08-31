@@ -134,6 +134,11 @@ function bankResumeTranscriptTail(state, sid, task) {
   return bank;
 }
 
+async function wakeReviewResidents(ctx, target) {
+  if (ctx.verb === 'start') return;
+  await ctx.resumeReviewActionsAfterBind?.(target);
+}
+
 // `/task resume` — two paths:
 //   no arg: only valid after `/task pause` (s.paused === true). Rebinds lastActive.
 //   #N arg: unrestricted rebind to a specific issue (works after pause OR stop).
@@ -251,6 +256,7 @@ export async function verbResume(ctx) {
         cfg,
       });
       console.log(`Resumed ${s.lastActive}.`);
+      await wakeReviewResidents(ctx, s.lastActive);
       return;
     } catch (error) {
       rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
@@ -293,6 +299,7 @@ export async function verbResume(ctx) {
       /* best-effort: failure must not turn the timing-safe no-op into an error */
     }
     console.log(`already active: ${normalizedTarget}`);
+    await wakeReviewResidents(ctx, normalizedTarget);
     return;
   }
 
@@ -511,6 +518,7 @@ export async function verbResume(ctx) {
           ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
           : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
     );
+    await wakeReviewResidents(ctx, normalizedTarget);
   } catch (error) {
     rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
   }

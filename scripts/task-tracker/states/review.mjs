@@ -28,11 +28,12 @@ import { reviewExitReviewApprovedGuard } from '../lib/review-exit-review-approve
 import { reviewExitCloseGatesGuard } from '../lib/review-exit-close-gates-guard.mjs';
 import { reviewExitEpicChildrenDoneGuard } from '../lib/review-exit-epic-children-done-guard.mjs';
 import { reviewExitEpicChildDispositionGuard } from '../lib/review-exit-epic-child-disposition-guard.mjs';
+import { reviewAgentValidationAction } from '../lib/resident-actions/review-agent-validation.mjs';
 
 export default Object.freeze({
   id: 'review',
   entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardReview]),
-  residentActions: Object.freeze([]),
+  residentActions: Object.freeze([reviewAgentValidationAction]),
   exitGuards: Object.freeze([
     blockedByGuard,
     reviewExitReviewApprovedGuard,

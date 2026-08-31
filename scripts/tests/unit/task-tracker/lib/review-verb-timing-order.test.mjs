@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #463 (deferral) / #830 (C6 — bare-row retirement)
+// @story #463 (deferral) / #830 (C6 — bare-row retirement) / #1117 #1458
 // Unit tests for review.mjs timing-row emission.
 //
 // Original #463 intent: the verb-level "starting review" row was deferred past
@@ -28,6 +28,7 @@ import {
   emitReviewGatePassTimeline,
 } from '../../../../task-tracker/verbs/review.mjs';
 import * as reviewModule from '../../../../task-tracker/verbs/review.mjs';
+import { reviewAgentValidationAction } from '../../../../task-tracker/lib/resident-actions/review-agent-validation.mjs';
 
 function makeTmpStatePath(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-463-'));
@@ -411,6 +412,43 @@ test('gate-pass timeline: the only timing row is review:passed', async () => {
     deps,
   });
   assert.deepEqual(log, ['review:passed']);
+});
+
+test('#1458 — resident pass prepares durable evidence before the pass callback', async () => {
+  const calls = [];
+  const result = await reviewAgentValidationAction.run(
+    {
+      now: () => Date.parse('2026-08-31T12:01:00.000Z'),
+      review: {
+        repo: 'o/r',
+        readComments: async () => [],
+        computeChangedPaths: async () => [],
+        runAgentReviewGate: async () => ({
+          pass: true,
+          failures: [],
+          validatorsRun: ['timing-log-sequence'],
+        }),
+        onFailure: async () => calls.push('failure'),
+        onPass: async ({ passedBody, validators, ts }) => {
+          calls.push('pass');
+          assert.match(passedBody, /Agent Review Passed.*gate="agent-review"/);
+          assert.deepEqual(validators, ['timing-log-sequence']);
+          assert.equal(ts, '2026-08-31T12:01:00.000Z');
+        },
+      },
+    },
+    {
+      issue: { value: 1458 },
+      currentState: { value: 'review' },
+      stateVisitId: 'review:1',
+      body: { value: '- [ ] Agent Review Passed' },
+      invocation: { cwd: '/worktree' },
+    },
+    { correlation: { stateVisitId: 'review:1', actionId: 'review-agent-validation' } }
+  );
+
+  assert.deepEqual(calls, ['pass']);
+  assert.equal(result.status, 'complete');
 });
 
 test('gate-pass timeline: the row description records the validator set and result=pass', async () => {

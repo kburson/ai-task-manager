@@ -1,4 +1,4 @@
-// @story #1089
+// @story #1089 #1117 #1458
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -81,6 +81,13 @@ test('Review probe policy allows exact-file read-only lint and format probes', (
       command
     );
   }
+});
+
+test('#1458 — targeted probe execution remains command policy, not a resident action', () => {
+  const source = reviewVerb.runReviewProbes.toString();
+  assert.doesNotMatch(source, /executeReviewCursor|reviewAgentValidationAction|runAgentReviewGate/);
+  assert.match(source, /validateCommand/);
+  assert.match(source, /executeCommand/);
 });
 
 test('Review probe mode validates the complete request before executing any command', async () => {

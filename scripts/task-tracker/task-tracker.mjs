@@ -298,6 +298,14 @@ if (_isMain)
     }
     checkRepoMismatch(ctx);
     checkInit(ctx);
+    ctx.resumeReviewActionsAfterBind = async (target) => {
+      const issueNumber = String(target).replace(/^#/, '');
+      const state = await ctx.getIssueBoardState(issueNumber);
+      if (state !== 'review') return { status: 'skipped', state };
+      const { verbReview } = await import('./verbs/review.mjs');
+      await verbReview({ ...ctx, verb: 'review', rest: [`#${issueNumber}`] });
+      return { status: 'complete', state };
+    };
     await runVerbPreflight(ctx);
     try {
       switch (ctx.verb) {
