@@ -18,6 +18,7 @@
 - A retry reuses the replacement transaction ID already named by matching supersession evidence; it never rotates identity after evidence exists.
 - The replacement transaction uses the current accepted SHA, current Review authority, and `completedSteps: []`; the existing close saga performs all terminal work.
 - Generic issue-body protected-marker enforcement and ordinary close behavior remain unchanged.
+- #1466 is an independent blocker, not a native #1117 child; retain the approved dependency order #1466 -> #1461 -> #1462 -> #1463 -> #1117 -> #937.
 - Work serially in `/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1117-state-components`; preserve `node_modules/ai-task-manager -> ..` and unrelated worktree content.
 
 ---

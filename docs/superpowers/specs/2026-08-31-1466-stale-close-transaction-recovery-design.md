@@ -7,6 +7,12 @@ explicit recovery transition for a Delivered close transaction whose accepted
 SHA became stale after a corrective amend. It does not relax the existing
 exact-SHA close gate, protected-marker policy, or terminal convergence rules.
 
+Issue #1466 is an independent blocker rather than a native #1117 child. The
+native #1117 -> #1466 edge was removed with user approval after the sibling-WIP
+gate proved that #1461 could not remain active while its repairing sibling
+entered Plan. #1117 and #1461 remain explicit roadmap provenance, and the
+dependency order is #1466 -> #1461 -> #1462 -> #1463 -> #1117 -> #937.
+
 The concrete incident is bounded: #1461 persisted an
 `aitm.delivered-close/v1` transaction for an earlier accepted SHA and completed
 only `timing`. A production serialization defect then required an amended commit
