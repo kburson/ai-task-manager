@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// @story #913 (epic #912)
+// @story #913 #1464 (epic #912)
 // Unit tests for lib/close-gates-lineage.mjs — Axis-1 lineage-aware done gate.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
+  closeGraphNodeFromQuery,
   resolveDoneTargetBranch,
   lineageDoneGate,
 } from '../../../../task-tracker/lib/close-gates-lineage.mjs';
@@ -35,6 +36,77 @@ const listNoTrail = async () => [];
 test('resolveDoneTargetBranch: child resolves to its epic parent branch', () => {
   const b = resolveDoneTargetBranch({ issueNumber: 913, deps: { graph } });
   assert.equal(b, 'feature/epic/912');
+});
+
+test('resolveDoneTargetBranch: child honors its parent epic recorded branch', () => {
+  const customGraph = (issue) =>
+    Number(issue) === 913
+      ? {
+          parent: 912,
+          children: [],
+          parentAuthoritativeBranch: 'codex/912-retained-epic',
+        }
+      : GRAPH[issue];
+  const b = resolveDoneTargetBranch({
+    issueNumber: 913,
+    deps: {
+      graph: customGraph,
+      branchExists: (branch) => branch === 'codex/912-retained-epic',
+    },
+  });
+  assert.equal(b, 'codex/912-retained-epic');
+});
+
+test('close graph adapter carries recorded parent authority and canonical fallback', () => {
+  const withAuthority = closeGraphNodeFromQuery({
+    data: {
+      repository: {
+        issue: {
+          parent: {
+            number: 912,
+            body: '<!-- aitm-worktree-location worktree="/x" branch="codex/912-retained-epic" sid="s" ts="2026-08-31T00:00:00Z" -->',
+          },
+          subIssues: { nodes: [] },
+        },
+      },
+    },
+  });
+  assert.equal(withAuthority.parentAuthoritativeBranch, 'codex/912-retained-epic');
+  assert.equal(withAuthority.parentAuthorityError, undefined);
+
+  const canonical = closeGraphNodeFromQuery({
+    data: {
+      repository: {
+        issue: {
+          parent: { number: 912, body: 'no recorded worktree' },
+          subIssues: { nodes: [] },
+        },
+      },
+    },
+  });
+  assert.equal(canonical.parentAuthoritativeBranch, undefined);
+  assert.equal(canonical.parentAuthorityError, undefined);
+});
+
+test('close graph adapter carries malformed parent authority as a fail-closed error', () => {
+  const node = closeGraphNodeFromQuery({
+    data: {
+      repository: {
+        issue: {
+          parent: {
+            number: 912,
+            body: '<!-- aitm-worktree-location worktree="/x" ts="2026-08-31T00:00:00Z" -->',
+          },
+          subIssues: { nodes: [] },
+        },
+      },
+    },
+  });
+  assert.match(node.parentAuthorityError, /malformed worktree authority record/);
+  assert.throws(
+    () => resolveDoneTargetBranch({ issueNumber: 913, deps: { graph: () => node } }),
+    /parent.*authority|malformed worktree authority record/i
+  );
 });
 
 test('resolveDoneTargetBranch: standalone story degenerates to trunk (no regression)', () => {
