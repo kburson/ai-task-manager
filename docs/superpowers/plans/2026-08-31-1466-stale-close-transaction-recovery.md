@@ -1,5 +1,7 @@
 # Stale Close Transaction Recovery Implementation Plan
 
+<!-- cspell:ignore readlink -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add an explicit, audited, fail-closed restart for a stale Delivered close transaction that has completed only pre-terminal steps, then use it to close #1461.

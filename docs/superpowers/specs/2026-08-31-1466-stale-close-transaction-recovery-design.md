@@ -143,7 +143,7 @@ timing -> estimation -> lifecycle -> board -> disposition -> issue -> labels -> 
 The earlier pre-terminal prefix is deliberately not copied to the new
 transaction. Its writes are already designed to converge, and replay proves the
 fresh transaction against current state rather than asserting that old-SHA
-checkpoints authorize the new SHA. Each successful step is checkpointed through
+checkpoints authorize the new SHA. Each successful step is recorded through
 the existing transaction writer. No new terminal operation is introduced.
 
 ## Implementation boundaries
