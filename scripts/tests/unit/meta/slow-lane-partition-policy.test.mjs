@@ -59,6 +59,14 @@ test('slow concurrency is an explicit source-local opt-in that fails closed', ()
     TEST_SCHEDULING_CLASSES.SERIAL
   );
   assert.equal(
+    slowTestSchedulingClass(
+      '/x/malformed-first-transitive.test.mjs',
+      () =>
+        '// @slow-parallel-safe (isolated) @parallel-subprocess (   ) @parallel-subprocess (spawns through an imported helper)'
+    ),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+  assert.equal(
     slowTestSchedulingClass('/x/unreadable.test.mjs', () => {
       throw new Error('unreadable');
     }),

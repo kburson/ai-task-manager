@@ -104,7 +104,7 @@ function schedulingMarkers(src) {
     subprocess: values.some((value) => PARALLEL_SUBPROCESS_MARKER_RE.test(value)),
     malformedSubprocess: values.some((value) =>
       [...value.matchAll(/@parallel-subprocess\b/g)].some(
-        ({ index }) => !PARALLEL_SUBPROCESS_MARKER_RE.test(value.slice(index))
+        ({ index }) => PARALLEL_SUBPROCESS_MARKER_RE.exec(value.slice(index))?.index !== 0
       )
     ),
     slowParallel: values.some((value) => SLOW_PARALLEL_SAFE_MARKER_RE.test(value)),
