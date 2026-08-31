@@ -302,6 +302,8 @@ git commit -m "[#1117] feat: add immutable lifecycle state factory"
 - Consumes: `createStateMachine` and all existing direct guard references.
 - Produces: `STATE_MACHINE`; compatibility `STATES`, `FORWARD_CHAIN`, `getState`, `bootstrapGuards`, `registerGuard`, and `runGuards` retain shipped shapes.
 
+Run: `node --test scripts/tests/unit/task-tracker/states/state-factory.test.mjs`
+
 - [ ] **Step 1: Extend characterization tests before changing state modules**
 
 Assert every raw state spec has only `id`, `entryGuards`, `residentActions`, and `exitGuards`; every compatibility state has `name`, `entryGuards`, `exitGuards`, and legacy empty `onEnter`; and `runGuards` preserves aggregate order, blockers, warnings, malformed-result coercion, thrown-result coercion, idempotent registration, empty direct import, and the temporary `derived.refinementPlan` compatibility mirror.
@@ -550,6 +552,8 @@ git commit -m "[#1117] feat: hydrate repository-backed cursor evidence"
 - Consumes: ledger codecs and `mutateIssueBody` version retries.
 - Produces: `MarkerAdvanceError`, `validateMarkerAdvances`, `advanceActionLedgerHead`, genesis heads, and inline/spill transition validation.
 
+Run: `node --test scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs`
+
 - [ ] **Step 1: Write failing invariant and budget tests**
 
 Register the ledger head with `kind: 'advance'`. Assert presence detection, exact predecessors, attempt/phase monotonicity, same-visit `inline→spill` and `spill→spill`, new-visit `spill→inline`, refusal of same-visit spill regression, stale expected heads, 8,192/57,344 thresholds, automatic spill, 60 KiB/4 KiB caps, and validation on every fresh retry base.
@@ -628,6 +632,8 @@ git commit -m "[#1117] feat: protect resident action ledger advances"
 
 - Consumes: deterministic codec IDs/hashes, issue lock, versioned head advance, and injected comment APIs.
 - Produces: `appendActionEvent`, `recoverOrphanedEvent`, `auditActionLedger`, `reconcileActionLedger`, `collectSupersededSpillHeads`, and protected-comment CLI guards.
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/state-action-resume.test.mjs`
 
 - [ ] **Step 1: Write failing event/repair/protection tests**
 
@@ -777,6 +783,8 @@ git commit -m "[#1117] feat: resume verify-first resident actions"
 - Consumes: machine, repository adapter, resident-action runner, and `computeTransitionPlan`.
 - Produces: actions-only, forward, reverse, and bypass execution with discriminated results; Story C boundary adapter delegates the entire crossing to the shipped host.
 
+Run: `node --test scripts/tests/unit/task-tracker/lib/state-cursor.test.mjs`
+
 - [ ] **Step 1: Write failing trigger and result tests**
 
 Cover matrix refusal before effects, self-target resident resume before no-op, actions-only without boundary, forward actions before boundary, reverse/bypass skipping actions, incomplete/damaged ordinary-forward refusal, one explicit target only, source drift, every gate/move/lock/internal result shape, confirmed move before target action, and crash between move confirmation and target action.
@@ -874,6 +882,8 @@ git commit -m "[#1117] feat: execute state work with an ephemeral cursor"
 - Consumes: `runAgentReviewGate`, Review evidence helpers, mutation/timing capabilities, Cursor actions-only and forward triggers.
 - Produces: `reviewAgentValidationAction` with stable ID `review-agent-validation` and `serialization: 'issue-lock'`.
 
+Run: `node --test scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs`
+
 - [ ] **Step 1: Extend Review characterization before extraction**
 
 Assert Test→Review moves before agent validation; objection writes durable failed evidence and leaves Status Review; retry while already in Review is actions-only and does not replay Review entry guards; passing evidence skips `run`; probe stays Review-only; pass stamps Agent Review Passed and emits `review:passed`; objection emits `review:failed`; no automatic demotion occurs.
@@ -965,6 +975,8 @@ git commit -m "[#1117] refactor: run Review as a resident state action"
 
 - Consumes: Review action, runner, Cursor, and in-memory adapter.
 - Produces: reusable action conformance harness and table-driven crash-prefix harness.
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/state-action-conformance.test.mjs`
 
 - [ ] **Step 1: Write the reusable conformance harness**
 
@@ -1078,6 +1090,8 @@ git commit -m "[#1117] test: prove resident action crash convergence"
 - Consumes: side-effect-free marker property grammar only.
 - Produces: one order-insensitive entry parser, named legacy-colon primitive, canonical `ts` then `move` serializer, source ownership scan, and fail-closed import-graph assertion.
 
+Run: `node --test scripts/tests/unit/task-tracker/lib/stage-entry-grammar-ownership.test.mjs`
+
 - [ ] **Step 1: Characterize the entire existing marker corpus**
 
 Build fixtures from all previously accepted modern and legacy shapes. Assert property order independence, aliases, visit suffixes, duplicate visits, legacy colon identity, body occurrence, and exact current output of every reader. Add a repository scan that fails when an executable `.mjs` outside `stage-entry-grammar.mjs` constructs an `aitm-entered` regex; exclude tests, fixtures, and prose only.
@@ -1155,6 +1169,8 @@ git commit -m "[#1117] refactor: single-source stage entry grammar"
 
 - Consumes: shared entry grammar, saga context, body/status/sentinel completion, and comment APIs.
 - Produces: transition ID, `aitm.transition-commit/v1`, `writeTransitionCommit`, `repairTransitionCommit`, and deterministic `backfill:<sha256>` identity.
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs`
 
 - [ ] **Step 1: Write failing saga identity and provenance tests**
 
@@ -1246,6 +1262,8 @@ git commit -m "[#1117] feat: identify and audit lifecycle transitions"
 
 - Consumes: shipped `withIssueLock`, `runGuardExecution`, `moveState`, final snapshot, and static transition plan.
 - Produces: provenance-aware `withBoundaryLock`, public `ctx.runGuardExecution`, immutable gate context, damage-carry write, and final production boundary.
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/state-boundary-order.test.mjs`
 
 - [ ] **Step 1: Write failing single-vintage and lock-provenance tests**
 
@@ -1362,6 +1380,8 @@ git commit -m "[#1117] fix: serialize cursor boundary decisions"
 
 - Consumes: final Cursor triggers and existing command-specific human gates.
 - Produces: one common execution entry for movement/resume/callback surfaces, unchanged command semantics, architecture/operator documentation, and final #1117 verification evidence.
+
+Run: `node --test scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs`
 
 - [ ] **Step 1: Add table-driven command-to-trigger parity tests**
 
