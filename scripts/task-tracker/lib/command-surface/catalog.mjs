@@ -344,10 +344,12 @@ export const VERB_CONTRACTS = Object.freeze({
   close: contract(
     [
       'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; Incorporated close requires an exact approved incident ledger and --of owner.',
+      'A stale-transaction restart requires an explicit flag, one stale pre-terminal transaction, fresh exact-SHA Test, Review, and delivery authority, an open Review issue, a clean worktree, close-managed labels, and a pending recorded binding.',
     ],
     [
       'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
       'Partial terminal recovery resumes only the missing suffix from durable transaction authority; an already-closed completed retry is read-only.',
+      'Stale-transaction restart writes and verifies immutable supersession audit evidence before replacing the protected marker and replaying the ordinary close saga; terminal-boundary or conflicting evidence refuses before mutation.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [
