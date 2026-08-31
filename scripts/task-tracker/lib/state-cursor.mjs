@@ -1,0 +1,213 @@
+// @story #1117 #1457
+
+import { computeTransitionPlan } from './move-state/transition-plan.mjs';
+
+const TRIGGERS = new Set(['actions-only', 'advance-forward', 'advance-reverse', 'bypass']);
+const BOUNDARY_REFUSALS = new Set([
+  'drift',
+  'gate-refused',
+  'move-refused',
+  'boundary-lock-refused',
+]);
+
+export class BoundaryLockAcquireError extends Error {
+  constructor(message = 'boundary lock acquisition refused', details = {}) {
+    super(message);
+    this.name = 'BoundaryLockAcquireError';
+    Object.assign(this, details);
+  }
+}
+
+function currentStateValue(snapshot) {
+  return snapshot?.currentState?.value ?? snapshot?.currentState ?? null;
+}
+
+function allowedTargets(machine, state, trigger) {
+  if (trigger === 'advance-forward') {
+    const target = machine.next(state);
+    return target == null ? [] : [target];
+  }
+  if (trigger === 'advance-reverse') return [...machine.backwardTargets(state)];
+  return [];
+}
+
+function invalidBoundaryResult(boundary) {
+  return Object.freeze({
+    kind: 'invalid-boundary-result',
+    phase: 'internal',
+    exit: 1,
+    reason: 'unknown legacy boundary result',
+    receivedKind: boundary?.kind ?? null,
+  });
+}
+
+function dormant(state, result) {
+  return Object.freeze({ kind: 'dormant', state, result });
+}
+
+function skippedActionIds(stateDefinition, bypass) {
+  if (!bypass) return [];
+  return stateDefinition.residentActions.map(({ id }) => id);
+}
+
+export function normalizeMovementIntent({ trigger, requestedTarget, flags = {} } = {}) {
+  if (!TRIGGERS.has(trigger) || trigger === 'actions-only') {
+    throw new TypeError(`normalizeMovementIntent: unsupported movement trigger ${String(trigger)}`);
+  }
+  if (typeof requestedTarget !== 'string' || requestedTarget.trim().length === 0) {
+    throw new TypeError('normalizeMovementIntent: exactly one target is required');
+  }
+  const copiedFlags = Object.freeze({ ...flags });
+  return Object.freeze({
+    trigger,
+    target: requestedTarget.trim().toLowerCase(),
+    flags: copiedFlags,
+    verb:
+      typeof copiedFlags.verb === 'string' && copiedFlags.verb.trim()
+        ? copiedFlags.verb.trim()
+        : trigger,
+  });
+}
+
+export function buildMoveContext({
+  snapshot,
+  fromState,
+  movementIntent,
+  damageCarry = null,
+  skippedResidentActions = [],
+} = {}) {
+  return Object.freeze({
+    snapshot,
+    fromState,
+    targetState: movementIntent?.target ?? null,
+    trigger: movementIntent?.trigger ?? null,
+    flags: movementIntent?.flags ?? Object.freeze({}),
+    movementIntent,
+    damageCarry,
+    skippedResidentActions: Object.freeze([...skippedResidentActions]),
+  });
+}
+
+export function createStateCursor({ machine, repository, actions } = {}) {
+  if (!machine || typeof machine.get !== 'function') {
+    throw new TypeError('createStateCursor: machine is required');
+  }
+  if (!repository || typeof repository.hydrateTask !== 'function') {
+    throw new TypeError('createStateCursor: repository is required');
+  }
+  if (!actions || typeof actions.resume !== 'function') {
+    throw new TypeError('createStateCursor: resident-action runner is required');
+  }
+
+  return Object.freeze({
+    async execute({ issue, cwd, trigger, requestedTarget, flags = {} } = {}) {
+      if (!TRIGGERS.has(trigger)) {
+        throw new TypeError(`state cursor: unsupported trigger ${String(trigger)}`);
+      }
+
+      let snapshot = await repository.hydrateTask({ issue, cwd });
+      const currentId = currentStateValue(snapshot);
+      const current = machine.get(currentId);
+      const movementIntent =
+        trigger === 'actions-only'
+          ? null
+          : normalizeMovementIntent({ trigger, requestedTarget, flags });
+      const plan = movementIntent
+        ? computeTransitionPlan({
+            fromState: current.id,
+            toState: movementIntent.target,
+            flags: movementIntent.flags,
+          })
+        : null;
+
+      if (plan?.matrix.applies && !plan.matrix.ok) {
+        return Object.freeze({
+          kind: 'matrix-refused',
+          reason: plan.matrix.reason,
+          allowedTargets: Object.freeze(allowedTargets(machine, current.id, trigger)),
+        });
+      }
+
+      if (trigger === 'actions-only' || (trigger === 'advance-forward' && !plan.bypass)) {
+        const actionResult = await actions.resume(current.residentActions, snapshot, {
+          trigger,
+          writeAuthorized: true,
+        });
+        if (actionResult?.status !== 'complete') return dormant(current.id, actionResult);
+        if (trigger === 'actions-only') {
+          return Object.freeze({ kind: 'resident-complete', state: current.id });
+        }
+      }
+
+      if (plan?.noop) return Object.freeze({ kind: 'noop', state: current.id });
+
+      snapshot = await repository.hydrateTask({ issue, cwd });
+      const boundaryState = currentStateValue(snapshot);
+      if (boundaryState !== current.id) {
+        return Object.freeze({
+          kind: 'drift',
+          expectedState: current.id,
+          actualState: boundaryState,
+        });
+      }
+
+      const skippedResidentActions = skippedActionIds(current, plan.bypass);
+      const moveContext = buildMoveContext({
+        snapshot,
+        fromState: current.id,
+        movementIntent,
+        damageCarry: null,
+        skippedResidentActions,
+      });
+      if (typeof repository.requestLegacyBoundary !== 'function') {
+        return invalidBoundaryResult({ kind: 'missing-requestLegacyBoundary' });
+      }
+
+      let boundary;
+      try {
+        boundary = await repository.requestLegacyBoundary({
+          issue,
+          cwd,
+          fromState: current.id,
+          target: movementIntent.target,
+          trigger,
+          flags: movementIntent.flags,
+          movementIntent,
+          plan,
+          snapshot,
+          moveContext,
+          skippedResidentActions,
+        });
+      } catch (error) {
+        if (error instanceof BoundaryLockAcquireError) {
+          return Object.freeze({
+            kind: 'boundary-lock-refused',
+            phase: 'lock',
+            exit: 7,
+            holder: error.holder ?? null,
+            retry: error.retry ?? null,
+          });
+        }
+        throw error;
+      }
+
+      if (BOUNDARY_REFUSALS.has(boundary?.kind)) return Object.freeze({ ...boundary });
+      if (boundary?.kind !== 'moved') return invalidBoundaryResult(boundary);
+
+      snapshot = await repository.hydrateTask({ issue, cwd });
+      const targetState = currentStateValue(snapshot);
+      if (targetState !== movementIntent.target) {
+        return Object.freeze({
+          kind: 'drift',
+          expectedState: movementIntent.target,
+          actualState: targetState,
+        });
+      }
+      const result = await actions.resume(machine.get(targetState).residentActions, snapshot, {
+        trigger: 'resident-entry',
+        writeAuthorized: true,
+      });
+      return Object.freeze({ kind: 'resident-result', state: targetState, result });
+    },
+  });
+}

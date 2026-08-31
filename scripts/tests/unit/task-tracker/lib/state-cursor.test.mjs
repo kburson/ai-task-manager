@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildMoveContext,
+  normalizeMovementIntent,
+} from '../../../../task-tracker/lib/state-cursor.mjs';
+
+import {
   createTaskSnapshot,
   deriveStateVisitId,
   provenance,
@@ -31,6 +36,47 @@ const COMPLETE_REVIEW = Object.freeze({
   entryMarkerPresent: true,
   exitRowPresent: true,
   entryRowPresent: true,
+});
+
+test('movement intent is evidence-free, normalized, and immutable', () => {
+  const flags = { force: true, reason: 'operator recovery' };
+  const intent = normalizeMovementIntent({
+    trigger: 'bypass',
+    requestedTarget: 'DONE',
+    flags,
+  });
+  flags.reason = 'changed later';
+  assert.deepEqual(intent, {
+    trigger: 'bypass',
+    target: 'done',
+    flags: { force: true, reason: 'operator recovery' },
+    verb: 'bypass',
+  });
+  assert.equal(Object.isFrozen(intent), true);
+  assert.equal(Object.isFrozen(intent.flags), true);
+  assert.throws(
+    () => normalizeMovementIntent({ trigger: 'advance-forward', requestedTarget: ['review'] }),
+    /exactly one target/
+  );
+});
+
+test('move context freezes the final snapshot and skipped-action audit', () => {
+  const snapshot = { currentState: { value: 'test' }, stateVisitId: 'test:1' };
+  const context = buildMoveContext({
+    snapshot,
+    fromState: 'test',
+    movementIntent: normalizeMovementIntent({
+      trigger: 'bypass',
+      requestedTarget: 'done',
+      flags: { force: true },
+    }),
+    damageCarry: null,
+    skippedResidentActions: ['review-agent-validation'],
+  });
+  assert.deepEqual(context.skippedResidentActions, ['review-agent-validation']);
+  assert.equal(context.snapshot, snapshot);
+  assert.equal(Object.isFrozen(context), true);
+  assert.equal(Object.isFrozen(context.skippedResidentActions), true);
 });
 
 function snapshotInput({ checksFresh = true } = {}) {
