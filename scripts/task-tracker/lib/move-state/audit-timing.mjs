@@ -21,6 +21,7 @@
 import { durableWordMarkers, bankTranscriptTail } from '../../state.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
+import { splitTimingRowMarker } from '../timing-row-reader.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
@@ -82,6 +83,12 @@ export async function emitPhasePairRows(ctx) {
     const _phaseMarker = banked?.marker ?? durable.marker;
     const _phaseFullMarker = banked?.fullMarker ?? durable.fullMarker;
     const _phaseFullObservation = banked?.fullMarkerAvailable === false ? null : _phaseFullMarker;
+    const withTransition = (row) => {
+      if (!ctx.transitionId) return row;
+      const { core, marker } = splitTimingRowMarker(row);
+      return `${core} <!-- aitm-transition move="${ctx.transitionId}" -->${marker}`;
+    };
+
     // First row: completion of the previous state (or `demoted` for demote).
     if (demoteFlag) {
       // v2 (#823 C7 / defect D3) — the demote audit row names its TARGET state
@@ -108,7 +115,12 @@ export async function emitPhasePairRows(ctx) {
         fullWordMarker: _phaseFullObservation,
         description,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row: withTransition(row),
+        timeoutMs: 3000,
+      });
     } else if (prev && PHASE_EVENTS[prev]?.complete && stateArg !== 'done') {
       // #540 — the move to `done` is the ONE transition where the
       // `<prev>:complete` row is NOT emitted here. `prev` is always `review`
@@ -147,7 +159,12 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         fullWordMarker: _phaseFullObservation,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row: withTransition(row),
+        timeoutMs: 3000,
+      });
     }
 
     // Second row: entry into the new state. Share the same `ts` so the
@@ -172,7 +189,12 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         fullWordMarker: _phaseFullObservation,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row: withTransition(row),
+        timeoutMs: 3000,
+      });
     } else if (PHASE_EVENTS[stateArg]?.enter) {
       // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
       // paired emission shares ts with the completion row above — no
@@ -186,7 +208,12 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         fullWordMarker: _phaseFullObservation,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row: withTransition(row),
+        timeoutMs: 3000,
+      });
     }
   } catch (err) {
     process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);

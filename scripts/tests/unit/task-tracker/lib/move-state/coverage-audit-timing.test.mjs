@@ -24,6 +24,7 @@ import {
   emitFullAutoReviewAudit,
   emitOutOfBandAudit,
 } from '../../../../../task-tracker/lib/move-state/audit-timing.mjs';
+import { parseTimingRow } from '../../../../../task-tracker/lib/timing-row-reader.mjs';
 
 // A fake timing-helper surface. `postTimingEvent` records into `posted`.
 function makeTimingDeps({ posted, readBody = { status: 'found', body: 'LOG' }, buildThrows } = {}) {
@@ -135,6 +136,32 @@ test('emitPhasePairRows stamps the newly banked primary and full markers on both
   assert.equal(posted[0].row.__row.fullWordMarker, 234);
   assert.equal(posted[1].row.__row.wordMarker, 123);
   assert.equal(posted[1].row.__row.fullWordMarker, 234);
+});
+
+test('emitPhasePairRows keeps row-sec trailing when it adds transition identity', async () => {
+  const posted = [];
+  const deps = makeTimingDeps({ posted });
+  deps.ghTimingComment.buildRow = ({ phase }) =>
+    `| 2026-08-31 12:00:00 -05:00 | ${phase.state}:event | 0 | 0 | 0 | 1 | note | 1 | <!-- row-sec: a=0 i=0 -->`;
+  await emitPhasePairRows({
+    issueArg: '10',
+    stateArg: 'test',
+    resolvedFromState: 'develop',
+    transitionId: 'move:stable',
+    demoteFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'o/r' },
+    deps: {
+      ...deps,
+      ...phaseEvents({ develop: { complete: true }, test: { enter: true } }),
+    },
+  });
+  assert.equal(posted.length, 2);
+  for (const { row } of posted) {
+    assert.match(row, /aitm-transition move="move:stable"/);
+    assert.match(row, /<!-- row-sec: a=0 i=0 -->$/);
+    assert.match(parseTimingRow(row).marker, /row-sec/);
+  }
 });
 
 test('emitPhasePairRows renders unavailable full observations without resetting its cursor', async () => {

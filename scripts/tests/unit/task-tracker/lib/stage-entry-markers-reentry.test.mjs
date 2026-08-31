@@ -1,5 +1,6 @@
 // @story #310
 import { strict as assert } from 'node:assert';
+import { test } from 'node:test';
 import {
   stampEntryMarker,
   parseEntryMarkers,
@@ -14,6 +15,15 @@ import {
   LEGAL_TRANSITIONS,
   STAGES,
 } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
+import { parseEntryMarkers as parseGrammarEntries } from '../../../../task-tracker/lib/stage-entry-grammar.mjs';
+import {
+  classifyVisitOrder,
+  deterministicBackfillTransitionId,
+  parseTransitionCommitComment,
+  repairTransitionCommit,
+  renderTransitionCommitComment,
+  writeTransitionCommit,
+} from '../../../../task-tracker/lib/move-state/transition-commit.mjs';
 
 // 13. buildReentryAuditMarker + buildReentryAuditCommentBody — #184
 {
@@ -284,3 +294,84 @@ await assert.rejects(
 }
 
 console.log('stage-entry-markers.test.mjs: all passed');
+
+test('same-second transition IDs produce distinct visits and idempotent exact replay', () => {
+  const base = '<!-- aitm-entered-develop ts="same-second" move="move:one" -->';
+  const replay = stampEntryMarker(base, 'develop', 'same-second', 'move:one');
+  const next = stampEntryMarker(replay, 'develop', 'same-second', 'move:two');
+  assert.equal(replay, base);
+  assert.deepEqual(parseGrammarEntries(next), [
+    { state: 'develop', visit: 1, ts: 'same-second', move: 'move:one', occurrence: 1 },
+    { state: 'develop', visit: 2, ts: 'same-second', move: 'move:two', occurrence: 2 },
+  ]);
+});
+
+test('transition commit codec and deterministic backfill identity are stable', () => {
+  const record = {
+    schema: 'aitm.transition-commit/v1',
+    transitionId: 'move:one',
+    repository: 'o/r',
+    issue: 7,
+    source: 'develop',
+    target: 'test',
+    visitMarker: '<!-- marker -->',
+    actor: 'agent',
+    sentinelFingerprint: `sha256:${'a'.repeat(64)}`,
+  };
+  assert.deepEqual(parseTransitionCommitComment(renderTransitionCommitComment(record)), record);
+  const input = { repository: 'o/r', issue: 7, state: 'test', visit: 2, occurrence: 9 };
+  assert.equal(deterministicBackfillTransitionId(input), deterministicBackfillTransitionId(input));
+  assert.match(deterministicBackfillTransitionId(input), /^backfill:[a-f0-9]{64}$/);
+});
+
+test('transition commit write verifies read-back and replay repair stays idempotent', async () => {
+  let createdBody = '';
+  let createCount = 0;
+  const ctx = {
+    SKIP_NETWORK: false,
+    transitionId: 'move:one',
+    transitionEvidence: {
+      visitMarker: '<!-- aitm-entered-test ts="same" move="move:one" -->',
+      sentinelMarker: '<!-- aitm-move-complete state=test ts=same move=move:one -->',
+    },
+    cfg: { repo: 'o/r' },
+    issueArg: '7',
+    stateArg: 'test',
+    resolvedFromState: 'develop',
+    actor: 'agent',
+    deps: {
+      createTransitionComment: async (body) => {
+        createCount += 1;
+        createdBody = body;
+        return { id: 42 };
+      },
+      readTransitionComment: async () => ({ id: 42, body: createdBody }),
+      listTransitionComments: async () => [{ id: 42, body: createdBody }],
+    },
+  };
+
+  const written = await writeTransitionCommit(ctx, ctx.transitionEvidence);
+  assert.equal(written.verified, true);
+  assert.equal(written.commentId, '42');
+  assert.equal(written.record.transitionId, 'move:one');
+  assert.equal(createCount, 1);
+
+  const repaired = await repairTransitionCommit(ctx);
+  assert.equal(repaired.status, 'already-present');
+  assert.equal(repaired.commentId, '42');
+  assert.equal(createCount, 1, 'verified replay must not duplicate the protected comment');
+});
+
+test('mixed visit ordering uses occurrence and ordinal, never timestamps', () => {
+  const current = { id: 'move:new', state: 'test', visit: 2, occurrence: 5, ts: 'old' };
+  const head = { id: 'legacy:test:1:2', state: 'test', visit: 1, occurrence: 2, ts: 'new' };
+  assert.deepEqual(classifyVisitOrder({ current, head }), {
+    status: 'prior',
+    diagnostics: ['commit-provenance-missing'],
+  });
+  assert.equal(
+    classifyVisitOrder({ current, head: { ...head, visit: 3 } }).status,
+    'drift',
+    'ordinal contradiction must not be hidden by timestamps or occurrence'
+  );
+});

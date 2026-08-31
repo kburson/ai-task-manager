@@ -7,6 +7,7 @@ import {
   parseEventComment,
   parseSpillHeadComment,
 } from './resident-action-ledger-codec.mjs';
+import { classifyVisitOrder } from './move-state/transition-commit.mjs';
 
 function diagnostic(code, details = {}) {
   return Object.freeze({ code, ...details });
@@ -88,6 +89,7 @@ export async function readResidentActionLedger({
   stateVisitId,
   actionId,
   maxLinks = 3,
+  visitEvidence,
 } = {}) {
   if (typeof readComment !== 'function') {
     throw new TypeError('readResidentActionLedger: readComment is required');
@@ -134,12 +136,32 @@ export async function readResidentActionLedger({
   }
 
   const diagnostics = [];
-  const visitStatus = !stateVisitId || head.visit === stateVisitId ? 'current' : 'different';
+  let visitStatus = !stateVisitId || head.visit === stateVisitId ? 'current' : 'different';
   if (stateVisitId && head.visit !== stateVisitId) {
-    diagnostics.push(
-      diagnostic('ledger-visit-different', { head: head.visit, current: stateVisitId })
-    );
+    if (visitEvidence?.current && visitEvidence?.head) {
+      const order = classifyVisitOrder({
+        current: visitEvidence.current,
+        head: visitEvidence.head,
+        currentCommit: visitEvidence.currentCommit,
+        headCommit: visitEvidence.headCommit,
+      });
+      diagnostics.push(...order.diagnostics.map((code) => diagnostic(code)));
+      if (order.status === 'drift') {
+        return result({
+          status: 'damaged',
+          head,
+          diagnostics: [...diagnostics, diagnostic('ledger-visit-order-drift')],
+          visitStatus: 'drift',
+        });
+      }
+      visitStatus = order.status;
+    } else {
+      diagnostics.push(
+        diagnostic('ledger-visit-different', { head: head.visit, current: stateVisitId })
+      );
+    }
   }
+  if (visitStatus === 'prior') return result({ status: 'clean', head, diagnostics, visitStatus });
   if (!actionId || !head.actions?.[actionId]) {
     return result({ status: 'clean', head, diagnostics, visitStatus });
   }

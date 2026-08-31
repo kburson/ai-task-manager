@@ -23,19 +23,29 @@ function baseCtx(overrides = {}) {
       exitRowPresent: false,
       entryRowPresent: false,
     }),
-    _emitPhasePairRows: async () => {
-      calls.push('rows');
+    _emitPhasePairRows: async (ctx) => {
+      calls.push(`rows:${ctx.transitionId}`);
     },
-    _stampEntryMarkers: async () => {
-      calls.push('markers');
+    _stampEntryMarkers: async (ctx) => {
+      calls.push(`markers:${ctx.transitionId}`);
+      return { visitMarker: `entry:${ctx.transitionId}` };
     },
-    _runStatusWrite: async () => {
-      calls.push('status');
+    _runStatusWrite: async (ctx) => {
+      calls.push(`status:${ctx.transitionId}`);
       return { itemId: 'IT_1', exit: null };
     },
-    _writeSentinel: async () => {
-      calls.push('sentinel');
-      return { verified: true };
+    _writeSentinel: async (ctx) => {
+      calls.push(`sentinel:${ctx.transitionId}`);
+      return { verified: true, sentinelMarker: `sentinel:${ctx.transitionId}` };
+    },
+    _createTransitionId: () => 'move:test-transition',
+    _writeTransitionCommit: async (ctx, evidence) => {
+      calls.push(`commit:${ctx.transitionId}`);
+      assert.deepEqual(evidence, {
+        visitMarker: `entry:${ctx.transitionId}`,
+        sentinelMarker: `sentinel:${ctx.transitionId}`,
+      });
+      return { verified: true, commentId: '42' };
     },
     _runPostCommitTail: async () => {
       calls.push('tail');
@@ -45,21 +55,66 @@ function baseCtx(overrides = {}) {
   };
 }
 
-test('moveState runs guard → rows → markers → status → sentinel → tail', async () => {
+test('moveState runs guard → rows → markers → status → sentinel → commit → tail', async () => {
   const ctx = baseCtx();
   const res = await moveState(ctx);
   assert.equal(res.exit, null);
   assert.equal(res.itemId, 'IT_1');
-  assert.deepEqual(ctx.calls, ['guard', 'rows', 'markers', 'status', 'sentinel', 'tail']);
+  assert.deepEqual(ctx.calls, [
+    'guard',
+    'rows:move:test-transition',
+    'markers:move:test-transition',
+    'status:move:test-transition',
+    'sentinel:move:test-transition',
+    'commit:move:test-transition',
+    'tail',
+  ]);
+  assert.equal(ctx.transitionId, 'move:test-transition');
 });
 
 test('atomic core order: rows + markers land before Status, sentinel before tail', async () => {
   const ctx = baseCtx();
   await moveState(ctx);
-  assert.ok(ctx.calls.indexOf('rows') < ctx.calls.indexOf('status'), 'rows before status');
-  assert.ok(ctx.calls.indexOf('markers') < ctx.calls.indexOf('status'), 'markers before status');
-  assert.ok(ctx.calls.indexOf('status') < ctx.calls.indexOf('sentinel'), 'status before sentinel');
-  assert.ok(ctx.calls.indexOf('sentinel') < ctx.calls.indexOf('tail'), 'sentinel before tail');
+  assert.ok(
+    ctx.calls.indexOf('rows:move:test-transition') <
+      ctx.calls.indexOf('status:move:test-transition'),
+    'rows before status'
+  );
+  assert.ok(
+    ctx.calls.indexOf('markers:move:test-transition') <
+      ctx.calls.indexOf('status:move:test-transition'),
+    'markers before status'
+  );
+  assert.ok(
+    ctx.calls.indexOf('status:move:test-transition') <
+      ctx.calls.indexOf('sentinel:move:test-transition'),
+    'status before sentinel'
+  );
+  assert.ok(
+    ctx.calls.indexOf('sentinel:move:test-transition') <
+      ctx.calls.indexOf('commit:move:test-transition'),
+    'sentinel before commit provenance'
+  );
+  assert.ok(
+    ctx.calls.indexOf('sentinel:move:test-transition') < ctx.calls.indexOf('tail'),
+    'sentinel before tail'
+  );
+});
+
+test('transition commit failure warns without failing a confirmed move', async () => {
+  const ctx = baseCtx({
+    _writeTransitionCommit: async () => {
+      throw new Error('github unavailable');
+    },
+  });
+  const result = await moveState(ctx);
+  assert.equal(result.exit, null);
+  assert.equal(result.boardMoved, true);
+  assert.equal(result.sentinelPresent, true);
+  assert.deepEqual(
+    result.warnings.map(({ code }) => code),
+    ['commit-provenance-missing']
+  );
 });
 
 test('moveState fails closed when the sentinel does not verify', async () => {

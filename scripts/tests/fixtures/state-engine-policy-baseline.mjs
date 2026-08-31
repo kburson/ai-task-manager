@@ -251,14 +251,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      103,
+      110,
       'event-call',
       '`demoted:${stateArg}`',
       ['demoted:develop']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      143,
+      155,
       'phase-call',
       "{ state: prev, phase: 'complete' }",
       [
@@ -272,14 +272,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      168,
+      185,
       'phase-call',
       "{ state: 'done', phase: 'complete' }",
       ['issue:closed']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      182,
+      204,
       'phase-call',
       "{ state: stateArg, phase: 'enter' }",
       [
@@ -295,7 +295,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      295,
+      322,
       'event-call',
       "'out-of-band-move'",
       ['out-of-band-move']

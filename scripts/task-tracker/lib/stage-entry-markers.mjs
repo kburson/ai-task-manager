@@ -53,8 +53,8 @@ function buildLegalTransitions() {
 }
 export const LEGAL_TRANSITIONS = buildLegalTransitions();
 
-function entryMarker(stage, ts, visit = 1) {
-  return serializeEntryMarker({ state: stage, visit, ts });
+function entryMarker(stage, ts, visit = 1, move = null) {
+  return serializeEntryMarker({ state: stage, visit, ts, move });
 }
 
 function backfillAuditMarker(stage, reason, ts) {
@@ -100,22 +100,31 @@ function insertBeforeFieldDb(body, marker) {
   return `${placeUnderProgressHeading(src, marker)}\n`;
 }
 
-export function stampEntryMarker(body, stage, ts) {
+export function stampEntryMarker(body, stage, ts, move = null) {
   if (!KNOWN_STAGES.has(stage)) {
     throw new Error(`stampEntryMarker: unknown stage "${stage}"`);
   }
   if (!ts) throw new Error('stampEntryMarker: ts is required');
   const src = String(body || '');
-  const tuples = parseEntryMarkers(src);
+  const tuples = parseGrammarEntryMarkers(src).map((entry) => ({
+    ...entry,
+    stage: canonicalStage(entry.state),
+  }));
   let maxVisit = 0;
   for (const t of tuples) {
     if (t.stage === stage && t.visit > maxVisit) maxVisit = t.visit;
   }
-  // Idempotency: re-stamping the exact same (stage, ts) pair is a no-op.
-  // Distinct ts always advances the visit count.
-  if (tuples.some((t) => t.stage === stage && t.ts === ts)) return src;
+  // Modern idempotency keys on stable transition identity, not timestamp.
+  // Legacy callers retain the exact historical (stage, ts) behavior.
+  if (
+    tuples.some((tuple) =>
+      move ? tuple.stage === stage && tuple.move === move : tuple.stage === stage && tuple.ts === ts
+    )
+  ) {
+    return src;
+  }
   const nextVisit = maxVisit + 1;
-  return insertBeforeFieldDb(src, entryMarker(stage, ts, nextVisit));
+  return insertBeforeFieldDb(src, entryMarker(stage, ts, nextVisit, move));
 }
 
 // Returns an ordered list of `{stage, visit, ts}` tuples in document order.

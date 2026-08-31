@@ -11,7 +11,10 @@ function trackedCtx(probe) {
       issueArg: '999',
       stateArg: 'test',
       _runGuardExecution: async () => ({ exit: null }),
-      _probeCompletion: async () => probe,
+      _probeCompletion: async () => {
+        calls.push('probeCompletion');
+        return probe;
+      },
       _emitPhasePairRows: async () => calls.push('rows'),
       _stampEntryMarkers: async () => calls.push('markers'),
       _runStatusWrite: async () => {
@@ -22,10 +25,14 @@ function trackedCtx(probe) {
         calls.push('sentinel');
         return { verified: true };
       },
-      _runPostCommitTail: async () => {
-        calls.push('tail');
+      _runPostCommitTail: async (ctx) => {
+        calls.push('runPostCommitTail');
+        if (ctx.transitionCommitRepairRequested) await ctx.repairTransitionCommit?.(ctx);
         return { failures: [] };
       },
+      _createTransitionId: () => 'move:fresh',
+      _writeTransitionCommit: async () => ({ verified: true }),
+      _repairTransitionCommit: async () => calls.push('repairTransitionCommit'),
     },
   };
 }
@@ -37,6 +44,7 @@ test('re-run of a complete move is a no-op (no rows/markers/status/sentinel rewr
     entryMarkerPresent: true,
     exitRowPresent: true,
     entryRowPresent: true,
+    transitionId: 'move:existing',
   });
   const res = await moveState(ctx);
   assert.equal(res.alreadyComplete, true);
@@ -48,6 +56,12 @@ test('re-run of a complete move is a no-op (no rows/markers/status/sentinel rewr
       !calls.includes('sentinel'),
     'complete move must not rewrite core elements'
   );
+  assert.deepEqual(calls.slice(0, 3), [
+    'probeCompletion',
+    'runPostCommitTail',
+    'repairTransitionCommit',
+  ]);
+  assert.equal(ctx.transitionId, 'move:existing');
 });
 
 test('partial move (sentinel absent) rolls forward through the saga', async () => {
@@ -61,4 +75,5 @@ test('partial move (sentinel absent) rolls forward through the saga', async () =
   const res = await moveState(ctx);
   assert.equal(res.alreadyComplete, undefined);
   assert.ok(calls.includes('sentinel'), 'partial move converges to the sentinel write');
+  assert.equal(ctx.transitionId, 'move:fresh');
 });
