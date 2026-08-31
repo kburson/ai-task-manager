@@ -112,7 +112,7 @@ describe('refineEntryFieldsPriority adapter', () => {
 });
 
 describe('planEntryFieldsBody adapter', () => {
-  it('side-channels refinementPlan onto ctx on success', async () => {
+  it('returns refinementPlan as derived data on success', async () => {
     const body = [
       '## Scope',
       'Do the thing.',
@@ -139,10 +139,10 @@ describe('planEntryFieldsBody adapter', () => {
     const r = await planEntryFieldsBody.run(ctx);
     if (!r.ok) {
       // Underlying gate may refuse for reasons unrelated to side-channel;
-      // ensure the absence of refinementPlan correlates with refusal.
-      assert.equal(ctx.refinementPlan, undefined);
+      assert.equal(r.derived, undefined);
     } else {
-      assert.ok(ctx.refinementPlan, 'refinementPlan must be stashed on ctx on ok');
+      assert.ok(r.derived?.refinementPlan, 'refinementPlan must be returned on ok');
+      assert.equal(ctx.refinementPlan, undefined, 'the adapter itself remains read-only');
     }
   });
 

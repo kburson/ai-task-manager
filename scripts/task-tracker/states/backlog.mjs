@@ -10,10 +10,10 @@ import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { discussBlockGuard } from '../lib/discuss-block-guard.mjs';
 
 export default Object.freeze({
-  name: 'backlog',
+  id: 'backlog',
   entryGuards: Object.freeze([contiguityEntryGuard]),
+  residentActions: Object.freeze([]),
   // #473 — an unresolved `{discuss}` directive hard-blocks the first forward
   // promotion out of Backlog, regardless of TT_FULL_AUTO.
   exitGuards: Object.freeze([discussBlockGuard]),
-  onEnter: Object.freeze([]),
 });

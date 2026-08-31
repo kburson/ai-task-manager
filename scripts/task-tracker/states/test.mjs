@@ -14,13 +14,13 @@ import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit
 import { bodyGatesEntryGuardTest } from '../lib/body-gates-entry-guard.mjs';
 
 export default Object.freeze({
-  name: 'test',
+  id: 'test',
   entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardTest]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,
     testExitDodVerifiedGuard,
     testExitPreCloseCompletenessGuard,
     childCannotLeadEpicExitGuard,
   ]),
-  onEnter: Object.freeze([]),
 });

@@ -96,6 +96,33 @@ test('runGuards aggregates refusals across exit + entry (no short-circuit)', asy
   assert.equal(reasonById['entry-fail'], 'entry refused');
 });
 
+test('runGuards aggregates derived values immutably and mirrors only refinementPlan', async () => {
+  const { registerGuard, runGuards } = await freshRegistry();
+  registerGuard('plan', 'exit', {
+    id: 'derived-exit',
+    run: () => ({ ok: true, derived: { refinementPlan: { estimate: 3 }, first: true } }),
+  });
+  registerGuard('develop', 'entry', {
+    id: 'derived-entry',
+    run: () => ({ ok: true, derived: { second: true } }),
+  });
+  const ctx = {};
+  const result = await runGuards('plan', 'develop', ctx);
+
+  assert.deepEqual(result.derived, {
+    refinementPlan: { estimate: 3 },
+    first: true,
+    second: true,
+  });
+  assert.equal(Object.isFrozen(result.derived), true);
+  assert.equal(ctx.refinementPlan, result.derived.refinementPlan);
+  assert.equal(ctx.first, undefined);
+  assert.equal(ctx.second, undefined);
+
+  const immutableResult = await runGuards('plan', 'develop', Object.freeze({}));
+  assert.deepEqual(immutableResult.derived, result.derived);
+});
+
 test('runGuards passes ctx to each guard.run', async () => {
   const { registerGuard, runGuards } = await freshRegistry();
   const seen = [];

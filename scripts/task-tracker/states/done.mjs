@@ -13,8 +13,8 @@
 import { bodyGatesEntryGuardDone } from '../lib/body-gates-entry-guard.mjs';
 
 export default Object.freeze({
-  name: 'done',
+  id: 'done',
   entryGuards: Object.freeze([bodyGatesEntryGuardDone]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([]),
-  onEnter: Object.freeze([]),
 });

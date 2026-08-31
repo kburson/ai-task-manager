@@ -12,10 +12,9 @@
 //      the registry's `{ ok: false, reason: string }` shape per AC #276:
 //      "one guard refusal per gate, preserving original messages" via
 //      `blockers.join('; ')`.
-//   3. On the `plan-entry-fields-body` adapter, side-channels the resolved
-//      `plan` back to the caller by stashing it on `ctx.refinementPlan`.
-//      `verbs/promote.mjs` consumes this for the refine post-success hook
-//      (`applyRefinementEstimate`).
+//   3. On the `plan-entry-fields-body` adapter, returns the resolved `plan` as
+//      derived data. The registry temporarily mirrors it to
+//      `ctx.refinementPlan` for the legacy refine post-success hook.
 //
 // Note on `plan-entry-fields-children-cleared`: the #276 body lists this as
 // a refine.exit guard wrapping "the epic-children recursion." In the
@@ -59,8 +58,8 @@ export const refineEntryFieldsPriority = {
 };
 
 // refine.exit #1 — Size / Estimate / Priority / AC items / rationale before R4P.
-// Side-effect: on success, stashes the resolved `plan` on ctx so the
-// promote refine post-success hook can run `applyRefinementEstimate`.
+// On success, returns the resolved `plan` as derived data. The registry owns
+// the temporary legacy context mirror.
 export const planEntryFieldsBody = {
   id: 'plan-entry-fields-body',
   async run(ctx) {
@@ -75,11 +74,7 @@ export const planEntryFieldsBody = {
       deps,
     });
     if (r.ok) {
-      // Side-channel for promote.mjs's post-success hook. Mutating ctx is
-      // the registry's only mechanism for adapters to return data alongside
-      // ok/reason.
-      ctx.refinementPlan = r.plan;
-      return { ok: true };
+      return { ok: true, derived: { refinementPlan: r.plan } };
     }
     return { ok: false, reason: joinBlockers(r.blockers), blockers: r.blockers || [] };
   },

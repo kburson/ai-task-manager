@@ -26,8 +26,9 @@ import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit
 import { planExitOwnershipGuard } from '../lib/plan-exit-ownership-guard.mjs';
 
 export default Object.freeze({
-  name: 'plan',
+  id: 'plan',
   entryGuards: Object.freeze([contiguityEntryGuard]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,
     planApprovedGuard,
@@ -40,5 +41,4 @@ export default Object.freeze({
     planEpicChildrenGuard,
     childCannotLeadEpicExitGuard,
   ]),
-  onEnter: Object.freeze([]),
 });

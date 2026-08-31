@@ -12,8 +12,9 @@ import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit
 import { r4pEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
 
 export default Object.freeze({
-  name: 'ready-for-plan',
+  id: 'ready-for-plan',
   entryGuards: Object.freeze([contiguityEntryGuard]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,
     r4pEpicChildrenGuard,
@@ -21,5 +22,4 @@ export default Object.freeze({
     refineExitChildParentStateGuard,
     childCannotLeadEpicExitGuard,
   ]),
-  onEnter: Object.freeze([]),
 });

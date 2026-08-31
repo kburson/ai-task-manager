@@ -11,7 +11,20 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { STATES, FORWARD_CHAIN, getState } from '../../../../task-tracker/states/index.mjs';
+import {
+  STATE_MACHINE,
+  STATES,
+  FORWARD_CHAIN,
+  getState,
+} from '../../../../task-tracker/states/index.mjs';
+import backlog from '../../../../task-tracker/states/backlog.mjs';
+import refine from '../../../../task-tracker/states/refine.mjs';
+import readyForPlan from '../../../../task-tracker/states/ready-for-plan.mjs';
+import plan from '../../../../task-tracker/states/plan.mjs';
+import develop from '../../../../task-tracker/states/develop.mjs';
+import testState from '../../../../task-tracker/states/test.mjs';
+import review from '../../../../task-tracker/states/review.mjs';
+import done from '../../../../task-tracker/states/done.mjs';
 
 const EXPECTED_NAMES = [
   'backlog',
@@ -23,6 +36,37 @@ const EXPECTED_NAMES = [
   'review',
   'done',
 ];
+
+const RAW_STATES = [backlog, refine, readyForPlan, plan, develop, testState, review, done];
+
+describe('states-skeleton: raw factory definitions', () => {
+  it('exports only the three active method lists plus the canonical id', () => {
+    for (const [index, definition] of RAW_STATES.entries()) {
+      const name = EXPECTED_NAMES[index];
+      assert.deepEqual(Object.keys(definition), [
+        'id',
+        'entryGuards',
+        'residentActions',
+        'exitGuards',
+      ]);
+      assert.equal(definition.id, name);
+      assert.equal(Object.isFrozen(definition), true);
+      assert.equal(Object.isFrozen(definition.entryGuards), true);
+      assert.equal(Object.isFrozen(definition.residentActions), true);
+      assert.equal(Object.isFrozen(definition.exitGuards), true);
+    }
+  });
+
+  it('builds one immutable machine in lifecycle order', () => {
+    assert.equal(Object.isFrozen(STATE_MACHINE), true);
+    assert.deepEqual([...STATE_MACHINE.order], EXPECTED_NAMES);
+    for (const [index, name] of EXPECTED_NAMES.entries()) {
+      const definition = STATE_MACHINE.get(name);
+      assert.equal(definition.id, name);
+      assert.equal(definition.entryGuards[0], RAW_STATES[index].entryGuards[0]);
+    }
+  });
+});
 
 function assertGuard(guard, label) {
   assert.equal(typeof guard.id, 'string', `${label}: guard.id must be a string`);
@@ -51,6 +95,14 @@ describe('states-skeleton: STATES map', () => {
       assert.equal(s.name, name);
     }
     assert.throws(() => getState('nonsense'), /unknown state/);
+  });
+
+  it('factory and compatibility surfaces preserve one guard identity', () => {
+    const definition = STATE_MACHINE.get('review');
+    const compatibility = getState('review');
+    assert.equal(compatibility.entryGuards[0], definition.entryGuards[0]);
+    assert.equal(compatibility.exitGuards[0], definition.exitGuards[0]);
+    assert.deepEqual(compatibility.onEnter, []);
   });
 });
 

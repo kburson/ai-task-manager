@@ -30,8 +30,9 @@ import { reviewExitEpicChildrenDoneGuard } from '../lib/review-exit-epic-childre
 import { reviewExitEpicChildDispositionGuard } from '../lib/review-exit-epic-child-disposition-guard.mjs';
 
 export default Object.freeze({
-  name: 'review',
+  id: 'review',
   entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardReview]),
+  residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,
     reviewExitReviewApprovedGuard,
@@ -40,5 +41,4 @@ export default Object.freeze({
     reviewExitCloseGatesGuard,
     childCannotLeadEpicExitGuard,
   ]),
-  onEnter: Object.freeze([]),
 });
