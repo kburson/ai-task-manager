@@ -37,6 +37,7 @@ import { resolveEpicLineage } from './resolve-epic-lineage.mjs';
 import { parseBranchName } from './branch-name.mjs';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
+import { resolveCurrentIssueWorktreeBranch } from './issue-worktree-location.mjs';
 import {
   epicTrailLogArgs,
   parseEpicTrailLog,
@@ -301,6 +302,31 @@ async function epicDerivedTrailGate({ epicNumber, epicHead, projectDir, graph, e
 // `graph(issue)` closure so `resolveEpicLineage` (sync) can consume it. Because
 // the gate only reaches this after the trail-skip guard, no gh call is made for
 // the common no-commits close path.
+export function closeGraphNodeFromQuery(data) {
+  const node = data?.data?.repository?.issue ?? {};
+  const parent = node.parent?.number ?? null;
+  let parentAuthoritativeBranch;
+  let parentAuthorityError;
+  if (parent != null) {
+    try {
+      parentAuthoritativeBranch =
+        resolveCurrentIssueWorktreeBranch(node.parent?.body || '') || undefined;
+    } catch (error) {
+      parentAuthorityError = error.message;
+    }
+  }
+  return {
+    parent,
+    children: (node.subIssues?.nodes ?? []).map((child) => ({
+      number: Number(child.number),
+      title: child.title || '',
+      closeReason: child.stateReason || null,
+    })),
+    ...(parentAuthoritativeBranch ? { parentAuthoritativeBranch } : {}),
+    ...(parentAuthorityError ? { parentAuthorityError } : {}),
+  };
+}
+
 function defaultGraphFactory({ cfg, projectDir }) {
   return (issue) => {
     const out = execFileSync(
@@ -309,18 +335,10 @@ function defaultGraphFactory({ cfg, projectDir }) {
         'api',
         'graphql',
         '-f',
-        `query=query { repository(owner: "${cfg.repo.split('/')[0]}", name: "${cfg.repo.split('/')[1]}") { issue(number: ${issue}) { parent { number } subIssues(first: 100) { nodes { number title stateReason } } } } }`,
+        `query=query { repository(owner: "${cfg.repo.split('/')[0]}", name: "${cfg.repo.split('/')[1]}") { issue(number: ${issue}) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }`,
       ],
       { cwd: projectDir, encoding: 'utf8', timeout: 8000 }
     );
-    const node = JSON.parse(out)?.data?.repository?.issue ?? {};
-    return {
-      parent: node.parent?.number ?? null,
-      children: (node.subIssues?.nodes ?? []).map((c) => ({
-        number: Number(c.number),
-        title: c.title || '',
-        closeReason: c.stateReason || null,
-      })),
-    };
+    return closeGraphNodeFromQuery(JSON.parse(out));
   };
 }
