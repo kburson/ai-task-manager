@@ -10,6 +10,20 @@ import {
   reconcileCurrentState,
   requireFresh,
 } from '../../../../task-tracker/lib/task-snapshot.mjs';
+import {
+  decodeCanonical,
+  encodeCanonical,
+  parseBodyLedgerHead,
+  fingerprint,
+  renderBodyLedgerHead,
+  renderEventComment,
+  renderSpillHeadComment,
+} from '../../../../task-tracker/lib/resident-action-ledger-codec.mjs';
+import {
+  bodyPointingAt,
+  seededRepository,
+  validSpillHead,
+} from '../../../helpers/in-memory-repository-adapter.mjs';
 
 const COMPLETE_REVIEW = Object.freeze({
   sentinelState: 'review',
@@ -182,4 +196,128 @@ test('provenance copies and deeply freezes details', () => {
   assert.equal(Object.isFrozen(field), true);
   assert.equal(Object.isFrozen(field.evidence), true);
   assert.equal(Object.isFrozen(field.evidence.comments), true);
+});
+
+test('ledger codecs are canonical, strict, and preserve inline heads', () => {
+  const left = encodeCanonical({ z: 1, a: { y: 2, x: 3 } });
+  const right = encodeCanonical({ a: { x: 3, y: 2 }, z: 1 });
+  assert.equal(left, right);
+  assert.deepEqual(decodeCanonical(left), { a: { x: 3, y: 2 }, z: 1 });
+  assert.throws(() => decodeCanonical(`${left}=`), /base64url/);
+
+  const head = {
+    mode: 'inline',
+    visit: 'review:1',
+    commit: '101:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    definition: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    audit: '101:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    actions: {},
+  };
+  assert.deepEqual(parseBodyLedgerHead(renderBodyLedgerHead(head)), head);
+});
+
+test('spill collection race retries once from the fresh body pointer', async () => {
+  const firstHead = validSpillHead({ visit: 'review:1' });
+  const secondHead = validSpillHead({
+    visit: 'review:1',
+    definition: `sha256:${'d'.repeat(64)}`,
+  });
+  const repository = seededRepository({
+    body: bodyPointingAt('101', firstHead),
+    missingComments: ['101'],
+  });
+  repository.onMissingComment('101', () => repository.setBody(bodyPointingAt('102', secondHead)));
+  repository.addComment('102', secondHead);
+
+  const snapshot = await repository.hydrateTask({ issue: 1117, cwd: '/worktree' });
+  assert.equal(snapshot.actionLedger.status, 'clean');
+  assert.equal(snapshot.actionLedger.visitStatus, 'current');
+  assert.deepEqual(repository.reads.commentIds, ['101', '102']);
+  assert.equal(repository.reads.issueBody, 2);
+  assert.equal(repository.reads.timeline, 0);
+});
+
+test('current-attempt hydration follows at most three point-read links', async () => {
+  function event(commentId, previousCommentId, previousHash, phase) {
+    return renderEventComment({
+      schema: 'aitm.resident-action-event/v1',
+      eventId: `event-${commentId}`,
+      previousCommentId,
+      previousHash,
+      actionPreviousCommentId: previousCommentId,
+      actionPreviousHash: previousHash,
+      issue: 1117,
+      state: 'review',
+      stateVisitId: 'review:1',
+      actionId: 'review-step',
+      attemptId: 1,
+      phase,
+      correlation: { kind: 'test', value: 'one' },
+      ts: '2026-08-31T00:00:00Z',
+    });
+  }
+  const event100 = event('100', null, null, 'intent');
+  const event101 = event('101', '100', fingerprint(event100), 'intent');
+  const event102 = event('102', '101', fingerprint(event101), 'waiting');
+  const event103 = event('103', '102', fingerprint(event102), 'resolved');
+  const repository = seededRepository({
+    body: renderBodyLedgerHead({
+      mode: 'inline',
+      visit: 'review:1',
+      commit: '100:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      definition: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      audit: '103:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      actions: {
+        'review-step': {
+          commentId: '103',
+          hash: fingerprint(event103),
+          attemptId: 1,
+          phase: 'resolved',
+        },
+      },
+    }),
+    actionId: 'review-step',
+  });
+  repository.addComment('103', event103);
+  repository.addComment('102', event102);
+  repository.addComment('101', event101);
+  repository.addComment('100', event100);
+
+  const snapshot = await repository.hydrateTask({ issue: 1117, cwd: '/worktree' });
+  assert.deepEqual(repository.reads.commentIds, ['103', '102', '101']);
+  assert.equal(snapshot.actionLedger.events.length, 3);
+  assert.equal(snapshot.actionLedger.truncated, true);
+  assert.equal(repository.reads.timeline, 0);
+});
+
+test('a still-current missing spill is an observation diagnostic, not a hydration throw', async () => {
+  const spill = validSpillHead();
+  const repository = seededRepository({
+    body: bodyPointingAt('404', spill),
+    missingComments: ['404'],
+  });
+  const snapshot = await repository.hydrateTask({ issue: 1117, cwd: '/worktree' });
+  assert.equal(snapshot.actionLedger.status, 'damaged');
+  assert.equal(snapshot.actionLedger.diagnostics[0].code, 'spill-head-missing');
+  assert.deepEqual(repository.reads.commentIds, ['404']);
+  assert.equal(repository.reads.issueBody, 2);
+});
+
+test('offline hydration performs no GitHub operation', async () => {
+  const repository = seededRepository({ rejectNetwork: true });
+  await repository.hydrateTask({ issue: 1117, cwd: '/worktree', mode: 'offline' });
+  assert.deepEqual(repository.networkOperations, []);
+  await assert.rejects(() => repository.requestTransition({}), /offline-boundary-refused/);
+});
+
+test('spill-head comments round-trip independently of body pointers', () => {
+  const rendered = renderSpillHeadComment({
+    schema: 'aitm.resident-action-head/v1',
+    visit: 'review:1',
+    commit: null,
+    definition: `sha256:${'d'.repeat(64)}`,
+    audit: null,
+    actions: {},
+  });
+  assert.match(rendered, /AITM resident-action head/);
 });
