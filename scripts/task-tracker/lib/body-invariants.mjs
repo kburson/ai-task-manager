@@ -105,6 +105,7 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
   }
 
   let changes = 0;
+  let correctionChanges = 0;
   for (const [actionId, prior] of Object.entries(base.actions)) {
     const current = next.actions[actionId];
     if (!current) rejectAdvance(markerId, baseMatch, nextMatch, 'action-removed', { actionId });
@@ -114,7 +115,10 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
       rejectAdvance(markerId, baseMatch, nextMatch, 'attempt-regression', { actionId });
     }
     if (current.attemptId === prior.attemptId) {
-      if (!PHASE_ADVANCES[prior.phase]?.has(current.phase)) {
+      const correctionBaseline =
+        current.phase === prior.phase && current.proof === 'unproven' && prior.proof !== 'unproven';
+      if (correctionBaseline) correctionChanges += 1;
+      if (!correctionBaseline && !PHASE_ADVANCES[prior.phase]?.has(current.phase)) {
         rejectAdvance(markerId, baseMatch, nextMatch, 'phase-regression', { actionId });
       }
     } else if (current.phase !== 'intent' || !['resolved', 'failed'].includes(prior.phase)) {
@@ -128,11 +132,20 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
       rejectAdvance(markerId, baseMatch, nextMatch, 'action-genesis', { actionId });
     }
   }
-  if (changes !== 1) rejectAdvance(markerId, baseMatch, nextMatch, 'non-advancing', { changes });
-  const changedEntry = Object.entries(next.actions).find(
+  if (changes !== 1 && correctionChanges !== changes) {
+    rejectAdvance(markerId, baseMatch, nextMatch, 'non-advancing', { changes });
+  }
+  const changed = Object.entries(next.actions).find(
     ([actionId, entry]) => !sameActionEntry(base.actions[actionId], entry)
-  )?.[1];
-  if (changedEntry && next.commit !== `${changedEntry.commentId}:${changedEntry.hash}`) {
+  );
+  const changedEntry = changed?.[1];
+  const correctionBaseline =
+    changedEntry?.proof === 'unproven' && base.actions[changed?.[0]]?.proof !== 'unproven';
+  if (
+    changedEntry &&
+    !correctionBaseline &&
+    next.commit !== `${changedEntry.commentId}:${changedEntry.hash}`
+  ) {
     rejectAdvance(markerId, baseMatch, nextMatch, 'commit-mismatch');
   }
 }

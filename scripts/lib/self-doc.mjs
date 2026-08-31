@@ -787,7 +787,11 @@ const DIRECT_SELF_DOC = Object.freeze({
     preconditions: ['A command must be present in the canonical command catalog.'],
     effects: ['Routes normal execution to the selected command; help only prints documentation.'],
     output: ['Prints aggregate or command-specific help and routed command results.'],
-    examples: ['npx aitm help', 'npx aitm create-issue --help'],
+    examples: [
+      'npx aitm help',
+      'npx aitm create-issue --help',
+      'npx aitm action-ledger 1117 audit',
+    ],
     relatedCommands: ['ai-task-manager', 'help'],
   }),
   'ai-task-manager': directDoc('ai-task-manager', {

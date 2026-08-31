@@ -68,6 +68,7 @@ export const PREFLIGHT_MODE = {
   test: 'target-required',
   deliver: 'target-required',
   'incident-ledger': 'target-required',
+  'action-ledger': 'target-required',
   reconcile: 'target-required',
   check: 'target-optional',
   ensureChecked: 'target-optional',
@@ -379,6 +380,11 @@ if (_isMain)
         case 'incident-ledger': {
           const { verbIncidentLedger } = await import('./verbs/incident-ledger.mjs');
           await verbIncidentLedger(ctx);
+          break;
+        }
+        case 'action-ledger': {
+          const { verbActionLedger } = await import('./verbs/action-ledger.mjs');
+          await verbActionLedger(ctx);
           break;
         }
         case 'reject': {

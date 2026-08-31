@@ -384,6 +384,24 @@ export const VERB_REFERENCE = {
       'node scripts/task-tracker/verify-delivery-incident-reconciliation.mjs --issue 1381 --phase terminal',
     ],
   },
+  'action-ledger': {
+    topic: 'evidence',
+    summary:
+      'Audit resident-action evidence, collect a proven unreachable spill head, or reconcile damaged evidence with named human approval.',
+    usage:
+      '/task action-ledger #N <audit|gc|reconcile> [--comment <id>] [--accept-live --reason <text> --approved-by <login>]',
+    flags: [
+      { flag: '--comment <id>', desc: 'spill-head comment considered for reachability-proven GC' },
+      { flag: '--accept-live', desc: 'explicitly choose the human-approved correction path' },
+      { flag: '--reason <text>', desc: 'required explanation for reconciliation' },
+      { flag: '--approved-by <login>', desc: 'named human approver required for reconciliation' },
+    ],
+    examples: [
+      '/task action-ledger 1117 audit',
+      '/task action-ledger 1117 gc --comment 42',
+      '/task action-ledger 1117 reconcile --accept-live --reason "deleted event" --approved-by kendrick',
+    ],
+  },
   reject: {
     topic: 'board',
     summary: 'Reject an issue under review (returns it for rework). Reason required.',

@@ -93,8 +93,13 @@ async function evaluate(input) {
 
   // Guard-logic dependencies are imported dynamically so a throw during their
   // own module evaluation is catchable and fails closed (see contract above).
-  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate, splitCommandSegments } =
-    await import('./lib/gh-edit-guard.mjs');
+  const {
+    evaluateGhEdit,
+    evaluateGhCreate,
+    evaluateGhApiCreate,
+    evaluateProtectedCommentMutation,
+    splitCommandSegments,
+  } = await import('./lib/gh-edit-guard.mjs');
   const { classifyBashWorktreeCommand, evaluateBashWorktreeBinding } =
     await import('./lib/bash-worktree-guard.mjs');
   const { readWorktreeIdentity, resolveCurrentSessionWorktreeBinding } =
@@ -341,6 +346,23 @@ async function evaluate(input) {
   // no longer needs the live body or the bound issue's state.)
   const ghEditResult = evaluateGhEdit({ command });
   if (ghEditResult.block) block(ghEditResult.reason);
+
+  const protectedCommentResult = await evaluateProtectedCommentMutation({
+    command,
+    readComment: async (commentId) => {
+      const endpoint = command.match(
+        new RegExp(`repos/[\\w.-]+/[\\w.-]+/issues/comments/${commentId}\\b`, 'i')
+      )?.[0];
+      if (!endpoint) throw new Error('protected-comment-endpoint-unresolved');
+      const raw = execFileSync('gh', ['api', endpoint], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: GIT_TIMEOUT_MS,
+      });
+      return JSON.parse(raw).body;
+    },
+  });
+  if (protectedCommentResult.block) block(protectedCommentResult.reason);
 
   // --- gh issue create body protection ---
   // Mirrors the edit guard for create: refuses bodies that contain deprecated
