@@ -9,6 +9,11 @@ import {
   TERMINAL_CLOSE_STEPS,
   upsertDeliveredCloseTransaction,
 } from '../../../../task-tracker/lib/close-convergence.mjs';
+import {
+  authorizeDeliveredCloseRestart,
+  renderDeliveredCloseSupersessionComment,
+  resolveDeliveredCloseSupersession,
+} from '../../../../task-tracker/lib/delivered-close-supersession.mjs';
 import { closeBody, runClose } from '../../../helpers/close-convergence-wiring-helpers.mjs';
 
 const HEAD = 'a'.repeat(40);
@@ -202,6 +207,105 @@ test('successful Delivered close persists a complete terminal transaction', asyn
   assert.equal(transactions[0].issueNumber, 925);
   assert.equal(transactions[0].acceptedSha, HEAD);
   assert.deepEqual(transactions[0].completedSteps, TERMINAL_CLOSE_STEPS);
+});
+
+test('explicit restart audits a stale pre-terminal transaction before replacing and replaying it', async () => {
+  const stale = {
+    ...transaction(['timing']),
+    issueNumber: 925,
+    acceptedSha: 'b'.repeat(40),
+  };
+  const run = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), stale),
+    restartStaleTransaction: true,
+    acceptedSha: HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+    trackEstimationOutcomes: true,
+  });
+
+  assert.equal(run.exitCode, 0);
+  assert.deepEqual(run.calls.order.slice(0, 4), [
+    'comment:list',
+    'comment:create',
+    'comment:read',
+    'body:mutate',
+  ]);
+  assert.equal(run.supersessionComments.length, 1);
+  const [completed] = readDeliveredCloseTransactions(run.body);
+  assert.equal(completed.transactionId, 'replacement-close-transaction');
+  assert.equal(completed.acceptedSha, HEAD);
+  assert.deepEqual(completed.completedSteps, TERMINAL_CLOSE_STEPS);
+  assert.equal(run.calls.estimationOutcomes, 1);
+  assert.equal(run.calls.lifecycleReconciles, 1);
+  assert.equal(run.calls.movesToDone.length, 1);
+  assert.equal(run.calls.terminalDispositions, 1);
+  assert.equal(run.calls.issueCloses, 1);
+  assert.equal(run.calls.labelWrites, 1);
+  assert.equal(run.calls.bindingReleases, 1);
+});
+
+test('restart adopts an audit-backed replacement body after the body-write response was lost', async () => {
+  const stale = {
+    ...transaction(['timing']),
+    issueNumber: 925,
+    acceptedSha: 'b'.repeat(40),
+  };
+  const authorization = authorizeDeliveredCloseRestart({
+    repository: 'o/r',
+    issueNumber: 925,
+    oldTransaction: stale,
+    newAcceptedSha: HEAD,
+    newReviewAuthority: 'gate-bypassed',
+    live: {
+      boardState: 'review',
+      issueClosed: false,
+      terminalDisposition: null,
+      labels: ['ToDo'],
+      bindingStatus: 'pending',
+    },
+  });
+  const { record } = resolveDeliveredCloseSupersession({
+    authorization,
+    comments: [],
+    randomUUIDFn: () => 'replacement-close-transaction',
+  });
+  const replacement = {
+    schema: 'aitm.delivered-close/v1',
+    transactionId: record.replacementTransactionId,
+    issueNumber: 925,
+    acceptedSha: HEAD,
+    reviewAuthority: record.newReviewAuthority,
+    completedSteps: [],
+  };
+  const comment = {
+    id: 77,
+    body: renderDeliveredCloseSupersessionComment(record),
+    user: { login: 'kburson' },
+    created_at: '2026-08-31T21:00:00Z',
+    updated_at: '2026-08-31T21:00:00Z',
+    issue_url: 'https://api.github.com/repos/o/r/issues/925',
+  };
+  const run = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), replacement),
+    restartStaleTransaction: true,
+    supersessionComments: [comment],
+    acceptedSha: HEAD,
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+    trackEstimationOutcomes: true,
+  });
+
+  assert.equal(run.exitCode, 0);
+  assert.deepEqual(run.calls.order.slice(0, 2), ['comment:list', 'body:mutate']);
+  assert.equal(run.calls.supersessionCommentCreates, 0);
+  const [completed] = readDeliveredCloseTransactions(run.body);
+  assert.equal(completed.transactionId, 'replacement-close-transaction');
+  assert.deepEqual(completed.completedSteps, TERMINAL_CLOSE_STEPS);
 });
 
 test('partial Delivered close runs only the missing terminal suffix', async () => {

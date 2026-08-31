@@ -77,6 +77,12 @@ import {
   resolveBoardStateForClose,
 } from '../lib/close-convergence.mjs';
 import {
+  authorizeDeliveredCloseRestart,
+  ensureDeliveredCloseSupersession,
+  parseDeliveredCloseSupersessionComment,
+  replaceStaleDeliveredCloseTransaction,
+} from '../lib/delivered-close-supersession.mjs';
+import {
   deriveClosedIssueIntegrity,
   readUnauthorizedCloseRecovery,
   runClosedIssueConvergence,
@@ -1004,6 +1010,7 @@ export async function verbClose(ctx) {
   const closeLabelsReader = ctx.readCloseLabels || readCloseLabels;
   const bindingReleaseInspector =
     ctx.inspectTerminalIssueBindingRelease || inspectTerminalIssueBindingRelease;
+  const inspectDirty = ctx.checkDirtyWorkspace || checkDirty;
   const bindingReleaseResumer =
     ctx.resumeTerminalIssueBindingRelease || resumeTerminalIssueBindingRelease;
   const writeDeliveredOrRefuse = async ({ issueNumber, targetRef }) => {
@@ -1040,6 +1047,13 @@ export async function verbClose(ctx) {
   // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
   // audit rows that the noop/close-issue short-circuits skip get replayed.
   const repair = rest.includes('--repair');
+  const restartStaleTransaction = rest.includes('--restart-stale-transaction');
+  if (
+    restartStaleTransaction &&
+    (force || repair || rest.includes('--as') || rest.includes('--answer'))
+  ) {
+    throw new Error('delivered-close-supersession:incompatible-flags');
+  }
   if (!closeTarget) {
     await drainQueueOnce();
     console.log('no active task');
@@ -1368,6 +1382,7 @@ export async function verbClose(ctx) {
   // signals. The additive close snapshot lets a CLOSED + not-Done issue be
   // classified as delivered, dead, or unauthorized before any mutation.
   let resumeDeliveredCloseTransaction = null;
+  let restartedDeliveredCloseTransaction = false;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -1607,20 +1622,178 @@ export async function verbClose(ctx) {
       decision = decideCloseConvergence(decisionInput);
     }
 
+    if (restartStaleTransaction && decision.action !== 'resume-delivered-close') {
+      return failInspection(
+        'authorizeDeliveredCloseRestart',
+        new Error('delivered-close-supersession:no-stale-transaction'),
+        `${closeTarget} does not have a restartable Delivered close transaction`
+      );
+    }
+
+    if (restartStaleTransaction && decision.action === 'resume-delivered-close') {
+      try {
+        const activeTransaction = decisionInput.closeTransactions[0];
+        const supersessionDeps = {
+          listComments:
+            ctx.listDeliveredCloseSupersessionComments ??
+            (async () => {
+              const { stdout } = await pexec(
+                'gh',
+                [
+                  'api',
+                  '--paginate',
+                  '--slurp',
+                  `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+                ],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              return JSON.parse(String(stdout || '[]')).flat();
+            }),
+          createComment:
+            ctx.createDeliveredCloseSupersessionComment ??
+            (async (body) => {
+              const { stdout } = await pexec(
+                'gh',
+                [
+                  'api',
+                  `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+                  '--method',
+                  'POST',
+                  '-f',
+                  `body=${body}`,
+                ],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              return JSON.parse(String(stdout || '{}'));
+            }),
+          readComment:
+            ctx.readDeliveredCloseSupersessionComment ??
+            (async (id) => {
+              const { stdout } = await pexec(
+                'gh',
+                ['api', `repos/${cfg.repo}/issues/comments/${id}`],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              return JSON.parse(String(stdout || '{}'));
+            }),
+          randomUUIDFn: ctx.randomUUIDFn ?? randomUUID,
+        };
+        await ensureDeliveryAuthorized();
+        const comments = await supersessionDeps.listComments();
+        let oldTransaction = activeTransaction;
+        if (
+          activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha &&
+          activeTransaction.completedSteps.length === 0
+        ) {
+          const replacementEvidence = comments
+            .map((comment) =>
+              parseDeliveredCloseSupersessionComment(comment, {
+                repository: cfg.repo,
+                issueNumber: Number(closeIssueNum),
+              })
+            )
+            .filter(
+              (evidence) =>
+                evidence?.record.replacementTransactionId === activeTransaction.transactionId
+            );
+          if (replacementEvidence.length !== 1) {
+            throw new Error('delivered-close-supersession:replacement-evidence');
+          }
+          const record = replacementEvidence[0].record;
+          if (
+            record.newAcceptedSha !== activeTransaction.acceptedSha ||
+            record.newReviewAuthority !== activeTransaction.reviewAuthority
+          ) {
+            throw new Error('delivered-close-supersession:replacement-evidence');
+          }
+          oldTransaction = {
+            schema: 'aitm.delivered-close/v1',
+            transactionId: record.oldTransactionId,
+            issueNumber: record.issueNumber,
+            acceptedSha: record.oldAcceptedSha,
+            reviewAuthority: record.newReviewAuthority,
+            completedSteps: [...record.completedSteps],
+          };
+        }
+        const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
+        const dirty = await inspectDirty({ cwd });
+        if (!dirty || dirty.dirty !== false) {
+          throw new Error('delivered-close-supersession:dirty-worktree');
+        }
+        const [terminalDisposition, labels, binding] = await Promise.all([
+          dispositionReader({ cfg, issueNumber: Number(closeIssueNum) }),
+          closeLabelsReader({ pexec, cfg, issueNum: closeIssueNum }),
+          bindingReleaseInspector({ projectDir, issue: closeTarget }),
+        ]);
+        const authorization = authorizeDeliveredCloseRestart({
+          repository: cfg.repo,
+          issueNumber: Number(closeIssueNum),
+          oldTransaction,
+          newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+          newReviewAuthority: terminalReviewAuthority(),
+          live: {
+            boardState,
+            issueClosed: closeSnapshot.issueClosed,
+            terminalDisposition: terminalDisposition || null,
+            labels,
+            bindingStatus: binding?.status,
+          },
+        });
+        const evidence = await ensureDeliveredCloseSupersession({
+          authorization,
+          deps: { ...supersessionDeps, listComments: async () => comments },
+        });
+        if (typeof mutateBody !== 'function') {
+          throw new Error('delivered-close-supersession:body-write');
+        }
+        const mutation = await mutateBody({
+          issueNumber: Number(closeIssueNum),
+          repo: cfg.repo,
+          mutate: (base) =>
+            replaceStaleDeliveredCloseTransaction(base, authorization, evidence.record).body,
+        });
+        if (mutation?.status !== 'ok' || typeof mutation.body !== 'string') {
+          throw new Error('delivered-close-supersession:body-write');
+        }
+        const replaced = replaceStaleDeliveredCloseTransaction(
+          mutation.body,
+          authorization,
+          evidence.record
+        );
+        if (replaced.status !== 'already-replaced') {
+          throw new Error('delivered-close-supersession:body-readback');
+        }
+        resumeDeliveredCloseTransaction = replaced.transaction;
+        resumeConvergeBody = mutation.body;
+        convergeBody = mutation.body;
+        restartedDeliveredCloseTransaction = true;
+      } catch (error) {
+        return failInspection(
+          'restartDeliveredCloseTransaction',
+          error,
+          `${closeTarget} stale Delivered close transaction could not be restarted`
+        );
+      }
+    }
+
     if (decision.action === 'close-issue') {
       resumeMarkerlessOpenDone = true;
       resumeConvergeBody = convergeBody;
     }
 
     if (decision.action === 'resume-delivered-close') {
-      resumeDeliveredCloseTransaction = decisionInput.closeTransactions[0];
-      resumeConvergeBody = convergeBody;
-      resolvedReviewAuthorization = {
-        mode:
-          resumeDeliveredCloseTransaction.reviewAuthority === 'human-gate' ? 'human' : 'full-auto',
-        standing: true,
-        source: 'delivered-close-transaction',
-      };
+      if (!restartedDeliveredCloseTransaction) {
+        resumeDeliveredCloseTransaction = decisionInput.closeTransactions[0];
+        resumeConvergeBody = convergeBody;
+        resolvedReviewAuthorization = {
+          mode:
+            resumeDeliveredCloseTransaction.reviewAuthority === 'human-gate'
+              ? 'human'
+              : 'full-auto',
+          standing: true,
+          source: 'delivered-close-transaction',
+        };
+      }
     }
 
     if (decision.action === 'already-closed') {
@@ -1888,7 +2061,7 @@ export async function verbClose(ctx) {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
     const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
-    const dirty = await checkDirty({ cwd });
+    const dirty = await inspectDirty({ cwd });
     if (dirty.dirty) {
       if (!answerArg) {
         if (process.env.CI === '1') {
