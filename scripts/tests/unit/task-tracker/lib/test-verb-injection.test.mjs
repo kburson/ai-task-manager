@@ -37,7 +37,17 @@ try {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({ repo: 'test-owner/test-repo', projectId: 'PVT_test' }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test',
+        kanbanFieldId: 'PVTSSF_status',
+        kanbanOptionDevelop: 'option-develop',
+        kanbanOptionTest: 'option-test',
+      },
+      null,
+      2
+    )
   );
   // Mirror the git-tracked .ai-task-manager/ layout a real checkout carries.
   writeFileSync(path.join(sandbox, '.ai-task-manager', 'pickup-directive.md'), '');
@@ -56,6 +66,17 @@ try {
   const pwnedMarker = path.join(sandbox, 'PWNED.txt');
 
   const fixtureBody = [
+    '<!-- aitm-last-known-state: test -->',
+    '<!-- aitm-entered-backlog ts="2026-08-31T00:00:00.000Z" -->',
+    '<!-- aitm-entered-refine ts="2026-08-31T00:01:00.000Z" -->',
+    '<!-- aitm-entered-plan ts="2026-08-31T00:02:00.000Z" -->',
+    '<!-- aitm-entered-develop ts="2026-08-31T00:03:00.000Z" -->',
+    '<!-- aitm-entered-test ts="2026-08-31T00:04:00.000Z" -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [x] Safe command executes <!-- aitm-verified cmd="`node --version`" exit="0" sha="abcdef1234567890abcdef1234567890abcdef12" ts="2026-08-31T00:04:00.000Z" key="deadbeef" -->',
+    '',
     '## Verification Commands',
     '',
     '- [ ] `node --version`',
@@ -115,12 +136,16 @@ const argv = process.argv.slice(2);
 const log = ${JSON.stringify(path.join(sandbox, 'gh-calls.log'))};
 appendFileSync(log, JSON.stringify(argv) + '\\n');
 
+if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('comments')) {
+  process.stdout.write(JSON.stringify([{ body: ${JSON.stringify(`### 🔗 Commits\n\n<!-- aitm-commits: ${headSha} -->\n`)} }]));
+  process.exit(0);
+}
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
   // Stateful: return the last-pushed body when present, else the fixture.
   let cur;
   try { cur = readFileSync(${JSON.stringify(recordedBodyPath)}, 'utf8'); }
   catch { cur = ${JSON.stringify(fixtureBody)}; }
-  process.stdout.write(cur);
+  process.stdout.write(argv.includes('--jq') || argv.includes('-q') ? cur : JSON.stringify({ body: cur }));
   process.exit(0);
 }
 if (argv[0] === 'issue' && argv[1] === 'edit') {
@@ -143,7 +168,7 @@ if (argv[0] === 'issue' && argv[1] === 'edit') {
 if (argv[0] === 'issue' && argv[1] === 'comment') {
   const idx = argv.indexOf('--body');
   if (idx >= 0 && argv[idx+1]) {
-    writeFileSync(${JSON.stringify(recordedCommentPath)}, argv[idx+1]);
+    appendFileSync(${JSON.stringify(recordedCommentPath)}, argv[idx+1] + '\\n');
   }
   process.exit(0);
 }
@@ -152,8 +177,9 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
     subIssues: { nodes: [] },
     parent: null,
     assignees: { nodes: [{ login: 'kburson' }] },
-    projectItems: { nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: 'Develop' } }] },
-    comments: { nodes: [] }
+    projectItems: { nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: 'Test' } }] },
+    comments: { nodes: [] },
+    subIssues: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } }
   } } } }));
   process.exit(0);
 }
@@ -178,7 +204,11 @@ process.exit(0);
     stderr = '',
     exitCode = 0;
   try {
-    const r = await pexec('node', [CLI, 'test', '#999'], { env, timeout: 30000 });
+    const r = await pexec('node', [CLI, 'test', '#999'], {
+      cwd: sandbox,
+      env,
+      timeout: 30000,
+    });
     stdout = r.stdout;
     stderr = r.stderr;
   } catch (err) {

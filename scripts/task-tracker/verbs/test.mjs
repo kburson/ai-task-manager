@@ -380,7 +380,7 @@ function buildAbortComment(diag, err) {
   return [
     '> ⚠ test-aborted',
     '',
-    'Sandbox verification crashed before producing a green/red result. Board demoted back to `develop`.',
+    'Sandbox verification crashed before producing a green/red result. Board remains in `test` for an in-place retry.',
     '',
     `- **Failed step:** \`${diag.step}\``,
     `- **Exit code:** \`${diag.exit ?? 'n/a'}\``,
@@ -429,6 +429,7 @@ export async function runVerbTest({
     deps.computeChangedPaths ||
     (({ projectDir: dir }) => computeReviewChangedPaths({ cfg, projectDir: dir, deps: { pexec } }));
   const moveState = deps.moveState;
+  const demoteState = deps.demoteState;
   const logIssueTime = deps.logIssueTime;
   const postNewTests = deps.postNewAutomatedTestsComment;
 
@@ -680,6 +681,23 @@ export async function runVerbTest({
     }
     developEvidence = { receipt: readBack, fingerprint: finalization.fingerprint, validation };
   }
+
+  // #937 — Develop owns finalization. Once its exact-head receipt is durable,
+  // cross the boundary before starting any Test work. The sandbox below is
+  // therefore an in-Test resident action, never a Develop exit precondition.
+  let entryMoveResult = null;
+  if (currentState !== 'test' && moveState) {
+    entryMoveResult = await moveState({ issueNumber: issueNum, target: 'test' });
+    if (entryMoveResult && entryMoveResult.ok === false && entryMoveResult.benign !== true) {
+      return {
+        status: 'move-failed',
+        sha,
+        results: [],
+        target: 'test',
+        move: entryMoveResult,
+      };
+    }
+  }
   // #563 — per-run-unique path. With a unique token the reclaim below can only
   // ever match THIS run's own leftover, never a concurrent peer's live worktree.
   const wtPath = sandboxWorktreePath({ projectDir, issueNum, sha });
@@ -687,12 +705,8 @@ export async function runVerbTest({
     await removeWorktree({ projectDir, path: wtPath });
   }
 
-  // #270 — Gate-first flow. The board stays on `develop` for the entire
-  // sandbox run; `moveState('test')` is only called once the sandbox is green
-  // and `aitm-dod-verified` has been stamped. The develop-exit-sandbox-proof
-  // guard then accepts the transition because the marker is present. Red and
-  // setup-crash paths return without ever calling `moveState`, so there is
-  // no scaffolding to undo and no risk of a half-stepped lifecycle.
+  // #937 — The board is now Test before this action starts. Infrastructure
+  // failures stay dormant in Test; source/evidence failures explicitly demote.
   const results = [];
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
@@ -943,8 +957,9 @@ export async function runVerbTest({
       }
     }
   } catch (err) {
-    // #270 — sandbox-setup or sandbox-run threw. The board is still on
-    // `develop` (gate-first flow never moved it), so there is nothing to undo.
+    // #937 — sandbox-setup or sandbox-run infrastructure threw after Test
+    // became current. Keep Test authoritative for an in-place retry; only a
+    // confirmed red source result takes the explicit demotion path below.
     // Post the audit comment for visibility and re-throw so the caller
     // surfaces a non-zero exit.
     //
@@ -987,12 +1002,15 @@ export async function runVerbTest({
       issueNum,
       body: `⛔ Develop receipt is invalid in the Test sandbox: ${codes}. Return to Develop and finalize again.`,
     });
-    return { status: 'develop-evidence-invalid', sha, reasons: evidenceRefusal, wtPath };
+    const demotion = demoteState
+      ? await demoteState({ issueNumber: issueNum, reason: 'Test rejected stale Develop evidence' })
+      : null;
+    return { status: 'develop-evidence-invalid', sha, reasons: evidenceRefusal, wtPath, demotion };
   }
 
   // #1158 — lanes were legally skipped but the VC list still declares an
-  // aggregate that can only be derived FROM those lanes. Refuse loudly; the
-  // board is untouched (gate-first flow never moved it) and no verdict is
+  // aggregate that can only be derived FROM those lanes. Refuse loudly and
+  // explicitly demote this source-configuration failure; no verdict is
   // manufactured for a command that did not run.
   if (laneSkipRefusal) {
     await postComment({
@@ -1007,7 +1025,17 @@ export async function runVerbTest({
         'Deriving a verdict from lanes that never ran would be fabricated evidence. Either remove the aggregate command from the VC list, or drop the `docs-only` kind so the lanes run.',
       ].join('\n'),
     });
-    return { status: 'lane-skip-refused', sha, reasons: [laneSkipRefusal], laneSkip, wtPath };
+    const demotion = demoteState
+      ? await demoteState({ issueNumber: issueNum, reason: 'Test source configuration refused' })
+      : null;
+    return {
+      status: 'lane-skip-refused',
+      sha,
+      reasons: [laneSkipRefusal],
+      laneSkip,
+      wtPath,
+      demotion,
+    };
   }
 
   // #973 — a `rejected` result whose reason is a policy-shape mismatch (see
@@ -1042,12 +1070,7 @@ export async function runVerbTest({
     // omitted, and on what evidence. Its absence means the lanes were declared
     // and ran; its presence means they were deliberately skipped.
     const testReceipt = baseReceipt && laneSkip ? { ...baseReceipt, laneSkip } : baseReceipt;
-    // #270 — Gate-first: stamp `aitm-dod-verified` (and a defensive
-    // `test`-entry marker for stub moveStates that skip stamping) BEFORE
-    // `moveState('test')`. The develop-exit-sandbox-proof guard inside
-    // `runGuards` then sees the marker on the live body and accepts the
-    // transition. verbTest advances develop→test only; Test→Review is a
-    // separate forward verb (`/task review`).
+    // #937 — Test owns this receipt and DoD proof after Test is current.
     let stamped = insertDodVerifiedMarker(body, sha, ts);
     if (testReceipt) stamped = upsertVerificationReceipt(stamped, testReceipt);
     const markers = parseEntryMarkers(stamped);
@@ -1096,10 +1119,7 @@ export async function runVerbTest({
     // landing. Only an explicit `ok === false` (and not the benign done→done
     // self-loop) is a failure; legacy stub deps that return `undefined` keep
     // the `passed` path.
-    let moveResult;
-    if (moveState) {
-      moveResult = await moveState({ issueNumber: issueNum, target: 'test' });
-    }
+    const moveResult = entryMoveResult;
     const moveFailed = moveResult && moveResult.ok === false && moveResult.benign !== true;
     let newTestsPost = null;
     if (!moveFailed && postNewTests) {
@@ -1145,8 +1165,9 @@ export async function runVerbTest({
     // than the exit-5 refusal this branch originally keyed on. Both shapes are
     // accepted so the status survives regardless of which path produced it.
     if (
-      moveResult &&
-      (moveResult.noop === true || (moveResult.ok === false && moveResult.benign === true))
+      currentState === 'test' ||
+      (moveResult &&
+        (moveResult.noop === true || (moveResult.ok === false && moveResult.benign === true)))
     ) {
       return {
         status: 'reverified',
@@ -1172,13 +1193,17 @@ export async function runVerbTest({
     };
   }
 
-  // #270 — Red path. Gate-first means the board never moved; nothing to undo.
+  // #937 — A red command is source failure. Test stays authoritative until an
+  // explicit audited demotion returns the issue to Develop.
   await postComment({
     cfg,
     issueNum,
     body: buildResultTable(results, { sha, status: 'red', laneSkip }),
   });
-  return { status: 'failed', sha, results, wtPath };
+  const demotion = demoteState
+    ? await demoteState({ issueNumber: issueNum, reason: 'Test source verification failed' })
+    : null;
+  return { status: 'failed', sha, results, wtPath, demotion };
 }
 
 // #346 — re-exported so the slow regression test (and any future callers that
@@ -1228,6 +1253,12 @@ export async function verbTest(ctx) {
       lifecycleEvidence,
       cursorCommand: 'test',
     });
+  const demoteState = async ({ issueNumber: n, reason }) =>
+    runMoveState(`#${n}`, 'develop', {
+      silent: true,
+      cursorCommand: 'demote',
+      extraArgs: ['--demote', '--demote-reason', reason],
+    });
   const logIssueTime = async (n) => {
     await runLogIssueTime(`#${n}`);
   };
@@ -1240,6 +1271,7 @@ export async function verbTest(ctx) {
       projectDir,
       deps: {
         moveState,
+        demoteState,
         logIssueTime,
         postNewAutomatedTestsComment,
         runDevelopFinalization: defaultRunDevelopFinalization,

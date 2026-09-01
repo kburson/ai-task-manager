@@ -20,6 +20,7 @@ import {
   WorktreeRelocationRequiredError,
 } from './lib/worktree-relocation-guard.mjs';
 import { buildCommandCursorRequest } from './lib/state-cursor.mjs';
+import { buildTestCursorRequest } from './lib/test-cursor-request.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -301,15 +302,28 @@ if (_isMain)
     checkInit(ctx);
     ctx.resumeReviewActionsAfterBind = async (target, command = 'rebind') => {
       const issueNumber = String(target).replace(/^#/, '');
-      const cursorRequest = buildCommandCursorRequest({
-        command,
-        issue: Number(issueNumber),
-        cwd: ctx.projectDir,
-      });
       const state = await ctx.getIssueBoardState(issueNumber);
+      const cursorRequest =
+        state === 'test'
+          ? buildTestCursorRequest({
+              command,
+              currentState: state,
+              issue: Number(issueNumber),
+              cwd: ctx.projectDir,
+            })
+          : buildCommandCursorRequest({
+              command,
+              issue: Number(issueNumber),
+              cwd: ctx.projectDir,
+            });
+      if (state === 'test') {
+        const { verbTest } = await import('./verbs/test.mjs');
+        await verbTest({ ...ctx, verb: 'test', rest: [`#${issueNumber}`], cursorRequest });
+        return { status: 'complete', state, cursorRequest };
+      }
       if (state !== 'review') return { status: 'skipped', state, cursorRequest };
       const { verbReview } = await import('./verbs/review.mjs');
-      await verbReview({ ...ctx, verb: 'review', rest: [`#${issueNumber}`] });
+      await verbReview({ ...ctx, verb: 'review', rest: [`#${issueNumber}`], cursorRequest });
       return { status: 'complete', state, cursorRequest };
     };
     await runVerbPreflight(ctx);

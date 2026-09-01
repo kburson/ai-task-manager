@@ -161,12 +161,18 @@ test('runGuards: clean transition when all blockers done', async () => {
     '<!-- aitm-entered-plan: 2026-06-07T05:45:00Z -->',
     '<!-- aitm-entered-develop: 2026-06-07T06:00:00Z -->',
   ].join('\n');
-  // #270 — develop→test now requires a sandbox-proof marker.
-  const SANDBOX_PROOF = '<!-- aitm-dod-verified: abc1234:2026-06-08T00:00:00.000Z -->';
   const ctx = makeCtx({
-    body: `${ENTRY_MARKERS}\n${SANDBOX_PROOF}\nx\n<!-- aitm-blocked-by: #5, #7 -->\n`,
+    body: `${ENTRY_MARKERS}\nx\n<!-- aitm-blocked-by: #5, #7 -->\n`,
     stateMap: { 5: 'done', 7: 'done' },
   });
+  ctx.headSha = 'a'.repeat(40);
+  ctx.deps = {
+    readDevelopReceipt: async () => ({
+      ok: true,
+      stage: 'develop-final',
+      commitSha: 'a'.repeat(40),
+    }),
+  };
   const r = await runGuards('develop', 'test', ctx);
   assert.equal(r.ok, true, JSON.stringify(r.refusals));
 });

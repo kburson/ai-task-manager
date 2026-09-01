@@ -75,6 +75,10 @@ const REFUSAL_ID_TO_STATUS = {
   // enforce this marker; the central `move-state.mjs` subprocess does. Adding
   // it here would surface refusals at the verb that legacy tests don't expect.
   'develop-exit-code-complete': 'code-complete-refused',
+  // `develop-exit-receipt` is intentionally omitted. The delegated `test`
+  // action creates that receipt before it asks the Cursor to cross the
+  // Develop→Test boundary; refusing it in this wrapper would deadlock generic
+  // promote before the Develop resident action can run.
   'develop-exit-commit-trail-head': 'commit-trail-stale',
   // #267 — test→review gates migrated from inline checks in this file
   // (former dod-verified + #257 completeness blocks) and from verbReview
@@ -452,7 +456,7 @@ export async function runPromote({
       // develop-exit sandbox-proof guard (registry) refuses the move before
       // the board write, so a board-reached-target / dod-marker-missing combo
       // is structurally impossible on the happy path. The single source of
-      // truth is `develop-exit-sandbox-proof-guard` on `STATES.develop.exit`.
+      // truth is the exact-head Develop receipt guard on `STATES.develop.exit`.
       // #175 — board reached target. Verify markers, repair if needed,
       // surface delegate exit as soft warning.
       let markerRepair = { status: 'noop' };

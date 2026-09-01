@@ -106,14 +106,12 @@ test('guard parity: identical ctx from /task test path and promote alias path yi
 });
 
 // #270 — Registered in the develop state-object's exit list.
-test('guard is registered on GUARDS.develop.exit', async () => {
+test('legacy sandbox guard is replaced by the Develop receipt guard', async () => {
   // Side-effect import: states/develop.mjs registers the guard at load time
   // via guard-bootstrap; but in this lightweight test we assert the state
   // module exports the guard in its exitGuards list.
   const developState = (await import('../../../../task-tracker/states/develop.mjs')).default;
   const ids = developState.exitGuards.map((g) => g.id);
-  assert.ok(
-    ids.includes('develop-exit-sandbox-proof'),
-    `expected develop.exitGuards to include develop-exit-sandbox-proof, got ${JSON.stringify(ids)}`
-  );
+  assert.equal(ids.includes('develop-exit-sandbox-proof'), false);
+  assert.equal(ids.includes('develop-exit-receipt'), true);
 });

@@ -94,6 +94,10 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
     moveState: async ({ target }) => {
       calls.moves.push(target);
     },
+    demoteState: async () => {
+      calls.moves.push('develop');
+      return { status: 'demoted' };
+    },
     logIssueTime: async (n) => {
       calls.logs.push(n);
     },
@@ -222,7 +226,7 @@ test('verbTest: green path stamps marker, posts success comment, moves develop�
   });
 });
 
-test('verbTest #270: red path posts failure comment, does NOT move board, does NOT stamp dod marker', async () => {
+test('verbTest #937: red source result enters Test then explicitly demotes without a DoD marker', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps({
       execResults: {
@@ -252,11 +256,10 @@ test('verbTest #270: red path posts failure comment, does NOT move board, does N
     assert.equal(calls.comments.length, 1);
     assert.match(calls.comments[0], /Sandboxed verification failed/);
     assert.match(calls.comments[0], /boom/);
-    // #270 — gate-first: board never moved on red, so nothing to undo.
     assert.deepEqual(
       calls.moves,
-      [],
-      'gate-first: moveState must not be called when sandbox is red'
+      ['test', 'develop'],
+      'Test becomes current before verification and source failure explicitly demotes'
     );
   });
 });
@@ -269,12 +272,10 @@ test('verbTest: worktree cleanup runs even when sandbox exec throws', async () =
   });
 });
 
-// #270 — Gate-first replaces the provisional-move-then-rollback flow from
-// #210 Fix A. The sandbox runs while the board is still on `develop`; on any
-// crash before a green/red verdict, no `moveState` call is ever made. The
-// `test-aborted` audit comment must still be posted so operators have
-// diagnostics.
-test('verbTest #270: sandbox-setup crash → board stays on develop (no move) + posts test-aborted audit', async () => {
+// #937 — Test becomes current before its work begins. Infrastructure crashes
+// stay resident in Test for an in-place retry; only confirmed source failure
+// demotes to Develop. The test-aborted audit comment preserves diagnostics.
+test('verbTest #937: sandbox-setup crash stays in Test and posts test-aborted audit', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps();
     // Override createWorktree to throw — simulates a sandbox-setup failure
@@ -285,8 +286,8 @@ test('verbTest #270: sandbox-setup crash → board stays on develop (no move) + 
     await assert.rejects(() => runVerbTest({ cfg, issueNumber: 2102, projectDir, deps }));
     assert.deepEqual(
       calls.moves,
-      [],
-      'gate-first: setup crash must not call moveState — board stays on develop'
+      ['test'],
+      'setup infrastructure failure remains in Test without demotion'
     );
     assert.ok(
       calls.comments.some((c) => /test-aborted/.test(c) && /aitm-test-aborted/.test(c)),
@@ -295,14 +296,14 @@ test('verbTest #270: sandbox-setup crash → board stays on develop (no move) + 
   });
 });
 
-test('verbTest #270: sandbox-exec crash → board stays on develop (no move)', async () => {
+test('verbTest #937: sandbox-exec crash stays in Test without demotion', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps({ shouldThrowOnExec: true });
     await assert.rejects(() => runVerbTest({ cfg, issueNumber: 2103, projectDir, deps }));
     assert.deepEqual(
       calls.moves,
-      [],
-      'gate-first: exec crash must not call moveState — board stays on develop'
+      ['test'],
+      'execution infrastructure failure remains in Test without demotion'
     );
   });
 });

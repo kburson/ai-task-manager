@@ -72,6 +72,8 @@ export function createActionCapabilityContext({ repository, actionContext = {} }
     receipts: freezeAdapter(actionContext.receipts),
     instructions: freezeAdapter(actionContext.instructions),
     review: freezeAdapter(actionContext.review),
+    develop: freezeAdapter(actionContext.develop),
+    test: freezeAdapter(actionContext.test),
   };
   return Object.freeze(context);
 }
