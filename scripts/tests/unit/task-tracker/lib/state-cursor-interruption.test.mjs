@@ -157,6 +157,7 @@ for (const phase of ['waiting', 'failed']) {
         actionId: action.id,
         body: ENTRY,
         abortAt: point,
+        now: () => Date.parse('2026-08-31T23:00:00.000Z'),
       });
       const run = async (adapter) =>
         createResidentActionRunner({

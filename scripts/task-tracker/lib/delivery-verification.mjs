@@ -162,12 +162,16 @@ function assertMergedPullRequest(pullRequest, intent) {
 }
 
 function classifyMergeMethod(inspection, expectedHeadSha, mergeSha) {
+  const inspectionKeys = Object.keys(inspection || {}).sort();
+  const baseKeys = ['commitMessage', 'commitTitle', 'parents'];
+  const treeKeys = ['commitMessage', 'commitTitle', 'parents', 'tree'];
   if (
-    !hasExactKeys(inspection, ['commitMessage', 'commitTitle', 'parents']) ||
+    (!hasExactKeys(inspection, baseKeys) && !hasExactKeys(inspection, treeKeys)) ||
     !Array.isArray(inspection.parents) ||
     inspection.parents.some((parent) => typeof parent !== 'string' || !SHA_RE.test(parent)) ||
     typeof inspection.commitTitle !== 'string' ||
-    typeof inspection.commitMessage !== 'string'
+    typeof inspection.commitMessage !== 'string' ||
+    (inspectionKeys.includes('tree') && !SHA_RE.test(inspection.tree))
   ) {
     throw verificationError('merge-method-evidence');
   }
@@ -178,6 +182,45 @@ function classifyMergeMethod(inspection, expectedHeadSha, mergeSha) {
     return 'rewritten-one-parent';
   }
   return 'unknown';
+}
+
+function inspectedCommitMessage(inspection) {
+  return inspection.commitMessage.length > 0
+    ? `${inspection.commitTitle}\n\n${inspection.commitMessage}`
+    : inspection.commitTitle;
+}
+
+function provesSingleSourceSquash({ pullRequest, inspection, expectedHeadSha, mergeSha }) {
+  const evidence = pullRequest?.sourceCommitEvidence;
+  const inventory = pullRequest?.sourceCommits;
+  if (
+    pullRequest?.sourceCommitsComplete !== true ||
+    pullRequest?.sourceCommitsHeadSha !== expectedHeadSha ||
+    !Array.isArray(inventory) ||
+    inventory.length !== 1 ||
+    inventory[0]?.oid !== expectedHeadSha ||
+    !Array.isArray(evidence) ||
+    evidence.length !== 1 ||
+    !hasExactKeys(evidence[0], ['message', 'oid', 'parents', 'tree'])
+  ) {
+    return false;
+  }
+  const source = evidence[0];
+  return (
+    source.oid === expectedHeadSha &&
+    mergeSha !== expectedHeadSha &&
+    typeof source.message === 'string' &&
+    source.message.length > 0 &&
+    Array.isArray(source.parents) &&
+    source.parents.length === 1 &&
+    SHA_RE.test(source.parents[0]) &&
+    SHA_RE.test(source.tree) &&
+    Array.isArray(inspection.parents) &&
+    inspection.parents.length === 1 &&
+    source.parents[0] === inspection.parents[0] &&
+    source.tree === inspection.tree &&
+    source.message !== inspectedCommitMessage(inspection)
+  );
 }
 
 function assertMergeCommitAttribution(commitMessage, intent) {
@@ -256,7 +299,15 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
   if (observedMergeMethod === 'rewritten-one-parent') {
     observedMergeMethod =
       (requireAuthorizedBytes && intent.mergeMethod === 'squash') ||
-      (!requireAuthorizedBytes && merged.mergeMethodObservation === 'squash')
+      (!requireAuthorizedBytes && merged.mergeMethodObservation === 'squash') ||
+      (!requireAuthorizedBytes &&
+        intent.mergeMethod === 'squash' &&
+        provesSingleSourceSquash({
+          pullRequest,
+          inspection,
+          expectedHeadSha: intent.expectedHeadSha,
+          mergeSha: merged.mergeCommitSha,
+        }))
         ? 'squash'
         : 'unknown';
   }

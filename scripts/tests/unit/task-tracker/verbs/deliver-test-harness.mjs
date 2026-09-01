@@ -88,6 +88,8 @@ export function makeHarness(options = {}) {
             : (index + 1).toString(16).padStart(40, '0'),
         messageHeadline,
       })),
+    prSourceEvidence: options.prSourceEvidence ?? null,
+    configuredMergeMethod: options.configuredMergeMethod ?? 'squash',
     sourceCommitsComplete: options.sourceCommitsComplete ?? true,
     sourceCommitsHeadSha: options.sourceCommitsHeadSha ?? options.prHead ?? options.head ?? HEAD,
     prState: options.prState ?? 'OPEN',
@@ -163,6 +165,9 @@ export function makeHarness(options = {}) {
         sourceCommitsComplete: data.sourceCommitsComplete,
         sourceCommitsHeadSha: data.sourceCommitsHeadSha,
       };
+      if (data.prSourceEvidence !== null) {
+        pullRequest.sourceCommitEvidence = structuredClone(data.prSourceEvidence);
+      }
       if (!options.omitPrMergeMethod) {
         pullRequest.mergeMethod = data.prState === 'MERGED' ? data.prMergeMethod : null;
       }
@@ -251,7 +256,12 @@ export function makeHarness(options = {}) {
         };
       }
       if (data.historyMergeMethod === 'squash') {
-        return { parents: ['d'.repeat(40)], commitTitle, commitMessage };
+        return {
+          parents: ['d'.repeat(40)],
+          ...(options.historyTree ? { tree: options.historyTree } : {}),
+          commitTitle,
+          commitMessage,
+        };
       }
       return {
         parents: ['d'.repeat(40), 'e'.repeat(40), 'f'.repeat(40)],
@@ -316,7 +326,17 @@ export async function mergePendingIntent(harness, overrides = {}) {
 export async function deliver(harness, overrides = {}) {
   return runDeliver({
     issueNumber: 939,
-    cfg: cfg(),
+    cfg: {
+      ...cfg(),
+      ...(harness.data.configuredMergeMethod
+        ? {
+            fullAutoMerge: {
+              ...cfg().fullAutoMerge,
+              mergeMethod: harness.data.configuredMergeMethod,
+            },
+          }
+        : {}),
+    },
     state: trackerState(),
     deps: harness.deps,
     ...overrides,

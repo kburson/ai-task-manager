@@ -27,8 +27,18 @@ function commitConnection(
           headRefOid,
           commits: {
             totalCount,
-            nodes: commits.map(({ oid, messageHeadline }) => ({
-              commit: { oid, messageHeadline },
+            nodes: commits.map(({ oid, messageHeadline, message, parents, tree }) => ({
+              commit: {
+                oid,
+                messageHeadline,
+                message: message ?? messageHeadline,
+                parents: {
+                  totalCount: (parents ?? ['d'.repeat(40)]).length,
+                  nodes: (parents ?? ['d'.repeat(40)]).map((parentOid) => ({ oid: parentOid })),
+                  pageInfo: { hasNextPage: false },
+                },
+                tree: { oid: tree ?? '1'.repeat(40) },
+              },
             })),
             pageInfo: { hasNextPage, endCursor },
           },
@@ -116,6 +126,14 @@ test('default live PR snapshot records a server-confirmed deleted source branch'
   assert.equal(pullRequest.headRefDeleted, true);
   assert.equal(pullRequest.sourceCommitsComplete, true);
   assert.deepEqual(pullRequest.sourceCommitSubjects, ['[#939] PR source evidence']);
+  assert.deepEqual(pullRequest.sourceCommitEvidence, [
+    {
+      oid: HEAD,
+      message: '[#939] PR source evidence',
+      parents: ['d'.repeat(40)],
+      tree: '1'.repeat(40),
+    },
+  ]);
   assert.deepEqual(commands[2], [
     'gh',
     ['api', 'repos/kburson/ai-task-manager/git/ref/heads/codex/939-full-auto-merge'],
@@ -377,6 +395,7 @@ test('default merge-history inspector returns exact parents and authorized commi
     await deps.inspectMergeCommit({ mergeCommitSha: MERGE_HEAD, expectedHeadSha: HEAD }),
     {
       parents: ['d'.repeat(40), HEAD],
+      tree: '1'.repeat(40),
       commitTitle: '[#939] Governed PR delivery',
       commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`,
     }
