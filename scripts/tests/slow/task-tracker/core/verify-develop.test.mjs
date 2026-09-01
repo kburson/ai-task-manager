@@ -455,6 +455,123 @@ describe('runDevelopVerification (#1089)', () => {
     );
   });
 
+  it('fails closed when a non-empty non-JavaScript change plans no command (#1250)', () => {
+    const { calls, deps } = baseDeps({
+      collectChangedPaths: () => ['Sources/App.swift'],
+      selectAffectedTests: () => ({ tests: [], lanes: [], reasons: [], escalated: false }),
+    });
+    const result = runDevelopVerification({ projectDir: '/repo', mode: 'iteration', deps });
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.commands, []);
+    assert.equal(result.reasons[0].code, 'iteration-no-commands');
+    assert.deepEqual(calls, []);
+  });
+
+  it('treats an empty changeset as the only green zero-command outcome (#1250)', () => {
+    const { calls, deps } = baseDeps({
+      collectChangedPaths: () => [],
+      selectAffectedTests: () => {
+        throw new Error('empty changes must return before affected-test selection');
+      },
+    });
+    const result = runDevelopVerification({ projectDir: '/repo', mode: 'iteration', deps });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.commands, []);
+    assert.deepEqual(result.reasons, [{ code: 'no-changes' }]);
+    assert.deepEqual(calls, []);
+  });
+
+  it('runs declared steps in order and preserves their audit metadata (#1250)', () => {
+    const { calls, deps } = baseDeps({
+      collectChangedPaths: () => ['Sources/App.swift'],
+      selectAffectedTests: () => {
+        throw new Error('configured projects must not use Node affected-test selection');
+      },
+    });
+    const developVerification = {
+      iterationSteps: [
+        { classification: 'swift-lint', command: 'npm run lint:swift' },
+        {
+          classification: 'xcode-tests',
+          command: 'npm run test:xcode',
+          label: 'Xcode tests',
+        },
+      ],
+    };
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'iteration',
+      developVerification,
+      deps,
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      calls.map(({ classification, command, args }) => [classification, command, ...args]),
+      [
+        ['swift-lint', 'npm', 'run', 'lint:swift'],
+        ['xcode-tests', 'npm', 'run', 'test:xcode'],
+      ]
+    );
+    assert.deepEqual(
+      result.commands.map(({ classification, label, allowlistSource }) => ({
+        classification,
+        label,
+        allowlistSource,
+      })),
+      [
+        {
+          classification: 'swift-lint',
+          label: 'npm run lint:swift',
+          allowlistSource: 'verification-allowlist',
+        },
+        {
+          classification: 'xcode-tests',
+          label: 'Xcode tests',
+          allowlistSource: 'verification-allowlist',
+        },
+      ]
+    );
+  });
+
+  it('validates the whole declaration before spawning and stops at first red (#1250)', () => {
+    const invalid = baseDeps({ collectChangedPaths: () => ['Sources/App.swift'] });
+    const refused = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'iteration',
+      developVerification: {
+        iterationSteps: [{ classification: 'unsafe', command: 'rm -rf .' }],
+      },
+      deps: invalid.deps,
+    });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.reasons[0].code, 'iteration-config-invalid');
+    assert.deepEqual(invalid.calls, []);
+
+    let count = 0;
+    const red = baseDeps({
+      collectChangedPaths: () => ['Sources/App.swift'],
+      runCommand: (step) => {
+        red.calls.push(step);
+        count += 1;
+        return { exitCode: count === 1 ? 7 : 0, durationMs: 1 };
+      },
+    });
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'iteration',
+      developVerification: {
+        iterationSteps: [
+          { classification: 'swift-lint', command: 'npm run lint:swift' },
+          { classification: 'xcode-tests', command: 'npm run test:xcode' },
+        ],
+      },
+      deps: red.deps,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reasons[0].code, 'command-red');
+    assert.equal(red.calls.length, 1);
+  });
+
   it('finalization requires clean committed state and returns a receipt', () => {
     const { calls, deps } = baseDeps();
     const result = runDevelopVerification({
