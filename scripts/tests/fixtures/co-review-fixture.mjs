@@ -118,7 +118,7 @@ export function repositoryFixture() {
   git(root, 'config', 'user.name', 'Co Review Test');
   git(root, 'config', 'user.email', 'co-review@example.test');
   mkdirSync(path.join(root, 'docs'), { recursive: true });
-  writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
+  writeFileSync(path.join(root, '.gitignore'), '.scratch/\n.scratch/\n');
   writeFileSync(path.join(root, 'docs/artifact.md'), '# Artifact\n\nRevision one.\n');
   git(root, 'add', '.gitignore', 'docs/artifact.md');
   git(root, 'commit', '-m', 'initial artifact');
@@ -137,7 +137,7 @@ export function memoryRepositoryFixture({
 } = {}) {
   const root = temporaryRoot();
   mkdirSync(path.dirname(path.join(root, artifact)), { recursive: true });
-  writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
+  writeFileSync(path.join(root, '.gitignore'), '.scratch/\n.scratch/\n');
   writeFileSync(path.join(root, artifact), bytes);
   const repository = createMemoryRepository({ root, artifact, bytes });
   memoryRepositories.set(root, repository);
@@ -282,7 +282,7 @@ export async function initializedProtocol({
   artifact = 'docs/artifact.md',
   contents = '# Artifact\n\nRevision one.\n',
   archiveDir,
-  dir = '.tmp/review',
+  dir = '.scratch/review',
 } = {}) {
   const fixture = memoryRepositoryFixture({ artifact, bytes: Buffer.from(contents) });
   const api = await memoryProtocol(fixture.repository);
@@ -301,7 +301,7 @@ function initializeFixture({
   imported,
   maxReviewTurns,
   archiveDir,
-  dir = '.tmp/review',
+  dir = '.scratch/review',
 }) {
   const options = {
     cwd: fixture.root,

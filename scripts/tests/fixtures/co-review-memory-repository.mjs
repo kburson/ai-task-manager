@@ -100,7 +100,11 @@ export function createMemoryRepository({
     runtimeStatus(_root, relative) {
       const normalized = normalize(relative).replace(/\/$/, '');
       return {
-        ignored: normalized === '.tmp' || normalized.startsWith('.tmp/'),
+        ignored:
+          normalized === '.tmp' ||
+          normalized.startsWith('.tmp/') ||
+          normalized === '.scratch' ||
+          normalized.startsWith('.scratch/'),
         tracked:
           index.has(normalized) ||
           [...index.keys()].some((name) => name.startsWith(`${normalized}/`)),

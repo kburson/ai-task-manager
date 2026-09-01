@@ -48,8 +48,8 @@ export async function verbSaveDraft(ctx) {
   if (!fromFile) {
     process.stderr.write(
       'save-draft: --from-file <path> is required\n' +
-        '  Write your in-progress brainstorm to a file in .tmp/plan/, then autosave it:\n' +
-        '  `/task save-draft --from-file .tmp/plan/<draft>.md`\n'
+        '  Write your in-progress brainstorm to a file in .scratch/plan/, then autosave it:\n' +
+        '  `/task save-draft --from-file .scratch/plan/<draft>.md`\n'
     );
     process.exit(1);
   }

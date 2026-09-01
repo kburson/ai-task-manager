@@ -9,15 +9,15 @@ import {
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { BoundWorktreeMissingError } from '../../../../task-tracker/lib/project-dir.mjs';
 
-const scratchRoot = path.join(process.cwd(), '.tmp', 'test');
+const scratchRoot = path.join(process.cwd(), '.scratch', 'test');
 mkdirSync(scratchRoot, { recursive: true });
 const sandbox = mkdtempSync(path.join(scratchRoot, 'scratch-dir-'));
 try {
-  // 1. happy path — creates `<projectDir>/.tmp/test/` if missing
+  // 1. happy path — creates `<projectDir>/.scratch/test/` if missing
   const dir = projectScratchDir('test', sandbox);
-  assert.equal(dir, path.join(sandbox, '.tmp', 'test'));
-  assert.ok(existsSync(dir), '.tmp/test should exist');
-  assert.ok(statSync(dir).isDirectory(), '.tmp/test should be a directory');
+  assert.equal(dir, path.join(sandbox, '.scratch', 'test'));
+  assert.ok(existsSync(dir), '.scratch/test should exist');
+  assert.ok(statSync(dir).isDirectory(), '.scratch/test should be a directory');
 
   // 2. idempotent — second call on existing dir is a no-op
   const dir2 = projectScratchDir('test', sandbox);
@@ -26,8 +26,8 @@ try {
   // 3. multiple purposes co-exist
   const gh = projectScratchDir('gh', sandbox);
   const heal = projectScratchDir('heal', sandbox);
-  assert.equal(gh, path.join(sandbox, '.tmp', 'gh'));
-  assert.equal(heal, path.join(sandbox, '.tmp', 'heal'));
+  assert.equal(gh, path.join(sandbox, '.scratch', 'gh'));
+  assert.equal(heal, path.join(sandbox, '.scratch', 'heal'));
 
   // 4. invalid purpose rejected (catches `/tmp/` / path-traversal abuse)
   assert.throws(() => projectScratchDir('../etc', sandbox), /purpose must match/);
@@ -39,7 +39,7 @@ try {
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
   try {
     const envDir = projectScratchDir('inspect');
-    assert.equal(envDir, path.join(sandbox, '.tmp', 'inspect'));
+    assert.equal(envDir, path.join(sandbox, '.scratch', 'inspect'));
   } finally {
     if (prev === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;

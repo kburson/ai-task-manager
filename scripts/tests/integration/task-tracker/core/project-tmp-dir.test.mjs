@@ -3,8 +3,7 @@
 // Regression tests for projectTmpDir (#256).
 //
 // The single scratch-directory chokepoint must resolve under the gitignored
-// `.tmp/` tree, never the un-ignored project-root `tmp/`. `.gitignore` ignores
-// `.tmp/` but NOT `tmp/`, so a regression here re-dirties the working tree on
+// `.scratch/` tree, never runtime `.tmp/` or un-ignored project-root `tmp/`.
 // every sandbox/scratch write.
 
 import { strict as assert } from 'node:assert';
@@ -20,13 +19,13 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const SCRIPTS_ROOT = path.resolve(HERE, '../../..'); // scripts/
 
-// AC1 + AC5: the helper resolves under `.tmp/`, never bare `tmp/`.
-test('projectTmpDir resolves under .tmp/, not bare tmp/', () => {
+// AC1 + AC5: the helper resolves under `.scratch/`, never `.tmp/` or bare `tmp/`.
+test('projectTmpDir resolves under .scratch/, not runtime .tmp/ or bare tmp/', () => {
   const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-ptd-'));
   try {
     const dir = projectTmpDir(root);
-    assert.equal(dir, path.join(root, '.tmp'), 'must be <root>/.tmp');
-    assert.equal(path.basename(dir), '.tmp');
+    assert.equal(dir, path.join(root, '.scratch'), 'must be <root>/.scratch');
+    assert.equal(path.basename(dir), '.scratch');
     assert.notEqual(path.basename(dir), 'tmp');
     assert.ok(!/(^|\/)tmp$/.test(dir), `must not end with bare /tmp: ${dir}`);
     assert.ok(statSync(dir).isDirectory(), 'directory is created');
@@ -41,7 +40,7 @@ test('projectTmpDir resolves under .tmp/, not bare tmp/', () => {
 test('no scripts/ source hardcodes a project-root tmp/ scratch path', () => {
   const offenders = [];
   // Matches join(<anything>, 'tmp') / join(<anything>, "tmp") — the exact
-  // shape projectTmpDir used to have. The fixed helper uses '.tmp', so it
+  // shape projectTmpDir used to have. The fixed helper uses '.scratch', so it
   // won't match. Any other hit is a regression.
   const BAD = /join\([^)]*['"]tmp['"]\s*\)/;
   const walk = (dir) => {
@@ -65,7 +64,7 @@ test('no scripts/ source hardcodes a project-root tmp/ scratch path', () => {
   assert.equal(
     offenders.length,
     0,
-    `found project-root tmp/ path construction (use projectTmpDir → .tmp/):\n${offenders.join('\n')}`
+    `found project-root tmp/ path construction (use projectTmpDir → .scratch/):\n${offenders.join('\n')}`
   );
 });
 
@@ -73,19 +72,19 @@ const REPO_ROOT = path.resolve(SCRIPTS_ROOT, '..'); // project root
 
 // AC2 (logic chain): scratch goes to a dir that .gitignore actually ignores, so
 // scratch writes can never dirty the working tree. projectTmpDir chooses
-// `.tmp/`; assert `.gitignore` ignores `.tmp/` and does NOT depend on `tmp/`.
-test('.gitignore ignores the .tmp/ scratch dir projectTmpDir writes to', () => {
+// `.scratch/`; assert `.gitignore` ignores `.scratch/` and does NOT depend on `tmp/`.
+test('.gitignore ignores the .scratch/ dir projectTmpDir writes to', () => {
   const dirName = path.basename(
     projectTmpDir(mkdtempSync(path.join(projectScratchDir('test'), 'aitm-gi-')))
   );
-  assert.equal(dirName, '.tmp', 'guard: helper must target .tmp');
+  assert.equal(dirName, '.scratch', 'guard: helper must target .scratch');
   const gitignore = readFileSync(path.join(REPO_ROOT, '.gitignore'), 'utf8');
   const ignores = (entry) =>
     gitignore
       .split('\n')
       .map((l) => l.trim())
       .some((l) => l === entry || l === `/${entry}` || l === `${entry}/` || l === `/${entry}/`);
-  assert.ok(ignores('.tmp'), '.gitignore must ignore .tmp/ — else scratch dirties the tree');
+  assert.ok(ignores('.scratch'), '.gitignore must ignore .scratch/ — else scratch dirties tree');
 });
 
 // AC4 (live evidence): the repo has no registered git worktree rooted under a

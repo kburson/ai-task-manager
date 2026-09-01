@@ -5,7 +5,7 @@
 // the #373-#382 work taught the WRITERS to emit in canonical `key="value"`
 // grammar but left RESIDUAL in already-stored issue bodies in the legacy colon
 // grammar. This library is the single place that rewrites a stored body from
-// legacy → canonical. The C3 runner (`.tmp/heal/migrate-markers-corpus.mjs`)
+// legacy → canonical. The C3 runner (`.scratch/heal/migrate-markers-corpus.mjs`)
 // composes these in dry-run; the C4 runner (#390) drives the same chain live.
 //
 // Design contract (mirrored in #389's deep-dive):

@@ -34,7 +34,7 @@ export function parseBenchmarkArgs(args = []) {
     baselineFiles: [],
     candidateFiles: [],
     samples: 5,
-    output: '.tmp/benchmark/test-fixtures.json',
+    output: '.scratch/benchmark/test-fixtures.json',
     help: false,
   };
   for (let i = 0; i < args.length; i += 1) {

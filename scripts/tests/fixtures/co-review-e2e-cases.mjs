@@ -39,7 +39,7 @@ async function exhaustedIntervention({ lastFrom = 'reviewer' } = {}) {
 test('fresh CLI workflow reaches acceptance with ordered events and terminal next action', () => {
   const { root, artifact, initialCommit } = repositoryFixture();
   const io = { cwd: root };
-  const issueBody = path.join(root, '.tmp/issue-body.md');
+  const issueBody = path.join(root, '.scratch/issue-body.md');
   mkdirSync(path.dirname(issueBody), { recursive: true });
   writeFileSync(issueBody, '# Issue\n\nNo human semantic approval.\n');
   const issueBodyBefore = readFileSync(issueBody, 'utf8');
@@ -49,7 +49,7 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
         'init',
         '--low-level',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--artifact',
         artifact,
         '--owner',
@@ -64,22 +64,25 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     0
   );
   const initialWait = runCli(
-    ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
+    ['wait', '--dir', '.scratch/review', '--actor', 'reviewer-agent', '--timeout', '0'],
     io
   );
   assert.equal(initialWait.status, 3, initialWait.stderr);
-  assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
-  writeFileSync(path.join(root, '.tmp/review/r1-response.md'), '# Response\n');
+  assert.equal(
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'owner-agent'], io).status,
+    0
+  );
+  writeFileSync(path.join(root, '.scratch/review/r1-response.md'), '# Response\n');
   assert.equal(
     runCli(
       [
         'handoff',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--actor',
         'owner-agent',
         '--response',
-        '.tmp/review/r1-response.md',
+        '.scratch/review/r1-response.md',
         '--artifact',
         artifact,
         '--commit',
@@ -92,26 +95,26 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     0
   );
   const reviewerWake = runCli(
-    ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
+    ['wait', '--dir', '.scratch/review', '--actor', 'reviewer-agent', '--timeout', '0'],
     io
   );
   assert.equal(reviewerWake.status, 0, reviewerWake.stderr);
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io).status,
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'reviewer-agent'], io).status,
     0
   );
   writeFileSync(
-    path.join(root, '.tmp/review/r2-review.md'),
+    path.join(root, '.scratch/review/r2-review.md'),
     '[finding:F-001] Add explicit recovery.\n'
   );
   const changesRequestedArgs = [
     'handoff',
     '--dir',
-    '.tmp/review',
+    '.scratch/review',
     '--actor',
     'reviewer-agent',
     '--review',
-    '.tmp/review/r2-review.md',
+    '.scratch/review/r2-review.md',
     '--review-of',
     initialCommit,
     '--decision',
@@ -121,15 +124,18 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
   ];
   const changesRequested = runCli(changesRequestedArgs, io);
   assert.equal(changesRequested.status, 0, changesRequested.stderr);
-  const eventsAfterChanges = readEvents(root, '.tmp/review');
+  const eventsAfterChanges = readEvents(root, '.scratch/review');
   const identicalRetry = runCli(changesRequestedArgs, io);
   assert.equal(identicalRetry.status, 0, identicalRetry.stderr);
   assert.equal(identicalRetry.stdout, changesRequested.stdout);
-  assert.deepEqual(readEvents(root, '.tmp/review'), eventsAfterChanges);
+  assert.deepEqual(readEvents(root, '.scratch/review'), eventsAfterChanges);
   const conflictingReuse = runCli(changesRequestedArgs.with(-1, 'conflicting handoff reuse'), io);
   assert.equal(conflictingReuse.status, 1, conflictingReuse.stderr);
   assert.match(conflictingReuse.stderr, /co-review:/);
-  assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
+  assert.equal(
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'owner-agent'], io).status,
+    0
+  );
   const secondCommit = commitArtifact(root, '# Artifact\n\nExplicit recovery.\n');
   assert.deepEqual(
     git(root, 'diff', '--name-only', `${initialCommit}..${secondCommit}`)
@@ -138,7 +144,7 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     ['docs/artifact.md']
   );
   writeFileSync(
-    path.join(root, '.tmp/review/r3-response.md'),
+    path.join(root, '.scratch/review/r3-response.md'),
     '[finding:F-001] [disposition:accepted]\nAdded recovery section.\n'
   );
   assert.equal(
@@ -146,17 +152,17 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
       [
         'handoff',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--actor',
         'owner-agent',
         '--response',
-        '.tmp/review/r3-response.md',
+        '.scratch/review/r3-response.md',
         '--artifact',
         artifact,
         '--commit',
         secondCommit,
         '--answers',
-        '.tmp/review/r2-review.md',
+        '.scratch/review/r2-review.md',
         '--message',
         'revised',
       ],
@@ -165,19 +171,19 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io).status,
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'reviewer-agent'], io).status,
     0
   );
-  writeFileSync(path.join(root, '.tmp/review/stale-review.md'), '# Review\n\nStale.\n');
+  writeFileSync(path.join(root, '.scratch/review/stale-review.md'), '# Review\n\nStale.\n');
   const stale = runCli(
     [
       'handoff',
       '--dir',
-      '.tmp/review',
+      '.scratch/review',
       '--actor',
       'reviewer-agent',
       '--review',
-      '.tmp/review/stale-review.md',
+      '.scratch/review/stale-review.md',
       '--review-of',
       initialCommit,
       '--decision',
@@ -189,15 +195,15 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
   );
   assert.equal(stale.status, 1, stale.stderr);
   assert.match(stale.stderr, /co-review:review-of/);
-  writeFileSync(path.join(root, '.tmp/review/r4-review.md'), '# Review\n\nAccepted.\n');
+  writeFileSync(path.join(root, '.scratch/review/r4-review.md'), '# Review\n\nAccepted.\n');
   const acceptedArgs = [
     'handoff',
     '--dir',
-    '.tmp/review',
+    '.scratch/review',
     '--actor',
     'reviewer-agent',
     '--review',
-    '.tmp/review/r4-review.md',
+    '.scratch/review/r4-review.md',
     '--review-of',
     secondCommit,
     '--decision',
@@ -213,9 +219,9 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
   assert.match(pendingArchive.stderr, /^ACCEPTED: protocol state is durable/);
   assert.match(
     pendingArchive.stderr,
-    new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
+    new RegExp(`finalize --dir ${path.resolve(root, '.scratch/review')} --archive-dir`)
   );
-  const terminalEvents = readEvents(root, '.tmp/review');
+  const terminalEvents = readEvents(root, '.scratch/review');
   assert.deepEqual(
     terminalEvents.map(({ type }) => type),
     [
@@ -248,23 +254,23 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
       (event) => event.type !== 'review:approved' && event.approval !== 'human-semantic'
     )
   );
-  const status = runCli(['status', '--dir', '.tmp/review'], io);
+  const status = runCli(['status', '--dir', '.scratch/review'], io);
   assert.equal(status.status, 0, status.stderr);
   assert.match(
     status.stdout,
-    new RegExp(`Next: npx aitm co-review finalize --dir ${path.resolve(root, '.tmp/review')} `)
+    new RegExp(`Next: npx aitm co-review finalize --dir ${path.resolve(root, '.scratch/review')} `)
   );
-  const json = JSON.parse(runCli(['status', '--dir', '.tmp/review', '--json'], io).stdout);
+  const json = JSON.parse(runCli(['status', '--dir', '.scratch/review', '--json'], io).stdout);
   assert.match(
     json.nextAction,
-    new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
+    new RegExp(`finalize --dir ${path.resolve(root, '.scratch/review')} --archive-dir`)
   );
   const finalized = runCli(
-    ['finalize', '--dir', '.tmp/review', '--archive-dir', 'docs/reviews/provider-scoped-relay'],
+    ['finalize', '--dir', '.scratch/review', '--archive-dir', 'docs/reviews/provider-scoped-relay'],
     io
   );
   assert.equal(finalized.status, 0, finalized.stderr);
-  const eventsAfterFinalize = readEvents(root, '.tmp/review');
+  const eventsAfterFinalize = readEvents(root, '.scratch/review');
   assert.equal(
     eventsAfterFinalize.filter(({ type }) => type === 'reviewer-handoff').length,
     terminalEvents.filter(({ type }) => type === 'reviewer-handoff').length
@@ -370,9 +376,9 @@ test('Task 2 CLI continuation supports bare, absolute, legacy, focus, and authen
 test('imported CLI workflow intercepts, continues with refocus, and then accepts', async () => {
   const { root, artifact, initialCommit } = repositoryFixture();
   const io = { cwd: root };
-  mkdirSync(path.join(root, '.tmp/review'), { recursive: true });
+  mkdirSync(path.join(root, '.scratch/review'), { recursive: true });
   writeFileSync(
-    path.join(root, '.tmp/review/r1-review.md'),
+    path.join(root, '.scratch/review/r1-review.md'),
     '[finding:F-001] Clarify acceptance.\n'
   );
   const initialized = runCli(
@@ -380,7 +386,7 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
       'init',
       '--low-level',
       '--dir',
-      '.tmp/review',
+      '.scratch/review',
       '--artifact',
       artifact,
       '--owner',
@@ -390,7 +396,7 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
       '--max-turns',
       '2',
       '--import-review',
-      '.tmp/review/r1-review.md',
+      '.scratch/review/r1-review.md',
       '--review-of',
       initialCommit,
     ],
@@ -398,10 +404,13 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   );
   assert.equal(initialized.status, 0);
   const protocolId = JSON.parse(initialized.stdout).protocolId;
-  assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
+  assert.equal(
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'owner-agent'], io).status,
+    0
+  );
   const secondCommit = commitArtifact(root, '# Artifact\n\nExplicit acceptance.\n');
   writeFileSync(
-    path.join(root, '.tmp/review/r2-response.md'),
+    path.join(root, '.scratch/review/r2-response.md'),
     '[finding:F-001] [disposition:accepted]\nAcceptance is explicit.\n'
   );
   assert.equal(
@@ -409,17 +418,17 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
       [
         'handoff',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--actor',
         'owner-agent',
         '--response',
-        '.tmp/review/r2-response.md',
+        '.scratch/review/r2-response.md',
         '--artifact',
         artifact,
         '--commit',
         secondCommit,
         '--answers',
-        '.tmp/review/r1-review.md',
+        '.scratch/review/r1-review.md',
         '--message',
         'R2',
       ],
@@ -431,7 +440,7 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   process.env.AI_TASK_MANAGER_SESSION_ID = 'host-orchestrator-session';
   let reviewerClaim;
   try {
-    reviewerClaim = runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io);
+    reviewerClaim = runCli(['claim', '--dir', '.scratch/review', '--actor', 'reviewer-agent'], io);
   } finally {
     if (previousOrchestratorSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
     else process.env.AI_TASK_MANAGER_SESSION_ID = previousOrchestratorSid;
@@ -442,24 +451,27 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   );
   assert.equal(index[protocolId].claimedProvider, 'claude');
   assert.equal(index[protocolId].claimedSid, 'fixture-reviewer-sid');
-  writeFileSync(path.join(root, '.tmp/review/r3-review.md'), '[finding:F-002] Refocus help.\n');
-  writeFileSync(path.join(root, '.tmp/review/summary.md'), '# Summary\n\nRefocus help recovery.\n');
+  writeFileSync(path.join(root, '.scratch/review/r3-review.md'), '[finding:F-002] Refocus help.\n');
+  writeFileSync(
+    path.join(root, '.scratch/review/summary.md'),
+    '# Summary\n\nRefocus help recovery.\n'
+  );
   assert.equal(
     runCli(
       [
         'handoff',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--actor',
         'reviewer-agent',
         '--review',
-        '.tmp/review/r3-review.md',
+        '.scratch/review/r3-review.md',
         '--review-of',
         secondCommit,
         '--decision',
         'changes-requested',
         '--summary',
-        '.tmp/review/summary.md',
+        '.scratch/review/summary.md',
         '--message',
         'intercept',
       ],
@@ -467,12 +479,15 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
     ).status,
     0
   );
-  const closingOwner = runCli(['status', '--dir', '.tmp/review'], io);
+  const closingOwner = runCli(['status', '--dir', '.scratch/review'], io);
   assert.match(closingOwner.stdout, /Next: npx aitm co-review claim.*owner-agent/);
-  assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
+  assert.equal(
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'owner-agent'], io).status,
+    0
+  );
   const thirdCommit = commitArtifact(root, '# Artifact\n\nClosing response before continuation.\n');
   writeFileSync(
-    path.join(root, '.tmp/review/r4-response.md'),
+    path.join(root, '.scratch/review/r4-response.md'),
     '[finding:F-002] [disposition:accepted]\nThe closing owner response is complete.\n'
   );
   assert.equal(
@@ -480,17 +495,17 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
       [
         'handoff',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--actor',
         'owner-agent',
         '--response',
-        '.tmp/review/r4-response.md',
+        '.scratch/review/r4-response.md',
         '--artifact',
         artifact,
         '--commit',
         thirdCommit,
         '--answers',
-        '.tmp/review/r3-review.md',
+        '.scratch/review/r3-review.md',
         '--message',
         'closing owner response',
       ],
@@ -498,43 +513,43 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
     ).status,
     0
   );
-  const intercepted = runCli(['status', '--dir', '.tmp/review'], io);
+  const intercepted = runCli(['status', '--dir', '.scratch/review'], io);
   assert.match(intercepted.stdout, /Next: npx aitm co-review continue.*--max-turns/);
-  writeFileSync(path.join(root, '.tmp/review/refocus.md'), '# Refocus\n\nHelp recovery.\n');
+  writeFileSync(path.join(root, '.scratch/review/refocus.md'), '# Refocus\n\nHelp recovery.\n');
   const continued = await runCliDirect(
     [
       'continue',
       '--dir',
-      '.tmp/review',
+      '.scratch/review',
       '--additional-turns',
       '2',
       '--approved-by',
       'human',
       '--focus',
-      '.tmp/review/refocus.md',
+      '.scratch/review/refocus.md',
     ],
     { cwd: root, resolveGitHubLoginImpl: () => 'kendrick' }
   );
   assert.equal(continued.status, 0, continued.stderr);
-  const resumed = JSON.parse(runCli(['status', '--dir', '.tmp/review', '--json'], io).stdout);
+  const resumed = JSON.parse(runCli(['status', '--dir', '.scratch/review', '--json'], io).stdout);
   assert.equal(resumed.reviewTurnsUsed, 2);
   assert.equal(resumed.maxReviewTurns, 4);
   assert.equal(resumed.remainingReviewTurns, 2);
   assert.match(resumed.nextAction, /claim.*reviewer-agent/);
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io).status,
+    runCli(['claim', '--dir', '.scratch/review', '--actor', 'reviewer-agent'], io).status,
     0
   );
-  writeFileSync(path.join(root, '.tmp/review/r5-review.md'), '# Review\n\nAccepted.\n');
+  writeFileSync(path.join(root, '.scratch/review/r5-review.md'), '# Review\n\nAccepted.\n');
   const pendingArchive = runCli(
     [
       'handoff',
       '--dir',
-      '.tmp/review',
+      '.scratch/review',
       '--actor',
       'reviewer-agent',
       '--review',
-      '.tmp/review/r5-review.md',
+      '.scratch/review/r5-review.md',
       '--review-of',
       thirdCommit,
       '--decision',
@@ -546,14 +561,14 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   );
   assert.equal(pendingArchive.status, 4, pendingArchive.stderr);
   assert.match(pendingArchive.stderr, /^ACCEPTED: protocol state is durable/);
-  const final = JSON.parse(runCli(['status', '--dir', '.tmp/review', '--json'], io).stdout);
+  const final = JSON.parse(runCli(['status', '--dir', '.scratch/review', '--json'], io).stdout);
   assert.equal(final.lifecycle, 'accepted');
   assert.equal(final.reviewTurnsUsed, 3);
   assert.equal(final.maxReviewTurns, 4);
   assert.equal(final.remainingReviewTurns, 1);
   assert.match(
     final.nextAction,
-    new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
+    new RegExp(`finalize --dir ${path.resolve(root, '.scratch/review')} --archive-dir`)
   );
 });
 
@@ -565,7 +580,7 @@ test('concurrent identical claims serialize to one claim event without corruptin
         'init',
         '--low-level',
         '--dir',
-        '.tmp/review',
+        '.scratch/review',
         '--artifact',
         artifact,
         '--owner',
@@ -579,7 +594,7 @@ test('concurrent identical claims serialize to one claim event without corruptin
     ).status,
     0
   );
-  const args = ['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'];
+  const args = ['claim', '--dir', '.scratch/review', '--actor', 'owner-agent'];
   const results = await Promise.all([
     runCliAsync(args, { cwd: root }),
     runCliAsync(args, { cwd: root }),
@@ -589,9 +604,12 @@ test('concurrent identical claims serialize to one claim event without corruptin
     JSON.stringify(results)
   );
   assert.ok(results.every(({ status }) => status === 0 || status === 1));
-  assert.equal(readEvents(root, '.tmp/review').filter(({ type }) => type === 'claim').length, 1);
   assert.equal(
-    JSON.parse(readFileSync(path.join(root, '.tmp/review/state.json'))).turnState,
+    readEvents(root, '.scratch/review').filter(({ type }) => type === 'claim').length,
+    1
+  );
+  assert.equal(
+    JSON.parse(readFileSync(path.join(root, '.scratch/review/state.json'))).turnState,
     'claimed'
   );
 });

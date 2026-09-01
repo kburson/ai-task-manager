@@ -50,7 +50,7 @@ test('dev-repo checkout and ordinary paths stay editable', () => {
   );
   // Unrelated source / scratch.
   assert.equal(isInstalledGuardPath('src/foo.mjs'), false);
-  assert.equal(isInstalledGuardPath('.tmp/inspect/x.mjs'), false);
+  assert.equal(isInstalledGuardPath('.scratch/inspect/x.mjs'), false);
   // An unrelated node_modules package (no ai-task-manager, no scripts/task-tracker).
   assert.equal(isInstalledGuardPath('node_modules/lodash/index.js'), false);
   assert.equal(isInstalledGuardPath(''), false);

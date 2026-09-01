@@ -238,7 +238,7 @@ test('fresh init records owner round one and the configured budget', async () =>
   const { initializeProtocol, STATE_SCHEMA } = api;
   const state = initializeProtocol({
     cwd: root,
-    dir: '.tmp/review',
+    dir: '.scratch/review',
     artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
@@ -266,9 +266,9 @@ test('fresh init records owner round one and the configured budget', async () =>
       remainingReviewTurns: 6,
     }
   );
-  assert.equal(existsSync(path.join(root, '.tmp/review/state.json')), true);
+  assert.equal(existsSync(path.join(root, '.scratch/review/state.json')), true);
   assert.deepEqual(
-    readEvents(root, '.tmp/review').map(({ type }) => type),
+    readEvents(root, '.scratch/review').map(({ type }) => type),
     ['init']
   );
 });
@@ -276,19 +276,19 @@ test('fresh init records owner round one and the configured budget', async () =>
 test('imported review consumes reviewer turn one and starts owner round two', async () => {
   const { api, root, artifact, initialCommit } = await memoryApiFixture();
   const { initializeProtocol } = api;
-  mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
+  mkdirSync(path.join(root, '.scratch/imported'), { recursive: true });
   writeFileSync(
-    path.join(root, '.tmp/imported/r1-review.md'),
+    path.join(root, '.scratch/imported/r1-review.md'),
     '# Review\n\n[finding:F-001] Clarify the terminal state.\n'
   );
   const state = initializeProtocol({
     cwd: root,
-    dir: '.tmp/imported',
+    dir: '.scratch/imported',
     artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
     maxReviewTurns: 6,
-    importReview: '.tmp/imported/r1-review.md',
+    importReview: '.scratch/imported/r1-review.md',
     reviewOf: initialCommit,
   });
   assert.equal(state.currentRole, 'owner');
@@ -299,7 +299,7 @@ test('imported review consumes reviewer turn one and starts owner round two', as
   assert.equal(state.lastHandoff.commit, initialCommit);
   assert.match(state.lastHandoff.artifacts.review.sha256, /^sha256:[a-f0-9]{64}$/);
   assert.deepEqual(
-    readEvents(root, '.tmp/imported').map(({ type }) => type),
+    readEvents(root, '.scratch/imported').map(({ type }) => type),
     ['init-import']
   );
 });
@@ -307,23 +307,23 @@ test('imported review consumes reviewer turn one and starts owner round two', as
 test('imported review refuses a budget already exhausted by imported turn one', async () => {
   const { api, root, artifact, initialCommit } = await memoryApiFixture();
   const { initializeProtocol } = api;
-  mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
-  writeFileSync(path.join(root, '.tmp/imported/r1-review.md'), '# Review\n');
+  mkdirSync(path.join(root, '.scratch/imported'), { recursive: true });
+  writeFileSync(path.join(root, '.scratch/imported/r1-review.md'), '# Review\n');
   assert.throws(
     () =>
       initializeProtocol({
         cwd: root,
-        dir: '.tmp/imported',
+        dir: '.scratch/imported',
         artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
         maxReviewTurns: 1,
-        importReview: '.tmp/imported/r1-review.md',
+        importReview: '.scratch/imported/r1-review.md',
         reviewOf: initialCommit,
       }),
     /co-review:import-exhausts-budget/
   );
-  assert.equal(existsSync(path.join(root, '.tmp/imported/state.json')), false);
+  assert.equal(existsSync(path.join(root, '.scratch/imported/state.json')), false);
 });
 
 test('exact init retry is idempotent and changed configuration refuses', async () => {
@@ -331,7 +331,7 @@ test('exact init retry is idempotent and changed configuration refuses', async (
   const { initializeProtocol } = api;
   const options = {
     cwd: root,
-    dir: '.tmp/review',
+    dir: '.scratch/review',
     artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
@@ -357,7 +357,7 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
     (options) => ({ ...options, reviewer: options.owner }),
     (options) => ({ ...options, owner: ` ${options.reviewer} ` }),
     (options) => ({ ...options, maxReviewTurns: 0 }),
-    (options) => ({ ...options, importReview: '.tmp/review/r1.md' }),
+    (options) => ({ ...options, importReview: '.scratch/review/r1.md' }),
     (options) => ({ ...options, dir: 'review-state' }),
     (options) => ({ ...options, dir: '../outside' }),
   ]) {
@@ -365,14 +365,14 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
     const { initializeProtocol } = api;
     const options = mutate({
       cwd: root,
-      dir: '.tmp/review',
+      dir: '.scratch/review',
       artifact,
       owner: 'owner-agent',
       reviewer: 'reviewer-agent',
       maxReviewTurns: 6,
     });
     assert.throws(() => initializeProtocol(options), /co-review:/);
-    if (options.dir.startsWith('.tmp/')) {
+    if (options.dir.startsWith('.scratch/')) {
       assert.equal(existsSync(path.join(root, options.dir, 'state.json')), false);
     }
   }
@@ -386,7 +386,7 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
     () =>
       initializeProtocol({
         cwd: dirty.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: dirty.artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
@@ -396,23 +396,23 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
   );
 
   const imported = await memoryApiFixture();
-  mkdirSync(path.join(imported.root, '.tmp/review'), { recursive: true });
-  writeFileSync(path.join(imported.root, '.tmp/review/r1.md'), '# Review\n');
+  mkdirSync(path.join(imported.root, '.scratch/review'), { recursive: true });
+  writeFileSync(path.join(imported.root, '.scratch/review/r1.md'), '# Review\n');
   assert.throws(
     () =>
       imported.api.initializeProtocol({
         cwd: imported.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: imported.artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
         maxReviewTurns: 6,
-        importReview: '.tmp/review/r1.md',
+        importReview: '.scratch/review/r1.md',
         reviewOf: '0000000000000000000000000000000000000000',
       }),
     /co-review:git-commit/
   );
-  assert.equal(existsSync(path.join(imported.root, '.tmp/review/state.json')), false);
+  assert.equal(existsSync(path.join(imported.root, '.scratch/review/state.json')), false);
 });
 
 test('init refuses a runtime symlink that resolves outside the repository', async () => {
@@ -420,12 +420,12 @@ test('init refuses a runtime symlink that resolves outside the repository', asyn
   const { initializeProtocol } = api;
   const outside = temporaryRoot('aitm-co-review-outside-');
   mkdirSync(path.join(root, '.tmp'), { recursive: true });
-  symlinkSync(outside, path.join(root, '.tmp/review'), 'dir');
+  symlinkSync(outside, path.join(root, '.scratch/review'), 'dir');
   assert.throws(
     () =>
       initializeProtocol({
         cwd: root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
@@ -439,7 +439,7 @@ test('init refuses a runtime symlink that resolves outside the repository', asyn
 test('surviving initialization mutex is reported and never stolen', async () => {
   const { api, root, artifact } = await memoryApiFixture();
   const { initializeProtocol } = api;
-  const lock = path.join(root, '.tmp/review/.co-review-lock');
+  const lock = path.join(root, '.scratch/review/.co-review-lock');
   mkdirSync(lock, { recursive: true });
   writeFileSync(
     path.join(lock, 'owner.json'),
@@ -449,7 +449,7 @@ test('surviving initialization mutex is reported and never stolen', async () => 
     () =>
       initializeProtocol({
         cwd: root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
@@ -467,7 +467,7 @@ test('CLI initializes and reports human and JSON status', async () => {
       'init',
       '--low-level',
       '--dir',
-      '.tmp/review',
+      '.scratch/review',
       '--artifact',
       artifact,
       '--owner',
@@ -484,7 +484,7 @@ test('CLI initializes and reports human and JSON status', async () => {
   assert.equal(initializedState.reviewTurnsUsed, 0);
   assert.match(initializedState.nextAction, /co-review claim.*owner-agent/);
 
-  const human = await runCliDirect(['status', '--dir', '.tmp/review'], { cwd: root });
+  const human = await runCliDirect(['status', '--dir', '.scratch/review'], { cwd: root });
   assert.equal(human.status, 0, human.stderr);
   assert.match(human.stdout, /Lifecycle: active/);
   assert.match(human.stdout, /Branch: trunk/);
@@ -492,33 +492,33 @@ test('CLI initializes and reports human and JSON status', async () => {
   assert.match(human.stdout, /Last handoff: none/);
   assert.match(human.stdout, /Budget: 0 used \/ 6 max \/ 6 remaining/);
 
-  const json = await runCliDirect(['status', '--dir', '.tmp/review', '--json'], { cwd: root });
+  const json = await runCliDirect(['status', '--dir', '.scratch/review', '--json'], { cwd: root });
   assert.equal(json.status, 0, json.stderr);
   assert.equal(JSON.parse(json.stdout).integrity.ok, true);
 });
 
 test('CLI rejects unknown or incomplete init flags before mutation', async () => {
   for (const args of [
-    ['init', '--dir', '.tmp/review', '--unknown', 'value'],
+    ['init', '--dir', '.scratch/review', '--unknown', 'value'],
     ['init', '--dir'],
   ]) {
     const { root } = memoryRepositoryFixture();
     const result = await runCliDirect(args, { cwd: root });
     assert.equal(result.status, 2, result.stderr);
     assert.match(result.stderr, /co-review:usage/);
-    assert.equal(existsSync(path.join(root, '.tmp/review/state.json')), false);
+    assert.equal(existsSync(path.join(root, '.scratch/review/state.json')), false);
   }
 });
 
 test('CLI rejects unknown handoff flags before protocol discovery', async () => {
   const { root } = memoryRepositoryFixture();
   const result = await runCliDirect(
-    ['handoff', '--dir', '.tmp/missing', '--actor', 'owner-agent', '--unknown', 'value'],
+    ['handoff', '--dir', '.scratch/missing', '--actor', 'owner-agent', '--unknown', 'value'],
     { cwd: root }
   );
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /option --unknown is not valid/);
-  assert.equal(existsSync(path.join(root, '.tmp/missing')), false);
+  assert.equal(existsSync(path.join(root, '.scratch/missing')), false);
 });
 
 test('claim is role-safe and an exact claimant retry is idempotent', async () => {
@@ -624,7 +624,7 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', async () =
           'init',
           '--low-level',
           '--dir',
-          '.tmp/review',
+          '.scratch/review',
           '--artifact',
           artifact,
           '--owner',
@@ -640,14 +640,17 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', async () =
     0
   );
   const waiting = await runCliDirect(
-    ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
+    ['wait', '--dir', '.scratch/review', '--actor', 'reviewer-agent', '--timeout', '0'],
     { cwd: root }
   );
   assert.equal(waiting.status, 3, waiting.stderr);
   assert.match(waiting.stdout, /"status": "timeout"/);
-  const claimed = await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], {
-    cwd: root,
-  });
+  const claimed = await runCliDirect(
+    ['claim', '--dir', '.scratch/review', '--actor', 'owner-agent'],
+    {
+      cwd: root,
+    }
+  );
   assert.equal(claimed.status, 0, claimed.stderr);
   const claimedState = JSON.parse(claimed.stdout);
   assert.equal(claimedState.turnState, 'claimed');

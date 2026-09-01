@@ -415,7 +415,7 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
   assert.doesNotMatch(pending.stderr, /no state changed/);
   assert.equal(
     pending.stderr.includes(
-      `finalize --dir ${path.join(unconfigured.root, '.tmp/review')} --archive-dir <tracked-repo-path>`
+      `finalize --dir ${path.join(unconfigured.root, '.scratch/review')} --archive-dir <tracked-repo-path>`
     ),
     true
   );
@@ -424,7 +424,7 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
       .lifecycle,
     'accepted'
   );
-  const unconfiguredRuntime = path.join(unconfigured.root, '.tmp/review');
+  const unconfiguredRuntime = path.join(unconfigured.root, '.scratch/review');
   const placeholderFinalizeCommand =
     `npx aitm co-review finalize --dir ${unconfiguredRuntime} ` +
     '--archive-dir <tracked-repo-path>';
@@ -467,7 +467,7 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
   assert.equal(retried.status, 0, retried.stderr);
   assert.equal(existsSync(path.join(unconfigured.root, 'docs/reviews/recovered/README.md')), true);
 
-  const spaced = await consensusReady({ dir: '.tmp/review session' });
+  const spaced = await consensusReady({ dir: '.scratch/review session' });
   const spacedPending = await runCliDirect(
     [
       'handoff',
@@ -489,7 +489,7 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
   assert.equal(spacedPending.status, 4);
   assert.equal(
     spacedPending.stderr.includes(
-      `finalize --dir '${path.join(spaced.root, '.tmp/review session')}' --archive-dir <tracked-repo-path>`
+      `finalize --dir '${path.join(spaced.root, '.scratch/review session')}' --archive-dir <tracked-repo-path>`
     ),
     true
   );
@@ -528,7 +528,7 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
   );
   assert.equal(
     publicationFailed.stderr.includes(
-      `finalize --dir ${path.join(failed.root, '.tmp/review')} --archive-dir docs/reviews/retry`
+      `finalize --dir ${path.join(failed.root, '.scratch/review')} --archive-dir docs/reviews/retry`
     ),
     true
   );
@@ -805,7 +805,7 @@ test('good-enough CLI prepares before mutation, publishes, and maps only post-ac
 
   const empty = temporaryRoot();
   const invalid = await runCliDirect(
-    ['finalize', '--dir', '.tmp/missing', '--good-enough', '--unknown'],
+    ['finalize', '--dir', '.scratch/missing', '--good-enough', '--unknown'],
     {
       cwd: empty,
       resolveGitHubLoginImpl: () => {

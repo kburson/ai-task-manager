@@ -11,8 +11,9 @@
 // payload on stdout so Claude Code refuses the tool call.
 //
 // Allowlist (always permitted regardless of state):
-//   - `.tmp/**`
-//   - `.ai-task-manager/scratch/**`
+//   - `.tmp/**` runtime and generated output
+//   - `.scratch/**` disposable operator and workflow scratch
+//   - `.scratch/**` disposable scratch
 //
 // When chore-mode is active, every path is allowed (full bypass).
 //

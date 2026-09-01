@@ -18,7 +18,7 @@
 //   - Managed child branch, base could NOT be resolved (gh/git error) → BLOCK.
 //     A child worktree whose base cannot be confirmed is exactly the state the
 //     guard exists to stop; scratch paths stay writable so notes/retries proceed.
-//   - Allowlisted scratch paths (`.tmp/**`, `.ai-task-manager/scratch/**`) → ALLOW.
+//   - Allowlisted machine-local paths (`.tmp/**`, `.scratch/**`) → ALLOW.
 //
 // The decision core (`decideEpicBaseEdit`) is pure; the git+graph wiring
 // (`computeEvaluation`) is injectable. Both keep the hook testable without a live
@@ -81,7 +81,7 @@ export function decideEpicBaseEdit({ toolName, branch, relPath, evaluation }) {
         `  Fixes:\n` +
         `    - re-create the worktree with: node scripts/task-tracker/cut-child-worktree.mjs <N> <path>\n` +
         `    - or retry once gh/git is reachable\n` +
-        `    - scratch paths (.tmp/**) remain writable`,
+        `    - runtime paths (.tmp/**) and scratch paths (.scratch/**) remain writable`,
     };
   }
 

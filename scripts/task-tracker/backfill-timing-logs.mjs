@@ -15,7 +15,7 @@
 // The repair engine (`backfillTimingBody`) is a pure body-in / body-out
 // function so the test suite exercises it offline. The CLI is a thin shell
 // that locates the comment, runs the engine, and (with `--apply`) writes a
-// `.tmp/heal/` backup before committing the edited comment via the
+// `.scratch/heal/` backup before committing the edited comment via the
 // `updateIssueComment` GraphQL mutation.
 
 import { execFile } from 'node:child_process';
@@ -147,7 +147,7 @@ export function backfillTimingBody(body, { sanityCapSec = DEFAULT_SANITY_CAP_SEC
 export function printUsage(out = (s) => process.stdout.write(s)) {
   out(
     'Usage: backfill-timing-logs.mjs (--issue N | --all-open) [--apply] [--cap-hours H] [--yes]\n' +
-      '  Dry-run by default; --apply mutates the timing comment (backup written to .tmp/heal/).\n' +
+      '  Dry-run by default; --apply mutates the timing comment (backup written to .scratch/heal/).\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply\n'
   );
 }
@@ -226,7 +226,7 @@ export async function processIssue(num, { repo, apply, capSec, stamp, deps = {} 
     printDiff(comment.body, newBody, out);
     return;
   }
-  const healDir = path.join(projectDir(), '.tmp', 'heal');
+  const healDir = path.join(projectDir(), '.scratch', 'heal');
   mkdir(healDir, { recursive: true });
   const backupPath = path.join(healDir, `timing-${num}-${stamp}.bak`);
   write(backupPath, comment.body);

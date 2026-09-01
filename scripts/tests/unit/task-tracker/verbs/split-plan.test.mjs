@@ -105,7 +105,7 @@ test('refuses duplicate numbers, empty titles, and missing verifiers', () => {
 });
 
 test('writes canonical deterministic fragments for sanctioned creation', async () => {
-  const scratchDir = mkdtempSync(path.join(process.cwd(), '.tmp', 'split-plan-test-'));
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-test-'));
   try {
     const [proposal] = buildSplitProposals(input());
     const paths = await writeProposalFragments({ proposal, scratchDir });
@@ -139,7 +139,7 @@ test('writes canonical deterministic fragments for sanctioned creation', async (
 });
 
 test('sanctioned dry-run body preserves exact task verifiers behind AC citations', async () => {
-  const scratchDir = mkdtempSync(path.join(process.cwd(), '.tmp', 'split-plan-body-test-'));
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-body-test-'));
   try {
     const [proposal] = buildSplitProposals(input());
     const paths = await writeProposalFragments({ proposal, scratchDir });
@@ -164,7 +164,7 @@ test('sanctioned dry-run body preserves exact task verifiers behind AC citations
 });
 
 function orchestrationInput(overrides = {}) {
-  const scratchDir = mkdtempSync(path.join(process.cwd(), '.tmp', 'split-plan-run-test-'));
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-run-test-'));
   return {
     issueNumber: 1052,
     mode: 'dry-run',

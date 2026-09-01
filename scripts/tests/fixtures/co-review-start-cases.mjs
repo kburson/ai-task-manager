@@ -46,7 +46,7 @@ test('start defaults and derived runtime directories are stable and unique by cr
   });
   assert.equal(
     deriveRuntimeDir('docs/Architecture Review.md', 'creation-1'),
-    '.tmp/co-review/architecture-review-creation-1'
+    '.scratch/co-review/architecture-review-creation-1'
   );
   assert.notEqual(
     deriveRuntimeDir('docs/design.md', 'creation-1'),
@@ -60,7 +60,7 @@ test('start option resolution validates roles and numeric bounds before mutation
   const base = { artifact: 'docs/artifact.md', owner: 'author', reviewer: 'reviewer' };
   assert.deepEqual(resolveStartOptions(base, { creationId: () => 'fixed' }), {
     ...base,
-    dir: '.tmp/co-review/artifact-fixed',
+    dir: '.scratch/co-review/artifact-fixed',
     ...START_DEFAULTS,
   });
   assert.deepEqual(
@@ -75,7 +75,7 @@ test('start option resolution validates roles and numeric bounds before mutation
       issue: 1272,
       artifactKind: 'spec',
       archiveDir: 'docs/superpowers/reviews/1272/spec',
-      dir: '.tmp/co-review/artifact-fixed',
+      dir: '.scratch/co-review/artifact-fixed',
       ...START_DEFAULTS,
     }
   );
@@ -124,7 +124,7 @@ test('guided host context configures deterministic spec and plan archives and ha
   for (const artifactKind of ['spec', 'plan']) {
     const fixture = memoryRepositoryFixture();
     const api = await memoryProtocol(fixture.repository);
-    const dir = `.tmp/${artifactKind}-host-start`;
+    const dir = `.scratch/${artifactKind}-host-start`;
     const options = {
       cwd: fixture.root,
       artifact: fixture.artifact,
@@ -191,7 +191,7 @@ test('guided start refuses every occupied configured archive leaf before protoco
     if (occupied === 'file') writeFileSync(archive, 'occupied\n');
     if (occupied === 'symlink') symlinkSync(path.join(fixture.root, 'docs'), archive);
 
-    const dir = `.tmp/occupied-${occupied}`;
+    const dir = `.scratch/occupied-${occupied}`;
     assert.throws(
       () =>
         startProtocol(
@@ -218,7 +218,7 @@ test('direct init applies configured archive occupancy refusal before protocol c
   const api = await memoryProtocol(fixture.repository);
   const archive = path.join(fixture.root, 'docs/reviews/occupied');
   mkdirSync(archive, { recursive: true });
-  const dir = '.tmp/direct-occupied';
+  const dir = '.scratch/direct-occupied';
 
   assert.throws(
     () =>
@@ -271,7 +271,7 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
       artifact: fixture.artifact,
       owner: 'author-agent',
       reviewer: 'reviewer-agent',
-      dir: '.tmp/review-start',
+      dir: '.scratch/review-start',
     },
     startDependencies(api)
   );
@@ -280,7 +280,7 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.equal(result.state.initialization.archiveDir, undefined);
   assert.equal(result.manifest.hostArchive, undefined);
   assert.deepEqual(
-    readEvents(fixture.root, '.tmp/review-start').map(({ type }) => type),
+    readEvents(fixture.root, '.scratch/review-start').map(({ type }) => type),
     ['init']
   );
   assert.equal(result.manifest.schema, 'aitm.co-review-start/v1');
@@ -291,10 +291,10 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   }
   const author = readFileSync(result.authorHandoff.absolute, 'utf8');
   const reviewer = readFileSync(result.reviewerHandoff.absolute, 'utf8');
-  const runtimeAbsolute = path.resolve(fixture.root, '.tmp/review-start');
+  const runtimeAbsolute = path.resolve(fixture.root, '.scratch/review-start');
   for (const bytes of [author, reviewer]) {
     assert.match(bytes, new RegExp(result.state.protocolId));
-    assert.match(bytes, new RegExp(path.resolve(fixture.root, '.tmp/review-start')));
+    assert.match(bytes, new RegExp(path.resolve(fixture.root, '.scratch/review-start')));
     assert.match(bytes, /wait cycle N\/15/);
     assert.match(bytes, /compaction/i);
     assert.match(bytes, /--timeout 60/);
@@ -369,7 +369,7 @@ test('flagged start CLI applies defaults and prints only the two handoff prompts
       '--reviewer',
       'reviewer-agent',
       '--dir',
-      '.tmp/cli-start',
+      '.scratch/cli-start',
     ],
     { cwd: fixture.root, repository: fixture.repository }
   );
@@ -381,7 +381,7 @@ test('flagged start CLI applies defaults and prints only the two handoff prompts
 
 test('flagged start records every numeric override in state and startup metadata', async () => {
   const fixture = memoryRepositoryFixture();
-  const dir = '.tmp/override-start';
+  const dir = '.scratch/override-start';
   const result = await runCliDirect(
     [
       'start',
@@ -435,7 +435,7 @@ test('plain init refuses before mutation while explicit low-level init remains c
   const fixture = memoryRepositoryFixture();
   const common = [
     '--dir',
-    '.tmp/direct-init',
+    '.scratch/direct-init',
     '--artifact',
     fixture.artifact,
     '--owner',
@@ -454,7 +454,7 @@ test('plain init refuses before mutation while explicit low-level init remains c
   assert.match(refused.stderr, /co-review:init-low-level-required/);
   assert.match(refused.stderr, /no state changed/);
   assert.match(refused.stderr, /npx aitm co-review start/);
-  assert.equal(existsSync(path.join(fixture.root, '.tmp/direct-init')), false);
+  assert.equal(existsSync(path.join(fixture.root, '.scratch/direct-init')), false);
 
   const compatible = await runCliDirect(['init', '--low-level', ...common], {
     cwd: fixture.root,
@@ -462,9 +462,9 @@ test('plain init refuses before mutation while explicit low-level init remains c
   });
   assert.equal(compatible.status, 0, compatible.stderr);
   assert.equal(JSON.parse(compatible.stdout).currentRole, 'owner');
-  assert.equal(existsSync(path.join(fixture.root, '.tmp/direct-init/state.json')), true);
+  assert.equal(existsSync(path.join(fixture.root, '.scratch/direct-init/state.json')), true);
 
-  const importDir = '.tmp/direct-import';
+  const importDir = '.scratch/direct-import';
   mkdirSync(path.join(fixture.root, importDir), { recursive: true });
   writeFileSync(
     path.join(fixture.root, importDir, 'r1-review.md'),
@@ -503,7 +503,7 @@ test('exact start retry is event-idempotent, reconstructs one missing handoff, a
     artifact: fixture.artifact,
     owner: 'author-agent',
     reviewer: 'reviewer-agent',
-    dir: '.tmp/retry-start',
+    dir: '.scratch/retry-start',
   };
   const first = startProtocol(options, startDependencies(api));
   const events = readEvents(fixture.root, options.dir);
@@ -533,7 +533,7 @@ test('exact start retry refuses protocol event-integrity drift before touching h
     artifact: fixture.artifact,
     owner: 'author-agent',
     reviewer: 'reviewer-agent',
-    dir: '.tmp/integrity-start',
+    dir: '.scratch/integrity-start',
   };
   const dependencies = startDependencies(api);
   const first = startProtocol(options, dependencies);
@@ -554,7 +554,7 @@ test('post-initialization publication failure reports an explicit retry and rema
     artifact: fixture.artifact,
     owner: 'author-agent',
     reviewer: 'reviewer-agent',
-    dir: '.tmp/partial-start',
+    dir: '.scratch/partial-start',
   };
   assert.throws(
     () =>
@@ -586,7 +586,7 @@ test('host-configured publication recovery preserves the exact issue and artifac
     artifact: fixture.artifact,
     owner: 'author-agent',
     reviewer: 'reviewer-agent',
-    dir: '.tmp/host-partial-start',
+    dir: '.scratch/host-partial-start',
     issue: '1272',
     artifactKind: 'spec',
   };
@@ -610,7 +610,7 @@ test('host-configured publication recovery preserves the exact issue and artifac
 test('startup publication never follows generated-file symlinks or overwrites a rename race', async () => {
   const symlinked = memoryRepositoryFixture();
   const symlinkedApi = await memoryProtocol(symlinked.repository);
-  const symlinkDir = '.tmp/symlink-start';
+  const symlinkDir = '.scratch/symlink-start';
   symlinkedApi.initializeProtocol({
     cwd: symlinked.root,
     dir: symlinkDir,
@@ -619,7 +619,7 @@ test('startup publication never follows generated-file symlinks or overwrites a 
     reviewer: 'reviewer-agent',
     maxReviewTurns: 10,
   });
-  const outside = path.join(symlinked.root, '.tmp/outside-author.md');
+  const outside = path.join(symlinked.root, '.scratch/outside-author.md');
   writeFileSync(outside, '# outside\n');
   symlinkSync(outside, path.join(symlinked.root, symlinkDir, 'author-handoff.md'));
   assert.throws(
@@ -640,7 +640,7 @@ test('startup publication never follows generated-file symlinks or overwrites a 
 
   const raced = memoryRepositoryFixture();
   const racedApi = await memoryProtocol(raced.repository);
-  const racedDir = '.tmp/raced-start';
+  const racedDir = '.scratch/raced-start';
   assert.throws(
     () =>
       startProtocol(
@@ -668,7 +668,7 @@ test('startup publication never follows generated-file symlinks or overwrites a 
 
   const swapped = memoryRepositoryFixture();
   const swappedApi = await memoryProtocol(swapped.repository);
-  const swappedDir = '.tmp/swapped-start';
+  const swappedDir = '.scratch/swapped-start';
   const outsideDirectory = temporaryRoot('aitm-co-review-start-outside-');
   assert.throws(
     () =>
@@ -700,7 +700,7 @@ test('interactive start displays resolved configuration and cancellation mutates
   const fixture = memoryRepositoryFixture();
   const answers = [
     fixture.artifact,
-    '.tmp/interactive-start',
+    '.scratch/interactive-start',
     'author-agent',
     'reviewer-agent',
     '1272',
@@ -729,7 +729,7 @@ test('interactive start displays resolved configuration and cancellation mutates
   assert.match(result.stdout, /Archive destination: docs\/superpowers\/reviews\/1272\/spec/);
   assert.match(result.stdout, /AUTHOR PROMPT/);
 
-  const cancelledDir = '.tmp/cancelled-start';
+  const cancelledDir = '.scratch/cancelled-start';
   const cancelledAnswers = [
     fixture.artifact,
     cancelledDir,
@@ -775,7 +775,7 @@ test('non-interactive incomplete and invalid flagged start invocations fail befo
       '--reviewer',
       'reviewer-agent',
       '--dir',
-      '.tmp/invalid-start',
+      '.scratch/invalid-start',
       '--wait-interval',
       '61',
     ],
@@ -784,7 +784,7 @@ test('non-interactive incomplete and invalid flagged start invocations fail befo
   assert.equal(invalid.status, 2);
   assert.match(invalid.stderr, /start-wait-interval/);
   assert.match(invalid.stderr, /no state changed/);
-  assert.equal(existsSync(path.join(fixture.root, '.tmp/invalid-start')), false);
+  assert.equal(existsSync(path.join(fixture.root, '.scratch/invalid-start')), false);
 
   for (const [suffix, hostArgs] of [
     ['missing-kind', ['--issue', '1272']],
@@ -792,7 +792,7 @@ test('non-interactive incomplete and invalid flagged start invocations fail befo
     ['bad-issue', ['--issue', '01272', '--artifact-kind', 'spec']],
     ['bad-kind', ['--issue', '1272', '--artifact-kind', 'design']],
   ]) {
-    const dir = `.tmp/${suffix}-start`;
+    const dir = `.scratch/${suffix}-start`;
     const refused = await runCliDirect(
       [
         'start',
@@ -832,7 +832,7 @@ test('structured and top-level help make start canonical and init explicitly low
     '10',
     '15',
     '60',
-    '.tmp/co-review/',
+    '.scratch/co-review/',
     'author-handoff.md',
     'reviewer-handoff.md',
     'start-manifest.json',

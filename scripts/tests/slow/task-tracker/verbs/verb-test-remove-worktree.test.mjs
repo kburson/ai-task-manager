@@ -32,7 +32,7 @@ async function git(args, cwd) {
   return pexec('git', args, { cwd, timeout: 30_000 });
 }
 
-// mkdtempProjectIsolated returns a fresh sandbox under `.tmp/test/` with
+// mkdtempProjectIsolated returns a fresh sandbox under `.scratch/test/` with
 // `git init -q -b trunk` + an initial commit on `trunk` already done — exactly
 // the parent-repo shape `defaultCreateWorktree` needs. The companion wtPath
 // must live outside the project dir (git refuses worktree add inside the same

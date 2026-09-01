@@ -23,6 +23,7 @@ import {
   locksDir,
   issueLockPath,
   timingLockPath,
+  projectTmpDir,
   scratchDir,
   templatesDir,
   fleetPath,
@@ -134,7 +135,7 @@ assert.equal(RUNTIME_REL.dod, `${SHARED_DIR}/${TEMPLATES_SUBDIR}/definition-of-d
 
 // Segment + scratch-prefix constants derive from SHARED_DIR.
 assert.equal(SHARED_DIR_SEGMENT, `/${SHARED_DIR}/`);
-assert.equal(SCRATCH_REL_PREFIX, `${SHARED_DIR}/scratch/`);
+assert.equal(SCRATCH_REL_PREFIX, '.scratch/');
 
 // cwd-anchored resolvers join the project root byte-identically when no legacy
 // twin exists on disk (the /tmp/proj-xyz tree has no `.claude` mirror).
@@ -156,7 +157,8 @@ assert.equal(dodPath(PX), path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR, 'definitio
 // Directory resolvers: sessions/locks moved to `.tmp/aitm/`; scratch + templates stay tracked.
 assert.equal(sessionsDir(PX), path.join(PX, ...TMP_AITM, 'sessions'));
 assert.equal(locksDir(PX), path.join(PX, ...TMP_AITM, 'locks'));
-assert.equal(scratchDir(PX), path.join(PX, SHARED_DIR, 'scratch'));
+assert.equal(projectTmpDir(PX), path.join(PX, '.scratch'));
+assert.equal(scratchDir(PX), path.join(PX, '.scratch'));
 assert.equal(templatesDir(PX), path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR));
 
 // Lock-file resolvers compose locksDir with the per-key filename.

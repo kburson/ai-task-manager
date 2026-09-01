@@ -51,7 +51,7 @@ test('real repository boundary normalizes repository observations', () => {
   const { root, initialCommit } = repositoryFixture();
 
   assert.equal(REAL_REPOSITORY_BOUNDARY.repositoryRoot(root), realpathSync(root));
-  assert.deepEqual(REAL_REPOSITORY_BOUNDARY.runtimeStatus(root, '.tmp/review'), {
+  assert.deepEqual(REAL_REPOSITORY_BOUNDARY.runtimeStatus(root, '.scratch/review'), {
     ignored: true,
     tracked: false,
   });
@@ -105,15 +105,17 @@ test('real repository boundary invokes Git without a shell', () => {
   const { root, initialCommit } = repositoryFixture();
 
   boundary.repositoryRoot(root);
-  boundary.runtimeStatus(root, '.tmp/review');
+  boundary.runtimeStatus(root, '.scratch/review');
   boundary.trackedArtifact(root, 'docs/artifact.md');
   boundary.resolveReachableCommit(root, initialCommit);
   boundary.committedArtifact(root, initialCommit, 'docs/artifact.md');
   boundary.identity(root);
 
   assert.ok(calls.some(({ args }) => args.join(' ') === 'rev-parse --show-toplevel'));
-  assert.ok(calls.some(({ args }) => args.join(' ') === 'check-ignore --quiet -- .tmp/review'));
-  assert.ok(calls.some(({ args }) => args.join(' ') === 'ls-files --error-unmatch -- .tmp/review'));
+  assert.ok(calls.some(({ args }) => args.join(' ') === 'check-ignore --quiet -- .scratch/review'));
+  assert.ok(
+    calls.some(({ args }) => args.join(' ') === 'ls-files --error-unmatch -- .scratch/review')
+  );
   assert.ok(calls.some(({ args }) => args.join(' ') === 'show :docs/artifact.md'));
   assert.ok(
     calls.some(({ args }) => args.join(' ') === `merge-base --is-ancestor ${initialCommit} HEAD`)
@@ -132,21 +134,21 @@ test('every command refuses a sibling linked-worktree runtime', () => {
   git(main.root, 'worktree', 'add', '-b', 'reviewer-branch', linked);
   initializeProtocol({
     cwd: linked,
-    dir: '.tmp/review',
+    dir: '.scratch/review',
     artifact: main.artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
     maxReviewTurns: 2,
   });
   assert.throws(
-    () => statusProtocol({ cwd: main.root, dir: path.join(linked, '.tmp/review') }),
+    () => statusProtocol({ cwd: main.root, dir: path.join(linked, '.scratch/review') }),
     /co-review:repository-identity/
   );
   assert.throws(
     () =>
       claimTurn({
         cwd: main.root,
-        dir: path.join(linked, '.tmp/review'),
+        dir: path.join(linked, '.scratch/review'),
         actor: 'owner-agent',
       }),
     /co-review:repository-identity/
@@ -188,7 +190,7 @@ test('every protocol command refuses absolute and relative foreign runtimes befo
   mkdirSync(path.dirname(linked), { recursive: true });
   git(main.root, 'worktree', 'add', '-b', 'command-reviewer-branch', linked);
   const sibling = repositoryFixture();
-  const dir = '.tmp/review';
+  const dir = '.scratch/review';
   for (const root of [linked, sibling.root]) {
     initializeProtocol({
       cwd: root,
@@ -354,7 +356,7 @@ test('every protocol command refuses absolute and relative foreign runtimes befo
 test('absolute runtime refuses another repository and recorded-root substitution', () => {
   const caller = repositoryFixture();
   const foreign = repositoryFixture();
-  const dir = '.tmp/review';
+  const dir = '.scratch/review';
   initializeProtocol({
     cwd: foreign.root,
     dir,
@@ -396,12 +398,12 @@ test('real protocol refuses symlink escape and ignored or untracked violations',
   const outside = mkdtempOutsideRepo('aitm-co-review-boundary-outside-');
   t.after(() => rmSync(outside, { recursive: true, force: true }));
   mkdirSync(path.join(escaped.root, '.tmp'), { recursive: true });
-  symlinkSync(outside, path.join(escaped.root, '.tmp/review'), 'dir');
+  symlinkSync(outside, path.join(escaped.root, '.scratch/review'), 'dir');
   assert.throws(
     () =>
       initializeProtocol({
         cwd: escaped.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: escaped.artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
@@ -430,7 +432,7 @@ test('real protocol refuses symlink escape and ignored or untracked violations',
     () =>
       initializeProtocol({
         cwd: untracked.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: 'docs/untracked.md',
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
@@ -448,7 +450,7 @@ test('real protocol refuses index or HEAD drift and unreachable publication comm
     () =>
       initializeProtocol({
         cwd: indexed.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: indexed.artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
@@ -461,18 +463,18 @@ test('real protocol refuses index or HEAD drift and unreachable publication comm
   const foreign = repositoryFixture();
   const foreignCommit = commitArtifact(foreign.root, '# Foreign publication\n');
   git(target.root, 'fetch', foreign.root, foreignCommit);
-  mkdirSync(path.join(target.root, '.tmp/review'), { recursive: true });
-  writeFileSync(path.join(target.root, '.tmp/review/r1.md'), '# Review\n');
+  mkdirSync(path.join(target.root, '.scratch/review'), { recursive: true });
+  writeFileSync(path.join(target.root, '.scratch/review/r1.md'), '# Review\n');
   assert.throws(
     () =>
       initializeProtocol({
         cwd: target.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: target.artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',
         maxReviewTurns: 2,
-        importReview: '.tmp/review/r1.md',
+        importReview: '.scratch/review/r1.md',
         reviewOf: foreignCommit,
       }),
     /co-review:git-commit-unreachable/

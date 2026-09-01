@@ -2,7 +2,7 @@
 ==================================================================
 
 Command:
-    node .tmp/heal/migrate-markers-corpus.mjs        # dry-run is the default; writes nothing
+    node .scratch/heal/migrate-markers-corpus.mjs        # dry-run is the default; writes nothing
 
 Run against the LIVE corpus (every issue, open + closed) via the paginated
 GraphQL issues connection. No live writes performed — this is the validation

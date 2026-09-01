@@ -294,8 +294,8 @@ export const VERB_REFERENCE = {
       { flag: '--rationale "<text>"', desc: 'why the estimate changed (or held)' },
     ],
     examples: [
-      '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json',
-      '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json --adopt-legacy-baseline',
+      '/task plan-estimate 667 --evidence-file .scratch/plan/667-estimation.json',
+      '/task plan-estimate 667 --evidence-file .scratch/plan/667-estimation.json --adopt-legacy-baseline',
       '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
   },
@@ -661,7 +661,7 @@ export const VERB_REFERENCE = {
         desc: 'aitm.issue-body-operation/v1 exact or named-section replacement',
       },
     ],
-    examples: ['/task issue-body 667 --operation-file .tmp/gh/667-body-operation.json'],
+    examples: ['/task issue-body 667 --operation-file .scratch/gh/667-body-operation.json'],
   },
   comment: {
     topic: 'evidence',
@@ -671,7 +671,7 @@ export const VERB_REFERENCE = {
       { flag: '--key <stable-key>', desc: 'stable lowercase ownership key' },
       { flag: '--body-file <path>', desc: 'markdown comment body without an ownership marker' },
     ],
-    examples: ['/task comment 667 --key plan.audit-v1 --body-file .tmp/gh/667-audit.md'],
+    examples: ['/task comment 667 --key plan.audit-v1 --body-file .scratch/gh/667-audit.md'],
   },
   'commit-trace': {
     topic: 'evidence',
@@ -729,7 +729,7 @@ export const VERB_REFERENCE = {
       { flag: '--title <override>', desc: 'title override' },
     ],
     exitCodes: [{ code: 1, meaning: 'no active discover state' }],
-    examples: ['/task save-plan --from-file .tmp/plan/help-rework.md'],
+    examples: ['/task save-plan --from-file .scratch/plan/help-rework.md'],
   },
   'save-draft': {
     topic: 'discovery',
@@ -741,7 +741,7 @@ export const VERB_REFERENCE = {
       { flag: '--title <t>', desc: 'draft title' },
     ],
     exitCodes: [{ code: 1, meaning: 'no active discover state' }],
-    examples: ['/task save-draft --from-file .tmp/plan/draft.md'],
+    examples: ['/task save-draft --from-file .scratch/plan/draft.md'],
   },
   cancel: {
     topic: 'discovery',

@@ -45,7 +45,7 @@ function successfulCoReview(args, root, env) {
 }
 
 function prepareReviewerTurn(root, artifact, commit) {
-  const dir = '.tmp/co-review/activity-claim-invariance';
+  const dir = '.scratch/co-review/activity-claim-invariance';
   successfulCoReview(
     [
       'init',
@@ -249,12 +249,12 @@ test('Bash READ command (cat README.md) in done → pass', () => {
   }
 });
 
-test('Write .tmp/gh/foo.txt in develop → pass (scratch carve-out)', () => {
+test('Write .scratch/gh/foo.txt in develop → pass (scratch carve-out)', () => {
   const dir = makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
-      payload: { tool_name: 'Write', tool_input: { file_path: '.tmp/gh/foo.txt' } },
+      payload: { tool_name: 'Write', tool_input: { file_path: '.scratch/gh/foo.txt' } },
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
@@ -263,12 +263,12 @@ test('Write .tmp/gh/foo.txt in develop → pass (scratch carve-out)', () => {
   }
 });
 
-test('Write .tmp/plan/draft.md in refine → pass (scratch carve-out)', () => {
+test('Write .scratch/plan/draft.md in refine → pass (scratch carve-out)', () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
-      payload: { tool_name: 'Write', tool_input: { file_path: '.tmp/plan/draft.md' } },
+      payload: { tool_name: 'Write', tool_input: { file_path: '.scratch/plan/draft.md' } },
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
@@ -277,14 +277,31 @@ test('Write .tmp/plan/draft.md in refine → pass (scratch carve-out)', () => {
   }
 });
 
-test('Write absolute .tmp/ path → pass (scratch carve-out)', () => {
+test('Write absolute .scratch/ path → pass (scratch carve-out)', () => {
   const dir = makeRepo({ state: 'done' });
   try {
     const r = runGuard({
       cwd: dir,
       payload: {
         tool_name: 'Write',
-        tool_input: { file_path: path.join(dir, '.tmp/gh/issue-body.md') },
+        tool_input: { file_path: path.join(dir, '.scratch/gh/issue-body.md') },
+      },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, '');
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('Write .tmp/aitm runtime path in refine → pass', () => {
+  const dir = makeRepo({ state: 'refine' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: {
+        tool_name: 'Write',
+        tool_input: { file_path: '.tmp/aitm/state/task-tracker-state.json' },
       },
     });
     assert.equal(r.code, 0);
@@ -506,7 +523,7 @@ test('a live reviewer claim does not change ordinary activity guard decisions', 
       name: 'temporary review-file write',
       payload: {
         tool_name: 'Write',
-        tool_input: { file_path: '.tmp/reviewer-work/round-2-review.md' },
+        tool_input: { file_path: '.scratch/reviewer-work/round-2-review.md' },
       },
       expectedDecision: null,
     },

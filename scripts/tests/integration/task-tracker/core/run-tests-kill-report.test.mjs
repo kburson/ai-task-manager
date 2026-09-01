@@ -36,7 +36,7 @@ test('findFleetLeaks ignores a concurrently added registered Git worktree', () =
 test('findFleetLeaks retains new missing, malformed, and unregistered sandbox entries', () => {
   const fleet = {
     '#1083': { worktreePath: '/repo/.worktrees/1083' },
-    '#201': { worktreePath: '/repo/.tmp/test/non-git-sandbox' },
+    '#201': { worktreePath: '/repo/.scratch/test/non-git-sandbox' },
     '#202': { branch: 'missing-worktree-path' },
     '#203': null,
   };

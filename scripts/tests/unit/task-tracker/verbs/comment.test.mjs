@@ -16,10 +16,10 @@ const marker = '<!-- aitm-owned-comment key="planning.audit-v1" -->';
 const rendered = `hello\n\n${marker}`;
 
 test('comment parses a strict target, key, and body file', () => {
-  assert.deepEqual(parseCommentArgs(['42', '--key', key, '--body-file', '.tmp/gh/body.md']), {
+  assert.deepEqual(parseCommentArgs(['42', '--key', key, '--body-file', '.scratch/gh/body.md']), {
     issueNumber: 42,
     key,
-    bodyFile: '.tmp/gh/body.md',
+    bodyFile: '.scratch/gh/body.md',
   });
   assert.throws(() => parseCommentArgs(['42', '--key', key]), /body-file/);
   assert.throws(

@@ -1,7 +1,7 @@
 // #304 — Project-local scratch directory resolver.
 //
 // Replaces every `os.tmpdir()` and literal `/tmp/` usage in this repo. Scratch
-// space lives under `<projectDir>/.tmp/<purpose>/` so it:
+// space lives under `<projectDir>/.scratch/<purpose>/` so it:
 //
 //   - is gitignored (see top-level `.gitignore`),
 //   - is co-located with the repo (survives the test run and is reviewable),
@@ -19,7 +19,7 @@ import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs'
 
 const VALID_PURPOSE_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
-// Resolve `<projectDir>/.tmp/<purpose>/`, creating it if missing. `projectDir`
+// Resolve `<projectDir>/.scratch/<purpose>/`, creating it if missing. `projectDir`
 // defaults to the recorded issue-bound worktree (#1164), then
 // `process.env.AI_TASK_MANAGER_PROJECT_DIR`, then `process.cwd()`.
 //
@@ -40,7 +40,7 @@ export function projectScratchDir(purpose, projectDir) {
     throw new Error(`projectScratchDir: purpose must match ${VALID_PURPOSE_RE} — got "${purpose}"`);
   }
   const root = resolveScratchRoot(projectDir);
-  const dir = path.join(root, '.tmp', slug);
+  const dir = path.join(root, '.scratch', slug);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return dir;
 }

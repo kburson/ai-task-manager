@@ -73,7 +73,7 @@ export function deriveRuntimeDir(artifact, creationId) {
       noStateChanged: true,
     });
   }
-  return path.posix.join('.tmp/co-review', `${slug}-${id}`);
+  return path.posix.join('.scratch/co-review', `${slug}-${id}`);
 }
 
 export function deriveHostArchiveDir(issue, artifactKind) {
