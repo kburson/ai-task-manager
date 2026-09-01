@@ -566,7 +566,7 @@ test('post-initialization publication failure reports an explicit retry and rema
           },
         })
       ),
-    /resolved directory: \.tmp\/partial-start; next: npx aitm co-review start .*--dir \.tmp\/partial-start/
+    /resolved directory: \.scratch\/partial-start; next: npx aitm co-review start .*--dir \.scratch\/partial-start/
   );
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'state.json')), true);
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'author-handoff.md')), true);

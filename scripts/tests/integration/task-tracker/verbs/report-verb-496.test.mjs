@@ -60,7 +60,7 @@ describe('verbReport two-phase gate', () => {
     const log = await capture(() => verbReport(ctx));
     assert.equal(ghCalls, 0, 'phase 1 must not submit');
     assert.match(log, /Nothing has been sent/);
-    const reportDir = path.join(projectDir, '.tmp', 'report');
+    const reportDir = path.join(projectDir, '.scratch', 'report');
     const drafts = readdirSync(reportDir).filter((f) => f.endsWith('.md'));
     assert.equal(drafts.length, 1);
     const body = readFileSync(path.join(reportDir, drafts[0]), 'utf8');
@@ -77,7 +77,7 @@ describe('verbReport two-phase gate', () => {
       ghArgs = { cmd, args };
       return { stdout: 'https://github.com/kburson/ai-task-manager/issues/999\n' };
     };
-    const draftPath = path.join(projectDir, '.tmp', 'report', 'confirm-draft.md');
+    const draftPath = path.join(projectDir, '.scratch', 'report', 'confirm-draft.md');
     writeFileSync(
       draftPath,
       '<!-- aitm-beta-defect -->\n## What happened\nit broke badly\n\n## Environment\n- ai-task-manager: 1.0.0\n'

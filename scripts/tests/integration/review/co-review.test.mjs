@@ -419,7 +419,7 @@ test('init refuses a runtime symlink that resolves outside the repository', asyn
   const { api, root, artifact } = await memoryApiFixture();
   const { initializeProtocol } = api;
   const outside = temporaryRoot('aitm-co-review-outside-');
-  mkdirSync(path.join(root, '.tmp'), { recursive: true });
+  mkdirSync(path.join(root, '.scratch'), { recursive: true });
   symlinkSync(outside, path.join(root, '.scratch/review'), 'dir');
   assert.throws(
     () =>

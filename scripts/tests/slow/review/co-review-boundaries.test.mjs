@@ -397,7 +397,7 @@ test('real protocol refuses symlink escape and ignored or untracked violations',
   const escaped = repositoryFixture();
   const outside = mkdtempOutsideRepo('aitm-co-review-boundary-outside-');
   t.after(() => rmSync(outside, { recursive: true, force: true }));
-  mkdirSync(path.join(escaped.root, '.tmp'), { recursive: true });
+  mkdirSync(path.join(escaped.root, '.scratch'), { recursive: true });
   symlinkSync(outside, path.join(escaped.root, '.scratch/review'), 'dir');
   assert.throws(
     () =>
