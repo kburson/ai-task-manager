@@ -111,6 +111,9 @@ export const DEFAULTS = {
   // authorized local-trunk lane. Null deliberately preserves the fail-closed
   // default; a project-local object must select and authorize a mechanism.
   fullAutoMerge: null,
+  // #1250 — optional project-declared Develop iteration command table.
+  // Null preserves the built-in Node/JavaScript affected-check derivation.
+  developVerification: null,
 };
 
 export const TYPES = {
@@ -165,6 +168,7 @@ export const TYPES = {
   releaseDetection: 'boolean',
   estimationRubricIssue: 'integer',
   fullAutoMerge: 'object',
+  developVerification: 'object',
 };
 
 function defaultPaths() {
