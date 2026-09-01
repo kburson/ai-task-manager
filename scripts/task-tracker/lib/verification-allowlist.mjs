@@ -38,6 +38,12 @@ const FORBIDDEN = [
   { needle: '\r', name: 'carriage return (\\r)' },
 ];
 
+const POLICY_SHAPE_REJECTION_RE = /^bin '[^']+' rejects (?:(?:flag|subcommand) )?'/;
+
+export function isPolicyShapeVerificationRejection(reason) {
+  return typeof reason === 'string' && POLICY_SHAPE_REJECTION_RE.test(reason);
+}
+
 // Per-bin rule definitions. `null` for a list means "no constraint at that
 // level"; an empty list `[]` means "nothing allowed at that level".
 const BIN_RULES = {
@@ -276,7 +282,7 @@ export function validateVerificationCommand(raw, opts = {}) {
   // Branch 1: bare-name binary with per-bin rule check.
   if (Object.prototype.hasOwnProperty.call(BIN_RULES, head)) {
     const rule = validateBinRule(head, argv);
-    if (!rule.ok) return rule;
+    if (!rule.ok) return { ...rule, argv };
     return { ok: true, argv };
   }
 

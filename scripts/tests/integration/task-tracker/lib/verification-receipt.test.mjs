@@ -9,13 +9,19 @@ import { describe, test } from 'node:test';
 import {
   buildVerificationFingerprint,
   createVerificationReceipt,
+  upsertVerificationReceipt,
   validateVerificationReceipt,
+  validateVerificationReceiptCommandAuthority,
 } from '../../../../task-tracker/lib/verification-receipt.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const SHA = 'a'.repeat(40);
 const STARTED_AT = '2026-08-01T18:00:00.000Z';
 const COMPLETED_AT = '2026-08-01T18:00:01.250Z';
+const VERIFICATION_COMMANDS = [
+  { command: ' npm   run lint ' },
+  { command: 'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs' },
+];
 
 function run(cwd, command, args) {
   const result = spawnSync(command, args, { cwd, encoding: 'utf8' });
@@ -61,11 +67,12 @@ function greenCommands() {
   ];
 }
 
-function fixtureReceipt() {
+function fixtureReceipt({ verificationCommands = VERIFICATION_COMMANDS } = {}) {
   const projectDir = fixtureProject();
   const fingerprint = buildVerificationFingerprint({
     projectDir,
     commitSha: SHA,
+    verificationCommands,
     configPaths: ['package.json', 'eslint.config.mjs', '.prettierrc.json', 'scripts/run-tests.mjs'],
   });
   const receipt = createVerificationReceipt({
@@ -83,6 +90,25 @@ function reasonCodes(result) {
 }
 
 describe('verification fingerprint and receipt creation', () => {
+  test('records a canonical semantic Verification Commands projection', () => {
+    const { fingerprint, receipt } = fixtureReceipt();
+    assert.deepEqual(fingerprint.verificationCommands, [
+      ['node', '--test', 'scripts/tests/unit/task-tracker/lib/markers.test.mjs'],
+      ['npm', 'run', 'lint'],
+    ]);
+    assert.deepEqual(receipt.verificationCommands, fingerprint.verificationCommands);
+  });
+
+  test('rejects duplicate semantic Verification Commands', () => {
+    assert.throws(
+      () =>
+        fixtureReceipt({
+          verificationCommands: [{ command: 'npm run lint' }, { command: ' npm  run lint ' }],
+        }),
+      /duplicate Verification Command/
+    );
+  });
+
   test('captures a complete SHA, runtime, hashes, canonical sandbox, and clean tree', () => {
     const { projectDir, fingerprint } = fixtureReceipt();
     assert.equal(fingerprint.commitSha, SHA);
@@ -204,6 +230,107 @@ describe('verification receipt validation refusals', () => {
     });
     assert.equal(result.ok, false);
     assert.ok(reasonCodes(result).includes('issue-mismatch'));
+  });
+
+  test('accepts cosmetic Verification Commands changes and declaration reordering', () => {
+    const { projectDir, fingerprint, receipt } = fixtureReceipt();
+    const currentFingerprint = buildVerificationFingerprint({
+      projectDir,
+      commitSha: SHA,
+      verificationCommands: [
+        { command: ' node  --test  scripts/tests/unit/task-tracker/lib/markers.test.mjs ' },
+        { command: 'npm run lint' },
+      ],
+      configPaths: [
+        'package.json',
+        'eslint.config.mjs',
+        '.prettierrc.json',
+        'scripts/run-tests.mjs',
+      ],
+    });
+    const result = validateVerificationReceipt({
+      receipt,
+      expectedIssue: 1089,
+      expectedStage: 'develop-final',
+      fingerprint: currentFingerprint,
+      required: ['lint-full', 'format-full'],
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.reasons));
+    assert.deepEqual(currentFingerprint.verificationCommands, fingerprint.verificationCommands);
+  });
+
+  for (const [label, verificationCommands] of [
+    ['added', [...VERIFICATION_COMMANDS, { command: 'npm run format:check' }]],
+    ['removed', VERIFICATION_COMMANDS.slice(0, 1)],
+    ['changed', [{ command: 'npm run format:check' }, VERIFICATION_COMMANDS[1]]],
+  ]) {
+    test(`refuses a receipt when a Verification Command is ${label}`, () => {
+      const { projectDir, receipt } = fixtureReceipt();
+      const currentFingerprint = buildVerificationFingerprint({
+        projectDir,
+        commitSha: SHA,
+        verificationCommands,
+        configPaths: [
+          'package.json',
+          'eslint.config.mjs',
+          '.prettierrc.json',
+          'scripts/run-tests.mjs',
+        ],
+      });
+      const result = validateVerificationReceipt({
+        receipt,
+        expectedIssue: 1089,
+        expectedStage: 'develop-final',
+        fingerprint: currentFingerprint,
+        required: ['lint-full', 'format-full'],
+      });
+      assert.equal(result.ok, false);
+      assert.ok(reasonCodes(result).includes('vc-set-mismatch'));
+    });
+  }
+
+  test('default-denies a legacy receipt without Verification Commands authority', () => {
+    const { fingerprint, receipt } = fixtureReceipt();
+    delete receipt.verificationCommands;
+    const result = validateVerificationReceipt({
+      receipt,
+      expectedIssue: 1089,
+      expectedStage: 'develop-final',
+      fingerprint,
+      required: ['lint-full', 'format-full'],
+    });
+    assert.equal(result.ok, false);
+    assert.ok(reasonCodes(result).includes('vc-set-mismatch'));
+  });
+
+  test('validates marker authority against live issue-body Verification Commands', () => {
+    const { projectDir, receipt } = fixtureReceipt();
+    const originalBody = [
+      '## Verification Commands',
+      '- [ ] `npm run lint`',
+      '- [ ] `node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs`',
+    ].join('\n');
+    const body = upsertVerificationReceipt(originalBody, receipt);
+    assert.equal(
+      validateVerificationReceiptCommandAuthority({
+        body,
+        expectedIssue: 1089,
+        expectedStage: 'develop-final',
+        expectedCommitSha: SHA,
+        projectDir,
+      }).ok,
+      true
+    );
+    const changed = body.replace('- [ ] `npm run lint`', '- [ ] `npm run format:check`');
+    const result = validateVerificationReceiptCommandAuthority({
+      body: changed,
+      expectedIssue: 1089,
+      expectedStage: 'develop-final',
+      expectedCommitSha: SHA.slice(0, 8),
+      projectDir,
+    });
+    assert.equal(result.ok, false);
+    assert.ok(reasonCodes(result).includes('vc-set-mismatch'));
   });
 
   test('refuses a green command whose classification impersonates a canonical command', () => {
