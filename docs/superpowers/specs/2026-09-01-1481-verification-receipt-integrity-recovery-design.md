@@ -26,9 +26,9 @@ The historical branches are reference implementations and test sources. They wil
 
 ## Canonical Verification Command Set
 
-`verification-receipt.mjs` will expose one canonicalizer used by all producers and consumers. Its input is the parsed root Verification Commands entries, not arbitrary issue prose.
+`verification-receipt.mjs` will expose one canonicalization helper used by all producers and consumers. Its input is the parsed root Verification Commands entries, not arbitrary issue prose.
 
-For each entry, the canonicalizer will:
+For each entry, the canonicalization helper will:
 
 - validate and partition the command through the same command-validation boundary Test uses;
 - project the semantic executable identity as an argv array;

@@ -107,7 +107,7 @@ import {
 } from './verification-allowlist.mjs';
 ```
 
-Add the shared canonicalizer:
+Add the shared canonicalization helper:
 
 ```js
 export function canonicalVerificationCommandSet(commands = [], { projectDir } = {}) {
@@ -149,7 +149,7 @@ Add `verificationCommands = []` to `buildVerificationFingerprint`, canonicalize 
 
 Permit an absent field during structural parsing, but validate a present field as an array of non-empty string arrays. In `validateVerificationReceipt`, compare canonical JSON and append `reason('vc-set-mismatch', { actual: 'missing' })` for legacy absence or `reason('vc-set-mismatch')` for inequality.
 
-Add `validateVerificationReceiptCommandAuthority` using `parseVerificationCommands(body)` and the shared canonicalizer. It must validate receipt structure, optional expected SHA prefix, and live VC equality without trusting receipt data as the expected value.
+Add `validateVerificationReceiptCommandAuthority` using `parseVerificationCommands(body)` and the shared canonicalization helper. It must validate receipt structure, optional expected SHA prefix, and live VC equality without trusting receipt data as the expected value.
 
 - [ ] **Step 4: Run the focused receipt test and capture GREEN**
 
