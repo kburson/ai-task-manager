@@ -39,11 +39,15 @@ import {
 } from '../lib/markers.mjs';
 import {
   buildVerificationFingerprint,
+  canonicalVerificationCommandSet,
   createVerificationReceipt,
+  hasClaimedVerificationReceiptMarker,
   hasVerificationReceiptMarker,
   requiredTestReceiptClassifications,
   validateVerificationReceipt,
+  validateVerificationReceiptCommandAuthority,
 } from '../lib/verification-receipt.mjs';
+import { retireVerificationReceipt as defaultRetireVerificationReceipt } from '../lib/verification-receipt-retirement.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
@@ -63,6 +67,7 @@ import {
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 
 // cspell:ignore metachar
 // #973 — `validateVerificationCommand` rejects a command for one of two
@@ -424,6 +429,8 @@ export async function runVerbTest({
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const runDevelopFinalization = deps.runDevelopFinalization;
   const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const retireVerificationReceipt =
+    deps.retireVerificationReceipt || defaultRetireVerificationReceipt;
   const getSandboxHeadSha = deps.getSandboxHeadSha || defaultGetHeadSha;
   // #1158 — the sandbox's own `trunk...HEAD` changed-path set. Shares the
   // #940 Review-layer helper so both gates decide "is this diff docs-only?"
@@ -607,6 +614,7 @@ export async function runVerbTest({
       verificationCommands: vcs,
     });
     const existingTestReceipt = parseVerificationReceipt(body, 'test');
+    const claimedTestReceipt = hasClaimedVerificationReceiptMarker(body, 'test');
     const existingValidation = validateVerificationReceipt({
       receipt: existingTestReceipt,
       expectedIssue: Number(issueNum),
@@ -628,6 +636,35 @@ export async function runVerbTest({
         issueNum,
         body: `⚠ Audited Test re-run override: valid exact-SHA receipt ${existingTestReceipt.receiptId} was bypassed with --force.`,
       });
+    }
+    if (!existingValidation.ok && claimedTestReceipt) {
+      if (typeof existingTestReceipt?.receiptId !== 'string') {
+        const reasons = [{ code: 'receipt-retirement-identity-unavailable' }];
+        await postComment({
+          cfg,
+          issueNum,
+          body: '⛔ Test receipt retirement refused: the claimed Test marker is malformed, so its exact receipt identity is unavailable. No replacement verification was executed.',
+        });
+        return { status: 'receipt-retirement-failed', sha, reasons };
+      }
+      try {
+        const retired = await retireVerificationReceipt({
+          cfg,
+          issueNumber: Number(issueNum),
+          stage: 'test',
+          receiptId: existingTestReceipt.receiptId,
+        });
+        body = retired.body;
+      } catch (error) {
+        const message = String(error?.message || error);
+        const reasons = [{ code: 'receipt-retirement-refused', message }];
+        await postComment({
+          cfg,
+          issueNum,
+          body: `⛔ Test receipt retirement refused: ${message}. No replacement verification was executed.`,
+        });
+        return { status: 'receipt-retirement-failed', sha, reasons };
+      }
     }
   }
   let developEvidence = null;
@@ -1159,15 +1196,29 @@ export async function runVerbTest({
     // only on the green path, so a red result ticks nothing.
     const autoTick = autoTickVerified(stamped, results, ts, { sha });
     stamped = autoTick.body;
+    let evidenceWrite = null;
+    let freshBaseVcMismatch = false;
     if (stamped !== body) {
       // #295 — re-run the full stamp+autoTick fold on FRESH base.
-      await mutateBody({
+      evidenceWrite = await mutateBody({
         cfg,
         issueNum,
         // #522 — sanctioned sandbox auto-stamp: `insertDodVerifiedMarker` +
         // `autoTickVerified` mint proof from the green sandbox run just executed.
         evidenceStamp: true,
         mutate: (base) => {
+          const baseVerificationCommands = canonicalVerificationCommandSet(
+            parseVerificationCommands(base),
+            { projectDir }
+          );
+          if (
+            Array.isArray(testFingerprint?.verificationCommands) &&
+            canonicalRecordJson(baseVerificationCommands) !==
+              canonicalRecordJson(testFingerprint.verificationCommands)
+          ) {
+            freshBaseVcMismatch = true;
+            return base;
+          }
           let next = insertDodVerifiedMarker(base, sha, ts);
           if (testReceipt) next = upsertVerificationReceipt(next, testReceipt);
           const ms = parseEntryMarkers(next);
@@ -1182,6 +1233,31 @@ export async function runVerbTest({
         },
       });
     }
+    const persistedBody =
+      typeof evidenceWrite?.body === 'string'
+        ? evidenceWrite.body
+        : await fetchBody({ cfg, issueNum });
+    const persistedAuthority = freshBaseVcMismatch
+      ? { ok: false, reasons: [{ code: 'vc-set-mismatch' }] }
+      : validateVerificationReceiptCommandAuthority({
+          body: persistedBody,
+          expectedIssue: Number(issueNum),
+          expectedStage: 'test',
+          expectedCommitSha: sha,
+          projectDir,
+        });
+    if (!persistedAuthority.ok) {
+      const reasons = persistedAuthority.reasons.some(({ code }) => code === 'vc-set-mismatch')
+        ? [{ code: 'vc-set-mismatch' }]
+        : persistedAuthority.reasons;
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⛔ Persisted Test evidence is invalid: ${reasons.map(({ code }) => code).join(', ')}. The issue remains in Test; rerun against the live Verification Commands.`,
+      });
+      return { status: 'develop-evidence-invalid', sha, reasons, wtPath };
+    }
+    body = persistedBody;
     // #406 — capture the move result so a refused promotion does not read as a
     // pass. The sandbox genuinely went green (post the table + log time below),
     // but the success banner in `verbTest` must be gated on the move actually
