@@ -223,18 +223,32 @@ function provesSingleSourceSquash({ pullRequest, inspection, expectedHeadSha, me
   );
 }
 
-function assertMergeCommitAttribution(commitMessage, intent) {
+function provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash }) {
+  const topLevelToken = `#${intent.issueNumber}`;
+  return (
+    provenSingleSourceSquash === true &&
+    intent.provider === 'external' &&
+    intent.attributionTokens.length === 1 &&
+    intent.attributionTokens[0] === topLevelToken &&
+    inspection.commitTitle === `[${topLevelToken}] Governed PR delivery` &&
+    inspection.commitMessage ===
+      `Source: ${intent.expectedHeadSha}\\nHosted fast CI passed.\\n` +
+        'Local governed sandbox including slow tests passed.'
+  );
+}
+
+function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSquash) {
   const topLevelToken = `#${intent.issueNumber}`;
   const messageTokens = [
     topLevelToken,
     ...intent.attributionTokens.filter((token) => token !== topLevelToken),
   ];
   const expectedLine = `Attribution: ${messageTokens.map((token) => `[${token}]`).join(' ')}`;
-  const lines = commitMessage.split('\n');
+  const lines = inspection.commitMessage.split('\n');
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
-  if (attributionLines.length !== 1 || lines.at(-1) !== expectedLine) {
-    throw verificationError('attribution');
-  }
+  if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return;
+  if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) return;
+  throw verificationError('attribution');
 }
 
 function assertVerificationFunctions(input) {
@@ -296,18 +310,21 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
     intent.expectedHeadSha,
     merged.mergeCommitSha
   );
+  const provenSingleSourceSquash =
+    observedMergeMethod === 'rewritten-one-parent' &&
+    !requireAuthorizedBytes &&
+    intent.mergeMethod === 'squash' &&
+    provesSingleSourceSquash({
+      pullRequest,
+      inspection,
+      expectedHeadSha: intent.expectedHeadSha,
+      mergeSha: merged.mergeCommitSha,
+    });
   if (observedMergeMethod === 'rewritten-one-parent') {
     observedMergeMethod =
       (requireAuthorizedBytes && intent.mergeMethod === 'squash') ||
       (!requireAuthorizedBytes && merged.mergeMethodObservation === 'squash') ||
-      (!requireAuthorizedBytes &&
-        intent.mergeMethod === 'squash' &&
-        provesSingleSourceSquash({
-          pullRequest,
-          inspection,
-          expectedHeadSha: intent.expectedHeadSha,
-          mergeSha: merged.mergeCommitSha,
-        }))
+      provenSingleSourceSquash
         ? 'squash'
         : 'unknown';
   }
@@ -328,7 +345,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         commitTitle: inspection.commitTitle,
         commitMessage: inspection.commitMessage,
       });
-  assertMergeCommitAttribution(inspection.commitMessage, verifiedIntent);
+  assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash);
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');

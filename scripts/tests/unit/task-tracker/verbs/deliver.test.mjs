@@ -619,10 +619,72 @@ test('external recovery proves a configured squash from complete single-source h
 
   const result = await deliver(harness);
 
-  assert.equal(result.status, 'delivered');
-  assert.equal(result.recovery, true);
-  assert.equal(result.receipt.mergeMethod, 'squash');
-  assert.equal(harness.calls.createIssueComment, 2);
+  assert.deepEqual(
+    [result.status, result.recovery, result.receipt.mergeMethod, harness.calls.createIssueComment],
+    ['delivered', true, 'squash', 2]
+  );
+});
+
+test('external recovery accepts exact legacy escaped attribution', async () => {
+  const tree = '1'.repeat(40);
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prMergeMethod: null,
+    historyTree: tree,
+    historyCommitTitle: '[#939] Governed PR delivery',
+    historyCommitMessage:
+      `Source: ${HEAD}\\nHosted fast CI passed.\\n` +
+      'Local governed sandbox including slow tests passed.',
+    prSourceEvidence: [{ oid: HEAD, message: '[#939] source', parents: ['d'.repeat(40)], tree }],
+  });
+
+  const result = await deliver(harness);
+
+  // prettier-ignore
+  assert.deepEqual([result.status, result.recovery, result.receipt.mergeMethod, harness.calls.createIssueComment], ['delivered', true, 'squash', 2]);
+});
+
+test('external recovery refuses altered legacy escaped attribution', async (t) => {
+  const tree = '1'.repeat(40);
+  const exact =
+    `Source: ${HEAD}\\nHosted fast CI passed.\\n` +
+    'Local governed sandbox including slow tests passed.';
+  for (const [name, options] of [
+    ['missing', { historyCommitMessage: `Source: ${HEAD}\\nHosted fast CI passed.` }],
+    ['altered', { historyCommitMessage: exact.replace(HEAD, NEXT_HEAD) }],
+    ['duplicated', { historyCommitMessage: `${exact}\\n${exact}` }],
+    ['physical newlines', { historyCommitMessage: exact.replaceAll('\\n', '\n') }],
+    ['altered title', { historyCommitTitle: '[#939] Historical delivery' }],
+    [
+      'non-squash',
+      { configuredMergeMethod: 'merge', prMergeMethod: 'merge', historyMergeMethod: 'merge' },
+    ],
+    [
+      'multiple tokens',
+      {
+        prCommitSubjects: ['[#939] [#940] source'],
+        prSourceCommits: [{ oid: HEAD, messageHeadline: '[#939] [#940] source' }],
+      },
+    ],
+  ]) {
+    await t.test(name, async () => {
+      const harness = makeHarness({
+        prState: 'MERGED',
+        prMergeMethod: null,
+        historyTree: tree,
+        historyCommitTitle: '[#939] Governed PR delivery',
+        historyCommitMessage: exact,
+        prCommitSubjects: ['[#939] source'],
+        prSourceCommits: [{ oid: HEAD, messageHeadline: '[#939] source' }],
+        prSourceEvidence: [
+          { oid: HEAD, message: '[#939] source', parents: ['d'.repeat(40)], tree },
+        ],
+        ...options,
+      });
+      await assert.rejects(() => deliver(harness), /delivery-verification:attribution/);
+      assert.equal(harness.calls.createIssueComment, 0);
+    });
+  }
 });
 
 for (const observation of [
