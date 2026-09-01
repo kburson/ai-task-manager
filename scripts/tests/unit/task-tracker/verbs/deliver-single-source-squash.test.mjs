@@ -13,22 +13,6 @@ function evidence(overrides = {}) {
   return { oid: HEAD, message: 'source', parents: [PARENT], tree: TREE, ...overrides };
 }
 
-test('external recovery proves a configured squash from complete single-source history', async () => {
-  const harness = makeHarness({
-    prState: 'MERGED',
-    prMergeMethod: null,
-    historyTree: TREE,
-    prSourceEvidence: [evidence({ message: '[#939] Add governed delivery intent verb' })],
-  });
-
-  const result = await deliver(harness);
-
-  assert.equal(result.status, 'delivered');
-  assert.equal(result.recovery, true);
-  assert.equal(result.receipt.mergeMethod, 'squash');
-  assert.equal(harness.calls.createIssueComment, 2);
-});
-
 const refusalScenarios = [
   {
     label: 'identical source and merge messages',

@@ -601,6 +601,30 @@ test('already-merged external recovery appends an external intent and receipt wi
   );
 });
 
+test('external recovery proves a configured squash from complete single-source history', async () => {
+  const tree = '1'.repeat(40);
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prMergeMethod: null,
+    historyTree: tree,
+    prSourceEvidence: [
+      {
+        oid: HEAD,
+        message: '[#939] Add governed delivery intent verb',
+        parents: ['d'.repeat(40)],
+        tree,
+      },
+    ],
+  });
+
+  const result = await deliver(harness);
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.recovery, true);
+  assert.equal(result.receipt.mergeMethod, 'squash');
+  assert.equal(harness.calls.createIssueComment, 2);
+});
+
 for (const observation of [
   { label: 'missing', options: { omitPrMergeMethod: true } },
   { label: 'null', options: { prMergeMethod: null } },
