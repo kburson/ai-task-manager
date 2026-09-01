@@ -106,7 +106,7 @@ legacyDevelopVerification, deps })`.
 
 - Modify: `scripts/task-tracker/verbs/test.mjs`
 - Modify: `scripts/task-tracker/lib/verification-receipt.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/verification-receipt.test.mjs`
+- Modify: `scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs`
 - Modify: `scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs`
