@@ -215,5 +215,18 @@ writeFileSync(
 );
 assert.throws(() => loadConfig({ projectPath, userPath }), /compatibility keys conflict/i);
 
+// Test 21 (#1250): declarable Develop verification is opt-in and project-local.
+writeFileSync(projectPath, JSON.stringify({}));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(DEFAULTS.developVerification, null);
+assert.equal(cfg.developVerification, null);
+const developVerification = {
+  iterationSteps: [{ classification: 'swift-lint', command: 'npm run lint:swift' }],
+};
+writeFileSync(projectPath, JSON.stringify({ developVerification }));
+cfg = loadConfig({ projectPath, userPath });
+assert.deepEqual(cfg.developVerification, developVerification);
+assert.equal(cfg._sources.developVerification, 'project');
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

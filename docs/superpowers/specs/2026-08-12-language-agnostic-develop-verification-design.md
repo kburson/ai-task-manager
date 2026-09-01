@@ -2,7 +2,10 @@
 
 **Issue:** #1250 (Phase 1). Phase 2 is #1218.
 **Date:** 2026-08-12
-**Status:** design approved, not yet planned
+**Status:** superseded on 2026-09-01 by
+`2026-09-01-1250-declarable-develop-verification-design.md`. The earlier
+reserved-script roster and split-manifest proposal remains historical design
+input; it is not the implementation contract.
 
 ## Problem
 

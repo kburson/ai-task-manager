@@ -1,8 +1,11 @@
 // @story #1089
 import assert from 'node:assert/strict';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { test } from 'node:test';
 
 import { runDevelopVerification } from '../../../../task-tracker/verify-develop.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { parseVerificationReceipt } from '../../../../task-tracker/lib/verification-receipt.mjs';
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 import { resolveReviewVerificationEvidence } from '../../../../task-tracker/verbs/review.mjs';
@@ -172,5 +175,93 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
     'npm run test:slow',
   ]) {
     assert.equal(changedCounts.get(command), 2, `${command} runs once more at SHA B`);
+  }
+});
+
+test('declared Develop steps spawn in order for a non-JavaScript fixture (#1250)', () => {
+  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'develop-swift-'));
+  const scriptsDir = path.join(projectDir, 'scripts', 'verify');
+  mkdirSync(path.join(projectDir, 'Sources'), { recursive: true });
+  mkdirSync(scriptsDir, { recursive: true });
+  writeFileSync(path.join(projectDir, 'Sources', 'App.swift'), 'struct App {}\n');
+  for (const [name, body] of [
+    ['swift-lint.sh', '#!/bin/sh\nprintf "swift-lint\\n" >> order.log\n'],
+    ['xcode-tests.sh', '#!/bin/sh\nprintf "xcode-tests\\n" >> order.log\n'],
+  ]) {
+    const script = path.join(scriptsDir, name);
+    writeFileSync(script, body);
+    chmodSync(script, 0o755);
+  }
+
+  try {
+    const result = runDevelopVerification({
+      projectDir,
+      mode: 'iteration',
+      developVerification: {
+        iterationSteps: [
+          {
+            classification: 'swift-lint',
+            command: 'scripts/verify/swift-lint.sh',
+          },
+          {
+            classification: 'xcode-tests',
+            command: 'scripts/verify/xcode-tests.sh',
+          },
+        ],
+      },
+      deps: { collectChangedPaths: () => ['Sources/App.swift'] },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(
+      readFileSync(path.join(projectDir, 'order.log'), 'utf8'),
+      'swift-lint\nxcode-tests\n'
+    );
+    assert.deepEqual(
+      result.commands.map(({ classification, exitCode }) => [classification, exitCode]),
+      [
+        ['swift-lint', 0],
+        ['xcode-tests', 0],
+      ]
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('declared Develop steps propagate the first real child-process failure (#1250)', () => {
+  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'develop-red-'));
+  const scriptsDir = path.join(projectDir, 'scripts', 'verify');
+  mkdirSync(scriptsDir, { recursive: true });
+  for (const [name, body] of [
+    ['fail.sh', '#!/bin/sh\nexit 7\n'],
+    ['never.sh', '#!/bin/sh\nprintf "unexpected\\n" > unexpected.log\n'],
+  ]) {
+    const script = path.join(scriptsDir, name);
+    writeFileSync(script, body);
+    chmodSync(script, 0o755);
+  }
+
+  try {
+    const result = runDevelopVerification({
+      projectDir,
+      mode: 'iteration',
+      developVerification: {
+        iterationSteps: [
+          { classification: 'swift-lint', command: 'scripts/verify/fail.sh' },
+          { classification: 'xcode-tests', command: 'scripts/verify/never.sh' },
+        ],
+      },
+      deps: { collectChangedPaths: () => ['Sources/App.swift'] },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reasons[0].code, 'command-red');
+    assert.equal(result.reasons[0].exitCode, 7);
+    assert.deepEqual(
+      result.commands.map(({ classification }) => classification),
+      ['swift-lint']
+    );
+    assert.throws(() => readFileSync(path.join(projectDir, 'unexpected.log')), /ENOENT/);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
   }
 });

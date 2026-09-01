@@ -9,6 +9,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { loadConfig } from './config.mjs';
+import { normalizeDevelopIterationSteps } from './lib/develop-verification-steps.mjs';
 import {
   buildVerificationFingerprint,
   createVerificationReceipt,
@@ -70,6 +72,7 @@ export function buildIterationSteps(changedPaths = []) {
       command: 'npx',
       args: ['eslint', '--fix', ...javascript],
       label: `eslint --fix (${javascript.length} changed file(s))`,
+      allowlistSource: 'core',
     });
   }
   if (formattable.length > 0) {
@@ -78,6 +81,7 @@ export function buildIterationSteps(changedPaths = []) {
       command: 'npx',
       args: ['prettier', '--write', ...formattable],
       label: `prettier --write (${formattable.length} changed file(s))`,
+      allowlistSource: 'core',
     });
   }
   return steps;
@@ -90,12 +94,14 @@ export function buildFinalSteps() {
       command: 'npm',
       args: ['run', 'lint'],
       label: 'npm run lint',
+      allowlistSource: 'core',
     },
     {
       classification: 'format-full',
       command: 'npm',
       args: ['run', 'format:check'],
       label: 'npm run format:check',
+      allowlistSource: 'core',
     },
   ];
 }
@@ -136,6 +142,8 @@ function execute(step, projectDir, runCommand) {
     classification: step.classification,
     command: step.command,
     args: [...step.args],
+    ...(step.label ? { label: step.label } : {}),
+    ...(step.allowlistSource ? { allowlistSource: step.allowlistSource } : {}),
     exitCode: Number.isInteger(result.exitCode) ? result.exitCode : 1,
     durationMs: Number.isFinite(result.durationMs) ? result.durationMs : 0,
     ...(result.startedAt ? { startedAt: result.startedAt } : {}),
@@ -156,6 +164,7 @@ export function runDevelopVerification({
   projectDir = process.cwd(),
   mode = 'iteration',
   issueNumber,
+  developVerification,
   deps = {},
 } = {}) {
   if (!['iteration', 'final'].includes(mode)) {
@@ -169,21 +178,54 @@ export function runDevelopVerification({
   if (mode === 'iteration') {
     try {
       const changedPaths = (deps.collectChangedPaths || collectChangedPaths)({ cwd: projectDir });
-      const selection = (deps.selectAffectedTests || selectAffectedTests)({
-        projectDir,
-        changedPaths,
-      });
-      const pathExists = deps.pathExists || ((file) => existsSync(path.join(projectDir, file)));
-      const fixablePaths = changedPaths.filter(pathExists);
-      const steps = [
-        ...buildIterationSteps(fixablePaths),
-        ...selection.tests.map((file) => ({
-          classification: 'test-affected',
-          command: 'node',
-          args: ['--test', file],
-          label: `node --test ${file}`,
-        })),
-      ];
+      if (changedPaths.length === 0) {
+        return {
+          ok: true,
+          mode,
+          changedPaths,
+          commands,
+          reasons: [{ code: 'no-changes' }],
+        };
+      }
+
+      const declared = normalizeDevelopIterationSteps(developVerification, { projectDir });
+      let selection;
+      let steps;
+      if (declared.configured) {
+        steps = declared.steps;
+      } else {
+        selection = (deps.selectAffectedTests || selectAffectedTests)({
+          projectDir,
+          changedPaths,
+        });
+        const pathExists = deps.pathExists || ((file) => existsSync(path.join(projectDir, file)));
+        const fixablePaths = changedPaths.filter(pathExists);
+        steps = [
+          ...buildIterationSteps(fixablePaths),
+          ...selection.tests.map((file) => ({
+            classification: 'test-affected',
+            command: 'node',
+            args: ['--test', file],
+            label: `node --test ${file}`,
+            allowlistSource: 'core',
+          })),
+        ];
+      }
+      if (steps.length === 0) {
+        return {
+          ok: false,
+          mode,
+          changedPaths,
+          ...(selection ? { selection } : {}),
+          commands,
+          reasons: [
+            {
+              code: 'iteration-no-commands',
+              message: 'non-empty changeset produced no executable Develop verification steps',
+            },
+          ],
+        };
+      }
       for (const step of steps) {
         const command = execute(step, projectDir, runCommand);
         commands.push(command);
@@ -198,13 +240,24 @@ export function runDevelopVerification({
           };
         }
       }
-      return { ok: true, mode, changedPaths, selection, commands, reasons: [] };
+      return {
+        ok: true,
+        mode,
+        changedPaths,
+        ...(selection ? { selection } : {}),
+        commands,
+        reasons: [],
+      };
     } catch (error) {
+      const message = error?.message || String(error);
+      const configInvalid = message.startsWith('iteration-config-invalid:');
       return {
         ok: false,
         mode,
         commands,
-        reasons: [{ code: 'iteration-error', message: error.message }],
+        reasons: [
+          { code: configInvalid ? 'iteration-config-invalid' : 'iteration-error', message },
+        ],
       };
     }
   }
@@ -313,7 +366,13 @@ export function main(argv = process.argv.slice(2)) {
     console.error(`verify-develop: ${error.message}`);
     return 2;
   }
-  const result = runDevelopVerification({ projectDir: process.cwd(), ...options });
+  const developVerification =
+    options.mode === 'iteration' ? loadConfig().developVerification : null;
+  const result = runDevelopVerification({
+    projectDir: process.cwd(),
+    ...options,
+    developVerification,
+  });
   if (result.mode === 'iteration' && result.selection) {
     const report = formatTestImpactReport(result.selection);
     if (report) console.log(report);
