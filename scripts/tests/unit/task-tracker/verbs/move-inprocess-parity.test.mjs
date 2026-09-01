@@ -22,9 +22,78 @@ import assert from 'node:assert/strict';
 import { defaultRunMoveState as promoteSeam } from '../../../../task-tracker/verbs/promote.mjs';
 import { defaultRunMoveState as demoteSeam } from '../../../../task-tracker/verbs/demote.mjs';
 import { defaultRunMoveState as supersedeSeam } from '../../../../task-tracker/verbs/supersede.mjs';
+import { defaultRunMoveState as cancelPlanSeam } from '../../../../task-tracker/verbs/cancel-plan.mjs';
+import { defaultRunMoveState as shelveSeam } from '../../../../task-tracker/lib/shelve-transaction.mjs';
 import { defaultRunMoveState as reconcileSeam } from '../../../../task-tracker/verbs/reconcile.mjs';
 import { defaultRunMoveState as dispatchSeam } from '../../../../gh/dispatch-prep.mjs';
 import { runMoveStateInProcess } from '../../../../task-tracker/runtime.mjs';
+import { buildCommandCursorRequest } from '../../../../task-tracker/lib/state-cursor.mjs';
+import { CURSOR_TRIGGER_BY_COMMAND } from '../../../../task-tracker/lib/command-surface/catalog.mjs';
+
+const COMMAND_TRIGGERS = Object.freeze({
+  promote: 'advance-forward',
+  next: 'advance-forward',
+  refine: 'advance-forward',
+  plan: 'advance-forward',
+  test: 'advance-forward',
+  review: 'advance-forward',
+  close: 'advance-forward',
+  demote: 'advance-reverse',
+  reject: 'advance-reverse',
+  shelve: 'advance-reverse',
+  park: 'advance-reverse',
+  'cancel-plan': 'advance-reverse',
+  force: 'bypass',
+  supersede: 'bypass',
+  'plan-approve': 'actions-only',
+  approve: 'actions-only',
+  'review-probe': 'actions-only',
+  resume: 'actions-only',
+  bind: 'actions-only',
+  rebind: 'actions-only',
+  callback: 'actions-only',
+});
+
+test('every lifecycle command maps to one explicit Cursor trigger and target contract', () => {
+  assert.deepEqual(CURSOR_TRIGGER_BY_COMMAND, COMMAND_TRIGGERS);
+  for (const [command, trigger] of Object.entries(COMMAND_TRIGGERS)) {
+    const movement = trigger !== 'actions-only';
+    const request = buildCommandCursorRequest({
+      command,
+      issue: 42,
+      cwd: '/repo/worktree',
+      requestedTarget: movement ? 'test' : undefined,
+      flags: { source: 'command-parity' },
+    });
+
+    assert.deepEqual(request, {
+      issue: 42,
+      cwd: '/repo/worktree',
+      trigger,
+      ...(movement ? { requestedTarget: 'test' } : {}),
+      flags: { source: 'command-parity', verb: command },
+    });
+    assert.ok(Object.isFrozen(request));
+    assert.ok(Object.isFrozen(request.flags));
+  }
+});
+
+test('command Cursor requests reject inferred or extra targets', () => {
+  assert.throws(
+    () => buildCommandCursorRequest({ command: 'promote', issue: 42, cwd: '/repo/worktree' }),
+    /exactly one target is required/
+  );
+  assert.throws(
+    () =>
+      buildCommandCursorRequest({
+        command: 'resume',
+        issue: 42,
+        cwd: '/repo/worktree',
+        requestedTarget: 'test',
+      }),
+    /actions-only command must not request a target/
+  );
+});
 
 // Canonical exit codes move-state can return (verified in #764 deep-dive):
 // 0=ok, 1=usage/unknown-state, 2=out-of-band-missing-reason, 3=verb-gate-refuse,
@@ -49,30 +118,49 @@ const SEAMS = [
     invoke: (host) => promoteSeam({ issueNumber: 42, target: 'test' }, { host }),
     tail: ['42', 'test'],
     context: 'promote',
+    trigger: 'advance-forward',
   },
   {
     name: 'demote',
     invoke: (host) => demoteSeam({ issueNumber: 42, target: 'plan' }, { host }),
     tail: ['42', 'plan', '--demote'],
     context: 'demote',
+    trigger: 'advance-reverse',
   },
   {
     name: 'supersede',
     invoke: (host) => supersedeSeam({ issueNumber: 42 }, { host }),
     tail: ['42', 'done', '--supersede'],
     context: 'supersede',
+    trigger: 'bypass',
+  },
+  {
+    name: 'cancel-plan',
+    invoke: (host) => cancelPlanSeam({ issueNumber: 42, reason: 'replan' }, { host }),
+    tail: ['42', 'ready-for-plan', '--demote', '--demote-reason', 'replan'],
+    context: 'cancel-plan',
+    trigger: 'advance-reverse',
+  },
+  {
+    name: 'shelve',
+    invoke: (host) => shelveSeam({ issueNumber: 42, reason: 'later' }, { host }),
+    tail: ['42', 'backlog', '--demote', '--demote-reason', 'later'],
+    context: 'shelve',
+    trigger: 'advance-reverse',
   },
   {
     name: 'reconcile',
     invoke: (host) => reconcileSeam({ issueNumber: 42, target: 'develop' }, { host }),
     tail: ['42', 'develop'],
     context: 'reconcile',
+    trigger: null,
   },
   {
     name: 'dispatch',
     invoke: (host) => dispatchSeam({ issue: 42 }, { host }),
     tail: ['42', 'develop'],
     context: 'dispatch',
+    trigger: null,
   },
 ];
 
@@ -94,6 +182,11 @@ test('every caller seam produces the canonical argv shape + verb context', async
       env.AITM_VERB_CONTEXT,
       seam.context,
       `${seam.name}: must stamp its own verb context`
+    );
+    assert.equal(
+      env.AITM_CURSOR_TRIGGER ?? null,
+      seam.trigger,
+      `${seam.name}: must carry its canonical Cursor trigger`
     );
   }
 });
@@ -119,7 +212,12 @@ test('every caller seam relays the host exit code verbatim', async () => {
 test('runtime(→close) seam: canonical argv + runtime context + status parity', async () => {
   for (const code of CANONICAL_CODES) {
     const { host, calls } = spyHost(code);
-    const result = await runMoveStateInProcess(42, 'test', { skipNetwork: false }, { host });
+    const result = await runMoveStateInProcess(
+      42,
+      'test',
+      { skipNetwork: false, cursorCommand: 'close' },
+      { host }
+    );
     assert.equal(calls.length, 1, 'runtime: host must be called exactly once');
     const { argv, env } = calls[0];
     assert.equal(argv[0], process.execPath);
@@ -127,6 +225,7 @@ test('runtime(→close) seam: canonical argv + runtime context + status parity',
     assert.deepEqual(argv.slice(2), ['42', 'test'], 'runtime: canonical positional args');
     assert.equal(env.AITM_INTERNAL, '1');
     assert.equal(env.AITM_VERB_CONTEXT, 'runtime', 'runtime: must stamp the runtime verb context');
+    assert.equal(env.AITM_CURSOR_TRIGGER, 'advance-forward');
     assert.equal(result.status, code, `runtime: result.status must equal host code ${code}`);
     assert.equal(result.ok, code === 0, 'runtime: ok iff code 0');
   }

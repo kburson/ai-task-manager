@@ -79,7 +79,7 @@ export async function runPlan({ issueNumber, cfg, deps = {} } = {}) {
     };
   }
 
-  await promote([String(issueNumber)], cfg);
+  await promote([String(issueNumber)], cfg, { cursorCommand: 'plan' });
   return { status: 'promoted', issueNumber, from: 'ready-for-plan', to: 'plan' };
 }
 

@@ -18,6 +18,7 @@ import { actionPolicyFor, normalizeStateId } from './lifecycle-policy/index.mjs'
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 import { canonicalLogins, ownershipDecision } from './ownership-policy.mjs';
 import { hasExecutionProof, stripExecutionProof } from './proof-marker.mjs';
+import { buildCommandCursorRequest } from './state-cursor.mjs';
 import {
   verifyLegacyRefinementSnapshotForBlockerRefresh,
   verifyRefinementSnapshot,
@@ -159,7 +160,16 @@ async function defaultClearBoardFields({ cfg, snapshot }) {
   }
 }
 
-export function defaultRunMoveState({ issueNumber, reason }, { host = runMoveStateHost } = {}) {
+export function defaultRunMoveState(
+  { issueNumber, reason, cursorCommand = 'shelve' },
+  { host = runMoveStateHost } = {}
+) {
+  const cursorRequest = buildCommandCursorRequest({
+    command: cursorCommand,
+    issue: issueNumber,
+    cwd: process.cwd(),
+    requestedTarget: 'backlog',
+  });
   return host({
     argv: [
       process.execPath,
@@ -170,7 +180,12 @@ export function defaultRunMoveState({ issueNumber, reason }, { host = runMoveSta
       '--demote-reason',
       String(reason),
     ],
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'shelve' },
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: cursorCommand,
+      AITM_CURSOR_TRIGGER: cursorRequest.trigger,
+    },
     shelveBackwardGuardCapability: SHELVE_BACKWARD_GUARD_CAPABILITY,
   });
 }
@@ -526,6 +541,7 @@ export async function runShelveTransaction({
   removeOwner = false,
   refreshStaleBlockers = false,
   cfg,
+  cursorCommand = 'shelve',
   deps = {},
 } = {}) {
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
@@ -540,7 +556,8 @@ export async function runShelveTransaction({
   const fetchSnapshot = deps.fetchSnapshot || defaultFetchSnapshot;
   const mutateBodyFn = deps.mutateBody || mutateIssueBody;
   const clearBoardFields = deps.clearBoardFields || defaultClearBoardFields;
-  const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const runMoveState =
+    deps.runMoveState || ((args) => defaultRunMoveState({ ...args, cursorCommand }));
   const removeOwnerFn = deps.removeOwner || defaultRemoveOwner;
   const getBaseSha = deps.getBaseSha || defaultGetBaseSha;
   const fieldDefs = deps.loadProjectFieldDefs

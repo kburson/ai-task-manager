@@ -7,6 +7,35 @@ import { SELF_DOC } from '../../../lib/self-doc.mjs';
 import { EXECUTABLE_ENTRYPOINTS } from './entrypoints.mjs';
 import { ROUTE_IDENTITIES, routeIdentityForVerb } from './routing.mjs';
 import { normalizeHelpRecord, validateHelpRecord } from './schema.mjs';
+import { cursorTriggerForCommand } from '../state-cursor.mjs';
+
+export const CURSOR_TRIGGER_BY_COMMAND = Object.freeze(
+  Object.fromEntries(
+    [
+      'promote',
+      'next',
+      'refine',
+      'plan',
+      'test',
+      'review',
+      'close',
+      'demote',
+      'reject',
+      'shelve',
+      'park',
+      'cancel-plan',
+      'force',
+      'supersede',
+      'plan-approve',
+      'approve',
+      'review-probe',
+      'resume',
+      'bind',
+      'rebind',
+      'callback',
+    ].map((command) => [command, cursorTriggerForCommand(command)])
+  )
+);
 
 const entrypointByCommand = new Map(
   EXECUTABLE_ENTRYPOINTS.filter((entry) => entry.command).map((entry) => [entry.command, entry])

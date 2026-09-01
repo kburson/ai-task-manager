@@ -44,7 +44,7 @@ export async function verbReject(ctx) {
       process.exit(1);
     }
   }
-  await runMoveState(target, 'develop');
+  await runMoveState(target, 'develop', { cursorCommand: 'reject' });
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const { deriveStateMoveDelta } = await import('../lib/timing-rows.mjs');
   let rejectBody = '';

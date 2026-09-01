@@ -8,7 +8,9 @@
 // help token unchanged, so the script is the one that answers.
 //
 // Intended caller: the exposed scripts themselves (guard) and
-// `bin/aitm-registry.mjs` (to build the grouped command listing). Not a CLI.
+// `bin/aitm-registry.mjs` (to build the grouped command listing). Lifecycle
+// command trigger semantics are deliberately excluded here: their canonical
+// Cursor mapping is exported by `command-surface/catalog.mjs`. Not a CLI.
 
 import { realpathSync } from 'node:fs';
 import path from 'node:path';

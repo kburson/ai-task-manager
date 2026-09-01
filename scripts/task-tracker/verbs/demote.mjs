@@ -36,6 +36,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
 import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 // Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
@@ -107,6 +108,12 @@ export function defaultRunMoveState(
   { issueNumber, target, rework },
   { host = runMoveStateHost } = {}
 ) {
+  const cursorRequest = buildCommandCursorRequest({
+    command: 'demote',
+    issue: issueNumber,
+    cwd: process.cwd(),
+    requestedTarget: target,
+  });
   const argv = [process.execPath, 'move-state.mjs', String(issueNumber), target, '--demote'];
   // #935 — surface the declared code-change reason in the `demoted:<state>` timing
   // row via the existing `--demote-reason` policy path.
@@ -114,7 +121,12 @@ export function defaultRunMoveState(
   if (reason) argv.push('--demote-reason', reason);
   return host({
     argv,
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'demote' },
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: 'demote',
+      AITM_CURSOR_TRIGGER: cursorRequest.trigger,
+    },
   });
 }
 

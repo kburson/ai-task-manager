@@ -364,7 +364,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     const hops = startState === 'backlog' || startState === 'refine' ? 1 : 0;
     try {
       for (let i = 0; i < hops; i += 1) {
-        await promote([String(issueNumber)], cfg);
+        await promote([String(issueNumber)], cfg, { cursorCommand: 'refine' });
       }
       promoted = true;
     } catch (err) {

@@ -287,7 +287,7 @@ export async function verbSwitch(ctx, target) {
     } catch {
       /* best-effort: failure must not abort the primary operation */
     }
-    if (ctx.verb !== 'start') await ctx.resumeReviewActionsAfterBind?.(target);
+    if (ctx.verb !== 'start') await ctx.resumeReviewActionsAfterBind?.(target, 'rebind');
   } catch (error) {
     const recoveryErrors = [];
     let rollbackResult;

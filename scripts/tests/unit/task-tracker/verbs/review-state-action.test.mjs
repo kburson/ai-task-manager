@@ -126,6 +126,7 @@ test('Review entry is forward while an in-Review retry is actions-only', () => {
     issue: 1458,
     cwd: '/wt',
     trigger: 'actions-only',
+    flags: { verb: 'review-probe' },
   });
 });
 

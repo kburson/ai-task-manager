@@ -34,6 +34,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { addSupersededBy } from '../lib/superseded-marker.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
 import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
 
 function parseIssueArg(tok) {
@@ -96,9 +97,20 @@ async function defaultCloseNotPlanned({ issueNumber, repo }) {
 // synthetic argv preserves the `--supersede` flag so the host's parse/matrix path
 // is identical to the old CLI invocation. host is injectable for tests.
 export function defaultRunMoveState({ issueNumber }, { host = runMoveStateHost } = {}) {
+  const cursorRequest = buildCommandCursorRequest({
+    command: 'supersede',
+    issue: issueNumber,
+    cwd: process.cwd(),
+    requestedTarget: 'done',
+  });
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), 'done', '--supersede'],
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'supersede' },
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: 'supersede',
+      AITM_CURSOR_TRIGGER: cursorRequest.trigger,
+    },
   });
 }
 
