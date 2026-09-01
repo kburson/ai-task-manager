@@ -25,6 +25,7 @@ function receipt({ receiptId, stage, commitSha, commands }) {
     issue: 1091,
     stage,
     commitSha,
+    verificationCommands: [],
     startedAt: '2026-08-02T14:00:00.000Z',
     completedAt: '2026-08-02T14:01:00.000Z',
     environment,

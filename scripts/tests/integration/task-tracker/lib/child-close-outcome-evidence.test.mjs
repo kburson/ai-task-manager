@@ -92,6 +92,7 @@ test('close accepts the persisted exact-SHA Test receipt after its worktree is r
     issue: 1129,
     stage: 'test',
     commitSha,
+    verificationCommands: [],
     startedAt: '2026-08-06T01:00:00.000Z',
     completedAt: '2026-08-06T01:05:00.000Z',
     environment: {

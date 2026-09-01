@@ -2,7 +2,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseVerificationReceipt } from '../../../../task-tracker/lib/verification-receipt.mjs';
+import {
+  canonicalVerificationCommandSet,
+  parseVerificationReceipt,
+} from '../../../../task-tracker/lib/verification-receipt.mjs';
 import { runDevelopVerification } from '../../../../task-tracker/verify-develop.mjs';
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 
@@ -28,9 +31,12 @@ const verificationProvider = {
   },
 };
 
-function fingerprint(identity) {
+function fingerprint(identity, verificationCommands = []) {
   return {
     commitSha: SHA,
+    verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+      projectDir: PROJECT_DIR,
+    }),
     environment: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
@@ -53,16 +59,17 @@ test('project provider owns Develop and Test plans with typed exact-SHA evidence
     spawned.push([command, ...args].join(' '));
     return { exitCode: 0, durationMs: 1, startedAt: INSTANT, completedAt: INSTANT };
   };
-  const finalize = async () =>
+  const finalize = async ({ verificationCommands }) =>
     runDevelopVerification({
       projectDir: PROJECT_DIR,
       mode: 'final',
       issueNumber: 1218,
+      verificationCommands,
       verificationProvider,
       deps: {
         isClean: () => true,
         getHeadSha: () => SHA,
-        buildFingerprint: () => fingerprint('/outer'),
+        buildFingerprint: ({ verificationCommands: commands }) => fingerprint('/outer', commands),
         runCommand: record,
         now: () => INSTANT,
       },
@@ -85,7 +92,7 @@ test('project provider owns Develop and Test plans with typed exact-SHA evidence
       removeWorktree: async () => {},
       npmCi: async () => {},
       getSandboxHeadSha: async () => SHA,
-      buildFingerprint: () => fingerprint('/sandbox'),
+      buildFingerprint: ({ verificationCommands }) => fingerprint('/sandbox', verificationCommands),
       execInSandbox: async ({ argv }) => {
         spawned.push(argv.join(' '));
         return {

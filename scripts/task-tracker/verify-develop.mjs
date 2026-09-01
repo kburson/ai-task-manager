@@ -169,6 +169,7 @@ export function runDevelopVerification({
   issueNumber,
   developVerification,
   verificationProvider,
+  verificationCommands = [],
   deps = {},
 } = {}) {
   if (!['iteration', 'final'].includes(mode)) {
@@ -340,6 +341,7 @@ export function runDevelopVerification({
     const fingerprint = (deps.buildFingerprint || buildVerificationFingerprint)({
       projectDir,
       commitSha,
+      verificationCommands,
     });
     const receipt = (deps.createReceipt || createVerificationReceipt)({
       issueNumber: Number(issueNumber),

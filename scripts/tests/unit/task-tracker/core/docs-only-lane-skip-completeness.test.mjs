@@ -105,12 +105,23 @@ test('proof resolver accepts only a validated current receipt for a live docs-on
     await import('../../../../task-tracker/lib/docs-only-lane-skip-proof.mjs').catch(() => ({}));
   assert.equal(typeof proofModule.resolveDocsOnlyLaneSkipProof, 'function');
   const resolveProof = proofModule.resolveDocsOnlyLaneSkipProof;
-  const body = '## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="docs-only" -->';
+  const body = [
+    '## Verification Commands',
+    '- [ ] `npm run lint`',
+    '## AITM Progress Markers',
+    '<!-- aitm-issue-kind kind="docs-only" -->',
+  ].join('\n');
   const receipt = { laneSkip: DOCS_SKIP };
   const deps = {
     parseVerificationReceipt: () => receipt,
     getHeadSha: async () => 'a'.repeat(40),
-    buildVerificationFingerprint: async () => ({ commitSha: 'a'.repeat(40) }),
+    buildVerificationFingerprint: async ({ verificationCommands }) => {
+      assert.deepEqual(
+        verificationCommands.map(({ command }) => command),
+        ['npm run lint']
+      );
+      return { commitSha: 'a'.repeat(40) };
+    },
     requiredTestReceiptClassifications: () => ['lint-full', 'format-full'],
     validateVerificationReceipt: () => ({ ok: true, reasons: [] }),
     hasEarnedDocsOnlyLaneSkip: () => true,

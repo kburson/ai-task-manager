@@ -18,10 +18,12 @@ import { upsertPlannedEstimate } from '../refine-estimate-comment.mjs';
 import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
 import {
+  canonicalVerificationCommandSet,
   parseValidatedVerificationReceipts,
   requiredTestReceiptClassifications,
   validateVerificationReceipt,
 } from '../verification-receipt.mjs';
+import { parseVerificationCommands } from '../verification-commands.mjs';
 import { withCrossProcessRecordClaim } from './record-claim.mjs';
 import {
   listIssueCommentsSince,
@@ -782,7 +784,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
 
 export function verificationEvidence(
   body,
-  { expectedIssue, expectedFinalSha, expectedFingerprint } = {}
+  { expectedIssue, expectedFinalSha, expectedFingerprint, projectDir } = {}
 ) {
   const groups = new Map();
   const receipts = parseValidatedVerificationReceipts(body, { expectedIssue });
@@ -796,9 +798,15 @@ export function verificationEvidence(
     if (testReceipts.length > 1) {
       throw new TypeError('verification-receipt: multiple Test receipts for exact final SHA');
     }
-    const fingerprint = expectedFingerprint ?? {
-      commitSha: expectedFinalSha,
-      environment: structuredClone(testReceipts[0].environment),
+    const verificationCommands = canonicalVerificationCommandSet(parseVerificationCommands(body), {
+      projectDir,
+    });
+    const fingerprint = {
+      ...(expectedFingerprint ?? {
+        commitSha: expectedFinalSha,
+        environment: structuredClone(testReceipts[0].environment),
+      }),
+      verificationCommands,
     };
     if (fingerprint.commitSha !== expectedFinalSha) {
       throw new TypeError(
@@ -1113,6 +1121,7 @@ export function createEstimationOutcomeRuntime({
                 issueNumber,
                 diff,
               }),
+              projectDir,
             }
       );
       const outcomePayload = buildEstimationOutcome({

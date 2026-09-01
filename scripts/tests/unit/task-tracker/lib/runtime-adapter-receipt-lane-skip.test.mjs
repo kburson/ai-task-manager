@@ -17,7 +17,7 @@ const ENVIRONMENT = {
   configHashes: {},
   sandbox: { kind: 'worktree', identity: '/tmp/aitm-1200', clean: true },
 };
-const FINGERPRINT = { commitSha: SHA, environment: ENVIRONMENT };
+const FINGERPRINT = { commitSha: SHA, verificationCommands: [], environment: ENVIRONMENT };
 
 function command(classification) {
   const identities = {
@@ -42,6 +42,7 @@ function receipt({
     issue: ISSUE,
     stage: 'test',
     commitSha: SHA,
+    verificationCommands: [],
     startedAt: '2026-08-10T04:00:00.000Z',
     completedAt: '2026-08-10T04:01:00.000Z',
     environment: ENVIRONMENT,
@@ -127,6 +128,13 @@ test('close evidence accepts a docs-only Test receipt with three recorded lane s
   });
 
   assert.doesNotThrow(() => verify(marker(docsOnly)));
+});
+
+test('close evidence refuses a receipt when live Verification Commands changed', () => {
+  assert.throws(
+    () => verify(`## Verification Commands\n- [ ] \`npm run lint\`\n${marker(receipt())}`),
+    /verification-receipt/i
+  );
 });
 
 test('close evidence keeps all five classifications required without a valid lane skip', () => {

@@ -244,13 +244,14 @@ async function defaultExecInSandbox({ argv, path: wtPath, issueNumber }) {
   }
 }
 
-function defaultRunDevelopFinalization({ projectDir, issueNumber, cfg }) {
+function defaultRunDevelopFinalization({ projectDir, issueNumber, cfg, verificationCommands }) {
   return runDevelopVerification({
     projectDir,
     mode: 'final',
     issueNumber,
     developVerification: cfg.developVerification,
     verificationProvider: cfg.verificationProvider,
+    verificationCommands,
   });
 }
 
@@ -600,7 +601,11 @@ export async function runVerbTest({
   }
 
   if (runDevelopFinalization && currentState === 'test') {
-    const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+    const currentFingerprint = await buildFingerprint({
+      projectDir,
+      commitSha: sha,
+      verificationCommands: vcs,
+    });
     const existingTestReceipt = parseVerificationReceipt(body, 'test');
     const existingValidation = validateVerificationReceipt({
       receipt: existingTestReceipt,
@@ -629,7 +634,11 @@ export async function runVerbTest({
   let developReuseRefusal = [];
   if (runDevelopFinalization && currentState === 'develop' && deps.forceRerun !== true) {
     try {
-      const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+      const currentFingerprint = await buildFingerprint({
+        projectDir,
+        commitSha: sha,
+        verificationCommands: vcs,
+      });
       const existingReceipt = parseVerificationReceipt(body, 'develop-final');
       const markerPresent = hasVerificationReceiptMarker(body, 'develop-final');
       const existingValidation = validateVerificationReceipt({
@@ -669,6 +678,7 @@ export async function runVerbTest({
       projectDir,
       issueNumber: Number(issueNum),
       cfg,
+      verificationCommands: vcs,
     });
     if (!finalization?.ok || !finalization.receipt || !finalization.fingerprint) {
       const codes = (finalization?.reasons || []).map(({ code }) => code).join(', ') || 'unknown';
@@ -791,7 +801,11 @@ export async function runVerbTest({
       if (sandboxSha !== sha) {
         evidenceRefusal = [{ code: 'sha-mismatch', expected: sha, actual: sandboxSha }];
       } else {
-        testFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+        testFingerprint = await buildFingerprint({
+          projectDir: wtPath,
+          commitSha: sha,
+          verificationCommands: vcs,
+        });
         const validation = validateVerificationReceipt({
           receipt: developEvidence.receipt,
           expectedIssue: Number(issueNum),
@@ -981,7 +995,11 @@ export async function runVerbTest({
     }
 
     if (developEvidence && !evidenceRefusal && !laneSkipRefusal) {
-      const completedFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+      const completedFingerprint = await buildFingerprint({
+        projectDir: wtPath,
+        commitSha: sha,
+        verificationCommands: vcs,
+      });
       const completedValidation = validateVerificationReceipt({
         receipt: developEvidence.receipt,
         expectedIssue: Number(issueNum),

@@ -5,7 +5,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { createVerificationReceipt } from '../../../../task-tracker/lib/verification-receipt.mjs';
+import {
+  canonicalVerificationCommandSet,
+  createVerificationReceipt,
+  upsertVerificationReceipt,
+} from '../../../../task-tracker/lib/verification-receipt.mjs';
 import {
   commandCoveredByReceipt,
   decideStampExecutionFromEnv,
@@ -16,10 +20,15 @@ const SHA = 'a'.repeat(40);
 const OTHER_SHA = 'b'.repeat(40);
 const INSTANT = '2026-08-01T18:00:00.000Z';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../');
+const VERIFICATION_COMMANDS = [
+  ['npm', 'run', 'format:check'],
+  ['npm', 'run', 'lint'],
+];
 
 function fingerprint() {
   return {
     commitSha: SHA,
+    verificationCommands: VERIFICATION_COMMANDS,
     environment: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
@@ -153,6 +162,29 @@ test('Test + valid receipt covering standard lanes → reuse', () => {
     headSha: SHA,
   });
   assert.equal(result.action, 'reuse');
+});
+
+test('stamp reuse refuses when live Verification Commands changed', async () => {
+  const receipt = greenTestReceipt();
+  const body = upsertVerificationReceipt('## Verification Commands\n- [ ] `npm test`', receipt);
+  const result = await decideStampExecutionFromEnv({
+    commands: ['npm test'],
+    body,
+    issueNumber: 1356,
+    cfg: { repo: 'o/r' },
+    projectDir: process.cwd(),
+    pexec: async () => ({ stdout: `${SHA}\n`, stderr: '' }),
+    deps: {
+      buildFingerprint: ({ verificationCommands }) => ({
+        ...fingerprint(),
+        verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+          projectDir: process.cwd(),
+        }),
+      }),
+      getLiveState: async () => 'review',
+    },
+  });
+  assert.equal(result.action, 'refuse');
 });
 
 test('Test + no covering receipt → run', () => {
