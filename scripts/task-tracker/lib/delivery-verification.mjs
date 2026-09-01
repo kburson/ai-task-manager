@@ -312,7 +312,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
   );
   const provenSingleSourceSquash =
     observedMergeMethod === 'rewritten-one-parent' &&
-    !requireAuthorizedBytes &&
+    intent.provider === 'external' &&
     intent.mergeMethod === 'squash' &&
     provesSingleSourceSquash({
       pullRequest,

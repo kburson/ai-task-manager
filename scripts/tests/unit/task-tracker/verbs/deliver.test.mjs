@@ -639,16 +639,16 @@ test('external recovery accepts exact legacy escaped attribution', async () => {
   });
 
   const result = await deliver(harness);
+  const repeated = await deliver(harness);
 
   // prettier-ignore
-  assert.deepEqual([result.status, result.recovery, result.receipt.mergeMethod, harness.calls.createIssueComment], ['delivered', true, 'squash', 2]);
+  assert.deepEqual([result.status, result.recovery, result.receipt.mergeMethod, repeated.status, harness.calls.createIssueComment], ['delivered', true, 'squash', 'already-delivered', 2]);
 });
 
 test('external recovery refuses altered legacy escaped attribution', async (t) => {
   const tree = '1'.repeat(40);
-  const exact =
-    `Source: ${HEAD}\\nHosted fast CI passed.\\n` +
-    'Local governed sandbox including slow tests passed.';
+  // prettier-ignore
+  const exact = `Source: ${HEAD}\\nHosted fast CI passed.\\nLocal governed sandbox including slow tests passed.`;
   for (const [name, options] of [
     ['missing', { historyCommitMessage: `Source: ${HEAD}\\nHosted fast CI passed.` }],
     ['altered', { historyCommitMessage: exact.replace(HEAD, NEXT_HEAD) }],
