@@ -155,12 +155,9 @@ test('verbTest: no pretick → no regression comment posted (#139)', async () =>
   });
 });
 
-// #270 — Gate-first ordering: every body write happens BEFORE moveState, and
-// every write goes through `mutateBody` (which re-fetches FRESH base inside
-// the helper). The #210 read-modify-write hazard is structurally impossible
-// in the gate-first flow because moveState is the last side-effect — there
-// is no post-move body write to clobber the `aitm-last-known-state` marker.
-test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no post-move body write to clobber)', async () => {
+// #937 — Develop finalization is complete before this seam; Test becomes
+// current before its sandbox action writes Test-owned proof.
+test('verbTest #937: Test becomes current before sandbox proof is stamped', async () => {
   await withTmpDir(async (projectDir) => {
     const events = [];
     const baseBody = bodyWithVc(['npm test']);
@@ -188,25 +185,15 @@ test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no po
     const r = await runVerbTest({ cfg, issueNumber: 270, projectDir, deps });
     assert.equal(r.status, 'passed');
 
-    // Locate the dod-verified write and the test-move. The write MUST precede
-    // the move — that is the whole point of gate-first.
+    // Locate the Test proof write and boundary move. Test owns the proof, so
+    // the move must precede it.
     const moveIdx = events.findIndex((e) => e.kind === 'move' && e.target === 'test');
     const dodIdx = events.findIndex(
       (e) => e.kind === 'write' && /aitm-dod-verified[: ]/.test(e.body)
     );
     assert.ok(moveIdx >= 0, 'expected a moveState→test call');
     assert.ok(dodIdx >= 0, 'expected a body write containing aitm-dod-verified');
-    assert.ok(
-      dodIdx < moveIdx,
-      `gate-first: dod-verified write (idx ${dodIdx}) must precede moveState→test (idx ${moveIdx})`
-    );
-    // No body writes after the move.
-    const writesAfterMove = events.slice(moveIdx + 1).filter((e) => e.kind === 'write');
-    assert.equal(
-      writesAfterMove.length,
-      0,
-      'gate-first: no body writes after moveState — nothing can clobber post-transition markers'
-    );
+    assert.ok(moveIdx < dodIdx, 'Test entry must precede Test-owned proof');
   });
 });
 
@@ -231,11 +218,9 @@ test('verbTest #406: sandbox green but moveState refuses → status move-failed,
     assert.equal(r.status, 'move-failed', 'refused move must NOT report passed');
     assert.equal(r.move.status, 5, 'carries the move-state child exit code');
     assert.match(r.move.stderr, /illegal-transition/, 'carries the real refusal reason');
-    // Sandbox genuinely passed: green table posted and time logged before the
-    // move was attempted.
-    assert.equal(calls.comments.length, 1);
-    assert.match(calls.comments[0], /Sandboxed verification passed/);
-    assert.deepEqual(calls.logs, ['406']);
+    // Boundary refusal happens before Test work starts.
+    assert.equal(calls.comments.length, 0);
+    assert.deepEqual(calls.logs, []);
   });
 });
 
@@ -426,10 +411,12 @@ test('verbTest: sandbox isolation — locally-passing env-dependent command fail
         'node scripts/run-tests.mjs': { exit: 2, stdout: '', stderr: 'MISSING_ENV not set' },
       },
     });
+    deps.demoteState = async () => {
+      calls.moves.push('develop');
+    };
     const r = await runVerbTest({ cfg, issueNumber: 137, projectDir, deps });
     assert.equal(r.status, 'failed');
-    // #270 — gate-first: red verdict means no moveState call ever happened.
-    assert.deepEqual(calls.moves, []);
+    assert.deepEqual(calls.moves, ['test', 'develop']);
     assert.match(calls.comments[0], /MISSING_ENV not set/);
   });
 });

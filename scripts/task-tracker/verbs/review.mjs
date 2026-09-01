@@ -1412,8 +1412,22 @@ export async function verbReview(ctx) {
     // gating on this result is the only correct check. A re-run while already in
     // Review is a satisfied no-op (#882) and passes here, which is what makes the
     // state action re-runnable in place.
+    const acceptedTestHeadSha =
+      reviewEvidence.fingerprint?.commitSha ||
+      reviewEvidence.receipt?.commitSha ||
+      parseDodVerifiedMarker(rawBody)?.sha ||
+      'accepted-test-evidence';
     const reviewActionContext = {
       now: () => Date.parse(nowIso()),
+      // Review preflight above already validated the exact-head Test evidence.
+      // Expose that accepted observation so the Cursor can complete Test's
+      // resident action before crossing the Test→Review boundary.
+      test: {
+        observe: async ({ snapshot }) => ({
+          complete: true,
+          headSha: snapshot.headSha?.value ?? snapshot.headSha,
+        }),
+      },
       review: {
         repo: cfg.repo,
         readComments: async ({ snapshot }) => snapshot.reviewComments || [],
@@ -1491,6 +1505,7 @@ export async function verbReview(ctx) {
           currentState: { value: state },
           stateVisitId: visit ? `${state}:${visit.visit}:${visit.ts}` : `legacy:${state}:1`,
           body: { value: body },
+          headSha: { value: acceptedTestHeadSha },
           reviewComments: comments,
           invocation: { issue: Number(issueNum), cwd: projectDir },
         };

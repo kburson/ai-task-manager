@@ -138,9 +138,11 @@ All guard-migration work is shipped: the per-state `exitGuards` and
 | #279  | review→done close-gates → `review.exitGuards`    |
 | #271  | strip `promote.mjs` / `demote.mjs` inline checks |
 
-Develop and Test resident action contents intentionally remain separate work in
-Issue #937 owns them. Their empty lists do not move verification or CI into transition
-infrastructure; they mark the explicit migration seam.
+Issue #937 installs the Develop verification and Test PR/quick-CI resident
+actions. Develop exit consumes only its final exact-head receipt; Test work
+begins after Test is current and is resumed in place through actions-only
+requests. Transition infrastructure remains limited to guard evaluation and the
+single durable state commit.
 
 ## Entry markers
 

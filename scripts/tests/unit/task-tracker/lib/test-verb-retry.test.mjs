@@ -7,7 +7,7 @@
 //   1. retry-then-succeed — a transient `npm ci` throw on the first attempt is
 //      retried and the run still reaches `test` (status `passed`).
 //   2. real-red first occurrence — a genuine verification red (execInSandbox
-//      returns exit 1) rolls the board back on the FIRST occurrence; the VC is
+//      returns exit 1) explicitly demotes on the FIRST occurrence; the VC is
 //      run exactly once (reds are never retried).
 //   3. durable diagnostics — when every setup attempt fails, the `test-aborted`
 //      audit comment carries the failing step, exit code, and stderr tail, and
@@ -101,6 +101,10 @@ function makeDeps({
       moveState: async ({ target }) => {
         calls.moves.push(target);
       },
+      demoteState: async () => {
+        calls.moves.push('develop');
+        return { status: 'demoted' };
+      },
       logIssueTime: async () => {},
     },
   };
@@ -156,8 +160,11 @@ test('real-red first occurrence: a genuine verification red rolls back without r
       1,
       'setup must not retry when the failure is a verification red'
     );
-    // #270 — gate-first: red never moves the board, so there is nothing to undo.
-    assert.deepEqual(calls.moves, [], 'gate-first: red verdict makes no moveState call');
+    assert.deepEqual(
+      calls.moves,
+      ['test', 'develop'],
+      'red source verdict explicitly demotes after Test becomes current'
+    );
     assert.ok(
       !calls.comments.some((c) => /test-aborted/.test(c)),
       'a red is a normal result, not an abort — no test-aborted comment'
@@ -187,12 +194,7 @@ test('durable diagnostics: exhausted setup retries record step + exit + stderr t
     assert.match(aborted, /registry unreachable/, 'comment includes the stderr tail');
     assert.match(aborted, /Attempts:\*\*\s*3\/3/, 'comment records the attempt count');
     assert.match(aborted, /aitm-test-aborted/, 'comment carries the audit marker');
-    // #270 — gate-first: aborted setup throws before any moveState call.
-    assert.deepEqual(
-      calls.moves,
-      [],
-      'gate-first: aborted setup never calls moveState — board stays on develop'
-    );
+    assert.deepEqual(calls.moves, ['test'], 'aborted infrastructure setup stays in Test for retry');
   });
 });
 

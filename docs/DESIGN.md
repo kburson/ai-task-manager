@@ -59,7 +59,7 @@ group below.
 | `approve`           | Record final review approval (Review→Done gate). In Full-Auto, pair with an audit comment.                                                                               |
 | `review`            | Move an issue through Test to Review, flush timing, and pause.                                                                                                           |
 | `reject`            | Reject an issue under review (returns it for rework). Reason required.                                                                                                   |
-| `test`              | Develop→Test verification — finalizes Develop lint/format evidence, then runs Test-owned commands in an isolated worktree.                                               |
+| `test`              | Finalize Develop evidence, enter Test, then run Test-owned verification; waiting infrastructure stays in Test and source failure explicitly demotes.                     |
 | `reconcile`         | Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.                                                                         |
 | `board`             | Read the live Project-board `Status` for an issue (resolved via the bound `projectId` — never a guessed project number).                                                 |
 | `epic-reconcile`    | Record that an epic's Acceptance Criteria were reconciled against what its children delivered (stamps the epic-only marker `gateCodeComplete` requires to exit Develop). |

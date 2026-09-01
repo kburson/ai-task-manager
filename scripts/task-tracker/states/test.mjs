@@ -12,11 +12,12 @@ import { testExitPreCloseCompletenessGuard } from '../lib/test-exit-pre-close-co
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 import { bodyGatesEntryGuardTest } from '../lib/body-gates-entry-guard.mjs';
+import { testQuickCiAction } from '../lib/resident-actions/test-quick-ci.mjs';
 
 export default Object.freeze({
   id: 'test',
   entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardTest]),
-  residentActions: Object.freeze([]),
+  residentActions: Object.freeze([testQuickCiAction]),
   exitGuards: Object.freeze([
     blockedByGuard,
     testExitDodVerifiedGuard,

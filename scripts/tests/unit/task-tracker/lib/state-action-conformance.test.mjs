@@ -25,8 +25,37 @@ function registeredActions() {
   );
 }
 
-function reviewCapabilities(repository, { pass = true } = {}) {
+function actionCapabilities(repository, { pass = true } = {}) {
   return {
+    develop: {
+      readReceipt: async ({ snapshot }) =>
+        repository.providerEffectCount > 0
+          ? {
+              receiptId: 'develop-receipt',
+              stage: 'develop-final',
+              commitSha: snapshot.headSha?.value ?? snapshot.headSha,
+              commands: [
+                { classification: 'lint-full', exitCode: 0 },
+                { classification: 'format-full', exitCode: 0 },
+              ],
+            }
+          : null,
+      finalize: async () => ({
+        ok: true,
+        receipt: { receiptId: 'develop-receipt', stage: 'develop-final' },
+      }),
+      persistReceipt: async ({ correlation }) => repository.recordProviderEffect({ correlation }),
+    },
+    test: {
+      observe: async ({ snapshot }) =>
+        repository.providerEffectCount > 0
+          ? { complete: true, headSha: snapshot.headSha?.value ?? snapshot.headSha }
+          : { complete: false },
+      startOrObserve: async ({ correlation }) => {
+        await repository.recordProviderEffect({ correlation });
+        return { kind: 'complete', headSha: 'sandbox' };
+      },
+    },
     review: {
       repo: 'kburson/ai-task-manager',
       readComments: async () => [],
@@ -57,7 +86,7 @@ async function snapshot(repository, actionId) {
 test('the conformance registry covers every installed resident action', () => {
   assert.deepEqual(
     registeredActions().map(({ state, action }) => `${state}:${action.id}`),
-    ['review:review-agent-validation']
+    ['develop:develop-verification', 'test:test-pr-quick-ci', 'review:review-agent-validation']
   );
 });
 
@@ -89,7 +118,7 @@ for (const { state, action } of registeredActions()) {
     });
     const runner = createResidentActionRunner({
       repository,
-      actionContext: reviewCapabilities(repository),
+      actionContext: actionCapabilities(repository),
     });
     const first = await runner.resume([action], await snapshot(repository, action.id), {
       trigger: 'actions-only',
@@ -97,7 +126,7 @@ for (const { state, action } of registeredActions()) {
     });
     const freshRunner = createResidentActionRunner({
       repository: repository.freshAdapter(),
-      actionContext: reviewCapabilities(repository),
+      actionContext: actionCapabilities(repository),
     });
     const second = await freshRunner.resume([action], await snapshot(repository, action.id), {
       trigger: 'actions-only',
@@ -112,7 +141,7 @@ for (const { state, action } of registeredActions()) {
 }
 
 test('fresh hydration correlates an effect committed immediately before interruption', async () => {
-  const [{ action }] = registeredActions();
+  const { action } = registeredActions().find(({ state }) => state === 'review');
   const repository = new InMemoryRepositoryAdapter({
     issue: ISSUE,
     statusState: 'review',
@@ -124,7 +153,7 @@ test('fresh hydration correlates an effect committed immediately before interrup
   const execute = async (adapter) =>
     createResidentActionRunner({
       repository: adapter,
-      actionContext: reviewCapabilities(repository),
+      actionContext: actionCapabilities(repository),
     }).resume(
       [action],
       await adapter.hydrateTask({ issue: ISSUE, cwd: CWD, actionId: action.id }),
@@ -141,7 +170,7 @@ test('fresh hydration correlates an effect committed immediately before interrup
 });
 
 test('stale Review evidence remains incomplete', async () => {
-  const [{ action }] = registeredActions();
+  const { action } = registeredActions().find(({ state }) => state === 'review');
   const body = [
     '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-08-31T11:59:00.000Z" sha="sandbox" validators="state-action-conformance" result="pass" -->',
     ENTRY,
@@ -151,7 +180,7 @@ test('stale Review evidence remains incomplete', async () => {
 });
 
 test('event budget refusal occurs before the provider effect', async () => {
-  const [{ action }] = registeredActions();
+  const { action } = registeredActions().find(({ state }) => state === 'review');
   const repository = new InMemoryRepositoryAdapter({
     issue: ISSUE,
     statusState: 'review',
@@ -162,7 +191,7 @@ test('event budget refusal occurs before the provider effect', async () => {
   });
   const runner = createResidentActionRunner({
     repository,
-    actionContext: reviewCapabilities(repository),
+    actionContext: actionCapabilities(repository),
   });
 
   await assert.rejects(

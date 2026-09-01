@@ -47,7 +47,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`. |
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Ready for Planning → Plan for JIT deep-dive, child breakdown, and estimate refresh. Refuses on any other state. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                               |
-| `/task test #N`    | Test                   | Finalizes Develop lint/format evidence, then runs Test-owned verification commands in an isolated worktree; stamps `aitm-dod-verified` marker on success.                                     |
+| `/task test #N`    | Test                   | Finalizes Develop evidence, commits the Test boundary, then runs Test-owned verification; infrastructure waits in Test and source failure explicitly demotes.                                 |
 | `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                |
 | `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                          |
 | `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                     |
@@ -141,15 +141,17 @@ did not observe those changes, even when they are outside the issue's own files.
 Sync again after Test only when the parent actually advanced or another
 integration requirement makes the HEAD move unavoidable.
 
-`/task test #N` owns finalization. While the issue is still in Develop it checks
+`/task test #N` owns the boundary sequence. While Develop is current it checks
 that the tree is clean and committed, runs full lint and format once, persists
 and reads back an `aitm.verification-receipt/v1` for the complete 40-hex SHA,
-then creates the isolated Test worktree at that exact SHA. Test reuses the two
+and lets the Develop exit guard consume that receipt. The issue then enters Test
+before the isolated worktree or external Test action starts. Test reuses the two
 validated finalization results and runs `test:unit`, `test:integration`, and
-`test:slow` once. The resulting Test receipt records runtime/config/lockfile
-fingerprints, clean-worktree identity, command classifications, exits, and
-durations. Existing `aitm-test-started` and `aitm-dod-verified` markers remain
-present for backward compatibility.
+`test:slow` once. Waiting infrastructure remains in Test for resume; confirmed
+source failure uses an explicit audited demotion to Develop. The resulting Test
+receipt records runtime/config/lockfile fingerprints, clean-worktree identity,
+command classifications, exits, and durations. Existing `aitm-test-started` and
+`aitm-dod-verified` markers remain present for backward compatibility.
 
 Review validates the Test receipt, current fingerprint, and both compatibility
 SHA markers. A missing, malformed, red, dirty, stale, or incomplete v1 receipt

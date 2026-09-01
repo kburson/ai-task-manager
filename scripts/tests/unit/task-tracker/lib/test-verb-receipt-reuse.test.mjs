@@ -410,7 +410,7 @@ test('/task test audits --force before rerunning a valid exact-SHA Test receipt'
       logIssueTime: async () => {},
     },
   });
-  assert.equal(result.status, 'passed');
+  assert.equal(result.status, 'reverified');
   assert.equal(finalizations, 1);
   assert.match(comments[0], /Audited Test re-run override/);
 });

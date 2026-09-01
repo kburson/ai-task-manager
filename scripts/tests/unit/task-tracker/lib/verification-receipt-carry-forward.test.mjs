@@ -83,10 +83,10 @@ test('#1110 documents parent sync before Test and re-Test after any later HEAD m
 
   assert.ok(section, 'stage-owned verification section is present');
   const syncBeforeTest = section.indexOf('Synchronize the branch with its resolved parent');
-  const testOwnsFinalization = section.indexOf('`/task test #N` owns finalization');
+  const testOwnsBoundary = section.indexOf('`/task test #N` owns the boundary sequence');
   assert.notEqual(syncBeforeTest, -1, 'the guide states the pre-Test synchronization contract');
   assert.ok(
-    syncBeforeTest < testOwnsFinalization,
+    syncBeforeTest < testOwnsBoundary,
     'the synchronization contract appears before Test finalization'
   );
   assert.match(

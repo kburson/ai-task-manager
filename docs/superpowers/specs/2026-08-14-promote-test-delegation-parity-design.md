@@ -1,112 +1,70 @@
-# Promote-to-Test Delegation Parity Design
+# Develop and Test Resident-Action Ownership Design (#937)
 
 ## Problem
 
-`runPromote` currently evaluates the Develop-to-Test exit guards before it
-dispatches the lifecycle action selected by policy. For Develop, that action is
-the `test` verb. The early CODE_COMPLETE guard reads the pre-sandbox issue body
-and rejects unchecked acceptance criteria, so `promote` can stop before `test`
-runs the commands that would produce evidence and auto-tick those criteria.
+The legacy `/task test` sequence performed isolated Test work while the issue
+was still in Develop, then moved the board only after that work passed. That
+made Test evidence a prerequisite for leaving Develop and gave direct
+`/task test`, generic `/task promote`, and bind/resume paths different effective
+orchestration.
 
-Direct `test` already implements the correct sequence: verify in a sandbox,
-persist the receipt and evidence-backed ticks, then call the central
-`move-state` boundary. The mover re-runs the full Develop-to-Test guard set
-against the updated authoritative issue state.
+The stateless Cursor architecture delivered by #1117 provides state-owned,
+resumable actions and one explicit boundary per movement trigger. #937 uses that
+seam to restore the state boundary: Develop proves Develop work, the transition
+makes Test current, and only then may Test work begin.
 
 ## Decision
 
-Treat the `test` verb as the owner of the Develop-to-Test action and its evidence
-acquisition. When lifecycle policy selects the exact `develop` to `test`
-transition with delegate `test`, `promote` will not make a wrapper-level final
-completeness decision from the stale pre-sandbox body. It will dispatch `test`
-and classify the delegate result through its existing post-delegation logic.
+Develop owns an issue-locked resident verification action. It finalizes
+implementation verification, targeted tests, full lint, and full formatting at
+the exact committed HEAD and persists a `develop-final` receipt. The
+Develop-to-Test exit guard consumes that receipt; it does not consume sandbox,
+pull-request, or hosted-CI proof.
 
-This does not remove or weaken the authoritative Develop-to-Test guard. The
-delegate still calls `move-state` after its issue-body writes, and `move-state`
-still evaluates every registered guard before changing board state.
+Test owns a correlation-based resident action for pull-request creation or
+observation and exact-head quick CI. Waiting and infrastructure outcomes remain
+in Test for retry. A confirmed source failure records an explicit audited
+Test-to-Develop demotion before code changes resume.
 
-## Alternatives considered
+`/task test` and Develop-state `promote`/`next` converge on the same
+Develop-to-Test cursor request. Rebind and resume while Test is current use an
+actions-only cursor request and wake Test in place.
 
-### Auto-tick persisted evidence in `promote`
+## Control flow
 
-This would make the wrapper mutate issue bodies before guard evaluation. It
-would duplicate evidence interpretation and checkbox-writing behavior already
-owned by the Test action, adding another authority surface to the state
-orchestrator.
+1. The Develop resident action verifies the clean exact HEAD and persists its
+   final receipt.
+2. The Develop exit guard validates that receipt and the normal lifecycle
+   evidence.
+3. One forward transition commits Test as the current state.
+4. Test resident work starts or observes its external run only after that
+   transition succeeds.
+5. Waiting or infrastructure failure keeps Test current and resumable.
+6. Confirmed source failure explicitly demotes to Develop with a recorded
+   reason; no implicit board rollback occurs.
+7. A green Test receipt enables the existing Test-to-Review boundary.
 
-### Make `ac-stamp` stamp and tick atomically
+## Failure and recovery
 
-This would simplify one manual helper workflow, but it would not fix the
-behavioral mismatch between `promote` and direct `test`. It would also change the
-documented two-step `ac-stamp` then `ensureChecked` contract outside this
-defect's boundary.
+A missing, malformed, red, or stale Develop receipt refuses the boundary and
+leaves the issue in Develop. A refused boundary starts no Test work. Once Test
+is current, setup and infrastructure failures remain in Test. Only a classified
+source failure uses the governed one-step demotion path.
 
-### Delegate to `test` before the wrapper decision
+The Test action is idempotent by correlation identity. Rebind, resume, and
+direct Test invocation observe or continue the same run instead of creating
+duplicate pull requests or CI runs.
 
-This is the selected design. It makes the wrapper and direct action share one
-sequence, keeps evidence production in Test, and leaves the final transition
-authority in `move-state`.
+## Compatibility
 
-## Implementation boundary
+Existing accepted lifecycle evidence remains readable during migration. The
+legacy sandbox-proof guard remains importable for bounded compatibility tests,
+but it is no longer registered as the Develop exit authority. Existing Test
+receipts and Review validation remain the Test-to-Review contract.
 
-The production change is confined to
-`scripts/task-tracker/verbs/promote.mjs`. The early guard-result handling will
-recognize the exact Develop-to-Test Test-delegate case and defer its decision to
-the delegate. Other lifecycle edges continue to use their existing
-pre-delegate guard behavior.
+## Verification
 
-No changes are planned for:
-
-- `code-complete-gate.mjs` or its strict checkbox/evidence policy;
-- `auto-tick-verified.mjs` or proof-marker parsing;
-- Test receipts, branch-reachability validation, or Delivery Contracts;
-- the documented `ac-stamp` and `ensureChecked` helper sequence; or
-- Test-to-Review and Review-to-Done orchestration.
-
-## Data and control flow
-
-1. `promote` resolves the live and recorded states and selects the next action
-   through lifecycle policy.
-2. For edges other than Develop-to-Test, it evaluates and handles the current
-   wrapper guard result unchanged.
-3. For Develop-to-Test with delegate `test`, it dispatches the delegate even if
-   the pre-sandbox body would produce a CODE_COMPLETE refusal.
-4. `test` runs Develop finalization and sandbox verification.
-5. On green results, `test` persists receipts, proof markers, and
-   evidence-backed checkbox ticks.
-6. `test` calls `move-state` for the Develop-to-Test edge.
-7. `move-state` evaluates the full registered guard set against the freshly
-   persisted authority and moves only when it passes.
-8. `promote` re-reads board state and uses its existing success, hard-failure,
-   or promoted-with-warning classification.
-
-## Failure behavior
-
-Failed verification never reaches the mover and leaves the issue in Develop.
-Missing, invalid, stale, unreachable, or unsuccessful evidence remains a final
-move refusal. A delegate error with the board still in Develop remains a hard
-transition failure. A delegate side-task error after the board reaches Test
-continues through the existing promoted-with-warning repair path.
-
-The design accepts that a direct or delegated Test run may spend sandbox time
-before another Develop-exit guard rejects the final move. Direct `test` already
-has that behavior; parity requires the wrapper not to add a contradictory early
-gate.
-
-## Verification strategy
-
-The focused promote test will first be changed to expect delegation when an
-injected wrapper-level CODE_COMPLETE check would refuse. Before production code
-changes, it must fail by returning `code-complete-refused` and recording no Test
-delegate call. After the production change, it must pass and record exactly one
-`test` delegation.
-
-Related promote and mover suites will confirm that:
-
-- other lifecycle edges retain their current pre-delegate guards;
-- the mover remains the final Develop-to-Test authority;
-- Test-to-Review delegation and gates are unchanged; and
-- delegate failures still preserve correct board/result classification.
-
-Repository Develop verification, lint, formatting, and the full Test-stage suite
-will run before lifecycle handoff.
+Focused tests cover resident-action ownership, receipt-only Develop exit,
+Test-before-work ordering, waiting and source-failure classification, explicit
+demotion, and direct/promote/rebind/resume parity. Repository lint, formatting,
+unit, integration, and slow suites verify the complete change.

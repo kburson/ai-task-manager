@@ -8,18 +8,19 @@ import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { developExitCodeCompleteGuard } from '../lib/develop-exit-code-complete-guard.mjs';
 import { developExitCommitTrailHeadGuard } from '../lib/develop-exit-commit-trail-head-guard.mjs';
 import { developExitEpicChildrenDoneGuard } from '../lib/develop-epic-children-done-guard.mjs';
-import { developExitSandboxProofGuard } from '../lib/develop-exit-sandbox-proof-guard.mjs';
+import { developExitReceiptGuard } from '../lib/develop-exit-receipt-guard.mjs';
+import { developVerificationAction } from '../lib/resident-actions/develop-verification.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   id: 'develop',
   entryGuards: Object.freeze([contiguityEntryGuard]),
-  residentActions: Object.freeze([]),
+  residentActions: Object.freeze([developVerificationAction]),
   exitGuards: Object.freeze([
     blockedByGuard,
     developExitCodeCompleteGuard,
-    developExitSandboxProofGuard,
+    developExitReceiptGuard,
     developExitCommitTrailHeadGuard,
     developExitEpicChildrenDoneGuard,
     childCannotLeadEpicExitGuard,

@@ -61,7 +61,7 @@
 //            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
 //            |                                       | plan-exit-plan-metadata, child-cannot-lead-epic
 //   develop  | contiguity                            | blocked-by, develop-exit-code-complete,
-//            |                                       | develop-exit-sandbox-proof,
+//            |                                       | develop-exit-receipt,
 //            |                                       | develop-exit-commit-trail-head,
 //            |                                       | develop-epic-children-done (terminal children),
 //            |                                       | child-cannot-lead-epic

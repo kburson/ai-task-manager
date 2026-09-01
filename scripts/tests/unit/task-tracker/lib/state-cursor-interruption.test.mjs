@@ -43,8 +43,18 @@ function actionContext(repository) {
 }
 
 function cursor(repository) {
+  // This #1459 harness isolates Cursor boundary crash points. Test now has a
+  // real #937 resident action; suppress it here so the synthetic Review action
+  // remains the first target action under test.
+  const boundaryMachine = {
+    ...STATE_MACHINE,
+    get(id) {
+      const definition = STATE_MACHINE.get(id);
+      return id === 'test' ? { ...definition, residentActions: [], exitGuards: [] } : definition;
+    },
+  };
   return createStateCursor({
-    machine: STATE_MACHINE,
+    machine: boundaryMachine,
     repository,
     actions: createResidentActionRunner({ repository, actionContext: actionContext(repository) }),
   });
