@@ -14,6 +14,7 @@ import {
 const HEAD = 'a'.repeat(40);
 const HISTORICAL_HEAD = 'b'.repeat(40);
 const MERGE = 'c'.repeat(40);
+const TREE = '1'.repeat(40);
 // cspell:disable-next-line
 const INTENT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 
@@ -32,6 +33,7 @@ function deliveryComments({
   prNumber = 1400,
   expectedHeadSha = HEAD,
   mergeCommitSha = MERGE,
+  provider = 'codex',
 } = {}) {
   const intent = buildDeliveryIntent({
     intentId,
@@ -46,7 +48,7 @@ function deliveryComments({
     attributionTokens: ['#1397'],
     commitTitle: '[#1397] Governed PR delivery',
     commitMessage: `PR #${prNumber}\nSource: ${expectedHeadSha}\n\nAttribution: [#1397]`,
-    provider: 'codex',
+    provider,
     sessionId: 'session-1',
     clientCreatedAt: '2026-08-23T00:00:00.000Z',
   });
@@ -59,7 +61,7 @@ function deliveryComments({
     baseRef: 'trunk',
     mergeMethod: 'squash',
     verifiedTrunkRef: 'origin/trunk',
-    provider: 'codex',
+    provider,
     sessionId: 'session-1',
     verifiedAt: '2026-08-23T00:02:00.000Z',
   });
@@ -89,7 +91,10 @@ function pullRequest(number, headRefOid, mergeCommitSha = MERGE) {
   };
 }
 
-async function load(pullRequests, { comments = deliveryComments(), localHeadSha = HEAD } = {}) {
+async function load(
+  pullRequests,
+  { comments = deliveryComments(), localHeadSha = HEAD, ctx = {} } = {}
+) {
   let commentReads = 0;
   const pexec = async (command, args) => {
     if (command === 'git' && args[0] === 'branch') return { stdout: 'codex/939-full-auto-merge\n' };
@@ -108,10 +113,42 @@ async function load(pullRequests, { comments = deliveryComments(), localHeadSha 
     pexec,
     body: body(),
     lifecycleEvidence: null,
-    ctx: { resolveCloseParentIssue: async () => null },
+    ctx: { resolveCloseParentIssue: async () => null, ...ctx },
   });
   return { result, commentReads };
 }
+
+test('#1470 close loads source proof for an external recovery receipt', async () => {
+  const evidence = [
+    { oid: HEAD, message: '[#1397] source', parents: ['d'.repeat(40)], tree: '1'.repeat(40) },
+  ];
+  const { result } = await load([pullRequest(1400, HEAD)], {
+    comments: deliveryComments({ provider: 'external' }),
+    ctx: {
+      fetchClosePullRequestEvidence: async () => ({
+        ...pullRequest(1400, HEAD),
+        sourceCommits: [{ oid: HEAD, messageHeadline: '[#1397] source' }],
+        sourceCommitEvidence: evidence,
+        sourceCommitsComplete: true,
+        sourceCommitsHeadSha: HEAD,
+      }),
+    },
+  });
+
+  assert.deepEqual(result.pullRequest.sourceCommitEvidence, evidence);
+});
+
+test('#1470 close inspects the merge tree needed by squash proof', async () => {
+  const inspection = await closeModule.inspectCloseMergeCommit({
+    pexec: async () => ({
+      stdout: `tree ${TREE}\nparent ${'d'.repeat(40)}\n\n[#1397] Governed PR delivery\n\nbody\n`,
+    }),
+    projectDir: '/injected/project',
+    mergeCommitSha: MERGE,
+  });
+
+  assert.equal(inspection.tree, TREE);
+});
 
 test('#1381 close carries immutable accepted authority after the reused branch advances', async () => {
   const accepted = pullRequest(1400, HEAD);
