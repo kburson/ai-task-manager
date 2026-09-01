@@ -16,13 +16,13 @@ function coreStep({ classification, kind, command, args, label }) {
 }
 
 function buildIterationSteps(changedPaths = []) {
-  const javascript = changedPaths.filter((file) => JAVASCRIPT_RE.test(file));
-  const formattable = changedPaths.filter((file) => FORMATTABLE_RE.test(file));
+  const javascript = changedPaths.filter((file) => JAVASCRIPT_RE.test(file)).sort();
+  const formattable = changedPaths.filter((file) => FORMATTABLE_RE.test(file)).sort();
   const steps = [];
   if (javascript.length > 0) {
     steps.push(
       coreStep({
-        classification: 'lint-changed',
+        classification: 'lint-affected-fix',
         kind: 'lint',
         command: 'npx',
         args: ['eslint', '--fix', ...javascript],
@@ -33,7 +33,7 @@ function buildIterationSteps(changedPaths = []) {
   if (formattable.length > 0) {
     steps.push(
       coreStep({
-        classification: 'format-changed',
+        classification: 'format-affected-fix',
         kind: 'format',
         command: 'npx',
         args: ['prettier', '--write', ...formattable],

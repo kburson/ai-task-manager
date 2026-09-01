@@ -426,6 +426,18 @@ describe('runDevelopVerification (#1089)', () => {
       ]
     );
     assert.doesNotMatch(JSON.stringify(calls), /test:(?:unit|integration|slow)/);
+    assert.deepEqual(
+      result.commands.map(({ classification, providerId, kind }) => ({
+        classification,
+        providerId,
+        kind,
+      })),
+      [
+        { classification: 'lint-affected-fix', providerId: 'node', kind: 'lint' },
+        { classification: 'format-affected-fix', providerId: 'node', kind: 'format' },
+        { classification: 'test-affected', providerId: 'node', kind: 'test' },
+      ]
+    );
   });
 
   it('iteration excludes deleted and rename-old paths from fixers but keeps impact inputs', () => {
@@ -570,6 +582,177 @@ describe('runDevelopVerification (#1089)', () => {
     assert.equal(result.ok, false);
     assert.equal(result.reasons[0].code, 'command-red');
     assert.equal(red.calls.length, 1);
+  });
+
+  it('runs explicit project-provider iteration steps with stable kinds (#1218)', () => {
+    const { calls, deps } = baseDeps({
+      collectChangedPaths: () => ['Sources/App.swift'],
+      validateCommand: (command) => ({ ok: true, argv: command.split(' ') }),
+      selectAffectedTests: () => {
+        throw new Error('project provider must own discovery');
+      },
+    });
+    const verificationProvider = {
+      id: 'project',
+      develop: {
+        iterationSteps: [
+          { classification: 'swift-format', kind: 'format', command: 'npm run lint' },
+        ],
+        finalSteps: [
+          { classification: 'xcode-build', kind: 'build', command: 'npm run test:unit' },
+        ],
+      },
+      test: {
+        setup: 'npm-ci',
+        steps: [{ classification: 'xcode-tests', kind: 'test', command: 'npm run test:slow' }],
+      },
+    };
+
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'iteration',
+      verificationProvider,
+      deps,
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      calls.map(({ classification, kind }) => ({ classification, kind })),
+      [{ classification: 'swift-format', kind: 'format' }]
+    );
+    assert.deepEqual(
+      result.commands.map(({ classification, providerId, kind, allowlistSource }) => ({
+        classification,
+        providerId,
+        kind,
+        allowlistSource,
+      })),
+      [
+        {
+          classification: 'swift-format',
+          providerId: 'project',
+          kind: 'format',
+          allowlistSource: 'verification-allowlist',
+        },
+      ]
+    );
+  });
+
+  it('runs the project provider final floor and records provider identity (#1218)', () => {
+    const { calls, deps } = baseDeps({
+      validateCommand: (command) => ({ ok: true, argv: command.split(' ') }),
+    });
+    const verificationProvider = {
+      id: 'project',
+      develop: {
+        iterationSteps: [],
+        finalSteps: [
+          { classification: 'xcode-build', kind: 'build', command: 'npm run test:unit' },
+        ],
+      },
+      test: {
+        setup: 'npm-ci',
+        steps: [
+          {
+            classification: 'simulator-ready',
+            kind: 'environment',
+            command: 'npm run format:check',
+          },
+          { classification: 'xcode-tests', kind: 'test', command: 'npm run test:slow' },
+        ],
+      },
+    };
+
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'final',
+      issueNumber: 1218,
+      verificationProvider,
+      deps,
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      calls.map(({ classification }) => classification),
+      ['xcode-build']
+    );
+    assert.equal(result.commands[0].providerId, 'project');
+    assert.equal(result.commands[0].kind, 'build');
+    assert.equal(result.receipt.commands[0].classification, 'xcode-build');
+  });
+
+  it('refuses an invalid project provider before spawning any Develop step (#1218)', () => {
+    const { calls, deps } = baseDeps({
+      validateCommand: (command) =>
+        command === 'rm -rf .'
+          ? { ok: false, reason: 'bin not in allowlist: rm' }
+          : { ok: true, argv: command.split(' ') },
+    });
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'iteration',
+      verificationProvider: {
+        id: 'project',
+        develop: {
+          iterationSteps: [{ classification: 'unsafe', kind: 'build', command: 'rm -rf .' }],
+          finalSteps: [
+            { classification: 'xcode-build', kind: 'build', command: 'npm run test:unit' },
+          ],
+        },
+        test: {
+          setup: 'npm-ci',
+          steps: [{ classification: 'xcode-tests', kind: 'test', command: 'npm run test:slow' }],
+        },
+      },
+      deps,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reasons[0].code, 'verification-provider-invalid');
+    assert.deepEqual(calls, []);
+  });
+
+  it('reports the declared kind on first red and aborts later project steps (#1218)', () => {
+    const { calls, deps } = baseDeps({
+      validateCommand: (command) => ({ ok: true, argv: command.split(' ') }),
+      runCommand: (step) => {
+        calls.push(step);
+        return { exitCode: step.kind === 'environment' ? 69 : 0, durationMs: 1 };
+      },
+    });
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'iteration',
+      verificationProvider: {
+        id: 'project',
+        develop: {
+          iterationSteps: [
+            {
+              classification: 'simulator-ready',
+              kind: 'environment',
+              command: 'npm run format:check',
+            },
+            { classification: 'xcode-build', kind: 'build', command: 'npm run test:unit' },
+          ],
+          finalSteps: [
+            { classification: 'xcode-build', kind: 'build', command: 'npm run test:unit' },
+          ],
+        },
+        test: {
+          setup: 'npm-ci',
+          steps: [{ classification: 'xcode-tests', kind: 'test', command: 'npm run test:slow' }],
+        },
+      },
+      deps,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reasons[0].code, 'command-red');
+    assert.equal(result.reasons[0].kind, 'environment');
+    assert.deepEqual(
+      calls.map(({ classification }) => classification),
+      ['simulator-ready']
+    );
   });
 
   it('finalization requires clean committed state and returns a receipt', () => {

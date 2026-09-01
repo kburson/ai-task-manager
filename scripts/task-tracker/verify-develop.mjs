@@ -4,18 +4,17 @@
 // finalization is clean-tree, exact-SHA, and receipt-producing.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, realpathSync } from 'node:fs';
-import path from 'node:path';
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { loadConfig } from './config.mjs';
-import { normalizeDevelopIterationSteps } from './lib/develop-verification-steps.mjs';
 import {
   buildVerificationFingerprint,
   createVerificationReceipt,
 } from './lib/verification-receipt.mjs';
-import { formatTestImpactReport, selectAffectedTests } from './lib/test-impact-selector.mjs';
+import { formatTestImpactReport } from './lib/test-impact-selector.mjs';
+import { resolveVerificationProvider } from './lib/verification-provider-registry.mjs';
 
 const FORMATTABLE_RE = /\.(?:c?js|mjs|json|jsonc|md|ya?ml)$/i;
 const JAVASCRIPT_RE = /\.(?:c?js|mjs)$/i;
@@ -140,6 +139,8 @@ function execute(step, projectDir, runCommand) {
   const result = runCommand(step, projectDir) || {};
   return {
     classification: step.classification,
+    ...(step.providerId ? { providerId: step.providerId } : {}),
+    ...(step.kind ? { kind: step.kind } : {}),
     command: step.command,
     args: [...step.args],
     ...(step.label ? { label: step.label } : {}),
@@ -155,6 +156,8 @@ function commandFailure(command) {
   return {
     code: 'command-red',
     classification: command.classification,
+    ...(command.providerId ? { providerId: command.providerId } : {}),
+    ...(command.kind ? { kind: command.kind } : {}),
     exitCode: command.exitCode,
     message: `${command.command} ${command.args.join(' ')} exited ${command.exitCode}`,
   };
@@ -165,6 +168,7 @@ export function runDevelopVerification({
   mode = 'iteration',
   issueNumber,
   developVerification,
+  verificationProvider,
   deps = {},
 } = {}) {
   if (!['iteration', 'final'].includes(mode)) {
@@ -174,6 +178,21 @@ export function runDevelopVerification({
   const getHeadSha = deps.getHeadSha || gitHead;
   const isClean = deps.isClean || gitClean;
   const commands = [];
+  let provider;
+  try {
+    provider = (deps.resolveProvider || resolveVerificationProvider)({
+      config: verificationProvider,
+      projectDir,
+      legacyDevelopVerification: developVerification,
+      deps,
+    });
+  } catch (error) {
+    const message = error?.message || String(error);
+    const code = message.startsWith('verification-provider-invalid:')
+      ? 'verification-provider-invalid'
+      : 'verification-provider-error';
+    return { ok: false, mode, commands, reasons: [{ code, message }] };
+  }
 
   if (mode === 'iteration') {
     try {
@@ -188,29 +207,9 @@ export function runDevelopVerification({
         };
       }
 
-      const declared = normalizeDevelopIterationSteps(developVerification, { projectDir });
-      let selection;
-      let steps;
-      if (declared.configured) {
-        steps = declared.steps;
-      } else {
-        selection = (deps.selectAffectedTests || selectAffectedTests)({
-          projectDir,
-          changedPaths,
-        });
-        const pathExists = deps.pathExists || ((file) => existsSync(path.join(projectDir, file)));
-        const fixablePaths = changedPaths.filter(pathExists);
-        steps = [
-          ...buildIterationSteps(fixablePaths),
-          ...selection.tests.map((file) => ({
-            classification: 'test-affected',
-            command: 'node',
-            args: ['--test', file],
-            label: `node --test ${file}`,
-            allowlistSource: 'core',
-          })),
-        ];
-      }
+      const plan = provider.planDevelopIteration({ changedPaths });
+      const selection = plan.selection;
+      const steps = plan.steps;
       if (steps.length === 0) {
         return {
           ok: false,
@@ -227,7 +226,7 @@ export function runDevelopVerification({
         };
       }
       for (const step of steps) {
-        const command = execute(step, projectDir, runCommand);
+        const command = execute({ ...step, providerId: plan.providerId }, projectDir, runCommand);
         commands.push(command);
         if (command.exitCode !== 0) {
           return {
@@ -251,12 +250,20 @@ export function runDevelopVerification({
     } catch (error) {
       const message = error?.message || String(error);
       const configInvalid = message.startsWith('iteration-config-invalid:');
+      const providerInvalid = message.startsWith('verification-provider-invalid:');
       return {
         ok: false,
         mode,
         commands,
         reasons: [
-          { code: configInvalid ? 'iteration-config-invalid' : 'iteration-error', message },
+          {
+            code: providerInvalid
+              ? 'verification-provider-invalid'
+              : configInvalid
+                ? 'iteration-config-invalid'
+                : 'iteration-error',
+            message,
+          },
         ],
       };
     }
@@ -280,8 +287,27 @@ export function runDevelopVerification({
   }
 
   const commitSha = getHeadSha(projectDir);
-  for (const step of buildFinalSteps()) {
-    const command = execute(step, projectDir, runCommand);
+  let finalPlan;
+  try {
+    finalPlan = provider.planDevelopFinal();
+  } catch (error) {
+    const message = error?.message || String(error);
+    return {
+      ok: false,
+      mode,
+      commands,
+      reasons: [
+        {
+          code: message.startsWith('verification-provider-invalid:')
+            ? 'verification-provider-invalid'
+            : 'verification-provider-error',
+          message,
+        },
+      ],
+    };
+  }
+  for (const step of finalPlan.steps) {
+    const command = execute({ ...step, providerId: finalPlan.providerId }, projectDir, runCommand);
     commands.push(command);
     if (command.exitCode !== 0) {
       return { ok: false, mode, commands, reasons: [commandFailure(command)] };
@@ -366,12 +392,13 @@ export function main(argv = process.argv.slice(2)) {
     console.error(`verify-develop: ${error.message}`);
     return 2;
   }
-  const developVerification =
-    options.mode === 'iteration' ? loadConfig().developVerification : null;
+  const config = loadConfig();
+  const developVerification = options.mode === 'iteration' ? config.developVerification : null;
   const result = runDevelopVerification({
     projectDir: process.cwd(),
     ...options,
     developVerification,
+    verificationProvider: config.verificationProvider,
   });
   if (result.mode === 'iteration' && result.selection) {
     const report = formatTestImpactReport(result.selection);
