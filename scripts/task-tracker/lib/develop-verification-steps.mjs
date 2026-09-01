@@ -45,7 +45,10 @@ export function normalizeDevelopIterationSteps(
     if (typeof input.command !== 'string' || input.command.trim() === '') {
       fail(`step ${classification} command must be non-empty`);
     }
-    if (input.label !== undefined && (typeof input.label !== 'string' || input.label.trim() === '')) {
+    if (
+      input.label !== undefined &&
+      (typeof input.label !== 'string' || input.label.trim() === '')
+    ) {
       fail(`step ${classification} label must be non-empty`);
     }
 
