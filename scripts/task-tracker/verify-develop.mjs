@@ -346,6 +346,10 @@ export function runDevelopVerification({
       stage: 'develop-final',
       fingerprint,
       commands,
+      provider: {
+        id: finalPlan.providerId,
+        requiredClassifications: finalPlan.requiredClassifications,
+      },
       now: deps.now,
     });
     return { ok: true, mode, commands, reasons: [], fingerprint, receipt };

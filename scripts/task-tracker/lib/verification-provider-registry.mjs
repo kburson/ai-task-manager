@@ -101,7 +101,18 @@ function targetedSteps({ declaredCommands = [], existingSteps = [], projectDir, 
     if (!command || existing.has(command)) return [];
     const validation = validateCommand(command, { projectDir });
     if (!validation?.ok || !Array.isArray(validation.argv) || validation.argv.length === 0) {
-      fail(`targeted Test command rejected: ${validation?.reason || 'invalid argv'}`);
+      ordinal += 1;
+      return [
+        freezeStep({
+          classification: `test-targeted-${ordinal}`,
+          kind: 'test',
+          command,
+          args: [],
+          label: command,
+          allowlistSource: 'verification-allowlist',
+          rejected: validation?.reason || 'invalid argv',
+        }),
+      ];
     }
     ordinal += 1;
     return [

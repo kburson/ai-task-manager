@@ -25,11 +25,8 @@ import { randomBytes } from 'node:crypto';
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
-import {
-  COMPLETE_TEST_LANES,
-  parseVerificationCommands,
-  partitionVerificationCommands,
-} from '../lib/verification-commands.mjs';
+import { resolveVerificationProvider } from '../lib/verification-provider-registry.mjs';
+import { COMPLETE_TEST_LANES, parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
 import { parseIssueKind } from '../lib/issue-kind.mjs';
 import { docsKindDropsTests } from '../lib/dod-kind-filter.mjs';
@@ -247,8 +244,14 @@ async function defaultExecInSandbox({ argv, path: wtPath, issueNumber }) {
   }
 }
 
-function defaultRunDevelopFinalization({ projectDir, issueNumber }) {
-  return runDevelopVerification({ projectDir, mode: 'final', issueNumber });
+function defaultRunDevelopFinalization({ projectDir, issueNumber, cfg }) {
+  return runDevelopVerification({
+    projectDir,
+    mode: 'final',
+    issueNumber,
+    developVerification: cfg.developVerification,
+    verificationProvider: cfg.verificationProvider,
+  });
 }
 
 async function defaultFetchBody({ cfg, issueNum }) {
@@ -445,6 +448,26 @@ export async function runVerbTest({
     issueNumber: issueNum,
   });
   const sha = await getHeadSha({ projectDir });
+  let verificationProvider;
+  let developPlan;
+  try {
+    verificationProvider = (deps.resolveProvider || resolveVerificationProvider)({
+      config: cfg.verificationProvider,
+      projectDir,
+      legacyDevelopVerification: cfg.developVerification,
+      deps,
+    });
+    developPlan = verificationProvider.planDevelopFinal();
+  } catch (error) {
+    return {
+      status: 'verification-provider-invalid',
+      sha,
+      reasons: [
+        { code: 'verification-provider-invalid', message: error?.message || String(error) },
+      ],
+    };
+  }
+  const developRequired = developPlan.requiredClassifications;
   await recoverStaleTestSandboxes({ projectDir, removeWorktree });
   let authoritySource;
   try {
@@ -614,7 +637,7 @@ export async function runVerbTest({
         expectedIssue: Number(issueNum),
         expectedStage: 'develop-final',
         fingerprint: currentFingerprint,
-        required: ['lint-full', 'format-full'],
+        required: developRequired,
       });
       if (existingValidation.ok) {
         developEvidence = {
@@ -645,6 +668,7 @@ export async function runVerbTest({
     const finalization = await runDevelopFinalization({
       projectDir,
       issueNumber: Number(issueNum),
+      cfg,
     });
     if (!finalization?.ok || !finalization.receipt || !finalization.fingerprint) {
       const codes = (finalization?.reasons || []).map(({ code }) => code).join(', ') || 'unknown';
@@ -668,7 +692,7 @@ export async function runVerbTest({
       expectedIssue: Number(issueNum),
       expectedStage: 'develop-final',
       fingerprint: finalization.fingerprint,
-      required: ['lint-full', 'format-full'],
+      required: developRequired,
     });
     if (!validation.ok) {
       const codes = validation.reasons.map(({ code }) => code).join(', ');
@@ -713,7 +737,7 @@ export async function runVerbTest({
   let testFingerprint = null;
   let testExecutionContext = null;
   let evidenceRefusal = null;
-  let partition = null;
+  let testPlan = null;
   // #1158 — set only when the complete-lane floor was PROVEN droppable for this
   // run; carries the evidence that made the drop legal so the receipt can say
   // "these lanes were skipped, and here is why" rather than staying silent.
@@ -773,7 +797,7 @@ export async function runVerbTest({
           expectedIssue: Number(issueNum),
           expectedStage: 'develop-final',
           fingerprint: testFingerprint,
-          required: ['lint-full', 'format-full'],
+          required: developRequired,
         });
         if (!validation.ok) evidenceRefusal = validation.reasons;
       }
@@ -789,7 +813,8 @@ export async function runVerbTest({
         // diff keeps every lane running — exactly like a code-touching one.
         const kind = parseIssueKind(body);
         const changedPaths = await computeChangedPaths({ projectDir: wtPath });
-        const dropLanes = docsKindDropsTests(kind, changedPaths);
+        const dropLanes =
+          verificationProvider.id === 'node' && docsKindDropsTests(kind, changedPaths);
         if (dropLanes) {
           laneSkip = {
             reason: 'docs-only-diff',
@@ -798,8 +823,8 @@ export async function runVerbTest({
             changedPaths,
           };
         }
-        partition = partitionVerificationCommands({
-          commands: vcs,
+        testPlan = verificationProvider.planTest({
+          declaredCommands: vcs,
           includeCompleteLanes: !dropLanes,
         });
         // #1158 — a legacy aggregate's verdict is DERIVED from the complete
@@ -808,10 +833,10 @@ export async function runVerbTest({
         // quietly report the aggregate as failed. Refuse the run instead: the
         // operator either drops the aggregate from the VC list or lets the lanes
         // run. The board is not moved and no verdict is invented.
-        if (laneSkip && partition.compatibility.length > 0) {
+        if (laneSkip && testPlan.derivedSteps.length > 0) {
           laneSkipRefusal = {
             code: 'lane-skip-vs-legacy-aggregate',
-            declared: partition.compatibility.map(({ command }) => command),
+            declared: testPlan.derivedSteps.map(({ command }) => command),
             lanes: laneSkip.lanes,
           };
         }
@@ -836,15 +861,35 @@ export async function runVerbTest({
             startedAt: source.startedAt,
             completedAt: source.completedAt,
             reusedFrom: developEvidence.receipt.receiptId,
-            receiptCommand: { ...source, reusedFrom: developEvidence.receipt.receiptId },
+            receiptCommand: {
+              ...source,
+              providerId: source.providerId || verificationProvider.id,
+              reusedFrom: developEvidence.receipt.receiptId,
+            },
           });
         }
-        for (const lane of partition.completeLanes) {
-          const argv = lane.command.split(' ');
+        for (const step of testPlan.steps) {
+          if (step.rejected) {
+            results.push({
+              command: step.label,
+              classification: step.classification,
+              providerId: testPlan.providerId,
+              kind: step.kind,
+              rejected: step.rejected,
+              passed: false,
+              exit: null,
+              stdout: '',
+              stderr: '',
+            });
+            continue;
+          }
+          const argv = [step.command, ...step.args];
           const r = await execInSandbox({ argv, path: wtPath, projectDir, issueNumber: issueNum });
           results.push({
-            command: lane.command,
-            classification: lane.classification,
+            command: argv.join(' '),
+            classification: step.classification,
+            providerId: testPlan.providerId,
+            kind: step.kind,
             passed: r.exit === 0,
             exit: r.exit,
             cause: r.cause,
@@ -854,7 +899,9 @@ export async function runVerbTest({
             startedAt: r.startedAt,
             completedAt: r.completedAt,
             receiptCommand: {
-              classification: lane.classification,
+              classification: step.classification,
+              providerId: testPlan.providerId,
+              kind: step.kind,
               command: argv[0],
               args: argv.slice(1),
               exitCode: r.exit,
@@ -865,17 +912,15 @@ export async function runVerbTest({
           });
         }
         const byClassification = new Map(results.map((result) => [result.classification, result]));
-        for (const legacy of partition.compatibility) {
-          const required =
-            legacy.classification === 'test-all-legacy'
-              ? ['test-unit', 'test-integration', 'test-slow']
-              : ['test-unit', 'test-integration'];
-          const passed = required.every(
+        for (const derived of testPlan.derivedSteps) {
+          const passed = derived.requires.every(
             (classification) => byClassification.get(classification)?.passed
           );
           results.push({
-            command: legacy.command,
-            classification: legacy.classification,
+            command: derived.command,
+            classification: derived.classification,
+            providerId: testPlan.providerId,
+            kind: 'test',
             passed,
             exit: passed ? 0 : 1,
             stdout: '',
@@ -883,7 +928,7 @@ export async function runVerbTest({
             durationMs: 0,
           });
         }
-        commandsToRun = partition.targeted;
+        commandsToRun = [];
       } else {
         commandsToRun = [];
       }
@@ -942,7 +987,7 @@ export async function runVerbTest({
         expectedIssue: Number(issueNum),
         expectedStage: 'develop-final',
         fingerprint: completedFingerprint,
-        required: ['lint-full', 'format-full'],
+        required: developRequired,
       });
       if (!completedValidation.ok) evidenceRefusal = completedValidation.reasons;
       testFingerprint = completedFingerprint;
@@ -1060,6 +1105,12 @@ export async function runVerbTest({
           commands: results
             .filter(({ receiptCommand }) => receiptCommand)
             .map(({ receiptCommand }) => receiptCommand),
+          provider: {
+            id: verificationProvider.id,
+            requiredClassifications: [
+              ...new Set([...developRequired, ...(testPlan?.requiredClassifications || [])]),
+            ],
+          },
           now,
         })
       : null;
@@ -1352,6 +1403,7 @@ export async function verbTest(ctx) {
     case 'develop-final-invalid':
     case 'develop-evidence-invalid':
     case 'directory-evidence-invalid':
+    case 'verification-provider-invalid':
       console.error(
         `✗ #${issueNumber} verification evidence refused: ${result.reasons.map(({ code }) => code).join(', ')}`
       );

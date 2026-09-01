@@ -159,6 +159,8 @@ function normalizeCommand(result) {
     exitCode: Number(result?.exitCode),
     durationMs: Number(result?.durationMs),
   };
+  if (result?.providerId !== undefined) normalized.providerId = String(result.providerId);
+  if (result?.kind !== undefined) normalized.kind = String(result.kind);
   if (result?.startedAt !== undefined) normalized.startedAt = result.startedAt;
   if (result?.completedAt !== undefined) normalized.completedAt = result.completedAt;
   if (result?.reusedFrom !== undefined) normalized.reusedFrom = result.reusedFrom;
@@ -170,6 +172,7 @@ export function createVerificationReceipt({
   stage,
   fingerprint,
   commands,
+  provider,
   executionContext,
   now = () => new Date().toISOString(),
 } = {}) {
@@ -196,6 +199,14 @@ export function createVerificationReceipt({
   };
   if (executionContext !== undefined) {
     receipt.executionContext = structuredClone(executionContext);
+  }
+  if (provider !== undefined) {
+    receipt.provider = {
+      id: String(provider?.id || ''),
+      requiredClassifications: [
+        ...new Set((provider?.requiredClassifications || []).map((value) => String(value))),
+      ],
+    };
   }
   return receipt;
 }
@@ -226,6 +237,24 @@ function malformedReceipt(receipt) {
       return true;
     }
   }
+  if (receipt.provider !== undefined) {
+    const provider = receipt.provider;
+    if (
+      !provider ||
+      typeof provider !== 'object' ||
+      Array.isArray(provider) ||
+      Object.keys(provider).some((key) => !['id', 'requiredClassifications'].includes(key)) ||
+      !['node', 'project'].includes(provider.id) ||
+      !Array.isArray(provider.requiredClassifications) ||
+      provider.requiredClassifications.length === 0 ||
+      provider.requiredClassifications.some(
+        (classification) => typeof classification !== 'string' || classification.length === 0
+      ) ||
+      new Set(provider.requiredClassifications).size !== provider.requiredClassifications.length
+    ) {
+      return true;
+    }
+  }
   const environment = receipt.environment;
   if (!environment || typeof environment !== 'object') return true;
   if (typeof environment.node !== 'string' || typeof environment.platform !== 'string') return true;
@@ -250,6 +279,17 @@ function malformedReceipt(receipt) {
       return true;
     if (!Number.isInteger(command.exitCode)) return true;
     if (!Number.isFinite(command.durationMs) || command.durationMs < 0) return true;
+    if (
+      command.providerId !== undefined &&
+      (!['node', 'project'].includes(command.providerId) ||
+        (receipt.provider && command.providerId !== receipt.provider.id))
+    )
+      return true;
+    if (
+      command.kind !== undefined &&
+      !['format', 'lint', 'build', 'test', 'environment'].includes(command.kind)
+    )
+      return true;
     if (command.startedAt !== undefined && !canonicalInstant(command.startedAt)) return true;
     if (command.completedAt !== undefined && !canonicalInstant(command.completedAt)) return true;
     if (command.reusedFrom !== undefined && !ULID_RE.test(command.reusedFrom)) return true;
@@ -306,6 +346,9 @@ function reason(code, details = {}) {
  * Default-deny: malformed or unearned lane-skip claims relax nothing.
  */
 export function requiredTestReceiptClassifications(receipt) {
+  if (receipt?.provider?.requiredClassifications) {
+    return [...receipt.provider.requiredClassifications];
+  }
   const laneSkip = receipt?.laneSkip;
   if (!laneSkip || typeof laneSkip !== 'object' || Array.isArray(laneSkip)) {
     return [...TEST_RECEIPT_REQUIRED];
