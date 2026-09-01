@@ -584,9 +584,10 @@ export function parseVerificationReceipts(body) {
   return receipts;
 }
 
-export function parseValidatedVerificationReceipts(body, { expectedIssue } = {}) {
-  const receipts = [];
-  for (const claim of String(body || '').match(RECEIPT_CLAIM_RE) ?? []) {
+export function parseValidatedVerificationReceiptClaims(body, { expectedIssue } = {}) {
+  const claims = [];
+  for (const claimMatch of String(body || '').matchAll(RECEIPT_CLAIM_RE)) {
+    const claim = claimMatch[0];
     const match = claim.match(RECEIPT_MARKER_EXACT_RE);
     if (!match) throw new TypeError('verification-receipt: malformed claimed marker');
     let receipt;
@@ -607,14 +608,37 @@ export function parseValidatedVerificationReceipts(body, { expectedIssue } = {})
           .join(',')})`
       );
     }
-    receipts.push(receipt);
+    claims.push({
+      marker: claim,
+      start: claimMatch.index,
+      end: claimMatch.index + claim.length,
+      receipt,
+    });
   }
-  return receipts;
+  return claims;
+}
+
+export function parseValidatedVerificationReceipts(body, { expectedIssue } = {}) {
+  return parseValidatedVerificationReceiptClaims(body, { expectedIssue }).map(
+    ({ receipt }) => receipt
+  );
 }
 
 export function hasVerificationReceiptMarker(body, stage) {
   for (const match of String(body || '').matchAll(RECEIPT_MARKER_RE)) {
     if (stage === undefined || match[1] === stage) return true;
+  }
+  return false;
+}
+
+export function hasClaimedVerificationReceiptMarker(body, stage) {
+  for (const claim of String(body || '').match(RECEIPT_CLAIM_RE) ?? []) {
+    if (
+      stage === undefined ||
+      new RegExp(`\\bstage="${String(stage).replaceAll('"', '')}"`).test(claim)
+    ) {
+      return true;
+    }
   }
   return false;
 }
