@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { moveState } from '../../../../../task-tracker/lib/move-state/move-state-core.mjs';
+import { runGuardExecution } from '../../../../../task-tracker/lib/move-state/guard-execution.mjs';
 import { runPostCommitTail } from '../../../../../task-tracker/lib/move-state/post-commit-tail.mjs';
 
 function baseCtx(overrides = {}) {
@@ -131,6 +132,55 @@ test('moveState halts on guard refusal and never writes status', async () => {
   const res = await moveState(ctx);
   assert.equal(res.exit, 6);
   assert.ok(!ctx.calls.includes('status'));
+});
+
+test('moveState prefers the public pre-evaluated guard over the legacy test seam', async () => {
+  const ctx = baseCtx({
+    runGuardExecution: async () => {
+      ctx.calls.push('public-guard');
+      return { exit: null };
+    },
+    _runGuardExecution: async () => {
+      throw new Error('legacy guard seam must not run');
+    },
+  });
+
+  const result = await moveState(ctx);
+
+  assert.equal(result.exit, null);
+  assert.equal(ctx.calls[0], 'public-guard');
+});
+
+test('pre-mutation guard consumes the locked snapshot body without a second issue fetch', async () => {
+  let fetches = 0;
+  const result = await runGuardExecution({
+    issueArg: '1462',
+    stateArg: 'test',
+    resolvedFromState: 'develop',
+    verbContext: 'test',
+    shelveBackwardGuardAuthorized: false,
+    demoteFlag: false,
+    plan: { runGuardPipeline: true },
+    forceFlag: false,
+    supersedeFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'kburson/ai-task-manager' },
+    boundarySnapshot: { body: { value: '' } },
+    gh: async () => {
+      fetches += 1;
+      throw new Error('locked snapshot should be authoritative');
+    },
+    pexec: async () => ({ stdout: '' }),
+    resolveLiveStateName: async () => '',
+    checkDirty: async () => ({ dirty: false }),
+    formatSummary: () => '',
+    resolveWorkspaceForIssue: () => process.cwd(),
+    backlogMoveWarning: async () => undefined,
+    lifecycleEvidence: null,
+  });
+
+  assert.equal(fetches, 0);
+  assert.equal(result.exit, 6);
 });
 
 test('moveState halts on status exit and never runs tail', async () => {

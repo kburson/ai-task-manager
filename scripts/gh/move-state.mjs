@@ -56,9 +56,10 @@ import { runGuardExecution } from '../task-tracker/lib/move-state/guard-executio
 // #755 — the status write + post-commit tail are now sequenced by the extracted
 // saga core moveState(ctx) (task-tracker/lib/move-state/move-state-core.mjs). The
 // host no longer imports runStatusWrite / runPostCommitTail directly; it
-// assembles ctx, runs the guard (below), then delegates the mutation block to
-// moveState. #711 fail-closed and #714 tail-isolation live inside those steps and
-// are preserved verbatim by the core.
+// assembles ctx, acquires the issue lock, runs the complete guard inside that
+// lock, then delegates the mutation block to moveState with the public
+// pre-evaluated guard seam. #711 fail-closed and #714 tail-isolation live inside
+// those steps and are preserved verbatim by the core.
 import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
 import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
@@ -358,15 +359,13 @@ export async function runMoveStateHost({
   // (formerly three inline blocks here). runGuardExecution emits every banner +
   // fire-and-forget timing row verbatim and returns `{ exit }` — a number when
   // the pipeline refuses (6 contiguity / 4 generic / body-fetch-fail code), null
-  // otherwise. The host owns termination so the exact codes survive.
+  // otherwise. `runMutation` invokes it only after acquiring the issue lock;
+  // the host owns termination so the exact codes survive.
   //
   // #358 — the inline plan→develop deep-dive gate that once lived here is a
   // strict duplicate of `planExitDeepDiveGuard` (#277), fired inside the
   // pipeline. #355 — the forward contiguity guard is likewise a registry
   // entry-guard whose refusal id the pipeline special-cases for exit 6.
-  const guardOutcome = await runGuardExecution(ctx);
-  if (guardOutcome.exit !== null) return guardOutcome.exit;
-
   // --- mutation block (per-issue advisory lock — EPIC #207 / #214) ---
   // Wrap every write that touches the issue (board status field, body markers,
   // timing-log comment, audit comments, local state file) so two parallel
@@ -375,6 +374,9 @@ export async function runMoveStateHost({
   // via `AITM_ISSUE_LOCK_HELD=<issue>`; when that names this issue, skip
   // re-acquisition.
   const runMutation = async () => {
+    const guardOutcome = await runGuardExecution(ctx);
+    if (guardOutcome.exit !== null) return guardOutcome.exit;
+
     if (ctx.planExitOwnershipClaim) {
       const ownership = await commitPlanExitOwnershipClaim({
         issueNumber: Number(issueArg),
@@ -403,10 +405,10 @@ export async function runMoveStateHost({
     // which returns a non-null `exit` the host must honor (issue absent from the
     // project → exit 1).
     // #755 — delegate status → tail to the extracted saga core moveState(ctx).
-    // The exit/entry guard already ran and was honored above (guardOutcome,
-    // OUTSIDE the lock), so the core's guard seam is stubbed to a no-op here; the
-    // core then runs runStatusWrite → runPostCommitTail in the byte-identical
-    // pre-#755 order. moveState never calls process.exit — it returns
+    // The exit/entry guard ran and was honored at the top of this locked
+    // callback. The public seam returns that exact result so the core never
+    // repeats the gate; it then runs runStatusWrite → runPostCommitTail in the
+    // byte-identical pre-#755 order. moveState never calls process.exit — it returns
     // { exit, itemId, tail } and the mutation propagates result.exit outward so
     // the host returns it.
     //
@@ -414,7 +416,7 @@ export async function runMoveStateHost({
     // never proceeds) and #714 tail-isolation (a throw in any best-effort tail
     // step is caught, logged, and never flips the exit code) live inside
     // runStatusWrite / runPostCommitTail and are preserved verbatim by the core.
-    ctx._runGuardExecution = async () => ({ exit: null });
+    ctx.runGuardExecution = async () => guardOutcome;
     const result = await moveState(ctx);
     // #757 — the per-element move readout (Design §9 success / §12 failure).
     // Rendered purely from the enriched result the saga already verified-as-

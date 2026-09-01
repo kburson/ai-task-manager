@@ -136,16 +136,21 @@ export async function runGuardExecution(ctx) {
   if (!SKIP_NETWORK && plan.runGuardPipeline) {
     let guardBody = '';
     let bodyFetchFailed = false;
-    try {
-      guardBody = (
-        await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
-      ).trim();
-    } catch {
-      // #511 — a FAILED fetch must not be conflated with a genuinely-empty body.
-      // For non-gated targets an absent body is tolerated (no marker means the
-      // guard passes); for the body-gated targets (test/review/done) it would
-      // silently skip the structural gates, so we fail CLOSED below.
-      bodyFetchFailed = true;
+    const lockedBody = ctx.boundarySnapshot?.body?.value;
+    if (typeof lockedBody === 'string') {
+      guardBody = lockedBody.trim();
+    } else {
+      try {
+        guardBody = (
+          await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
+        ).trim();
+      } catch {
+        // #511 — a FAILED fetch must not be conflated with a genuinely-empty body.
+        // For non-gated targets an absent body is tolerated (no marker means the
+        // guard passes); for the body-gated targets (test/review/done) it would
+        // silently skip the structural gates, so we fail CLOSED below.
+        bodyFetchFailed = true;
+      }
     }
 
     // #511 — fail CLOSED on a body-gated move whose body could not be fetched.

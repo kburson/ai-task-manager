@@ -3,10 +3,15 @@
 import { readResidentActionLedger } from './resident-action-ledger-read.mjs';
 import { readMoveCompleteState } from './move-state/sentinel.mjs';
 import { createTaskSnapshot, provenance, reconcileCurrentState } from './task-snapshot.mjs';
+import { IssueLockError } from '../issue-mutator-lock.mjs';
 
 const LAST_KNOWN_PROPERTY_RE =
   /<!--\s*aitm-last-known-state\s+state="([^"]+)"(?:\s+ts="[^"]*")?\s*-->/i;
 const LAST_KNOWN_LEGACY_RE = /<!--\s*aitm-last-known-state:\s*([^>\s]+)\s*-->/i;
+const BOUNDARY_LOCK_SAMPLE_LIMIT = 128;
+const BOUNDARY_LOCK_DEFAULT_RETRY_MS = 500;
+const BOUNDARY_LOCK_DEFAULT_JITTER_MS = 100;
+const BOUNDARY_LOCK_DEFAULT_MAX_WAIT_MS = 30_000;
 
 function lastKnownState(body) {
   return (
@@ -18,6 +23,24 @@ function lastKnownState(body) {
 
 function unavailable(name) {
   throw new Error(`repository-capability-unavailable:${name}`);
+}
+
+function positiveNumber(value, fallback) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function percentile(samples, fraction) {
+  if (samples.length === 0) return 0;
+  const ordered = [...samples].sort((left, right) => left - right);
+  return ordered[Math.max(0, Math.ceil(ordered.length * fraction) - 1)];
+}
+
+export class BoundaryLockAcquireError extends Error {
+  constructor(message = 'boundary lock acquisition refused', details = {}) {
+    super(message, details.cause ? { cause: details.cause } : undefined);
+    this.name = 'BoundaryLockAcquireError';
+    Object.assign(this, details);
+  }
 }
 
 function freezeAdapter(value) {
@@ -57,6 +80,7 @@ export class RepositoryAdapter {
   constructor(capabilities = {}) {
     this.capabilities = Object.freeze({ ...capabilities });
     this.mode = 'online';
+    this.boundaryLockSamples = [];
   }
 
   async resolveLiveState({ issue }) {
@@ -233,9 +257,73 @@ export class RepositoryAdapter {
     return typeof fn === 'function' ? fn(args, operation) : operation();
   }
 
-  withBoundaryLock(args, operation) {
-    const fn = this.capabilities.withBoundaryLock;
-    return typeof fn === 'function' ? fn(args, operation) : this.withIssueLock(args, operation);
+  supportsFinalBoundary() {
+    return (
+      typeof (this.capabilities.withBoundaryLock ?? this.capabilities.withIssueLock) ===
+        'function' &&
+      typeof this.capabilities.runPreMutationGate === 'function' &&
+      typeof this.capabilities.requestTransition === 'function'
+    );
+  }
+
+  async withBoundaryLock(args, operation) {
+    const fn = this.capabilities.withBoundaryLock ?? this.capabilities.withIssueLock;
+    if (typeof fn !== 'function') return operation();
+    let callbackBegan = false;
+    const profile = this.boundaryLockTimings();
+    const lockArgs = { timeoutMs: profile.retryBudgetMs, retries: 1, ...args };
+    try {
+      return await fn(lockArgs, async () => {
+        callbackBegan = true;
+        const startedAt = this.now();
+        try {
+          return await operation();
+        } finally {
+          this.boundaryLockSamples.push(Math.max(0, this.now() - startedAt));
+          if (this.boundaryLockSamples.length > BOUNDARY_LOCK_SAMPLE_LIMIT) {
+            this.boundaryLockSamples.splice(
+              0,
+              this.boundaryLockSamples.length - BOUNDARY_LOCK_SAMPLE_LIMIT
+            );
+          }
+        }
+      });
+    } catch (error) {
+      if (!callbackBegan && error instanceof IssueLockError) {
+        throw new BoundaryLockAcquireError(error.message, {
+          cause: error,
+          issue: error.issue ?? args?.issue,
+          holder: error.holder ?? null,
+          retry: error.retry ?? null,
+        });
+      }
+      throw error;
+    }
+  }
+
+  boundaryLockTimings() {
+    const maxWaitMs = positiveNumber(
+      this.capabilities.boundaryLockMaxWaitMs,
+      BOUNDARY_LOCK_DEFAULT_MAX_WAIT_MS
+    );
+    const jitterMs = positiveNumber(
+      this.capabilities.boundaryLockJitterMs,
+      BOUNDARY_LOCK_DEFAULT_JITTER_MS
+    );
+    const p50Ms = percentile(this.boundaryLockSamples, 0.5);
+    const p95Ms = percentile(this.boundaryLockSamples, 0.95);
+    const p99Ms = percentile(this.boundaryLockSamples, 0.99);
+    return Object.freeze({
+      count: this.boundaryLockSamples.length,
+      p50Ms,
+      p95Ms,
+      p99Ms,
+      retryBudgetMs: Math.min(
+        maxWaitMs,
+        Math.max(BOUNDARY_LOCK_DEFAULT_RETRY_MS, Math.ceil(p95Ms + jitterMs))
+      ),
+      maxWaitMs,
+    });
   }
 
   runPreMutationGate(args) {

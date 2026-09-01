@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { runMoveStateHost, SHELVE_BACKWARD_GUARD_CAPABILITY } from '../../../../gh/move-state.mjs';
+import { isIssueLockHeld } from '../../../../task-tracker/issue-mutator-lock.mjs';
 
 const BASE_ENV = { ...process.env, AITM_INTERNAL: '1', TT_SKIP_NETWORK: '1' };
 
@@ -61,6 +62,26 @@ test('unauthenticated direct movement is refused before guard selection', async 
 
   assert.equal(code, 3);
   assert.equal(guardCalls, 0);
+});
+
+test('the complete guard pipeline runs while the issue boundary lock is held', async () => {
+  let lockHeldDuringGuard = false;
+  const observed = new Error('guard observed');
+
+  await assert.rejects(
+    runMoveStateHost({
+      argv: [process.execPath, 'move-state.mjs', '1335', 'refine', '--from', 'backlog'],
+      env: BASE_ENV,
+      isTty: false,
+      _observeGuardPhasePolicy: () => {
+        lockHeldDuringGuard = isIssueLockHeld(1335);
+        throw observed;
+      },
+    }),
+    (error) => error === observed
+  );
+
+  assert.equal(lockHeldDuringGuard, true);
 });
 
 test('host boundary authorizes Shelve guard selection only for the exact exported capability', async (t) => {

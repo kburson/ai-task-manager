@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createStateCursor } from '../../../../task-tracker/lib/state-cursor.mjs';
+import {
+  BoundaryLockAcquireError,
+  createStateCursor,
+} from '../../../../task-tracker/lib/state-cursor.mjs';
+import { RepositoryAdapter } from '../../../../task-tracker/lib/repository-adapter.mjs';
+import { IssueLockError } from '../../../../task-tracker/issue-mutator-lock.mjs';
 
 function state(id, residentActions = []) {
   return Object.freeze({ id, residentActions: Object.freeze(residentActions) });
@@ -288,6 +293,192 @@ test('unknown boundary results fail closed and never enter target residents', as
     calls.some(({ name }) => name === 'resume:review'),
     false
   );
+});
+
+test('guard and transition consume one snapshot vintage inside the boundary lock', async () => {
+  const calls = [];
+  let current = 'test';
+  let hydration = 0;
+  let gateSnapshot;
+  let gateContext;
+  const repository = {
+    async hydrateTask() {
+      hydration += 1;
+      const value = snapshot(current, { vintage: hydration });
+      calls.push(hydration === 1 ? 'hydrateTask:pre-action' : `hydrateTask:${current}`);
+      return value;
+    },
+    async withBoundaryLock(options, operation) {
+      assert.equal(options.issue, 1117);
+      assert.equal(options.verb, 'review');
+      calls.push('withBoundaryLock:begin');
+      const result = await operation();
+      calls.push('withBoundaryLock:end');
+      return result;
+    },
+    async runPreMutationGate(input) {
+      calls.push('runPreMutationGate');
+      gateSnapshot = input.snapshot;
+      gateContext = input.moveContext;
+      assert.ok(Object.isFrozen(input.moveContext));
+      return { exit: null };
+    },
+    async requestTransition(input) {
+      calls.push('requestTransition');
+      assert.equal(input.moveContext.snapshot, gateSnapshot);
+      assert.equal(input.moveContext, gateContext);
+      current = 'review';
+      return { exit: null, phase: 'commit' };
+    },
+    async requestLegacyBoundary() {
+      throw new Error('legacy boundary must not run');
+    },
+  };
+  const actions = {
+    async resume(_residents, currentSnapshot) {
+      calls.push(`resume:${currentSnapshot.currentState.value}`);
+      return { status: 'complete' };
+    },
+  };
+
+  const result = await createStateCursor({ machine: machine(), repository, actions }).execute({
+    issue: 1117,
+    cwd: '/worktree',
+    trigger: 'advance-forward',
+    requestedTarget: 'review',
+    flags: { verb: 'review' },
+  });
+
+  assert.equal(result.kind, 'resident-result');
+  assert.deepEqual(calls, [
+    'hydrateTask:pre-action',
+    'resume:test',
+    'withBoundaryLock:begin',
+    'hydrateTask:test',
+    'runPreMutationGate',
+    'requestTransition',
+    'withBoundaryLock:end',
+    'hydrateTask:review',
+    'resume:review',
+  ]);
+});
+
+test('boundary lock translates acquisition failure without rewriting callback provenance', async () => {
+  const acquisition = new IssueLockError('held before callback', {
+    issue: 1117,
+    holder: { sessionId: 'other-session' },
+  });
+  const blocked = new RepositoryAdapter({
+    withIssueLock: async () => {
+      throw acquisition;
+    },
+  });
+  await assert.rejects(
+    () => blocked.withBoundaryLock({ issue: 1117 }, async () => undefined),
+    (error) =>
+      error instanceof BoundaryLockAcquireError &&
+      error.cause === acquisition &&
+      error.holder?.sessionId === 'other-session'
+  );
+
+  const nested = new IssueLockError('callback lock failure', { issue: 2222 });
+  const entered = new RepositoryAdapter({
+    withIssueLock: async (_options, operation) => operation(),
+  });
+  await assert.rejects(
+    () =>
+      entered.withBoundaryLock({ issue: 1117 }, async () => {
+        throw nested;
+      }),
+    (error) => error === nested
+  );
+});
+
+test('boundary lock exposes hold-time percentiles and applies a bounded p95 retry budget', async () => {
+  const clock = [100, 900, 1_000, 1_800];
+  const lockOptions = [];
+  const repository = new RepositoryAdapter({
+    now: () => clock.shift(),
+    boundaryLockJitterMs: 100,
+    boundaryLockMaxWaitMs: 1_000,
+    withIssueLock: async (options, operation) => {
+      lockOptions.push(options);
+      return operation();
+    },
+  });
+
+  await repository.withBoundaryLock({ issue: 1117, verb: 'review' }, async () => undefined);
+  await repository.withBoundaryLock({ issue: 1117, verb: 'review' }, async () => undefined);
+
+  const timings = repository.boundaryLockTimings();
+  assert.deepEqual(timings, {
+    count: 2,
+    p50Ms: 800,
+    p95Ms: 800,
+    p99Ms: 800,
+    retryBudgetMs: 900,
+    maxWaitMs: 1_000,
+  });
+  assert.equal(lockOptions[0].timeoutMs, 500);
+  assert.equal(lockOptions[0].retries, 1);
+  assert.equal(lockOptions[1].timeoutMs, 900);
+  assert.equal(lockOptions[1].retries, 1);
+});
+
+test('damage carry is written only after a clean gate and is the sole transition-context addition', async () => {
+  const calls = [];
+  let gateContext;
+  let current = 'review';
+  const damageCarry = Object.freeze({ commentId: 'carry-42', hash: 'abc123' });
+  const repository = {
+    async hydrateTask() {
+      return snapshot(current, {
+        actionLedger: { status: 'damaged', diagnostics: ['missing resolved event'] },
+      });
+    },
+    async withBoundaryLock(_options, operation) {
+      return operation();
+    },
+    async runPreMutationGate({ moveContext }) {
+      calls.push('gate');
+      gateContext = moveContext;
+      return { exit: null };
+    },
+    async recordLedgerDamageCarry({ snapshot: lockedSnapshot, movementIntent }) {
+      calls.push('carry');
+      assert.equal(lockedSnapshot, gateContext.snapshot);
+      assert.equal(movementIntent.target, 'done');
+      return damageCarry;
+    },
+    async requestTransition({ moveContext }) {
+      calls.push('move');
+      assert.notEqual(moveContext, gateContext);
+      assert.deepEqual(Object.keys(moveContext), Object.keys(gateContext));
+      for (const key of Object.keys(gateContext).filter((name) => name !== 'damageCarry')) {
+        assert.equal(moveContext[key], gateContext[key]);
+      }
+      assert.equal(moveContext.damageCarry, damageCarry);
+      assert.ok(Object.isFrozen(moveContext));
+      current = 'done';
+      return { exit: null };
+    },
+  };
+  const actions = {
+    async resume() {
+      return { status: 'complete' };
+    },
+  };
+
+  const result = await createStateCursor({ machine: machine(), repository, actions }).execute({
+    issue: 1117,
+    cwd: '/worktree',
+    trigger: 'bypass',
+    requestedTarget: 'done',
+    flags: { verb: 'supersede', force: true, reason: 'operator recovery' },
+  });
+
+  assert.equal(result.kind, 'resident-result');
+  assert.deepEqual(calls, ['gate', 'carry', 'move']);
 });
 
 test('a crash after confirmed movement converges by resuming the durable target', async () => {
