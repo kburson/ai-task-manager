@@ -11,6 +11,6 @@
   "_readingOverlapFactorComment": "Fraction of context reading time counted as additional engagement on top of active session time. 0.50 = half of reading time is assumed concurrent with session (waiting for AI, reading while working); the other half is idle gap that reading already accounts for.",
   "region": "national",
   "_regionComment": "Region ID from regional-rates.json used for headline cost figures. Options: sf_bay | nyc_boston | seattle_denver_austin | chicago_dc_la | south_midwest | national",
-  "outputDir": "./reports",
+  "outputDir": "./.tmp/reports",
   "_outputDirComment": "Directory where value-report.html and value-report.pdf are written. --output flag overrides the full path (including filename)."
 }

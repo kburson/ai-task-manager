@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
@@ -27,6 +28,26 @@ import {
   fleetPath,
   orchestratorLockPath,
 } from '../../../../task-tracker/paths.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
+
+{
+  const ignore = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8').split('\n');
+  for (const obsolete of [
+    'output/',
+    '/reports/',
+    'coverage/',
+    '.aitm/test-timing.json',
+    '.aitm/pool-bench.json',
+  ]) {
+    assert.equal(
+      ignore.includes(obsolete),
+      false,
+      `obsolete root ignore rule removed: ${obsolete}`
+    );
+  }
+  assert.equal(ignore.includes('.tmp/'), true, '.tmp remains the machine-local ignore boundary');
+}
 
 const mappings = [
   ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json'],

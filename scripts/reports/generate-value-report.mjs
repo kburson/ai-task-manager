@@ -106,7 +106,7 @@ const cfg = {
   owner:         resolvedOwner || null,
   repo:          resolvedRepo,
   title:         flag('--title', 'AI Engineering Value Report'),
-  output:        flag('--output') ?? path.join(fileCfg.outputDir ?? './reports', 'value-report'),
+  output:        flag('--output') ?? path.join(fileCfg.outputDir ?? './.tmp/reports', 'value-report'),
   issues:        flag('--issues')?.split(',').map(Number) ?? null,
   role:          flag('--role')         ?? fileCfg.role                   ?? 'mid',
   soloRole:      flag('--solo-role')    ?? fileCfg.soloRole               ?? 'senior',

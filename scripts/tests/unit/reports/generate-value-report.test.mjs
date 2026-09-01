@@ -9,6 +9,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   readEngagedMinutes,
   readDurationMinutes,
@@ -16,6 +19,15 @@ import {
   accelRatio,
   formatAcceleration,
 } from '../../../reports/lib/board-fields.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const read = (rel) => readFileSync(path.join(repoRoot, rel), 'utf8');
+
+test('value reports default beneath .tmp/reports', () => {
+  const config = JSON.parse(read('scripts/reports/value-report-config.json'));
+  assert.equal(config.outputDir, './.tmp/reports');
+  assert.match(read('scripts/reports/generate-value-report.mjs'), /\.\/\.tmp\/reports/);
+});
 
 test('readEngagedMinutes parses the board Engaged duration string to minutes', () => {
   // 00d 00h 40m 38s = 40 + 38/60 minutes

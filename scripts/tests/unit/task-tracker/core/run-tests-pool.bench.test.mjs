@@ -26,7 +26,7 @@ import { runPool } from '../../../../run-tests-pool.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(__dir, '../../../..');
-const ARTIFACT = path.resolve(repoRoot, '.aitm', 'pool-bench.json');
+const ARTIFACT = path.resolve(repoRoot, '.tmp', 'aitm', 'pool-bench.json');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

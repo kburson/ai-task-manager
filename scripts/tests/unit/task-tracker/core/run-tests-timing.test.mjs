@@ -3,6 +3,9 @@
 // takes plain data, so this runs in the fast (unit) lane.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   parseInProcessDurationMs,
   formatDuration,
@@ -15,6 +18,14 @@ import {
   normalizeTimingArtifact,
   formatTimingReport,
 } from '../../../../run-tests-timing.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
+
+test('test timing artifact is runtime state beneath .tmp/aitm', () => {
+  const source = readFileSync(path.join(repoRoot, 'scripts/run-tests.mjs'), 'utf8');
+  assert.match(source, /path\.resolve\(repoRoot, '\.tmp', 'aitm', 'test-timing\.json'\)/);
+  assert.doesNotMatch(source, /path\.resolve\(repoRoot, '\.aitm', 'test-timing\.json'\)/);
+});
 
 test('parseInProcessDurationMs reads the TAP summary line', () => {
   const stdout = ['TAP version 13', 'ok 1 - a test', '# tests 1', '# duration_ms 42.5'].join('\n');
