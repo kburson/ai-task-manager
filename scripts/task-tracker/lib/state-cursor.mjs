@@ -1,6 +1,9 @@
 // @story #1117 #1457
 
 import { computeTransitionPlan } from './move-state/transition-plan.mjs';
+import { BoundaryLockAcquireError } from './repository-adapter.mjs';
+
+export { BoundaryLockAcquireError } from './repository-adapter.mjs';
 
 const TRIGGERS = new Set(['actions-only', 'advance-forward', 'advance-reverse', 'bypass']);
 const BOUNDARY_REFUSALS = new Set([
@@ -9,14 +12,6 @@ const BOUNDARY_REFUSALS = new Set([
   'move-refused',
   'boundary-lock-refused',
 ]);
-
-export class BoundaryLockAcquireError extends Error {
-  constructor(message = 'boundary lock acquisition refused', details = {}) {
-    super(message);
-    this.name = 'BoundaryLockAcquireError';
-    Object.assign(this, details);
-  }
-}
 
 function currentStateValue(snapshot) {
   return snapshot?.currentState?.value ?? snapshot?.currentState ?? null;
@@ -179,43 +174,98 @@ export function createStateCursor({ machine, repository, actions } = {}) {
 
       if (plan?.noop) return Object.freeze({ kind: 'noop', state: current.id });
 
-      snapshot = await repository.hydrateTask({ issue, cwd });
-      const boundaryState = currentStateValue(snapshot);
-      if (boundaryState !== current.id) {
-        return Object.freeze({
-          kind: 'drift',
-          expectedState: current.id,
-          actualState: boundaryState,
-        });
-      }
-
-      const skippedResidentActions = skippedActionIds(current, plan.bypass);
-      const moveContext = buildMoveContext({
-        snapshot,
-        fromState: current.id,
-        movementIntent,
-        damageCarry: null,
-        skippedResidentActions,
-      });
-      if (typeof repository.requestLegacyBoundary !== 'function') {
-        return invalidBoundaryResult({ kind: 'missing-requestLegacyBoundary' });
-      }
-
       let boundary;
       try {
-        boundary = await repository.requestLegacyBoundary({
-          issue,
-          cwd,
-          fromState: current.id,
-          target: movementIntent.target,
-          trigger,
-          flags: movementIntent.flags,
-          movementIntent,
-          plan,
-          snapshot,
-          moveContext,
-          skippedResidentActions,
-        });
+        const hasFinalBoundary =
+          typeof repository.supportsFinalBoundary === 'function'
+            ? repository.supportsFinalBoundary()
+            : typeof repository.withBoundaryLock === 'function' &&
+              typeof repository.runPreMutationGate === 'function' &&
+              typeof repository.requestTransition === 'function';
+        if (hasFinalBoundary) {
+          boundary = await repository.withBoundaryLock(
+            { issue, verb: movementIntent.verb, projDir: cwd },
+            async () => {
+              snapshot = await repository.hydrateTask({ issue, cwd });
+              const boundaryState = currentStateValue(snapshot);
+              if (boundaryState !== current.id) {
+                return Object.freeze({
+                  kind: 'drift',
+                  expectedState: current.id,
+                  actualState: boundaryState,
+                });
+              }
+
+              const gateContext = buildMoveContext({
+                snapshot,
+                fromState: current.id,
+                movementIntent,
+                damageCarry: null,
+                skippedResidentActions: skippedActionIds(current, plan.bypass),
+              });
+              const gateResult = await repository.runPreMutationGate({
+                moveContext: gateContext,
+                snapshot,
+                plan,
+                boundarySnapshot: snapshot,
+              });
+              if (gateResult?.exit !== null && gateResult?.exit !== undefined) {
+                return Object.freeze({ kind: 'gate-refused', phase: 'guard', ...gateResult });
+              }
+
+              const damageCarry =
+                snapshot.actionLedger?.status === 'damaged' &&
+                (trigger === 'advance-reverse' || plan.bypass)
+                  ? await repository.recordLedgerDamageCarry({ snapshot, movementIntent })
+                  : null;
+              const moveContext = damageCarry
+                ? Object.freeze({ ...gateContext, damageCarry })
+                : gateContext;
+              const move = await repository.requestTransition({
+                moveContext,
+                plan,
+                gateResult,
+              });
+              if (move?.exit !== null && move?.exit !== undefined) {
+                return Object.freeze({ ...move, kind: 'move-refused' });
+              }
+              return Object.freeze({ kind: 'moved', move });
+            }
+          );
+        } else if (typeof repository.requestLegacyBoundary === 'function') {
+          snapshot = await repository.hydrateTask({ issue, cwd });
+          const boundaryState = currentStateValue(snapshot);
+          if (boundaryState !== current.id) {
+            return Object.freeze({
+              kind: 'drift',
+              expectedState: current.id,
+              actualState: boundaryState,
+            });
+          }
+          const skippedResidentActions = skippedActionIds(current, plan.bypass);
+          const moveContext = buildMoveContext({
+            snapshot,
+            fromState: current.id,
+            movementIntent,
+            damageCarry: null,
+            skippedResidentActions,
+          });
+          boundary = await repository.requestLegacyBoundary({
+            issue,
+            cwd,
+            fromState: current.id,
+            target: movementIntent.target,
+            trigger,
+            flags: movementIntent.flags,
+            movementIntent,
+            plan,
+            snapshot,
+            moveContext,
+            skippedResidentActions,
+          });
+        } else {
+          return invalidBoundaryResult({ kind: 'missing-boundary-capability' });
+        }
       } catch (error) {
         if (error instanceof BoundaryLockAcquireError) {
           return Object.freeze({

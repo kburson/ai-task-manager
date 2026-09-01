@@ -172,7 +172,8 @@ export async function moveState(ctx) {
   ctx.tailProfile = tailProfile;
   ctx.reviewAuthority = resolveReviewAuthority(ctx.reviewAuthority);
 
-  const runGuardExecution = ctx._runGuardExecution || defaultRunGuardExecution;
+  const runGuardExecution =
+    ctx.runGuardExecution ?? ctx._runGuardExecution ?? defaultRunGuardExecution;
   const probeCompletion = ctx._probeCompletion || defaultProbeCompletion;
   const emitPhasePairRows = ctx._emitPhasePairRows || defaultEmitPhasePairRows;
   const stampEntryMarkers = ctx._stampEntryMarkers || defaultStampEntryMarkers;
