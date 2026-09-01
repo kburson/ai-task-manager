@@ -91,7 +91,7 @@ A command **outside** the allowlist is referred to Claude Code's permission **au
 
 ### `/tmp` write contract
 
-The bash-guard hook scopes Bash writes to the project root only. The canonical scratch directory is project-local `./.tmp/` (gitignored) with purpose subfolders `gh/`, `plan/`, `heal/`, `inspect/`. System `/tmp/` and `/private/tmp/` are **not** in scope for reads or writes — use `./.tmp/<subfolder>/<file>` instead. This matches the activity-guard `.tmp/**` carve-out documented in `CLAUDE.md` "Tool Usage Rules".
+The bash-guard hook scopes Bash writes to the project root only. The canonical disposable scratch directory is project-local `./.scratch/` (gitignored except for its contract README), with purpose subfolders such as `gh/`, `plan/`, `heal/`, and `inspect/`. System `/tmp/` and `/private/tmp/` are **not** in scope for reads or writes — use `./.scratch/<subfolder>/<file>` instead. Machine-local runtime state and generated output remain under `./.tmp/`. This matches the two-bucket contract documented in `CLAUDE.md` "Tool Usage Rules".
 
 ---
 

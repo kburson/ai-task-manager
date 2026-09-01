@@ -4,7 +4,8 @@ node_modules/
 .DS_Store
 
 .tmp/
-.scratch/
+.scratch/*
+!.scratch/README.md
 tmp/
 
 # c8 code-coverage output (#570) — regenerable from `npm run test:coverage`

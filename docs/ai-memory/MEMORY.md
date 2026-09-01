@@ -24,7 +24,7 @@
 - [Main-thread-only overrides feature branches](feedback_main_thread_only.md) — SUPERSEDED as default 2026-07-07 by PR-based migration; honor only on explicit per-task request. Was: commit straight to trunk, no feature branches/worktrees.
 - [/task #N bind is mandatory](feedback_task_bind_mandatory.md) — never call move-state.mjs or verbApprove directly; always /task bind first so timing-log rows accumulate.
 - [Invoke task-tracker via scripts/, not node_modules/](project_task_tracker_invocation_path.md) — node_modules/ai-task-manager is a symlink; CLI silently no-ops if invoked through it.
-- [./tmp/ is the canonical scratch directory](feedback_scratch_dir_canonical.md) — all transient/staging files go in ./tmp/, never .git/restart/ or elsewhere.
+- [.scratch/ is the canonical scratch directory](feedback_scratch_dir_canonical.md) — disposable staging files go in .scratch/; runtime and generated output stay in .tmp/.
 - [Ask which gates to toggle before parallel batch](feedback_parallel_gate_toggle.md) — before parallel sub-agent dispatch, ask user which human gates (analyze→dev, review→done, both) to disable; encode into prompts; restore after.
 - [Reload skill context after compact, not every invocation](feedback_skill_reload_after_compact.md) — check for `aitm-skill-loaded` sentinel; reload only when absent (post-compact or first run), not unconditionally.
 - [Checkpoint Pause — no steamrolling queued messages](feedback_no_steamroll.md) — before any state transition, re-read recent user messages and respond to unaddressed input before advancing.

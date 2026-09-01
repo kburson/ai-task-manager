@@ -9,6 +9,6 @@ metadata:
 
 `post-deep-dive.mjs` wraps the file content under its own `## Deep-Dive Analysis (date)` heading. The plan→develop gate (`body-gates.mjs`, min 1800 substantive chars) locates that heading and counts characters until the next `##`-level heading. If the deep-dive file itself begins with a `## Deep-Dive Analysis` heading, the gate's section terminates immediately and reports `0 char(s); minimum 1800` even though thousands of chars were posted.
 
-**Rule:** deep-dive scratch files (`.tmp/plan/deep-dive-<N>.md`) start directly with `###` subsections (e.g. `### Root cause`), never a top-level `##` heading.
+**Rule:** deep-dive scratch files (`.scratch/plan/deep-dive-<N>.md`) start directly with `###` subsections (e.g. `### Root cause`), never a top-level `##` heading.
 
 Same section-scan family as [[reference-ac-section-subheading-trap]].
