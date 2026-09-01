@@ -47,6 +47,7 @@ import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 import { postTimingSafely } from './lib/timing-post-outcome.mjs';
+import { buildCommandCursorRequest } from './lib/state-cursor.mjs';
 
 export function nowIso() {
   return new Date().toISOString();
@@ -127,6 +128,7 @@ export async function runMoveStateInProcess(
     tailProfile = 'task-owner',
     reviewAuthority = null,
     lifecycleEvidence = null,
+    cursorCommand = null,
   } = {},
   {
     host = runMoveStateHost,
@@ -148,6 +150,15 @@ export async function runMoveStateInProcess(
     AITM_INTERNAL: '1',
     AITM_VERB_CONTEXT: 'runtime',
   };
+  if (cursorCommand) {
+    const cursorRequest = buildCommandCursorRequest({
+      command: cursorCommand,
+      issue: Number(issueNum),
+      cwd: getProjectDir(),
+      requestedTarget: state,
+    });
+    mergedEnv.AITM_CURSOR_TRIGGER = cursorRequest.trigger;
+  }
 
   let outBuf = '';
   let errBuf = '';
@@ -711,7 +722,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   ctx.runMoveState = (issue, state, opts = {}) =>
     runMoveStateInProcess(issue, state, { ...opts, skipNetwork: SKIP_NETWORK });
 
-  ctx.runMoveStateDone = (issue, opts) => ctx.runMoveState(issue, 'done', opts);
+  ctx.runMoveStateDone = (issue, opts = {}) =>
+    ctx.runMoveState(issue, 'done', {
+      ...opts,
+      cursorCommand:
+        opts.cursorCommand || (opts.extraArgs?.includes('--force') ? 'force' : 'close'),
+    });
 
   ctx.worktreeLabel = () => {
     try {

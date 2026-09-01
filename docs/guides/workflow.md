@@ -191,6 +191,44 @@ A Test self-loop with a valid exact-SHA receipt runs no commands. Use `/task
 test #N --force` only for an intentional diagnostic rerun; the override is
 posted to the issue audit trail.
 
+### Stateless Cursor recovery
+
+Lifecycle commands enter one stateless Cursor contract. Forward commands name
+one target and run the current state's resident actions before challenging the
+boundary. Reverse and audited bypass commands remain available when resident
+work is incomplete. `plan-approve`, `approve`, bind/rebind, resume, Review probe,
+callbacks, and scheduled reconciliation use `actions-only`: they verify or
+resume the first incomplete action without selecting another state.
+
+When an action returns `waiting`, `paused`, or `failed`, the command exits and
+the issue stays dormant in its current state. Wake it with a new agent turn,
+`npx aitm resume <N>`, the same state verb, or its correlated callback. Progress
+comes from Git, issue/project records, checks, receipts, transition evidence,
+and the resident-action ledger; no saved Cursor or action index exists.
+
+Use the two reconciliation tools for different evidence classes:
+
+- `npx aitm reconcile <accept-live|revert-to-recorded> <N>` repairs disagreement
+  among movement records such as Project Status and last-known state.
+- `npx aitm action-ledger audit <N>` diagnoses resident-action history;
+  `action-ledger gc` removes only proven-unreferenced spill snapshots, and
+  human-approved `action-ledger reconcile` appends a correction without
+  rewriting permanent events.
+
+A missing transition-commit provenance record after an otherwise confirmed
+move is an audit warning, not permission to guess a different state. Retry the
+movement path to repair provenance. A damaged current ledger blocks normal
+actions-only and forward execution. Sanctioned reverse/force/supersede movement
+may escape only after recording a durable damage-carry comment; later visits
+retain that historical diagnosis until the named visit is reconciled.
+
+The boundary lock covers one fresh snapshot, source exits, target entries,
+damage carry, and one Status/evidence commit. Provider waits and resident-action
+correlation locks are shorter and separate. If a process stops after the commit
+but before target action startup, the next invocation rehydrates the target and
+starts or verifies its first resident action; it never repeats the committed
+boundary.
+
 ### Adaptive Plan estimates and frozen AI forecasts
 
 Refine Size and Estimate are provisional. In Plan, create a detailed evidence

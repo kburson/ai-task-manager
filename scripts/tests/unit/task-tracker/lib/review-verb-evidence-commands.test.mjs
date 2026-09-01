@@ -173,7 +173,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   // The boundary adapter captures the move result into a named binding.
   assert.match(
     reviewSource,
-    /const\s+move\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true,\s*lifecycleEvidence:\s*reviewEvidence\.lifecycleEvidence,?\s*\}\)/,
+    /const\s+move\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true,\s*lifecycleEvidence:\s*reviewEvidence\.lifecycleEvidence,\s*cursorCommand:\s*'review',?\s*\}\)/,
     'review.mjs boundary adapter captures the runMoveState result'
   );
 

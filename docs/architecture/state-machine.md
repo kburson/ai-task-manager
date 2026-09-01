@@ -19,27 +19,24 @@ container.
 
 ## The container shape
 
-Each state in `scripts/task-tracker/states/<state>.mjs` exports a frozen
-object:
+Each state in `scripts/task-tracker/states/<state>.mjs` exports one immutable
+definition with exactly three ordered method-reference lists:
 
 ```js
 {
-  name: 'plan',
+  id: 'plan',
   entryGuards: [/* Guard[] */],
+  residentActions: [/* ResidentAction[] */],
   exitGuards: [/* Guard[] */],
-  onEnter: [/* Action[] */],
 }
 ```
 
-`scripts/task-tracker/states/index.mjs` re-exports the eight containers as
-`STATES`, plus the two direction tables:
-
-- `FORWARD_CHAIN` — `state → next-state`. Mirrors `state-machine.mjs`'s
-  `FORWARD` so `/task promote` has one source of directional truth.
-- `BACKWARD_CHAIN` — `state → target[]`. Index-0 is the canonical
-  `/task demote` default; later entries document architecturally supported
-  edges that are not yet runtime-walkable (the `validateTransition` matrix
-  in `state-machine.mjs` still gates which edges actually fire).
+`createStateMachine` validates the canonical eight-state order, freezes copied
+definitions, builds an ID map, and derives `previous`, `next`, and supported
+backward targets from lifecycle policy. The ordered array plus ID map supplies
+doubly navigable topology without mutable object pointers. The legacy `STATES`
+and `FORWARD_CHAIN` exports are projections of that machine, not independent
+authorities.
 
 ## Guard contract
 
@@ -59,46 +56,79 @@ Guard = {
   stashing a value on `ctx` (e.g. `planEntryFieldsBody` writes
   `ctx.refinementPlan`).
 
-## Action contract
+## Resident-action contract
 
 ```ts
-Action = {
+ResidentAction = {
   id: string,
-  run(ctx) => void | Promise<void>
+  verify(ctx, snapshot) => ActionResult,
+  run(ctx, snapshot, correlation) => ActionResult
 }
 ```
 
-- Actions fire **after** a successful Status write and entry-marker stamp,
-  inside the `!SKIP_NETWORK` branch of `scripts/gh/move-state.mjs`.
-- Actions never refuse a transition; if one throws, the failure is logged
-  to stderr and the transition stands.
-- Re-firing an action on a subsequent move into the same state must be safe
-  (no duplicate comments, no double-stamps).
-
-`onEnter` is **not** the place for the deep work of a state. Refining the
-issue body, writing code, running tests, reviewing changes — all of that
-happens inside `/task <verb>` sessions inhabiting the state. The verb
-commands are inhabitants of states, not parts of state objects.
+- The Cursor always verifies before running. Complete durable evidence skips
+  the effect; stale or absent evidence begins the next correlated attempt.
+- `waiting`, `paused`, and `failed` end the process and leave the issue dormant
+  in its current state's action area. No action index or Cursor is persisted.
+- Durable progress is an append-only per-visit resident-action ledger whose
+  protected head is stored inline or through a verified spill pointer.
+- Resident actions never write Status, transition markers, or timing rows.
+  Those remain transition infrastructure owned by the movement saga.
+- `onEnter` is the semantic event after a target becomes current: it asks the
+  Cursor to verify or run that target's resident actions. It is not a fourth
+  configurable list.
 
 ## How the registry sees this
 
-`scripts/task-tracker/lib/state-bootstrap.mjs` walks `STATES` once at import
-and feeds each guard into the flat `guard-registry.mjs` registry. Existing
-`runGuards(from, to, ctx)` callers (central state-mover, parity tests) keep
-working unchanged. `lib/guard-bootstrap.mjs` is now a deprecation shim that
-re-exports the new bootstrap entry-point.
+`scripts/task-tracker/lib/state-bootstrap.mjs` projects machine guards into the
+flat compatibility registry. Existing `runGuards(from, to, ctx)` consumers keep
+working, but the immutable machine remains the definition and topology source.
 
 The state-objects are the new source of truth; the registry is the runtime
 dispatch layer. Adding a guard means adding it to the state's `exitGuards`
 or `entryGuards` list — never registering directly against the registry.
 
+## Stateless Cursor and repository authority
+
+Every invocation constructs a fresh Cursor and hydrates an immutable task
+snapshot. Reconciliation uses five durable movement signals: configured-project
+Status, the issue body's last-known-state marker, the current entry marker, the
+move-complete sentinel, and paired exit/entry timing rows. Git HEAD, worktree
+binding, checks, comments, receipts, and the resident-action ledger supply the
+remaining provenance needed by actions and guards. Missing or contradictory
+required authority fails closed; the Cursor never normalizes drift.
+
+A movement command resolves exactly one trigger and, when applicable, exactly
+one target before entering the Cursor:
+
+- `advance-forward` runs current resident actions, then may cross one boundary;
+- `advance-reverse` preserves the sanctioned rework/parking escape;
+- `bypass` carries explicit force or supersede audit intent; and
+- `actions-only` verifies or resumes residents without requesting a boundary.
+
+After current actions complete, the Cursor rehydrates under the final boundary
+lock, evaluates source exit guards then target entry guards, records any required
+damaged-ledger carry, and delegates one Status/evidence commit. It rehydrates the
+confirmed target before invoking the first target action. A crash after commit is
+therefore recovered by the next invocation without replaying the boundary.
+
+Resident effects and movement use deliberately different lock scopes. Action
+ledger appends and correlation selection use short per-action or issue-lock
+critical sections and release them while waiting on providers. The final
+boundary uses one issue lock around its fresh snapshot, gates, carry evidence,
+and transition commit. Cache refresh, synchronization, dependent unpark, and
+other best-effort post-commit tail work remain infrastructure rather than false
+resident progress.
+
+Review is the first production resident-action proof. Test→Review makes Review
+current before agent validation runs; an objection remains dormant in Review,
+and a later `review`, bind, rebind, resume, or callback uses `actions-only` to
+verify or retry the same action without replaying Review entry guards.
+
 ## Guard migration status
 
-All five guard-migration sub-issues below are shipped (closed): the
-per-state `exitGuards`/`entryGuards` arrays in
-`scripts/task-tracker/states/<state>.mjs` are the live dispatch path for
-every forward transition — not a future plan. Each state module's own
-header comment names which former inline call site each guard replaced.
+All guard-migration work is shipped: the per-state `exitGuards` and
+`entryGuards` arrays are the live dispatch path for every forward transition.
 
 | Issue | Scope                                            |
 | ----- | ------------------------------------------------ |
@@ -108,12 +138,9 @@ header comment names which former inline call site each guard replaced.
 | #279  | review→done close-gates → `review.exitGuards`    |
 | #271  | strip `promote.mjs` / `demote.mjs` inline checks |
 
-`onEnter` is the one piece of the container shape still stubbed: every
-state's `onEnter: Object.freeze([])` today. The per-transition side effects
-that will eventually live there (entry-timestamp stamping, pickup-directive
-posting, timing-log row writes) currently still run as hardcoded steps
-inside `scripts/task-tracker/lib/move-state/*` rather than as per-state
-Actions. Migrating them is tracked by #1117 (open).
+Develop and Test resident action contents intentionally remain separate work in
+Issue #937 owns them. Their empty lists do not move verification or CI into transition
+infrastructure; they mark the explicit migration seam.
 
 ## Entry markers
 
@@ -125,8 +152,8 @@ body as a tamper-evident, append-only audit trail of every stage the issue
 has visited. First-stamp wins per stage; a stage re-entered on a later
 visit is recorded with a `-N` suffix (e.g. `aitm-entered-develop-2`).
 
-Ordering, per `move-state-core.mjs`: **Status field write → entry-marker
-stamp → onEnter dispatch** (the last step is currently a no-op — see above).
+Ordering is: **fresh locked guards → Status/evidence commit → target
+rehydration → resident-action entry**.
 
 - **Reader/writer:** `scripts/task-tracker/lib/stage-entry-markers.mjs`
   (`stampEntryMarker`, `parseEntryMarkers`, `getStageVisitCount`,

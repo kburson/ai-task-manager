@@ -136,7 +136,7 @@ function bankResumeTranscriptTail(state, sid, task) {
 
 async function wakeReviewResidents(ctx, target) {
   if (ctx.verb === 'start') return;
-  await ctx.resumeReviewActionsAfterBind?.(target);
+  await ctx.resumeReviewActionsAfterBind?.(target, ctx.rest[0] ? 'rebind' : 'resume');
 }
 
 // `/task resume` — two paths:

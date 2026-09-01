@@ -53,6 +53,7 @@ export async function runShelve({
   removeOwner = false,
   refreshStaleBlockers = false,
   cfg,
+  cursorCommand = 'shelve',
   deps = {},
 } = {}) {
   const why = String(reason || '').trim();
@@ -69,6 +70,7 @@ export async function runShelve({
     removeOwner: Boolean(removeOwner),
     refreshStaleBlockers: Boolean(refreshStaleBlockers),
     cfg,
+    cursorCommand,
     deps,
   });
 }
@@ -94,7 +96,7 @@ export async function verbShelveAs(displayVerb, rest, cfg, deps = {}) {
   try {
     result = await (deps.withIssueLock || withIssueLock)(
       { issue: args.issueNumber, verb: displayVerb, projDir: deps.projectDir || getProjectDir() },
-      () => runShelve({ ...args, cfg, deps })
+      () => runShelve({ ...args, cfg, cursorCommand: displayVerb, deps })
     );
   } catch (error) {
     process.stderr.write(`${displayVerb}: ${error.message}\n`);

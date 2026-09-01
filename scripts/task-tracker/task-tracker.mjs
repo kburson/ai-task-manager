@@ -19,6 +19,7 @@ import {
   parseWorktreeRelocationConfirmation,
   WorktreeRelocationRequiredError,
 } from './lib/worktree-relocation-guard.mjs';
+import { buildCommandCursorRequest } from './lib/state-cursor.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -298,13 +299,18 @@ if (_isMain)
     }
     checkRepoMismatch(ctx);
     checkInit(ctx);
-    ctx.resumeReviewActionsAfterBind = async (target) => {
+    ctx.resumeReviewActionsAfterBind = async (target, command = 'rebind') => {
       const issueNumber = String(target).replace(/^#/, '');
+      const cursorRequest = buildCommandCursorRequest({
+        command,
+        issue: Number(issueNumber),
+        cwd: ctx.projectDir,
+      });
       const state = await ctx.getIssueBoardState(issueNumber);
-      if (state !== 'review') return { status: 'skipped', state };
+      if (state !== 'review') return { status: 'skipped', state, cursorRequest };
       const { verbReview } = await import('./verbs/review.mjs');
       await verbReview({ ...ctx, verb: 'review', rest: [`#${issueNumber}`] });
-      return { status: 'complete', state };
+      return { status: 'complete', state, cursorRequest };
     };
     await runVerbPreflight(ctx);
     try {
@@ -549,7 +555,7 @@ if (_isMain)
         case 'promote':
         case 'next': {
           const { verbPromote } = await import('./verbs/promote.mjs');
-          await verbPromote(ctx.rest, ctx.cfg);
+          await verbPromote(ctx.rest, ctx.cfg, { cursorCommand: ctx.verb });
           break;
         }
         case 'refine': {

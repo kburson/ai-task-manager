@@ -6,6 +6,33 @@ import { BoundaryLockAcquireError } from './repository-adapter.mjs';
 export { BoundaryLockAcquireError } from './repository-adapter.mjs';
 
 const TRIGGERS = new Set(['actions-only', 'advance-forward', 'advance-reverse', 'bypass']);
+const COMMAND_TRIGGERS = Object.freeze({
+  promote: 'advance-forward',
+  next: 'advance-forward',
+  refine: 'advance-forward',
+  plan: 'advance-forward',
+  test: 'advance-forward',
+  review: 'advance-forward',
+  close: 'advance-forward',
+  demote: 'advance-reverse',
+  reject: 'advance-reverse',
+  shelve: 'advance-reverse',
+  park: 'advance-reverse',
+  'cancel-plan': 'advance-reverse',
+  force: 'bypass',
+  supersede: 'bypass',
+  'plan-approve': 'actions-only',
+  approve: 'actions-only',
+  'review-probe': 'actions-only',
+  resume: 'actions-only',
+  bind: 'actions-only',
+  rebind: 'actions-only',
+  callback: 'actions-only',
+});
+
+export function cursorTriggerForCommand(command) {
+  return COMMAND_TRIGGERS[command] ?? null;
+}
 const BOUNDARY_REFUSALS = new Set([
   'drift',
   'gate-refused',
@@ -45,18 +72,43 @@ function skippedActionIds(stateDefinition, bypass) {
   return stateDefinition.residentActions.map(({ id }) => id);
 }
 
+export function buildCommandCursorRequest({
+  command,
+  issue,
+  cwd,
+  requestedTarget,
+  flags = {},
+} = {}) {
+  const trigger = cursorTriggerForCommand(command);
+  if (!trigger) throw new TypeError(`command cursor: unsupported command ${String(command)}`);
+  const movement = trigger !== 'actions-only';
+  if (movement && (typeof requestedTarget !== 'string' || requestedTarget.trim().length === 0)) {
+    throw new TypeError('command cursor: exactly one target is required');
+  }
+  if (!movement && requestedTarget !== undefined && requestedTarget !== null) {
+    throw new TypeError('command cursor: actions-only command must not request a target');
+  }
+  const requestFlags = Object.freeze({ ...flags, verb: command });
+  return Object.freeze({
+    issue,
+    cwd,
+    trigger,
+    ...(movement ? { requestedTarget: requestedTarget.trim().toLowerCase() } : {}),
+    flags: requestFlags,
+  });
+}
+
 export function buildReviewCursorRequest({ currentState, issue, cwd } = {}) {
-  const base = { issue, cwd };
   if (currentState === 'test') {
-    return Object.freeze({
-      ...base,
-      trigger: 'advance-forward',
+    return buildCommandCursorRequest({
+      command: 'review',
+      issue,
+      cwd,
       requestedTarget: 'review',
-      flags: Object.freeze({ verb: 'review' }),
     });
   }
   if (currentState === 'review') {
-    return Object.freeze({ ...base, trigger: 'actions-only' });
+    return buildCommandCursorRequest({ command: 'review-probe', issue, cwd });
   }
   throw new TypeError(`review cursor: expected test or review, received ${String(currentState)}`);
 }

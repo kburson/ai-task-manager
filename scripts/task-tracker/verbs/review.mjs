@@ -1499,6 +1499,7 @@ export async function verbReview(ctx) {
         const move = await runMoveState(target, 'review', {
           silent: true,
           lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+          cursorCommand: 'review',
         });
         if (move && move.ok === false && move.benign !== true) {
           return { ...move, kind: 'move-refused', phase: 'status-write', exit: move.status || 4 };

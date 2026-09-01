@@ -1223,7 +1223,11 @@ export async function verbTest(ctx) {
   const issueNumber = String(target).replace(/^#/, '');
 
   const moveState = async ({ issueNumber: n, target: t, lifecycleEvidence }) =>
-    runMoveState(`#${n}`, t, { silent: true, lifecycleEvidence });
+    runMoveState(`#${n}`, t, {
+      silent: true,
+      lifecycleEvidence,
+      cursorCommand: 'test',
+    });
   const logIssueTime = async (n) => {
     await runLogIssueTime(`#${n}`);
   };

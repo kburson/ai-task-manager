@@ -37,6 +37,7 @@ import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { nowIso } from '../lib/evidence-runner.mjs';
@@ -228,10 +229,24 @@ export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 // caller's cwd via getProjectDir (never the package install dir), and it inherits
 // the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
 // re-acquisition rather than deadlocking. `host` is injectable for tests.
-export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+export function defaultRunMoveState(
+  { issueNumber, target, command = 'promote' },
+  { host = runMoveStateHost } = {}
+) {
+  const cursorRequest = buildCommandCursorRequest({
+    command,
+    issue: issueNumber,
+    cwd: process.cwd(),
+    requestedTarget: target,
+  });
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: command,
+      AITM_CURSOR_TRIGGER: cursorRequest.trigger,
+    },
   });
 }
 
@@ -257,7 +272,9 @@ export async function runPromote({
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
-  const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const runMoveState =
+    deps.runMoveState ||
+    ((args) => defaultRunMoveState({ ...args, command: deps.cursorCommand || 'promote' }));
 
   const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);

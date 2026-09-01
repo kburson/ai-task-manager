@@ -11,5 +11,8 @@ export async function verbStart(ctx) {
     return;
   }
   await verbResume(ctx);
-  await ctx.resumeReviewActionsAfterBind?.(/^#/.test(String(raw)) ? String(raw) : `#${raw}`);
+  await ctx.resumeReviewActionsAfterBind?.(
+    /^#/.test(String(raw)) ? String(raw) : `#${raw}`,
+    'bind'
+  );
 }

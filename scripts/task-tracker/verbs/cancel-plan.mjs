@@ -5,6 +5,7 @@
 // issue fields, and restores the original body if Status does not move.
 
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
 import { fieldOptionMap, gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
@@ -124,6 +125,12 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
 }
 
 export function defaultRunMoveState({ issueNumber, reason }, { host = runMoveStateHost } = {}) {
+  const cursorRequest = buildCommandCursorRequest({
+    command: 'cancel-plan',
+    issue: issueNumber,
+    cwd: process.cwd(),
+    requestedTarget: CANCEL_PLAN_TARGET,
+  });
   return host({
     argv: [
       process.execPath,
@@ -134,7 +141,12 @@ export function defaultRunMoveState({ issueNumber, reason }, { host = runMoveSta
       '--demote-reason',
       String(reason),
     ],
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'cancel-plan' },
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: 'cancel-plan',
+      AITM_CURSOR_TRIGGER: cursorRequest.trigger,
+    },
   });
 }
 
