@@ -46,8 +46,9 @@ describe('#1089 verification stage ownership', () => {
   });
 
   test('Test reuses finalization evidence and executes complete lanes plus targeted commands', () => {
-    assert.match(testSource, /partitionVerificationCommands/);
-    assert.match(testSource, /for \(const lane of partition\.completeLanes\)/);
+    assert.match(testSource, /resolveVerificationProvider/);
+    assert.match(testSource, /testPlan = verificationProvider\.planTest/);
+    assert.match(testSource, /for \(const step of testPlan\.steps\)/);
     assert.match(
       testSource,
       /for \(const source of developEvidence\.validation\.reusableCommands\)/

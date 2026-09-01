@@ -135,6 +135,30 @@ test('buildReverifiedMessage #444: in-place re-verify banner is loud and does no
   );
 });
 
+test('verbTest #1218: invalid provider refuses before sandbox setup or state movement', () =>
+  withTmpDir(async (projectDir) => {
+    const { calls, deps } = makeDeps();
+    const result = await runVerbTest({
+      cfg: {
+        repo: 'o/r',
+        verificationProvider: {
+          id: 'project',
+          develop: { iterationSteps: [], finalSteps: [] },
+          test: { setup: 'npm-ci', steps: [] },
+        },
+      },
+      issueNumber: 1218,
+      projectDir,
+      deps,
+    });
+
+    assert.equal(result.status, 'verification-provider-invalid');
+    assert.deepEqual(calls.events, []);
+    assert.deepEqual(calls.moves, []);
+    assert.equal(calls.npmCiCalls, 0);
+    assert.equal(calls.bodyWrites.length, 0);
+  }));
+
 test('parseVerificationCommands: extracts VC checkboxes only, in order', () => {
   const body = [
     '## Acceptance Criteria',

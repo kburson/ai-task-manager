@@ -178,6 +178,113 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
   }
 });
 
+test('project provider drives Test plans, deduplicates targeted commands, and records kinds (#1218)', async () => {
+  const provider = {
+    id: 'project',
+    develop: {
+      iterationSteps: [],
+      finalSteps: [{ classification: 'xcode-build', kind: 'build', command: 'npm run lint' }],
+    },
+    test: {
+      setup: 'npm-ci',
+      steps: [
+        {
+          classification: 'simulator-ready',
+          kind: 'environment',
+          command: 'npm run format:check',
+        },
+        { classification: 'xcode-tests', kind: 'test', command: 'npm run test:unit' },
+      ],
+    },
+  };
+  const providerCfg = { ...cfg, verificationProvider: provider };
+  let body = [
+    '<!-- aitm-last-known-state: develop -->',
+    '## Verification Commands',
+    '- [ ] `npm run test:unit`',
+    '- [ ] `npm run test:slow`',
+  ].join('\n');
+  const spawned = [];
+  const finalize = async () =>
+    runDevelopVerification({
+      projectDir: PROJECT_DIR,
+      mode: 'final',
+      issueNumber: 1218,
+      verificationProvider: provider,
+      deps: {
+        isClean: () => true,
+        getHeadSha: () => SHA_A,
+        buildFingerprint: () => fingerprint(SHA_A, '/outer'),
+        now: () => INSTANT,
+        runCommand: ({ command, args }) => {
+          spawned.push([command, ...args].join(' '));
+          return { exitCode: 0, durationMs: 1, startedAt: INSTANT, completedAt: INSTANT };
+        },
+      },
+    });
+
+  const result = await runVerbTest({
+    cfg: providerCfg,
+    issueNumber: 1218,
+    projectDir: PROJECT_DIR,
+    now: () => INSTANT,
+    deps: {
+      fetchBody: async () => body,
+      mutateBody: async ({ mutate }) => {
+        body = mutate(body);
+        return { status: 'ok' };
+      },
+      postComment: async () => {},
+      getHeadSha: async () => SHA_A,
+      runDevelopFinalization: finalize,
+      createWorktree: async () => {},
+      removeWorktree: async () => {},
+      npmCi: async () => {},
+      getSandboxHeadSha: async () => SHA_A,
+      buildFingerprint: () => fingerprint(SHA_A),
+      execInSandbox: async ({ argv }) => {
+        spawned.push(argv.join(' '));
+        return {
+          exit: 0,
+          stdout: '',
+          stderr: '',
+          durationMs: 1,
+          startedAt: INSTANT,
+          completedAt: INSTANT,
+        };
+      },
+      moveState: async () => ({ ok: true }),
+      logIssueTime: async () => {},
+    },
+  });
+
+  assert.equal(result.status, 'passed');
+  assert.deepEqual(spawned, [
+    'npm run lint',
+    'npm run format:check',
+    'npm run test:unit',
+    'npm run test:slow',
+  ]);
+  const receipt = parseVerificationReceipt(body, 'test');
+  assert.deepEqual(receipt.provider, {
+    id: 'project',
+    requiredClassifications: ['xcode-build', 'simulator-ready', 'xcode-tests'],
+  });
+  assert.deepEqual(
+    receipt.commands.map(({ classification, providerId, kind }) => ({
+      classification,
+      providerId,
+      kind,
+    })),
+    [
+      { classification: 'xcode-build', providerId: 'project', kind: 'build' },
+      { classification: 'simulator-ready', providerId: 'project', kind: 'environment' },
+      { classification: 'xcode-tests', providerId: 'project', kind: 'test' },
+      { classification: 'test-targeted-1', providerId: 'project', kind: 'test' },
+    ]
+  );
+});
+
 test('declared Develop steps spawn in order for a non-JavaScript fixture (#1250)', () => {
   const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'develop-swift-'));
   const scriptsDir = path.join(projectDir, 'scripts', 'verify');

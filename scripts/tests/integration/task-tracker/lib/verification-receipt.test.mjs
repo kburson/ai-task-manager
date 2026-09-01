@@ -135,6 +135,44 @@ describe('verification fingerprint and receipt creation', () => {
       ]
     );
   });
+
+  test('records optional provider identity, required classifications, and semantic command kind (#1218)', () => {
+    const { fingerprint } = fixtureReceipt();
+    const receipt = createVerificationReceipt({
+      issueNumber: 1218,
+      stage: 'test',
+      fingerprint,
+      provider: { id: 'project', requiredClassifications: ['xcode-build', 'xcode-tests'] },
+      commands: [
+        {
+          classification: 'xcode-build',
+          providerId: 'project',
+          kind: 'build',
+          command: 'npm',
+          args: ['run', 'test:unit'],
+          exitCode: 0,
+          durationMs: 1,
+        },
+      ],
+      now: () => COMPLETED_AT,
+    });
+
+    assert.deepEqual(receipt.provider, {
+      id: 'project',
+      requiredClassifications: ['xcode-build', 'xcode-tests'],
+    });
+    assert.equal(receipt.commands[0].providerId, 'project');
+    assert.equal(receipt.commands[0].kind, 'build');
+    const validation = validateVerificationReceipt({
+      receipt,
+      expectedIssue: 1218,
+      expectedStage: 'test',
+      fingerprint,
+      required: receipt.provider.requiredClassifications,
+    });
+    assert.equal(validation.ok, false);
+    assert.ok(reasonCodes(validation).includes('command-missing'));
+  });
 });
 
 describe('verification receipt validation refusals', () => {
