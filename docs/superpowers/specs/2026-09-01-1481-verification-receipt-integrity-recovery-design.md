@@ -10,7 +10,7 @@ AITM reuses exact-SHA verification receipts to avoid repeating evidence that is 
 
 That omission permits a false green: after Test writes a valid receipt, an operator can add, remove, or change a required issue-specific command without changing the commit SHA. The cached receipt still validates, so Test can short-circuit without executing the new declaration.
 
-#1170 and #1171 implemented the missing command-set authority and invalid-marker retirement on a private branch chain. Both issues were closed, but their commits never reached trunk. Current trunk then evolved independently, adding provider metadata, execution provenance, docs-only lane decisions, and newer lifecycle consumers. Recovery must merge the historical semantics forward without replacing those newer contracts.
+Issues #1170 and #1171 implemented the missing command-set authority and invalid-marker retirement on a private branch chain. Both issues were closed, but their commits never reached trunk. Current trunk then evolved independently, adding provider metadata, execution provenance, docs-only lane decisions, and newer lifecycle consumers. Recovery must merge the historical semantics forward without replacing those newer contracts.
 
 ## Decision
 
