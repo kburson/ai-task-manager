@@ -904,8 +904,9 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
   const fetchCompletePullRequestCommits = async (prNumber, expectedHeadSha) => {
-    const query = `query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid commits(first:100,after:$cursor){totalCount nodes{commit{oid messageHeadline}} pageInfo{hasNextPage endCursor}}}}}`;
+    const query = `query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid commits(first:100,after:$cursor){totalCount nodes{commit{oid messageHeadline message parents(first:100){totalCount nodes{oid} pageInfo{hasNextPage}} tree{oid}}} pageInfo{hasNextPage endCursor}}}}}`;
     const commits = [];
+    const evidence = [];
     const seenCommitShas = new Set();
     const seenCursors = new Set();
     let cursor = null;
@@ -946,23 +947,41 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       else if (expectedTotal !== totalCount) throw deliverError('pull-request-commits');
       for (const node of nodes) {
         const commit = node?.commit;
+        const parents = commit?.parents;
+        const parentNodes = parents?.nodes;
         if (
           !SHA_RE.test(commit?.oid || '') ||
           typeof commit?.messageHeadline !== 'string' ||
           commit.messageHeadline.length === 0 ||
+          typeof commit?.message !== 'string' ||
+          commit.message.length === 0 ||
+          !Number.isSafeInteger(parents?.totalCount) ||
+          parents.totalCount < 0 ||
+          parents.totalCount > 100 ||
+          !Array.isArray(parentNodes) ||
+          parentNodes.length !== parents.totalCount ||
+          parents?.pageInfo?.hasNextPage !== false ||
+          parentNodes.some((parent) => !SHA_RE.test(parent?.oid || '')) ||
+          !SHA_RE.test(commit?.tree?.oid || '') ||
           seenCommitShas.has(commit.oid)
         ) {
           throw deliverError('pull-request-commits');
         }
         seenCommitShas.add(commit.oid);
         commits.push({ oid: commit.oid, messageHeadline: commit.messageHeadline });
+        evidence.push({
+          oid: commit.oid,
+          message: commit.message,
+          parents: parentNodes.map(({ oid }) => oid),
+          tree: commit.tree.oid,
+        });
       }
       if (commits.length > expectedTotal) throw deliverError('pull-request-commits');
       if (!pageInfo.hasNextPage) {
         if (commits.length !== expectedTotal || commits.at(-1)?.oid !== expectedHeadSha) {
           throw deliverError('pull-request-commits');
         }
-        return commits;
+        return { commits, evidence };
       }
       const nextCursor = pageInfo.endCursor;
       if (
@@ -1008,6 +1027,10 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     const separator = raw.indexOf('\n\n');
     if (separator < 0) throw deliverError('commit-object');
     const headers = raw.slice(0, separator).split('\n');
+    const trees = headers
+      .filter((line) => line.startsWith('tree '))
+      .map((line) => line.slice('tree '.length));
+    if (trees.length !== 1 || !SHA_RE.test(trees[0])) throw deliverError('commit-object');
     const message = raw.slice(separator + 2).replace(/\n$/, '');
     const [commitTitle, ...bodyLines] = message.split('\n');
     const commitMessage =
@@ -1016,6 +1039,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       parents: headers
         .filter((line) => line.startsWith('parent '))
         .map((line) => line.slice('parent '.length)),
+      tree: trees[0],
       commitTitle,
       commitMessage,
     };
@@ -1148,7 +1172,9 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '--json',
         'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit',
       ]);
-      pr.sourceCommits = await fetchCompletePullRequestCommits(prNumber, pr.headRefOid);
+      const sourceHistory = await fetchCompletePullRequestCommits(prNumber, pr.headRefOid);
+      pr.sourceCommits = sourceHistory.commits;
+      pr.sourceCommitEvidence = sourceHistory.evidence;
       pr.sourceCommitSubjects = pr.sourceCommits.map(({ messageHeadline }) => messageHeadline);
       pr.sourceCommitsComplete = true;
       pr.sourceCommitsHeadSha = pr.headRefOid;
