@@ -93,6 +93,7 @@ import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapte
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
+import { createDefaultDeliverDeps } from './deliver.mjs';
 import {
   hasAcceptedApprovalEvidence,
   hasAcceptedReviewEvidence,
@@ -626,7 +627,7 @@ export async function loadCloseDeliveryGateInput({
       reviewReceiptSha,
       agentReviewPassed,
     });
-  const selectedPullRequest = authority?.pullRequest ?? null;
+  let selectedPullRequest = authority?.pullRequest ?? null;
   let records = null;
   let noCommitRecords = null;
   const noCommitKind = isNoCommitKind(body);
@@ -655,6 +656,28 @@ export async function loadCloseDeliveryGateInput({
         .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
         .filter(Boolean)
     );
+    if (records.liveIntent?.record?.provider === 'external') {
+      const fetchEvidence =
+        ctx.fetchClosePullRequestEvidence ??
+        createDefaultDeliverDeps({ cfg, projectDir }).fetchPullRequest;
+      const evidenced = await fetchEvidence({ prNumber: selectedPullRequest.number });
+      if (
+        evidenced?.number !== selectedPullRequest.number ||
+        evidenced?.headRefOid !== selectedPullRequest.headRefOid ||
+        evidenced?.headRefName !== selectedPullRequest.headRefName ||
+        evidenced?.baseRefName !== selectedPullRequest.baseRefName
+      ) {
+        throw new TypeError('close-delivery-pr-evidence');
+      }
+      selectedPullRequest = {
+        ...selectedPullRequest,
+        sourceCommits: evidenced.sourceCommits,
+        sourceCommitEvidence: evidenced.sourceCommitEvidence,
+        sourceCommitSubjects: evidenced.sourceCommitSubjects,
+        sourceCommitsComplete: evidenced.sourceCommitsComplete,
+        sourceCommitsHeadSha: evidenced.sourceCommitsHeadSha,
+      };
+    }
   }
   if (parentIssueNumber === null && noCommitKind) {
     noCommitRecords = projectNoCommitDeliveryRecords(
@@ -686,7 +709,7 @@ async function defaultCloseHeadSha({ projectDir }) {
   return String(stdout || '').trim();
 }
 
-async function inspectCloseMergeCommit({ pexec, projectDir, mergeCommitSha }) {
+export async function inspectCloseMergeCommit({ pexec, projectDir, mergeCommitSha }) {
   const { stdout } = await pexec('git', ['cat-file', 'commit', mergeCommitSha], {
     cwd: projectDir,
     timeout: GIT_TIMEOUT_MS,
@@ -696,9 +719,14 @@ async function inspectCloseMergeCommit({ pexec, projectDir, mergeCommitSha }) {
   const separator = raw.indexOf('\n\n');
   if (separator < 0) throw new Error('close-delivery-commit-object');
   const headers = raw.slice(0, separator).split('\n');
+  const trees = headers.filter((line) => line.startsWith('tree ')).map((line) => line.slice(5));
+  if (trees.length !== 1 || !/^[0-9a-f]{40}$/.test(trees[0])) {
+    throw new Error('close-delivery-commit-object');
+  }
   const message = raw.slice(separator + 2).replace(/\n$/, '');
   const [commitTitle, ...bodyLines] = message.split('\n');
   return {
+    tree: trees[0],
     parents: headers
       .filter((line) => line.startsWith('parent '))
       .map((line) => line.slice('parent '.length)),
