@@ -6,6 +6,7 @@ export default [
     ignores: [
       'node_modules/**',
       '.tmp/**',
+      '.scratch/**',
       '.worktrees/**',
       '.claude/worktrees/**',
       'reports/**',
