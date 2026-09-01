@@ -228,5 +228,26 @@ cfg = loadConfig({ projectPath, userPath });
 assert.deepEqual(cfg.developVerification, developVerification);
 assert.equal(cfg._sources.developVerification, 'project');
 
+// Test 22 (#1218): verification providers are explicit and project-local.
+writeFileSync(projectPath, JSON.stringify({}));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(DEFAULTS.verificationProvider, null);
+assert.equal(cfg.verificationProvider, null);
+const verificationProvider = {
+  id: 'project',
+  develop: {
+    iterationSteps: [{ classification: 'swift-format', kind: 'format', command: 'npm run lint' }],
+    finalSteps: [{ classification: 'xcode-build', kind: 'build', command: 'npm test' }],
+  },
+  test: {
+    setup: 'npm-ci',
+    steps: [{ classification: 'xcode-tests', kind: 'test', command: 'npm run test:slow' }],
+  },
+};
+writeFileSync(projectPath, JSON.stringify({ verificationProvider }));
+cfg = loadConfig({ projectPath, userPath });
+assert.deepEqual(cfg.verificationProvider, verificationProvider);
+assert.equal(cfg._sources.verificationProvider, 'project');
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

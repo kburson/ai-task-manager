@@ -114,6 +114,8 @@ export const DEFAULTS = {
   // #1250 — optional project-declared Develop iteration command table.
   // Null preserves the built-in Node/JavaScript affected-check derivation.
   developVerification: null,
+  // #1218 — explicit built-in verification provider. Null preserves Node.
+  verificationProvider: null,
 };
 
 export const TYPES = {
@@ -169,6 +171,7 @@ export const TYPES = {
   estimationRubricIssue: 'integer',
   fullAutoMerge: 'object',
   developVerification: 'object',
+  verificationProvider: 'object',
 };
 
 function defaultPaths() {
