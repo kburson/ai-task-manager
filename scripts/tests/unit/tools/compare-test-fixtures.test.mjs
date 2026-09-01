@@ -22,13 +22,13 @@ test('parseBenchmarkArgs accepts refs, repeated files, samples, and output verba
     '--samples',
     '7',
     '--output',
-    '.tmp/benchmark/result.json',
+    '.scratch/benchmark/result.json',
   ]);
   assert.equal(parsed.baselineRef, 'base;not-shell');
   assert.equal(parsed.candidateRef, 'candidate');
   assert.deepEqual(parsed.files, ['a path.test.mjs', 'b.test.mjs']);
   assert.equal(parsed.samples, 7);
-  assert.equal(parsed.output, '.tmp/benchmark/result.json');
+  assert.equal(parsed.output, '.scratch/benchmark/result.json');
 });
 
 test('parseBenchmarkArgs supports different old and new cluster compositions', () => {

@@ -14,7 +14,7 @@
 // no transform logic of its own, so what the dry-run shows is exactly what the
 // tested chain produces.
 //
-// The live resume-checkpoint is a runtime artifact written under `.tmp/heal/`
+// The live resume-checkpoint is disposable work written under `.scratch/heal/`
 // (gitignored), not beside this committed runner.
 //
 // Usage:
@@ -36,7 +36,10 @@ import {
   stripSpuriousProseMarkers,
 } from './lib/corpus-marker-transforms.mjs';
 
-const STATE_PATH = new URL('../../.tmp/heal/migrate-markers-corpus.state.json', import.meta.url);
+const STATE_PATH = new URL(
+  '../../.scratch/heal/migrate-markers-corpus.state.json',
+  import.meta.url
+);
 
 // ---------------------------------------------------------------------------
 // Residual legacy-form detectors (inverse of each transform). Used by --rescan.

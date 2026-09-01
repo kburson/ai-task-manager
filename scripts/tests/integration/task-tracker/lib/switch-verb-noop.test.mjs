@@ -26,7 +26,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
-// Project-isolated scratch tree (under <repo>/.tmp/test/, gitignored) so the
+// Project-isolated scratch tree (under <repo>/.scratch/test/, gitignored) so the
 // word-counter side effects redirected below never touch the real project and
 // the lint:tmp guard stays green — no system temp dir.
 const base = mkdtempProjectIsolated('switch-noop-');

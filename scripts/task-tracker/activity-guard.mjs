@@ -139,13 +139,20 @@ if (
         `  This refusal is unconditional — neither develop state nor chore-mode grants a bypass. Edit the package in its own source checkout and reinstall; never hand-edit the installed copy.`
     );
   }
-  // Carve-out: .tmp/** is the canonical scratch directory (gitignored,
+  // Carve-out: .scratch/** is disposable scratch, while .tmp/** remains
+  // machine-local runtime/generated output. Both are writable in every state.
   // documented in CLAUDE.md "Tool Usage Rules"). Convention subfolders:
-  // .tmp/gh/ (issue body scratch), .tmp/plan/ (create-issue fragments),
-  // .tmp/heal/ (heal/repair scratch), .tmp/inspect/ (ad-hoc scripts).
+  // .scratch/gh/ (issue body scratch), .scratch/plan/ (create-issue fragments),
+  // .scratch/heal/ (repair scratch), .scratch/inspect/ (ad-hoc scripts).
   // Bypass classification so scratch writes are permitted in every kanban state.
   if (
-    normalizedTargets.every((candidate) => candidate === '.tmp' || candidate.startsWith('.tmp/'))
+    normalizedTargets.every(
+      (candidate) =>
+        candidate === '.tmp' ||
+        candidate.startsWith('.tmp/') ||
+        candidate === '.scratch' ||
+        candidate.startsWith('.scratch/')
+    )
   ) {
     process.exit(0);
   }

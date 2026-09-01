@@ -6,4 +6,4 @@ if (delayMs) {
   // eslint-disable-next-line no-empty -- intentional busy-wait for concurrency test
   while (Date.now() < until) {}
 }
-registerTask(projectDir, issueRef, `./.tmp/test/wt-${issueRef.replace('#', '')}`, branch);
+registerTask(projectDir, issueRef, `./.scratch/test/wt-${issueRef.replace('#', '')}`, branch);

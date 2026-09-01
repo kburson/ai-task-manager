@@ -279,7 +279,7 @@ if (pooledEntries.length || subprocessEntries.length || slowParallelEntries.leng
 // #861 — always persist the machine-readable timing artifact, keyed by
 // repo-relative file path, so two runs can be diffed rather than eyeballed. The
 // artifact is gitignored; the write must never fail the run.
-const TIMING_ARTIFACT_PATH = path.resolve(repoRoot, '.aitm', 'test-timing.json');
+const TIMING_ARTIFACT_PATH = path.resolve(repoRoot, '.tmp', 'aitm', 'test-timing.json');
 function writeTimingArtifact() {
   try {
     const artifact = serializeArtifact(timingRecords, {

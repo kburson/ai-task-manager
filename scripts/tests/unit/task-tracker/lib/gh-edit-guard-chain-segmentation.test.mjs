@@ -17,7 +17,7 @@ import {
   evaluateGhCreate,
 } from '../../../../task-tracker/lib/gh-edit-guard.mjs';
 
-const AUDIT = '.tmp/gh/846-close-audit.md';
+const AUDIT = '.scratch/gh/846-close-audit.md';
 
 // --- segmenter ------------------------------------------------------------
 
@@ -96,7 +96,7 @@ test('AC4 — standalone gh issue edit --body-file / --body still refuse', () =>
 });
 
 test('AC5 — a chained true positive refuses on the edit segment', () => {
-  const command = `gh issue comment 846 --body-file ${AUDIT} ; gh issue edit 849 --body-file .tmp/gh/849.md`;
+  const command = `gh issue comment 846 --body-file ${AUDIT} ; gh issue edit 849 --body-file .scratch/gh/849.md`;
   const res = evaluateGhEdit({ command });
   assert.equal(res.block, true);
   // AC6 — the reason names the issue the OFFENDING segment carries (#849),

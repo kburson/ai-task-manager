@@ -128,7 +128,7 @@ test('profiled resolver does not use general provider or session-id helpers', ()
 test('each registered adapter carries both role turns through the CLI boundary', async () => {
   for (const provider of listProviders()) {
     const fixture = memoryRepositoryFixture();
-    const dir = `.tmp/${provider}-profile`;
+    const dir = `.scratch/${provider}-profile`;
     const key = getProvider(provider).sessionIdEnvKeys[0];
     const ownerSid = `opaque-${provider}-owner`;
     const reviewerSid = `opaque-${provider}-reviewer`;
@@ -227,7 +227,7 @@ test('each registered adapter carries both role turns through the CLI boundary',
 test('CLI refuses every non-native or ambiguous environment without mutation', async () => {
   for (const [, env, code] of FAILURE_CASES) {
     const fixture = memoryRepositoryFixture();
-    const dir = '.tmp/profile-negative';
+    const dir = '.scratch/profile-negative';
     await runCliDirect(
       [
         'init',
@@ -258,7 +258,7 @@ test('CLI refuses every non-native or ambiguous environment without mutation', a
 
 test('reviewer index publication retries after the authoritative claim without duplicating it', async () => {
   const fixture = memoryRepositoryFixture();
-  const dir = '.tmp/index-publication';
+  const dir = '.scratch/index-publication';
   await runCliDirect(
     [
       'init',
@@ -332,7 +332,7 @@ test('reviewer index publication retries after the authoritative claim without d
 
 test('reviewer index authority conflicts are terminal and preserve the durable claim', async () => {
   const fixture = memoryRepositoryFixture();
-  const dir = '.tmp/index-conflict';
+  const dir = '.scratch/index-conflict';
   await runCliDirect(
     [
       'init',

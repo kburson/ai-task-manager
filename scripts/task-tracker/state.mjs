@@ -204,7 +204,7 @@ export function projectDirForState(statePath) {
   if (aimIdx !== -1) return abs.slice(0, aimIdx);
   // `.claude/` is trickier: `<main>/.claude/worktrees/<wt>/…` uses `.claude`
   // as a worktree HOST, not a state container. A state file living deeper
-  // under such a worktree (e.g. a test sandbox at `<wt>/.tmp/test/…/state.json`)
+  // under such a worktree (e.g. a test sandbox at `<wt>/.scratch/test/…/state.json`)
   // must NOT mis-anchor to `<main>`. Walk `.claude/` matches right-to-left and
   // skip any whose next segment is `worktrees/` (the host marker); the first
   // real container wins. Legacy inner state (`…/<wt>/.claude/state.json`) is

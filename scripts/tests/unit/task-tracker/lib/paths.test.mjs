@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
@@ -22,11 +23,32 @@ import {
   locksDir,
   issueLockPath,
   timingLockPath,
+  projectTmpDir,
   scratchDir,
   templatesDir,
   fleetPath,
   orchestratorLockPath,
 } from '../../../../task-tracker/paths.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
+
+{
+  const ignore = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8').split('\n');
+  for (const obsolete of [
+    'output/',
+    '/reports/',
+    'coverage/',
+    '.aitm/test-timing.json',
+    '.aitm/pool-bench.json',
+  ]) {
+    assert.equal(
+      ignore.includes(obsolete),
+      false,
+      `obsolete root ignore rule removed: ${obsolete}`
+    );
+  }
+  assert.equal(ignore.includes('.tmp/'), true, '.tmp remains the machine-local ignore boundary');
+}
 
 const mappings = [
   ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json'],
@@ -113,7 +135,7 @@ assert.equal(RUNTIME_REL.dod, `${SHARED_DIR}/${TEMPLATES_SUBDIR}/definition-of-d
 
 // Segment + scratch-prefix constants derive from SHARED_DIR.
 assert.equal(SHARED_DIR_SEGMENT, `/${SHARED_DIR}/`);
-assert.equal(SCRATCH_REL_PREFIX, `${SHARED_DIR}/scratch/`);
+assert.equal(SCRATCH_REL_PREFIX, '.scratch/');
 
 // cwd-anchored resolvers join the project root byte-identically when no legacy
 // twin exists on disk (the /tmp/proj-xyz tree has no `.claude` mirror).
@@ -135,7 +157,8 @@ assert.equal(dodPath(PX), path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR, 'definitio
 // Directory resolvers: sessions/locks moved to `.tmp/aitm/`; scratch + templates stay tracked.
 assert.equal(sessionsDir(PX), path.join(PX, ...TMP_AITM, 'sessions'));
 assert.equal(locksDir(PX), path.join(PX, ...TMP_AITM, 'locks'));
-assert.equal(scratchDir(PX), path.join(PX, SHARED_DIR, 'scratch'));
+assert.equal(projectTmpDir(PX), path.join(PX, '.scratch'));
+assert.equal(scratchDir(PX), path.join(PX, '.scratch'));
 assert.equal(templatesDir(PX), path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR));
 
 // Lock-file resolvers compose locksDir with the per-key filename.

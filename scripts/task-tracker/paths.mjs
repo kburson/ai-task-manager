@@ -4,10 +4,10 @@ import path from 'node:path';
 export const SHARED_DIR = '.ai-task-manager';
 export const LEGACY_CLAUDE_DIR = '.claude';
 
-// Subdirectories under SHARED_DIR that hold machine-local runtime state.
+// Machine-local directory names used by runtime and scratch resolvers.
 export const SESSIONS_SUBDIR = 'sessions';
 export const LOCKS_SUBDIR = 'locks';
-export const SCRATCH_SUBDIR = 'scratch';
+export const SCRATCH_SUBDIR = '.scratch';
 
 // Tracked markdown/reference templates consolidated under one folder (#574,
 // EPIC #571). The skill-installed behavior-defining templates (pickup-directive,
@@ -78,9 +78,9 @@ export const TMP_RUNTIME_REL = Object.freeze({
 // project root inside an absolute state-file path.
 export const SHARED_DIR_SEGMENT = `/${SHARED_DIR}/`;
 
-// Source-edit allowlist prefixes (relative). `.tmp/` plus the shared scratch
-// subtree are the only roots a pre-develop session may write.
-export const SCRATCH_REL_PREFIX = `${SHARED_DIR}/${SCRATCH_SUBDIR}/`;
+// Source-edit allowlist prefix for disposable project-local scratch.
+// `.tmp/**` remains a separate runtime/generated-output allowance.
+export const SCRATCH_REL_PREFIX = `${SCRATCH_SUBDIR}/`;
 
 const LEGACY_RUNTIME_PATHS = new Map([
   ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json'],
@@ -124,10 +124,11 @@ export function getProjectDir(env = process.env, cwd = process.cwd()) {
 }
 
 // Returns a project-local scratch directory, creating it if needed.
-// Keeps all ephemeral files inside the gitignored `.tmp/` tree so they never
-// dirty the working tree. (`.gitignore` ignores `.tmp/`, NOT `tmp/`.)
+// Keeps disposable files inside the gitignored `.scratch/` tree. The legacy
+// function name is retained for caller compatibility; `.tmp/` now means
+// machine-local runtime and generated output.
 export function projectTmpDir(projDir) {
-  const dir = path.join(projDir, '.tmp');
+  const dir = path.join(projDir, SCRATCH_SUBDIR);
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -222,9 +223,9 @@ export function timingLockPath(key, projDir = getProjectDir()) {
   return path.join(locksDir(projDir), `timing-${key}.lock`);
 }
 
-// Shared scratch directory (gitignored working files).
+// Disposable project-local scratch directory (gitignored working files).
 export function scratchDir(projDir = getProjectDir()) {
-  return path.join(projDir, SHARED_DIR, SCRATCH_SUBDIR);
+  return path.join(projDir, SCRATCH_SUBDIR);
 }
 
 // Tracked templates directory (.ai-task-manager/templates/) — the consolidated

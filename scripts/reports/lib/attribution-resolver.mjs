@@ -5,7 +5,7 @@
 // delivered work only through the trunk commit-subject `[#N]` token. That token
 // became mandatory recently, so 93 of 733 closed issues carry no token in any
 // trunk commit subject and are invisible to the report even though most shipped
-// real code. The audit in `output/closed-issues-healing-analysis.md` showed the
+// real code. The audit in `.tmp/output/closed-issues-healing-analysis.md` showed the
 // fix is read-side: attribution must union THREE durable signals rather than the
 // single subject-token signal.
 //

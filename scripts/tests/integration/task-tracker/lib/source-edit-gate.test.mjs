@@ -48,7 +48,7 @@ function successfulCoReview(args, root, env) {
 }
 
 function prepareReviewerTurn(root, artifact, commit) {
-  const dir = '.tmp/co-review/source-edit-claim-invariance';
+  const dir = '.scratch/co-review/source-edit-claim-invariance';
   successfulCoReview(
     [
       'init',
@@ -215,9 +215,9 @@ test('case (c) variants #805: test/review/done REFUSE WRITE_CODE despite markers
 test('case (d): Edit on `.tmp/**` permitted regardless of state', () => {
   for (const filePath of [
     '.tmp/foo.md',
-    '.tmp/gh/body.md',
-    '.tmp/inspect/probe.mjs',
-    '.ai-task-manager/scratch/draft.md',
+    '.scratch/gh/body.md',
+    '.scratch/inspect/probe.mjs',
+    '.scratch/draft.md',
   ]) {
     const r = decideSourceEdit({
       toolName: 'Write',
@@ -308,14 +308,14 @@ test('normalizePath converts absolute paths to project-relative POSIX', () => {
 
 test('isAllowlistedPath matches every documented prefix', () => {
   assert.ok(isAllowlistedPath('.tmp/foo.md'));
-  assert.ok(isAllowlistedPath('.ai-task-manager/scratch/draft.md'));
+  assert.ok(isAllowlistedPath('.scratch/draft.md'));
   assert.equal(isAllowlistedPath('scripts/task-tracker/foo.mjs'), false);
   assert.equal(isAllowlistedPath('docs/guides/workflow.md'), false);
   assert.equal(isAllowlistedPath(''), false);
 });
 
 test('ALLOWLIST_PREFIXES is the documented set', () => {
-  assert.deepEqual(ALLOWLIST_PREFIXES.slice().sort(), ['.ai-task-manager/scratch/', '.tmp/']);
+  assert.deepEqual(ALLOWLIST_PREFIXES.slice().sort(), ['.scratch/', '.tmp/']);
 });
 
 // ── runHook integration with injected deps ─────────────────────────────────
@@ -386,7 +386,7 @@ test('runHook tolerates signal fetch failure (falls through to decide)', async (
 test('runHook allowlists .tmp without needing a bound issue or signals', async () => {
   let touched = false;
   const r = await runHook(
-    { tool_name: 'Write', tool_input: { file_path: '.tmp/inspect/probe.mjs' } },
+    { tool_name: 'Write', tool_input: { file_path: '.scratch/inspect/probe.mjs' } },
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => false,
@@ -462,7 +462,7 @@ test('a live reviewer claim does not change ordinary source-edit decisions', asy
       name: 'temporary review-file write',
       payload: {
         tool_name: 'Write',
-        tool_input: { file_path: '.tmp/reviewer-work/round-2-review.md' },
+        tool_input: { file_path: '.scratch/reviewer-work/round-2-review.md' },
       },
       deps: { loadBoundIssue: () => null },
       expectedDecision: 'allow',

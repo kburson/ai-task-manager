@@ -25,7 +25,7 @@ export const COMMANDS = Object.freeze({
       '--reviewer <reviewer-identity> Distinct external reviewer identity.',
       '--issue <N>                   Optional positive host issue; requires --artifact-kind.',
       '--artifact-kind <spec|plan>   Optional exact host artifact kind; requires --issue.',
-      '--dir <ignored-path>           Optional runtime directory; default is unique below .tmp/co-review/.',
+      '--dir <ignored-path>           Optional runtime directory; default is unique below .scratch/co-review/.',
       '--max-turns <N>                Positive reviewer-handoff maximum; default 10.',
       '--wait-cycles <N>              Positive observed waits per episode; default 15.',
       '--wait-interval <seconds>      Integer from 1 through 60; default 60.',
@@ -54,7 +54,7 @@ export const COMMANDS = Object.freeze({
       'npx aitm co-review start',
       'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent',
       'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --issue 1272 --artifact-kind spec',
-      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --dir .tmp/co-review/design-fixed --max-turns 10 --wait-cycles 15 --wait-interval 60',
+      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --dir .scratch/co-review/design-fixed --max-turns 10 --wait-cycles 15 --wait-interval 60',
       'Copy AUTHOR PROMPT to the author agent and REVIEWER PROMPT to the reviewer agent.',
     ],
     recovery:
@@ -106,8 +106,8 @@ export const COMMANDS = Object.freeze({
     transition: 'Absent -> active owner round 1; imported R1 -> active owner round 2.',
     idempotency: 'An exact configuration/hash retry returns existing state without another event.',
     examples: [
-      'npx aitm co-review init --low-level --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6',
-      'npx aitm co-review init --low-level --dir .tmp/1117-review --artifact docs/superpowers/specs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of abc1234',
+      'npx aitm co-review init --low-level --dir .scratch/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6',
+      'npx aitm co-review init --low-level --dir .scratch/1117-review --artifact docs/superpowers/specs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .scratch/1117-review/r1-claude-review.md --review-of abc1234',
     ],
     recovery:
       'If initialization refuses, preserve every input, correct the named invariant, and rerun this exact command. Never delete a surviving lock without human inspection.',
@@ -142,8 +142,8 @@ export const COMMANDS = Object.freeze({
     transition: 'None.',
     idempotency: 'Always read-only and repeatable.',
     examples: [
-      'npx aitm co-review status --dir .tmp/design-review',
-      'npx aitm co-review status --dir .tmp/design-review --json',
+      'npx aitm co-review status --dir .scratch/design-review',
+      'npx aitm co-review status --dir .scratch/design-review --json',
     ],
     recovery:
       'Follow the printed next action. On drift or lock evidence, preserve files and escalate to the human.',
@@ -176,7 +176,7 @@ export const COMMANDS = Object.freeze({
     transition: 'active available -> active claimed for the same role.',
     idempotency:
       'An exact retry by the recorded claimant returns state without a new revision/event.',
-    examples: ['npx aitm co-review claim --dir .tmp/design-review --actor owner-agent'],
+    examples: ['npx aitm co-review claim --dir .scratch/design-review --actor owner-agent'],
     recovery:
       'Wrong actor waits; other claimant stops; lock/drift evidence is preserved and escalated.',
     next: [
@@ -204,7 +204,7 @@ export const COMMANDS = Object.freeze({
     transition: 'None.',
     idempotency: 'Always read-only and safely repeatable.',
     examples: [
-      'npx aitm co-review wait --dir .tmp/design-review --actor reviewer-agent --timeout 55',
+      'npx aitm co-review wait --dir .scratch/design-review --actor reviewer-agent --timeout 55',
     ],
     recovery:
       'A timeout is not failure: report status and repeat another bounded wait if appropriate.',
@@ -244,9 +244,9 @@ export const COMMANDS = Object.freeze({
       'owner -> reviewer; reviewer changes -> owner; reviewer accepted -> accepted; final changes-requested -> active closing owner; closing owner handoff -> intervention-required.',
     idempotency: 'A completed handoff is not replayed; status reveals the already-advanced state.',
     examples: [
-      'npx aitm co-review handoff --dir .tmp/design-review --actor owner-agent --response .tmp/design-review/r2-owner-response.md --artifact docs/design.md --commit abc1234 --answers .tmp/design-review/r1-review.md --message "revision ready"',
-      'npx aitm co-review handoff --dir .tmp/design-review --actor reviewer-agent --review .tmp/design-review/r3-review.md --review-of abc1234 --decision accepted --message "accepted"',
-      'npx aitm co-review handoff --dir .tmp/design-review --actor reviewer-agent --review .tmp/design-review/r6-review.md --review-of abc1234 --decision changes-requested --summary .tmp/design-review/r6-human-summary.md --message "human decision requested"',
+      'npx aitm co-review handoff --dir .scratch/design-review --actor owner-agent --response .scratch/design-review/r2-owner-response.md --artifact docs/design.md --commit abc1234 --answers .scratch/design-review/r1-review.md --message "revision ready"',
+      'npx aitm co-review handoff --dir .scratch/design-review --actor reviewer-agent --review .scratch/design-review/r3-review.md --review-of abc1234 --decision accepted --message "accepted"',
+      'npx aitm co-review handoff --dir .scratch/design-review --actor reviewer-agent --review .scratch/design-review/r6-review.md --review-of abc1234 --decision changes-requested --summary .scratch/design-review/r6-human-summary.md --message "human decision requested"',
     ],
     recovery:
       'Do not edit a handed-off file. Correct only the named unaccepted input; on drift or branch change, stop and escalate. On exhausted budget, follow the displayed next action and complete the closing owner turn before intervention.',
@@ -281,8 +281,8 @@ export const COMMANDS = Object.freeze({
     transition: 'The active lifecycle, current role, and claim remain unchanged by the adjustment.',
     idempotency: 'An exact effective no-op preserves protocol bytes and emits no event.',
     examples: [
-      'npx aitm co-review set-max-turns --dir .tmp/design-review --max-turns 8',
-      'npx aitm co-review set-max-turns --dir .tmp/design-review --max-turns 2',
+      'npx aitm co-review set-max-turns --dir .scratch/design-review --max-turns 8',
+      'npx aitm co-review set-max-turns --dir .scratch/design-review --max-turns 2',
     ],
     recovery:
       'Run gh auth login if identity resolution fails, then rerun the exact printed command. Use status to inspect a closing owner or indefinite pause.',
@@ -319,7 +319,7 @@ export const COMMANDS = Object.freeze({
     transition: 'intervention-required remains intervention-required.',
     idempotency: 'The same path and bytes return the existing registration without another event.',
     examples: [
-      'npx aitm co-review supplement --dir .tmp/design-review --file .tmp/design-review/human-context.md',
+      'npx aitm co-review supplement --dir .scratch/design-review --file .scratch/design-review/human-context.md',
     ],
     recovery:
       'Preserve registered bytes. Correct only an unaccepted file, authenticate with gh auth login when required, and rerun.',
@@ -358,9 +358,9 @@ export const COMMANDS = Object.freeze({
     idempotency:
       'Not replayable after success because the protocol is no longer intervention-required.',
     examples: [
-      'npx aitm co-review continue --dir .tmp/design-review',
-      'npx aitm co-review continue --dir .tmp/design-review --max-turns 8 --focus .tmp/design-review/refocus.md',
-      'npx aitm co-review continue --dir .tmp/design-review --additional-turns 2',
+      'npx aitm co-review continue --dir .scratch/design-review',
+      'npx aitm co-review continue --dir .scratch/design-review --max-turns 8 --focus .scratch/design-review/refocus.md',
+      'npx aitm co-review continue --dir .scratch/design-review --additional-turns 2',
     ],
     recovery:
       'If approval or focus is wrong, correct it before success. After success, do not rerun; use status.',
@@ -407,9 +407,9 @@ export const COMMANDS = Object.freeze({
     idempotency:
       'An identical archive retry succeeds without rewriting; conflicting output is refused.',
     examples: [
-      'npx aitm co-review finalize --dir .tmp/design-review',
-      'npx aitm co-review finalize --dir .tmp/legacy-review --archive-dir docs/reviews/legacy',
-      'npx aitm co-review finalize --dir .tmp/design-review --good-enough',
+      'npx aitm co-review finalize --dir .scratch/design-review',
+      'npx aitm co-review finalize --dir .scratch/legacy-review --archive-dir docs/reviews/legacy',
+      'npx aitm co-review finalize --dir .scratch/design-review --good-enough',
     ],
     recovery:
       'Exit 4 means acceptance is durable; preserve state and run the exact printed finalize retry. Never retry the terminal handoff.',
@@ -488,7 +488,7 @@ Preconditions: Normal commands require a Git worktree, tracked artifact, and an 
 Effects: Protocol mutations stay under --dir; terminal archive publication writes exact bytes only to a validated tracked repository destination. Help, status, and wait are read-only.
 Output: Recovery instructions, validated state, immutable hashes, budget arithmetic, and the exact next action.
 Exit codes: 0=success/help; 1=runtime/integrity/protocol refusal; 2=invalid usage; 3=bounded wait timeout; 4=acceptance durable; archive publication pending.
-Examples: npx aitm co-review --help; npx aitm co-review status --dir .tmp/design-review
+Examples: npx aitm co-review --help; npx aitm co-review status --dir .scratch/design-review
 Related: npx aitm help; npx aitm verify-develop
 
 WHAT
@@ -558,9 +558,9 @@ EXIT CODES
   0 success or help; 1 runtime/integrity/protocol refusal; 2 invalid usage; 3 bounded wait timeout; 4 acceptance durable; archive publication pending.
 
 FRESH EXAMPLE
-  npx aitm co-review start --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6
-  npx aitm co-review claim --dir .tmp/design-review --actor owner-agent
-  # Owner commits docs/design.md and writes .tmp/design-review/r1-owner-response.md
+  npx aitm co-review start --dir .scratch/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6
+  npx aitm co-review claim --dir .scratch/design-review --actor owner-agent
+  # Owner commits docs/design.md and writes .scratch/design-review/r1-owner-response.md
   npx aitm co-review handoff --dir <path> --actor <owner-identity> --response <response-file> --artifact <artifact-path> --commit <sha> --message <text>
   npx aitm co-review claim --dir <path> --actor <reviewer-identity>
   # Reviewer writes an immutable review of that exact SHA
@@ -568,7 +568,7 @@ FRESH EXAMPLE
   # On changes-requested, the owner claims, revises, answers the exact review with --answers, and repeats.
 
 IMPORTED R1 EXAMPLE
-  npx aitm co-review init --low-level --dir .tmp/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of <sha>
+  npx aitm co-review init --low-level --dir .scratch/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .scratch/1117-review/r1-claude-review.md --review-of <sha>
   The imported review consumes turn 1; used=1, max=6, remaining=5.
   # If the last allowed review requests changes, summary is optional; the owner must still claim, answer, commit, and hand off once before intervention.
   npx aitm co-review set-max-turns --dir <path> --max-turns <N>

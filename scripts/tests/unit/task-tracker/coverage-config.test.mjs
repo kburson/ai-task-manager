@@ -42,11 +42,13 @@ test('AC4 — .c8rc.json has all:true, src scoped to scripts, and the exclude gl
   }
 });
 
-test('AC5 — coverage/ is gitignored', () => {
+test('AC5 — coverage output is generated beneath the ignored .tmp tree', () => {
   const ignore = read('.gitignore')
     .split('\n')
     .map((l) => l.trim());
-  assert.ok(ignore.includes('coverage/'), 'coverage/ must be present in .gitignore');
+  assert.equal(c8rc['report-dir'], '.tmp/coverage');
+  assert.ok(ignore.includes('.tmp/'), '.tmp/ must be present in .gitignore');
+  assert.ok(!ignore.includes('coverage/'), 'obsolete root coverage/ rule must be removed');
 });
 
 test('AC6 — text and html reporters are configured', () => {

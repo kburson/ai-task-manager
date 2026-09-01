@@ -13,5 +13,5 @@
     "eslint.config.mjs"
   ],
   "reporter": ["text", "html"],
-  "report-dir": "coverage"
+  "report-dir": ".tmp/coverage"
 }

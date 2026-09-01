@@ -47,7 +47,7 @@ After all four replacements exist and originals are deleted: **PAUSE and let the
 - **AC `aitm-verified-by` markers forbid pipes (`|`)**. Use multiple backticked commands or wrap in a script under `.tmp/inspect/`.
 - **AC markers must be in backticks**, or preflight warns `missing-backticks`.
 - **Pause timer on blocking questions** (`feedback_pause_on_blocking_question.md`) — `/task pause "..."` before asking, `/task start "..."` on resume.
-- **`./.tmp/` is canonical scratch dir** (`feedback_scratch_dir_canonical.md`).
+- **`./.scratch/` is the canonical disposable scratch dir** (`feedback_scratch_dir_canonical.md`); `.tmp/` is runtime and generated output.
 - _*TASK_TRACKER_FORCE_* env overrides are forbidden_* (the rip-out being completed in #275).
 - **On Mistakes** — STOP, announce, give 2-3 options, wait. No self-correct.
 

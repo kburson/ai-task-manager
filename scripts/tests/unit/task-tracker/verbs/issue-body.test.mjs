@@ -12,9 +12,9 @@ import {
 const VERSION = '<!-- aitm-body-version version="7" -->';
 
 test('issue-body parses one target and one operation file strictly', () => {
-  assert.deepEqual(parseIssueBodyArgs(['#42', '--operation-file', '.tmp/gh/op.json']), {
+  assert.deepEqual(parseIssueBodyArgs(['#42', '--operation-file', '.scratch/gh/op.json']), {
     issueNumber: 42,
-    operationFile: '.tmp/gh/op.json',
+    operationFile: '.scratch/gh/op.json',
   });
   assert.throws(() => parseIssueBodyArgs(['42']), /operation-file/);
   assert.throws(

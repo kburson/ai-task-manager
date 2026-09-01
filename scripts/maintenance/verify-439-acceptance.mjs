@@ -50,7 +50,7 @@ async function ac5() {
     const entries = await readdir(inspectDir);
     leftover = entries.filter((f) => /probe.*436|diff-436|deep-dive-437/.test(f));
   } catch {
-    // .tmp/inspect absent (gitignored / fresh checkout) → nothing to clean
+    // .scratch/inspect absent (gitignored / fresh checkout) → nothing to clean
   }
   if (leftover.length) throw new Error(`AC5 FAIL: leftover scratch ${leftover.join(', ')}`);
   console.log('AC5 OK: 0 aitm-probe-run1 markers, no investigation scratch');

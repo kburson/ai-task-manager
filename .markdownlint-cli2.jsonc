@@ -13,7 +13,7 @@
     "MD060": false,
     "MD024": { "siblings_only": true }
   },
-  "globs": ["**/*.md", "!.tmp/**"],
+  "globs": ["**/*.md", "!.tmp/**", "!.scratch/**"],
   "ignores": [
     "node_modules/**",
     ".git/**",

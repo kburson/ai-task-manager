@@ -49,7 +49,7 @@ function successfulCoReview(args, root, env) {
 }
 
 function establishReviewerClaim(root, artifact, commit) {
-  const dir = '.tmp/co-review/installed-chain-claim-invariance';
+  const dir = '.scratch/co-review/installed-chain-claim-invariance';
   successfulCoReview(
     [
       'init',
@@ -98,7 +98,7 @@ function establishReviewerClaim(root, artifact, commit) {
 }
 
 function createIntervention(root, artifact, commit) {
-  const dir = '.tmp/co-review/installed-chain-intervention';
+  const dir = '.scratch/co-review/installed-chain-intervention';
   successfulCoReview(
     [
       'init',
@@ -258,7 +258,7 @@ function refused(result) {
 
 function directToolCases(root, packageLink) {
   return ['Edit', 'Write', 'NotebookEdit', 'apply_patch'].map((toolName) => {
-    const file = path.join(root, '.tmp/review/new-review.md');
+    const file = path.join(root, '.scratch/review/new-review.md');
     const sourceFile = path.join(root, 'scripts/review/unbound-review.mjs');
     const toolInput =
       toolName === 'apply_patch'
@@ -512,17 +512,23 @@ test('owner lifecycle commands remain usable without fabricating approval', asyn
     const claimed = establishReviewerClaim(fixture.root, fixture.artifact, fixture.initialCommit);
     assert.equal(claimed.claim.provider, 'grok');
 
-    const activeDir = '.tmp/co-review/installed-chain-claim-invariance';
-    const supplement = '.tmp/co-review/installed-chain-intervention/supplement.md';
+    const activeDir = '.scratch/co-review/installed-chain-claim-invariance';
+    const supplement = '.scratch/co-review/installed-chain-intervention/supplement.md';
     const invocations = [
       ['status', '--dir', activeDir],
       ['wait', '--dir', activeDir, '--actor', 'owner-agent', '--timeout', '0'],
       ['set-max-turns', '--dir', activeDir, '--max-turns', '4'],
-      ['supplement', '--dir', '.tmp/co-review/installed-chain-intervention', '--file', supplement],
+      [
+        'supplement',
+        '--dir',
+        '.scratch/co-review/installed-chain-intervention',
+        '--file',
+        supplement,
+      ],
       [
         'continue',
         '--dir',
-        '.tmp/co-review/installed-chain-intervention',
+        '.scratch/co-review/installed-chain-intervention',
         '--additional-turns',
         '1',
       ],
@@ -555,7 +561,7 @@ test('owner lifecycle commands remain usable without fabricating approval', asyn
     });
     assert.equal(adjusted.status, 0, adjusted.stderr);
 
-    const sentinelIssueBody = path.join(fixture.root, '.tmp/issue-body.md');
+    const sentinelIssueBody = path.join(fixture.root, '.scratch/issue-body.md');
     writeFileSync(sentinelIssueBody, '# Issue\n\nNo human approval marker.\n');
     const issueBodyBefore = readFileSync(sentinelIssueBody, 'utf8');
     const intervention = createIntervention(fixture.root, fixture.artifact, fixture.initialCommit);

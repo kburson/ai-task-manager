@@ -6,7 +6,7 @@
  * issues that predate the mandatory `[#N]` commit-subject token. Runs the shared
  * three-signal resolver (`lib/attribution-resolver.mjs`) over every closed issue
  * and prints a classification: HEALABLE / COMMITS_OFFTRUNK / DELIVERABLE / DEAD /
- * UNKNOWN, mirroring the audit in `output/closed-issues-healing-analysis.md`.
+ * UNKNOWN, mirroring the audit in `.tmp/output/closed-issues-healing-analysis.md`.
  *
  * READ-ONLY by default. `--apply` opts into the single mutating action: for
  * COMMITS_OFFTRUNK issues (an `aitm-commits` marker whose SHAs are all absent

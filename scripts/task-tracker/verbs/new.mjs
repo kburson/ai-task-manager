@@ -121,7 +121,7 @@ function resolveTitleAndPlan(rest, s, projectDir) {
       process.stderr.write(
         'new: no saved plan in the active discover bucket.\n' +
           '  Compose your plan to a file, then run:\n' +
-          '    `/task save-plan --from-file .tmp/plan/<draft>.md`\n' +
+          '    `/task save-plan --from-file .scratch/plan/<draft>.md`\n' +
           '  Then retry `/task new`.\n'
       );
       process.exit(1);

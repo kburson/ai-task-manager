@@ -2,7 +2,8 @@
 // @story #199
 // Tests for the bash-guard `/tmp` contract (issue #199, Option A).
 //
-// Contract: project-local `./.tmp/` is the canonical scratch directory.
+// Contract: project-local `./.scratch/` is the canonical scratch directory.
+// Project-local `./.tmp/` remains writable runtime/generated output.
 // System `/tmp/` and `/private/tmp/` are NOT in scope for writes or reads.
 //
 // The hook reads a JSON payload from stdin and emits either nothing (pass)
@@ -54,20 +55,26 @@ function check(label, ok, detail) {
   }
 }
 
-// -- Allowed: project-local `./.tmp/foo` write ------------------------------
+// -- Allowed: project-local scratch and runtime writes -----------------------
 
 {
-  const r = await runGuard('touch ./.tmp/gh/scratch.txt');
+  const r = await runGuard('touch ./.scratch/gh/scratch.txt');
   const d = parseDecision(r.stdout);
-  check('allows write to project-local ./.tmp/gh/scratch.txt', !d.block, d.reason);
+  check('allows write to project-local ./.scratch/gh/scratch.txt', !d.block, d.reason);
 }
 
 {
-  // Project-root absolute path under .tmp/ — must pass.
+  // Project-root absolute path under .scratch/ — must pass.
   const cwd = process.cwd();
-  const r = await runGuard(`touch ${cwd}/.tmp/gh/scratch.txt`);
+  const r = await runGuard(`touch ${cwd}/.scratch/gh/scratch.txt`);
   const d = parseDecision(r.stdout);
-  check('allows write to <projectRoot>/.tmp/gh/scratch.txt', !d.block, d.reason);
+  check('allows write to <projectRoot>/.scratch/gh/scratch.txt', !d.block, d.reason);
+}
+
+{
+  const r = await runGuard('touch ./.tmp/aitm/state/runtime.json');
+  const d = parseDecision(r.stdout);
+  check('allows write to project-local ./.tmp/aitm runtime state', !d.block, d.reason);
 }
 
 // -- Rejected: system /tmp write --------------------------------------------
@@ -81,8 +88,8 @@ function check(label, ok, detail) {
     d.reason
   );
   check(
-    'block message points at ./.tmp/ for scratch',
-    d.block && /\.\/\.tmp\//.test(d.reason ?? ''),
+    'block message points at ./.scratch/ for scratch',
+    d.block && /\.\/\.scratch\//.test(d.reason ?? ''),
     d.reason
   );
 }

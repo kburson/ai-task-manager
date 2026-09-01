@@ -34,6 +34,7 @@ test('AC1: two auto-token calls with identical inputs yield different paths', ()
   const b = sandboxWorktreePath({ projectDir, issueNum, sha });
   assert.notEqual(a, b, 'concurrent runs must not alias the same worktree path');
   assert.equal(path.dirname(a), path.dirname(b), 'both live under the same tmp dir');
+  assert.equal(path.dirname(a), path.join(projectDir, '.scratch'));
   assert.ok(path.basename(a).startsWith(prefix), `a keeps the deterministic prefix: ${a}`);
   assert.ok(path.basename(b).startsWith(prefix), `b keeps the deterministic prefix: ${b}`);
 });

@@ -99,7 +99,7 @@ test('supplement registration refuses invalid files, wrong lifecycle, and lock c
   assert.deepEqual(snapshotProtocol(root, options.dir), beforeActive);
 
   rewriteProtocolState(root, options.dir, interventionForReviewer);
-  const outside = '.tmp/outside-context';
+  const outside = '.scratch/outside-context';
   writeFileSync(path.join(root, outside), 'outside');
   for (const file of [outside, `${options.dir}/state.json`, `${options.dir}/events.jsonl`]) {
     const before = snapshotProtocol(root, options.dir);
@@ -133,7 +133,7 @@ test('supplement registration refuses invalid files, wrong lifecycle, and lock c
 test('supplement registration refuses a symlinked ancestor that escapes runtime containment', async () => {
   const { api, root, options } = await initializedProtocol();
   rewriteProtocolState(root, options.dir, interventionForReviewer);
-  const sibling = '.tmp/sibling-outside-runtime';
+  const sibling = '.scratch/sibling-outside-runtime';
   mkdirSync(path.join(root, sibling));
   writeFileSync(path.join(root, sibling, 'context'), '# Escaped context\n');
   symlinkSync(path.join(root, sibling), path.join(root, options.dir, 'linked-dir'));

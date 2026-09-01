@@ -49,10 +49,10 @@ test('parseArgs omits absent current keys and falls back to active issue', () =>
 
 test('parseArgs selects v1 evidence or explicit legacy compatibility mode', () => {
   const adaptive = parseArgs(
-    ['1091', '--evidence-file', '.tmp/plan/1091.json', '--adopt-legacy-baseline'],
+    ['1091', '--evidence-file', '.scratch/plan/1091.json', '--adopt-legacy-baseline'],
     null
   );
-  assert.equal(adaptive.evidenceFile, '.tmp/plan/1091.json');
+  assert.equal(adaptive.evidenceFile, '.scratch/plan/1091.json');
   assert.equal(adaptive.adoptLegacyBaseline, true);
   assert.equal(adaptive.compatibilityMode, false);
   const legacy = parseArgs(
@@ -66,7 +66,7 @@ test('runPlanEstimate delegates evidence-file execution to adaptive authority', 
   const calls = [];
   const result = await runPlanEstimate({
     target: 1091,
-    evidenceFile: '.tmp/plan/1091.json',
+    evidenceFile: '.scratch/plan/1091.json',
     cfg: CFG,
     deps: {
       runAdaptivePlanEstimate: async (input) => {
@@ -77,7 +77,7 @@ test('runPlanEstimate delegates evidence-file execution to adaptive authority', 
   });
   assert.equal(result.status, 'converged');
   assert.equal(calls[0].issueNumber, 1091);
-  assert.equal(calls[0].evidenceFile, '.tmp/plan/1091.json');
+  assert.equal(calls[0].evidenceFile, '.scratch/plan/1091.json');
 });
 
 test('legacy planned flags require explicit compatibility mode', async () => {

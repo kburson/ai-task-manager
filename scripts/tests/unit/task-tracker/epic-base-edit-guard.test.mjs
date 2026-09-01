@@ -19,14 +19,16 @@ test('non-gated tool is allowed', () => {
   assert.equal(r.decision, 'allow');
 });
 
-test('allowlisted scratch path is allowed even on a wrong-base child', () => {
-  const r = decideEpicBaseEdit({
-    toolName: 'Write',
-    branch: 'feature/child/910',
-    relPath: '.tmp/plan/notes.md',
-    evaluation: { pass: false, reason: 'wrong-base' },
-  });
-  assert.equal(r.decision, 'allow');
+test('allowlisted scratch and runtime paths are allowed even on a wrong-base child', () => {
+  for (const relPath of ['.scratch/plan/notes.md', '.tmp/aitm/state/task.json']) {
+    const r = decideEpicBaseEdit({
+      toolName: 'Write',
+      branch: 'feature/child/910',
+      relPath,
+      evaluation: { pass: false, reason: 'wrong-base' },
+    });
+    assert.equal(r.decision, 'allow', relPath);
+  }
 });
 
 test('non-managed branches fail OPEN (solo/main/epic/story unaffected)', () => {

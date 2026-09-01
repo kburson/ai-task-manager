@@ -31,7 +31,7 @@ function fixture() {
     claim: null,
     roles: { owner: 'Author', reviewer: 'Reviewer' },
     artifact: { path: 'docs/plan.md' },
-    initialization: { runtimeDir: '.tmp/custom-review' },
+    initialization: { runtimeDir: '.scratch/custom-review' },
     integrity: { ok: true, errors: [] },
   };
   return { worktree, dir, indexFile, state };
@@ -42,7 +42,7 @@ test('registers a custom ignored protocol directory idempotently', () => {
   assert.equal(registerProtocol({ indexFile, state }).status, 'registered');
   assert.equal(registerProtocol({ indexFile, state }).status, 'unchanged');
   const row = readProtocolIndex(indexFile)['protocol-1'];
-  assert.equal(row.dir, path.join(state.worktree, '.tmp/custom-review'));
+  assert.equal(row.dir, path.join(state.worktree, '.scratch/custom-review'));
   assert.equal(row.lifecycle, 'active');
   assert.equal(row.claimedSid, null);
 });

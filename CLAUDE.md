@@ -139,7 +139,7 @@ npm run test:coverage:fast   # fast lane only — quick local check
 
 Config lives in `.c8rc.json` (`all:true` so untested files count as 0%, `src` scoped
 to `scripts/`, test/maintenance globs excluded, `text` + `html` reporters). Output goes
-to `coverage/` (gitignored). There is no minimum-coverage threshold or CI gate yet, and
+to `.tmp/coverage/` (gitignored). There is no minimum-coverage threshold or CI gate yet, and
 coverage is **not** wired into the Test-stage sandbox or `verify-develop.mjs` — run it
 manually when you want a coverage snapshot.
 
@@ -150,7 +150,8 @@ manually when you want a coverage snapshot.
 - Use Read, Edit, Write for files. Bash only for: git, npm/node, shell scripts.
 - Never search inside `node_modules/`.
 - Wrap currency in backticks: `$200`.
-- Scratch / staging files for issue bodies, deep-dives, and other transient drafts go in `./.tmp/` (gitignored), under subfolder by purpose: `./.tmp/gh/` (issue bodies), `./.tmp/plan/` (scope/acs/plan-meta), `./.tmp/heal/` (repair scratch), `./.tmp/inspect/` (ad-hoc scripts). Do not write scratch under `.git/`.
+- Disposable scratch and staging files go in `./.scratch/` (gitignored except for its contract README), under a purpose subfolder such as `gh/`, `plan/`, `heal/`, or `inspect/`. Nothing in the repository may depend on them. Reusable helpers graduate to tracked `scripts/maintenance/`; do not leave maintained code in scratch.
+- Keep machine-local runtime state and generated output in `./.tmp/` (for example `.tmp/aitm/`, `.tmp/reports/`, and `.tmp/coverage/`). Do not write scratch under `.git/` or confuse disposable `.scratch/` work with runtime `.tmp/` artifacts.
 
 ## Formatting
 

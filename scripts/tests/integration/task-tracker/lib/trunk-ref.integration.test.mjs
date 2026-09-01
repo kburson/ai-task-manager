@@ -22,7 +22,7 @@ import { commitsOnTrunkGate } from '../../../../task-tracker/lib/close-gates.mjs
 import { resolveTrunkRef, fetchTrunk } from '../../../../task-tracker/lib/trunk-ref.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
-// A plain (non-git) scratch base under <repo>/.tmp/test/. The test creates its
+// A plain (non-git) scratch base under <repo>/.scratch/test/. The test creates its
 // own bare origin + clones inside it; each clone is its own git root, so git
 // commands never ascend into this repo. Routed through projectScratchDir so the
 // repo's lint:tmp guard (no system temp writes) stays satisfied.

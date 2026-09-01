@@ -41,8 +41,8 @@ export async function verbSavePlan(ctx) {
     // No --from-file: require it (the AI must compose the plan before calling save-plan)
     process.stderr.write(
       'save-plan: --from-file <path> is required\n' +
-        '  Compose your discovery plan to a file in .tmp/plan/, then pass it here:\n' +
-        '  `/task save-plan --from-file .tmp/plan/<draft>.md`\n'
+        '  Compose your discovery plan to a file in .scratch/plan/, then pass it here:\n' +
+        '  `/task save-plan --from-file .scratch/plan/<draft>.md`\n'
     );
     process.exit(1);
   }

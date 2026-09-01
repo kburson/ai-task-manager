@@ -96,7 +96,7 @@ test('GitHub identity resolution uses only the authenticated-login command', () 
   const root = temporaryRoot();
   const login = resolveGitHubLogin({
     cwd: root,
-    recoveryCommand: 'npx aitm co-review set-max-turns --dir .tmp/review --max-turns 3',
+    recoveryCommand: 'npx aitm co-review set-max-turns --dir .scratch/review --max-turns 3',
     execFileSyncImpl(command, args) {
       assert.equal(command, 'gh');
       assert.deepEqual(args, ['api', 'user', '--jq', '.login']);
@@ -107,7 +107,7 @@ test('GitHub identity resolution uses only the authenticated-login command', () 
 });
 
 test('GitHub identity failures preserve cause and print authenticate-then-rerun recovery', () => {
-  const recoveryCommand = 'npx aitm co-review set-max-turns --dir .tmp/review --max-turns 3';
+  const recoveryCommand = 'npx aitm co-review set-max-turns --dir .scratch/review --max-turns 3';
   for (const execute of [
     () => ' \n',
     () => {
@@ -149,8 +149,8 @@ test('archive destination normalization accepts an uncreated tracked path withou
 test('archive destination refusals cannot escape, use ignored/runtime paths, or write', async () => {
   const cases = [
     { archiveDir: '../archive', expected: /path-outside-repository/ },
-    { archiveDir: '.tmp/review', expected: /archive-runtime-conflict/ },
-    { archiveDir: '.tmp/archive', expected: /archive-ignored/ },
+    { archiveDir: '.scratch/review', expected: /archive-runtime-conflict/ },
+    { archiveDir: '.scratch/archive', expected: /archive-ignored/ },
   ];
   for (const { archiveDir, expected } of cases) {
     const { root, options, repository } = await initializedProtocol();
@@ -191,7 +191,7 @@ test('initialization records a normalized archive destination but still rejects 
   const configuredApi = await memoryProtocol(configured.repository);
   const state = configuredApi.initializeProtocol({
     cwd: configured.root,
-    dir: '.tmp/review',
+    dir: '.scratch/review',
     artifact: configured.artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
@@ -206,7 +206,7 @@ test('initialization records a normalized archive destination but still rejects 
     () =>
       zeroApi.initializeProtocol({
         cwd: zero.root,
-        dir: '.tmp/review',
+        dir: '.scratch/review',
         artifact: zero.artifact,
         owner: 'owner-agent',
         reviewer: 'reviewer-agent',

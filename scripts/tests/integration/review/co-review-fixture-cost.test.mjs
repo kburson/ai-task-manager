@@ -21,7 +21,7 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
   const api = await memoryProtocol(fixture.repository);
   const options = {
     cwd: fixture.root,
-    dir: '.tmp/review',
+    dir: '.scratch/review',
     artifact: fixture.artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
@@ -85,7 +85,7 @@ test('memory repository models identity, publication, reachability, and drift', 
   const initial = repository.trackedArtifact(root, artifact);
 
   assert.deepEqual(repository.identity(root), { branch: 'trunk', head: initialCommit });
-  assert.deepEqual(repository.runtimeStatus(root, '.tmp/review'), {
+  assert.deepEqual(repository.runtimeStatus(root, '.scratch/review'), {
     ignored: true,
     tracked: false,
   });
