@@ -280,8 +280,12 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
     AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '',
-    ...envOverrides,
   };
+  // The baseline cases exercise the interactive approval path and must not
+  // inherit a delivery runner's ambient Full-Auto mode. Individual cases can
+  // still opt in explicitly through envOverrides.
+  delete env.TT_FULL_AUTO;
+  Object.assign(env, envOverrides);
   try {
     const r = await pexec('node', [CLI, ...args], { env, timeout: REVIEW_CLI_TIMEOUT_MS });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
