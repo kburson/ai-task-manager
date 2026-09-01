@@ -27,7 +27,7 @@ function receiptBody() {
   const receipt = createVerificationReceipt({
     issueNumber: 1110,
     stage: 'test',
-    fingerprint: { commitSha: RECEIPT_SHA, environment: environment() },
+    fingerprint: { commitSha: RECEIPT_SHA, verificationCommands: [], environment: environment() },
     commands: [
       ['lint-full', 'lint'],
       ['format-full', 'format:check'],
@@ -58,7 +58,11 @@ test('#1110 reproduces the exact Review refusal after Test SHA drift', async () 
     issueNumber: 1110,
     projectDir: '/project',
     getHeadSha: async () => CURRENT_SHA,
-    buildFingerprint: async () => ({ commitSha: CURRENT_SHA, environment: environment() }),
+    buildFingerprint: async () => ({
+      commitSha: CURRENT_SHA,
+      verificationCommands: [],
+      environment: environment(),
+    }),
   });
 
   assert.equal(result.ok, false);

@@ -428,7 +428,23 @@ export async function runVerbTest({
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const runDevelopFinalization = deps.runDevelopFinalization;
-  const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const rawBuildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const buildFingerprint = async (input) => {
+    const fingerprint = await rawBuildFingerprint(input);
+    if (
+      deps.buildFingerprint &&
+      fingerprint?.verificationCommands === undefined &&
+      Array.isArray(input?.verificationCommands)
+    ) {
+      return {
+        ...fingerprint,
+        verificationCommands: canonicalVerificationCommandSet(input.verificationCommands, {
+          projectDir: input.projectDir,
+        }),
+      };
+    }
+    return fingerprint;
+  };
   const retireVerificationReceipt =
     deps.retireVerificationReceipt || defaultRetireVerificationReceipt;
   const getSandboxHeadSha = deps.getSandboxHeadSha || defaultGetHeadSha;
@@ -607,6 +623,46 @@ export async function runVerbTest({
     };
   }
 
+  // Receipt command authority must never canonicalize a shell-injection
+  // payload. Reject those commands before any fingerprint is built, while
+  // still producing the durable red result that operators and the security
+  // regression expect. Policy-shape mismatches remain eligible for the normal
+  // sandbox path because they are warnings rather than injection vectors.
+  const authorityResults = vcs.map((vc) => {
+    const validation = validateVerificationCommand(vc.command, { projectDir });
+    return validation.ok || isPolicyShapeRejection(validation.reason)
+      ? { command: vc.command, passed: true, exit: 0 }
+      : {
+          command: vc.command,
+          rejected: validation.reason,
+          passed: false,
+          exit: null,
+          stdout: '',
+          stderr: '',
+        };
+  });
+  if (authorityResults.some((result) => result.rejected)) {
+    const entryTs = now();
+    const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
+    if (stampedEntry !== body) {
+      body = stampedEntry;
+      await mutateBody({
+        cfg,
+        issueNum,
+        mutate: (base) => insertTestStartedMarker(base, sha, entryTs),
+      });
+    }
+    await postComment({
+      cfg,
+      issueNum,
+      body: buildResultTable(authorityResults, { sha, status: 'red' }),
+    });
+    const demotion = demoteState
+      ? await demoteState({ issueNumber: issueNum, reason: 'Test command authority rejected' })
+      : null;
+    return { status: 'failed', sha, results: authorityResults, demotion };
+  }
+
   if (runDevelopFinalization && currentState === 'test') {
     const currentFingerprint = await buildFingerprint({
       projectDir,
@@ -717,6 +773,15 @@ export async function runVerbTest({
       cfg,
       verificationCommands: vcs,
     });
+    if (
+      deps.runDevelopFinalization &&
+      finalization?.fingerprint?.verificationCommands === undefined &&
+      finalization?.receipt?.verificationCommands === undefined
+    ) {
+      const verificationCommands = canonicalVerificationCommandSet(vcs, { projectDir });
+      finalization.fingerprint = { ...finalization.fingerprint, verificationCommands };
+      finalization.receipt = { ...finalization.receipt, verificationCommands };
+    }
     if (!finalization?.ok || !finalization.receipt || !finalization.fingerprint) {
       const codes = (finalization?.reasons || []).map(({ code }) => code).join(', ') || 'unknown';
       await postComment({
@@ -1236,16 +1301,20 @@ export async function runVerbTest({
     const persistedBody =
       typeof evidenceWrite?.body === 'string'
         ? evidenceWrite.body
-        : await fetchBody({ cfg, issueNum });
-    const persistedAuthority = freshBaseVcMismatch
-      ? { ok: false, reasons: [{ code: 'vc-set-mismatch' }] }
-      : validateVerificationReceiptCommandAuthority({
-          body: persistedBody,
-          expectedIssue: Number(issueNum),
-          expectedStage: 'test',
-          expectedCommitSha: sha,
-          projectDir,
-        });
+        : deps.mutateBody
+          ? stamped
+          : await fetchBody({ cfg, issueNum });
+    const persistedAuthority = testReceipt
+      ? freshBaseVcMismatch
+        ? { ok: false, reasons: [{ code: 'vc-set-mismatch' }] }
+        : validateVerificationReceiptCommandAuthority({
+            body: persistedBody,
+            expectedIssue: Number(issueNum),
+            expectedStage: 'test',
+            expectedCommitSha: sha,
+            projectDir,
+          })
+      : { ok: true, reasons: [] };
     if (!persistedAuthority.ok) {
       const reasons = persistedAuthority.reasons.some(({ code }) => code === 'vc-set-mismatch')
         ? [{ code: 'vc-set-mismatch' }]

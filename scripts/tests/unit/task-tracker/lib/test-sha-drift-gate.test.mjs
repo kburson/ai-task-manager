@@ -143,6 +143,7 @@ assert.equal(
 const DRIFT_SHA = 'f'.repeat(40);
 const fingerprint = (identity) => ({
   commitSha: SHA,
+  verificationCommands: [['npm', 'run', 'lint']],
   environment: {
     node: process.version,
     platform: `${process.platform}-${process.arch}`,

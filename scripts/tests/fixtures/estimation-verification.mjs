@@ -1,8 +1,18 @@
 // @story #1091
 
+import { canonicalVerificationCommandSet } from '../../task-tracker/lib/verification-receipt.mjs';
+
 export const VERIFIED_SHA = 'a'.repeat(40);
 
 export function canonicalTestReceiptFixture({ issue, sha = VERIFIED_SHA } = {}) {
+  const declaredCommands = [
+    'npm run lint',
+    'npm run format:check',
+    'npm run test:unit',
+    'npm run test:integration',
+    'npm run test:slow',
+  ];
+  const verificationCommands = canonicalVerificationCommandSet(declaredCommands);
   const environment = {
     node: process.version,
     platform: `${process.platform}-${process.arch}`,
@@ -19,6 +29,7 @@ export function canonicalTestReceiptFixture({ issue, sha = VERIFIED_SHA } = {}) 
     startedAt: '2026-08-02T14:00:00.000Z',
     completedAt: '2026-08-02T14:01:00.000Z',
     environment,
+    verificationCommands,
     commands: [
       ['lint-full', ['run', 'lint']],
       ['format-full', ['run', 'format:check']],
@@ -35,8 +46,14 @@ export function canonicalTestReceiptFixture({ issue, sha = VERIFIED_SHA } = {}) 
     supersedes: null,
   };
   return {
-    body: `<!-- aitm-verification-receipt stage="test" data="${Buffer.from(JSON.stringify(receipt)).toString('base64url')}" -->`,
-    fingerprint: { commitSha: sha, environment },
+    body: [
+      '## Verification Commands',
+      '',
+      ...declaredCommands.map((command) => `- [ ] \`${command}\``),
+      '',
+      `<!-- aitm-verification-receipt stage="test" data="${Buffer.from(JSON.stringify(receipt)).toString('base64url')}" -->`,
+    ].join('\n'),
+    fingerprint: { commitSha: sha, verificationCommands, environment },
   };
 }
 
