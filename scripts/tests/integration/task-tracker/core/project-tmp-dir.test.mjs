@@ -72,19 +72,17 @@ const REPO_ROOT = path.resolve(SCRIPTS_ROOT, '..'); // project root
 
 // AC2 (logic chain): scratch goes to a dir that .gitignore actually ignores, so
 // scratch writes can never dirty the working tree. projectTmpDir chooses
-// `.scratch/`; assert `.gitignore` ignores `.scratch/` and does NOT depend on `tmp/`.
-test('.gitignore ignores the .scratch/ dir projectTmpDir writes to', () => {
+// `.scratch/`; assert `.gitignore` ignores its contents while preserving the
+// tracked contract README, and does NOT depend on `tmp/`.
+test('.gitignore ignores .scratch contents except the contract README', () => {
   const dirName = path.basename(
     projectTmpDir(mkdtempSync(path.join(projectScratchDir('test'), 'aitm-gi-')))
   );
   assert.equal(dirName, '.scratch', 'guard: helper must target .scratch');
   const gitignore = readFileSync(path.join(REPO_ROOT, '.gitignore'), 'utf8');
-  const ignores = (entry) =>
-    gitignore
-      .split('\n')
-      .map((l) => l.trim())
-      .some((l) => l === entry || l === `/${entry}` || l === `${entry}/` || l === `/${entry}/`);
-  assert.ok(ignores('.scratch'), '.gitignore must ignore .scratch/ — else scratch dirties tree');
+  const rules = gitignore.split('\n').map((line) => line.trim());
+  assert.ok(rules.includes('.scratch/*'), '.gitignore must ignore .scratch contents');
+  assert.ok(rules.includes('!.scratch/README.md'), 'the scratch contract README must be tracked');
 });
 
 // AC4 (live evidence): the repo has no registered git worktree rooted under a
