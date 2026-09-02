@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { parseIssueKind } from './issue-kind.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
 import {
   buildVerificationFingerprint,
   hasEarnedDocsOnlyLaneSkip,
@@ -33,7 +34,11 @@ export async function resolveDocsOnlyLaneSkipProof({
     const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
     const commitSha = await getHeadSha({ projectDir });
     const buildFingerprint = deps.buildVerificationFingerprint || buildVerificationFingerprint;
-    const fingerprint = await buildFingerprint({ projectDir, commitSha });
+    const fingerprint = await buildFingerprint({
+      projectDir,
+      commitSha,
+      verificationCommands: parseVerificationCommands(body),
+    });
     const required = (
       deps.requiredTestReceiptClassifications || requiredTestReceiptClassifications
     )(receipt);

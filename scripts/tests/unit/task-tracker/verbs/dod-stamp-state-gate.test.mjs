@@ -106,6 +106,7 @@ const RECEIPT_SHA = 'a'.repeat(40);
 function testFingerprint(commitSha = RECEIPT_SHA) {
   return {
     commitSha,
+    verificationCommands: [],
     environment: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,

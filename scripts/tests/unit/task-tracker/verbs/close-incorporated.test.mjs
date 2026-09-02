@@ -17,6 +17,7 @@ import { buildIncorporatedPayload } from '../../../../task-tracker/lib/delivery-
 import { INCORPORATED_CLOSE_STEPS } from '../../../../task-tracker/lib/incorporated-close.mjs';
 
 const HEAD = 'a'.repeat(40);
+const VERIFICATION_COMMANDS = [['npm', 'run', 'lint']];
 
 function verificationBody({ redReview = false } = {}) {
   const environment = {
@@ -38,14 +39,14 @@ function verificationBody({ redReview = false } = {}) {
   const testReceipt = createVerificationReceipt({
     issueNumber: 1403,
     stage: 'test',
-    fingerprint: { commitSha: HEAD, environment },
+    fingerprint: { commitSha: HEAD, verificationCommands: VERIFICATION_COMMANDS, environment },
     commands: testCommands,
     now: '2026-08-28T00:00:00.000Z',
   });
   const reviewReceipt = createVerificationReceipt({
     issueNumber: 1403,
     stage: 'review',
-    fingerprint: { commitSha: HEAD, environment },
+    fingerprint: { commitSha: HEAD, verificationCommands: VERIFICATION_COMMANDS, environment },
     commands: [
       {
         classification: 'review-probe',
@@ -57,7 +58,10 @@ function verificationBody({ redReview = false } = {}) {
     ],
     now: '2026-08-28T00:01:00.000Z',
   });
-  let body = upsertVerificationReceipt('', testReceipt);
+  let body = upsertVerificationReceipt(
+    '## Verification Commands\n- [ ] `npm run lint`',
+    testReceipt
+  );
   body = upsertVerificationReceipt(body, reviewReceipt);
   body +=
     `\n<!-- aitm-review-approved ts="2026-08-28T00:02:00.000Z" approved-sha="${HEAD}" full-auto="yes" signals="full-auto" -->` +
@@ -96,6 +100,16 @@ test('Incorporated review evidence rejects malformed claims, red commands, and a
     () =>
       resolveIncorporatedReviewEvidence({
         body: `<!-- aitm-verification-receipt stage="test" data="${minimal}" -->`,
+        issueNumber: 1403,
+        expectedSha: HEAD,
+      }),
+    /incorporated-close:accepted-evidence/
+  );
+
+  assert.throws(
+    () =>
+      resolveIncorporatedReviewEvidence({
+        body: verificationBody().replace('`npm run lint`', '`npm test`'),
         issueNumber: 1403,
         expectedSha: HEAD,
       }),

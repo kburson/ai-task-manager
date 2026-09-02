@@ -39,11 +39,16 @@ import {
 } from '../lib/markers.mjs';
 import {
   buildVerificationFingerprint,
+  canonicalVerificationCommandSet,
   createVerificationReceipt,
+  hasClaimedVerificationReceiptMarker,
+  hasMalformedVerificationReceiptClaim,
   hasVerificationReceiptMarker,
   requiredTestReceiptClassifications,
   validateVerificationReceipt,
+  validateVerificationReceiptCommandAuthority,
 } from '../lib/verification-receipt.mjs';
+import { retireVerificationReceipt as defaultRetireVerificationReceipt } from '../lib/verification-receipt-retirement.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
@@ -63,6 +68,7 @@ import {
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 
 // cspell:ignore metachar
 // #973 — `validateVerificationCommand` rejects a command for one of two
@@ -244,13 +250,14 @@ async function defaultExecInSandbox({ argv, path: wtPath, issueNumber }) {
   }
 }
 
-function defaultRunDevelopFinalization({ projectDir, issueNumber, cfg }) {
+function defaultRunDevelopFinalization({ projectDir, issueNumber, cfg, verificationCommands }) {
   return runDevelopVerification({
     projectDir,
     mode: 'final',
     issueNumber,
     developVerification: cfg.developVerification,
     verificationProvider: cfg.verificationProvider,
+    verificationCommands,
   });
 }
 
@@ -422,7 +429,25 @@ export async function runVerbTest({
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const runDevelopFinalization = deps.runDevelopFinalization;
-  const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const rawBuildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const buildFingerprint = async (input) => {
+    const fingerprint = await rawBuildFingerprint(input);
+    if (
+      deps.buildFingerprint &&
+      fingerprint?.verificationCommands === undefined &&
+      Array.isArray(input?.verificationCommands)
+    ) {
+      return {
+        ...fingerprint,
+        verificationCommands: canonicalVerificationCommandSet(input.verificationCommands, {
+          projectDir: input.projectDir,
+        }),
+      };
+    }
+    return fingerprint;
+  };
+  const retireVerificationReceipt =
+    deps.retireVerificationReceipt || defaultRetireVerificationReceipt;
   const getSandboxHeadSha = deps.getSandboxHeadSha || defaultGetHeadSha;
   // #1158 — the sandbox's own `trunk...HEAD` changed-path set. Shares the
   // #940 Review-layer helper so both gates decide "is this diff docs-only?"
@@ -599,9 +624,64 @@ export async function runVerbTest({
     };
   }
 
+  // Receipt command authority must never canonicalize a shell-injection
+  // payload. Reject those commands before any fingerprint is built, while
+  // still producing the durable red result that operators and the security
+  // regression expect. Policy-shape mismatches remain eligible for the normal
+  // sandbox path because they are warnings rather than injection vectors.
+  const authorityResults = vcs.map((vc) => {
+    const validation = validateVerificationCommand(vc.command, { projectDir });
+    return validation.ok || isPolicyShapeRejection(validation.reason)
+      ? { command: vc.command, passed: true, exit: 0 }
+      : {
+          command: vc.command,
+          rejected: validation.reason,
+          passed: false,
+          exit: null,
+          stdout: '',
+          stderr: '',
+        };
+  });
+  if (authorityResults.some((result) => result.rejected)) {
+    const entryTs = now();
+    const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
+    if (stampedEntry !== body) {
+      body = stampedEntry;
+      await mutateBody({
+        cfg,
+        issueNum,
+        mutate: (base) => insertTestStartedMarker(base, sha, entryTs),
+      });
+    }
+    await postComment({
+      cfg,
+      issueNum,
+      body: buildResultTable(authorityResults, { sha, status: 'red' }),
+    });
+    const demotion = demoteState
+      ? await demoteState({ issueNumber: issueNum, reason: 'Test command authority rejected' })
+      : null;
+    return { status: 'failed', sha, results: authorityResults, demotion };
+  }
+
+  if (hasMalformedVerificationReceiptClaim(body)) {
+    const reasons = [{ code: 'receipt-retirement-identity-unavailable' }];
+    await postComment({
+      cfg,
+      issueNum,
+      body: '⛔ Test receipt retirement refused: a claimed verification receipt is malformed, so its exact identity is unavailable. No replacement verification was executed.',
+    });
+    return { status: 'receipt-retirement-failed', sha, reasons };
+  }
+
   if (runDevelopFinalization && currentState === 'test') {
-    const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+    const currentFingerprint = await buildFingerprint({
+      projectDir,
+      commitSha: sha,
+      verificationCommands: vcs,
+    });
     const existingTestReceipt = parseVerificationReceipt(body, 'test');
+    const claimedTestReceipt = hasClaimedVerificationReceiptMarker(body, 'test');
     const existingValidation = validateVerificationReceipt({
       receipt: existingTestReceipt,
       expectedIssue: Number(issueNum),
@@ -624,12 +704,45 @@ export async function runVerbTest({
         body: `⚠ Audited Test re-run override: valid exact-SHA receipt ${existingTestReceipt.receiptId} was bypassed with --force.`,
       });
     }
+    if (!existingValidation.ok && claimedTestReceipt) {
+      if (typeof existingTestReceipt?.receiptId !== 'string') {
+        const reasons = [{ code: 'receipt-retirement-identity-unavailable' }];
+        await postComment({
+          cfg,
+          issueNum,
+          body: '⛔ Test receipt retirement refused: the claimed Test marker is malformed, so its exact receipt identity is unavailable. No replacement verification was executed.',
+        });
+        return { status: 'receipt-retirement-failed', sha, reasons };
+      }
+      try {
+        const retired = await retireVerificationReceipt({
+          cfg,
+          issueNumber: Number(issueNum),
+          stage: 'test',
+          receiptId: existingTestReceipt.receiptId,
+        });
+        body = retired.body;
+      } catch (error) {
+        const message = String(error?.message || error);
+        const reasons = [{ code: 'receipt-retirement-refused', message }];
+        await postComment({
+          cfg,
+          issueNum,
+          body: `⛔ Test receipt retirement refused: ${message}. No replacement verification was executed.`,
+        });
+        return { status: 'receipt-retirement-failed', sha, reasons };
+      }
+    }
   }
   let developEvidence = null;
   let developReuseRefusal = [];
   if (runDevelopFinalization && currentState === 'develop' && deps.forceRerun !== true) {
     try {
-      const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+      const currentFingerprint = await buildFingerprint({
+        projectDir,
+        commitSha: sha,
+        verificationCommands: vcs,
+      });
       const existingReceipt = parseVerificationReceipt(body, 'develop-final');
       const markerPresent = hasVerificationReceiptMarker(body, 'develop-final');
       const existingValidation = validateVerificationReceipt({
@@ -669,7 +782,17 @@ export async function runVerbTest({
       projectDir,
       issueNumber: Number(issueNum),
       cfg,
+      verificationCommands: vcs,
     });
+    if (
+      deps.runDevelopFinalization &&
+      finalization?.fingerprint?.verificationCommands === undefined &&
+      finalization?.receipt?.verificationCommands === undefined
+    ) {
+      const verificationCommands = canonicalVerificationCommandSet(vcs, { projectDir });
+      finalization.fingerprint = { ...finalization.fingerprint, verificationCommands };
+      finalization.receipt = { ...finalization.receipt, verificationCommands };
+    }
     if (!finalization?.ok || !finalization.receipt || !finalization.fingerprint) {
       const codes = (finalization?.reasons || []).map(({ code }) => code).join(', ') || 'unknown';
       await postComment({
@@ -791,7 +914,11 @@ export async function runVerbTest({
       if (sandboxSha !== sha) {
         evidenceRefusal = [{ code: 'sha-mismatch', expected: sha, actual: sandboxSha }];
       } else {
-        testFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+        testFingerprint = await buildFingerprint({
+          projectDir: wtPath,
+          commitSha: sha,
+          verificationCommands: vcs,
+        });
         const validation = validateVerificationReceipt({
           receipt: developEvidence.receipt,
           expectedIssue: Number(issueNum),
@@ -981,7 +1108,11 @@ export async function runVerbTest({
     }
 
     if (developEvidence && !evidenceRefusal && !laneSkipRefusal) {
-      const completedFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+      const completedFingerprint = await buildFingerprint({
+        projectDir: wtPath,
+        commitSha: sha,
+        verificationCommands: vcs,
+      });
       const completedValidation = validateVerificationReceipt({
         receipt: developEvidence.receipt,
         expectedIssue: Number(issueNum),
@@ -1141,15 +1272,36 @@ export async function runVerbTest({
     // only on the green path, so a red result ticks nothing.
     const autoTick = autoTickVerified(stamped, results, ts, { sha });
     stamped = autoTick.body;
+    let evidenceWrite = null;
+    let freshBaseVcMismatch = false;
+    let freshBaseVcInvalid = false;
     if (stamped !== body) {
       // #295 — re-run the full stamp+autoTick fold on FRESH base.
-      await mutateBody({
+      evidenceWrite = await mutateBody({
         cfg,
         issueNum,
         // #522 — sanctioned sandbox auto-stamp: `insertDodVerifiedMarker` +
         // `autoTickVerified` mint proof from the green sandbox run just executed.
         evidenceStamp: true,
         mutate: (base) => {
+          let baseVerificationCommands;
+          try {
+            baseVerificationCommands = canonicalVerificationCommandSet(
+              parseVerificationCommands(base),
+              { projectDir }
+            );
+          } catch {
+            freshBaseVcInvalid = true;
+            return base;
+          }
+          if (
+            Array.isArray(testFingerprint?.verificationCommands) &&
+            canonicalRecordJson(baseVerificationCommands) !==
+              canonicalRecordJson(testFingerprint.verificationCommands)
+          ) {
+            freshBaseVcMismatch = true;
+            return base;
+          }
           let next = insertDodVerifiedMarker(base, sha, ts);
           if (testReceipt) next = upsertVerificationReceipt(next, testReceipt);
           const ms = parseEntryMarkers(next);
@@ -1164,6 +1316,37 @@ export async function runVerbTest({
         },
       });
     }
+    const persistedBody =
+      typeof evidenceWrite?.body === 'string'
+        ? evidenceWrite.body
+        : deps.mutateBody
+          ? stamped
+          : await fetchBody({ cfg, issueNum });
+    const persistedAuthority = testReceipt
+      ? freshBaseVcInvalid
+        ? { ok: false, reasons: [{ code: 'vc-set-invalid' }] }
+        : freshBaseVcMismatch
+          ? { ok: false, reasons: [{ code: 'vc-set-mismatch' }] }
+          : validateVerificationReceiptCommandAuthority({
+              body: persistedBody,
+              expectedIssue: Number(issueNum),
+              expectedStage: 'test',
+              expectedCommitSha: sha,
+              projectDir,
+            })
+      : { ok: true, reasons: [] };
+    if (!persistedAuthority.ok) {
+      const reasons = persistedAuthority.reasons.some(({ code }) => code === 'vc-set-mismatch')
+        ? [{ code: 'vc-set-mismatch' }]
+        : persistedAuthority.reasons;
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⛔ Persisted Test evidence is invalid: ${reasons.map(({ code }) => code).join(', ')}. The issue remains in Test; rerun against the live Verification Commands.`,
+      });
+      return { status: 'develop-evidence-invalid', sha, reasons, wtPath };
+    }
+    body = persistedBody;
     // #406 — capture the move result so a refused promotion does not read as a
     // pass. The sandbox genuinely went green (post the table + log time below),
     // but the success banner in `verbTest` must be gated on the move actually

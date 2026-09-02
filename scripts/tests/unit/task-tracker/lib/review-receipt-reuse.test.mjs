@@ -11,6 +11,7 @@ import {
 import * as reviewVerb from '../../../../task-tracker/verbs/review.mjs';
 import { testExitDodVerifiedGuard } from '../../../../task-tracker/lib/test-exit-dod-verified-guard.mjs';
 import {
+  canonicalVerificationCommandSet,
   createVerificationReceipt,
   parseVerificationReceipt,
   upsertVerificationReceipt,
@@ -18,10 +19,16 @@ import {
 
 const SHA = 'a'.repeat(40);
 const INSTANT = '2026-08-01T20:00:00.000Z';
+const VERIFICATION_COMMANDS = [
+  ['node', '--test', 'scripts/tests/unit/task-tracker/lib/markers.test.mjs'],
+  ['npm', 'run', 'format:check'],
+  ['npm', 'run', 'lint'],
+];
 
 function fingerprint(overrides = {}) {
   return {
     commitSha: overrides.commitSha || SHA,
+    verificationCommands: overrides.verificationCommands || VERIFICATION_COMMANDS,
     environment: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
@@ -64,6 +71,10 @@ function bodyWith(receipt) {
       '<!-- aitm-last-known-state: test -->',
       `<!-- aitm-test-started sha="${SHA}" ts="${INSTANT}" -->`,
       `<!-- aitm-dod-verified sha="${SHA}" ts="${INSTANT}" -->`,
+      '## Verification Commands',
+      '- [ ] `npm run lint`',
+      '- [ ] `npm run format:check`',
+      '- [ ] `node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs`',
     ].join('\n'),
     receipt
   );
@@ -96,6 +107,24 @@ test('Review validates a Test receipt and seeds standard results without spawnin
     assert.equal(result.commandResults.get(command), true, command);
   }
   assert.equal(result.receipt.receiptId, receipt.receiptId);
+});
+
+test('Review refuses a Test receipt after live Verification Commands change', async () => {
+  const receipt = testReceipt();
+  const body = bodyWith(receipt).replace('`npm run lint`', '`npm test`');
+  const result = await resolveReviewVerificationEvidence({
+    body,
+    projectDir: process.cwd(),
+    getHeadSha: async () => SHA,
+    buildFingerprint: async ({ verificationCommands }) => ({
+      ...fingerprint(),
+      verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+        projectDir: process.cwd(),
+      }),
+    }),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.reasons.some(({ code }) => code === 'vc-set-mismatch'));
 });
 
 test('Review seeds targeted commands only when the Test receipt recorded them', async () => {
@@ -197,24 +226,30 @@ test('Review fails closed when HEAD cannot be resolved for a v1 receipt', async 
 });
 
 test('Review and its Test-exit guard reject a malformed v1 marker instead of falling back', async () => {
-  const malformed = [
-    '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
+  for (const claim of [
     '<!-- aitm-verification-receipt stage="test" data="not-json" -->',
-  ].join('\n');
-  const result = await resolveReviewVerificationEvidence({
-    body: malformed,
-    projectDir: '/project',
-    getHeadSha: async () => SHA,
-  });
-  assert.equal(result.ok, false);
-  assert.deepEqual(result.reasons, [{ code: 'receipt-malformed' }]);
-  const guard = testExitDodVerifiedGuard.run({
-    issueNumber: 1089,
-    body: malformed,
-    toState: 'review',
-  });
-  assert.equal(guard.ok, false);
-  assert.match(guard.reason, /receipt-malformed/);
+    '<!-- aitm-verification-receipt stage = "test" data="not-json" -->',
+    '<!-- aitm-verification-receipt data="not-json" stage="test" -->',
+  ]) {
+    const malformed = [
+      '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
+      claim,
+    ].join('\n');
+    const result = await resolveReviewVerificationEvidence({
+      body: malformed,
+      projectDir: '/project',
+      getHeadSha: async () => SHA,
+    });
+    assert.equal(result.ok, false, claim);
+    assert.deepEqual(result.reasons, [{ code: 'receipt-malformed' }], claim);
+    const guard = testExitDodVerifiedGuard.run({
+      issueNumber: 1089,
+      body: malformed,
+      toState: 'review',
+    });
+    assert.equal(guard.ok, false, claim);
+    assert.match(guard.reason, /receipt-malformed/, claim);
+  }
 });
 
 test('Review retains marker-only compatibility when no v1 receipt exists', async () => {

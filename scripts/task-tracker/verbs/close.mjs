@@ -37,11 +37,13 @@ import {
 } from '../lib/full-auto-merge-execute.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 import {
+  canonicalVerificationCommandSet,
   parseVerificationReceipt,
   parseValidatedVerificationReceipts,
   requiredTestReceiptClassifications,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
+import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import {
   parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
@@ -161,6 +163,7 @@ export function resolveIncorporatedReviewEvidence({
   projectConfig = rawProjectConfig(),
   durableReviewAuthority = null,
   reviewAuthorizationResolver = resolveReviewAuthorization,
+  projectDir = process.cwd(),
 } = {}) {
   let receipts;
   try {
@@ -174,13 +177,25 @@ export function resolveIncorporatedReviewEvidence({
   if (testReceipts.length !== 1 || reviewReceipts.length !== 1) {
     throw new Error('incorporated-close:accepted-evidence');
   }
+  let verificationCommands;
+  try {
+    verificationCommands = canonicalVerificationCommandSet(parseVerificationCommands(body), {
+      projectDir,
+    });
+  } catch {
+    throw new Error('incorporated-close:accepted-evidence');
+  }
   const validateExact = (receipt, stage, required = []) => {
     if (receipt.commitSha !== expectedSha) return false;
     return validateVerificationReceipt({
       receipt,
       expectedIssue: issueNumber,
       expectedStage: stage,
-      fingerprint: { commitSha: expectedSha, environment: receipt.environment },
+      fingerprint: {
+        commitSha: expectedSha,
+        verificationCommands,
+        environment: receipt.environment,
+      },
       required,
     }).ok;
   };

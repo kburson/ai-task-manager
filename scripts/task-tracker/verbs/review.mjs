@@ -55,6 +55,7 @@ import {
   buildVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
+  hasMalformedVerificationReceiptClaim,
   requiredTestReceiptClassifications,
   upsertVerificationReceipt,
   validateVerificationReceipt,
@@ -210,7 +211,7 @@ export async function resolveReviewVerificationEvidence({
   const receipt = parseVerificationReceipt(body, 'test');
   const commandResults = standardReviewCommandResults();
   if (!receipt) {
-    if (hasVerificationReceiptMarker(body, 'test')) {
+    if (hasVerificationReceiptMarker(body, 'test') || hasMalformedVerificationReceiptClaim(body)) {
       return {
         ok: false,
         mode: 'receipt-v1',
@@ -239,7 +240,11 @@ export async function resolveReviewVerificationEvidence({
   }
   let fingerprint;
   try {
-    fingerprint = await buildFingerprint({ projectDir, commitSha });
+    fingerprint = await buildFingerprint({
+      projectDir,
+      commitSha,
+      verificationCommands: parseVerificationCommands(body),
+    });
   } catch {
     return {
       ok: false,
@@ -292,6 +297,10 @@ export function appendReviewProbeEvidence({
   const prior = parseVerificationReceipt(body, 'review');
   const priorMatchesFingerprint =
     prior?.commitSha === fingerprint?.commitSha &&
+    prior?.verificationCommands !== undefined &&
+    fingerprint?.verificationCommands !== undefined &&
+    canonicalRecordJson(prior.verificationCommands) ===
+      canonicalRecordJson(fingerprint.verificationCommands) &&
     canonicalRecordJson(prior?.environment) === canonicalRecordJson(fingerprint?.environment);
   const commands = (probes || []).map((probe) => ({
     classification: 'review-probe',
@@ -438,8 +447,13 @@ export async function runReviewProbes({
     return { status: 'test-evidence-invalid', probes: [], reasons: testEvidence.reasons };
   }
 
+  const verificationCommands = parseVerificationCommands(body);
   const initialSha = await getHeadSha({ projectDir });
-  const initialFingerprint = await buildFingerprint({ projectDir, commitSha: initialSha });
+  const initialFingerprint = await buildFingerprint({
+    projectDir,
+    commitSha: initialSha,
+    verificationCommands,
+  });
   const validations = requested.map((command) => ({
     command,
     validation: validateCommand(command, { projectDir }),
@@ -475,6 +489,7 @@ export async function runReviewProbes({
   const completedFingerprint = await buildFingerprint({
     projectDir,
     commitSha: completedSha,
+    verificationCommands,
   });
   const fingerprintChanged =
     initialSha !== completedSha ||

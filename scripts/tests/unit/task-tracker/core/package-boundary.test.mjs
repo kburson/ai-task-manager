@@ -198,6 +198,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/review/lib/start.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
+    'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',

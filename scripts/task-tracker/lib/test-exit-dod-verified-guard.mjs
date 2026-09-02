@@ -13,7 +13,11 @@
 
 import { hasDodVerifiedMarker } from './markers.mjs';
 import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
-import { hasVerificationReceiptMarker, parseVerificationReceipt } from './verification-receipt.mjs';
+import {
+  hasMalformedVerificationReceiptClaim,
+  hasVerificationReceiptMarker,
+  parseVerificationReceipt,
+} from './verification-receipt.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'test-exit-dod-verified';
@@ -45,8 +49,8 @@ export const testExitDodVerifiedGuard = {
 
 function runPresenceGate(ctx) {
   if (
-    hasVerificationReceiptMarker(ctx.body, 'test') &&
-    !parseVerificationReceipt(ctx.body, 'test')
+    hasMalformedVerificationReceiptClaim(ctx.body) ||
+    (hasVerificationReceiptMarker(ctx.body, 'test') && !parseVerificationReceipt(ctx.body, 'test'))
   ) {
     const blocker =
       'test-to-review-receipt-malformed: Test verification receipt is malformed — return to Develop, finalize, and re-run `/task test`.';

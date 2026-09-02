@@ -9,7 +9,11 @@ import { spawnSync } from 'node:child_process';
 
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { docsKindDropsTests } from './dod-kind-filter.mjs';
-import { COMPLETE_TEST_LANES } from './verification-commands.mjs';
+import {
+  isPolicyShapeVerificationRejection,
+  validateVerificationCommand,
+} from './verification-allowlist.mjs';
+import { COMPLETE_TEST_LANES, parseVerificationCommands } from './verification-commands.mjs';
 
 export const VERIFICATION_RECEIPT_SCHEMA = 'aitm.verification-receipt/v1';
 export const VERIFICATION_COMMAND_IDENTITIES = Object.freeze({
@@ -88,7 +92,40 @@ function isCleanWorktree(projectDir) {
   return result.stdout.trim() === '';
 }
 
-export function buildVerificationFingerprint({ projectDir, commitSha, configPaths } = {}) {
+export function canonicalVerificationCommandSet(commands = [], { projectDir } = {}) {
+  if (!Array.isArray(commands)) {
+    throw new TypeError('verification-receipt: Verification Commands must be an array');
+  }
+  const canonical = commands.map((entry) => {
+    const command = typeof entry === 'string' ? entry : entry?.command;
+    const validation = validateVerificationCommand(command, { projectDir });
+    if (
+      !validation.ok &&
+      !(isPolicyShapeVerificationRejection(validation.reason) && Array.isArray(validation.argv))
+    ) {
+      throw new TypeError(
+        `verification-receipt: invalid Verification Command (${validation.reason})`
+      );
+    }
+    return validation.argv;
+  });
+  canonical.sort((left, right) =>
+    canonicalRecordJson(left).localeCompare(canonicalRecordJson(right))
+  );
+  for (let index = 1; index < canonical.length; index += 1) {
+    if (canonicalRecordJson(canonical[index - 1]) === canonicalRecordJson(canonical[index])) {
+      throw new TypeError('verification-receipt: duplicate Verification Command');
+    }
+  }
+  return canonical;
+}
+
+export function buildVerificationFingerprint({
+  projectDir,
+  commitSha,
+  configPaths,
+  verificationCommands = [],
+} = {}) {
   if (!SHA_RE.test(String(commitSha || ''))) {
     throw new TypeError('verification-receipt: commitSha must be a complete 40-hex SHA');
   }
@@ -111,6 +148,9 @@ export function buildVerificationFingerprint({ projectDir, commitSha, configPath
 
   return {
     commitSha,
+    verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+      projectDir: identity,
+    }),
     environment: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
@@ -194,6 +234,9 @@ export function createVerificationReceipt({
     startedAt,
     completedAt,
     environment: structuredClone(fingerprint?.environment),
+    ...(fingerprint?.verificationCommands !== undefined
+      ? { verificationCommands: structuredClone(fingerprint.verificationCommands) }
+      : {}),
     commands: normalizedCommands,
     supersedes: null,
   };
@@ -218,6 +261,18 @@ function malformedReceipt(receipt) {
   if (!Number.isInteger(receipt.issue) || receipt.issue <= 0) return true;
   if (typeof receipt.stage !== 'string' || receipt.stage.length === 0) return true;
   if (!SHA_RE.test(receipt.commitSha)) return true;
+  if (
+    receipt.verificationCommands !== undefined &&
+    (!Array.isArray(receipt.verificationCommands) ||
+      receipt.verificationCommands.some(
+        (argv) =>
+          !Array.isArray(argv) ||
+          argv.length === 0 ||
+          argv.some((arg) => typeof arg !== 'string' || arg.length === 0)
+      ))
+  ) {
+    return true;
+  }
   if (!canonicalInstant(receipt.startedAt) || !canonicalInstant(receipt.completedAt)) return true;
   if (Date.parse(receipt.startedAt) > Date.parse(receipt.completedAt)) return true;
   if (receipt.supersedes !== null && !ULID_RE.test(receipt.supersedes)) return true;
@@ -333,6 +388,48 @@ export function validateVerificationReceiptStructure({
   return { ok: reasons.length === 0, reasons, receipt };
 }
 
+export function validateVerificationReceiptCommandAuthority({
+  body,
+  expectedIssue,
+  expectedStage = 'test',
+  expectedCommitSha,
+  projectDir,
+} = {}) {
+  const receipt = parseVerificationReceipt(body, expectedStage);
+  const structure = validateVerificationReceiptStructure({
+    receipt,
+    expectedIssue,
+    expectedStage,
+  });
+  if (!structure.ok) return structure;
+
+  const reasons = [];
+  if (typeof expectedCommitSha === 'string' && !receipt.commitSha.startsWith(expectedCommitSha)) {
+    reasons.push(reason('sha-mismatch'));
+  }
+  let liveCommands;
+  try {
+    liveCommands = canonicalVerificationCommandSet(parseVerificationCommands(body), {
+      projectDir: projectDir || process.cwd(),
+    });
+  } catch {
+    reasons.push(reason('vc-set-invalid'));
+  }
+  if (
+    liveCommands &&
+    (receipt.verificationCommands === undefined ||
+      canonicalRecordJson(receipt.verificationCommands) !== canonicalRecordJson(liveCommands))
+  ) {
+    reasons.push(
+      reason(
+        'vc-set-mismatch',
+        receipt.verificationCommands === undefined ? { actual: 'missing' } : {}
+      )
+    );
+  }
+  return { ok: reasons.length === 0, reasons, receipt };
+}
+
 function nodeMajor(version) {
   return String(version || '').match(/^v?(\d+)/)?.[1] ?? null;
 }
@@ -393,6 +490,19 @@ export function validateVerificationReceipt({
     );
   }
   if (receipt.commitSha !== fingerprint?.commitSha) reasons.push(reason('sha-mismatch'));
+  if (
+    receipt.verificationCommands === undefined ||
+    !Array.isArray(fingerprint?.verificationCommands) ||
+    canonicalRecordJson(receipt.verificationCommands) !==
+      canonicalRecordJson(fingerprint.verificationCommands)
+  ) {
+    reasons.push(
+      reason(
+        'vc-set-mismatch',
+        receipt.verificationCommands === undefined ? { actual: 'missing' } : {}
+      )
+    );
+  }
   if (nodeMajor(receipt.environment.node) !== nodeMajor(fingerprint?.environment?.node)) {
     reasons.push(reason('node-major-mismatch'));
   }
@@ -474,9 +584,10 @@ export function parseVerificationReceipts(body) {
   return receipts;
 }
 
-export function parseValidatedVerificationReceipts(body, { expectedIssue } = {}) {
-  const receipts = [];
-  for (const claim of String(body || '').match(RECEIPT_CLAIM_RE) ?? []) {
+export function parseValidatedVerificationReceiptClaims(body, { expectedIssue } = {}) {
+  const claims = [];
+  for (const claimMatch of String(body || '').matchAll(RECEIPT_CLAIM_RE)) {
+    const claim = claimMatch[0];
     const match = claim.match(RECEIPT_MARKER_EXACT_RE);
     if (!match) throw new TypeError('verification-receipt: malformed claimed marker');
     let receipt;
@@ -497,14 +608,52 @@ export function parseValidatedVerificationReceipts(body, { expectedIssue } = {})
           .join(',')})`
       );
     }
-    receipts.push(receipt);
+    claims.push({
+      marker: claim,
+      start: claimMatch.index,
+      end: claimMatch.index + claim.length,
+      receipt,
+    });
   }
-  return receipts;
+  return claims;
+}
+
+export function parseValidatedVerificationReceipts(body, { expectedIssue } = {}) {
+  return parseValidatedVerificationReceiptClaims(body, { expectedIssue }).map(
+    ({ receipt }) => receipt
+  );
 }
 
 export function hasVerificationReceiptMarker(body, stage) {
   for (const match of String(body || '').matchAll(RECEIPT_MARKER_RE)) {
     if (stage === undefined || match[1] === stage) return true;
+  }
+  return false;
+}
+
+export function hasMalformedVerificationReceiptClaim(body) {
+  const claims = String(body || '').match(RECEIPT_CLAIM_RE) ?? [];
+  for (const claim of claims) {
+    const match = claim.match(RECEIPT_MARKER_EXACT_RE);
+    if (!match) return true;
+    try {
+      const receipt = JSON.parse(Buffer.from(match[2], 'base64url').toString('utf8'));
+      if (receipt?.stage !== match[1]) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function hasClaimedVerificationReceiptMarker(body, stage) {
+  for (const claim of String(body || '').match(RECEIPT_CLAIM_RE) ?? []) {
+    if (
+      stage === undefined ||
+      new RegExp(`\\bstage="${String(stage).replaceAll('"', '')}"`).test(claim)
+    ) {
+      return true;
+    }
   }
   return false;
 }

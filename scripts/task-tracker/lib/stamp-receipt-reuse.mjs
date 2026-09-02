@@ -10,6 +10,7 @@ import {
   validateVerificationReceipt,
 } from './verification-receipt.mjs';
 import { splitCmd } from './evidence-runner.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
 import { defaultGetLiveState } from './verifier-state-gate.mjs';
 
 const SUITE_COMMAND_RE = /^(?:npm\s+test|npm\s+run\s+test(?::(?:all|slow|unit|integration))?)$/;
@@ -182,7 +183,11 @@ export async function decideStampExecutionFromEnv({
     const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
     headSha = String(stdout || '').trim();
     const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
-    fingerprint = await buildFingerprint({ projectDir, commitSha: headSha });
+    fingerprint = await buildFingerprint({
+      projectDir,
+      commitSha: headSha,
+      verificationCommands: parseVerificationCommands(body),
+    });
   } catch {
     headSha = '';
     fingerprint = null;

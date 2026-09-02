@@ -6,7 +6,10 @@ import { test } from 'node:test';
 
 import { runDevelopVerification } from '../../../../task-tracker/verify-develop.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { parseVerificationReceipt } from '../../../../task-tracker/lib/verification-receipt.mjs';
+import {
+  canonicalVerificationCommandSet,
+  parseVerificationReceipt,
+} from '../../../../task-tracker/lib/verification-receipt.mjs';
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 import { resolveReviewVerificationEvidence } from '../../../../task-tracker/verbs/review.mjs';
 
@@ -16,9 +19,12 @@ const INSTANT = '2026-08-01T21:00:00.000Z';
 const cfg = { repo: 'o/r' };
 const PROJECT_DIR = process.cwd();
 
-function fingerprint(commitSha, identity = '/sandbox') {
+function fingerprint(commitSha, identity = '/sandbox', verificationCommands = []) {
   return {
     commitSha,
+    verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+      projectDir: PROJECT_DIR,
+    }),
     environment: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
@@ -67,15 +73,17 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
   });
   assert.equal(iteration.ok, true);
 
-  const finalize = async () =>
+  const finalize = async ({ verificationCommands }) =>
     runDevelopVerification({
       projectDir: PROJECT_DIR,
       mode: 'final',
       issueNumber: 1089,
+      verificationCommands,
       deps: {
         isClean: () => true,
         getHeadSha: () => sha,
-        buildFingerprint: () => fingerprint(sha, '/outer'),
+        buildFingerprint: ({ verificationCommands: commands }) =>
+          fingerprint(sha, '/outer', commands),
         now: () => INSTANT,
         runCommand: ({ command, args }) => {
           spawned.push([command, ...args].join(' '));
@@ -103,7 +111,8 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
         removeWorktree: async () => {},
         npmCi: async () => {},
         getSandboxHeadSha: async () => sha,
-        buildFingerprint: () => fingerprint(sha),
+        buildFingerprint: ({ verificationCommands }) =>
+          fingerprint(sha, '/sandbox', verificationCommands),
         execInSandbox: async ({ argv }) => {
           spawned.push(argv.join(' '));
           return {
@@ -131,7 +140,8 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
     body,
     projectDir: PROJECT_DIR,
     getHeadSha: async () => sha,
-    buildFingerprint: async () => fingerprint(sha),
+    buildFingerprint: async ({ verificationCommands }) =>
+      fingerprint(sha, '/sandbox', verificationCommands),
   });
   assert.equal(review.ok, true);
   assert.equal(spawned.length, beforeReview, 'Review spawns no standard command');
@@ -157,7 +167,8 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
     body,
     projectDir: PROJECT_DIR,
     getHeadSha: async () => sha,
-    buildFingerprint: async () => fingerprint(sha),
+    buildFingerprint: async ({ verificationCommands }) =>
+      fingerprint(sha, '/sandbox', verificationCommands),
   });
   assert.equal(drift.ok, false);
   assert.ok(drift.reasons.some(({ code }) => code === 'sha-mismatch'));
@@ -205,16 +216,18 @@ test('project provider drives Test plans, deduplicates targeted commands, and re
     '- [ ] `npm run test:slow`',
   ].join('\n');
   const spawned = [];
-  const finalize = async () =>
+  const finalize = async ({ verificationCommands }) =>
     runDevelopVerification({
       projectDir: PROJECT_DIR,
       mode: 'final',
       issueNumber: 1218,
+      verificationCommands,
       verificationProvider: provider,
       deps: {
         isClean: () => true,
         getHeadSha: () => SHA_A,
-        buildFingerprint: () => fingerprint(SHA_A, '/outer'),
+        buildFingerprint: ({ verificationCommands: commands }) =>
+          fingerprint(SHA_A, '/outer', commands),
         now: () => INSTANT,
         runCommand: ({ command, args }) => {
           spawned.push([command, ...args].join(' '));
@@ -241,7 +254,8 @@ test('project provider drives Test plans, deduplicates targeted commands, and re
       removeWorktree: async () => {},
       npmCi: async () => {},
       getSandboxHeadSha: async () => SHA_A,
-      buildFingerprint: () => fingerprint(SHA_A),
+      buildFingerprint: ({ verificationCommands }) =>
+        fingerprint(SHA_A, '/sandbox', verificationCommands),
       execInSandbox: async ({ argv }) => {
         spawned.push(argv.join(' '));
         return {
