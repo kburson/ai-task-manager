@@ -273,7 +273,7 @@ test('#1485: graph loader prefetches child and immediate epic by issue number', 
   assert.throws(() => graph(999), /not prefetched/);
 });
 
-test('#1485: an unprefetched graph node fails closed rather than fabricating one', async () => {
+test('#1485: a node outside the prefetched set fails closed rather than being fabricated', async () => {
   const graph = await loadMergeBackGraph({
     child: 42,
     cfg: { repo: 'owner/repo' },

@@ -212,7 +212,7 @@ test('#1284: a custom-named epic cuts and validates a child at its exact head', 
 });
 
 test('#1485: merge-back delivers a child into its parent epic recorded custom branch', () => {
-  const repo = mkdtempProjectIsolated('epic-tree-custom-mergeback-', 'test');
+  const repo = mkdtempProjectIsolated('epic-tree-custom-merge-back-', 'test');
   const git = gitFor(repo);
   // An opaque ref that the managed `feature/<role>/<N>` grammar cannot parse —
   // the exact shape that made merge-back synthesize a nonexistent epic ref.

@@ -142,7 +142,7 @@ Extend `scripts/tests/unit/task-tracker/merge-back.test.mjs` to prove:
 - a parent with no marker preserves canonical fallback;
 - malformed and ambiguous authority map to `parentAuthorityError`;
 - production graph loading fetches and keys both the child and immediate-epic nodes;
-- an unprefetched lookup fails closed;
+- a lookup outside the prefetched set fails closed;
 - authority failure reaches `mergeBack` before any Git or test-runner call;
 - valid custom authority sends rebase, checkout, and fast-forward operations to the recorded branch while retaining test and cleanup behavior.
 
@@ -163,7 +163,7 @@ The issue's root Verification Commands remain authoritative. The focused four-fi
 
 ## Delivery and #1226 Recovery
 
-#1485 will be delivered to trunk before #1226 is retried. The retained #1220 branch and #1226 child branch will then be synchronized through their governed workflows without creating substitute branches.
+This issue will be delivered to trunk before #1226 is retried. The retained #1220 branch and #1226 child branch will then be synchronized through their governed workflows without creating substitute branches.
 
 Because #1485 changes test-file blobs, #1226's checked-in calibration-input digest becomes stale after synchronization even if the production timing code is unchanged. #1226 must recapture Unit, Integration, and Slow timing artifacts at the new exact implementation head, regenerate its normalized fixture and digest, rerun its governed verification, and obtain a new exact-head receipt before merge-back and close are retried.
 
