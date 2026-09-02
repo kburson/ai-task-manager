@@ -194,6 +194,35 @@ test('refuses malformed claimed Test evidence before execution', async () => {
   assert.match(comments[0], /identity is unavailable/i);
 });
 
+test('refuses malformed generic receipt claims before execution', async () => {
+  const body = [
+    '<!-- aitm-last-known-state: test -->',
+    '## Verification Commands',
+    ...VERIFICATION_COMMANDS.map((command) => `- [ ] \`${command}\``),
+    '<!-- aitm-verification-receipt stage = "test" data="not-json" -->',
+  ].join('\n');
+  const events = [];
+  const comments = [];
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: ISSUE,
+    projectDir: process.cwd(),
+    deps: {
+      fetchBody: async () => body,
+      postComment: async ({ body: comment }) => comments.push(comment),
+      getHeadSha: async () => SHA,
+      buildFingerprint: () => fingerprint(SHA),
+      runDevelopFinalization: async () => events.push('finalize'),
+      retireVerificationReceipt: async () => events.push('retire'),
+      createWorktree: async () => events.push('worktree'),
+    },
+  });
+
+  assert.equal(result.status, 'receipt-retirement-failed');
+  assert.deepEqual(events, []);
+  assert.match(comments[0], /identity is unavailable/i);
+});
+
 test('refuses live command drift introduced by the fresh evidence mutation', async () => {
   const receipt = testReceipt();
   const events = [];
@@ -237,6 +266,46 @@ test('refuses live command drift introduced by the fresh evidence mutation', asy
   assert.equal(moves, 0);
   assert.ok(comments.some((comment) => /vc-set-mismatch/.test(comment)));
   assert.equal(parseVerificationReceipt(await deps.fetchBody(), 'test'), null);
+});
+
+test('reports invalid fresh-base command authority without throwing', async () => {
+  const receipt = testReceipt();
+  const events = [];
+  const comments = [];
+  const deps = passingDeps(testBody(receipt), events, receipt);
+  const mutate = deps.mutateBody;
+  let evidenceWrites = 0;
+  deps.mutateBody = async (input) => {
+    if (input.evidenceStamp === true) evidenceWrites += 1;
+    if (evidenceWrites === 2) {
+      const apply = input.mutate;
+      return mutate({
+        ...input,
+        mutate: (base) =>
+          apply(base.replace('- [ ] `npm run test:slow`', '- [ ] `npm run test:slow; echo no`')),
+      });
+    }
+    return mutate(input);
+  };
+  deps.postComment = async ({ body }) => comments.push(body);
+  let moves = 0;
+  deps.moveState = async () => {
+    moves += 1;
+    return { ok: true, selfLoop: true };
+  };
+
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: ISSUE,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps,
+  });
+
+  assert.equal(result.status, 'develop-evidence-invalid');
+  assert.deepEqual(result.reasons, [{ code: 'vc-set-invalid' }]);
+  assert.equal(moves, 0);
+  assert.ok(comments.some((comment) => /vc-set-invalid/.test(comment)));
 });
 
 test('refuses command drift reported by the persisted write response', async () => {

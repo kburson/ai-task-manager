@@ -55,6 +55,7 @@ import {
   buildVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
+  hasMalformedVerificationReceiptClaim,
   requiredTestReceiptClassifications,
   upsertVerificationReceipt,
   validateVerificationReceipt,
@@ -210,7 +211,7 @@ export async function resolveReviewVerificationEvidence({
   const receipt = parseVerificationReceipt(body, 'test');
   const commandResults = standardReviewCommandResults();
   if (!receipt) {
-    if (hasVerificationReceiptMarker(body, 'test')) {
+    if (hasVerificationReceiptMarker(body, 'test') || hasMalformedVerificationReceiptClaim(body)) {
       return {
         ok: false,
         mode: 'receipt-v1',

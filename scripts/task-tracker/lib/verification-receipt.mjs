@@ -631,6 +631,21 @@ export function hasVerificationReceiptMarker(body, stage) {
   return false;
 }
 
+export function hasMalformedVerificationReceiptClaim(body) {
+  const claims = String(body || '').match(RECEIPT_CLAIM_RE) ?? [];
+  for (const claim of claims) {
+    const match = claim.match(RECEIPT_MARKER_EXACT_RE);
+    if (!match) return true;
+    try {
+      const receipt = JSON.parse(Buffer.from(match[2], 'base64url').toString('utf8'));
+      if (receipt?.stage !== match[1]) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function hasClaimedVerificationReceiptMarker(body, stage) {
   for (const claim of String(body || '').match(RECEIPT_CLAIM_RE) ?? []) {
     if (

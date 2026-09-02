@@ -109,27 +109,39 @@ test('/task test audits every Develop-final reuse refusal family before one new 
   const wrongCommand = structuredClone(developReceipt());
   wrongCommand.commands[0].command = 'node';
   const cases = [
-    ['receipt-missing', () => issueBody(), false],
+    ['receipt-missing', () => issueBody(), false, 'develop-final-invalid', 1],
     [
-      'receipt-malformed',
+      'identity is unavailable',
       () =>
         `${issueBody()}\n<!-- aitm-verification-receipt stage="develop-final" data="not-json" -->`,
       false,
+      'receipt-retirement-failed',
+      0,
     ],
-    ['issue-mismatch', () => upsertVerificationReceipt(issueBody(), wrongIssue), false],
+    [
+      'issue-mismatch',
+      () => upsertVerificationReceipt(issueBody(), wrongIssue),
+      false,
+      'develop-final-invalid',
+      1,
+    ],
     [
       'command-identity-mismatch',
       () => upsertVerificationReceipt(issueBody(), wrongCommand),
       false,
+      'develop-final-invalid',
+      1,
     ],
     [
       'fingerprint-unresolvable',
       () => upsertVerificationReceipt(issueBody(), developReceipt()),
       true,
+      'develop-final-invalid',
+      1,
     ],
   ];
 
-  for (const [expectedCode, makeBody, fingerprintThrows] of cases) {
+  for (const [expectedCode, makeBody, fingerprintThrows, expectedStatus, expectedRuns] of cases) {
     let finalizations = 0;
     const comments = [];
     const result = await runVerbTest({
@@ -150,8 +162,8 @@ test('/task test audits every Develop-final reuse refusal family before one new 
         },
       },
     });
-    assert.equal(result.status, 'develop-final-invalid', expectedCode);
-    assert.equal(finalizations, 1, expectedCode);
+    assert.equal(result.status, expectedStatus, expectedCode);
+    assert.equal(finalizations, expectedRuns, expectedCode);
     assert.match(comments[0], new RegExp(expectedCode), expectedCode);
   }
 });

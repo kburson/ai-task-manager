@@ -42,6 +42,7 @@ import {
   canonicalVerificationCommandSet,
   createVerificationReceipt,
   hasClaimedVerificationReceiptMarker,
+  hasMalformedVerificationReceiptClaim,
   hasVerificationReceiptMarker,
   requiredTestReceiptClassifications,
   validateVerificationReceipt,
@@ -663,6 +664,16 @@ export async function runVerbTest({
     return { status: 'failed', sha, results: authorityResults, demotion };
   }
 
+  if (hasMalformedVerificationReceiptClaim(body)) {
+    const reasons = [{ code: 'receipt-retirement-identity-unavailable' }];
+    await postComment({
+      cfg,
+      issueNum,
+      body: '⛔ Test receipt retirement refused: a claimed verification receipt is malformed, so its exact identity is unavailable. No replacement verification was executed.',
+    });
+    return { status: 'receipt-retirement-failed', sha, reasons };
+  }
+
   if (runDevelopFinalization && currentState === 'test') {
     const currentFingerprint = await buildFingerprint({
       projectDir,
@@ -1263,6 +1274,7 @@ export async function runVerbTest({
     stamped = autoTick.body;
     let evidenceWrite = null;
     let freshBaseVcMismatch = false;
+    let freshBaseVcInvalid = false;
     if (stamped !== body) {
       // #295 — re-run the full stamp+autoTick fold on FRESH base.
       evidenceWrite = await mutateBody({
@@ -1272,10 +1284,16 @@ export async function runVerbTest({
         // `autoTickVerified` mint proof from the green sandbox run just executed.
         evidenceStamp: true,
         mutate: (base) => {
-          const baseVerificationCommands = canonicalVerificationCommandSet(
-            parseVerificationCommands(base),
-            { projectDir }
-          );
+          let baseVerificationCommands;
+          try {
+            baseVerificationCommands = canonicalVerificationCommandSet(
+              parseVerificationCommands(base),
+              { projectDir }
+            );
+          } catch {
+            freshBaseVcInvalid = true;
+            return base;
+          }
           if (
             Array.isArray(testFingerprint?.verificationCommands) &&
             canonicalRecordJson(baseVerificationCommands) !==
@@ -1305,15 +1323,17 @@ export async function runVerbTest({
           ? stamped
           : await fetchBody({ cfg, issueNum });
     const persistedAuthority = testReceipt
-      ? freshBaseVcMismatch
-        ? { ok: false, reasons: [{ code: 'vc-set-mismatch' }] }
-        : validateVerificationReceiptCommandAuthority({
-            body: persistedBody,
-            expectedIssue: Number(issueNum),
-            expectedStage: 'test',
-            expectedCommitSha: sha,
-            projectDir,
-          })
+      ? freshBaseVcInvalid
+        ? { ok: false, reasons: [{ code: 'vc-set-invalid' }] }
+        : freshBaseVcMismatch
+          ? { ok: false, reasons: [{ code: 'vc-set-mismatch' }] }
+          : validateVerificationReceiptCommandAuthority({
+              body: persistedBody,
+              expectedIssue: Number(issueNum),
+              expectedStage: 'test',
+              expectedCommitSha: sha,
+              projectDir,
+            })
       : { ok: true, reasons: [] };
     if (!persistedAuthority.ok) {
       const reasons = persistedAuthority.reasons.some(({ code }) => code === 'vc-set-mismatch')

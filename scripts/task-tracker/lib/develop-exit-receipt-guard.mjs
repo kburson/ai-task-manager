@@ -2,6 +2,7 @@
 
 import { execFileSync } from 'node:child_process';
 import {
+  hasMalformedVerificationReceiptClaim,
   hasVerificationReceiptMarker,
   parseVerificationReceipt,
   validateVerificationReceiptStructure,
@@ -47,6 +48,11 @@ export const developExitReceiptGuard = Object.freeze({
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
     if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
+    if (hasMalformedVerificationReceiptClaim(ctx.body)) {
+      const reason =
+        'develop-to-test-receipt-malformed: a claimed verification receipt is malformed and cannot establish authority';
+      return { ok: false, reason, blockers: [reason] };
+    }
     const headSha = resolveHead(ctx);
     const readReceipt =
       ctx?.deps?.readDevelopReceipt || ((body) => parseVerificationReceipt(body, 'develop-final'));

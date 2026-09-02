@@ -226,24 +226,30 @@ test('Review fails closed when HEAD cannot be resolved for a v1 receipt', async 
 });
 
 test('Review and its Test-exit guard reject a malformed v1 marker instead of falling back', async () => {
-  const malformed = [
-    '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
+  for (const claim of [
     '<!-- aitm-verification-receipt stage="test" data="not-json" -->',
-  ].join('\n');
-  const result = await resolveReviewVerificationEvidence({
-    body: malformed,
-    projectDir: '/project',
-    getHeadSha: async () => SHA,
-  });
-  assert.equal(result.ok, false);
-  assert.deepEqual(result.reasons, [{ code: 'receipt-malformed' }]);
-  const guard = testExitDodVerifiedGuard.run({
-    issueNumber: 1089,
-    body: malformed,
-    toState: 'review',
-  });
-  assert.equal(guard.ok, false);
-  assert.match(guard.reason, /receipt-malformed/);
+    '<!-- aitm-verification-receipt stage = "test" data="not-json" -->',
+    '<!-- aitm-verification-receipt data="not-json" stage="test" -->',
+  ]) {
+    const malformed = [
+      '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
+      claim,
+    ].join('\n');
+    const result = await resolveReviewVerificationEvidence({
+      body: malformed,
+      projectDir: '/project',
+      getHeadSha: async () => SHA,
+    });
+    assert.equal(result.ok, false, claim);
+    assert.deepEqual(result.reasons, [{ code: 'receipt-malformed' }], claim);
+    const guard = testExitDodVerifiedGuard.run({
+      issueNumber: 1089,
+      body: malformed,
+      toState: 'review',
+    });
+    assert.equal(guard.ok, false, claim);
+    assert.match(guard.reason, /receipt-malformed/, claim);
+  }
 });
 
 test('Review retains marker-only compatibility when no v1 receipt exists', async () => {
