@@ -238,7 +238,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 
 | Task | Consumes                                                     | Produces                                                                                          |
 | ---: | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-|    1 | Current schema-3 timing artifacts and historical evidence    | `normalizeCloudTestBaseline`, `selectCanarySlowWidth`, nearest-rank p95, and capacity arithmetic  |
+|    1 | Current schema-4 timing artifacts and historical evidence    | `normalizeCloudTestBaseline`, `selectCanarySlowWidth`, nearest-rank p95, and capacity arithmetic  |
 |    2 | Task 1 baseline weights                                      | Parameterized LPT partition, `--shard`, exact-head partition proof, and shard manifest            |
 |    3 | Tasks 1-2 decision and execution primitives                  | Source-bound canary summaries and policy with the selected Slow width                             |
 |    4 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                        |
@@ -269,13 +269,13 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 
 **Files:**
 
-- Create: `scripts/tests/fixtures/performance/cloud-test-local-baseline-2026-09-01.json`
+- Create: `scripts/tests/fixtures/performance/cloud-test-local-baseline-2026-09-02.json`
 - Create: `scripts/task-tracker/lib/cloud-test/performance-baseline.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/cloud-test/performance-baseline.test.mjs`
 - Modify: `scripts/run-tests-timing.mjs`
 - Modify: `scripts/tests/unit/task-tracker/core/run-tests-timing.test.mjs`
 
-- [ ] Add RED tests that load the current schema-3 Unit, Integration, and Slow
+- [ ] Add RED tests that load the current schema-4 Unit, Integration, and Slow
       artifact shapes, reject missing provenance, preserve null/missing values,
       and calculate deterministic LPT maxima. Historical August artifacts remain
       contextual evidence only and must not seed production weights.
@@ -300,8 +300,9 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       runner/host profile, lane, file count, per-file timings, and discovery
       inventory. Refuse a fixture whose commit or discovered file set differs
       from the partitioned head.
-- [ ] Extend timing serialization so future artifacts include command, commit,
-      runner/host profile, lane, and file count without changing schema-2 reads.
+- [ ] Extend timing serialization to schema 5 so future artifacts include command,
+      commit, runner/host profile, lane, and file count without changing schema-1
+      through schema-4 reads.
 - [ ] Implement nearest-rank percentile as `sorted[ceil(0.95 * n) - 1]` but
       refuse a policy p95 when fewer than 20 cycle-eligible samples exist.
 - [ ] Re-run the two focused tests and expect PASS.
@@ -309,7 +310,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 
   ```bash
   node scripts/task-tracker/verify-develop.mjs
-  git add scripts/run-tests-timing.mjs scripts/task-tracker/lib/cloud-test/performance-baseline.mjs scripts/tests/fixtures/performance/cloud-test-local-baseline-2026-09-01.json scripts/tests/unit/task-tracker/core/run-tests-timing.test.mjs scripts/tests/unit/task-tracker/lib/cloud-test/performance-baseline.test.mjs
+  git add scripts/run-tests-timing.mjs scripts/task-tracker/lib/cloud-test/performance-baseline.mjs scripts/tests/fixtures/performance/cloud-test-local-baseline-2026-09-02.json scripts/tests/unit/task-tracker/core/run-tests-timing.test.mjs scripts/tests/unit/task-tracker/lib/cloud-test/performance-baseline.test.mjs
   git commit -m "test(ci): preserve cloud test calibration baselines"
   ```
 
@@ -341,7 +342,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       duplicate-file rejection, unexpected-file rejection, and deterministic
       sorted shard lists.
 - [ ] Add RED CLI tests proving
-      `node scripts/partition-tests.mjs --lane slow --width 2 --weights scripts/tests/fixtures/performance/cloud-test-local-baseline-2026-09-01.json --output .tmp/aitm/canary-slow-width-2.json`
+      `node scripts/partition-tests.mjs --lane slow --width 2 --weights scripts/tests/fixtures/performance/cloud-test-local-baseline-2026-09-02.json --output .tmp/aitm/canary-slow-width-2.json`
       writes a complete parameterized partition, and
       `node scripts/run-tests.mjs --lane slow --shard slow-1 --partition .tmp/aitm/canary-slow-width-2.json`
       executes only the named shard and refuses an invalid or incomplete
