@@ -34,6 +34,7 @@
 // still executes only its own slice (the 624-vs-652 false green cannot recur).
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TEST_FILE_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
@@ -282,9 +283,28 @@ if (pooledEntries.length || subprocessEntries.length || slowParallelEntries.leng
 const TIMING_ARTIFACT_PATH = path.resolve(repoRoot, '.tmp', 'aitm', 'test-timing.json');
 function writeTimingArtifact() {
   try {
+    const command = `node scripts/run-tests.mjs${process.argv.length > 2 ? ` ${process.argv.slice(2).join(' ')}` : ''}`;
+    const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    }).trim();
+    const runnerProfile = {
+      label:
+        process.env.AITM_RUNNER_PROFILE ||
+        process.env.RUNNER_NAME ||
+        (process.env.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local'),
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.versions.node,
+      logicalCpuCount: os.cpus().length,
+    };
     const artifact = serializeArtifact(timingRecords, {
       lane,
       generatedAt: new Date().toISOString(),
+      command,
+      commit,
+      runnerProfile,
+      discoveryInventory: files.map(({ label }) => label),
       runnerElapsedMs: sectionElapsedMs,
       poolElapsedMs: pooledElapsedMs,
       subprocessPoolElapsedMs: subprocessElapsedMs,

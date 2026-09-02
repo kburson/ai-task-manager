@@ -15,16 +15,27 @@ const parallelRecords = [
   { file: 'c.test.mjs', label: 'c.test.mjs', wallMs: 1000, inProcMs: 900, status: 0 },
 ];
 
-test('schema 4 separates every bounded phase elapsed from duration sums', () => {
+test('schema 5 separates every bounded phase elapsed from duration sums', () => {
   const artifact = serializeArtifact(parallelRecords, {
     lane: 'unit',
+    generatedAt: '2026-09-02T00:00:00Z',
+    command: 'node scripts/run-tests.mjs --lane unit',
+    commit: 'a'.repeat(40),
+    runnerProfile: {
+      label: 'local-test',
+      platform: 'darwin',
+      arch: 'arm64',
+      nodeVersion: '25.6.0',
+      logicalCpuCount: 10,
+    },
+    discoveryInventory: parallelRecords.map(({ file }) => file),
     runnerElapsedMs: 1250,
     poolElapsedMs: 800,
     subprocessPoolElapsedMs: 300,
     slowPoolElapsedMs: 100,
     serialElapsedMs: 150,
   });
-  assert.equal(artifact.schema, 4);
+  assert.equal(artifact.schema, 5);
   assert.deepEqual(artifact.elapsed, {
     runnerMs: 1250,
     poolMs: 800,
