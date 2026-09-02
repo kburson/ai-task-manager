@@ -263,7 +263,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 
 ---
 
-## Task 1: Capture an Exact-Head Baseline and Add Canary Decision Primitives
+### Task 1: Capture an Exact-Head Baseline and Add Canary Decision Primitives
 
 **Spec decomposition:** 1 (baseline and decision logic)
 
@@ -313,7 +313,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
   git commit -m "test(ci): preserve cloud test calibration baselines"
   ```
 
-## Task 2: Add Parameterized Shard Execution and Standalone Partition Proof
+### Task 2: Add Parameterized Shard Execution and Standalone Partition Proof
 
 **Spec decomposition:** 1 and 8 (canary bootstrap only)
 
@@ -380,7 +380,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
   git commit -m "feat(test): add parameterized shard execution"
   ```
 
-## Task 3: Run the Disposable Cloud Canary and Record the Selected Topology
+### Task 3: Run the Disposable Cloud Canary and Record the Selected Topology
 
 **Spec decomposition:** 1-2
 
