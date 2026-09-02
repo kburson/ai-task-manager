@@ -1,8 +1,8 @@
 # Cloud Test-Stage Delivery Design
 
-**Date:** 2026-08-10 (revised 2026-08-12)
+**Date:** 2026-08-10 (current-trunk refresh 2026-09-01)
 
-**Status:** Approved after Codex and seven Claude design reviews; implementation plan available
+**Status:** Current-trunk refresh approved for planning under issue #1219
 
 **Branch:** `cloud-test-automation`
 
@@ -27,6 +27,32 @@ explicit cloud-defer outcome for Develop lane escalation, measured staged
 fan-out, an honest merge-throughput model, a GitHub-backed integration freeze
 at the epic-to-parent boundary, and measured Slow-lane shaping.
 
+## Current-Trunk Refresh
+
+This revision preserves the approved behavioral goals while rebasing every
+implementation boundary on `origin/trunk` at `e5b3060cb27caf92239f05ca5552f364d500eec7`.
+The following current authorities supersede older paths and integration seams
+wherever the historical discussion below describes them differently:
+
+- tests live only under `scripts/tests/<unit|integration|slow>/`; fixtures live
+  under `scripts/tests/fixtures/`;
+- transient runtime artifacts live under `.tmp/aitm/`;
+- the canonical lane manifest is `scripts/task-tracker/lib/test-lanes.mjs`, with
+  `fast` meaning the unit lane and Integration remaining an explicit lane;
+- Develop and Test execution is provider-owned through
+  `verification-provider-registry.mjs`; receipt v1 integrity and retirement
+  remain compatibility authorities rather than code to bypass;
+- trunk delivery is owned by `/task deliver`, provider-action envelopes,
+  delivery intents, live-verified delivery receipts, and exact-head provider
+  enforcement; `merge-back.mjs` remains the non-trunk child-to-epic path;
+- `templates/worker-report.md` is canonical and
+  `.ai-task-manager/templates/worker-report.md` is its generated runtime mirror;
+- issue #1208 is closed and delivered the bounded subprocess pool; later Slow
+  pooling work extends that result instead of refining or reimplementing it;
+- retained 2026-08-11 and 2026-08-24 timing artifacts are historical evidence,
+  not a current topology or bottleneck selection. Task 1 must establish a fresh
+  exact-head baseline before a canary or performance target is selected.
+
 ## Decision Summary
 
 AITM keeps planning, code changes, and affected-test feedback close to the
@@ -45,8 +71,9 @@ The design has four independent controls:
    empirically selected two or three fixture-family Slow shards fan out to five
    or six independent GitHub-hosted VMs for the same head SHA. Stable native
    policy gates converge their results. Every execution job has a ten-minute
-   hard ceiling. Weighted Slow pooling may later reduce the shard width after
-   #1208 is implemented and measured.
+   hard ceiling. Weighted Slow pooling may later reduce the shard width by
+   extending the already-delivered #1208 scheduling seam and measuring the
+   resulting production topology.
 3. **Local resource admission.** All local orchestrators collectively admit at
    most six concurrent local worker agents for this repository on one physical
    host. Orchestrators do not consume those slots. Additional workers use
@@ -62,11 +89,12 @@ and merged commits are the distributed coordination surfaces.
 ## Context
 
 The test suite no longer fits comfortably in the feedback loop on the
-maintainer's laptop. Discovery finds 895 `*.test.mjs` files across three lanes:
-821 unit, 24 integration, and 50 slow. The runner starts one `node` process per
-file, and files that reference `node:child_process` run serially. A fast-lane
-measurement from 2026-08-11 (`.aitm/test-timing.json`, 845 files) shows the
-cost:
+maintainer's laptop. Current discovery at the refresh base finds 1,005
+`*.test.mjs` files across three canonical lanes: 811 unit, 142 integration, and
+52 slow. The runner uses distinct pure-unit, subprocess, explicitly safe Slow,
+and serial phases. The 2026-08-11 fast-lane artifact below is retained as
+historical calibration input; it is not a current file count or scheduling
+profile:
 
 | Measure                      |      Value | Note                                     |
 | ---------------------------- | ---------: | ---------------------------------------- |
@@ -84,13 +112,12 @@ test pools compete for the same CPU, memory, and disk. The orchestrator is a
 seventh agent on the host, but it performs coordination rather than build and
 test work and therefore does not consume a worker slot.
 
-GitHub-hosted jobs provide isolated VMs and are free for this public repository.
-They are the appropriate place for full validation. The repository remains
-user-owned, so GitHub merge queues are unavailable. Ruleset 20694244 currently
-protects only `trunk`, requires `Fast lane (format, lint, unit)`, and enables
-`strict_required_status_checks_policy`. This design extends equivalent
-protection to epic integration branches and adds the slow verdict as a required
-check.
+GitHub-hosted jobs provide isolated VMs and are the appropriate place for full
+validation. The repository remains user-owned, so GitHub merge queues are
+unavailable. Task 15 must export and audit live rulesets before naming their
+current coverage; this specification does not treat the August ruleset snapshot
+as current authority. The target remains equivalent strict protection for
+`trunk` and epic integration branches with stable fast and slow verdicts.
 
 ## Goals
 
@@ -100,9 +127,10 @@ check.
   and at or below 300 seconds in all supported cases.
 - Complete each cloud validation job within ten minutes of runner start.
 - Sustain three to six merges per hour on one busy target branch initially.
-  Treat ten per hour as a separate target that requires `cli.test.mjs`
-  decomposition and a measured end-to-end head-of-line cycle at or below 360
-  seconds; sharding or #1208 alone cannot establish it.
+  Treat ten per hour as a separate measurement-gated target that requires the
+  current dominant Slow family to be reduced and a measured end-to-end
+  head-of-line cycle at or below 360 seconds; sharding or slot recovery alone
+  cannot establish it.
 - Make native GitHub Actions results authoritative machine evidence without
   granting CI authority to write AITM records or custom checks.
 - Let local and cloud orchestrators use exactly the same GitHub-backed receipt,
@@ -128,11 +156,11 @@ check.
 - No automatic retirement or weakening of slow tests. Test consolidation,
   shared fixtures, and smoke-test substitutions require separately reviewed
   changes with equivalent risk coverage.
-- No assumption that subprocess-weighted pooling is already safe. A paired
-  cloud canary chooses two or three fixture-family Slow shards for the interim
-  rollout. Issue #1208 is required before reclaiming the higher PR admission of
-  a one-job Slow target; shard width drops only after cloud measurements prove
-  its weighted pool safe and within budget.
+- No assumption that the delivered #1208 subprocess pool proves weighted Slow
+  pooling. A paired cloud canary chooses two or three fixture-family Slow shards
+  for the interim rollout. A one-job Slow target remains gated on a separate
+  weighted-resource canary, exact coverage, reliability, and production-shaped
+  measurements.
 
 ## Time and Capacity Budgets
 
@@ -196,13 +224,21 @@ separate 2026-08-11 Slow run now replaces the unmeasured Slow estimate:
 
 ### Local measurement provenance
 
-Both source artifacts currently survive only as ignored inspection copies at
+The 2026-08-11 artifacts in this section are immutable historical inputs. They
+must be preserved for provenance, but no current shard-width, family assignment,
+or performance-story target may be selected from them. The refreshed corpus has
+1,005 files and different scheduling phases. Task 1 records a new exact-head
+schema-3 baseline, including command, commit, runner profile, canonical lane,
+file count, and source digest; Task 3 refuses calibration when any discovered
+file lacks measured or explicitly labeled fallback evidence.
+
+Both source artifacts survive, if present, only as ignored inspection copies at
 `.tmp/inspect/test-timing-fast-2026-08-11.json` and
-`.tmp/inspect/test-timing-slow-2026-08-11.json`; they are therefore not durable
-repository evidence. Decomposition item 1 must begin by committing their
-normalized fields and per-file timings to
-`scripts/task-tracker/tests/fixtures/performance/cloud-test-local-baselines-2026-08-11.json`.
-The fixture records these source details and hashes:
+`.tmp/inspect/test-timing-slow-2026-08-11.json`; they are not authoritative
+current repository evidence and need not be materialized into a production
+weights fixture. Their reported provenance remains documented here so Task 1
+can preserve the distinction between historical context and its fresh
+exact-head schema-3 baseline:
 
 | Baseline | Generated at               | Command provenance                                                                                    | Host class                                              | SHA-256                                                            |
 | -------- | -------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -211,7 +247,7 @@ The fixture records these source details and hashes:
 
 The current JSON schema does not embed host metadata. The host class above is
 the reported and locally verified measurement machine, not a claim extracted
-from either artifact. The normalized fixture preserves that limitation and the
+from either artifact. This historical record preserves that limitation and the
 missing original Fast command rather than inventing provenance. Future timing
 artifacts must embed command, commit, runner/host profile, lane, and file count.
 
@@ -293,10 +329,10 @@ pairwise intersection is empty. Missing or duplicated tests fail the candidate.
 This proves exactly-once file coverage without depending on item 8's production
 family-policy fingerprint or head-specific resolution digest.
 
-A fourth shard buys only 41.469 seconds locally, and a fifth buys nothing because
-`scripts/task-tracker/tests/slow/lib/cli.test.mjs` alone takes 130.386 seconds.
-The canary must measure family-aligned assignments rather than treating the
-file-level calculation as proof.
+A fourth shard bought only 41.469 seconds in the historical schedule, and a
+fifth bought nothing under that old distribution. The canary must measure the
+current family-aligned assignment rather than treating the file-level
+calculation or any historical single-file floor as proof.
 
 CI uses section-specific budget policy rather than the existing single-value
 environment override, which cannot express different pooled and serial limits:
@@ -355,33 +391,28 @@ envelope, and freeze expiry remains 60 minutes. If any shard misses, the
 response is family rebalancing, fixture decomposition, weighted pooling, or
 another measured shard—not a higher hard stop.
 
-Quality, both Fast shards, and all selected Slow shards start concurrently. A
-dedicated Integration executor would remove only 8.774 seconds from the
-critical path while consuming a full heavy-runner slot. Folding that family
-into one Fast shard and spending the same slot on half of the 798.241 seconds of
-pool-eligible unit work is the material Fast-lane optimization. Slow-impact
+Quality, both Fast shards, and all selected Slow shards start concurrently.
+Current Integration contains 142 files rather than the 24-file historical
+population, so Task 3 must measure unit and integration families together before
+assigning them across the two Fast shards. The canary refuses production if
+either lane is omitted or if the selected two-shard topology breaches its
+budget; it does not preserve the historical 8.774-second assumption. Slow-impact
 selection belongs only to Slow executors, before dependency installation or
 slow-test execution; it never delays Quality or Fast feedback and never enters
 the Develop loop.
 
-Issue #1208 is a target-state capacity lever, not a latency claim. If weighted
-pooling safely admits Slow files at `poolConcurrency(4) = 3`, division of the
-measured 515.372 seconds gives an optimistic one-VM floor near 171.8 seconds.
-That is an estimate, not a predicted runtime: subprocess contention, shared
-fixtures, and cloud penalty must be measured. Its estimated one-job floor is
-approximately the same as the three-way file-level schedule, so #1208 is
-expected to recover runner slots rather than shorten the Slow critical path.
-The selected two- or three-shard interim rollout does not wait for #1208. Slow
-shard width may converge toward one only after #1208's canary proves the same
-coverage, reliability, and p95 envelope.
+Delivered #1208 is a scheduling input, not a latency claim. Its bounded
+subprocess phase and later explicit Slow-safe phase establish mechanisms that
+Task 20 may extend with resource weights, but only fresh cloud measurements can
+select a one-job topology. The selected two- or three-shard interim rollout does
+not wait for Task 20. Slow width may converge toward one only after Task 20's
+canary proves exact coverage, reliability, and the p95 envelope.
 
-The 130.386-second `cli.test.mjs` file is the irreducible floor for file-level
-sharding. Decomposing its reusable setup is required before pursuing a Slow
-critical path below that floor or seeking gains beyond the useful four-shard
-range. Ten merges per hour remains gated on that decomposition plus a measured
-complete cycle at or below 360 seconds. Decomposition is not an interim rollout
-blocker unless the GitHub canary shows the file's family breaches the outer
-envelope.
+No file is declared the irreducible floor at design time. Task 21 selects the
+dominant current fixture family from Task 1 and production evidence, proves a
+before benchmark, and reduces repeated setup without losing isolation or risk
+coverage. Ten merges per hour remains gated on that reduction plus a measured
+complete cycle at or below 360 seconds.
 
 ### Local worker budget
 
@@ -705,7 +736,7 @@ digest proving exactly-once coverage for the tested tree.
 Tests that can share one expensive repository, sandbox, or process fixture stay
 in one family and reuse that setup; independent fixture families move to
 different VMs. Shard counts change only when measured critical-path reduction
-or capacity recovery exceeds the checkout, setup, and queue cost. Issue #1208
+or capacity recovery exceeds the checkout, setup, and queue cost. Task 20
 specifically targets a reduction in Slow width after weighted pooling is proven.
 Stable Stage 2 gate names insulate rulesets from matrix width changes.
 
@@ -831,8 +862,9 @@ from 20 to 40. With the same four-slot reserve, width two admits seven Stage 1
 PR validations and width three admits six. Neither topology supplies the
 maintainer's desired ten or more concurrent cloud streams. Plan upgrade, a
 GitHub Support concurrency increase, additional runner capacity, or a measured
-Slow shard-width reduction from #1208 are explicit scaling options—not reasons
-to weaken validation. If #1208 proves one Slow job and returns `J` to four, Pro
+Slow shard-width reduction from the Task 20 extension of #1208 are explicit
+scaling options—not reasons to weaken validation. If measured weighted Slow
+pooling proves one Slow job and returns `J` to four, Pro
 admits nine concurrent validations: `floor((40 - 4) / 4) = 9`. Ten concurrent
 validations at that width require at least 44 hosted-job slots, so purchased or
 support-approved concurrency remains a cost decision rather than an
@@ -855,21 +887,24 @@ The cycle includes update/rebase, GitHub queue delay, the slowest parallel
 validation path, Stage 2 gates, receipt acceptance, and merge. At a measured or
 assumed 10-20 minutes per cycle, one target delivers approximately 3-6 merges
 per hour. Ten merges per hour requires the complete cycle—not merely one test
-lane—to reach six minutes or less. The current `cli.test.mjs` floor blocks a
-credible design claim below the estimated 171.8-second Slow floor; item 16 must
-decompose it, and production evidence must then prove the complete cycle at or
-below 360 seconds. Issue #1208 does not satisfy this latency gate: its estimated
-one-job floor is approximately the same as three-way sharding and its purpose is
-capacity recovery. Once ready work arrives faster than the measured merge rate,
-additional agents increase the queue but not target-branch throughput.
+lane—to reach six minutes or less. The retained 2026-08-24 snapshot identifies
+`agentic-help-runtime.test.mjs` at 98.135 seconds as the slowest file and
+`cli.test.mjs` at 17.243 seconds, so `cli.test.mjs` is no longer an acceptable
+hard-coded floor. Item 16 must select the dominant current fixture family from a
+fresh production-shaped baseline, reduce it, and then prove complete cycles at
+or below 360 seconds. Delivered #1208 scheduling does not satisfy this latency
+gate; its purpose is bounded capacity recovery. Once ready work arrives faster
+than the measured merge rate, additional agents increase the queue but not
+target-branch throughput.
 
 The optimization order is therefore:
 
 1. split independent validation onto parallel VMs;
 2. canary Slow widths two and three and deploy the smaller passing width;
-3. reuse expensive fixtures and decompose `cli.test.mjs` to pursue the
-   six-minute cycle;
-4. implement #1208 to recover capacity after weighted-pool proof;
+3. use fresh timing evidence to reduce the dominant Slow fixture family and
+   pursue the six-minute cycle;
+4. extend #1208's delivered scheduler with measured weighted Slow pooling to
+   recover capacity;
 5. reduce checkout, dependency, and setup churn with safe caches; and
 6. upgrade the plan or add runner capacity only when queueing, rather than test
    duration, dominates.
@@ -903,9 +938,9 @@ the final interaction test.
 `run-tests.mjs` adds diagnostic output per invocation:
 
 ```text
-.aitm/test-failures-unit.json
-.aitm/test-failures-integration.json
-.aitm/test-failures-slow.json
+.tmp/aitm/test-failures-unit.json
+.tmp/aitm/test-failures-integration.json
+.tmp/aitm/test-failures-slow.json
 ```
 
 Each failing entry contains the repository-relative `entry.full` path, lane,
@@ -1113,21 +1148,27 @@ GitHub records. An orchestrator acts only when its own authorized PR is first;
 it does not update later PRs. This is lazy update and avoids O(N²) retesting
 without a local or repository-wide merge mutex.
 
-For the head PR:
+For a head PR targeting `trunk`, the existing `/task deliver` transaction is the
+only merge authority:
 
 1. If the head owns a child-bearing branch, acquire and verify its integration
    freeze.
-2. Fetch the protected target branch and verify the PR's base.
-3. Rebase or update only the head PR to the current target.
-4. Push with lease; the new SHA invalidates prior evidence.
-5. Wait for fresh required fast and slow gates and accept a fresh receipt.
-6. Reconfirm Review/approval evidence against that receipt and head.
-7. Advance any effective freeze to `merging` and merge while supplying the
-   expected PR-head SHA.
-8. Read back the PR and merged commit before recording success.
-9. Append `integration-result` with target branch, tested base SHA, tested head
-   SHA, merged SHA, merge method, PR, and validation receipt ID.
-10. Release any effective integration freeze.
+2. Refresh only the head PR through the existing governed branch workflow; any
+   new SHA retires prior verification evidence.
+3. Wait for fresh required fast and slow gates and accept a fresh cloud receipt.
+4. Reconfirm Review/approval evidence against that exact accepted head.
+5. Run `/task deliver`, which appends or reuses one exact-head delivery intent
+   and emits at most one `github.merge-pull-request` provider action.
+6. Invoke only the sanctioned provider action with the exact repository, PR,
+   expected head, merge method, title, and message bytes. There is no shell or
+   `gh pr merge` fallback.
+7. Rerun `/task deliver` after success, refusal, timeout, or ambiguity so AITM
+   independently verifies the live PR and commit and records the delivery
+   receipt.
+8. Append or repair `integration-result` with target branch, tested base SHA,
+   tested head SHA, merged SHA, merge method, PR, cloud receipt ID, delivery
+   intent/receipt IDs, and validated merge observation.
+9. Release any effective integration freeze only after merge readback.
 
 Strict required checks on `trunk` and epic branches are the distributed
 serialization boundary. If another merge advances the target, GitHub refuses
@@ -1143,10 +1184,12 @@ When its Delivery Contract is complete, the epic branch itself opens or updates
 one PR to its parent branch, ultimately `trunk`, and the combined tree receives
 a fresh native Actions receipt.
 
-The same lazy lane rules apply at every level. At the final level, top-level
-epic and standalone-story PRs serialize into `trunk`; deployment consumes only
-that protected branch. This final validation detects interactions between
-otherwise independent epics before deployment.
+The same lazy lane ordering applies at every level, but the execution mechanism
+differs by target. A non-trunk child uses the existing governed
+`merge-back.mjs` rebase, child verification, and fast-forward integration into
+its immediate epic branch. A top-level epic or standalone story uses the
+provider-action `/task deliver` path into `trunk`. This final validation detects
+interactions between otherwise independent epics before deployment.
 
 When an epic reaches this final level, its integration freeze lets one combined
 tree retain a valid receipt long enough to merge. Other epic branches continue
@@ -1155,8 +1198,9 @@ branch being promoted; it is not a repository-wide stop-the-world lock.
 
 ## Receipt Trailers and Crash Recovery
 
-The `verification-evidence` capsule exists before merge, so its ULID can be
-written into the commit message tail:
+The cloud `verification-evidence` capsule exists before merge, so Task 17 adds
+its ULID and Actions identity to the exact commit-message bytes authorized by
+the existing provider-action envelope:
 
 ```text
 [#1210] feat(ci): consume native Actions evidence
@@ -1174,15 +1218,17 @@ All three trailers are required:
 - `CI-Verified-Sha` records the exact pre-merge head; and
 - `CI-Run` records run ID and attempt, distinguishing reruns.
 
-The merge author preserves GitHub's concatenated squash body because its
-`[#N]` tokens feed commit attribution. For merge and rebase methods, equivalent
-message preservation is required.
+The delivery attribution builder preserves GitHub's concatenated squash body
+because its `[#N]` tokens feed commit attribution. For merge and rebase methods,
+equivalent message preservation is required. Trailer construction extends the
+current delivery action; it does not create a second merge executor.
 
-If the merge succeeds and the orchestrator dies before appending
-`integration-result`, a replacement coordinator verifies the merged PR, commit,
-trailers, receipt capsule, and authority epoch, then appends the missing
-integration record and releases any effective freeze as one idempotent repair.
-It never reconstructs a receipt from trailers alone.
+If the merge succeeds and the orchestrator dies before the delivery receipt or
+`integration-result` converges, a replacement coordinator first runs the
+existing delivery reconciliation, then verifies the merged PR, commit, trailers,
+cloud receipt capsule, delivery records, and authority epoch. It appends only
+the missing record and releases any effective freeze as one idempotent repair.
+It never reconstructs either receipt from trailers alone.
 
 Check data is retained by GitHub for 400 days and deleted after archival; logs
 and artifacts have shorter repository-configured retention. The issue capsule
@@ -1252,7 +1298,7 @@ reachable from it.
 - Canary partition proof for exact manifest union, empty pairwise intersections,
   missing files, duplicate files, and head mismatch without item 8 policy data.
 - Capacity-bound arithmetic for Free and Pro ceilings, reserved slots, and
-  interim versus #1208 target shard widths.
+  interim versus Task 20 target shard widths.
 - Slow-impact required-over-safe precedence, all-paths-safe skip semantics, and
   `unclassified-path` default-deny behavior using target-base policy.
 - Slow-impact completeness over the target-base tracked tree minus the explicit
@@ -1300,15 +1346,17 @@ reachable from it.
   failure release, authority replacement, and projection repair after crash.
 - Freeze fairness permits one already-eligible child after an unsuccessful or
   expired parent attempt and prevents immediate reacquisition starvation.
-- A #1208 Slow-pool canary preserves exact coverage and accumulates at least 20
+- A Task 20 Slow-pool canary preserves exact coverage and accumulates at least 20
   eligible cycles within its p95 envelope before reducing the checked-in Slow
   shard width.
 - A seventh local worker uses the cloud adapter or remains queued.
 
 ### Workflow assertions
 
-Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
-`lib/ci-workflow-history.mjs` to assert:
+Extend `scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs` and add the
+dedicated pure policy seam
+`scripts/task-tracker/lib/cloud-test/workflow-policy.mjs` with canonical unit
+coverage to assert:
 
 - read-only permissions;
 - no custom Checks API publisher;
@@ -1379,8 +1427,8 @@ matter how many agents produced ready PRs. Ten per hour requires a measured
 end-to-end cycle of six minutes or less. Integration freezes temporarily delay
 children of an epic being promoted, with expiry and fairness limiting
 starvation. The interim measured Slow split spends capacity to establish
-acceptable latency; #1208 may recover runner slots but cannot satisfy the
-six-minute latency target. Even after a one-job Slow target, Pro admits nine,
+acceptable latency; the Task 20 extension of delivered #1208 may recover runner
+slots but cannot satisfy the six-minute latency target. Even after a one-job Slow target, Pro admits nine,
 not ten, validations with the four-slot reserve.
 
 ## Decomposition
@@ -1452,18 +1500,21 @@ proceed in parallel. Each item is independently reviewable.
     `verification-evidence`, converge projection, and emit `REVIEW_COMPLETE`.
 14. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
     them from GitHub state across sessions.
-15. **Weighted Slow-pool capacity recovery (#1208).** Refine and implement
-    reduced-concurrency admission for Slow subprocess tests, canary exact
-    coverage and reliability on GitHub, accumulate at least 20 eligible cycles,
-    measure nearest-rank p95, then reduce Slow shard width toward one. This item
-    recovers runner capacity rather than claiming a lower critical path; Pro
-    admission becomes nine at one Slow job and still requires at least 44 total
-    slots to reach ten with the four-slot reserve.
-16. **Slow fixture-floor reduction.** Decompose reusable setup in
-    `scripts/task-tracker/tests/slow/lib/cli.test.mjs` before pursuing a Slow
-    critical path below its measured 130.386-second local floor or seeking gains
-    beyond the useful four-shard range. Ten merges per hour remains unclaimed
-    until this item lands and measured complete cycles are at most 360 seconds.
+15. **Weighted Slow-pool capacity recovery.** Extend #1208's delivered bounded
+    scheduler and current explicit Slow-safety markers with resource weights,
+    aggregate-weight admission, deterministic assignment, and exact-coverage
+    reliability canaries. Accumulate at least 20 cycle-eligible production-shaped
+    cycles, measure nearest-rank p95, then reduce Slow shard width toward one.
+    This item recovers runner capacity rather than claiming a lower critical
+    path; Pro admission becomes nine at one Slow job and still requires at least
+    44 total slots to reach ten with the four-slot reserve.
+16. **Dominant Slow fixture-family reduction.** Use Task 1's fresh baseline and
+    production timing to select the active dominant fixture family. Record its
+    setup, in-process, spawn, and I/O costs; introduce a shared fixture only when
+    state isolation and equivalent coverage are proven. Do not hard-code
+    `cli.test.mjs`: the retained 2026-08-24 snapshot shows it is no longer the
+    floor. Ten merges per hour remains unclaimed until the selected reduction
+    lands and measured complete cycles are at most 360 seconds.
 17. **Integration freeze.** After item 1 selects the Slow shape, add authorized
     freeze/release capsules, projection indexing, child final-gate checks,
     drift handling, 60-minute bootstrap expiry, sample-gated p95-derived expiry,
@@ -1471,20 +1522,24 @@ proceed in parallel. Each item is independently reviewable.
     Do not replace the bootstrap until 20 eligible selected-topology cycles
     exist; queue performance-policy adoption during the window, and reset on an
     urgent correctness or security change.
-18. **Merge tail and trailers.** Implement per-target deterministic ordering,
-    lazy update, exact-head merge, throughput observation, receipt trailers,
-    and `integration-result`.
-19. **Conflict rework.** Record merge/rebase conflicts, demote to Develop, and
-    require affected verification plus a fresh cloud receipt.
+18. **Merge tail and trailers.** Extend the existing `/task deliver`
+    provider-action transaction with per-target deterministic ordering, lazy
+    refresh, cloud-receipt trailers, throughput observation, and
+    `integration-result`. Preserve `merge-back.mjs` for non-trunk child delivery.
+19. **Conflict rework.** Record merge/rebase conflicts through current delivery
+    records, demote to Develop, retire invalid receipts through the existing
+    receipt-retirement authority, and require affected verification plus a fresh
+    cloud receipt.
 20. **Triage.** Add manifest/log-driven diagnosis and Worker Report output.
 21. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
     adapter, recovery, and merge guidance.
 
-Issue #1208 remains separately tracked but is no longer optional in the target
+Issue #1208 is closed and its bounded subprocess scheduler is an input to this
 architecture. Empirically selected two- or three-way Slow sharding enables the
-interim rollout; #1208 is the required capacity-recovery step for the one-job
-Slow target. It does not reduce the estimated Slow critical path or make ten
-concurrent Pro-plan validations arithmetically possible by itself.
+interim rollout; Task 20 owns the separately measured weighted-Slow extension
+required for a one-job Slow target. Neither delivered #1208 nor Task 20 reduces
+the critical path or makes ten concurrent Pro-plan validations arithmetically
+possible by itself.
 
 ## References
 
