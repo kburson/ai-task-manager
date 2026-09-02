@@ -1,6 +1,7 @@
 // @story #1226
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   calibrationInputSha256,
@@ -24,6 +25,11 @@ const PROFILE = Object.freeze({
   nodeVersion: '25.6.0',
   logicalCpuCount: 10,
 });
+
+const CHECKED_IN_BASELINE = new URL(
+  '../../../../fixtures/performance/cloud-test-local-baseline-2026-09-02.json',
+  import.meta.url
+);
 
 function artifact(lane, files) {
   const laneMinute = { unit: '01', integration: '02', slow: '03' }[lane];
@@ -89,6 +95,30 @@ test('normalizeCloudTestBaseline binds three schema-5 lanes and preserves null t
   assert.match(result.lanes.unit.sourceSha256, /^[0-9a-f]{64}$/);
   assert.equal(result.weights['scripts/tests/unit/b.test.mjs'].inProcMs, null);
   assert.equal(result.weights['scripts/tests/slow/d.test.mjs'].wallMs, 900);
+});
+
+test('checked-in baseline is internally complete and provenance-bound', () => {
+  const baseline = JSON.parse(readFileSync(CHECKED_IN_BASELINE, 'utf8'));
+  assert.equal(baseline.schema, 1);
+  assert.match(baseline.measuredCommit, /^[0-9a-f]{40,64}$/);
+  assert.match(baseline.calibrationInputSha256, /^[0-9a-f]{64}$/);
+  assert.equal(baseline.dependencyLock.path, 'package-lock.json');
+  assert.match(baseline.dependencyLock.sha256, /^[0-9a-f]{64}$/);
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(baseline.lanes).map(([lane, value]) => [lane, value.fileCount])
+    ),
+    { unit: 812, integration: 142, slow: 52 }
+  );
+  const inventory = Object.entries(baseline.lanes).flatMap(([lane, value]) => {
+    assert.match(value.sourceSha256, /^[0-9a-f]{64}$/);
+    assert.equal(value.fileCount, value.discoveryInventory.length);
+    for (const file of value.discoveryInventory) assert.equal(baseline.weights[file].lane, lane);
+    return value.discoveryInventory;
+  });
+  assert.equal(new Set(inventory).size, inventory.length);
+  assert.equal(inventory.length, 1006);
+  assert.equal(inventory.length, Object.keys(baseline.weights).length);
 });
 
 test('normalizeCloudTestBaseline rejects missing provenance and mismatched discovery', () => {
@@ -168,20 +198,23 @@ function candidate({ repositorySeconds, totalSeconds, executionSeconds }) {
 
 function canaryRun(overrides = {}) {
   return {
+    runId: 100,
+    attempt: 1,
     status: 'completed',
     headSha: HEAD,
     sourceBaseline: { path: BASELINE_PATH, sha256: BASELINE_SHA },
-    partitionProof: { ok: true },
     unmeasuredFallbackFileCount: 0,
     unmeasuredFallbackWeightSeconds: 0,
     qualityPassed: true,
     fastShardsPassed: true,
     candidates: {
       2: {
+        partitionProof: { ok: true, headSha: HEAD, lane: 'slow', width: 2 },
         cold: candidate({ repositorySeconds: 470, totalSeconds: 520, executionSeconds: 405 }),
         warm: candidate({ repositorySeconds: 450, totalSeconds: 500, executionSeconds: 408 }),
       },
       3: {
+        partitionProof: { ok: true, headSha: HEAD, lane: 'slow', width: 3 },
         cold: candidate({ repositorySeconds: 390, totalSeconds: 430, executionSeconds: 300 }),
         warm: candidate({ repositorySeconds: 370, totalSeconds: 410, executionSeconds: 280 }),
       },
@@ -191,7 +224,7 @@ function canaryRun(overrides = {}) {
 }
 
 test('selectCanarySlowWidth requires five complete pairs and prefers width two at the boundary', () => {
-  const runs = Array.from({ length: 5 }, () => canaryRun());
+  const runs = Array.from({ length: 5 }, (_, index) => canaryRun({ runId: 100 + index }));
   assert.equal(
     selectCanarySlowWidth({
       runs,
@@ -211,8 +244,35 @@ test('selectCanarySlowWidth requires five complete pairs and prefers width two a
   );
 });
 
+test('selectCanarySlowWidth requires five distinct runs and exact candidate partition proofs', () => {
+  const runs = Array.from({ length: 5 }, (_, index) => canaryRun({ runId: 100 + index }));
+  const duplicated = runs.map((run) => structuredClone(run));
+  duplicated[4].runId = duplicated[3].runId;
+  assert.throws(
+    () =>
+      selectCanarySlowWidth({
+        runs: duplicated,
+        expectedHeadSha: HEAD,
+        expectedBaseline: { path: BASELINE_PATH, sha256: BASELINE_SHA },
+      }),
+    /distinct/
+  );
+
+  const wrongProof = runs.map((run) => structuredClone(run));
+  wrongProof[2].candidates[2].partitionProof.headSha = 'd'.repeat(40);
+  assert.throws(
+    () =>
+      selectCanarySlowWidth({
+        runs: wrongProof,
+        expectedHeadSha: HEAD,
+        expectedBaseline: { path: BASELINE_PATH, sha256: BASELINE_SHA },
+      }),
+    /partition proof/
+  );
+});
+
 test('selectCanarySlowWidth falls back to three and refuses incomplete calibration', () => {
-  const widthThree = Array.from({ length: 5 }, () => canaryRun());
+  const widthThree = Array.from({ length: 5 }, (_, index) => canaryRun({ runId: 100 + index }));
   widthThree[2].candidates[2].warm.executionSeconds = 408.001;
   assert.equal(
     selectCanarySlowWidth({
@@ -223,7 +283,7 @@ test('selectCanarySlowWidth falls back to three and refuses incomplete calibrati
     3
   );
 
-  const fallback = Array.from({ length: 5 }, () => canaryRun());
+  const fallback = Array.from({ length: 5 }, (_, index) => canaryRun({ runId: 100 + index }));
   fallback[0].unmeasuredFallbackFileCount = 1;
   fallback[0].unmeasuredFallbackWeightSeconds = 2.5;
   assert.throws(
@@ -236,7 +296,7 @@ test('selectCanarySlowWidth falls back to three and refuses incomplete calibrati
     /calibration-incomplete/
   );
 
-  const wrongSource = Array.from({ length: 5 }, () => canaryRun());
+  const wrongSource = Array.from({ length: 5 }, (_, index) => canaryRun({ runId: 100 + index }));
   wrongSource[4].sourceBaseline.sha256 = 'd'.repeat(64);
   assert.throws(
     () =>
@@ -251,6 +311,10 @@ test('selectCanarySlowWidth falls back to three and refuses incomplete calibrati
 
 test('nearestRankP95 requires twenty eligible samples', () => {
   assert.throws(() => nearestRankP95(Array.from({ length: 19 }, (_, i) => i + 1)), /20/);
+  assert.throws(
+    () => nearestRankP95([...Array.from({ length: 19 }, (_, i) => i + 1), null]),
+    /finite/
+  );
   assert.equal(nearestRankP95(Array.from({ length: 20 }, (_, i) => i + 1)), 19);
 });
 

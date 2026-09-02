@@ -227,7 +227,7 @@ separate 2026-08-11 Slow run now replaces the unmeasured Slow estimate:
 The 2026-08-11 artifacts in this section are immutable historical inputs. They
 must be preserved for provenance, but no current shard-width, family assignment,
 or performance-story target may be selected from them. The refreshed corpus has
-1,005 files and different scheduling phases. Task 1 records a new exact-head
+1,006 files and different scheduling phases. Task 1 records a new exact-head
 schema-5 baseline, including command, commit, runner profile, canonical lane,
 file count, source digest, and a calibration-input digest over canonical lane
 inventories, test-file blob IDs, and the dependency lock. A descendant may reuse

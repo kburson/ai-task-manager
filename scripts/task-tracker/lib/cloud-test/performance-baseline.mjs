@@ -215,6 +215,15 @@ function validateCandidate(candidate, { width, phase }) {
   return candidate.repositorySeconds <= 480 && candidate.totalSeconds <= 540;
 }
 
+function validatePartitionProof(proof, { width, expectedHeadSha }) {
+  return (
+    proof?.ok === true &&
+    proof.headSha === expectedHeadSha &&
+    proof.lane === 'slow' &&
+    proof.width === width
+  );
+}
+
 export function selectCanarySlowWidth({ runs, expectedHeadSha, expectedBaseline } = {}) {
   if (!Array.isArray(runs) || runs.length !== 5) {
     fail('exactly five paired canary runs are required');
@@ -230,7 +239,17 @@ export function selectCanarySlowWidth({ runs, expectedHeadSha, expectedBaseline 
 
   let widthTwoAccepted = true;
   let widthThreeAccepted = true;
+  const runKeys = new Set();
   for (const run of runs) {
+    const validRunId =
+      (Number.isSafeInteger(run?.runId) && run.runId > 0) ||
+      (typeof run?.runId === 'string' && /^[1-9]\d*$/.test(run.runId));
+    if (!validRunId || !Number.isSafeInteger(run?.attempt) || run.attempt <= 0) {
+      fail('every canary summary requires a run ID and positive integer attempt');
+    }
+    const runKey = `${run.runId}-${run.attempt}`;
+    if (runKeys.has(runKey)) fail('five distinct canary runs are required');
+    runKeys.add(runKey);
     if (!run || run.status !== 'completed') fail('canary cohort is incomplete');
     if (run.headSha !== expectedHeadSha) fail('canary run head does not match the immutable head');
     if (
@@ -239,12 +258,23 @@ export function selectCanarySlowWidth({ runs, expectedHeadSha, expectedBaseline 
     ) {
       fail('canary source baseline does not match');
     }
-    if (run.partitionProof?.ok !== true) fail('exact-head partition proof is missing');
     if (run.unmeasuredFallbackFileCount !== 0 || run.unmeasuredFallbackWeightSeconds !== 0) {
       fail('calibration-incomplete: unmeasured fallback evidence is nonzero or missing');
     }
     if (run.qualityPassed !== true || run.fastShardsPassed !== true) {
       fail('canary calibration lanes did not pass');
+    }
+    if (
+      !validatePartitionProof(run.candidates?.[2]?.partitionProof, {
+        width: 2,
+        expectedHeadSha,
+      }) ||
+      !validatePartitionProof(run.candidates?.[3]?.partitionProof, {
+        width: 3,
+        expectedHeadSha,
+      })
+    ) {
+      fail('exact-head candidate partition proof is missing or mismatched');
     }
     const twoCold = validateCandidate(run.candidates?.[2]?.cold, { width: 2, phase: 'cold' });
     const twoWarm = validateCandidate(run.candidates?.[2]?.warm, { width: 2, phase: 'warm' });
@@ -262,10 +292,10 @@ export function nearestRankP95(samples) {
   if (!Array.isArray(samples) || samples.length < 20) {
     fail('nearest-rank p95 requires at least 20 cycle-eligible samples');
   }
-  const sorted = samples.map(Number).sort((a, b) => a - b);
-  if (sorted.some((value) => !Number.isFinite(value) || value < 0)) {
+  if (samples.some((value) => typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
     fail('p95 samples must be finite and non-negative');
   }
+  const sorted = samples.slice().sort((a, b) => a - b);
   return sorted[Math.ceil(0.95 * sorted.length) - 1];
 }
 
