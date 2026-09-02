@@ -11,7 +11,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { mergeBack } from '../../../task-tracker/merge-back.mjs';
+import {
+  buildMergeBackGraphNode,
+  loadMergeBackGraph,
+  mergeBack,
+} from '../../../task-tracker/merge-back.mjs';
+import { resolveEpicLineage } from '../../../task-tracker/lib/resolve-epic-lineage.mjs';
+import { serializeIssueWorktreeLocationMarker } from '../../../task-tracker/lib/issue-worktree-location.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -157,4 +163,200 @@ test('requires child, git, and a test runner', () => {
   );
   assert.throws(() => mergeBack({ child: 910, path: '/wt/x', deps: { graph } }), /git/i);
   assert.throws(() => mergeBack({ child: 910, path: '/wt/x', deps: { graph, git } }), /runTests/i);
+});
+
+// ---- #1485: durable parent branch authority at the graph boundary -----------
+
+function parentBodyWith(entries) {
+  return entries.map((entry) => serializeIssueWorktreeLocationMarker(entry)).join('\n');
+}
+
+test('#1485: graph mapping preserves a valid parent custom branch', () => {
+  const parentBody = parentBodyWith([
+    {
+      worktreePath: '/wt/905',
+      worktreeBranch: 'cloud-test-automation',
+      sessionId: 'session-1',
+      ts: '2026-09-02T00:00:00Z',
+    },
+  ]);
+  assert.deepEqual(buildMergeBackGraphNode({ parent: 905, children: [], parentBody }), {
+    parent: 905,
+    children: [],
+    parentAuthoritativeBranch: 'cloud-test-automation',
+  });
+});
+
+test('#1485: a parent body with no authority marker preserves canonical fallback', () => {
+  const node = buildMergeBackGraphNode({
+    parent: 905,
+    children: [],
+    parentBody: '## Some issue\n\nNo worktree-location history here.\n',
+  });
+  assert.deepEqual(node, { parent: 905, children: [] });
+  assert.equal('parentAuthoritativeBranch' in node, false);
+  assert.equal('parentAuthorityError' in node, false);
+  // The canonical epic ref is then synthesized downstream, exactly as before.
+  assert.equal(
+    resolveEpicLineage(910, { deps: { graph: () => node } }).epicBranch,
+    'feature/epic/905'
+  );
+});
+
+test('#1485: a root node with no parent carries no authority fields', () => {
+  assert.deepEqual(buildMergeBackGraphNode({ parent: null, children: [910, 920] }), {
+    parent: null,
+    children: [910, 920],
+  });
+});
+
+test('#1485: malformed and ambiguous parent authority map to parentAuthorityError', () => {
+  const cases = [
+    {
+      name: 'marker missing ts',
+      parentBody:
+        '<!-- aitm-worktree-location worktree="/wt/905" branch="cloud-test-automation" -->',
+      expected: /malformed/i,
+    },
+    {
+      name: 'two same-timestamp markers naming different branches',
+      parentBody: parentBodyWith([
+        {
+          worktreePath: '/wt/905',
+          worktreeBranch: 'cloud-test-automation',
+          sessionId: 's1',
+          ts: '2026-09-02T00:00:00Z',
+        },
+        {
+          worktreePath: '/wt/905',
+          worktreeBranch: 'codex/1268-implementation-plan',
+          sessionId: 's2',
+          ts: '2026-09-02T00:00:00Z',
+        },
+      ]),
+      expected: /ambiguous/i,
+    },
+  ];
+  for (const { name, parentBody, expected } of cases) {
+    const node = buildMergeBackGraphNode({ parent: 905, children: [], parentBody });
+    assert.equal('parentAuthoritativeBranch' in node, false, name);
+    assert.match(node.parentAuthorityError, expected, name);
+  }
+});
+
+test('#1485: a non-null parent with an unavailable body refuses', () => {
+  assert.throws(
+    () => buildMergeBackGraphNode({ parent: 905, children: [], parentBody: undefined }),
+    /parent #905 body unavailable/i
+  );
+});
+
+test('#1485: graph loader prefetches child and immediate epic by issue number', async () => {
+  const loaded = [];
+  const nodes = new Map([
+    [910, { parent: 905, children: [] }],
+    [905, { parent: null, children: [910] }],
+  ]);
+  const graph = await loadMergeBackGraph({
+    child: 910,
+    cfg: { repo: 'owner/repo' },
+    deps: {
+      loadNode: async (issue) => {
+        loaded.push(issue);
+        return nodes.get(issue);
+      },
+    },
+  });
+  assert.deepEqual(loaded, [910, 905]);
+  assert.deepEqual(graph(910), nodes.get(910));
+  assert.deepEqual(graph(905), nodes.get(905));
+  assert.throws(() => graph(999), /not prefetched/);
+});
+
+test('#1485: an unprefetched graph node fails closed rather than fabricating one', async () => {
+  const graph = await loadMergeBackGraph({
+    child: 42,
+    cfg: { repo: 'owner/repo' },
+    deps: { loadNode: async () => ({ parent: null, children: [] }) },
+  });
+  assert.deepEqual(graph(42), { parent: null, children: [] });
+  assert.throws(() => graph(905), /not prefetched/);
+});
+
+const customGraph = (n) =>
+  n === 910
+    ? { ...GRAPH[910], parentAuthoritativeBranch: 'cloud-test-automation' }
+    : (GRAPH[n] ?? { parent: null, children: [] });
+
+test('#1485: a recorded custom epic branch drives rebase, checkout, and fast-forward', () => {
+  const git = makeGit();
+  const wtGit = makeGit();
+  const result = mergeBack({
+    child: 910,
+    path: '/wt/910',
+    deps: { graph: customGraph, git, worktreeGit: wtGit, runTests: () => true },
+  });
+  assert.equal(result.epic, 'cloud-test-automation');
+  assert.equal(result.child, 'feature/child/910');
+  // The child rebases onto the opaque recorded ref, never a synthesized canon.
+  assert.deepEqual(wtGit.calls[0], ['rebase', 'cloud-test-automation', 'feature/child/910']);
+  const kinds = git.calls.map((c) => c.join(' '));
+  assert.ok(kinds.includes('checkout cloud-test-automation'));
+  assert.ok(kinds.includes('merge --ff-only feature/child/910'));
+  assert.ok(!kinds.some((k) => k.includes('feature/epic/905')));
+  // Cleanup still happens, and only after the merge.
+  assert.ok(kinds.includes('worktree remove /wt/910'));
+  assert.ok(kinds.includes('branch -d feature/child/910'));
+  assert.ok(
+    kinds.indexOf('merge --ff-only feature/child/910') < kinds.indexOf('worktree remove /wt/910')
+  );
+});
+
+test('#1485: parent authority failure refuses before any git or test-runner call', () => {
+  const git = makeGit();
+  const wtGit = makeGit();
+  let ranTests = false;
+  const brokenGraph = (n) =>
+    n === 910
+      ? { ...GRAPH[910], parentAuthorityError: 'malformed worktree authority record' }
+      : (GRAPH[n] ?? { parent: null, children: [] });
+  assert.throws(
+    () =>
+      mergeBack({
+        child: 910,
+        path: '/wt/910',
+        deps: {
+          graph: brokenGraph,
+          git,
+          worktreeGit: wtGit,
+          runTests: () => {
+            ranTests = true;
+            return true;
+          },
+        },
+      }),
+    /malformed worktree authority record/i
+  );
+  assert.deepEqual(git.calls, []);
+  assert.deepEqual(wtGit.calls, []);
+  assert.equal(ranTests, false);
+});
+
+test('#1485: the CLI wires the prefetched keyed graph, not a constant single node', () => {
+  const src = readFileSync(path.join(__dir, '../../../task-tracker/merge-back.mjs'), 'utf8');
+  // The constant single-node graph made resolveEpicLineage(epicIssue) read the
+  // CHILD's node when asked about the epic. It must not come back.
+  assert.ok(
+    !/graph:\s*\(\)\s*=>\s*node\b/.test(src),
+    'merge-back.mjs main() must not wire a constant single-node graph'
+  );
+  assert.ok(
+    /loadMergeBackGraph\(\{\s*child,\s*cfg\s*\}\)/.test(src),
+    'merge-back.mjs main() must build its graph with loadMergeBackGraph({ child, cfg })'
+  );
+  // Issue identity must never be recovered by parsing an opaque branch ref.
+  assert.ok(
+    !/parseBranchName\(/.test(src),
+    'merge-back.mjs must not parse a branch name for issue identity (#1485)'
+  );
 });
