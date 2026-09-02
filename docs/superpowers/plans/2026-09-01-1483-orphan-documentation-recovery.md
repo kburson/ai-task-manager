@@ -30,7 +30,12 @@
 
 - [ ] **Step 1: Verify exact recovery content**
 
-  Run `git rev-parse HEAD:<path>` for each committed document and compare it with the original `git hash-object <path>` value.
+  Compare the committed document blobs from `git rev-parse HEAD:<path>` against the independently captured hashes from the original untracked main-checkout files:
+
+  - Postmortem source blob: `d515b25f21639da29dfd781674a677849d6c7e44`
+  - Context-design source blob: `f623a1626fe7b7f775c1449f1c080b23a436ca7f`
+
+  These fixed values were captured with `git hash-object` before the redundant main-checkout copies were removed. They are source evidence, not hashes recomputed from the issue worktree.
 
   Expected: both hash pairs are identical.
 
