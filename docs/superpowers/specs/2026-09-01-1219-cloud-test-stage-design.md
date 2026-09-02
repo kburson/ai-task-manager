@@ -229,8 +229,12 @@ must be preserved for provenance, but no current shard-width, family assignment,
 or performance-story target may be selected from them. The refreshed corpus has
 1,005 files and different scheduling phases. Task 1 records a new exact-head
 schema-5 baseline, including command, commit, runner profile, canonical lane,
-file count, and source digest; Task 3 refuses calibration when any discovered
-file lacks measured or explicitly labeled fallback evidence.
+file count, source digest, and a calibration-input digest over canonical lane
+inventories, test-file blob IDs, and the dependency lock. A descendant may reuse
+the weights only while that digest and the discovered set remain identical; the
+partition proof itself always binds the exact execution head. Task 3 refuses
+calibration when any discovered file lacks measured or explicitly labeled
+fallback evidence.
 
 Both source artifacts survive, if present, only as ignored inspection copies at
 `.tmp/inspect/test-timing-fast-2026-08-11.json` and
