@@ -19,7 +19,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
-import { parseBranchName } from './lib/branch-name.mjs';
+import { resolveCurrentIssueWorktreeBranch } from './lib/issue-worktree-location.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
@@ -66,7 +66,13 @@ export function mergeBack({ child, path, deps } = {}) {
 
   // Resolve the epic's own parent (the child's grandparent) to know what the epic
   // should sync onto: trunk for a root epic, the outer epic for a nested one.
-  const epicIssue = parseBranchName(epicBranch).issue;
+  // #1485 — the epic's identity comes from the GRAPH edge, never from parsing
+  // `epicBranch`: an authoritative branch is an opaque ref (`cloud-test-automation`)
+  // that the managed `feature/<role>/<N>` grammar cannot parse.
+  const epicIssue = childLineage.parentIssue;
+  if (!Number.isInteger(epicIssue) || epicIssue <= 0) {
+    throw new Error(`merge-back: #${child} has no valid parent epic issue`);
+  }
   const grandparent = resolveEpicLineage(epicIssue, { deps }).parentBranch;
 
   // 1. Opportunistic epic sync (skip when already current).
@@ -100,14 +106,104 @@ export function mergeBack({ child, path, deps } = {}) {
   return { merged: true, epic: epicBranch, child: childBranch };
 }
 
+// ---- #1485: graph-node mapping and prefetch boundaries -----------------------
+
+// Pure mapping boundary: turn one issue's raw graph evidence (numeric parent,
+// child list, and the PARENT issue's body) into the synchronous node shape
+// `resolveEpicLineage` consumes.
+//
+// Contract notes:
+//   - Emits at most one authority outcome. A valid current worktree-location
+//     marker yields `parentAuthoritativeBranch`; a parse failure yields
+//     `parentAuthorityError`; a parent body with no marker at all yields
+//     NEITHER field, which is what preserves canonical `feature/epic/<N>`
+//     fallback downstream. This mapper never invents a branch name.
+//   - It populates only the PARENT's authority. The node's own
+//     `authoritativeBranch` is deliberately left unset: merge-back only ever
+//     asks where a child should land, never what the child's own recorded ref
+//     is. A future caller needing that must add it explicitly rather than
+//     assume this mapper supplied it.
+//   - A non-null parent with no supplied body is a caller error, not a missing
+//     marker — it throws rather than silently degrading to canonical fallback.
+export function buildMergeBackGraphNode({ parent = null, children = [], parentBody } = {}) {
+  const normalizedParent = parent == null ? null : Number(parent);
+  if (normalizedParent != null && (!Number.isInteger(normalizedParent) || normalizedParent <= 0)) {
+    throw new Error('merge-back: parent issue must be a positive integer');
+  }
+  const normalizedChildren = (children || []).map((child) => Number(child.number ?? child));
+  if (normalizedChildren.some((child) => !Number.isInteger(child) || child <= 0)) {
+    throw new Error('merge-back: child issues must be positive integers');
+  }
+  if (normalizedParent == null) return { parent: null, children: normalizedChildren };
+  if (typeof parentBody !== 'string') {
+    throw new Error(`merge-back: parent #${normalizedParent} body unavailable`);
+  }
+  try {
+    const branch = resolveCurrentIssueWorktreeBranch(parentBody);
+    return {
+      parent: normalizedParent,
+      children: normalizedChildren,
+      ...(branch ? { parentAuthoritativeBranch: branch } : {}),
+    };
+  } catch (error) {
+    return {
+      parent: normalizedParent,
+      children: normalizedChildren,
+      parentAuthorityError: error.message,
+    };
+  }
+}
+
+// Prefetch the two nodes the synchronous merge protocol reads — the child and
+// its immediate epic — into a map keyed by issue number, then hand back a sync
+// lookup. A lookup outside that set fails closed rather than returning the
+// child node (the #1485 defect) or fabricating an empty one.
+export async function loadMergeBackGraph({ child, cfg, deps = {} } = {}) {
+  const loadNode = deps.loadNode || ((issue) => realGraphNode(issue, cfg, deps));
+  const childNode = await loadNode(Number(child));
+  if (!childNode) throw new Error(`merge-back: graph node #${child} unavailable`);
+  const nodes = new Map([[Number(child), childNode]]);
+  if (childNode.parent != null) {
+    const epicIssue = Number(childNode.parent);
+    const epicNode = await loadNode(epicIssue);
+    if (!epicNode) throw new Error(`merge-back: graph node #${epicIssue} unavailable`);
+    nodes.set(epicIssue, epicNode);
+  }
+  return (issue) => {
+    const key = Number(issue);
+    if (!nodes.has(key)) throw new Error(`merge-back: graph node #${issue} was not prefetched`);
+    return nodes.get(key);
+  };
+}
+
 // ---- CLI wiring (real git + real gh graph + real test runner) -----------------
 
-async function realGraphNode(issue, cfg) {
-  const { fetchParentIssue } = await import('./lib/fetch-parent-issue.mjs');
-  const { fetchEpicChildren } = await import('./lib/epic-children-gate.mjs');
-  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo });
-  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue });
-  return { parent, children: (children || []).map((c) => Number(c.number)) };
+async function fetchIssueBody(issue, cfg) {
+  const { gql, splitRepo } = await import('../gh/lib/github-projects.mjs');
+  const { owner, repoName } = splitRepo(cfg.repo);
+  const data = await gql(
+    `query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
+    }`,
+    { owner, repo: repoName, issue: Number(issue) }
+  );
+  const body = data?.repository?.issue?.body;
+  if (typeof body !== 'string') {
+    throw new Error(`merge-back: parent #${issue} body unavailable`);
+  }
+  return body;
+}
+
+async function realGraphNode(issue, cfg, deps = {}) {
+  const fetchParent =
+    deps.fetchParentIssue || (await import('./lib/fetch-parent-issue.mjs')).fetchParentIssue;
+  const fetchChildren =
+    deps.fetchEpicChildren || (await import('./lib/epic-children-gate.mjs')).fetchEpicChildren;
+  const fetchBody = deps.fetchIssueBody || fetchIssueBody;
+  const parent = await fetchParent({ issueNumber: issue, repo: cfg.repo });
+  const children = await fetchChildren({ cfg, parentEpicNumber: issue });
+  const parentBody = parent == null ? undefined : await fetchBody(parent, cfg);
+  return buildMergeBackGraphNode({ parent, children, parentBody });
 }
 
 function realGit(projectDir) {
@@ -127,7 +223,12 @@ async function main(argv) {
   }
   const { loadConfig } = await import('./config.mjs');
   const cfg = loadConfig();
-  const node = await realGraphNode(child, cfg);
+  // #1485 — prefetch the child AND its immediate epic, keyed by issue number.
+  // The retired constant single-node adapter returned the child's node for every
+  // lookup, so the epic's own grandparent resolution silently read the child.
+  // Built before any git or test-runner call, so an authority failure or a
+  // missing node refuses with zero mutation.
+  const graph = await loadMergeBackGraph({ child, cfg });
   const projectDir = cfg.projectDir || process.cwd();
   // #927 — the epic's grandparent, for a root epic, is trunk; the opportunistic
   // epic sync (step 1) rebases the epic onto it. Resolve+fetch the trunk ref so
@@ -156,7 +257,7 @@ async function main(argv) {
     child,
     path: wtPath,
     deps: {
-      graph: () => node,
+      graph,
       git: realGit(projectDir),
       worktreeGit: wtPath ? realGit(wtPath) : realGit(projectDir),
       trunk,

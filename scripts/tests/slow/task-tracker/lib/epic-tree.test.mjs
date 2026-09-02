@@ -210,3 +210,56 @@ test('#1284: a custom-named epic cuts and validates a child at its exact head', 
     true
   );
 });
+
+test('#1485: merge-back delivers a child into its parent epic recorded custom branch', () => {
+  const repo = mkdtempProjectIsolated('epic-tree-custom-merge-back-', 'test');
+  const git = gitFor(repo);
+  // An opaque ref that the managed `feature/<role>/<N>` grammar cannot parse —
+  // the exact shape that made merge-back synthesize a nonexistent epic ref.
+  const customEpic = 'cloud-test-automation';
+  const customGraph = (n) =>
+    n === 910
+      ? { ...GRAPH[910], parentAuthoritativeBranch: customEpic }
+      : (GRAPH[n] ?? { parent: null, children: [] });
+
+  // The custom epic lives in the repository's own worktree so merge-back can
+  // check it out; advance it once so the child is cut from a real epic head.
+  git(['checkout', '-q', '-b', customEpic, 'trunk']);
+  commitInWorktree(repo, 'epic.txt', 'custom epic head\n');
+  const customHead = git(['rev-parse', customEpic]);
+
+  const childWorktree = siblingPath(repo, 'custom-child-1485');
+  const cut = cutChildWorktree({
+    issue: 910,
+    path: childWorktree,
+    deps: { graph: customGraph, git, trunk: 'trunk' },
+  });
+  assert.equal(cut.base, customEpic);
+  assert.equal(git(['merge-base', 'feature/child/910', customEpic]), customHead);
+  commitInWorktree(childWorktree, 'child.txt', 'custom child\n');
+
+  const result = mergeBack({
+    child: 910,
+    path: childWorktree,
+    deps: {
+      graph: customGraph,
+      git,
+      worktreeGit: gitFor(childWorktree),
+      runTests: () => true,
+      trunk: 'trunk',
+    },
+  });
+
+  assert.equal(result.merged, true);
+  assert.equal(result.epic, customEpic);
+  // The custom epic absorbed the child commit and kept its own prior head.
+  assert.ok(git(['show', `${customEpic}:child.txt`]).includes('custom child'));
+  assert.ok(git(['show', `${customEpic}:epic.txt`]).includes('custom epic head'));
+  // No canonical alias branch was ever synthesized.
+  assert.equal(git(['branch', '--list', 'feature/epic/905']), '');
+  // Success-only cleanup still removed the child branch and worktree.
+  assert.equal(git(['branch', '--list', 'feature/child/910']), '');
+  assert.ok(!existsSync(childWorktree), 'child worktree removed');
+  // The epic remains a clean linear descendant of trunk.
+  assert.doesNotThrow(() => git(['merge-base', '--is-ancestor', 'trunk', customEpic]));
+});
