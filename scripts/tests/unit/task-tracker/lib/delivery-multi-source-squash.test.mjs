@@ -36,8 +36,18 @@ const SOURCE_2 = '2'.repeat(40);
 const REWRITE = 'f'.repeat(40);
 const MERGED_AT = '2026-09-02T18:47:28.000Z';
 
+// The REAL merge bytes of PR #1489 (`git log -1 --format=%B 3a044ea8`): GitHub's
+// default squash title and bullet body, with NO `Attribution:` trailer. The first
+// pass of this suite used a fabricated `'Attribution: [#1488]'` body, which no
+// real pull request produces — that fiction satisfied the attribution gate and so
+// never exercised it. Attribution behaviour itself is covered in
+// `delivery-default-squash-attribution.test.mjs`.
 const COMMIT_TITLE = '[#1488] fix: stop verbStart re-running the Review action after bind (#1489)';
-const COMMIT_MESSAGE = 'Attribution: [#1488]';
+const COMMIT_MESSAGE = [
+  '* [#1488] fix: stop verbStart re-running the Review action after bind',
+  '',
+  '* [#1488] test: realign timing-emitter baseline line numbers after resume.mjs comment',
+].join('\n');
 
 // Three source commits whose head is itself a MERGE commit — PR #1489's exact
 // shape, and the case that also defeats the single-source proof's one-parent rule.

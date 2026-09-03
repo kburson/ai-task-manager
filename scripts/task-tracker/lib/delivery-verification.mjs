@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 
 import { validateProviderAction } from './delivery-provider-action.mjs';
 import { buildDeliveryIntent } from './delivery-records.mjs';
+import { ISSUE_ID_GLOBAL_RE, ISSUE_PREFIX_RE } from './commit-attribution-format.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 const HASH_RE = /^[0-9a-f]{64}$/;
@@ -268,9 +269,17 @@ async function provesMultiSourceSquash({
     pullRequest?.sourceCommitsComplete !== true ||
     pullRequest?.sourceCommitsHeadSha !== expectedHeadSha ||
     !Array.isArray(inventory) ||
-    inventory.length === 0 ||
+    // Strictly MULTI-source. A single-commit pull request stays the exclusive
+    // domain of `provesSingleSourceSquash`, whose stricter source-parent and
+    // source-message invariants are correct there and must not be relaxed: for a
+    // one-commit PR the source commit's parent IS the base tip, so a mismatch is
+    // real evidence of tampering. Those invariants do NOT generalize — in a
+    // multi-commit PR the head's parent is the previous branch commit and
+    // legitimately differs from the merge parent — which is why this proof
+    // substitutes tree equality plus parent ancestry instead.
+    inventory.length < 2 ||
     !Array.isArray(evidence) ||
-    evidence.length === 0 ||
+    evidence.length < 2 ||
     mergeSha === expectedHeadSha ||
     !Array.isArray(inspection?.parents) ||
     inspection.parents.length !== 1 ||
@@ -308,7 +317,44 @@ function provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleS
   );
 }
 
-function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSquash) {
+// #1490 — semantic attribution for an externally merged multi-source squash that
+// carries GitHub's DEFAULT squash body.
+//
+// The canonical `Attribution:` trailer is emitted by the governed provider action
+// as part of its authorized-byte contract. External recovery runs with
+// `requireAuthorizedBytes: false` and rebuilds the intent from inspected bytes, so
+// a merge performed in the GitHub UI can never carry that trailer.
+//
+// This proof does NOT accept "the title leads with the top-level token" on its own,
+// which would be safe only for a singleton token set and would silently weaken
+// multi-issue delivery. It requires the merge title to lead with the exact
+// top-level token AND the token SET observed across the complete inspected title
+// and body to equal `intent.attributionTokens` exactly. Repeated occurrences are
+// fine; a missing authorized token or an extra unauthorized one refuses.
+//
+// Tokens are read with the repository's shared attribution primitives
+// (`commit-attribution-format.mjs`) rather than a private regex, so this stays
+// bound to the documented `\[#(\d+)\]` message-based attribution contract. A
+// parenthesised `(#1489)` pull-request reference is not a bracket token and is
+// therefore correctly ignored.
+function provesDefaultSquashBodyAttribution({ intent, inspection }) {
+  const leading = ISSUE_PREFIX_RE.exec(inspection.commitTitle || '');
+  if (leading === null || leading[1] !== String(intent.issueNumber)) return false;
+  const observed = new Set(
+    [...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE)].map(
+      (match) => `#${match[1]}`
+    )
+  );
+  const expected = new Set(intent.attributionTokens);
+  expected.add(`#${intent.issueNumber}`);
+  if (observed.size !== expected.size) return false;
+  for (const token of expected) {
+    if (!observed.has(token)) return false;
+  }
+  return true;
+}
+
+function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSquash, options = {}) {
   const topLevelToken = `#${intent.issueNumber}`;
   const messageTokens = [
     topLevelToken,
@@ -319,6 +365,18 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
   if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return;
   if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) return;
+  // #1490 — the default-body proof applies ONLY when no `Attribution:` line exists
+  // at all. A malformed, duplicated, reordered, or nonterminal trailer is a body
+  // that claims canonical attribution and must be judged by the canonical rule
+  // alone; it must never fall through to the semantic proof.
+  if (
+    attributionLines.length === 0 &&
+    options.provenMultiSourceSquash === true &&
+    intent.provider === 'external' &&
+    provesDefaultSquashBodyAttribution({ intent, inspection })
+  ) {
+    return;
+  }
   throw verificationError('attribution');
 }
 
@@ -432,7 +490,9 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         commitTitle: inspection.commitTitle,
         commitMessage: inspection.commitMessage,
       });
-  assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash);
+  assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash, {
+    provenMultiSourceSquash,
+  });
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');

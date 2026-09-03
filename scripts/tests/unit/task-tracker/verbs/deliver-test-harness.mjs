@@ -47,6 +47,7 @@ export function makeHarness(options = {}) {
     fetchRequiredChecks: 0,
     fetchOriginTrunk: 0,
     isAncestor: 0,
+    squashParentAncestry: 0,
     inspectMergeCommit: 0,
     inspectSourceCommit: 0,
     attributingCommits: [],
@@ -219,8 +220,16 @@ export function makeHarness(options = {}) {
     },
     async isAncestor({ ancestor, descendant }) {
       calls.isAncestor += 1;
+      // #1490 — two distinct ancestry questions reach this dep. Trunk
+      // reachability of the merge commit, and (for the multi-source squash
+      // proof) whether the merge commit's parent is an ancestor of the accepted
+      // head. Keep both assertions exact rather than accepting any pair.
+      if (descendant !== 'origin/trunk') {
+        calls.squashParentAncestry += 1;
+        assert.equal(descendant, data.prHead ?? data.head);
+        return options.squashParentIsAncestor ?? true;
+      }
       assert.equal(ancestor, data.mergeCommitSha);
-      assert.equal(descendant, 'origin/trunk');
       return options.mergeReachable ?? true;
     },
     async inspectMergeCommit({
