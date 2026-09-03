@@ -12,7 +12,7 @@
 
 ## Hydrated backlog
 
-All six children remain unassigned in Backlog. Epic #1495 also remains in Backlog; the governed planning bind assigned it to `kburson`. Sequence is serial; these dependencies are internal to #1495 and do not block or alter the existing defect issues.
+At execution pickup all six children remain unassigned in Backlog without recorded child worktrees. Epic #1495 has entered Refine under `kburson`; the original planning task's idle occupancy claim was released through the supported administrative command and rebound in the same recorded epic worktree. Sequence is serial; these dependencies are internal to #1495 and do not block or alter the existing defect issues. No Plan approval is recorded.
 
 | Sequence | Issue                                                           | Deliverable                                                               | Predecessor |
 | -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------- |
@@ -40,6 +40,39 @@ All six children remain unassigned in Backlog. Epic #1495 also remains in Backlo
 
 ## A. Execution checkpoints and delivery topology
 
+### Pickup refinement proposal
+
+The following are provisional human-effort estimates, including implementation, focused verification, and normal review response. They are not AI elapsed-time forecasts or frozen Plan estimates. Only the epic's XL / 108-hour / P1 / rank 1 fields have been applied; child fields await each governed refinement. Preserve the six-child order and apply P1 consistently when refining them.
+
+| Child | Proposed size | Human hours | Estimate basis                                                                                                                        |
+| ----- | ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| #1496 | L             | 16          | Isolation and process/context boundary 6; stateful provider and durable faults 6; legacy contracts and review 4                       |
+| #1497 | L             | 20          | Strict journal and retry persistence 7; complete subject/requirements projection 7; acceptance, protocol selection and verification 6 |
+| #1498 | L             | 16          | Explicit delivery relationships and existing-lineage integration 6; real-Git/provider fault matrix and review 10                      |
+| #1499 | L             | 20          | Cycle/close state machine 8; authority and binding generations 5; complete effect-boundary public-command tests and review 7          |
+| #1500 | L             | 20          | Enrollment/import and entry guard 8; production context and consumer integration 8; audit, docs and review 4                          |
+| #1501 | L             | 16          | Consistent capture and manifest disposal 5; frozen rehearsal matrix 7; retained reports and gated handoff 4                           |
+
+Total: 108 human hours. #1497, #1499 and #1500 have the highest uncertainty; refresh their WBS and size in Plan instead of treating the L boundary as a fixed promise. Production recovery of the frozen chain is excluded.
+
+The first review decision is approval of the refined written contract, including the early plumbing allocation below. Then refine the six children serially into Ready for Planning with current snapshots and finite ranks before the epic can enter Plan. Publish the current-trunk orchestration plan and governed Plan estimate there. Record human Plan approval only after it is actually given. The parent must reach Develop before #1496 enters its own Plan gate. Later children remain parked until their predecessor has an accepted terminal disposition; Review alone is insufficient.
+
+### Plumbing needed before its consumers
+
+The original Task 3/4 public-command requirements depended on context and protocol plumbing scheduled in Task 5. Resolve that forward dependency without adding another workflow or lineage adapter:
+
+1. Task 1 owns the minimal explicit execution-context and offline process/transport boundary needed to run the existing dispatcher in a cold process. Production defaults and v1 semantics remain unchanged. The sandbox must exercise the ordinary preflight, argument parsing and verb path; calling an injected `verbClose` helper alone does not qualify. No missing production outcome may be replaced by a successful boolean.
+2. Task 2 owns the common protocol selector used by Tasks 3/4. At this stage v2 execution is enabled only for validated isolated synthetic fixtures; production enrollment remains unavailable until Task 5 supplies the compatible entry guard and full enrollment transaction. The selector refuses malformed v2 state and never falls back to v1.
+3. Tasks 3/4 wire their services through that same dispatcher/context/selector as they are introduced, so each child's required public-command scenarios can pass before it completes. Task 5 completes production capability validation, enrollment/reopen CLI and the full consumer audit using these existing foundations.
+
+Reuse `resolveEpicLineage(issueNumber, {deps})` in `scripts/task-tracker/lib/resolve-epic-lineage.mjs` and its existing authority-aware graph consumers. Carry `parentIssue` separately from opaque refs. Child target authority is `codex/rewrite-stable-delivery-plan`, never a synthesized epic alias. #1486 is not a dependency and this epic must not introduce a duplicate lineage adapter.
+
+### Frozen regression ownership
+
+Child #1496 captures synthetic legacy shapes corresponding to the four handoff findings in specification section 2. #1499 proves main-authority resolution and real default binding discovery, same-session/foreign-generation protection, board-effect-before-checkpoint recovery, and full terminal dispatcher behavior. #1500 covers import of the original transaction and the unaccepted local candidate without inventing historical execution. #1501 imports the local `c52c4976c56709f1d8e5da211ded7cbf33a99cd5` object into independent storage and retains the report as non-production evidence. No preservation push, repair, retirement or close of the protected chain is part of these tasks.
+
+### Existing execution contract
+
 This is an epic-level implementation plan with six reviewable children. Each child owns the named interfaces, code surface, tests, and docs below; refine its estimates and refresh line-level locations at pickup. The child issue contains scope/AC/VC and references this plan, not a fabricated completed deep dive. Planning completion does not promote these issues or start coding.
 
 The planning worktree is `.worktrees/rewrite-stable-delivery-plan` on `codex/rewrite-stable-delivery-plan`. At execution pickup inspect the epic's recorded binding and reuse its authorized branch/worktree; do not create a substitute if planning has already established that binding. Sequential child changes integrate into the recorded epic branch under existing branch-authority rules; the assembled architecture is delivered through one reviewed epic PR. Do not introduce a custom branch alias for #1220. Confirm the actual recorded topology before executing child delivery commands; never synthesize the target from an issue number.
@@ -52,21 +85,21 @@ During Develop use `node scripts/task-tracker/verify-develop.mjs` plus the child
 
 New production modules live in `scripts/task-tracker/lib/evidence-v2/`:
 
-| Owner  | Module                   | Exported contract                                                                                                                                                  |
-| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Task 2 | `codec.mjs`              | `createRecord(envelopeWithoutId)`, `encodeRecord(record)`, `decodeRecord(comment, context)`, `recordDigest(value)`; strict schema/version/identity validation      |
-| Task 2 | `journal.mjs`            | `readJournal({repositoryId,issueNumber,ports})`, `appendRecord({expectedHead,record,authority,ports})`; exhaustive read-back, idempotency, fork refusal, host lock |
-| Task 2 | `subject.mjs`            | `buildEvidenceSubject({repositoryId,sourceRoot,requirements,recipe,environment,gitInputs,ports})` -> immutable subject with `subjectId`                            |
-| Task 2 | `eligibility.mjs`        | `evaluateReuse({candidate,verification,policy})` -> `{status,reasons,priorVerificationId,candidateId}`                                                             |
-| Task 2 | `acceptance.mjs`         | `authorizeAcceptance({cycle,candidate,verificationRecords,reviewAuthority,policy,target})` -> acceptance payload or typed refusal                                  |
-| Task 3 | `delivery.mjs`           | `resolveDeliveryIntent({acceptance,pr,policy,operation})`, `verifyDelivery({intent,observations,ports})` -> immutable delivery record payload                      |
-| Task 4 | `cycles.mjs`             | `projectCycle(records)`; `planCycleOpen({projection,reason,externalEvent,authority,operation})` -> cycle-open record payload                                       |
-| Task 4 | `close-machine.mjs`      | `planCloseEffects({cycle,live,authority})` -> `{status,nextEffect,expected,operationKey}`; no effects                                                              |
-| Task 4 | `close-runner.mjs`       | `executeCloseEffect({plan,ports})` -> verified checkpoint; `resumeClose({context,ports})` -> `{status,cycleId,transactionId,cleanup}`                              |
-| Task 4 | `binding-generation.mjs` | `inspectBindingGeneration({context,ports})`, `releaseBindingGeneration({expected,ports})`; compare-and-clear under authority lock                                  |
-| Task 5 | `execution-context.mjs`  | `resolveExecutionContext({toolRoot,sourceRoot,authorityRoot,providerMode,ports})` -> immutable context or typed refusal                                            |
-| Task 5 | `migration.mjs`          | `inspectEnrollment({context,issue,ports})` -> digest-bound read-only plan; `enrollIssue({planDigest,context,operation,ports})` -> verified import/enrollment       |
-| Task 5 | `protocol.mjs`           | `selectEvidenceProtocol({body,context})` -> `v1` or `v2`, never fallback from malformed/enrolled v2                                                                |
+| Owner                                                | Module                   | Exported contract                                                                                                                                                  |
+| ---------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Task 2                                               | `codec.mjs`              | `createRecord(envelopeWithoutId)`, `encodeRecord(record)`, `decodeRecord(comment, context)`, `recordDigest(value)`; strict schema/version/identity validation      |
+| Task 2                                               | `journal.mjs`            | `readJournal({repositoryId,issueNumber,ports})`, `appendRecord({expectedHead,record,authority,ports})`; exhaustive read-back, idempotency, fork refusal, host lock |
+| Task 2                                               | `subject.mjs`            | `buildEvidenceSubject({repositoryId,sourceRoot,requirements,recipe,environment,gitInputs,ports})` -> immutable subject with `subjectId`                            |
+| Task 2                                               | `eligibility.mjs`        | `evaluateReuse({candidate,verification,policy})` -> `{status,reasons,priorVerificationId,candidateId}`                                                             |
+| Task 2                                               | `acceptance.mjs`         | `authorizeAcceptance({cycle,candidate,verificationRecords,reviewAuthority,policy,target})` -> acceptance payload or typed refusal                                  |
+| Task 3                                               | `delivery.mjs`           | `resolveDeliveryIntent({acceptance,pr,policy,operation})`, `verifyDelivery({intent,observations,ports})` -> immutable delivery record payload                      |
+| Task 4                                               | `cycles.mjs`             | `projectCycle(records)`; `planCycleOpen({projection,reason,externalEvent,authority,operation})` -> cycle-open record payload                                       |
+| Task 4                                               | `close-machine.mjs`      | `planCloseEffects({cycle,live,authority})` -> `{status,nextEffect,expected,operationKey}`; no effects                                                              |
+| Task 4                                               | `close-runner.mjs`       | `executeCloseEffect({plan,ports})` -> verified checkpoint; `resumeClose({context,ports})` -> `{status,cycleId,transactionId,cleanup}`                              |
+| Task 4                                               | `binding-generation.mjs` | `inspectBindingGeneration({context,ports})`, `releaseBindingGeneration({expected,ports})`; compare-and-clear under authority lock                                  |
+| Task 1; Task 5 completes production validation       | `execution-context.mjs`  | `resolveExecutionContext({toolRoot,sourceRoot,authorityRoot,providerMode,ports})` -> immutable context or typed refusal                                            |
+| Task 5                                               | `migration.mjs`          | `inspectEnrollment({context,issue,ports})` -> digest-bound read-only plan; `enrollIssue({planDigest,context,operation,ports})` -> verified import/enrollment       |
+| Task 2; Task 5 enables guarded production enrollment | `protocol.mjs`           | `selectEvidenceProtocol({body,context})` -> `v1` or `v2`, never fallback from malformed/enrolled v2                                                                |
 
 `ports` is an explicit capability object, not a bag of asserted outcomes. Its required capabilities are `git`, `provider`, `journalTransport`, `authorityLock`, `sourceRetention`, and `clock`; mutation methods are absent from read-only instances. The rehearsal supplies the same interface through offline adapters. No module may reach raw `gh`, another checkout's `node_modules`, global state, or an implicit current working directory behind this boundary. `createRecord` wraps the envelope/payload and calculates `recordId`; `encodeRecord` returns the strict comment body. Candidate records contain `payload.subject` with its `subjectId`; eligibility consumes candidate/verification records, not unwrapped subjects. Domain payload builders are wrapped by `createRecord` before persistence.
 
@@ -81,13 +114,14 @@ Add tests under `scripts/tests/unit/task-tracker/lib/evidence-v2/`, `scripts/tes
 - Create `scripts/tests/helpers/evidence-v2/sandbox.mjs`, `provider.mjs`, `faults.mjs`, `fixtures.mjs`.
 - Create `scripts/tests/integration/task-tracker/evidence-v2/isolation.test.mjs`, `provider-contract.test.mjs`, `legacy-shapes.test.mjs`.
 - Create `scripts/tests/fixtures/evidence-v2/README.md` documenting synthetic IDs, provenance redaction and frozen-schema versions.
+- Create the minimal `scripts/task-tracker/lib/evidence-v2/execution-context.mjs` foundation from section B. Extend only the necessary existing context/dispatcher transport seams in `scripts/task-tracker/runtime.mjs` and `scripts/task-tracker/task-tracker.mjs`; preserve all production defaults, guards and v1 behavior. Task 5 completes production enrollment capability checks.
 - Inspect existing `scripts/tests/helpers/close-convergence-wiring-helpers.mjs`, `scripts/task-tracker/lib/scratch-dir.mjs`, `scripts/task-tracker/lib/process-timeouts.mjs`, `scripts/task-tracker/lib/command-surface/catalog.mjs`.
 
 **Interfaces:**
 
 - `createSandbox({runId,sourceSnapshots,toolRoot})` -> `{root,context,provider,git,events,protectedBefore,dispose}`.
 - `runCommand({sandbox,argv,operationId,fault})` invokes the real dispatcher with explicit context and captures `{exitCode,stdout,stderr,effects}`.
-- `captureProtectedState({sources,readOnlyProvider})` returns digestable actual source/Git/provider/binding observations; `compareProtectedState(before,after)` returns `unchanged|changed|inconclusive`.
+- `captureProtectedState({sources,readOnlyProvider})` returns hashable actual source/Git/provider/binding observations; `compareProtectedState(before,after)` returns `unchanged|changed|inconclusive`.
 - `withFailure({point,attempt}, fn)` is a deterministic one-shot fault injector; `sandbox.restart()` clears process memory but preserves durable sandbox state.
 
 - [ ] Read the production response contracts for issue/PR snapshots, receipt parsing, body mutation, timing, board updates and binding inspection. Build the offline provider from those actual shapes; create contracts that pass the same payload through production decoders.
@@ -118,6 +152,7 @@ assert.deepEqual(
 **Files:**
 
 - Create Task 2 modules in section B.
+- Introduce `protocol.mjs` here for subsequent delivery/close integration. Require validated synthetic isolation for any v2 fixture execution until Task 5 supplies guarded production enrollment; do not expose a production bypass flag.
 - Create `scripts/tests/unit/task-tracker/lib/evidence-v2/{codec,subject,eligibility,acceptance}.test.mjs`.
 - Create `scripts/tests/integration/task-tracker/evidence-v2/journal.test.mjs`.
 - Inspect `scripts/task-tracker/lib/{verification-receipt,resident-action-ledger-codec,resident-action-ledger-write,body-invariants,issue-body-mutate}.mjs`.
@@ -226,6 +261,7 @@ for (const point of closeFaultPoints) {
 **Files:**
 
 - Create Task 5 modules in section B and `scripts/task-tracker/verbs/evidence.mjs`, `scripts/task-tracker/verbs/reopen.mjs`.
+- Extend the existing Task 1 execution context and Task 2 protocol selector; do not replace them with a second implementation.
 - Create `scripts/tests/unit/task-tracker/lib/evidence-v2/{migration,execution-context,protocol}.test.mjs`.
 - Create `scripts/tests/integration/task-tracker/evidence-v2/{cli-contract,legacy-enrollment}.test.mjs`.
 - Modify `scripts/task-tracker/runtime.mjs`, `scripts/task-tracker/lib/command-surface/catalog.mjs`, `scripts/task-tracker/verbs/help-data.mjs`, and the actual dispatch mapping located at pickup.
@@ -236,7 +272,7 @@ for (const point of closeFaultPoints) {
 
 - [ ] Write a runtime/source test with different tool and source roots. A v2 tool must inspect/test the pinned source, not itself, and no library import may fall back to a parent checkout. Record tool digest in execution provenance and verification recipe when relevant.
 - [ ] Implement immutable execution-context resolution and read-only/mutating ports. Add a preflight assertion for source worktree authority, authority host, provider mode and installed runtime capability before any side effect.
-- [ ] Write legacy-enrollment tests for #1490 complete-then-reopened, #1490 later-successful close, #1488/#1485 delivered-but-unreceipted, incomplete old verification inputs, missing dropped objects, stale migration plans, and malformed history.
+- [ ] Write legacy-enrollment tests for #1490 complete-then-reopened, #1490 later-successful close, #1488/#1485 delivered without receipts, incomplete old verification inputs, missing dropped objects, stale migration plans, and malformed history.
 
 ```js
 const preview = await inspectEnrollment({ context: readOnlyContext, issue, ports: readOnlyPorts });
@@ -297,7 +333,7 @@ assert.equal(journal.importWrites.length, 0);
 | Independent sandbox, protected sources, disposable practice     | Tasks 1 and 6 isolation/protection/disposal evidence  |
 | Real recovery requires fresh explicit human authorization       | Task 6 report and documented go/no-go gate            |
 
-- [ ] All child AC/VC links point to real commands introduced by their task; no evidence box is prechecked at backlog creation.
+- [ ] All child AC/VC links point to real commands introduced by their task; no evidence box is checked at backlog creation.
 - [ ] No original issue has been modified, assigned, blocked, paused, closed or reopened by this project before authorized cutover.
 - [ ] No runtime, transport or data schema contains special-case production logic for 1490, 1488 or 1485.
 - [ ] Every retry test restarts the process and preserves operation IDs; real effect/read-back boundaries are exercised.

@@ -10,13 +10,13 @@ Implementation plan: `docs/superpowers/plans/2026-09-03-1495-rewrite-stable-deli
 
 AITM must identify work independently from a Git commit while preserving exact, auditable evidence of what was tested, accepted, delivered, and closed. A history-only rewrite must not require deleting truthful receipts. Reopening must create a new lifecycle cycle rather than contradicting a completed close from an earlier cycle.
 
-This project is one bounded delivery epic with six sequential children. It is not a successor defect under #1490 and does not change that issue's present scope, board state, assignee, evidence, or bindings. The user will let Claude finish the currently attempted #1490 repair and stop him. If that attempt fails, the user may shelve #1490 while this architecture is implemented. Do not interpret this contingency as permission to pause, reopen, close, shelve, or edit #1490 now. #1488, #1485, #1226, and the `cloud-test-automation` branch remain untouched by planning and implementation.
+This project is one bounded delivery epic with six sequential children. It is not a successor defect under #1490 and does not change that issue's present scope, board state, assignee, evidence, or bindings. The execution handoff confirms that Claude is halted on #1490. Preserve its local repair as a historical candidate; do not resume the old defect chase, shelve it, or change its evidence. #1488, #1485, #1226, and the `cloud-test-automation` branch remain untouched by planning and implementation. #1486 is separate behavior-preserving adapter cleanup and is not a prerequisite.
 
 Production application to #1490, #1488, and #1485 requires successful disposable rehearsal, inspection of a fresh read-only migration report, and a separate explicit human go decision. A passing rehearsal is not a real delivery receipt.
 
 ## 2. Verified baseline and diagnosis
 
-Planning baseline: `origin/trunk` at `18f2af8ae867dd893020218418ea9ed41e935ac2`; the main checkout is `cloud-test-automation` at `616c7a8fcb1b798ee0c590510318c5aac86d5626`. These are reference observations, not future implementation starting-state instructions. Refresh before pickup because Claude is still working.
+Planning baseline: `origin/trunk` at `18f2af8ae867dd893020218418ea9ed41e935ac2`; the main checkout is `cloud-test-automation` at `616c7a8fcb1b798ee0c590510318c5aac86d5626`. Pickup confirmed both refs and the clean epic worktree at published planning commit `7fbc1d636db612d1c7383237d2dc59b9d6a0735c`. Current trunk is its ancestor; the sole commit above trunk contains this specification and its plan. These remain observations to refresh before later execution.
 
 | Source          | Recorded worktree                       | Accepted source SHA                        | Delivered SHA                              | Identical root tree                        |
 | --------------- | --------------------------------------- | ------------------------------------------ | ------------------------------------------ | ------------------------------------------ |
@@ -24,7 +24,18 @@ Planning baseline: `origin/trunk` at `18f2af8ae867dd893020218418ea9ed41e935ac2`;
 | #1488, PR #1489 | `.worktrees/1488-review-bind-timer`     | `82eba885bac295a57c236c611c84e0fd6f69d7e3` | `3a044ea8411a9f0e34f54c33f412749cb735c457` | `0c2d454866446b347c1ecbd1f0d253909f5b12d3` |
 | #1485, PR #1487 | `.worktrees/1485-merge-back-authority`  | `94575a4a009383c8749343c5c8023241c84ebd5c` | `f83eb22f6e60c26235da479c054edbdb3ee0755b` | `d23b0244d1baf60670f66907346dc32cb0be3571` |
 
-The original #1490 completed transaction is `ad96d1e1-8c17-471e-a060-279975761e50`, accepted SHA `d6a3dece2c4c2e429cb27683e64316b3e216c71b`. At the last read-only audit its old release timestamp was `2026-09-03T01:51:22.821Z`; the same Claude session's later occupancy claim was `2026-09-03T04:58:36.386Z`. Its issue was OPEN/REOPENED, Review, Delivered. Treat these as historical fixture inputs, never commands to recreate production state.
+The original #1490 completed transaction is `ad96d1e1-8c17-471e-a060-279975761e50`, accepted SHA `d6a3dece2c4c2e429cb27683e64316b3e216c71b`. At the earlier read-only audit its old release timestamp was `2026-09-03T01:51:22.821Z`; the same Claude session's later occupancy claim was `2026-09-03T04:58:36.386Z`. That audit observed OPEN/REOPENED, Review, Delivered. These are historical fixture inputs, not a claim about current lifecycle state.
+
+The execution handoff reports #1490 Open/Develop with clean local repair `c52c4976c56709f1d8e5da211ded7cbf33a99cd5`, one commit above the planning trunk; pickup confirmed that local HEAD through the Git worktree inventory. It is not pushed, merged, accepted, or delivered. The handoff's remote remains `ca60f6526e3cb399059d591c5a66b6d975901892` from merged PR #1494, and the original completed transaction remains without a replacement. Do not rewrite these facts into a new receipt. Import the local object directly into independent rehearsal storage when needed; no preservation push is required. A full consistent provider/binding capture still belongs to #1501.
+
+Carry these handoff review findings as regression scenarios, not accepted fixes or instructions to repair #1490:
+
+- Authority-root resolution must agree from the main checkout and a linked source worktree. The historical candidate defaulted to `projectDir`, yielding `no-prior-close` in the linked worktree and `own-post-close-claim` in main.
+- Exercise actual production defaults for active-binding discovery, record reading, and issue-state lookup; injected dependency functions alone do not prove the normal path.
+- Cover board Done when the board effect succeeded but its response or checkpoint was lost. Prefixes with persisted checkpoints alone do not cover this crash window.
+- Exercise terminal release through the full dispatcher and verb, including same-session newer generations and foreign claims; source-text assertions cannot prove branch behavior.
+
+These findings were supplied by the execution handoff and were not rerun against the protected worktrees during refinement. Recovery later requires explicit reconciliation of deferred #1490 scope in addition to fresh migration previews and separate human go approval.
 
 Current coupling points:
 
@@ -170,7 +181,7 @@ Two fixture classes are mandatory: synthetic real-Git scenarios for deterministi
 
 Capture begins only after the user has stopped Claude or approved a consistent capture point. For each source, read branch, full HEAD, root tree, parent objects, status, PR inventory, issue body/comments, board fields and relevant binding/occupancy records. Read HEAD before and after capture; if it changes or the worktree is dirty, stop without stashing or modifying it. Store `capturedAt`, tool/runtime SHA, source path/ref/OIDs, provider IDs, original-content digests, and the user-approved baseline in the run manifest.
 
-Create a uniquely named independent repository below `.scratch/rehearsals/<runId>/`; it must have a different Git common directory and no shared object alternates/hardlinks. Import pinned commits read-only from the source repositories/worktrees, preserving the histories needed for rebase/squash. Branches inside this repository are `rehearsal/<runId>/1490`, `/1488`, `/1485`, and explicit local target branches. Its only push destination is a newly created local bare repository. Do not make sibling rehearsal worktrees under the production Git common directory: they would share refs and main-anchored AITM authority.
+Create a uniquely named independent repository below `.scratch/rehearsals/<runId>/`; it must have a different Git common directory and no shared object alternates or hard links. Import pinned commits read-only from the source repositories/worktrees, preserving the histories needed for rebase/squash. Branches inside this repository are `rehearsal/<runId>/1490`, `/1488`, `/1485`, and explicit local target branches. Its only push destination is a newly created local bare repository. Do not make sibling rehearsal worktrees under the production Git common directory: they would share refs and main-anchored AITM authority.
 
 A provider double serves the same payload shapes and mutation/read-back behavior as production, but stores all changes in the sandbox. Use synthetic repository/issue/PR IDs and a reversible provenance mapping to original IDs. Frozen original records remain untouched; generate sandbox fixtures through production builders/strict import adapters, not arbitrary marker surgery. Keep original #1490 and current-success shapes as separate scenarios if necessary.
 
