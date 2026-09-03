@@ -21,6 +21,10 @@ import {
 } from './lib/worktree-relocation-guard.mjs';
 import { buildCommandCursorRequest } from './lib/state-cursor.mjs';
 import { buildTestCursorRequest } from './lib/test-cursor-request.mjs';
+import {
+  readRecordedExecutionContext,
+  assertRecordedTransport,
+} from './lib/evidence-v2/execution-context.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -256,6 +260,8 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
+    const executionContext = readRecordedExecutionContext();
+    assertRecordedTransport(executionContext);
     // #394/#1023 — intercept only canonical command-help positions before
     // buildContext() touches config/network. Help is INIT_EXEMPT and must work
     // in an unconfigured directory; this early exit mutates no state (no issue
@@ -268,7 +274,7 @@ if (_isMain)
     }
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
-    const ctx = buildContext(foreignWorktree.argv);
+    const ctx = buildContext(foreignWorktree.argv, { executionContext });
     try {
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
