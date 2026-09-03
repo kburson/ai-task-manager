@@ -59,6 +59,7 @@ import {
   renderNoCommitDeliveryComment,
   sameNoCommitDeliveryAuthority,
 } from '../lib/no-commit-delivery-record.mjs';
+import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -569,6 +570,21 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       receipt: null,
       action: null,
     };
+  }
+
+  const protocol = selectEvidenceProtocol({ body: issue.body, context: deps.executionContext });
+  if (protocol.protocol === 'v2') {
+    return requiredDependency(
+      deps,
+      'runEvidenceV2Delivery'
+    )({
+      issue,
+      issueNumber,
+      repository: cfg.repo,
+      lineage,
+      protocol,
+      state,
+    });
   }
 
   if (isNoCommitKind(issue.body)) {
