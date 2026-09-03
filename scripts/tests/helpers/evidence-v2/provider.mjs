@@ -88,7 +88,7 @@ export function openProvider(context) {
       const s = load();
       if (!s.operations[operationId]) throw rehearsalRefusal('checkpoint-without-response');
       tripFault(s, save, { operationId, fault, point: 'after-response' });
-      s.operations[operationId].checkpointed = true;
+      s.operations[operationId].checkpointRecorded = true;
       save(s);
     },
     commentPage(number, { first = 100, after = null } = {}) {

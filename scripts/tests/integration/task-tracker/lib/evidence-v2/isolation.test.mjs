@@ -1,4 +1,5 @@
 // @story #1496
+// cspell:ignore NOSYSTEM hardlink fsmonitor
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
@@ -121,7 +122,10 @@ test('Git executable options and remote hooks refuse before native execution', (
     assert.throws(() => sandbox.git(['push', 'origin', 'trunk']), /git-hooks/);
     rmSync(hook);
     const config = path.join(sandbox.context.gitCommonDir, 'config');
-    writeFileSync(config, `${readFileSync(config, 'utf8')}\n[core]\nfsmonitor = unsafe-command\n`);
+    writeFileSync(
+      config,
+      [readFileSync(config, 'utf8'), '[core]', 'fsmonitor = unsafe-command', ''].join('\n')
+    );
     assert.throws(() => sandbox.git(['status']), /executable-git-config/);
   } finally {
     sandbox.dispose();

@@ -1,4 +1,5 @@
 // @story #1496
+// cspell:ignore NOSYSTEM repositoryformatversion filemode logallrefupdates precomposeunicode hookspath pushurl
 // Recorded execution is a disposable fixture capability, never production enrollment.
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
