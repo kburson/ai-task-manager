@@ -15,6 +15,8 @@ import {
 } from '../../../../../task-tracker/lib/evidence-v2/delivery.mjs';
 import { renderProtocolMarker } from '../../../../../task-tracker/lib/evidence-v2/protocol.mjs';
 import { runDeliver } from '../../../../../task-tracker/verbs/deliver.mjs';
+import { resolveAcceptedDeliveryAuthority } from '../../../../../task-tracker/lib/delivery-authority.mjs';
+import { rawProjectConfig } from '../../../../../task-tracker/config.mjs';
 
 function deliveryPolicy(f) {
   return {
@@ -349,6 +351,32 @@ test('public deliver dispatcher selects synthetic v2 and leaves unmarked bodies 
     });
     assert.deepEqual(result, { status: 'delivered', protocol: 'v2' });
     assert.equal(calls, 1);
+
+    const v1Head = 'a'.repeat(40);
+    const v1 = resolveAcceptedDeliveryAuthority({
+      issueNumber: 1498,
+      branch: 'codex/legacy',
+      localHeadSha: v1Head,
+      testReceiptSha: v1Head,
+      reviewReceiptSha: v1Head,
+      agentReviewPassed: true,
+      pullRequests: [{ number: 42, headRefName: 'codex/legacy', headRefOid: v1Head }],
+    });
+    assert.equal(v1.acceptedSha, v1Head);
+    assert.equal(rawProjectConfig().fullAutoMerge.mergeMethod, 'squash');
+    assert.throws(
+      () =>
+        resolveAcceptedDeliveryAuthority({
+          issueNumber: 1498,
+          branch: 'codex/legacy',
+          localHeadSha: 'b'.repeat(40),
+          testReceiptSha: v1Head,
+          reviewReceiptSha: v1Head,
+          agentReviewPassed: true,
+          pullRequests: [{ number: 42, headRefName: 'codex/legacy', headRefOid: 'b'.repeat(40) }],
+        }),
+      /ambiguous-pr/
+    );
   } finally {
     f.sandbox.dispose();
   }
