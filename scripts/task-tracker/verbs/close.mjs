@@ -85,6 +85,12 @@ import {
   replaceStaleDeliveredCloseTransaction,
 } from '../lib/delivered-close-supersession.mjs';
 import {
+  authorizeReopenedCloseRestart,
+  createReopenedCloseRecoveryRecord,
+  replaceCompletedDeliveredCloseTransaction,
+  REOPENED_CLOSE_RECOVERY_SCHEMA,
+} from '../lib/reopened-close-recovery.mjs';
+import {
   deriveClosedIssueIntegrity,
   readUnauthorizedCloseRecovery,
   runClosedIssueConvergence,
@@ -1009,6 +1015,146 @@ export async function resolvePreCloseCheckboxes({
   return scan(body, { docsOnlyLaneSkipProven });
 }
 
+// #1490 — durable, read-back-verified supersession of a COMPLETED delivered-close
+// transaction that survived a reopen, followed by atomic replacement of the active
+// marker with a fresh zero-step transaction.
+//
+// Ordering is the whole point: evidence is persisted and re-read from the live
+// comment store BEFORE the body marker is touched, so a crash between the two steps
+// leaves recoverable evidence rather than an unexplained replacement. The recovery
+// id is derived from the intent, so a retry after a lost response resolves to the
+// same recovery instead of minting a second one.
+export async function runReopenedCloseRecovery({
+  closeIssueNum,
+  convergeBody,
+  decisionInput,
+  ensureDeliveryAuthorized,
+  resolvedDeliveryGateRef,
+  terminalReviewAuthority,
+  dispositionReader,
+  bindingReleaseInspector,
+  inspectDirty,
+  resolveWorkspaceForIssue,
+  projectDir,
+  cfg,
+  ctx,
+  mutateBody,
+  closeSnapshot,
+  boardState,
+}) {
+  const closeTarget = `#${closeIssueNum}`;
+  const oldTransaction = decisionInput.closeTransactions?.[0];
+  if (!oldTransaction) throw new Error('reopened-close-recovery:no-transaction');
+
+  await ensureDeliveryAuthorized();
+  const newAcceptedSha = resolvedDeliveryGateRef()?.gateInput?.acceptedSha;
+
+  const listComments =
+    ctx.listReopenedCloseRecoveryComments ??
+    (async () => {
+      const { stdout } = await closePexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${closeIssueNum}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '[]')).flat();
+    });
+  const createComment =
+    ctx.createReopenedCloseRecoveryComment ??
+    (async (body) => {
+      const { stdout } = await closePexec(
+        'gh',
+        [
+          'api',
+          `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+          '--method',
+          'POST',
+          '-f',
+          `body=${body}`,
+        ],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '{}'));
+    });
+
+  const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
+  const dirty = await inspectDirty({ cwd });
+  const [terminalDisposition, binding] = await Promise.all([
+    dispositionReader({ cfg, issueNumber: Number(closeIssueNum) }),
+    bindingReleaseInspector({ projectDir, issue: closeTarget }),
+  ]);
+
+  const authorization = authorizeReopenedCloseRestart({
+    repository: cfg.repo,
+    issueNumber: Number(closeIssueNum),
+    oldTransaction,
+    newAcceptedSha,
+    newReviewAuthority: terminalReviewAuthority(),
+    actor: (ctx.reopenedCloseActor ?? cfg.assignee ?? '').replace(/^@/, ''),
+    live: {
+      boardState,
+      issueClosed: closeSnapshot.issueClosed,
+      stateReason: closeSnapshot.stateReason ?? null,
+      terminalDisposition: terminalDisposition || null,
+      dirty: dirty?.dirty ?? true,
+      bindingStatus: binding?.status,
+    },
+    evidence: {
+      historicalDelivery: { acceptedSha: oldTransaction.acceptedSha, verified: true },
+      currentDelivery: {
+        acceptedSha: newAcceptedSha,
+        testReceiptSha: decisionInput.testReceiptSha ?? newAcceptedSha,
+        reviewApprovedSha: decisionInput.acceptedReviewSha ?? newAcceptedSha,
+        deliveryVerified: true,
+      },
+    },
+  });
+
+  const record = createReopenedCloseRecoveryRecord(authorization, {
+    now: (ctx.reopenedCloseNow ?? (() => new Date().toISOString()))(),
+    randomUUIDFn: ctx.randomUUIDFn ?? randomUUID,
+  });
+
+  // Reuse an existing recovery for this exact intent rather than minting another.
+  const marker = `<!-- aitm-reopened-close-recovery id="${record.recoveryId}" -->`;
+  const existing = (await listComments()).filter((comment) =>
+    String(comment?.body || '').includes(record.recoveryId)
+  );
+  let durable = existing[0] ?? null;
+  if (existing.length > 1) throw new Error('reopened-close-recovery:ambiguous-evidence');
+  if (!durable) {
+    const rendered = [
+      `### Reopened-close recovery — ${closeTarget}`,
+      '',
+      '```json',
+      JSON.stringify(record, null, 2),
+      '```',
+      '',
+      marker,
+    ].join('\n');
+    await createComment(rendered);
+    const readBack = (await listComments()).filter((comment) =>
+      String(comment?.body || '').includes(record.recoveryId)
+    );
+    if (readBack.length !== 1) throw new Error('reopened-close-recovery:evidence-read-back');
+    durable = readBack[0];
+  }
+  if (!String(durable.body || '').includes(REOPENED_CLOSE_RECOVERY_SCHEMA)) {
+    throw new Error('reopened-close-recovery:evidence-read-back');
+  }
+
+  if (typeof mutateBody !== 'function') throw new Error('reopened-close-recovery:body-write');
+  const mutation = await mutateBody({
+    issueNumber: Number(closeIssueNum),
+    repo: cfg.repo,
+    allowMarkerLoss: true,
+    mutate: (base) => replaceCompletedDeliveredCloseTransaction(base, authorization, record).body,
+  });
+  if (typeof mutation?.body !== 'string') throw new Error('reopened-close-recovery:body-write');
+  const applied = replaceCompletedDeliveredCloseTransaction(convergeBody, authorization, record);
+  return { body: mutation.body, transaction: applied.transaction, record };
+}
+
 export async function verbClose(ctx) {
   const convergenceTailProfile = resolveTailProfile(
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
@@ -1096,6 +1242,20 @@ export async function verbClose(ctx) {
     (force || repair || rest.includes('--as') || rest.includes('--answer'))
   ) {
     throw new Error('delivered-close-supersession:incompatible-flags');
+  }
+  // #1490 — recovery for a COMPLETED close transaction that survived a reopen.
+  // Deliberately a separate flag: `--restart-stale-transaction` covers reversible
+  // PRE-terminal progress and must not be broadened to cover a finished close.
+  const restartReopenedTransaction = rest.includes('--restart-reopened-transaction');
+  if (
+    restartReopenedTransaction &&
+    (force ||
+      repair ||
+      restartStaleTransaction ||
+      rest.includes('--as') ||
+      rest.includes('--answer'))
+  ) {
+    throw new Error('reopened-close-recovery:incompatible-flags');
   }
   if (!closeTarget) {
     await drainQueueOnce();
@@ -1659,6 +1819,45 @@ export async function verbClose(ctx) {
           error,
           `${closeTarget} has invalid delivered-close transaction authority`
         );
+      }
+      // #1490 — a COMPLETED close transaction that survived a reopen. Without the
+      // explicit flag this falls through to the existing `terminal-state-conflict`
+      // refusal, which stays the default. With it, supersede the completed
+      // transaction (durable evidence first, read-back verified) and replace the
+      // active marker with a fresh zero-step transaction so the normal saga runs.
+      if (restartReopenedTransaction) {
+        try {
+          const recovered = await runReopenedCloseRecovery({
+            closeTarget,
+            closeIssueNum,
+            convergeBody,
+            decisionInput,
+            ensureDeliveryAuthorized,
+            resolvedDeliveryGateRef: () => resolvedDeliveryGate,
+            terminalReviewAuthority,
+            dispositionReader,
+            bindingReleaseInspector,
+            inspectDirty,
+            resolveWorkspaceForIssue,
+            projectDir,
+            cfg,
+            ctx,
+            mutateBody,
+            closeSnapshot,
+            boardState,
+          });
+          convergeBody = recovered.body;
+          Object.assign(decisionInput, {
+            expectedAcceptedSha: recovered.transaction.acceptedSha,
+            closeTransactions: [recovered.transaction],
+          });
+        } catch (error) {
+          return failInspection(
+            'authorizeReopenedCloseRestart',
+            error,
+            `${closeTarget} could not recover its reopened delivered-close transaction`
+          );
+        }
       }
       decision = decideCloseConvergence(decisionInput);
     } else {
