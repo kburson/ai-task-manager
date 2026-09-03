@@ -230,3 +230,59 @@ test('#1490: a fast-forward is refused', async () => {
     /merge-method-unknown|merge-commit-sha/
   );
 });
+
+// #1490 — the inventory/evidence pairing is proven HERE, not assumed from the
+// production adapter. An adapter defect, a partial page, or a hand-supplied
+// pull-request object must not be able to smuggle an inventory that does not
+// actually describe the accepted head's history.
+
+function withSource(entries) {
+  return {
+    ...pullRequest(),
+    sourceCommits: entries.map(({ oid }) => ({ oid })),
+    sourceCommitEvidence: entries,
+  };
+}
+
+test('#1490: an inventory and evidence of differing length are refused', async () => {
+  const full = multiSourceEvidence();
+  const pr = withSource(full);
+  pr.sourceCommitEvidence = full.slice(0, 2);
+  await assert.rejects(verifyExternalDeliveredPullRequest(input({ pr })), /merge-method-unknown/);
+});
+
+test('#1490: a reordered inventory and evidence pairing is refused', async () => {
+  const full = multiSourceEvidence();
+  const pr = withSource(full);
+  // Same set, different order. Set membership would accept this, so the proof
+  // must compare positionally.
+  pr.sourceCommits = [full[1], full[0], full[2]].map(({ oid }) => ({ oid }));
+  await assert.rejects(verifyExternalDeliveredPullRequest(input({ pr })), /merge-method-unknown/);
+});
+
+test('#1490: a duplicated source OID is refused', async () => {
+  const pr = withSource([
+    { oid: SOURCE_1, message: 'first', parents: [BASE_TIP], tree: OTHER_TREE },
+    { oid: SOURCE_1, message: 'again', parents: [BASE_TIP], tree: OTHER_TREE },
+    { oid: ACCEPTED, message: 'head', parents: [SOURCE_1], tree: ACCEPTED_TREE },
+  ]);
+  await assert.rejects(verifyExternalDeliveredPullRequest(input({ pr })), /merge-method-unknown/);
+});
+
+test('#1490: an accepted head that does not terminate the inventory is refused', async () => {
+  const pr = withSource([
+    { oid: SOURCE_1, message: 'first', parents: [BASE_TIP], tree: OTHER_TREE },
+    { oid: ACCEPTED, message: 'head', parents: [SOURCE_1], tree: ACCEPTED_TREE },
+    { oid: SOURCE_2, message: 'after the head', parents: [ACCEPTED], tree: OTHER_TREE },
+  ]);
+  await assert.rejects(verifyExternalDeliveredPullRequest(input({ pr })), /merge-method-unknown/);
+});
+
+test('#1490: evidence missing required structure is refused', async () => {
+  const malformed = multiSourceEvidence();
+  delete malformed[0].tree;
+  await assert.rejects(
+    verifyExternalDeliveredPullRequest(input({ pr: withSource(malformed) })),
+    /merge-method-unknown/
+  );
+});

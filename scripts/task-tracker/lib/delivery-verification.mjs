@@ -239,7 +239,13 @@ function provesSingleSourceSquash({ pullRequest, inspection, expectedHeadSha, me
 //   2. the merge SHA differs from the accepted SHA;
 //   3. the merge tree equals the accepted head's tree;
 //   4. the merge parent is an ancestor of the accepted SHA;
-//   5. the source inventory is complete, non-empty, and bound to the accepted SHA.
+//   5. the source inventory is complete, strictly multi-source, internally
+//      consistent with its evidence, and terminates at the accepted SHA.
+//
+// Condition 5 is proven here rather than assumed from the production adapter.
+// The verifier is the trust boundary: an adapter defect, a partial page, or a
+// hand-supplied pull-request object must not be able to smuggle an inventory that
+// does not actually describe the accepted head's history.
 //
 // Condition 4 is what separates squash from rebase. A rebase replays each source
 // commit onto the base, so the merge SHA is the LAST replayed commit and its
@@ -289,10 +295,31 @@ async function provesMultiSourceSquash({
   ) {
     return false;
   }
-  // The accepted head's tree comes from the source evidence entry the inventory
-  // is already bound to; no additional fetch is required.
-  const acceptedSource = evidence.find((entry) => entry?.oid === expectedHeadSha);
-  if (!isPlainObject(acceptedSource) || !SHA_RE.test(acceptedSource.tree || '')) return false;
+  // Prove the inventory and its evidence actually describe one coherent history
+  // ending at the accepted head, rather than trusting the adapter to have done so.
+  if (inventory.length !== evidence.length) return false;
+  const seen = new Set();
+  for (let index = 0; index < inventory.length; index += 1) {
+    const listed = inventory[index];
+    const detail = evidence[index];
+    const listedOid = isPlainObject(listed) ? listed.oid : listed;
+    if (typeof listedOid !== 'string' || !SHA_RE.test(listedOid)) return false;
+    if (!isPlainObject(detail) || !SHA_RE.test(detail.oid || '')) return false;
+    // Positional correspondence, not mere set membership: a reordered or
+    // mismatched pairing means the two lists describe different histories.
+    if (detail.oid !== listedOid) return false;
+    if (seen.has(listedOid)) return false;
+    seen.add(listedOid);
+    if (typeof detail.message !== 'string' || detail.message.length === 0) return false;
+    if (!Array.isArray(detail.parents) || detail.parents.some((parent) => !SHA_RE.test(parent))) {
+      return false;
+    }
+    if (typeof detail.tree !== 'string' || !SHA_RE.test(detail.tree)) return false;
+  }
+  // The accepted head must TERMINATE the inventory. An accepted head sitting
+  // mid-list would mean commits after it are unaccounted for by this proof.
+  const acceptedSource = evidence.at(-1);
+  if (acceptedSource.oid !== expectedHeadSha) return false;
   if (acceptedSource.tree !== inspection.tree) return false;
   let ancestor;
   try {
@@ -322,8 +349,12 @@ function provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleS
 //
 // The canonical `Attribution:` trailer is emitted by the governed provider action
 // as part of its authorized-byte contract. External recovery runs with
-// `requireAuthorizedBytes: false` and rebuilds the intent from inspected bytes, so
-// a merge performed in the GitHub UI can never carry that trailer.
+// `requireAuthorizedBytes: false` and rebuilds the intent from inspected bytes.
+// GitHub's DEFAULT squash body — the merge title plus a bullet list of source
+// subjects — omits that trailer. A human editing the squash message by hand can
+// still supply one, which is why this proof is reached only when the body makes no
+// canonical attribution claim at all; a body that does claim one is judged solely
+// by the canonical rule.
 //
 // This proof does NOT accept "the title leads with the top-level token" on its own,
 // which would be safe only for a singleton token set and would silently weaken
@@ -365,12 +396,20 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
   if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return;
   if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) return;
-  // #1490 — the default-body proof applies ONLY when no `Attribution:` line exists
-  // at all. A malformed, duplicated, reordered, or nonterminal trailer is a body
-  // that claims canonical attribution and must be judged by the canonical rule
-  // alone; it must never fall through to the semantic proof.
+  // #1490 — the default-body proof applies ONLY when the body makes no canonical
+  // attribution claim at all. A malformed, duplicated, reordered, or nonterminal
+  // trailer is a body that DOES claim canonical attribution and must be judged by
+  // the canonical rule alone; it must never fall through to the semantic proof.
+  //
+  // Detection is whitespace-tolerant on the left. The canonical acceptance above
+  // stays byte-exact, so indenting a trailer cannot satisfy it — but an indented
+  // trailer is still a claim, and must disable the fallback rather than slip past
+  // an anchored `startsWith` into the more permissive path.
+  const claimsCanonicalAttribution = lines.some((line) =>
+    line.trimStart().startsWith('Attribution:')
+  );
   if (
-    attributionLines.length === 0 &&
+    !claimsCanonicalAttribution &&
     options.provenMultiSourceSquash === true &&
     intent.provider === 'external' &&
     provesDefaultSquashBodyAttribution({ intent, inspection })

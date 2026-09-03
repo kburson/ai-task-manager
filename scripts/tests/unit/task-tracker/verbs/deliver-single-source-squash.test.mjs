@@ -23,12 +23,25 @@ const refusalScenarios = [
     },
   },
   {
-    label: 'multiple source commits',
+    // #1490 — this scenario previously passed `prCommitMessages`, an option the
+    // harness does not read, so its inventory was length 1 and it never exercised
+    // a multi-commit pull request at all. Its original premise — "more than one
+    // source commit can never be a provable squash" — is also no longer true:
+    // #1490 makes a VALID multi-source squash provable. Retargeted to the case
+    // that genuinely still refuses, a multi-commit inventory that does not
+    // terminate at the accepted head, which the attribution preflight catches
+    // before verification is reached.
+    label: 'a multi-commit inventory not terminating at the accepted head',
+    expectedRefusal: /delivery-preflight:attribution/,
     options: {
-      prCommitMessages: ['first', 'second'],
+      prCommitSubjects: ['[#939] first', '[#939] second'],
+      prSourceCommits: [
+        { oid: '2'.repeat(40), messageHeadline: '[#939] first' },
+        { oid: '3'.repeat(40), messageHeadline: '[#939] second' },
+      ],
       prSourceEvidence: [
-        evidence({ message: 'first' }),
-        evidence({ oid: '2'.repeat(40), message: 'second', parents: [HEAD], tree: '3'.repeat(40) }),
+        evidence({ oid: '2'.repeat(40), message: 'first' }),
+        evidence({ oid: '3'.repeat(40), message: 'second', parents: ['2'.repeat(40)] }),
       ],
     },
   },
@@ -59,8 +72,17 @@ for (const scenario of refusalScenarios) {
       ...scenario.options,
     });
 
-    await assert.rejects(() => deliver(harness), /delivery-verification:/);
+    await assert.rejects(
+      () => deliver(harness),
+      // #1490 — assert the EXACT refusal. A generic `delivery-verification:` match
+      // would also accept an attribution or bytes failure, hiding a case that had
+      // stopped being refused for the reason this scenario exists to prove.
+      scenario.expectedRefusal ?? /delivery-verification:merge-method-unknown/
+    );
     assert.equal(harness.calls.createIssueComment, 0);
     assert.equal(harness.data.comments.length, 0);
+    // #1490 — these are single-source scenarios. Proving the multi-source rescue
+    // path was never entered is what stops it from silently reclaiming them.
+    assert.equal(harness.calls.squashParentAncestry, 0);
   });
 }

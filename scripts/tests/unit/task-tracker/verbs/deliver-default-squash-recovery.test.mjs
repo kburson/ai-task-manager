@@ -91,6 +91,37 @@ test('#1490: a refused external default-squash recovery writes zero records', as
   );
 });
 
+test('#1490: an indented canonical-looking trailer writes zero records', async () => {
+  const harness = makeHarness(
+    harnessOptions({
+      historyCommitMessage: `${DEFAULT_BODY}\n\n Attribution: [#939]`,
+    })
+  );
+
+  await assert.rejects(deliver(harness), /delivery-verification:attribution/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+});
+
+test('#1490: the harness rejects an unexpected squash-parent ancestry question', async () => {
+  // Guards the harness itself. Asserted directly rather than through `deliver`,
+  // because the proof wraps `isAncestor` in a fail-closed try/catch: a wrong
+  // ancestry question would surface only as a generic refusal there, which would
+  // not distinguish "the harness caught it" from "the proof declined".
+  const harness = makeHarness(harnessOptions());
+  const accepted = harness.data.prHead ?? harness.data.head;
+
+  await assert.rejects(
+    () => harness.deps.isAncestor({ ancestor: '9'.repeat(40), descendant: accepted }),
+    /Expected values to be strictly equal/
+  );
+  await assert.rejects(
+    () => harness.deps.isAncestor({ ancestor: 'd'.repeat(40), descendant: '9'.repeat(40) }),
+    /Expected values to be strictly equal/
+  );
+});
+
 test('#1490: an unauthorized attribution token writes zero records', async () => {
   const harness = makeHarness(
     harnessOptions({

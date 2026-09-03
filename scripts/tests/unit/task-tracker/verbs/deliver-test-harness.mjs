@@ -226,6 +226,10 @@ export function makeHarness(options = {}) {
       // head. Keep both assertions exact rather than accepting any pair.
       if (descendant !== 'origin/trunk') {
         calls.squashParentAncestry += 1;
+        // Both sides asserted exactly: the ancestor must be the inspected merge
+        // parent and the descendant the accepted head. Accepting any pair here
+        // would let a proof asking the wrong ancestry question still pass.
+        assert.equal(ancestor, options.inspectedMergeParent ?? 'd'.repeat(40));
         assert.equal(descendant, data.prHead ?? data.head);
         return options.squashParentIsAncestor ?? true;
       }

@@ -222,6 +222,21 @@ test('#1490: a duplicated Attribution line does not fall through to the default-
   );
 });
 
+test('#1490: an indented canonical-looking trailer does not fall through', async () => {
+  // Leading whitespace defeats an anchored `startsWith` check. The body still
+  // CLAIMS canonical attribution, so it must be judged by the canonical rule —
+  // which it fails on exact bytes — rather than slipping into the semantic proof.
+  await assert.rejects(
+    verifyExternalDeliveredPullRequest(
+      input({
+        title: PR1489_TITLE,
+        body: `${PR1489_BODY}\n\n Attribution: [#1488]`,
+      })
+    ),
+    /delivery-verification:attribution/
+  );
+});
+
 test('#1490: a canonical trailer on external recovery still succeeds', async () => {
   const verified = await verifyExternalDeliveredPullRequest(
     input({ title: PR1489_TITLE, body: `${PR1489_BODY}\n\nAttribution: [#1488]` })
