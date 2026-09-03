@@ -10,6 +10,8 @@ aitm-skill-loaded:rules/close:1.0.0
 
 ## Human-only step
 
+For an enrolled v2 issue, close enters through the common protected-marker selector and installed pinned runtime before any terminal effect. Reopened work is a distinct cycle, and incompatible or incomplete resident runtimes refuse before mutation. Legacy issues without the marker keep the v1 close transaction.
+
 `/task close` is the **only** sanctioned close path and may run **only after explicit human instruction** ("close #N", "mark #N done", "review accepted, close it"). All-checkboxes-checked is **not** human approval.
 
 The verb atomically:

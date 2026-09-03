@@ -4,6 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { frozen, repository, uuidValue } from './value.mjs';
 
 const inspectGit = execFileSync;
 let recordedTransportRoot = null;
@@ -146,4 +147,43 @@ export function resolveExecutionContext(input) {
 export function readRecordedExecutionContext(env = process.env) {
   if (!env.AITM_REHEARSAL_CONTEXT) return null;
   return resolveExecutionContext(JSON.parse(readFileSync(env.AITM_REHEARSAL_CONTEXT, 'utf8')));
+}
+
+export function readEvidenceExecutionContext(env = process.env) {
+  if (env.AITM_EVIDENCE_CONTEXT)
+    return resolveEvidenceExecutionContext(
+      JSON.parse(readFileSync(env.AITM_EVIDENCE_CONTEXT, 'utf8'))
+    );
+  return readRecordedExecutionContext(env);
+}
+
+export function resolveInstalledExecutionContext(input) {
+  if (!input || input.schema !== 'aitm.execution-context/v2')
+    throw rehearsalRefusal('invalid-installed-context');
+  if (!['live', 'recorded'].includes(input.providerMode)) throw rehearsalRefusal('provider-mode');
+  repository(input.repositoryId);
+  if (!Number.isSafeInteger(input.issueNumber) || input.issueNumber <= 0)
+    throw rehearsalRefusal('issue-number');
+  uuidValue(input.authorityHostId, 'authority-host');
+  const toolRoot = directory(input.toolRoot);
+  const sourceRoot = directory(input.sourceRoot);
+  const authorityRoot = directory(input.authorityRoot);
+  if (toolRoot === sourceRoot) throw rehearsalRefusal('tool-source-alias');
+  return frozen({
+    schema: input.schema,
+    providerMode: input.providerMode,
+    repositoryId: input.repositoryId,
+    issueNumber: input.issueNumber,
+    toolRoot,
+    sourceRoot,
+    authorityRoot,
+    authorityHostId: input.authorityHostId,
+    productionEvidenceEligible: input.providerMode === 'live',
+  });
+}
+
+export function resolveEvidenceExecutionContext(input) {
+  return input?.schema === 'aitm.execution-context/v2'
+    ? resolveInstalledExecutionContext(input)
+    : resolveExecutionContext(input);
 }

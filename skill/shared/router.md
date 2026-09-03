@@ -51,6 +51,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | `/task review #N`                                                        | `rules/review.md`                                                         |
 | `/task deliver #N` | `rules/deliver.md` |
 | `/task incident-ledger #1381`                                           | `rules/incident-ledger.md`                                                |
+| `/task evidence`, `/task reopen`                                        | `rules/evidence.md`                                                       |
 | `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
 | `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                                   |
