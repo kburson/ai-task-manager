@@ -47,6 +47,47 @@ When `gateReviewToDone=true` (default), `/task close` refuses unless the body ca
 
 `gateReviewToDone=false` bypasses this gate; the bypass is logged as a `gate-bypassed` row.
 
+## Reopened completed-close recovery (`--restart-reopened-transaction`, #1490)
+
+**Human-only, and never routine.** Like `/task close` itself, this flag runs only on
+explicit human instruction. It exists for one shape: an issue that was **delivered and
+closed**, then **reopened** so a corrective delivery could land at a new accepted SHA.
+The completed `aitm.delivered-close/v1` transaction survives the reopen with all eight
+steps recorded, so an ordinary `close` refuses with
+`close-convergence:terminal-state-conflict` — a record asserting the issue was closed
+contradicts an open issue. **That refusal is correct and remains the default.**
+
+Do not confuse it with `--restart-stale-transaction` (#1466), which restarts a close
+interrupted **partway**: that path accepts at most three completed steps and requires a
+null disposition with a ToDo/BLOCKED label. A completed close legitimately removed its
+managed labels and set disposition `Delivered`, so its predicates are the inverse. The
+two flags are mutually incompatible, as are `--force`, `--repair`, `--as`, and
+`--answer`.
+
+The old transaction records a **true historical delivery** and is never hand-retired. It
+is superseded by durable evidence, and every one of these must hold before any mutation:
+
+- exactly one valid transaction whose completed steps are exactly the ordered eight;
+- its accepted SHA differs from current delivery authority;
+- the issue is OPEN with state reason REOPENED, board Review, disposition `Delivered`;
+- clean recorded worktree and a pending binding;
+- a correlated pull-request/intent/receipt bundle for the **historical** accepted SHA,
+  selected from the gate's live PR inventory;
+- a correlated bundle for the **current** accepted SHA, plus exact-SHA Test and Review
+  authority and the verifier's own delivery output.
+
+No value in that evidence may be asserted, defaulted, or copied from a record and then
+compared back to that same record.
+
+**Retry contract.** Recovery evidence is written and read-back verified **before** the
+protected marker is replaced, so an interruption between the two leaves recoverable
+evidence rather than an unexplained replacement. The recovery identity is a fingerprint
+of the intent, so a retry reuses the durable record — including its replacement
+transaction id — instead of minting a second recovery. If the marker was already
+replaced, the completed original is reconstructed from that durable record, the body is
+classified as already-replaced, and the ordinary eight-step saga resumes with no further
+comment or body write.
+
 ## Dirty-Workspace Gate 2 (blocking at close)
 
 Inspects `git status --porcelain` in the issue's bound workspace (fleet-registered worktree path; falls back to project dir). Outcomes:

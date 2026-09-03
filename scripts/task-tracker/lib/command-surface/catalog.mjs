@@ -374,11 +374,13 @@ export const VERB_CONTRACTS = Object.freeze({
     [
       'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; Incorporated close requires an exact approved incident ledger and --of owner.',
       'A stale-transaction restart requires an explicit flag, one stale pre-terminal transaction, fresh exact-SHA Test, Review, and delivery authority, an open Review issue, a clean worktree, close-managed labels, and a pending recorded binding.',
+      'A reopened-transaction restart requires its own explicit flag, one COMPLETED eight-step transaction whose accepted SHA differs from current authority, an OPEN issue whose state reason is REOPENED, board Review, a surviving Delivered disposition, a clean worktree, a pending binding, and correlated pull-request/intent/receipt bundles for both the historical and the current accepted SHA.',
     ],
     [
       'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
       'Partial terminal recovery resumes only the missing suffix from durable transaction authority; an already-closed completed retry is read-only.',
       'Stale-transaction restart writes and verifies immutable supersession audit evidence before replacing the protected marker and replaying the ordinary close saga; terminal-boundary or conflicting evidence refuses before mutation.',
+      'Reopened-transaction restart writes and read-back verifies immutable recovery evidence before replacing the protected marker, reuses that durable evidence (including its replacement identity) on every retry, resumes without rewriting when the marker was already replaced, and verifies the mutation read-back before resuming the ordinary close saga; without the flag the completed/reopened shape refuses as terminal-state-conflict.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [

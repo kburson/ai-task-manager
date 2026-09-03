@@ -57,6 +57,33 @@ test('close help exposes the audited stale pre-terminal transaction restart cont
   );
 });
 
+test('#1490: close help exposes the reopened completed-transaction recovery contract', () => {
+  assert.match(VERB_REFERENCE.close.usage, /--restart-reopened-transaction/);
+  const reopened = VERB_REFERENCE.close.flags.find(
+    ({ flag }) => flag === '--restart-reopened-transaction'
+  );
+  assert.ok(reopened, 'the flag is documented');
+  // The distinction from the pre-terminal restart is the whole point: this one
+  // covers a close that RAN TO COMPLETION and was then reopened.
+  assert.match(reopened.desc, /COMPLETED eight-step/);
+  assert.match(reopened.desc, /REOPENED/);
+  assert.match(reopened.desc, /Delivered/);
+  assert.match(reopened.desc, /immutable recovery evidence/i);
+  assert.match(reopened.desc, /idempotent/i);
+  assert.ok(
+    VERB_REFERENCE.close.examples.includes('/task close 1490 --restart-reopened-transaction')
+  );
+
+  const preconditions = VERB_CONTRACTS.close.preconditions.join(' ');
+  assert.match(preconditions, /reopened-transaction restart requires its own explicit flag/i);
+  assert.match(preconditions, /correlated pull-request\/intent\/receipt bundles/i);
+
+  const effects = VERB_CONTRACTS.close.effects.join(' ');
+  assert.match(effects, /read-back verifies immutable recovery evidence before replacing/i);
+  assert.match(effects, /reuses that durable evidence.*replacement identity/i);
+  assert.match(effects, /without the flag.*terminal-state-conflict/i);
+});
+
 test('incident-ledger help requires executable Incorporated carrier authority', () => {
   const preconditions = VERB_CONTRACTS['incident-ledger'].preconditions.join(' ');
   const effects = VERB_CONTRACTS['incident-ledger'].effects.join(' ');
