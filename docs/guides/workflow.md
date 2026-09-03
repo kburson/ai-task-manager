@@ -981,6 +981,34 @@ are hints, not authoritative configuration.
 
 ---
 
+## Reopening a delivered-and-closed issue
+
+Reopening an issue that already reached Done is occasionally right — a defect in the
+delivered work belongs to that issue's acceptance scope rather than a successor. It has
+costs you should expect, all observed on #1490:
+
+- **The completed close transaction survives.** `close` then refuses with
+  `close-convergence:terminal-state-conflict`, because an eight-step record asserting the
+  issue was closed contradicts an open issue. Recovering needs the human-only
+  `/task close <N> --restart-reopened-transaction`; see `rules/close.md`.
+- **Stage receipts strand if the branch is re-pointed.** When the branch's commits are
+  already squash-merged into trunk, a rebase drops them and any Test receipt naming a
+  dropped SHA becomes unreachable, refusing the next promote with
+  `evidence-branch-unreachable`. Retire it with the governed receipt lifecycle
+  (`retireVerificationReceipt`), never by hand-editing the body.
+- **Stamped AC evidence is frozen.** A stamped `aitm-verified` marker cannot have its
+  `vc-list` re-pointed — the marker guard refuses, and unchecking does not shed
+  run-props. Plan citations before stamping.
+- **Prefer not to re-point the branch at all.** If the branch tree is already equivalent
+  to trunk, commit the repair directly on top and let the fresh Test receipt supersede
+  the old one. Rebasing "because it was squash-merged" is what strands evidence.
+
+Historical records — the delivered-close transaction, the delivery receipt for the old
+accepted SHA — are true statements about what happened. Supersede them with new evidence;
+do not delete them.
+
+---
+
 ## Cleanup Procedure
 
 When the user says **"cleanup"**, execute in order:

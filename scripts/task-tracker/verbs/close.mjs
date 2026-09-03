@@ -86,9 +86,13 @@ import {
 } from '../lib/delivered-close-supersession.mjs';
 import {
   authorizeReopenedCloseRestart,
+  classifyRecoveryProgress,
   createReopenedCloseRecoveryRecord,
+  oldTransactionFromRecord,
+  parseReopenedCloseRecoveryComment,
+  renderReopenedCloseRecoveryComment,
   replaceCompletedDeliveredCloseTransaction,
-  REOPENED_CLOSE_RECOVERY_SCHEMA,
+  resolveReopenedCloseRecovery,
 } from '../lib/reopened-close-recovery.mjs';
 import {
   deriveClosedIssueIntegrity,
@@ -101,7 +105,7 @@ import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapte
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
-import { createDefaultDeliverDeps } from './deliver.mjs';
+import { createDefaultDeliverDeps, parsedDeliveryRecords } from './deliver.mjs';
 import {
   hasAcceptedApprovalEvidence,
   hasAcceptedReviewEvidence,
@@ -1027,7 +1031,6 @@ export async function resolvePreCloseCheckboxes({
 export async function runReopenedCloseRecovery({
   closeIssueNum,
   convergeBody,
-  decisionInput,
   ensureDeliveryAuthorized,
   resolvedDeliveryGateRef,
   terminalReviewAuthority,
@@ -1043,12 +1046,17 @@ export async function runReopenedCloseRecovery({
   boardState,
 }) {
   const closeTarget = `#${closeIssueNum}`;
-  const oldTransaction = decisionInput.closeTransactions?.[0];
-  if (!oldTransaction) throw new Error('reopened-close-recovery:no-transaction');
 
-  await ensureDeliveryAuthorized();
-  const newAcceptedSha = resolvedDeliveryGateRef()?.gateInput?.acceptedSha;
-
+  const listDeliveryRecordComments =
+    ctx.listReopenedCloseDeliveryComments ??
+    (async () => {
+      const { stdout } = await closePexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${closeIssueNum}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '[]')).flat();
+    });
   const listComments =
     ctx.listReopenedCloseRecoveryComments ??
     (async () => {
@@ -1077,6 +1085,79 @@ export async function runReopenedCloseRecovery({
       return JSON.parse(String(stdout || '{}'));
     });
 
+  await ensureDeliveryAuthorized();
+  const gate = resolvedDeliveryGateRef();
+  const newAcceptedSha = gate?.gateInput?.acceptedSha;
+
+  // #1490 — two-phase resolution. The active transaction is read from the BODY,
+  // never from a caller-supplied decision input, because on a retry after the
+  // marker was replaced the active transaction is the zero-step replacement and
+  // the completed original is only recoverable from durable evidence.
+  const activeTransactions = readDeliveredCloseTransactions(convergeBody);
+  if (activeTransactions.length !== 1) throw new Error('reopened-close-recovery:ambiguous-body');
+  const activeTransaction = activeTransactions[0];
+  const priorComments = await listComments();
+
+  let oldTransaction = activeTransaction;
+  let resumeRecord = null;
+  if (activeTransaction.completedSteps.length === 0) {
+    // Phase two: the body already carries a replacement. Locate exactly one
+    // durable record whose replacement identity and accepted SHA match it, and
+    // reconstruct the completed original from that record.
+    const candidates = priorComments
+      .map((comment) =>
+        parseReopenedCloseRecoveryComment(comment, {
+          repository: cfg.repo,
+          issueNumber: Number(closeIssueNum),
+        })
+      )
+      .filter((entry) => entry !== null)
+      .filter(
+        (entry) =>
+          entry.record.replacementTransactionId === activeTransaction.transactionId &&
+          entry.record.newAcceptedSha === activeTransaction.acceptedSha
+      );
+    if (candidates.length !== 1) throw new Error('reopened-close-recovery:resume-evidence');
+    resumeRecord = candidates[0].record;
+    oldTransaction = oldTransactionFromRecord(resumeRecord);
+  }
+  if (!oldTransaction) throw new Error('reopened-close-recovery:no-transaction');
+
+  // #1490 — resolve a correlated delivery bundle for one accepted SHA using the
+  // gate's own live PR inventory as the SHA-keyed selector, then the existing
+  // PR-scoped parser. No new marker grammar and no broadening of
+  // `delivery-records.mjs`.
+  const resolveDeliveryBundle = async (acceptedSha, category) => {
+    const inventory = Array.isArray(gate?.gateInput?.pullRequests)
+      ? gate.gateInput.pullRequests
+      : [];
+    const matches = inventory.filter((pullRequest) => pullRequest?.headRefOid === acceptedSha);
+    if (matches.length !== 1) throw new Error(`reopened-close-recovery:${category}`);
+    const pullRequest = matches[0];
+    // Normalize GitHub's raw REST comments into the exact parser shape.
+    const normalized = (await listDeliveryRecordComments())
+      .map((comment) => ({
+        id: comment?.id == null ? '' : String(comment.id),
+        body: typeof comment?.body === 'string' ? comment.body : '',
+        createdAt: normalizeGitHubInstant(comment?.created_at),
+      }))
+      .filter((comment) => comment.id.length > 0 && comment.createdAt !== null);
+    const parsed = parsedDeliveryRecords(normalized, {
+      repository: cfg.repo,
+      issueNumber: Number(closeIssueNum),
+      prNumber: pullRequest.number,
+    });
+    const projected = projectDeliveryRecords(parsed);
+    // Exactly one correlated live intent and its matching receipt.
+    const intent = projected?.liveIntent?.record ?? null;
+    const receipt = projected?.matchingReceipt?.record ?? null;
+    if (!intent || !receipt) throw new Error(`reopened-close-recovery:${category}`);
+    return { pullRequest, intent, receipt };
+  };
+
+  const historical = await resolveDeliveryBundle(oldTransaction.acceptedSha, 'historical-evidence');
+  const currentBundle = await resolveDeliveryBundle(newAcceptedSha, 'current-evidence');
+
   const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
   const dirty = await inspectDirty({ cwd });
   const [terminalDisposition, binding] = await Promise.all([
@@ -1099,13 +1180,16 @@ export async function runReopenedCloseRecovery({
       dirty: dirty?.dirty ?? true,
       bindingStatus: binding?.status,
     },
+    // Every value below is gate-resolved or record-parsed. Nothing is asserted,
+    // and nothing is copied from a record then compared back to that same record.
     evidence: {
-      historicalDelivery: { acceptedSha: oldTransaction.acceptedSha, verified: true },
-      currentDelivery: {
-        acceptedSha: newAcceptedSha,
-        testReceiptSha: decisionInput.testReceiptSha ?? newAcceptedSha,
-        reviewApprovedSha: decisionInput.acceptedReviewSha ?? newAcceptedSha,
-        deliveryVerified: true,
+      historical,
+      current: {
+        ...currentBundle,
+        testReceiptSha: gate?.testReceiptSha ?? null,
+        reviewApprovedSha: gate?.recoveryReviewApprovedSha ?? null,
+        // The verifier's OWN output, not a value lifted from the receipt.
+        verifiedDelivery: gate?.receipt?.verification?.receiptInput ?? null,
       },
     },
   });
@@ -1115,44 +1199,50 @@ export async function runReopenedCloseRecovery({
     randomUUIDFn: ctx.randomUUIDFn ?? randomUUID,
   });
 
-  // Reuse an existing recovery for this exact intent rather than minting another.
-  const marker = `<!-- aitm-reopened-close-recovery id="${record.recoveryId}" -->`;
-  const existing = (await listComments()).filter((comment) =>
-    String(comment?.body || '').includes(record.recoveryId)
-  );
-  let durable = existing[0] ?? null;
-  if (existing.length > 1) throw new Error('reopened-close-recovery:ambiguous-evidence');
-  if (!durable) {
-    const rendered = [
-      `### Reopened-close recovery — ${closeTarget}`,
-      '',
-      '```json',
-      JSON.stringify(record, null, 2),
-      '```',
-      '',
-      marker,
-    ].join('\n');
-    await createComment(rendered);
-    const readBack = (await listComments()).filter((comment) =>
-      String(comment?.body || '').includes(record.recoveryId)
-    );
-    if (readBack.length !== 1) throw new Error('reopened-close-recovery:evidence-read-back');
-    durable = readBack[0];
+  // Durable evidence is resolved through the strict codec, never by substring.
+  // A retry reuses the DURABLE record — including its replacement UUID — so a lost
+  // response cannot mint a second recovery.
+  const resolved = resolveReopenedCloseRecovery({
+    authorization,
+    comments: priorComments,
+    record: resumeRecord ?? record,
+  });
+  let durableRecord = resolved.record;
+  if (!durableRecord) {
+    await createComment(renderReopenedCloseRecoveryComment(record));
+    const readBack = resolveReopenedCloseRecovery({
+      authorization,
+      comments: await listComments(),
+      record,
+    });
+    if (readBack.status !== 'present') {
+      throw new Error('reopened-close-recovery:evidence-read-back');
+    }
+    durableRecord = readBack.record;
   }
-  if (!String(durable.body || '').includes(REOPENED_CLOSE_RECOVERY_SCHEMA)) {
-    throw new Error('reopened-close-recovery:evidence-read-back');
+
+  // Interruption point two: the body may already carry the replacement from a
+  // previous attempt. Classify against durable evidence and resume rather than
+  // re-running a completed step.
+  const progress = classifyRecoveryProgress(convergeBody, authorization, durableRecord);
+  if (progress.phase === 'body-replaced') {
+    return { body: convergeBody, transaction: progress.transaction, record: durableRecord };
   }
 
   if (typeof mutateBody !== 'function') throw new Error('reopened-close-recovery:body-write');
   const mutation = await mutateBody({
     issueNumber: Number(closeIssueNum),
     repo: cfg.repo,
-    allowMarkerLoss: true,
-    mutate: (base) => replaceCompletedDeliveredCloseTransaction(base, authorization, record).body,
+    mutate: (base) =>
+      replaceCompletedDeliveredCloseTransaction(base, authorization, durableRecord).body,
   });
   if (typeof mutation?.body !== 'string') throw new Error('reopened-close-recovery:body-write');
-  const applied = replaceCompletedDeliveredCloseTransaction(convergeBody, authorization, record);
-  return { body: mutation.body, transaction: applied.transaction, record };
+  // Verify the ACTUAL mutation read-back, not the captured pre-mutation body.
+  const applied = classifyRecoveryProgress(mutation.body, authorization, durableRecord);
+  if (applied.phase !== 'body-replaced') {
+    throw new Error('reopened-close-recovery:mutation-readback');
+  }
+  return { body: mutation.body, transaction: applied.transaction, record: durableRecord };
 }
 
 export async function verbClose(ctx) {
@@ -1455,14 +1545,26 @@ export async function verbClose(ctx) {
     const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
     const receipt = receiptGate(gateInput);
     const freshReceiptVerifier = ctx.verifyCloseDeliveryReceipt || verifyCloseDeliveryReceipt;
+    // #1490 — capture the EXACT values this gate validates. The reopened-close
+    // recovery authorizes on them, and must never substitute its own defaults for
+    // evidence the gate actually resolved.
+    const resolvedTestReceiptSha =
+      parseVerificationReceipt(deliveryBody, 'test')?.commitSha ?? null;
+    const resolvedAcceptedReviewSha =
+      lifecycleEvidence?.expectedSha ??
+      parseVerificationReceipt(deliveryBody, 'review')?.commitSha ??
+      gateInput.acceptedSha;
+    // #1490 — the reopened-close recovery must not accept an accepted-SHA
+    // substitution as review evidence. Resolve the Review SHA from the authority
+    // actually accepted: the directory lane's expected SHA, or the exact body
+    // marker's approved SHA. Never a fallback.
+    const recoveryReviewApprovedSha =
+      lifecycleEvidence?.expectedSha ?? approval?.approvedSha ?? null;
     const freshReceipt = await freshReceiptVerifier({
       gateInput,
       receiptGate: receipt,
-      testReceiptSha: parseVerificationReceipt(deliveryBody, 'test')?.commitSha ?? null,
-      acceptedReviewSha:
-        lifecycleEvidence?.expectedSha ??
-        parseVerificationReceipt(deliveryBody, 'review')?.commitSha ??
-        gateInput.acceptedSha,
+      testReceiptSha: resolvedTestReceiptSha,
+      acceptedReviewSha: resolvedAcceptedReviewSha,
       deps: {
         fetchOriginTrunk:
           ctx.fetchOriginTrunk ??
@@ -1496,7 +1598,16 @@ export async function verbClose(ctx) {
       },
     });
     resolvedReviewAuthorization = authorization;
-    resolvedDeliveryGate = { authorization, gateInput, receipt: freshReceipt };
+    resolvedDeliveryGate = {
+      authorization,
+      gateInput,
+      receipt: freshReceipt,
+      // #1490 — concrete, gate-resolved evidence for the reopened-close recovery.
+      testReceiptSha: resolvedTestReceiptSha,
+      acceptedReviewSha: resolvedAcceptedReviewSha,
+      recoveryReviewApprovedSha,
+      deliveryBody,
+    };
     return resolvedDeliveryGate;
   };
   const refuseDeliveryGate = async (options) => {
@@ -1831,7 +1942,6 @@ export async function verbClose(ctx) {
             closeTarget,
             closeIssueNum,
             convergeBody,
-            decisionInput,
             ensureDeliveryAuthorized,
             resolvedDeliveryGateRef: () => resolvedDeliveryGate,
             terminalReviewAuthority,

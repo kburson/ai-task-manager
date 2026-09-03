@@ -11,12 +11,20 @@ import { test } from 'node:test';
 
 import { TERMINAL_CLOSE_STEPS } from '../../../../task-tracker/lib/close-convergence.mjs';
 import {
+  buildDeliveryIntent,
+  buildDeliveryReceipt,
+} from '../../../../task-tracker/lib/delivery-records.mjs';
+import {
   REOPENED_CLOSE_RECOVERY_REASON,
   REOPENED_CLOSE_RECOVERY_SCHEMA,
   ReopenedCloseRecoveryError,
   authorizeReopenedCloseRestart,
+  classifyRecoveryProgress,
   createReopenedCloseRecoveryRecord,
+  oldTransactionFromRecord,
+  renderReopenedCloseRecoveryComment,
   replaceCompletedDeliveredCloseTransaction,
+  resolveReopenedCloseRecovery,
 } from '../../../../task-tracker/lib/reopened-close-recovery.mjs';
 
 const OLD_SHA = 'd'.repeat(40);
@@ -42,7 +50,11 @@ function live(overrides = {}) {
   return {
     boardState: 'review',
     issueClosed: false,
-    stateReason: 'REOPENED',
+    // Normalized form produced by `normalizeIssueCloseSnapshot`, NOT GitHub's raw
+    // 'REOPENED'. The first implementation required the raw value and read it from
+    // a snapshot that returns null for open issues, making the predicate
+    // unsatisfiable in exactly the state it targets.
+    stateReason: 'reopened',
     terminalDisposition: 'Delivered',
     dirty: false,
     bindingStatus: 'pending',
@@ -50,15 +62,106 @@ function live(overrides = {}) {
   };
 }
 
+const OLD_MERGE = '7'.repeat(40);
+const NEW_MERGE = '9'.repeat(40);
+
+// Correlated {pullRequest, intent, receipt} bundles built from the REAL delivery
+// record builders. Nothing here is an asserted boolean, and no value is copied
+// from a record and then compared back to that same record — the first
+// implementation did both, which made two authorization conditions decorative.
+function bundle({ acceptedSha, prNumber, mergeSha, intentId }, overrides = {}) {
+  const intent = buildDeliveryIntent({
+    intentId,
+    supersedesIntentId: null,
+    issueNumber: 1490,
+    repository: REPO,
+    prNumber,
+    baseRef: 'trunk',
+    headRef: 'codex/defect-1490-squash-delivery-proof',
+    expectedHeadSha: acceptedSha,
+    mergeMethod: 'squash',
+    attributionTokens: ['#1490'],
+    commitTitle: '[#1490] Governed PR delivery',
+    commitMessage: `PR #${prNumber}\nSource: ${acceptedSha}\n\nAttribution: [#1490]`,
+    provider: 'claude',
+    sessionId: 'session-1490',
+    clientCreatedAt: '2026-09-03T01:00:00.000Z',
+  });
+  const receipt = buildDeliveryReceipt({
+    intentId,
+    issueNumber: 1490,
+    prNumber,
+    expectedHeadSha: acceptedSha,
+    mergeCommitSha: mergeSha,
+    baseRef: 'trunk',
+    mergeMethod: 'squash',
+    verifiedTrunkRef: 'origin/trunk',
+    provider: 'claude',
+    sessionId: 'session-1490',
+    verifiedAt: '2026-09-03T01:49:10.000Z',
+  });
+  return {
+    pullRequest: {
+      number: prNumber,
+      state: 'MERGED',
+      merged: true,
+      headRefName: 'codex/defect-1490-squash-delivery-proof',
+      baseRefName: 'trunk',
+      headRefOid: acceptedSha,
+      mergeCommitSha: mergeSha,
+    },
+    intent,
+    receipt,
+    ...overrides,
+  };
+}
+
+function historicalBundle(overrides = {}) {
+  return bundle(
+    {
+      acceptedSha: OLD_SHA,
+      prNumber: 1491,
+      mergeSha: OLD_MERGE,
+      intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+    },
+    overrides
+  );
+}
+
+function currentDelivery(overrides = {}) {
+  const base = bundle({
+    acceptedSha: NEW_SHA,
+    prNumber: 1493,
+    mergeSha: NEW_MERGE,
+    intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+  });
+  return {
+    ...base,
+    testReceiptSha: NEW_SHA,
+    reviewApprovedSha: NEW_SHA,
+    // The verifier's OWN output shape (`verification.receiptInput`), not a copy
+    // of the receipt.
+    verifiedDelivery: {
+      intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+      issueNumber: 1490,
+      prNumber: 1493,
+      expectedHeadSha: NEW_SHA,
+      mergeCommitSha: NEW_MERGE,
+      baseRef: 'trunk',
+      mergeMethod: 'squash',
+      verifiedTrunkRef: 'origin/trunk',
+      provider: 'claude',
+      sessionId: 'session-1490',
+      verifiedAt: '2026-09-03T01:49:10.000Z',
+    },
+    ...overrides,
+  };
+}
+
 function evidence(overrides = {}) {
   return {
-    historicalDelivery: { acceptedSha: OLD_SHA, verified: true },
-    currentDelivery: {
-      acceptedSha: NEW_SHA,
-      testReceiptSha: NEW_SHA,
-      reviewApprovedSha: NEW_SHA,
-      deliveryVerified: true,
-    },
+    historical: historicalBundle(),
+    current: currentDelivery(),
     ...overrides,
   };
 }
@@ -153,48 +256,84 @@ test('#1490: every contradictory live state refuses', () => {
   }
 });
 
-test('#1490: stale or missing delivery evidence refuses', () => {
-  assert.throws(
-    () =>
-      authorizeReopenedCloseRestart(
-        input({
-          evidence: evidence({ historicalDelivery: { acceptedSha: OLD_SHA, verified: false } }),
-        })
-      ),
-    /historical-evidence/
-  );
-  assert.throws(
-    () =>
-      authorizeReopenedCloseRestart(
-        input({
-          evidence: evidence({
-            currentDelivery: {
-              acceptedSha: NEW_SHA,
-              testReceiptSha: OLD_SHA,
-              reviewApprovedSha: NEW_SHA,
-              deliveryVerified: true,
-            },
-          }),
-        })
-      ),
-    /current-evidence/
-  );
-  assert.throws(
-    () =>
-      authorizeReopenedCloseRestart(
-        input({
-          evidence: evidence({
-            currentDelivery: {
-              acceptedSha: NEW_SHA,
-              testReceiptSha: NEW_SHA,
-              reviewApprovedSha: NEW_SHA,
-              deliveryVerified: false,
-            },
-          }),
-        })
-      ),
-    /current-evidence/
-  );
+test('#1490: the historical bundle must correlate PR, intent, and receipt', () => {
+  const base = historicalBundle();
+  const cases = [
+    { label: 'absent', historical: null },
+    { label: 'no intent', historical: { ...base, intent: null } },
+    { label: 'no receipt', historical: { ...base, receipt: null } },
+    {
+      label: 'PR head is not the old accepted SHA',
+      historical: { ...base, pullRequest: { ...base.pullRequest, headRefOid: NEW_SHA } },
+    },
+    {
+      label: 'PR not merged',
+      historical: {
+        ...base,
+        pullRequest: { ...base.pullRequest, merged: false, state: 'OPEN' },
+      },
+    },
+    {
+      label: 'receipt merge SHA disagrees with the PR',
+      historical: { ...base, receipt: { ...base.receipt, mergeCommitSha: NEW_MERGE } },
+    },
+    {
+      label: 'receipt PR number disagrees with the PR',
+      historical: { ...base, receipt: { ...base.receipt, prNumber: 4242 } },
+    },
+    {
+      label: 'receipt intent id disagrees with the intent',
+      historical: { ...base, receipt: { ...base.receipt, intentId: 'someone-elses-intent' } },
+    },
+    {
+      label: 'intent head ref disagrees with the PR',
+      historical: { ...base, intent: { ...base.intent, headRef: 'other-branch' } },
+    },
+  ];
+  for (const { label, historical } of cases) {
+    assert.throws(
+      () => authorizeReopenedCloseRestart(input({ evidence: evidence({ historical }) })),
+      /historical-evidence/,
+      label
+    );
+  }
+});
+
+test('#1490: current delivery evidence must be gate-resolved, not asserted', () => {
+  const base = currentDelivery();
+  const cases = [
+    { label: 'test receipt at the wrong SHA', current: { ...base, testReceiptSha: OLD_SHA } },
+    {
+      label: 'review approved at the wrong SHA',
+      current: { ...base, reviewApprovedSha: OLD_SHA },
+    },
+    { label: 'no verifier output', current: { ...base, verifiedDelivery: null } },
+    {
+      label: 'verifier merge SHA disagrees with the PR',
+      current: {
+        ...base,
+        verifiedDelivery: { ...base.verifiedDelivery, mergeCommitSha: OLD_MERGE },
+      },
+    },
+    {
+      label: 'verifier head SHA disagrees with the accepted SHA',
+      current: {
+        ...base,
+        verifiedDelivery: { ...base.verifiedDelivery, expectedHeadSha: OLD_SHA },
+      },
+    },
+    {
+      label: 'verifier intent id disagrees with the intent',
+      current: { ...base, verifiedDelivery: { ...base.verifiedDelivery, intentId: 'other' } },
+    },
+  ];
+  for (const { label, current } of cases) {
+    assert.throws(
+      () => authorizeReopenedCloseRestart(input({ evidence: evidence({ current }) })),
+      /current-evidence/,
+      label
+    );
+  }
 });
 
 test('#1490: the recovery record captures both transactions, SHAs, and authorities', () => {
@@ -288,6 +427,144 @@ test('#1490: zero or multiple delivered-close transactions refuse', () => {
     () => replaceCompletedDeliveredCloseTransaction('no markers here', authorization, record),
     /ambiguous-body/
   );
+  // The original version of this test only covered ZERO transactions despite its
+  // name. Two markers must refuse too — here the refusal comes from
+  // `readDeliveredCloseTransactions`, which owns transaction-set integrity and
+  // rejects conflicting markers before this module's own check is reached.
+  const two = bodyWith(oldTransaction()) + bodyWith(oldTransaction({ transactionId: 'second-tx' }));
+  assert.throws(
+    () => replaceCompletedDeliveredCloseTransaction(two, authorization, record),
+    /conflicting-terminal-transaction|ambiguous-body/
+  );
+});
+
+test('#1490: durable evidence is resolved by codec, never by substring', () => {
+  const authorization = authorizeReopenedCloseRestart(input());
+  const record = createReopenedCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => NEW_TX,
+  });
+  const rendered = renderReopenedCloseRecoveryComment(record);
+  const ok = {
+    id: 42,
+    body: rendered,
+    issue_url: `https://api.github.com/repos/${REPO}/issues/1490`,
+  };
+  const resolvedOk = resolveReopenedCloseRecovery({
+    authorization,
+    comments: [ok],
+    record,
+  });
+  assert.equal(resolvedOk.status, 'present');
+  assert.equal(resolvedOk.record.replacementTransactionId, NEW_TX);
+
+  // A comment that merely QUOTES the recovery id is not evidence.
+  const quoting = {
+    id: 43,
+    body: `discussion mentioning ${record.recoveryId} in passing`,
+    issue_url: `https://api.github.com/repos/${REPO}/issues/1490`,
+  };
+  assert.equal(
+    resolveReopenedCloseRecovery({ authorization, comments: [quoting], record }).status,
+    'absent'
+  );
+
+  // A body claiming to be recovery evidence without a well-formed marker is
+  // malformed, not absent.
+  const claiming = {
+    id: 44,
+    body: 'aitm-reopened-close-recovery but no marker',
+    issue_url: `https://api.github.com/repos/${REPO}/issues/1490`,
+  };
+  assert.throws(
+    () => resolveReopenedCloseRecovery({ authorization, comments: [claiming], record }),
+    /malformed-comment/
+  );
+
+  // Correct marker on the wrong issue must refuse.
+  const wrongIssue = {
+    id: 45,
+    body: rendered,
+    issue_url: `https://api.github.com/repos/${REPO}/issues/999`,
+  };
+  assert.throws(
+    () => resolveReopenedCloseRecovery({ authorization, comments: [wrongIssue], record }),
+    /malformed-comment/
+  );
+});
+
+test('#1490: a retry reuses the durable replacement id rather than minting another', () => {
+  const authorization = authorizeReopenedCloseRestart(input());
+  const first = createReopenedCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => NEW_TX,
+  });
+  const durable = {
+    id: 46,
+    body: renderReopenedCloseRecoveryComment(first),
+    issue_url: `https://api.github.com/repos/${REPO}/issues/1490`,
+  };
+  // A second attempt would mint a different UUID; resolution must return the
+  // durable one so the replacement identity is stable across retries.
+  const retryRecord = createReopenedCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => 'ffffffff-0000-0000-0000-000000000000',
+  });
+  const resolved = resolveReopenedCloseRecovery({
+    authorization,
+    comments: [durable],
+    record: retryRecord,
+  });
+  assert.equal(resolved.status, 'present');
+  assert.equal(resolved.record.replacementTransactionId, NEW_TX);
+});
+
+test('#1490: progress classification distinguishes both interruption points', () => {
+  const authorization = authorizeReopenedCloseRestart(input());
+  const record = createReopenedCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => NEW_TX,
+  });
+  // Evidence written, body not yet replaced.
+  assert.equal(
+    classifyRecoveryProgress(bodyWith(oldTransaction()), authorization, record).phase,
+    'body-pending'
+  );
+  // Body replaced, saga not yet resumed.
+  const replaced = replaceCompletedDeliveredCloseTransaction(
+    bodyWith(oldTransaction()),
+    authorization,
+    record
+  );
+  const progress = classifyRecoveryProgress(replaced.body, authorization, record);
+  assert.equal(progress.phase, 'body-replaced');
+  assert.deepEqual(progress.transaction.completedSteps, []);
+  // Neither shape refuses.
+  assert.throws(
+    () =>
+      classifyRecoveryProgress(
+        bodyWith(oldTransaction({ transactionId: 'unrelated' })),
+        authorization,
+        record
+      ),
+    /stale-body/
+  );
+});
+
+test('#1490: the old transaction is rebuilt from durable evidence', () => {
+  const authorization = authorizeReopenedCloseRestart(input());
+  const record = createReopenedCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => NEW_TX,
+  });
+  assert.deepEqual(oldTransactionFromRecord(record), {
+    schema: 'aitm.delivered-close/v1',
+    transactionId: OLD_TX,
+    issueNumber: 1490,
+    acceptedSha: OLD_SHA,
+    reviewAuthority: 'human-gate',
+    completedSteps: [...TERMINAL_CLOSE_STEPS],
+  });
 });
 
 test('#1490: a record whose intent disagrees with the authorization refuses', () => {

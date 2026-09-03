@@ -32,7 +32,15 @@ export function normalizeIssueCloseSnapshot({ state, stateReason } = {}) {
     .trim()
     .toUpperCase();
   if (normalizedState === 'OPEN') {
-    return { issueClosed: false, stateReason: null };
+    // #1490 — an OPEN issue normally carries no meaningful reason, but `REOPENED`
+    // is load-bearing: it is the only signal distinguishing an issue that was
+    // closed and deliberately reopened from one that was never closed. The
+    // reopened-close recovery authorizes on exactly that distinction. Every other
+    // OPEN reason stays null until something explicitly needs it.
+    const openReason = String(stateReason || '')
+      .trim()
+      .toLowerCase();
+    return { issueClosed: false, stateReason: openReason === 'reopened' ? 'reopened' : null };
   }
   if (normalizedState !== 'CLOSED') {
     return { issueClosed: null, stateReason: null };
