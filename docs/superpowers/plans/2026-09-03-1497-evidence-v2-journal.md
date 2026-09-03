@@ -46,3 +46,9 @@ Files: scripts/task-tracker/lib/evidence-v2/{journal,journal-authority}.mjs; scr
 - [ ] Run isolated task test once, record serial code review, review and Full-Auto approve. Verify exact receipt before local merge-back to epic, push and verify hosted CI. Relocate binding after proven merged worktree cleanup and close through sanctioned CLI.
 
 No test claim is earned by this plan. Each checkbox is updated only after its associated observed result.
+
+## Repository integration correction
+
+The first isolated Test run found two repository-wide gates beyond the focused suites. The unit-lane purity gate requires every real-Git fixture under integration. Real-system codec, subject, eligibility and acceptance tests therefore also live under scripts/tests/integration/task-tracker/lib/evidence-v2; the unit paths retain pure canonical and policy tests using logical-records.mjs. Root issue commands point to the real-system suites so their acceptance coverage remains explicit.
+
+The package manifest grows from 742 to 754 entries: eleven required runtime modules and one guide, with no test files or excluded content. package-boundary.test.mjs raises its ceiling by those twelve intentional entries, from 750 to 762, preserving the previous eight-entry margin. Its exclusion and required-file assertions are unchanged. Re-run both failing gates, affected verification, then the full isolated Test workflow at the new commit.

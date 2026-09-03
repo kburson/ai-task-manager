@@ -16,6 +16,7 @@ import {
   findLostMarkers,
   validateMarkerAdvances,
 } from '../../../../../task-tracker/lib/body-invariants.mjs';
+import { createSandbox } from '../../../../helpers/evidence-v2/sandbox.mjs';
 const repo = { nodeId: 'R_rehearsal_fixture', nameWithOwner: 'aitm-rehearsal/fixture' };
 const make = (overrides = {}) =>
   createRecord({
@@ -81,27 +82,38 @@ test('canonical JSON rejects values erased or coerced by ordinary JSON', () => {
     );
   }
 });
-
-test('strict protocol projections preserve identity and reject unsupported mutation', () => {
-  const projection = {
-    schema: 'aitm.evidence-projection/v2',
-    repositoryId: repo,
-    issueNumber: 1000001,
-    cycleId: randomUUID(),
-    headId: 'sha256:' + 'a'.repeat(64),
-    authorityHostId: randomUUID(),
-  };
-  const marker = renderProtocolMarker(projection);
-  assert.equal(selectEvidenceProtocol({ body: 'ordinary' }).protocol, 'v1');
-  assert.throws(() => selectEvidenceProtocol({ body: marker }), /context/);
-  assert.throws(
-    () => selectEvidenceProtocol({ body: '<!-- aitm-evidence-v2 broken -->' }),
-    /projection/
-  );
-  assert.throws(() => selectEvidenceProtocol({ body: marker + '\n' + marker }), /projection/);
-  assert.deepEqual(findLostMarkers(marker, ''), ['aitm-evidence-v2']);
-  assert.throws(
-    () => validateMarkerAdvances(marker, marker.replace('data="', 'data="x')),
-    /unauthorized/
-  );
+test('v2 protocol claims are strict protected projections and synthetic only', () => {
+  const s = createSandbox();
+  try {
+    const marker = renderProtocolMarker({
+      schema: 'aitm.evidence-projection/v2',
+      repositoryId: {
+        nodeId: `R_rehearsal_${s.context.runId}`,
+        nameWithOwner: s.context.repositoryId,
+      },
+      issueNumber: 1000001,
+      cycleId: randomUUID(),
+      headId: 'sha256:' + 'a'.repeat(64),
+      authorityHostId: randomUUID(),
+    });
+    assert.equal(selectEvidenceProtocol({ body: 'ordinary' }).protocol, 'v1');
+    assert.equal(selectEvidenceProtocol({ body: marker, context: s.context }).protocol, 'v2');
+    assert.throws(() => selectEvidenceProtocol({ body: marker }), /context/);
+    assert.throws(
+      () =>
+        selectEvidenceProtocol({ body: '<!-- aitm-evidence-v2 broken -->', context: s.context }),
+      /projection/
+    );
+    assert.throws(
+      () => selectEvidenceProtocol({ body: marker + '\n' + marker, context: s.context }),
+      /projection/
+    );
+    assert.deepEqual(findLostMarkers(marker, ''), ['aitm-evidence-v2']);
+    assert.throws(
+      () => validateMarkerAdvances(marker, marker.replace('data="', 'data="x')),
+      /unauthorized/
+    );
+  } finally {
+    s.dispose();
+  }
 });
