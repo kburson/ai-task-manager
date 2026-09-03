@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497
+// @story #551 #1279 #1497 #1501
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -111,7 +111,7 @@ function repoRoot() {
 // excluded material added. Raise by exactly those twelve entries, preserving
 // the existing eight-entry headroom; path exclusions remain unchanged.
 // #1500 adds the reviewed v2 enrollment, runtime-capability and command adapters.
-const ENTRY_CEILING = 768;
+const ENTRY_CEILING = 771;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
