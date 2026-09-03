@@ -613,3 +613,62 @@ test('#1413 default delivery adapter preserves pending required checks as non-gr
     ],
   });
 });
+
+function requiredChecksDeps({ checkError, liveHeadSha = HEAD }) {
+  const exec = async (_command, args) => {
+    if (args[0] === 'pr' && args[1] === 'checks') throw checkError;
+    if (args[0] === 'pr' && args[1] === 'view' && args.at(-1) === 'headRefOid') {
+      return { stdout: JSON.stringify({ headRefOid: liveHeadSha }) };
+    }
+    throw new Error(`unexpected command: ${args.join(' ')}`);
+  };
+  return createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    { exec }
+  );
+}
+
+test('#1504 default delivery adapter reads an explicit absent required-check policy', async () => {
+  const checkError = new Error('required checks unavailable');
+  checkError.code = 1;
+  checkError.stdout = '';
+  checkError.stderr = "no required checks reported on the 'feature/child/1504' branch";
+  const deps = requiredChecksDeps({ checkError });
+
+  assert.deepEqual(await deps.fetchRequiredChecks({ prNumber: 1503, expectedHeadSha: HEAD }), {
+    readable: true,
+    required: [],
+  });
+});
+
+test('#1504 absent required checks remain unreadable after pull-request head drift', async () => {
+  const checkError = new Error('required checks unavailable');
+  checkError.code = 1;
+  checkError.stdout = '';
+  checkError.stderr = "no required checks reported on the 'feature/child/1504' branch";
+  const deps = requiredChecksDeps({ checkError, liveHeadSha: 'b'.repeat(40) });
+
+  assert.deepEqual(await deps.fetchRequiredChecks({ prNumber: 1503, expectedHeadSha: HEAD }), {
+    readable: false,
+    required: [],
+  });
+});
+
+test('#1504 default delivery adapter propagates unrelated exit-one check failures', async () => {
+  const checkError = new Error('authentication failed');
+  checkError.code = 1;
+  checkError.stdout = '';
+  checkError.stderr = 'gh: authentication failed';
+  const deps = requiredChecksDeps({ checkError });
+
+  await assert.rejects(
+    deps.fetchRequiredChecks({ prNumber: 1503, expectedHeadSha: HEAD }),
+    /authentication failed/
+  );
+});
