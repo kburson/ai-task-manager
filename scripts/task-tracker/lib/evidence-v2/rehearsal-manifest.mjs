@@ -7,7 +7,7 @@ import {
   lstatSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
+  opendirSync,
   realpathSync,
   rmSync,
   statSync,
@@ -57,11 +57,18 @@ function assertRun(manifest) {
   return manifest;
 }
 function filePaths(root, prefix = '') {
-  return readdirSync(path.join(root, prefix), { withFileTypes: true }).flatMap((entry) => {
-    const relative = path.join(prefix, entry.name);
-    if (entry.isSymbolicLink()) fail('sandbox-symlink');
-    return entry.isDirectory() ? filePaths(root, relative) : [relative];
-  });
+  const directory = opendirSync(path.join(root, prefix));
+  const paths = [];
+  try {
+    for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+      const relative = path.join(prefix, entry.name);
+      if (entry.isSymbolicLink()) fail('sandbox-symlink');
+      paths.push(...(entry.isDirectory() ? filePaths(root, relative) : [relative]));
+    }
+  } finally {
+    directory.closeSync();
+  }
+  return paths;
 }
 function files(root) {
   return filePaths(root)
