@@ -37,6 +37,7 @@ import {
   resolveVcRefCommands,
 } from './vc-ref.mjs';
 import { ENTRY_MARKER_RE, parseEntryMarkers } from './stage-entry-grammar.mjs';
+import { PROTOCOL_MARKER_RE, validateProtocolAdvance } from './evidence-v2/protocol.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
@@ -151,6 +152,12 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
 }
 
 export const INVARIANT_MARKER_PATTERNS = [
+  {
+    name: 'aitm-evidence-v2',
+    re: PROTOCOL_MARKER_RE,
+    kind: 'advance',
+    validateAdvance: validateProtocolAdvance,
+  },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
   // Widened (#376) to detect the body-version marker under BOTH the legacy
   // colon grammar and the new `version="..."` property grammar, so a writer
