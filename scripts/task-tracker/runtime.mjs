@@ -6,6 +6,8 @@
 // issue #10 so each lifecycle verb can live in its own file under verbs/.
 
 import path from 'node:path';
+import { realpathSync } from 'node:fs';
+import { resolveExecutionContext } from './lib/evidence-v2/execution-context.mjs';
 import { execFileSync } from 'node:child_process';
 import { pexec } from '../gh/lib/gh-client.mjs';
 import { loadConfig } from './config.mjs';
@@ -236,7 +238,12 @@ const LEGACY_DESCRIPTION_FALLBACKS = {
   'switch-end': 'switched to next task',
 };
 
-export function buildContext(rawArgv = process.argv.slice(2)) {
+export function buildContext(rawArgv = process.argv.slice(2), { executionContext = null } = {}) {
+  const recordedContext =
+    executionContext == null ? null : resolveExecutionContext(executionContext);
+  if (recordedContext && realpathSync(getProjectDir()) !== recordedContext.sourceRoot) {
+    throw new Error('rehearsal:source-context-mismatch');
+  }
   const _roleIdx = rawArgv.indexOf('--role');
   const role = _roleIdx >= 0 && _roleIdx + 1 < rawArgv.length ? rawArgv[_roleIdx + 1] : 'solo';
   const _argvClean =
@@ -277,6 +284,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
   const ctx = {
+    ...(recordedContext ? { executionContext: recordedContext } : {}),
     cfg,
     projectDir,
     statePath,
