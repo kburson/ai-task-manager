@@ -99,6 +99,14 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/deliver.mjs',
     },
     {
+      verb: 'evidence',
+      dispatch: 'verbs/evidence.mjs',
+    },
+    {
+      verb: 'reopen',
+      dispatch: 'verbs/reopen.mjs',
+    },
+    {
       verb: 'incident-ledger',
       dispatch: 'verbs/incident-ledger.mjs',
     },

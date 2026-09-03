@@ -22,9 +22,11 @@ import {
 import { buildCommandCursorRequest } from './lib/state-cursor.mjs';
 import { buildTestCursorRequest } from './lib/test-cursor-request.mjs';
 import {
-  readRecordedExecutionContext,
+  readEvidenceExecutionContext,
   assertRecordedTransport,
 } from './lib/evidence-v2/execution-context.mjs';
+import { selectEvidenceProtocol } from './lib/evidence-v2/protocol.mjs';
+import { guardEvidenceMutation } from './lib/evidence-v2/entry-guard.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -75,6 +77,8 @@ export const PREFLIGHT_MODE = {
   deliver: 'target-required',
   'incident-ledger': 'target-required',
   'action-ledger': 'target-required',
+  evidence: 'target-required',
+  reopen: 'target-required',
   reconcile: 'target-required',
   check: 'target-optional',
   ensureChecked: 'target-optional',
@@ -181,6 +185,34 @@ async function runVerbPreflight(ctx) {
   });
 }
 
+const GUARDED_EVIDENCE_VERBS = new Set(['test', 'review', 'approve', 'deliver', 'close']);
+async function guardEvidenceVerb(ctx) {
+  if (!ctx.evidenceV2 || !GUARDED_EVIDENCE_VERBS.has(ctx.verb)) return;
+  const token = targetFromRest(ctx.rest);
+  const issueNumber = Number(String(token || ctx.evidenceV2.context.issueNumber).replace(/^#/, ''));
+  const issue = await ctx.evidenceV2.ports.readIssue({
+    repositoryId: ctx.evidenceV2.repositoryId,
+    issueNumber,
+  });
+  const selection = selectEvidenceProtocol({ body: issue.body, context: ctx.evidenceV2.context });
+  if (selection.protocol === 'v1') return;
+  const capability = await ctx.evidenceV2.ports.readRuntimeCapability({
+    repositoryId: ctx.evidenceV2.repositoryId,
+    issueNumber,
+  });
+  const residentEntries = await ctx.evidenceV2.ports.listResidentEntries({
+    repositoryId: ctx.evidenceV2.repositoryId,
+    issueNumber,
+  });
+  guardEvidenceMutation({
+    selection,
+    capability,
+    authorityHostId: ctx.evidenceV2.authorityHostId,
+    residentEntries,
+    verb: ctx.verb,
+  });
+}
+
 function checkInit(ctx) {
   if (INIT_EXEMPT.has(ctx.verb)) return;
   const cfgPath = path.join(ctx.projectDir, '.ai-task-manager', 'task-tracker.json');
@@ -260,8 +292,9 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
-    const executionContext = readRecordedExecutionContext();
-    assertRecordedTransport(executionContext);
+    const executionContext = readEvidenceExecutionContext();
+    if (executionContext?.schema === 'aitm.rehearsal-context/v1')
+      assertRecordedTransport(executionContext);
     // #394/#1023 — intercept only canonical command-help positions before
     // buildContext() touches config/network. Help is INIT_EXEMPT and must work
     // in an unconfigured directory; this early exit mutates no state (no issue
@@ -333,6 +366,7 @@ if (_isMain)
       return { status: 'complete', state, cursorRequest };
     };
     await runVerbPreflight(ctx);
+    await guardEvidenceVerb(ctx);
     try {
       switch (ctx.verb) {
         case 'status': {
@@ -419,6 +453,16 @@ if (_isMain)
         case 'action-ledger': {
           const { verbActionLedger } = await import('./verbs/action-ledger.mjs');
           await verbActionLedger(ctx);
+          break;
+        }
+        case 'evidence': {
+          const { verbEvidence } = await import('./verbs/evidence.mjs');
+          await verbEvidence(ctx);
+          break;
+        }
+        case 'reopen': {
+          const { verbReopen } = await import('./verbs/reopen.mjs');
+          await verbReopen(ctx);
           break;
         }
         case 'reject': {

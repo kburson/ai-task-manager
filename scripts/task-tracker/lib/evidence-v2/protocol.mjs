@@ -1,6 +1,6 @@
 // @story #1497
 import { canonical, exact, fail, repository, uuidValue, digestValue, frozen } from './value.mjs';
-import { resolveExecutionContext } from './execution-context.mjs';
+import { resolveEvidenceExecutionContext } from './execution-context.mjs';
 export const PROTOCOL_MARKER_RE = /<!--\s*aitm-evidence-v2\b[^]*?-->/i;
 export function renderProtocolMarker(value) {
   exact(
@@ -49,7 +49,7 @@ export function validateProtocolAdvance({ baseMatch, nextMatch }) {
     fail('projection-identity');
 }
 export function assertSyntheticContext(context, repositoryId, issueNumber) {
-  const resolved = resolveExecutionContext(context);
+  const resolved = resolveEvidenceExecutionContext(context);
   if (
     repositoryId.nameWithOwner !== resolved.repositoryId ||
     repositoryId.nodeId !== `R_rehearsal_${resolved.runId}` ||
@@ -58,13 +58,26 @@ export function assertSyntheticContext(context, repositoryId, issueNumber) {
     fail('synthetic-identity');
   return resolved;
 }
+export function assertEvidenceContext(context, repositoryId, issueNumber, authorityHostId) {
+  const resolved = resolveEvidenceExecutionContext(context);
+  if (resolved.schema === 'aitm.rehearsal-context/v1')
+    return assertSyntheticContext(context, repositoryId, issueNumber);
+  if (
+    canonical(resolved.repositoryId) !== canonical(repositoryId) ||
+    resolved.issueNumber !== issueNumber ||
+    resolved.authorityHostId !== authorityHostId
+  )
+    fail('installed-identity');
+  return resolved;
+}
 export function selectEvidenceProtocol({ body, context } = {}) {
   const projection = parseProtocolMarker(body);
   if (!projection) return frozen({ protocol: 'v1' });
-  const executionContext = assertSyntheticContext(
+  const executionContext = assertEvidenceContext(
     context,
     projection.repositoryId,
-    projection.issueNumber
+    projection.issueNumber,
+    projection.authorityHostId
   );
   return frozen({ protocol: 'v2', projection, executionContext });
 }

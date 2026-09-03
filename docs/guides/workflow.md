@@ -1,5 +1,11 @@
 # GitHub Issues & Kanban Workflow
 
+## Explicit evidence v2 enrollment
+
+Legacy remains the default. `npx aitm evidence inspect <N> --json` is read-only and returns predicate sources, raw-history references, missing evidence, runtime requirements, and a canonical digest. Enrollment requires a separately supplied operation UUID and that exact digest: `npx aitm evidence enroll <N> --plan-digest <digest> --operation-id <uuid>`. It reinspects under the designated authority and writes the protected v2 projection only after import read-back. Missing historical verification, review, or delivery facts remain unknown and require fresh evidence.
+
+The installed execution context pins separate tool, source, and authority roots plus provider and host identity. Every v2 mutation entry validates the common selector and complete resident capability inventory. `npx aitm reopen <N> --operation-id <uuid> --reason <text>` creates a new explicit cycle for a closed enrolled issue. A malformed marker or old incompatible writer refuses instead of falling back to v1.
+
 Full workflow rules for projects using `ai-task-manager`. These rules define how Claude Code, Codex, and human operators should manage issues, move Kanban states, and handle cleanup.
 
 ---
