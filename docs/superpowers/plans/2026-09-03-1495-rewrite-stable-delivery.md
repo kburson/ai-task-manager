@@ -10,9 +10,9 @@
 
 **Tracking:** Epic #1495. Specification: `docs/superpowers/specs/2026-09-03-1495-rewrite-stable-delivery-design.md`.
 
-## Hydrated backlog
+## Planning readiness
 
-At execution pickup all six children remain unassigned in Backlog without recorded child worktrees. Epic #1495 has entered Refine under `kburson`; the original planning task's idle occupancy claim was released through the supported administrative command and rebound in the same recorded epic worktree. Sequence is serial; these dependencies are internal to #1495 and do not block or alter the existing defect issues. No Plan approval is recorded.
+The refined written contract was approved at local commit 9239b7f61e5b4e49788860867c1d7f7dbf607b8b. All six children are now unassigned in Ready for Planning, with current refinement snapshots, P1, finite ranks 1–6 and the predecessor chain below. Each has its own recorded, seeded worktree. Epic #1495 is in Plan in its original worktree on codex/rewrite-stable-delivery-plan. Formal Plan approval remains pending; implementation has not begun.
 
 | Sequence | Issue                                                           | Deliverable                                                               | Predecessor |
 | -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------- |
@@ -40,9 +40,9 @@ At execution pickup all six children remain unassigned in Backlog without record
 
 ## A. Execution checkpoints and delivery topology
 
-### Pickup refinement proposal
+### Refinement baseline and Plan estimate
 
-The following are provisional human-effort estimates, including implementation, focused verification, and normal review response. They are not AI elapsed-time forecasts or frozen Plan estimates. Only the epic's XL / 108-hour / P1 / rank 1 fields have been applied; child fields await each governed refinement. Preserve the six-child order and apply P1 consistently when refining them.
+The following are provisional human-effort estimates, including implementation, focused verification, and normal review response. They are not AI elapsed-time forecasts or frozen Plan estimates. The child refinement fields below are applied. The epic Plan estimator publishes the governed human and AI forecasts in the issue; its calibrated overhead can raise the 108-hour baseline. Preserve the six-child order and P1 priority.
 
 | Child | Proposed size | Human hours | Estimate basis                                                                                                                        |
 | ----- | ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -55,7 +55,7 @@ The following are provisional human-effort estimates, including implementation, 
 
 Total: 108 human hours. #1497, #1499 and #1500 have the highest uncertainty; refresh their WBS and size in Plan instead of treating the L boundary as a fixed promise. Production recovery of the frozen chain is excluded.
 
-The first review decision is approval of the refined written contract, including the early plumbing allocation below. Then refine the six children serially into Ready for Planning with current snapshots and finite ranks before the epic can enter Plan. Publish the current-trunk orchestration plan and governed Plan estimate there. Record human Plan approval only after it is actually given. The parent must reach Develop before #1496 enters its own Plan gate. Later children remain parked until their predecessor has an accepted terminal disposition; Review alone is insufficient.
+Written-contract approval, six child refinements and epic Plan entry are complete. Publish the governed Plan estimate and verify canonical WBS coverage before requesting formal Plan approval. The dedicated plan-approve verb records the approval and current-trunk orchestration authority only after that approval is actually given. The parent must reach Develop before #1496 enters its own Plan gate. Later children remain parked until their predecessor has an accepted terminal disposition; Review alone is insufficient.
 
 ### Plumbing needed before its consumers
 
@@ -105,7 +105,17 @@ New production modules live in `scripts/task-tracker/lib/evidence-v2/`:
 
 Add tests under `scripts/tests/unit/task-tracker/lib/evidence-v2/`, `scripts/tests/integration/task-tracker/evidence-v2/`, and `scripts/tests/slow/task-tracker/evidence-v2/`. Add helper modules under `scripts/tests/helpers/evidence-v2/`. Register files through the repository's current canonical test discovery/impact manifest as needed; do not invent a parallel test runner.
 
-## Task 1: Independent real-Git rehearsal foundation and baseline contracts
+## Implementation tasks
+
+### Task 1: Build an isolated real-Git rehearsal harness for evidence v2
+
+**Verification Commands:**
+
+```bash
+node --test scripts/tests/integration/task-tracker/evidence-v2/isolation.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/provider-contract.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/legacy-shapes.test.mjs
+```
 
 **Deliverable:** A production-isolated harness that executes Git history operations and public AITM command plumbing against a stateful offline provider, with captured-v1 failure fixtures. This is test infrastructure, not an alternate workflow implementation.
 
@@ -145,7 +155,15 @@ assert.deepEqual(
 - [ ] Encode the prior #1490 old-complete/new-claim and zero-step-only retry shapes, plus the same-tree #1488/#1485 pairs. Baseline tests identify expected v1 refusal, not pretend v1 already succeeds.
 - [ ] Run the three Task 1 test files together and verify source protection. Commit only this child's harness, fixtures and tests with its actual issue token after the normal Develop verification.
 
-## Task 2: Content-addressed verification, acceptance and durable journal
+### Task 2: Add content-addressed verification and immutable acceptance records
+
+**Verification Commands:**
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/evidence-v2/subject.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/eligibility.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/evidence-v2/acceptance.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/codec.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/journal.test.mjs
+```
 
 **Deliverable:** Strict v2 subjects/records, verifiable reuse decisions, and durable same-host serialized storage; v1 remains unchanged.
 
@@ -184,7 +202,14 @@ assert.equal(successfulExecution.payload.testedCommitSha, originalCommitSha); //
 - [ ] Run all Task 2 unit files and `journal.test.mjs`, then the unchanged `scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs` suite; resolve any layout change through `rg --files scripts/tests` rather than assuming a renamed path.
 - [ ] Add developer documentation of eligibility reasons and complete-input obligations. Commit the child under normal gates; do not enroll any issue.
 
-## Task 3: Explicit acceptance-to-PR delivery lineage
+### Task 3: Link accepted content explicitly to PR delivery and target provenance
+
+**Verification Commands:**
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/evidence-v2/delivery.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/delivery-flow.test.mjs
+```
 
 **Deliverable:** Content-aware delivery proof through explicit records while preserving expected-head concurrency, target authority and configured method policy.
 
@@ -217,7 +242,15 @@ assert.equal(provider.mergeCalls.length, 0);
 - [ ] Run Task 3 tests plus existing `scripts/tests/unit/task-tracker/lib/delivery-authority.test.mjs`, `scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs`, and delivery recovery suites located through canonical discovery. Add an integration assertion that no v1 record schema or default behavior changes.
 - [ ] Commit the bounded adapter and tests; no production enrollment or delivery.
 
-## Task 4: Cycle-scoped close and generation-safe binding cleanup
+### Task 4: Make reopened close cycles and binding cleanup generation-safe
+
+**Verification Commands:**
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/evidence-v2/cycles.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/close-machine.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/close-flow.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/binding-generation.test.mjs
+```
 
 **Deliverable:** A durable reopen/close state machine that resumes every prefix and distinguishes workflow completion from cleanup.
 
@@ -254,7 +287,15 @@ for (const point of closeFaultPoints) {
 - [ ] Run Task 4 tests and the existing `close-delivered-idempotence.test.mjs`, `close-convergence*.test.mjs`, supersession and binding lifecycle suites. The actual current filename is `idempotence`, not `idempotency`.
 - [ ] Commit only after full public-command scenarios succeed; do not claim helper-only tests prove the path.
 
-## Task 5: Runtime/source separation, legacy enrollment and complete CLI integration
+### Task 5: Integrate pinned-runtime evidence commands and explicit legacy enrollment
+
+**Verification Commands:**
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/evidence-v2/execution-context.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/protocol.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/legacy-enrollment.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/cli-contract.test.mjs
+```
 
 **Deliverable:** A v2-aware runtime can inspect/enroll legacy state and operate on pinned source worktrees without rewriting them; v1 is still the default.
 
@@ -291,7 +332,14 @@ assert.equal(journal.importWrites.length, 0);
 - [ ] Audit every remaining SHA comparison: classify as observation, concurrency precondition, Git-sensitive input, v1-only legacy contract, or prohibited work-identity join. Record the audit in the child handoff, including exact file/symbol and tests covering each v2 consumer.
 - [ ] Run Task 5 suites, current help/catalog tests and all existing v1 delivery/close/verification integration suites. Commit the deployable opt-in integration; do not enroll the real issues.
 
-## Task 6: Frozen-worktree rehearsal, disposal and human-gated rollout handoff
+### Task 6: Rehearse frozen 1490 1488 1485 histories and prepare gated rollout
+
+**Verification Commands:**
+
+```bash
+node --test scripts/tests/slow/task-tracker/evidence-v2/frozen-worktree-rehearsal.test.mjs
+node --test scripts/tests/integration/task-tracker/evidence-v2/rehearsal-cli.test.mjs
+```
 
 **Deliverable:** Repeatable practice against copies of #1490/#1488/#1485 with preserved artifacts and zero production mutation, followed by a reviewed go/no-go proposal.
 
