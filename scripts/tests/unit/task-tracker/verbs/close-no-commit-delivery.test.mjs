@@ -154,6 +154,29 @@ test('code-kind issue still requires the pull-request receipt path', () => {
   );
 });
 
+test('epic with a pull request requires the pull-request receipt path', () => {
+  assert.throws(
+    () =>
+      requireDeliveryReceipt(
+        input({
+          pullRequests: [
+            {
+              number: 1502,
+              state: 'MERGED',
+              merged: true,
+              headRefName: 'claude/pull-branch-trunk-origin-c647e3',
+              headRefOid: HEAD,
+              baseRefName: 'trunk',
+              mergeCommitSha: 'c'.repeat(40),
+            },
+          ],
+          records: null,
+        })
+      ),
+    /close-delivery-receipt:malformed/
+  );
+});
+
 test('close input loads no-commit authorization even when the branch has no pull request', async () => {
   const receiptData = (stage) =>
     Buffer.from(JSON.stringify({ stage, commitSha: HEAD })).toString('base64url');

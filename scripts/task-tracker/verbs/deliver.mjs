@@ -587,11 +587,19 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     });
   }
 
-  if (isNoCommitKind(issue.body)) {
+  const getCurrentBranch = requiredDependency(deps, 'getCurrentBranch');
+  const listPullRequests = requiredDependency(deps, 'listPullRequests');
+  const branch = await getCurrentBranch();
+  const pullRequestRefs = await listPullRequests({
+    repository: cfg.repo,
+    headRef: branch,
+  });
+  if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
+
+  if (isNoCommitKind(issue.body) && pullRequestRefs.length === 0) {
     return deliverNoCommit({ deps, issue, issueNumber, cfg });
   }
 
-  const getCurrentBranch = requiredDependency(deps, 'getCurrentBranch');
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
   const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
   const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
@@ -599,7 +607,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     typeof deps.resolveAgentReviewPassed === 'function'
       ? deps.resolveAgentReviewPassed
       : async () => issue.agentReviewPassed === true;
-  const listPullRequests = requiredDependency(deps, 'listPullRequests');
   const fetchPullRequest = requiredDependency(deps, 'fetchPullRequest');
   const fetchRequiredChecks = requiredDependency(deps, 'fetchRequiredChecks');
   const fetchRepositoryMergeMethods = requiredDependency(deps, 'fetchRepositoryMergeMethods');
@@ -610,7 +617,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const now = requiredDependency(deps, 'now');
   const createIntentId = requiredDependency(deps, 'createIntentId');
 
-  const branch = await getCurrentBranch();
   const localHeadSha = await getLocalHeadSha();
   const testReceiptSha = await resolveTestReceiptSha({ issue, issueNumber });
   const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
@@ -620,11 +626,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   if (agentReviewPassed !== true) {
     throw new TypeError('delivery-preflight:agent-review-evidence');
   }
-  const pullRequestRefs = await listPullRequests({
-    repository: cfg.repo,
-    headRef: branch,
-  });
-  if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
   const pullRequests = await Promise.all(
     pullRequestRefs.map(({ number }) =>
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })

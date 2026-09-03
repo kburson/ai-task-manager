@@ -58,7 +58,7 @@ export function requireDeliveryReceipt({
     return frozenResult({ skipped: true, receipt: null });
   }
 
-  if (isNoCommitKind(body)) {
+  if (isNoCommitKind(body) && Array.isArray(pullRequests) && pullRequests.length === 0) {
     const deliverable = parseDeliverablePosted(body);
     if (!deliverable) fail('no-commit-deliverable');
     if (typeof repository !== 'string' || repository.length === 0) fail('input');

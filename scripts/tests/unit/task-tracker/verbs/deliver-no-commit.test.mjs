@@ -114,7 +114,7 @@ test('reviewed no-commit issue records action-free delivery and reuses exact rea
   assert.equal(delivered.receipt.issueKind, 'epic');
   assert.equal(delivered.receipt.deliverableUrl, DELIVERABLE_URL);
   assert.equal(delivered.receipt.acceptedSha, HEAD);
-  assert.equal(harness.calls.pullRequestsListed, 0);
+  assert.equal(harness.calls.pullRequestsListed, 1);
   assert.equal(harness.calls.commentsCreated, 1);
   assert.match(harness.comments[0].body, /^<!-- aitm-no-commit-delivery /);
 
@@ -123,7 +123,7 @@ test('reviewed no-commit issue records action-free delivery and reuses exact rea
   assert.deepEqual(repeated.receipt, delivered.receipt);
   assert.equal(repeated.action, null);
   assert.equal(harness.calls.commentsCreated, 1);
-  assert.equal(harness.calls.pullRequestsListed, 0);
+  assert.equal(harness.calls.pullRequestsListed, 2);
 });
 
 test('code-kind issue never enters the no-commit delivery path', async () => {
@@ -144,6 +144,32 @@ test('code-kind issue never enters the no-commit delivery path', async () => {
   assert.equal(harness.calls.pullRequestsListed, 1);
 });
 
+test('epic with a pull request uses provider delivery instead of no-commit delivery', async () => {
+  const harness = makeHarness({
+    deps: {
+      async listPullRequests() {
+        harness.calls.pullRequestsListed += 1;
+        return [{ number: 1502 }];
+      },
+      async fetchPullRequest() {
+        throw new Error('commit-bearing-epic-pr-path');
+      },
+    },
+  });
+
+  await assert.rejects(
+    runDeliver({
+      issueNumber: 1407,
+      cfg: { repo: 'kburson/ai-task-manager', assignee: 'kburson', trunkRef: 'origin/trunk' },
+      state: { active: '#1407', entryStartTs: '2026-08-30T16:00:00.000Z' },
+      deps: harness.deps,
+    }),
+    /commit-bearing-epic-pr-path/
+  );
+  assert.equal(harness.calls.pullRequestsListed, 1);
+  assert.equal(harness.calls.commentsCreated, 0);
+});
+
 test('no-commit delivery fails closed without exact deliverable evidence', async () => {
   for (const body of [
     BODY.replace(/<!-- aitm-deliverable-posted[^>]*-->\n?/, ''),
@@ -160,6 +186,6 @@ test('no-commit delivery fails closed without exact deliverable evidence', async
       /delivery-preflight:no-commit-deliverable/
     );
     assert.equal(harness.calls.commentsCreated, 0);
-    assert.equal(harness.calls.pullRequestsListed, 0);
+    assert.equal(harness.calls.pullRequestsListed, 1);
   }
 });

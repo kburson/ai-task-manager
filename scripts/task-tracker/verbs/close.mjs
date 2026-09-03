@@ -766,7 +766,7 @@ export async function loadCloseDeliveryGateInput({
       };
     }
   }
-  if (parentIssueNumber === null && noCommitKind) {
+  if (parentIssueNumber === null && noCommitKind && pullRequests.length === 0) {
     noCommitRecords = projectNoCommitDeliveryRecords(
       comments.map(parseNoCommitDeliveryComment).filter(Boolean)
     );
