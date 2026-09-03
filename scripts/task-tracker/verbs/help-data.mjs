@@ -363,6 +363,37 @@ export const VERB_REFERENCE = {
     exitCodes: [{ code: 20, meaning: 'provider action required' }],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
   },
+  evidence: {
+    topic: 'evidence',
+    summary:
+      'Inspect legacy evidence read-only or enroll the exact inspected digest into evidence v2.',
+    usage:
+      '/task evidence <inspect|enroll> <N> [--json] [--plan-digest <sha256:digest> --operation-id <uuid>]',
+    flags: [
+      { flag: '--json', desc: 'emit the canonical inspection proposal as JSON' },
+      {
+        flag: '--plan-digest <sha256:digest>',
+        desc: 'exact inspection digest required for enrollment',
+      },
+      { flag: '--operation-id <uuid>', desc: 'idempotency identity required for enrollment' },
+    ],
+    examples: [
+      '/task evidence inspect 1490 --json',
+      '/task evidence enroll 1490 --plan-digest sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --operation-id 018f5f4d-9a13-7c55-8c82-f2aa767b7d2e',
+    ],
+  },
+  reopen: {
+    topic: 'evidence',
+    summary: 'Reopen an enrolled v2 issue into a new explicit evidence cycle.',
+    usage: '/task reopen <N> --operation-id <uuid> --reason <text>',
+    flags: [
+      { flag: '--operation-id <uuid>', desc: 'idempotency identity for the reopen event' },
+      { flag: '--reason <text>', desc: 'required reason for the new cycle' },
+    ],
+    examples: [
+      '/task reopen 1490 --operation-id 018f5f4d-9a13-7c55-8c82-f2aa767b7d2e --reason "new delivery cycle"',
+    ],
+  },
   'incident-ledger': {
     topic: 'evidence',
     summary:

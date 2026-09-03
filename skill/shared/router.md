@@ -7,7 +7,7 @@ description: Bind work sessions to GitHub issues and track time + context words 
 
 # Task Router
 
-Tier-1 stub: hard rules plus verb → Tier-2 rule routing.
+Tier-1 rules and routing.
 
 On first read, emit `aitm-skill-loaded:router:1.1.0` once. Tier-2 rule files announce their own sentinels on JIT load.
 
@@ -51,6 +51,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | `/task review #N`                                                        | `rules/review.md`                                                         |
 | `/task deliver #N` | `rules/deliver.md` |
 | `/task incident-ledger #1381`                                           | `rules/incident-ledger.md`                                                |
+| evidence / reopen                                                       | `rules/evidence.md`                                                       |
 | `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
 | `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                                   |
@@ -71,4 +72,4 @@ Verbs not listed (`/task`, `/task discover`, `/task plan`, `/task resume`, `/tas
 
 ## gh issue command policy (bash-guard)
 
-The PreToolUse Bash hook (`scripts/task-tracker/bash-guard.mjs` → `lib/gh-edit-guard.mjs`) is the authoritative gh-issue policy — this is a pointer, not a second source of truth. Summary: `gh issue view`/`list`, label & state-meta `gh issue edit` flags, `gh issue comment` (prefer structured helpers), and `gh issue reopen` are allowed; `gh issue create` and `gh issue close` are **BLOCKED** (hard rules 3–4 — use `scripts/gh/create-issue.mjs --shape …` / `/task close`); `gh issue edit --body` / `--body-file` is refused — route every body write through `mutateIssueBody` so hidden markers survive (`rules/create-issue.md`, `rules/state-walk.md`). `gh api graphql` mutations are allowed but exceptional (prefer helpers; document the site).
+The PreToolUse Bash hook (`scripts/task-tracker/bash-guard.mjs` → `lib/gh-edit-guard.mjs`) is the authoritative gh-issue policy. Summary: `gh issue view`/`list`, label & state-meta `gh issue edit` flags, `gh issue comment` (prefer structured helpers), and `gh issue reopen` are allowed; `gh issue create` and `gh issue close` are **BLOCKED** (hard rules 3–4 — use `scripts/gh/create-issue.mjs --shape …` / `/task close`); `gh issue edit --body` / `--body-file` is refused — route every body write through `mutateIssueBody` so hidden markers survive (`rules/create-issue.md`, `rules/state-walk.md`). `gh api graphql` mutations are allowed but exceptional (prefer helpers; document the site).

@@ -59,6 +59,7 @@ import {
   renderNoCommitDeliveryComment,
   sameNoCommitDeliveryAuthority,
 } from '../lib/no-commit-delivery-record.mjs';
+import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -571,11 +572,34 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     };
   }
 
-  if (isNoCommitKind(issue.body)) {
-    return deliverNoCommit({ deps, issue, issueNumber, cfg });
+  const protocol = selectEvidenceProtocol({ body: issue.body, context: deps.executionContext });
+  if (protocol.protocol === 'v2') {
+    return requiredDependency(
+      deps,
+      'runEvidenceV2Delivery'
+    )({
+      issue,
+      issueNumber,
+      repository: cfg.repo,
+      lineage,
+      protocol,
+      state,
+    });
   }
 
   const getCurrentBranch = requiredDependency(deps, 'getCurrentBranch');
+  const listPullRequests = requiredDependency(deps, 'listPullRequests');
+  const branch = await getCurrentBranch();
+  const pullRequestRefs = await listPullRequests({
+    repository: cfg.repo,
+    headRef: branch,
+  });
+  if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
+
+  if (isNoCommitKind(issue.body) && pullRequestRefs.length === 0) {
+    return deliverNoCommit({ deps, issue, issueNumber, cfg });
+  }
+
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
   const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
   const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
@@ -583,7 +607,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     typeof deps.resolveAgentReviewPassed === 'function'
       ? deps.resolveAgentReviewPassed
       : async () => issue.agentReviewPassed === true;
-  const listPullRequests = requiredDependency(deps, 'listPullRequests');
   const fetchPullRequest = requiredDependency(deps, 'fetchPullRequest');
   const fetchRequiredChecks = requiredDependency(deps, 'fetchRequiredChecks');
   const fetchRepositoryMergeMethods = requiredDependency(deps, 'fetchRepositoryMergeMethods');
@@ -594,7 +617,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const now = requiredDependency(deps, 'now');
   const createIntentId = requiredDependency(deps, 'createIntentId');
 
-  const branch = await getCurrentBranch();
   const localHeadSha = await getLocalHeadSha();
   const testReceiptSha = await resolveTestReceiptSha({ issue, issueNumber });
   const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
@@ -604,11 +626,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   if (agentReviewPassed !== true) {
     throw new TypeError('delivery-preflight:agent-review-evidence');
   }
-  const pullRequestRefs = await listPullRequests({
-    repository: cfg.repo,
-    headRef: branch,
-  });
-  if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
   const pullRequests = await Promise.all(
     pullRequestRefs.map(({ number }) =>
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
@@ -898,8 +915,18 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     try {
       return await json('gh', args);
     } catch (error) {
-      if (Number(error?.code) !== 8 || typeof error?.stdout !== 'string') throw error;
-      return JSON.parse(error.stdout);
+      const exitCode = Number(error?.code);
+      if (exitCode === 8 && typeof error?.stdout === 'string') {
+        return JSON.parse(error.stdout);
+      }
+      const diagnostic = `${String(error?.stderr || '')}\n${String(error?.message || '')}`;
+      if (
+        exitCode === 1 &&
+        /(?:^|\n)no required checks reported on the '[^'\r\n]+' branch(?:\r?\n|$)/i.test(diagnostic)
+      ) {
+        return [];
+      }
+      throw error;
     }
   };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);

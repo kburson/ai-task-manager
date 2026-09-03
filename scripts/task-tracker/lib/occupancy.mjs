@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 import { findMainWorktreePath, withLock } from '../fleet-registry.mjs';
 import { occupancyPath } from '../paths.mjs';
@@ -60,7 +61,11 @@ export function readOccupancy(occupancyFile) {
         typeof row.worktreePath !== 'string' ||
         !row.worktreePath ||
         typeof row.boundAt !== 'string' ||
-        typeof row.lastHeartbeatAt !== 'string'
+        typeof row.lastHeartbeatAt !== 'string' ||
+        (row.bindingGenerationId !== undefined &&
+          !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
+            row.bindingGenerationId
+          ))
       ) {
         throw new Error('row-shape');
       }
@@ -160,8 +165,11 @@ export function claimOccupancy(input, options = {}) {
       sid,
       provider,
       worktreePath,
-      boundAt: held?.boundAt || at,
+      boundAt: at,
       lastHeartbeatAt: at,
+      bindingGenerationId: input.bindingGenerationId || randomUUID(),
+      ...(input.cycleId ? { cycleId: String(input.cycleId) } : {}),
+      ...(input.repositoryId ? { repositoryId: structuredClone(input.repositoryId) } : {}),
     };
     after[issue] = row;
     writeOccupancy(file, after);
@@ -219,7 +227,11 @@ export function releaseOccupancy(input) {
     const rows = readOccupancy(file);
     const row = rows[issue];
     if (!row) return { status: 'absent', row: null };
-    if (!sid || row.sid !== sid) {
+    if (
+      !sid ||
+      row.sid !== sid ||
+      (input.bindingGenerationId && row.bindingGenerationId !== input.bindingGenerationId)
+    ) {
       throw new OccupancyConflictError(
         `occupancy: release refused for #${issue}; held by ${holderDiagnostic(row)}`,
         'occupancy-release-refused',

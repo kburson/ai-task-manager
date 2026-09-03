@@ -11,6 +11,8 @@ one declared external action, and AITM independently verifies the live result.
 
 ## Host contract
 
+For an enrolled v2 issue, delivery enters through the common protected-marker selector and installed pinned runtime. The designated authority host and complete resident-entry capability inventory must validate before intent or provider action. Legacy issues without the marker keep the v1 delivery path.
+
 1. Run `npx aitm deliver #N` and preserve its stdout and exit status. Classify
    the result into exactly one envelope:
    - **Current-head provider-action envelope:** exit `20` with exactly one

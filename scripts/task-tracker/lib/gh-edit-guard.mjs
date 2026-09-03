@@ -93,6 +93,7 @@ const LEGACY_PATTERNS = [
 ];
 
 const MARKER_PATTERNS = [
+  { name: 'aitm-evidence-v2', re: /<!--\s*aitm-evidence-v2\b/i },
   // Widened (#378) to detect both the legacy colon marker and the new single
   // property marker `aitm-last-known-state state="..." ts="..."`. The `-ts:`
   // legacy companion is deliberately NOT matched here (the `:` branch requires
