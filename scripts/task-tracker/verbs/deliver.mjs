@@ -914,8 +914,18 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     try {
       return await json('gh', args);
     } catch (error) {
-      if (Number(error?.code) !== 8 || typeof error?.stdout !== 'string') throw error;
-      return JSON.parse(error.stdout);
+      const exitCode = Number(error?.code);
+      if (exitCode === 8 && typeof error?.stdout === 'string') {
+        return JSON.parse(error.stdout);
+      }
+      const diagnostic = `${String(error?.stderr || '')}\n${String(error?.message || '')}`;
+      if (
+        exitCode === 1 &&
+        /(?:^|\n)no required checks reported on the '[^'\r\n]+' branch(?:\r?\n|$)/i.test(diagnostic)
+      ) {
+        return [];
+      }
+      throw error;
     }
   };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
