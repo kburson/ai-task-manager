@@ -185,9 +185,16 @@ function harness(overrides = {}) {
     terminalReviewAuthority: () => 'human-gate',
     dispositionReader: async () =>
       'disposition' in overrides ? overrides.disposition : 'Delivered',
-    bindingReleaseInspector: async () => ({
-      status: 'bindingStatus' in overrides ? overrides.bindingStatus : 'pending',
-    }),
+    // #1490 — the recovery now resolves binding OWNERSHIP, not release progress.
+    // `inspectTerminalIssueBindingRelease`'s four statuses describe how far the OLD
+    // release got, so none of them authorizes a NEW close, and `pending` is
+    // structurally unreachable once a reopened issue carries a ledger `closedAt`.
+    // The production resolver is pinned against real files in
+    // `lib/reopened-close-binding-ownership.test.mjs`; here we pin the WIRING.
+    resolveBindingOwnership: () =>
+      'bindingOwnership' in overrides
+        ? overrides.bindingOwnership
+        : { disposition: 'own-post-close-claim', authorized: true },
     inspectDirty: async () => ({ dirty: 'dirty' in overrides ? overrides.dirty : false }),
     resolveWorkspaceForIssue: () => '/wt/1490',
     projectDir: '/wt/1490',
@@ -326,7 +333,12 @@ test('#1490: contradictory live state writes nothing', async () => {
     { disposition: null },
     { boardState: 'develop' },
     { dirty: true },
-    { bindingStatus: 'released' },
+    { bindingOwnership: { disposition: 'foreign-claim', authorized: false } },
+    { bindingOwnership: { disposition: 'stale-claim', authorized: false } },
+    { bindingOwnership: { disposition: 'no-prior-close', authorized: false } },
+    // Authorized but under a disposition the recovery does not recognize: the
+    // predicate must check BOTH, or an unrelated future disposition would pass.
+    { bindingOwnership: { disposition: 'own-post-close-claim-v2', authorized: true } },
   ]) {
     const { args, calls } = harness(override);
     await assert.rejects(runReopenedCloseRecovery(args), /live-terminal-state/);
@@ -422,4 +434,169 @@ test('#1490: the rendered comment round-trips through the strict codec', () => {
   assert.ok(args.convergeBody.includes(OLD_TX));
   // Sanity: the renderer is the only thing that produces acceptable evidence.
   assert.throws(() => renderReopenedCloseRecoveryComment({ schema: 'wrong' }), /record/);
+});
+
+// ---------------------------------------------------------------------------
+// #1490 item 3 — resume by transaction IDENTITY at any valid completed-step
+// prefix.
+//
+// The first implementation keyed resume on
+// `activeTransaction.completedSteps.length === 0`, and validated ONE live shape:
+// board `review`, issue open/`reopened`. Both are only true at the instant the
+// replacement is minted. The saga's `board` step moves the board to `done` and its
+// `issue` step closes the issue, so a retry after those steps
+//   (a) fell into the MINT branch and treated the replacement as the completed
+//       original, and
+//   (b) was refused by a precondition the transaction had legitimately passed.
+// Partial progress was therefore unresumable by construction — the exact
+// interruption case the recovery exists to survive.
+
+// Mint once through the real path, then reuse the durable comment it wrote. This
+// keeps the resume fixtures honest: the evidence is renderer-produced, not hand
+// written, so it must round-trip the strict codec to be found at all.
+async function mintedRecoveryComment() {
+  const seeded = harness();
+  await runReopenedCloseRecovery(seeded.args);
+  return seeded.calls.createdComments[0];
+}
+
+function replacementTransaction(completedSteps) {
+  return {
+    schema: 'aitm.delivered-close/v1',
+    transactionId: NEW_TX,
+    issueNumber: ISSUE,
+    acceptedSha: NEW_SHA,
+    reviewAuthority: 'human-gate',
+    completedSteps,
+  };
+}
+
+async function resumeHarness(completedSteps, overrides = {}) {
+  const durable = await mintedRecoveryComment();
+  return harness({
+    convergeBody: bodyWith(replacementTransaction(completedSteps)),
+    recoveryComments: [
+      { id: 900, body: durable, issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}` },
+    ],
+    ...overrides,
+  });
+}
+
+test('#1490: a resume at a NONZERO prefix reuses the durable recovery, not a new mint', async () => {
+  const prefix = ['timing', 'estimation', 'lifecycle'];
+  const { args, calls } = await resumeHarness(prefix);
+  const result = await runReopenedCloseRecovery(args);
+  // Identity-matched: same replacement, its progress preserved.
+  assert.equal(result.transaction.transactionId, NEW_TX);
+  assert.deepEqual(result.transaction.completedSteps, prefix);
+  // No second recovery minted, and no rewrite of an already-replaced marker.
+  assert.deepEqual(calls.createdComments, []);
+  assert.deepEqual(calls.bodyWrites, []);
+});
+
+test('#1490: a resume after the `board` step accepts board `done`', async () => {
+  // Under the fixed initial shape this refused: the step that moved the board is
+  // the same step whose result the predicate then rejected.
+  const { args } = await resumeHarness(['timing', 'estimation', 'lifecycle', 'board'], {
+    boardState: 'done',
+  });
+  const result = await runReopenedCloseRecovery(args);
+  assert.equal(result.transaction.transactionId, NEW_TX);
+});
+
+test('#1490: a resume after the `issue` step accepts a CLOSED issue', async () => {
+  const { args } = await resumeHarness(
+    ['timing', 'estimation', 'lifecycle', 'board', 'disposition', 'issue'],
+    { boardState: 'done', issueState: 'CLOSED', issueStateReason: 'COMPLETED' }
+  );
+  const result = await runReopenedCloseRecovery(args);
+  assert.equal(result.transaction.transactionId, NEW_TX);
+});
+
+test('#1490: prefix-awareness is a predicate, not a bypass', async () => {
+  // Each case is live state INCONSISTENT with its own prefix, so each must refuse.
+  const cases = [
+    // Board not yet stepped, but already off `review`.
+    { steps: ['timing'], overrides: { boardState: 'done' } },
+    // Board stepped, but the board did not actually move.
+    { steps: ['timing', 'estimation', 'lifecycle', 'board'], overrides: { boardState: 'review' } },
+    // Issue not yet stepped, but already closed.
+    {
+      steps: ['timing', 'estimation', 'lifecycle', 'board'],
+      overrides: { boardState: 'done', issueState: 'CLOSED', issueStateReason: 'COMPLETED' },
+    },
+    // Issue stepped, but the issue is still open.
+    {
+      steps: ['timing', 'estimation', 'lifecycle', 'board', 'disposition', 'issue'],
+      overrides: { boardState: 'done' },
+    },
+    // Invariants still hold at every prefix.
+    {
+      steps: ['timing', 'estimation'],
+      overrides: { dirty: true },
+    },
+    {
+      steps: ['timing', 'estimation'],
+      overrides: { bindingOwnership: { disposition: 'foreign-claim', authorized: false } },
+    },
+  ];
+  for (const { steps, overrides } of cases) {
+    const { args, calls } = await resumeHarness(steps, overrides);
+    await assert.rejects(
+      runReopenedCloseRecovery(args),
+      /live-terminal-state/,
+      JSON.stringify({ steps, overrides })
+    );
+    assert.deepEqual(calls.createdComments, [], JSON.stringify({ steps, overrides }));
+    assert.deepEqual(calls.bodyWrites, [], JSON.stringify({ steps, overrides }));
+  }
+});
+
+test('#1490: a retry after ALL steps completed is idempotent, not a refusal or a re-mint', async () => {
+  // The binding step is last and releases the binding, so ownership no longer
+  // resolves. Re-validating would refuse a transaction that already succeeded, and
+  // minting again would supersede a delivery that was never superseded.
+  const { args, calls } = await resumeHarness([...TERMINAL_CLOSE_STEPS], {
+    boardState: 'done',
+    issueState: 'CLOSED',
+    issueStateReason: 'COMPLETED',
+    bindingOwnership: { disposition: 'no-claim', authorized: false },
+  });
+  const result = await runReopenedCloseRecovery(args);
+  assert.equal(result.transaction.transactionId, NEW_TX);
+  assert.deepEqual(result.transaction.completedSteps, [...TERMINAL_CLOSE_STEPS]);
+  assert.deepEqual(calls.createdComments, []);
+  assert.deepEqual(calls.bodyWrites, []);
+});
+
+test('#1490: a FRESH mint still requires the step-zero shape', async () => {
+  // Prefix-awareness must not leak into the mint path: with no durable record
+  // naming it, a completed original is judged at step zero exactly as before.
+  for (const overrides of [
+    { boardState: 'done' },
+    { issueState: 'CLOSED', issueStateReason: 'COMPLETED' },
+  ]) {
+    const { args, calls } = harness(overrides);
+    await assert.rejects(
+      runReopenedCloseRecovery(args),
+      /live-terminal-state/,
+      JSON.stringify(overrides)
+    );
+    assert.deepEqual(calls.createdComments, [], JSON.stringify(overrides));
+  }
+});
+
+test('#1490: two durable records naming the same replacement refuse rather than pick one', async () => {
+  const durable = await mintedRecoveryComment();
+  const url = `https://api.github.com/repos/${REPO}/issues/${ISSUE}`;
+  const { args, calls } = harness({
+    convergeBody: bodyWith(replacementTransaction(['timing'])),
+    recoveryComments: [
+      { id: 900, body: durable, issue_url: url },
+      { id: 901, body: durable, issue_url: url },
+    ],
+  });
+  await assert.rejects(runReopenedCloseRecovery(args), /resume-evidence/);
+  assert.deepEqual(calls.createdComments, []);
+  assert.deepEqual(calls.bodyWrites, []);
 });
