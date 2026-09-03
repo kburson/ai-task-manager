@@ -110,7 +110,8 @@ function repoRoot() {
 // Audited npm-pack manifests grow from 742 to 754 entries with no test files or
 // excluded material added. Raise by exactly those twelve entries, preserving
 // the existing eight-entry headroom; path exclusions remain unchanged.
-const ENTRY_CEILING = 762;
+// #1500 adds the reviewed v2 enrollment, runtime-capability and command adapters.
+const ENTRY_CEILING = 768;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
