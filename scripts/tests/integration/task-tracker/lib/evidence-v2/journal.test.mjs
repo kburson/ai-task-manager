@@ -223,3 +223,55 @@ test('an unresolved operation blocks a different operation ID for the same issue
     f.sandbox.dispose();
   }
 });
+
+test('a same-tree rewrite appends equivalence and fresh acceptance without rewriting its prior verification', async () => {
+  const { buildEvidenceSubject } =
+    await import('../../../../../task-tracker/lib/evidence-v2/subject.mjs');
+  const { evaluateReuse } =
+    await import('../../../../../task-tracker/lib/evidence-v2/eligibility.mjs');
+  const { authorizeAcceptance } =
+    await import('../../../../../task-tracker/lib/evidence-v2/acceptance.mjs');
+  const f = recordFixture();
+  try {
+    for (const record of [f.cycle, f.candidate, f.verification])
+      await appendRecord(args(f, record));
+    const original = f.sandbox.provider.comments(1000001).at(-1).body;
+    f.sandbox.git(['commit', '--amend', '-m', 'same content new provenance']);
+    const captured = buildEvidenceSubject(f.input);
+    const candidate = f.make(
+      'candidate',
+      {
+        ...f.candidate.payload,
+        sourceSha: captured.observations.sourceSha,
+        subject: captured.subject,
+      },
+      { predecessorId: f.verification.recordId }
+    );
+    await appendRecord(args(f, candidate));
+    const reuse = evaluateReuse({ candidate, verification: f.verification, policy: f.policy });
+    assert.equal(reuse.status, 'reuse');
+    const equivalence = f.make('equivalence', reuse.equivalence, {
+      predecessorId: candidate.recordId,
+    });
+    await appendRecord(args(f, equivalence));
+    const accepted = await authorizeAcceptance({
+      cycle: f.cycle,
+      candidate,
+      verificationRecords: [f.verification, equivalence],
+      reviewAuthority: { ...f.reviewAuthority, candidateId: candidate.recordId },
+      policy: f.policy,
+      target: f.target,
+    });
+    const acceptance = f.make('acceptance', accepted.payload, {
+      predecessorId: equivalence.recordId,
+    });
+    await appendRecord(args(f, acceptance));
+    const journal = await read(f);
+    assert.equal(journal.records.length, 6);
+    assert.equal(journal.headId, acceptance.recordId);
+    assert.equal(f.sandbox.provider.comments(1000001)[2].body, original);
+    assert.notEqual(candidate.payload.sourceSha, f.verification.payload.testedSha);
+  } finally {
+    f.sandbox.dispose();
+  }
+});
