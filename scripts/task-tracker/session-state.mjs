@@ -41,7 +41,8 @@ function atomicWrite(p, payload) {
 
 // Returns the active-task record for `sid` or null when none is bound.
 // Shape: { issue, entryStartTs, wordsAtStart, kanbanState, boundAt,
-// worktreePath, worktreeBranch, worktreeResolvedAt, closedAt } — any field may
+// worktreePath, worktreeBranch, worktreeResolvedAt, bindingGenerationId,
+// cycleId, closedAt } — any field may
 // be missing on a partially-populated or legacy file.
 export function getActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
