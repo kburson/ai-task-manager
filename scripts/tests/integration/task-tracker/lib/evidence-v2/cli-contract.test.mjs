@@ -7,6 +7,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+import { sessionDir, setActiveTask } from '../../../../../task-tracker/session-state.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../..');
 const CLI = path.join(ROOT, 'scripts/task-tracker/task-tracker.mjs');
@@ -64,7 +65,13 @@ test('real dispatcher exposes write-free inspect, digest-bound enroll and guarde
       writes: [],
     })
   );
-  const env = { AITM_EVIDENCE_CONTEXT: contextFile, AITM_EVIDENCE_RECORDED_FIXTURE: fixtureFile };
+  const sessionId = randomUUID();
+  const env = {
+    AI_TASK_MANAGER_SESSION_ID: sessionId,
+    AITM_EVIDENCE_CONTEXT: contextFile,
+    AITM_EVIDENCE_RECORDED_FIXTURE: fixtureFile,
+  };
+  setActiveTask(sessionId, { issue: '#1500' }, ROOT);
   try {
     const preview = run(['evidence', 'inspect', '1500', '--json'], env);
     assert.deepEqual(JSON.parse(readFileSync(fixtureFile, 'utf8')).writes, []);
@@ -88,5 +95,6 @@ test('real dispatcher exposes write-free inspect, digest-bound enroll and guarde
     assert.equal(reopened.status, 'reopened');
   } finally {
     rmSync(dir, { recursive: true, force: true });
+    rmSync(sessionDir(sessionId, ROOT), { recursive: true, force: true });
   }
 });
