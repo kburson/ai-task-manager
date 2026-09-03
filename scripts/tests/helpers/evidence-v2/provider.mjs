@@ -27,6 +27,7 @@ export function initializeProvider(context) {
       schema: 1,
       repositoryId: context.repositoryId,
       issues: { [number]: issue },
+      pullRequests: {},
       comments: [],
       boards: { [number]: 'Review' },
       operations: {},
@@ -80,6 +81,95 @@ export function openProvider(context) {
       const s = load();
       issueFrom(s, number);
       return structuredClone(s.comments.filter((c) => c.issueNumber === Number(number)));
+    },
+    seedPullRequest(input) {
+      const s = load();
+      issueFrom(s, input?.issueNumber);
+      if (
+        !input ||
+        typeof input.id !== 'string' ||
+        !input.id ||
+        !Number.isSafeInteger(input.number) ||
+        input.number < 1000000 ||
+        input.repositoryId?.nameWithOwner !== context.repositoryId ||
+        typeof input.provider !== 'string' ||
+        typeof input.baseRef !== 'string' ||
+        typeof input.headRef !== 'string' ||
+        !/^[a-f0-9]{40,64}$/.test(input.headSha || '') ||
+        !/^[a-f0-9]{40,64}$/.test(input.treeOid || '') ||
+        s.pullRequests[input.id]
+      )
+        throw rehearsalRefusal('pull-request-input');
+      s.pullRequests[input.id] = {
+        ...structuredClone(input),
+        state: 'OPEN',
+        landedCommitSha: null,
+        landedTreeOid: null,
+        targetHeadSha: null,
+        method: null,
+        transportResult: null,
+        providerOperationId: null,
+      };
+      save(s);
+      return structuredClone(s.pullRequests[input.id]);
+    },
+    pullRequest(id) {
+      const s = load();
+      const current = s.pullRequests[id];
+      if (!current) throw rehearsalRefusal('unknown-pull-request');
+      s.events.push({ kind: 'read', resource: 'pull-request', id });
+      save(s);
+      return structuredClone(current);
+    },
+    mergePullRequest({
+      id,
+      expectedHeadSha,
+      landedCommitSha,
+      landedTreeOid,
+      targetHeadSha,
+      method,
+      operationId,
+      fault = null,
+    } = {}) {
+      const s = load();
+      const current = s.pullRequests[id];
+      if (!current) throw rehearsalRefusal('unknown-pull-request');
+      if (
+        !/^[a-f0-9]{40,64}$/.test(expectedHeadSha || '') ||
+        !/^[a-f0-9]{40,64}$/.test(landedCommitSha || '') ||
+        !/^[a-f0-9]{40,64}$/.test(landedTreeOid || '') ||
+        !/^[a-f0-9]{40,64}$/.test(targetHeadSha || '') ||
+        !['merge', 'squash', 'rebase', 'fast-forward'].includes(method) ||
+        typeof operationId !== 'string' ||
+        !operationId
+      )
+        throw rehearsalRefusal('pull-request-merge-input');
+      if (current.state === 'MERGED') {
+        if (current.providerOperationId !== operationId)
+          throw rehearsalRefusal('pull-request-already-merged');
+        return structuredClone(current);
+      }
+      tripFault(s, save, { operationId, fault, point: 'before-effect' });
+      if (current.headSha !== expectedHeadSha) throw rehearsalRefusal('pull-request-head-race');
+      Object.assign(current, {
+        state: 'MERGED',
+        landedCommitSha,
+        landedTreeOid,
+        targetHeadSha,
+        method,
+        transportResult: 'merged',
+        providerOperationId: operationId,
+      });
+      s.effects.push({
+        kind: 'merge-pr',
+        issueNumber: current.issueNumber,
+        operationId,
+        payload: { id, expectedHeadSha, landedCommitSha, landedTreeOid, targetHeadSha, method },
+      });
+      s.events.push({ kind: 'write', operation: 'merge-pr', id, operationId });
+      save(s);
+      tripFault(s, save, { operationId, fault, point: 'after-effect' });
+      return structuredClone(current);
     },
     effects() {
       return load().effects;

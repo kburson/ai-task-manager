@@ -2,6 +2,7 @@
 // Independent live verification for governed pull-request delivery.
 
 import { createHash } from 'node:crypto';
+import { verifyDelivery } from './evidence-v2/delivery.mjs';
 
 import { validateProviderAction } from './delivery-provider-action.mjs';
 import { buildDeliveryIntent } from './delivery-records.mjs';
@@ -565,6 +566,12 @@ export async function verifyDeliveredPullRequest(input = {}) {
     requireAuthorizedBytes: true,
     recovery: input.recovery,
   });
+}
+
+// Protocol-selected adapter. The v1 verifier remains the default and keeps
+// its current exact-SHA/topology contract for unenrolled issues.
+export async function verifyEvidenceV2Delivery(input = {}) {
+  return verifyDelivery(input);
 }
 
 export async function verifyExternalDeliveredPullRequest(input = {}) {

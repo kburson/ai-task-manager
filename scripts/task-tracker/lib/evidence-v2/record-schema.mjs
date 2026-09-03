@@ -33,7 +33,44 @@ const keys = {
     'policy',
     'target',
   ],
+  'delivery-intent': [
+    'acceptanceId',
+    'candidateId',
+    'subjectId',
+    'pr',
+    'expectedHeadSha',
+    'authorizedTreeOid',
+    'authorizedManifestDigest',
+    'target',
+    'requestedMethod',
+    'policy',
+    'providerOperationId',
+  ],
+  delivery: [
+    'acceptanceId',
+    'intentId',
+    'candidateId',
+    'pr',
+    'expectedHeadSha',
+    'landedCommitSha',
+    'landedTreeOid',
+    'targetObservation',
+    'contentVerification',
+    'methodObservation',
+    'transport',
+  ],
 };
+const METHODS = ['merge', 'squash', 'rebase', 'fast-forward'];
+
+function validatePrIdentity(pr) {
+  exact(pr, ['provider', 'id', 'number', 'repositoryId', 'baseRef', 'headRef'], 'delivery-pr-keys');
+  textValue(pr.provider, 'delivery-provider');
+  textValue(pr.id, 'delivery-pr');
+  if (!Number.isSafeInteger(pr.number) || pr.number <= 0) fail('delivery-pr');
+  repository(pr.repositoryId);
+  textValue(pr.baseRef, 'delivery-target');
+  textValue(pr.headRef, 'delivery-head');
+}
 export function validateSubject(subject) {
   exact(
     subject,
@@ -182,9 +219,62 @@ export function validatePayload(type, payload) {
       fail('acceptance-evidence');
     payload.evidenceIds.forEach((id) => digestValue(id));
   }
+  if (type === 'delivery-intent') {
+    for (const key of ['acceptanceId', 'candidateId', 'subjectId', 'authorizedManifestDigest'])
+      digestValue(payload[key], key);
+    validatePrIdentity(payload.pr);
+    if (!OID.test(payload.expectedHeadSha) || !OID.test(payload.authorizedTreeOid))
+      fail('delivery-object');
+    validateTarget(payload.target);
+    if (!METHODS.includes(payload.requestedMethod)) fail('delivery-method');
+    policyValue(payload.policy);
+    uuidValue(payload.providerOperationId, 'delivery-operation');
+  }
+  if (type === 'delivery') {
+    for (const key of ['acceptanceId', 'intentId', 'candidateId']) digestValue(payload[key], key);
+    validatePrIdentity(payload.pr);
+    for (const key of ['expectedHeadSha', 'landedCommitSha', 'landedTreeOid'])
+      if (!OID.test(payload[key])) fail('delivery-object');
+    exact(payload.targetObservation, ['ref', 'headSha'], 'target-observation-keys');
+    textValue(payload.targetObservation.ref, 'delivery-target');
+    if (!OID.test(payload.targetObservation.headSha)) fail('delivery-target-object');
+    exact(
+      payload.contentVerification,
+      ['subjectId', 'authorizedTreeOid', 'landedTreeOid', 'result'],
+      'content-verification-keys'
+    );
+    digestValue(payload.contentVerification.subjectId);
+    if (
+      !OID.test(payload.contentVerification.authorizedTreeOid) ||
+      !OID.test(payload.contentVerification.landedTreeOid) ||
+      payload.contentVerification.result !== 'match'
+    )
+      fail('delivery-content');
+    exact(
+      payload.methodObservation,
+      ['requested', 'observed', 'result'],
+      'method-observation-keys'
+    );
+    if (
+      !METHODS.includes(payload.methodObservation.requested) ||
+      !METHODS.includes(payload.methodObservation.observed) ||
+      payload.methodObservation.result !== 'compliant'
+    )
+      fail('delivery-method');
+    exact(payload.transport, ['provider', 'operationId', 'result'], 'delivery-transport-keys');
+    textValue(payload.transport.provider, 'delivery-provider');
+    uuidValue(payload.transport.operationId, 'delivery-operation');
+    if (payload.transport.result !== 'merged') fail('delivery-transport');
+  }
 }
 export const recordReferenceTypes = {
   verification: { candidateId: 'candidate' },
   equivalence: { priorVerificationId: 'verification', candidateId: 'candidate' },
   acceptance: { candidateId: 'candidate' },
+  'delivery-intent': { acceptanceId: 'acceptance', candidateId: 'candidate' },
+  delivery: {
+    acceptanceId: 'acceptance',
+    intentId: 'delivery-intent',
+    candidateId: 'candidate',
+  },
 };

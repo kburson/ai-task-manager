@@ -7,6 +7,7 @@ import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { buildDeliveryReceipt } from './delivery-records.mjs';
 import { verifyDeliveredPullRequest } from './delivery-verification.mjs';
 import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from './issue-kind.mjs';
+import { validateRecord } from './evidence-v2/codec.mjs';
 
 export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
 
@@ -126,6 +127,19 @@ export function requireDeliveryReceipt({
   if (receipt.baseRef !== lineage.deliveryTarget) fail('base-mismatch');
   if (receipt.result !== 'delivered') fail('malformed');
   return frozenResult({ skipped: false, receipt });
+}
+
+// Evidence v2 close consumes the immutable delivery record selected by its
+// cycle projection. It never searches for a pull request by an accepted SHA.
+export function requireEvidenceV2DeliveryReceipt({ delivery, acceptanceId, intentId } = {}) {
+  validateRecord(delivery);
+  if (
+    delivery.recordType !== 'delivery' ||
+    delivery.payload.acceptanceId !== acceptanceId ||
+    delivery.payload.intentId !== intentId
+  )
+    fail('v2-receipt');
+  return frozenResult({ skipped: false, mode: 'v2', receipt: delivery });
 }
 
 export async function verifyCloseDeliveryReceipt({

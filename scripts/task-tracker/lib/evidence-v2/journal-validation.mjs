@@ -69,6 +69,41 @@ export function orderJournal(records) {
           fail('acceptance-evidence-reference');
       }
     }
+    if (record.recordType === 'delivery-intent') {
+      const acceptance = byId.get(record.payload.acceptanceId);
+      const candidate = byId.get(record.payload.candidateId);
+      if (
+        acceptance.payload.candidateId !== candidate.recordId ||
+        record.payload.subjectId !== candidate.payload.subject.subjectId ||
+        record.payload.authorizedTreeOid !== candidate.payload.subject.source.treeOid ||
+        record.payload.authorizedManifestDigest !==
+          candidate.payload.subject.source.manifestDigest ||
+        canonical(record.payload.target) !== canonical(acceptance.payload.target) ||
+        canonical(record.payload.policy) !== canonical(acceptance.payload.policy) ||
+        canonical(record.payload.pr.repositoryId) !== canonical(record.repositoryId) ||
+        record.payload.pr.baseRef !== acceptance.payload.target.ref ||
+        !acceptance.payload.target.methods.includes(record.payload.requestedMethod)
+      )
+        fail('delivery-intent-reference-inputs');
+    }
+    if (record.recordType === 'delivery') {
+      const intent = byId.get(record.payload.intentId);
+      if (
+        record.payload.acceptanceId !== intent.payload.acceptanceId ||
+        record.payload.candidateId !== intent.payload.candidateId ||
+        canonical(record.payload.pr) !== canonical(intent.payload.pr) ||
+        record.payload.expectedHeadSha !== intent.payload.expectedHeadSha ||
+        record.payload.targetObservation.ref !== intent.payload.target.ref ||
+        record.payload.contentVerification.subjectId !== intent.payload.subjectId ||
+        record.payload.contentVerification.authorizedTreeOid !== intent.payload.authorizedTreeOid ||
+        record.payload.contentVerification.landedTreeOid !== record.payload.landedTreeOid ||
+        record.payload.methodObservation.requested !== intent.payload.requestedMethod ||
+        record.payload.methodObservation.observed !== intent.payload.requestedMethod ||
+        record.payload.transport.provider !== intent.payload.pr.provider ||
+        record.payload.transport.operationId !== intent.payload.providerOperationId
+      )
+        fail('delivery-reference-inputs');
+    }
     byId.set(record.recordId, record);
     ordered.push(record);
     current = record.recordId;
