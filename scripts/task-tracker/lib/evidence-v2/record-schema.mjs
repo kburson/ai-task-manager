@@ -59,8 +59,60 @@ const keys = {
     'methodObservation',
     'transport',
   ],
+  'close-started': [
+    'deliveryId',
+    'acceptanceId',
+    'closeTransactionId',
+    'expectedCycleRevision',
+    'expectedBinding',
+    'effectOperationKeys',
+  ],
+  'close-step': [
+    'closeStartedId',
+    'closeTransactionId',
+    'step',
+    'operationKey',
+    'outcome',
+    'readBack',
+  ],
+  'cycle-completed': ['closeStartedId', 'closeTransactionId', 'finalObservation'],
+  cleanup: ['closeStartedId', 'closeTransactionId', 'expectedBinding', 'status', 'diagnostics'],
 };
 const METHODS = ['merge', 'squash', 'rebase', 'fast-forward'];
+const CLOSE_EFFECTS = [
+  'timing',
+  'estimation',
+  'lifecycle',
+  'board',
+  'disposition',
+  'issue',
+  'labels',
+  'cleanup',
+];
+
+function validateExpectedBinding(binding) {
+  exact(
+    binding,
+    ['status', 'repositoryId', 'issue', 'cycleId', 'sid', 'worktreePath', 'bindingGenerationId'],
+    'close-binding-keys'
+  );
+  if (!['owned', 'paused', 'absent'].includes(binding.status)) fail('close-binding-status');
+  repository(binding.repositoryId);
+  if (!Number.isSafeInteger(binding.issue) || binding.issue <= 0) fail('close-binding-issue');
+  uuidValue(binding.cycleId, 'close-binding-cycle');
+  if (binding.status === 'absent') {
+    if (
+      binding.sid !== null ||
+      binding.worktreePath !== null ||
+      binding.bindingGenerationId !== null
+    )
+      fail('close-binding-absent');
+  } else {
+    textValue(binding.sid, 'close-binding-session');
+    textValue(binding.worktreePath, 'close-binding-worktree');
+    uuidValue(binding.bindingGenerationId, 'close-binding-generation');
+  }
+}
 
 function validatePrIdentity(pr) {
   exact(pr, ['provider', 'id', 'number', 'repositoryId', 'baseRef', 'headRef'], 'delivery-pr-keys');
@@ -153,11 +205,18 @@ export function validateInstant(value) {
 }
 export function validatePayload(type, payload) {
   if (!Object.hasOwn(keys, type)) fail('record-type');
-  exact(payload, keys[type], 'payload-keys');
+  const payloadKeys =
+    type === 'cycle-opened' && Object.hasOwn(payload, 'externalEventId')
+      ? [...keys[type], 'externalEventId']
+      : keys[type];
+  exact(payload, payloadKeys, 'payload-keys');
   if (type === 'cycle-opened') {
     if (payload.previousCycleId !== null) uuidValue(payload.previousCycleId, 'previous-cycle');
     uuidValue(payload.authorityHostId, 'authority-host');
     textValue(payload.reason, 'cycle-reason');
+    if (Object.hasOwn(payload, 'externalEventId') && payload.externalEventId !== null) {
+      textValue(payload.externalEventId, 'cycle-external-event');
+    }
   }
   if (type === 'candidate') {
     validateSubject(payload.subject);
@@ -266,6 +325,50 @@ export function validatePayload(type, payload) {
     uuidValue(payload.transport.operationId, 'delivery-operation');
     if (payload.transport.result !== 'merged') fail('delivery-transport');
   }
+  if (type === 'close-started') {
+    digestValue(payload.deliveryId, 'close-delivery');
+    digestValue(payload.acceptanceId, 'close-acceptance');
+    uuidValue(payload.closeTransactionId, 'close-transaction');
+    digestValue(payload.expectedCycleRevision, 'close-cycle-revision');
+    validateExpectedBinding(payload.expectedBinding);
+    exact(payload.effectOperationKeys, CLOSE_EFFECTS, 'close-effect-keys');
+    for (const effect of CLOSE_EFFECTS)
+      textValue(payload.effectOperationKeys[effect], 'close-effect-key');
+  }
+  if (type === 'close-step') {
+    digestValue(payload.closeStartedId, 'close-started');
+    uuidValue(payload.closeTransactionId, 'close-transaction');
+    if (!CLOSE_EFFECTS.includes(payload.step)) fail('close-step');
+    textValue(payload.operationKey, 'close-effect-key');
+    if (payload.outcome !== 'confirmed') fail('close-step-outcome');
+    exact(payload.readBack, ['status', 'digest'], 'close-readback-keys');
+    if (payload.readBack.status !== 'confirmed') fail('close-readback-status');
+    digestValue(payload.readBack.digest, 'close-readback-digest');
+  }
+  if (type === 'cycle-completed') {
+    digestValue(payload.closeStartedId, 'close-started');
+    uuidValue(payload.closeTransactionId, 'close-transaction');
+    exact(payload.finalObservation, ['issue', 'board', 'disposition'], 'close-final-keys');
+    if (payload.finalObservation.issue !== 'closed' || payload.finalObservation.board !== 'done')
+      fail('close-final-state');
+    textValue(payload.finalObservation.disposition, 'close-final-disposition');
+  }
+  if (type === 'cleanup') {
+    digestValue(payload.closeStartedId, 'close-started');
+    uuidValue(payload.closeTransactionId, 'close-transaction');
+    validateExpectedBinding(payload.expectedBinding);
+    if (
+      !['released', 'already-released', 'pending-conflict', 'absent', 'paused'].includes(
+        payload.status
+      )
+    )
+      fail('cleanup-status');
+    if (
+      !Array.isArray(payload.diagnostics) ||
+      payload.diagnostics.some((item) => typeof item !== 'string')
+    )
+      fail('cleanup-diagnostics');
+  }
 }
 export const recordReferenceTypes = {
   verification: { candidateId: 'candidate' },
@@ -277,4 +380,8 @@ export const recordReferenceTypes = {
     intentId: 'delivery-intent',
     candidateId: 'candidate',
   },
+  'close-started': { deliveryId: 'delivery', acceptanceId: 'acceptance' },
+  'close-step': { closeStartedId: 'close-started' },
+  'cycle-completed': { closeStartedId: 'close-started' },
+  cleanup: { closeStartedId: 'close-started' },
 };

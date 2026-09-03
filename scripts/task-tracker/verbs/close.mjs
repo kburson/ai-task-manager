@@ -130,6 +130,68 @@ import {
   resolveApprovedIncidentLedger,
 } from '../lib/delivery-incident-reconciliation.mjs';
 import { createProductionRuntime } from './incident-ledger.mjs';
+import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
+import { resumeClose } from '../lib/evidence-v2/close-runner.mjs';
+
+export async function runEvidenceV2CloseService({
+  issue,
+  issueNumber,
+  repository,
+  protocol,
+  state,
+  ports,
+} = {}) {
+  if (!ports || typeof ports.project !== 'function') {
+    throw new Error('close-v2:ports capability is required');
+  }
+  return resumeClose({
+    context: { issue, issueNumber, repository, protocol, state },
+    ports,
+  });
+}
+
+export async function dispatchEvidenceV2Close({
+  ctx,
+  issueNumber,
+  cfg,
+  pexec,
+  state,
+  skipNetwork = false,
+} = {}) {
+  if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+    return { handled: false, result: null };
+  }
+  let issue;
+  if (typeof ctx.fetchEvidenceV2CloseIssue === 'function') {
+    issue = await ctx.fetchEvidenceV2CloseIssue({
+      issueNumber: Number(issueNumber),
+      repository: cfg.repo,
+    });
+  } else if (typeof ctx.closeBody === 'string') {
+    issue = { number: Number(issueNumber), body: ctx.closeBody };
+  } else if (skipNetwork) {
+    return { handled: false, result: null };
+  } else {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'number,body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    issue = JSON.parse(stdout);
+  }
+  const protocol = selectEvidenceProtocol({ body: issue.body, context: ctx.executionContext });
+  if (protocol.protocol !== 'v2') return { handled: false, result: null };
+  const runEvidenceV2Close = ctx.runEvidenceV2Close ?? runEvidenceV2CloseService;
+  const result = await runEvidenceV2Close({
+    issue,
+    issueNumber: Number(issueNumber),
+    repository: cfg.repo,
+    protocol,
+    state,
+    ports: ctx.evidenceV2ClosePorts,
+  });
+  return { handled: true, result };
+}
 
 const INCIDENT_AUTHORITY_TYPES = new Set([
   'delivery-incident-ledger',
@@ -1320,6 +1382,15 @@ export async function verbClose(ctx) {
 
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
+  const v2Dispatch = await dispatchEvidenceV2Close({
+    ctx,
+    issueNumber: closeIssueNum,
+    cfg,
+    pexec,
+    state: s,
+    skipNetwork: SKIP_NETWORK,
+  });
+  if (v2Dispatch.handled) return v2Dispatch.result;
   const force = rest.includes('--force');
   // #708 — `--repair` forces the full atomic close pipeline even when the board
   // is already Done / the issue already CLOSED (e.g. a PR closing-reference

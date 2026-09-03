@@ -18,8 +18,13 @@ export function orderJournal(records) {
     if (record.recordType === 'cycle-opened') {
       if (cycles.has(record.cycleId) || record.payload.previousCycleId !== (cycle?.cycleId ?? null))
         fail('cycle-chain');
-      // A completed-cycle record will become the only allowed predecessor for reopen in #1499.
-      if (cycle) fail('cycle-reopen-not-supported');
+      if (
+        cycle &&
+        ![...byId.values()].some(
+          (prior) => prior.cycleId === cycle.cycleId && prior.recordType === 'cycle-completed'
+        )
+      )
+        fail('cycle-reopen-before-completion');
       cycle = record;
       cycles.set(record.cycleId, record);
     } else if (!cycle || cycle.cycleId !== record.cycleId) fail('cycle-reference');
@@ -103,6 +108,24 @@ export function orderJournal(records) {
         record.payload.transport.operationId !== intent.payload.providerOperationId
       )
         fail('delivery-reference-inputs');
+    }
+    if (['close-step', 'cycle-completed', 'cleanup'].includes(record.recordType)) {
+      const started = byId.get(record.payload.closeStartedId);
+      if (record.payload.closeTransactionId !== started.payload.closeTransactionId)
+        fail('close-transaction-reference');
+      if (record.recordType === 'close-step') {
+        if (
+          record.payload.operationKey !== started.payload.effectOperationKeys[record.payload.step]
+        )
+          fail('close-operation-key');
+        const priorStep = ordered.find(
+          (candidate) =>
+            candidate.cycleId === record.cycleId &&
+            candidate.recordType === 'close-step' &&
+            candidate.payload.step === record.payload.step
+        );
+        if (priorStep) fail('close-step-duplicate');
+      }
     }
     byId.set(record.recordId, record);
     ordered.push(record);
