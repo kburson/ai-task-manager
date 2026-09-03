@@ -223,6 +223,77 @@ function provesSingleSourceSquash({ pullRequest, inspection, expectedHeadSha, me
   );
 }
 
+// #1490 — prove an externally performed MULTI-COMMIT squash.
+//
+// `provesSingleSourceSquash` only proves a squash when the pull request held
+// exactly one non-merge source commit, so every multi-commit pull request merged
+// through the GitHub UI collapsed to `unknown` and could never obtain a receipt.
+// GitHub exposes no authoritative historical merge method (no field on the merged
+// pull request records it), so the method must be proven from topology.
+//
+// Conjunctive — every condition must hold, and missing or malformed evidence
+// returns false rather than throwing:
+//
+//   1. the merge commit has exactly one parent;
+//   2. the merge SHA differs from the accepted SHA;
+//   3. the merge tree equals the accepted head's tree;
+//   4. the merge parent is an ancestor of the accepted SHA;
+//   5. the source inventory is complete, non-empty, and bound to the accepted SHA.
+//
+// Condition 4 is what separates squash from rebase. A rebase replays each source
+// commit onto the base, so the merge SHA is the LAST replayed commit and its
+// parent is a freshly created rewrite that never existed on the source branch —
+// it cannot be an ancestor of the accepted head. Condition 1 excludes an ordinary
+// merge, condition 2 a fast-forward, and condition 3 any squash that dropped or
+// reverted accepted content (a revert necessarily moves the tree).
+//
+// Individually insufficient and deliberately never relied on alone: repository
+// merge settings, commit title/message, one-parent topology, tree equality, and
+// accepted-SHA reachability.
+//
+// Known imprecision: a SINGLE-commit rebase is topologically identical to a
+// single-commit squash — one commit, same tree, parent is the base tip — and no
+// available evidence separates them. The outcomes are semantically identical, so
+// such a merge is reported as a squash.
+async function provesMultiSourceSquash({
+  pullRequest,
+  inspection,
+  expectedHeadSha,
+  mergeSha,
+  isAncestor,
+}) {
+  const inventory = pullRequest?.sourceCommits;
+  const evidence = pullRequest?.sourceCommitEvidence;
+  if (
+    pullRequest?.sourceCommitsComplete !== true ||
+    pullRequest?.sourceCommitsHeadSha !== expectedHeadSha ||
+    !Array.isArray(inventory) ||
+    inventory.length === 0 ||
+    !Array.isArray(evidence) ||
+    evidence.length === 0 ||
+    mergeSha === expectedHeadSha ||
+    !Array.isArray(inspection?.parents) ||
+    inspection.parents.length !== 1 ||
+    !SHA_RE.test(inspection.parents[0]) ||
+    typeof inspection.tree !== 'string' ||
+    !SHA_RE.test(inspection.tree)
+  ) {
+    return false;
+  }
+  // The accepted head's tree comes from the source evidence entry the inventory
+  // is already bound to; no additional fetch is required.
+  const acceptedSource = evidence.find((entry) => entry?.oid === expectedHeadSha);
+  if (!isPlainObject(acceptedSource) || !SHA_RE.test(acceptedSource.tree || '')) return false;
+  if (acceptedSource.tree !== inspection.tree) return false;
+  let ancestor;
+  try {
+    ancestor = await isAncestor({ ancestor: inspection.parents[0], descendant: expectedHeadSha });
+  } catch {
+    return false;
+  }
+  return ancestor === true;
+}
+
 function provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash }) {
   const topLevelToken = `#${intent.issueNumber}`;
   return (
@@ -320,11 +391,27 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
       expectedHeadSha: intent.expectedHeadSha,
       mergeSha: merged.mergeCommitSha,
     });
+  // #1490 — only consulted when every cheaper path has already declined, so the
+  // existing single-source, authorized-bytes, and observation paths keep exactly
+  // their present behavior.
+  const provenMultiSourceSquash =
+    observedMergeMethod === 'rewritten-one-parent' &&
+    provenSingleSourceSquash === false &&
+    intent.provider === 'external' &&
+    intent.mergeMethod === 'squash' &&
+    (await provesMultiSourceSquash({
+      pullRequest,
+      inspection,
+      expectedHeadSha: intent.expectedHeadSha,
+      mergeSha: merged.mergeCommitSha,
+      isAncestor: input.isAncestor,
+    }));
   if (observedMergeMethod === 'rewritten-one-parent') {
     observedMergeMethod =
       (requireAuthorizedBytes && intent.mergeMethod === 'squash') ||
       (!requireAuthorizedBytes && merged.mergeMethodObservation === 'squash') ||
-      provenSingleSourceSquash
+      provenSingleSourceSquash ||
+      provenMultiSourceSquash
         ? 'squash'
         : 'unknown';
   }
