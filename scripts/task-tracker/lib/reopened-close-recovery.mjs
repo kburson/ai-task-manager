@@ -531,7 +531,7 @@ export function authorizeRecoveryBackedDeliveredCloseRestart(input = {}) {
     live.boardState !== 'review' ||
     live.issueClosed !== false ||
     live.stateReason !== 'reopened' ||
-    live.terminalDisposition !== null ||
+    live.terminalDisposition !== 'Delivered' ||
     live.dirty !== false ||
     live.bindingOwnership?.authorized !== true ||
     live.bindingOwnership.disposition !== 'own-post-close-claim'

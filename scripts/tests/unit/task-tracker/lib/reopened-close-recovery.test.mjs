@@ -204,7 +204,7 @@ function recoveryBackedInput(overrides = {}) {
     boardState: 'review',
     issueClosed: false,
     stateReason: 'reopened',
-    terminalDisposition: null,
+    terminalDisposition: 'Delivered',
     dirty: false,
     bindingOwnership: { disposition: 'own-post-close-claim', authorized: true },
   };
@@ -288,6 +288,16 @@ test('#1490: recovery-backed stale supersession fails closed on contradictory ev
       /terminal-prefix/,
     ],
     ['plain open issue', { live: { ...base.live, stateReason: null } }, /live-terminal-state/],
+    [
+      'missing disposition',
+      { live: { ...base.live, terminalDisposition: null } },
+      /live-terminal-state/,
+    ],
+    [
+      'alternate disposition',
+      { live: { ...base.live, terminalDisposition: 'Incorporated' } },
+      /live-terminal-state/,
+    ],
     ['dirty worktree', { live: { ...base.live, dirty: true } }, /live-terminal-state/],
     [
       'foreign binding',
