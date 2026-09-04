@@ -286,7 +286,7 @@ test('#1490: Delivered survives recovery mint, timing checkpoint, and stale retr
     issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}`,
   };
 
-  const checkpointed = await runClose({
+  const interrupted = await runClose({
     issueNumber: ISSUE,
     repository: REPO,
     boardState: 'review',
@@ -306,15 +306,15 @@ test('#1490: Delivered survives recovery mint, timing checkpoint, and stale retr
     }),
   });
 
-  assert.equal(checkpointed.exitCode, 1);
-  assert.deepEqual(readDeliveredCloseTransactions(checkpointed.body)[0].completedSteps, ['timing']);
+  assert.equal(interrupted.exitCode, 1);
+  assert.deepEqual(readDeliveredCloseTransactions(interrupted.body)[0].completedSteps, ['timing']);
 
   const retried = await runClose({
     issueNumber: ISSUE,
     repository: REPO,
     boardState: 'review',
     closeSnapshot: { issueClosed: false, stateReason: 'reopened' },
-    body: checkpointed.body,
+    body: interrupted.body,
     restartStaleTransaction: true,
     supersessionComments: [recoveryComment],
     acceptedSha: NEXT_SHA,
