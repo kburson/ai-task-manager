@@ -363,6 +363,37 @@ export const VERB_REFERENCE = {
     exitCodes: [{ code: 20, meaning: 'provider action required' }],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
   },
+  evidence: {
+    topic: 'evidence',
+    summary:
+      'Inspect legacy evidence read-only or enroll the exact inspected digest into evidence v2.',
+    usage:
+      '/task evidence <inspect|enroll> <N> [--json] [--plan-digest <sha256:digest> --operation-id <uuid>]',
+    flags: [
+      { flag: '--json', desc: 'emit the canonical inspection proposal as JSON' },
+      {
+        flag: '--plan-digest <sha256:digest>',
+        desc: 'exact inspection digest required for enrollment',
+      },
+      { flag: '--operation-id <uuid>', desc: 'idempotency identity required for enrollment' },
+    ],
+    examples: [
+      '/task evidence inspect 1490 --json',
+      '/task evidence enroll 1490 --plan-digest sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --operation-id 018f5f4d-9a13-7c55-8c82-f2aa767b7d2e',
+    ],
+  },
+  reopen: {
+    topic: 'evidence',
+    summary: 'Reopen an enrolled v2 issue into a new explicit evidence cycle.',
+    usage: '/task reopen <N> --operation-id <uuid> --reason <text>',
+    flags: [
+      { flag: '--operation-id <uuid>', desc: 'idempotency identity for the reopen event' },
+      { flag: '--reason <text>', desc: 'required reason for the new cycle' },
+    ],
+    examples: [
+      '/task reopen 1490 --operation-id 018f5f4d-9a13-7c55-8c82-f2aa767b7d2e --reason "new delivery cycle"',
+    ],
+  },
   'incident-ledger': {
     topic: 'evidence',
     summary:
@@ -485,7 +516,7 @@ export const VERB_REFERENCE = {
     summary:
       'Close through a durable terminal transaction; partial work recovers, and an already-closed retry is read-only.',
     usage:
-      '/task close [#N] [--force] [--repair] [--restart-stale-transaction] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
+      '/task close [#N] [--force] [--repair] [--restart-stale-transaction] [--restart-reopened-transaction] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
@@ -496,6 +527,10 @@ export const VERB_REFERENCE = {
       {
         flag: '--restart-stale-transaction',
         desc: 'restart a stale pre-terminal Delivered close transaction only after fresh exact-SHA Test, Review, delivery, clean-worktree, and live-state checks; writes immutable supersession evidence before replacing the protected marker',
+      },
+      {
+        flag: '--restart-reopened-transaction',
+        desc: 'restart a COMPLETED eight-step Delivered close transaction that survived a reopen, only on an OPEN/REOPENED issue in Review whose disposition is still Delivered, with correlated historical and current delivery bundles; writes immutable recovery evidence before replacing the protected marker and is idempotent across retries',
       },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
       {
@@ -513,6 +548,7 @@ export const VERB_REFERENCE = {
       '/task close 667 --answer yes',
       '/task close 708 --repair',
       '/task close 1461 --restart-stale-transaction',
+      '/task close 1490 --restart-reopened-transaction',
       '/task close 1403 --as incorporated --of 1381',
       '/task close 939 --of 1381',
     ],

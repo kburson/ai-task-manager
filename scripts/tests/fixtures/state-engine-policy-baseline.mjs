@@ -326,24 +326,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      1959,
+      2496,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      2157,
+      2694,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 2302, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 2839, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      2536,
+      3073,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
@@ -379,17 +379,17 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 244, 'event-call', "'resumed'", [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 248, 'event-call', "'resumed'", [
       'resumed',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      472,
+      476,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 497, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 501, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

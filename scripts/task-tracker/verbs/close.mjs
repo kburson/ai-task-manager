@@ -85,6 +85,19 @@ import {
   replaceStaleDeliveredCloseTransaction,
 } from '../lib/delivered-close-supersession.mjs';
 import {
+  authorizeRecoveryBackedDeliveredCloseRestart,
+  authorizeReopenedCloseRestart,
+  classifyRecoveryProgress,
+  createReopenedCloseRecoveryRecord,
+  oldTransactionFromRecord,
+  findRecoveryBackedReplacement,
+  authorizeTerminalBindingRelease,
+  renderReopenedCloseRecoveryComment,
+  replaceCompletedDeliveredCloseTransaction,
+  resolveReopenedBindingOwnership,
+  resolveReopenedCloseRecovery,
+} from '../lib/reopened-close-recovery.mjs';
+import {
   deriveClosedIssueIntegrity,
   readUnauthorizedCloseRecovery,
   runClosedIssueConvergence,
@@ -95,7 +108,7 @@ import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapte
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
-import { createDefaultDeliverDeps } from './deliver.mjs';
+import { createDefaultDeliverDeps, parsedDeliveryRecords } from './deliver.mjs';
 import {
   hasAcceptedApprovalEvidence,
   hasAcceptedReviewEvidence,
@@ -120,6 +133,68 @@ import {
   resolveApprovedIncidentLedger,
 } from '../lib/delivery-incident-reconciliation.mjs';
 import { createProductionRuntime } from './incident-ledger.mjs';
+import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
+import { resumeClose } from '../lib/evidence-v2/close-runner.mjs';
+
+export async function runEvidenceV2CloseService({
+  issue,
+  issueNumber,
+  repository,
+  protocol,
+  state,
+  ports,
+} = {}) {
+  if (!ports || typeof ports.project !== 'function') {
+    throw new Error('close-v2:ports capability is required');
+  }
+  return resumeClose({
+    context: { issue, issueNumber, repository, protocol, state },
+    ports,
+  });
+}
+
+export async function dispatchEvidenceV2Close({
+  ctx,
+  issueNumber,
+  cfg,
+  pexec,
+  state,
+  skipNetwork = false,
+} = {}) {
+  if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+    return { handled: false, result: null };
+  }
+  let issue;
+  if (typeof ctx.fetchEvidenceV2CloseIssue === 'function') {
+    issue = await ctx.fetchEvidenceV2CloseIssue({
+      issueNumber: Number(issueNumber),
+      repository: cfg.repo,
+    });
+  } else if (typeof ctx.closeBody === 'string') {
+    issue = { number: Number(issueNumber), body: ctx.closeBody };
+  } else if (skipNetwork) {
+    return { handled: false, result: null };
+  } else {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'number,body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    issue = JSON.parse(stdout);
+  }
+  const protocol = selectEvidenceProtocol({ body: issue.body, context: ctx.executionContext });
+  if (protocol.protocol !== 'v2') return { handled: false, result: null };
+  const runEvidenceV2Close = ctx.runEvidenceV2Close ?? runEvidenceV2CloseService;
+  const result = await runEvidenceV2Close({
+    issue,
+    issueNumber: Number(issueNumber),
+    repository: cfg.repo,
+    protocol,
+    state,
+    ports: ctx.evidenceV2ClosePorts,
+  });
+  return { handled: true, result };
+}
 
 const INCIDENT_AUTHORITY_TYPES = new Set([
   'delivery-incident-ledger',
@@ -694,7 +769,7 @@ export async function loadCloseDeliveryGateInput({
       };
     }
   }
-  if (parentIssueNumber === null && noCommitKind) {
+  if (parentIssueNumber === null && noCommitKind && pullRequests.length === 0) {
     noCommitRecords = projectNoCommitDeliveryRecords(
       comments.map(parseNoCommitDeliveryComment).filter(Boolean)
     );
@@ -946,7 +1021,12 @@ async function flushCloseTimingOrThrow({ closeTarget, flushQueueFor }) {
 const ESTIMATION_FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
 
-export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
+export async function ensureCloseEstimationOutcome({
+  issueNumber,
+  body,
+  writer,
+  supersedeExisting = false,
+} = {}) {
   const readyForecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
   if (readyForecastRecordId !== null && frozenForecastRecordId === null) {
@@ -965,12 +1045,43 @@ export async function ensureCloseEstimationOutcome({ issueNumber, body, writer }
     if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
     throw new Error('estimation-outcome-writer capability is required for a v1 forecast');
   }
-  const result = await ensure({ issueNumber: Number(issueNumber), forecastRecordId, body });
+  const result = await ensure({
+    issueNumber: Number(issueNumber),
+    forecastRecordId,
+    body,
+    supersedeExisting,
+  });
   if (forecastRecordId === null && result?.status === 'legacy-no-forecast') return result;
   if (!['written', 'existing'].includes(result?.status)) {
     throw new Error(`estimation outcome did not converge (status ${result?.status ?? 'missing'})`);
   }
   return result;
+}
+
+export function permitsReopenedOutcomeCorrection({
+  recoveryRecord,
+  supersessionRecord = null,
+  transaction,
+} = {}) {
+  const direct =
+    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
+    transaction?.schema === 'aitm.delivered-close/v1' &&
+    recoveryRecord.issueNumber === transaction.issueNumber &&
+    recoveryRecord.replacementTransactionId === transaction.transactionId &&
+    recoveryRecord.newAcceptedSha === transaction.acceptedSha;
+  if (direct) return true;
+
+  return (
+    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
+    supersessionRecord?.schema === 'aitm.delivered-close-supersession/v1' &&
+    transaction?.schema === 'aitm.delivered-close/v1' &&
+    recoveryRecord.issueNumber === supersessionRecord.issueNumber &&
+    supersessionRecord.issueNumber === transaction.issueNumber &&
+    recoveryRecord.replacementTransactionId === supersessionRecord.oldTransactionId &&
+    recoveryRecord.newAcceptedSha === supersessionRecord.oldAcceptedSha &&
+    supersessionRecord.replacementTransactionId === transaction.transactionId &&
+    supersessionRecord.newAcceptedSha === transaction.acceptedSha
+  );
 }
 
 export function resolveEstimationOutcomeProjectDir({
@@ -1007,6 +1118,262 @@ export async function resolvePreCloseCheckboxes({
     deps: proofDeps,
   });
   return scan(body, { docsOnlyLaneSkipProven });
+}
+
+// #1490 — durable, read-back-verified supersession of a COMPLETED delivered-close
+// transaction that survived a reopen, followed by atomic replacement of the active
+// marker with a fresh zero-step transaction.
+//
+// Ordering is the whole point: evidence is persisted and re-read from the live
+// comment store BEFORE the body marker is touched, so a crash between the two steps
+// leaves recoverable evidence rather than an unexplained replacement. The recovery
+// id is derived from the intent, so a retry after a lost response resolves to the
+// same recovery instead of minting a second one.
+export async function runReopenedCloseRecovery({
+  closeIssueNum,
+  convergeBody,
+  ensureDeliveryAuthorized,
+  resolvedDeliveryGateRef,
+  terminalReviewAuthority,
+  dispositionReader,
+  inspectDirty,
+  resolveWorkspaceForIssue,
+  projectDir,
+  cfg,
+  ctx,
+  mutateBody,
+  closeSnapshot,
+  boardState,
+  // #1490 — binding OWNERSHIP, not release progress. See `validateLive`.
+  resolveBindingOwnership = resolveReopenedBindingOwnership,
+}) {
+  const closeTarget = `#${closeIssueNum}`;
+
+  const listDeliveryRecordComments =
+    ctx.listReopenedCloseDeliveryComments ??
+    (async () => {
+      const { stdout } = await closePexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${closeIssueNum}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '[]')).flat();
+    });
+  const listComments =
+    ctx.listReopenedCloseRecoveryComments ??
+    (async () => {
+      const { stdout } = await closePexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${closeIssueNum}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '[]')).flat();
+    });
+  const createComment =
+    ctx.createReopenedCloseRecoveryComment ??
+    (async (body) => {
+      const { stdout } = await closePexec(
+        'gh',
+        [
+          'api',
+          `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+          '--method',
+          'POST',
+          '-f',
+          `body=${body}`,
+        ],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '{}'));
+    });
+
+  await ensureDeliveryAuthorized();
+  const gate = resolvedDeliveryGateRef();
+  const newAcceptedSha = gate?.gateInput?.acceptedSha;
+
+  // #1490 — two-phase resolution. The active transaction is read from the BODY,
+  // never from a caller-supplied decision input, because on a retry after the
+  // marker was replaced the active transaction is the zero-step replacement and
+  // the completed original is only recoverable from durable evidence.
+  const activeTransactions = readDeliveredCloseTransactions(convergeBody);
+  if (activeTransactions.length !== 1) throw new Error('reopened-close-recovery:ambiguous-body');
+  const activeTransaction = activeTransactions[0];
+  const priorComments = await listComments();
+
+  // #1490 item 3 — resume by transaction IDENTITY, at any valid completed-step
+  // prefix. The first implementation keyed this on
+  // `activeTransaction.completedSteps.length === 0`, which is only true at the
+  // instant the replacement is minted. Once the saga marked even one step, a retry
+  // fell into the mint branch and treated the REPLACEMENT as though it were the
+  // completed original — so partial progress could not resume by construction.
+  //
+  // The identity lookup is self-discriminating and needs no step-count condition:
+  // on a fresh mint no durable record names the (old, completed) active
+  // transaction as its replacement, so there are zero candidates; on a resume
+  // there is exactly one, whatever the prefix.
+  const backed = findRecoveryBackedReplacement({
+    body: convergeBody,
+    comments: priorComments,
+    repository: cfg.repo,
+    issueNumber: Number(closeIssueNum),
+  });
+  // Ambiguity refuses rather than silently minting a second recovery.
+  if (backed.status === 'ambiguous') throw new Error('reopened-close-recovery:resume-evidence');
+  if (backed.transaction === null) throw new Error('reopened-close-recovery:ambiguous-body');
+  const backedRecord = backed.record;
+  const completedBackedReplacement =
+    backedRecord && activeTransaction.completedSteps.length >= TERMINAL_CLOSE_STEPS.length;
+  // A completed replacement is an idempotent retry only while the issue remains
+  // closed. If that completed replacement is itself reopened for a later accepted
+  // SHA, it becomes the next true historical transaction and must be superseded in
+  // a new link of the recovery chain.
+  const chainCompletedReplacement =
+    completedBackedReplacement && closeSnapshot.issueClosed === false;
+  const resumeRecord = chainCompletedReplacement ? null : backedRecord;
+  // On a mint the active transaction IS the completed original; on a resume the
+  // original is reconstructed from the durable record.
+  const oldTransaction = resumeRecord ? oldTransactionFromRecord(resumeRecord) : activeTransaction;
+  if (!oldTransaction) throw new Error('reopened-close-recovery:no-transaction');
+  // The replacement's own prefix: empty on a mint, the observed steps on a resume.
+  const replacementCompletedSteps = resumeRecord ? activeTransaction.completedSteps : [];
+  // A replacement that already ran every step is finished. Returning it unchanged
+  // keeps the retry idempotent instead of refusing (its binding is released, so
+  // ownership no longer resolves) or minting a second recovery.
+  if (completedBackedReplacement && !chainCompletedReplacement) {
+    return { body: convergeBody, transaction: activeTransaction, record: resumeRecord };
+  }
+
+  // #1490 — resolve a correlated delivery bundle for one accepted SHA using the
+  // gate's own live PR inventory as the SHA-keyed selector, then the existing
+  // PR-scoped parser. No new marker grammar and no broadening of
+  // `delivery-records.mjs`.
+  const resolveDeliveryBundle = async (acceptedSha, category) => {
+    const inventory = Array.isArray(gate?.gateInput?.pullRequests)
+      ? gate.gateInput.pullRequests
+      : [];
+    const matches = inventory.filter((pullRequest) => pullRequest?.headRefOid === acceptedSha);
+    if (matches.length !== 1) throw new Error(`reopened-close-recovery:${category}`);
+    const pullRequest = matches[0];
+    // Normalize GitHub's raw REST comments into the exact parser shape.
+    const normalized = (await listDeliveryRecordComments())
+      .map((comment) => ({
+        id: comment?.id == null ? '' : String(comment.id),
+        body: typeof comment?.body === 'string' ? comment.body : '',
+        createdAt: normalizeGitHubInstant(comment?.created_at),
+      }))
+      .filter((comment) => comment.id.length > 0 && comment.createdAt !== null);
+    const parsed = parsedDeliveryRecords(normalized, {
+      repository: cfg.repo,
+      issueNumber: Number(closeIssueNum),
+      prNumber: pullRequest.number,
+    });
+    const projected = projectDeliveryRecords(parsed);
+    // Exactly one correlated live intent and its matching receipt.
+    const intent = projected?.liveIntent?.record ?? null;
+    const receipt = projected?.matchingReceipt?.record ?? null;
+    if (!intent || !receipt) throw new Error(`reopened-close-recovery:${category}`);
+    return { pullRequest, intent, receipt };
+  };
+
+  const historical = await resolveDeliveryBundle(oldTransaction.acceptedSha, 'historical-evidence');
+  const currentBundle = await resolveDeliveryBundle(newAcceptedSha, 'current-evidence');
+
+  const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
+  const dirty = await inspectDirty({ cwd });
+  const terminalDisposition = await dispositionReader({
+    cfg,
+    issueNumber: Number(closeIssueNum),
+  });
+  // #1490 — observe ownership explicitly instead of reading a release-progress
+  // status. `cwd` is the issue's governed worktree, so a claim naming any other
+  // path is not this recovery's binding.
+  const bindingOwnership = resolveBindingOwnership({
+    projectDir,
+    issue: closeTarget,
+    sessionId: (ctx.sessionId ?? currentSessionId)(),
+    recordedWorktreePath: cwd,
+  });
+
+  const authorization = authorizeReopenedCloseRestart({
+    repository: cfg.repo,
+    issueNumber: Number(closeIssueNum),
+    oldTransaction,
+    newAcceptedSha,
+    newReviewAuthority: terminalReviewAuthority(),
+    actor: (ctx.reopenedCloseActor ?? cfg.assignee ?? '').replace(/^@/, ''),
+    live: {
+      boardState,
+      issueClosed: closeSnapshot.issueClosed,
+      stateReason: closeSnapshot.stateReason ?? null,
+      terminalDisposition: terminalDisposition || null,
+      dirty: dirty?.dirty ?? true,
+      // #1490 — explicit ownership observation, not a release-progress status.
+      bindingOwnership,
+    },
+    // Every value below is gate-resolved or record-parsed. Nothing is asserted,
+    // and nothing is copied from a record then compared back to that same record.
+    completedSteps: replacementCompletedSteps,
+    evidence: {
+      historical,
+      current: {
+        ...currentBundle,
+        testReceiptSha: gate?.testReceiptSha ?? null,
+        reviewApprovedSha: gate?.recoveryReviewApprovedSha ?? null,
+        // The verifier's OWN output, not a value lifted from the receipt.
+        verifiedDelivery: gate?.receipt?.verification?.receiptInput ?? null,
+      },
+    },
+  });
+
+  const record = createReopenedCloseRecoveryRecord(authorization, {
+    now: (ctx.reopenedCloseNow ?? (() => new Date().toISOString()))(),
+    randomUUIDFn: ctx.randomUUIDFn ?? randomUUID,
+  });
+
+  // Durable evidence is resolved through the strict codec, never by substring.
+  // A retry reuses the DURABLE record — including its replacement UUID — so a lost
+  // response cannot mint a second recovery.
+  const resolved = resolveReopenedCloseRecovery({
+    authorization,
+    comments: priorComments,
+    record: resumeRecord ?? record,
+  });
+  let durableRecord = resolved.record;
+  if (!durableRecord) {
+    await createComment(renderReopenedCloseRecoveryComment(record));
+    const readBack = resolveReopenedCloseRecovery({
+      authorization,
+      comments: await listComments(),
+      record,
+    });
+    if (readBack.status !== 'present') {
+      throw new Error('reopened-close-recovery:evidence-read-back');
+    }
+    durableRecord = readBack.record;
+  }
+
+  // Interruption point two: the body may already carry the replacement from a
+  // previous attempt. Classify against durable evidence and resume rather than
+  // re-running a completed step.
+  const progress = classifyRecoveryProgress(convergeBody, authorization, durableRecord);
+  if (progress.phase === 'body-replaced') {
+    return { body: convergeBody, transaction: progress.transaction, record: durableRecord };
+  }
+
+  if (typeof mutateBody !== 'function') throw new Error('reopened-close-recovery:body-write');
+  const mutation = await mutateBody({
+    issueNumber: Number(closeIssueNum),
+    repo: cfg.repo,
+    mutate: (base) =>
+      replaceCompletedDeliveredCloseTransaction(base, authorization, durableRecord).body,
+  });
+  if (typeof mutation?.body !== 'string') throw new Error('reopened-close-recovery:body-write');
+  // Verify the ACTUAL mutation read-back, not the captured pre-mutation body.
+  const applied = classifyRecoveryProgress(mutation.body, authorization, durableRecord);
+  if (applied.phase !== 'body-replaced') {
+    throw new Error('reopened-close-recovery:mutation-readback');
+  }
+  return { body: mutation.body, transaction: applied.transaction, record: durableRecord };
 }
 
 export async function verbClose(ctx) {
@@ -1084,6 +1451,15 @@ export async function verbClose(ctx) {
 
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
+  const v2Dispatch = await dispatchEvidenceV2Close({
+    ctx,
+    issueNumber: closeIssueNum,
+    cfg,
+    pexec,
+    state: s,
+    skipNetwork: SKIP_NETWORK,
+  });
+  if (v2Dispatch.handled) return v2Dispatch.result;
   const force = rest.includes('--force');
   // #708 — `--repair` forces the full atomic close pipeline even when the board
   // is already Done / the issue already CLOSED (e.g. a PR closing-reference
@@ -1096,6 +1472,20 @@ export async function verbClose(ctx) {
     (force || repair || rest.includes('--as') || rest.includes('--answer'))
   ) {
     throw new Error('delivered-close-supersession:incompatible-flags');
+  }
+  // #1490 — recovery for a COMPLETED close transaction that survived a reopen.
+  // Deliberately a separate flag: `--restart-stale-transaction` covers reversible
+  // PRE-terminal progress and must not be broadened to cover a finished close.
+  const restartReopenedTransaction = rest.includes('--restart-reopened-transaction');
+  if (
+    restartReopenedTransaction &&
+    (force ||
+      repair ||
+      restartStaleTransaction ||
+      rest.includes('--as') ||
+      rest.includes('--answer'))
+  ) {
+    throw new Error('reopened-close-recovery:incompatible-flags');
   }
   if (!closeTarget) {
     await drainQueueOnce();
@@ -1295,14 +1685,26 @@ export async function verbClose(ctx) {
     const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
     const receipt = receiptGate(gateInput);
     const freshReceiptVerifier = ctx.verifyCloseDeliveryReceipt || verifyCloseDeliveryReceipt;
+    // #1490 — capture the EXACT values this gate validates. The reopened-close
+    // recovery authorizes on them, and must never substitute its own defaults for
+    // evidence the gate actually resolved.
+    const resolvedTestReceiptSha =
+      parseVerificationReceipt(deliveryBody, 'test')?.commitSha ?? null;
+    const resolvedAcceptedReviewSha =
+      lifecycleEvidence?.expectedSha ??
+      parseVerificationReceipt(deliveryBody, 'review')?.commitSha ??
+      gateInput.acceptedSha;
+    // #1490 — the reopened-close recovery must not accept an accepted-SHA
+    // substitution as review evidence. Resolve the Review SHA from the authority
+    // actually accepted: the directory lane's expected SHA, or the exact body
+    // marker's approved SHA. Never a fallback.
+    const recoveryReviewApprovedSha =
+      lifecycleEvidence?.expectedSha ?? approval?.approvedSha ?? null;
     const freshReceipt = await freshReceiptVerifier({
       gateInput,
       receiptGate: receipt,
-      testReceiptSha: parseVerificationReceipt(deliveryBody, 'test')?.commitSha ?? null,
-      acceptedReviewSha:
-        lifecycleEvidence?.expectedSha ??
-        parseVerificationReceipt(deliveryBody, 'review')?.commitSha ??
-        gateInput.acceptedSha,
+      testReceiptSha: resolvedTestReceiptSha,
+      acceptedReviewSha: resolvedAcceptedReviewSha,
       deps: {
         fetchOriginTrunk:
           ctx.fetchOriginTrunk ??
@@ -1336,7 +1738,16 @@ export async function verbClose(ctx) {
       },
     });
     resolvedReviewAuthorization = authorization;
-    resolvedDeliveryGate = { authorization, gateInput, receipt: freshReceipt };
+    resolvedDeliveryGate = {
+      authorization,
+      gateInput,
+      receipt: freshReceipt,
+      // #1490 — concrete, gate-resolved evidence for the reopened-close recovery.
+      testReceiptSha: resolvedTestReceiptSha,
+      acceptedReviewSha: resolvedAcceptedReviewSha,
+      recoveryReviewApprovedSha,
+      deliveryBody,
+    };
     return resolvedDeliveryGate;
   };
   const refuseDeliveryGate = async (options) => {
@@ -1426,6 +1837,8 @@ export async function verbClose(ctx) {
   // classified as delivered, dead, or unauthorized before any mutation.
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
+  let reopenedCloseRecoveryRecord = null;
+  let deliveredCloseSupersessionRecord = null;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -1660,6 +2073,44 @@ export async function verbClose(ctx) {
           `${closeTarget} has invalid delivered-close transaction authority`
         );
       }
+      // #1490 — a COMPLETED close transaction that survived a reopen. Without the
+      // explicit flag this falls through to the existing `terminal-state-conflict`
+      // refusal, which stays the default. With it, supersede the completed
+      // transaction (durable evidence first, read-back verified) and replace the
+      // active marker with a fresh zero-step transaction so the normal saga runs.
+      if (restartReopenedTransaction) {
+        try {
+          const recovered = await runReopenedCloseRecovery({
+            closeTarget,
+            closeIssueNum,
+            convergeBody,
+            ensureDeliveryAuthorized,
+            resolvedDeliveryGateRef: () => resolvedDeliveryGate,
+            terminalReviewAuthority,
+            dispositionReader,
+            inspectDirty,
+            resolveWorkspaceForIssue,
+            projectDir,
+            cfg,
+            ctx,
+            mutateBody,
+            closeSnapshot,
+            boardState,
+          });
+          convergeBody = recovered.body;
+          reopenedCloseRecoveryRecord = recovered.record;
+          Object.assign(decisionInput, {
+            expectedAcceptedSha: recovered.transaction.acceptedSha,
+            closeTransactions: [recovered.transaction],
+          });
+        } catch (error) {
+          return failInspection(
+            'authorizeReopenedCloseRestart',
+            error,
+            `${closeTarget} could not recover its reopened delivered-close transaction`
+          );
+        }
+      }
       decision = decideCloseConvergence(decisionInput);
     } else {
       decision = decideCloseConvergence(decisionInput);
@@ -1724,10 +2175,8 @@ export async function verbClose(ctx) {
         await ensureDeliveryAuthorized();
         const comments = await supersessionDeps.listComments();
         let oldTransaction = activeTransaction;
-        if (
-          activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha &&
-          activeTransaction.completedSteps.length === 0
-        ) {
+        let recoveryBacking = null;
+        if (activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha) {
           const replacementEvidence = comments
             .map((comment) =>
               parseDeliveredCloseSupersessionComment(comment, {
@@ -1739,24 +2188,52 @@ export async function verbClose(ctx) {
               (evidence) =>
                 evidence?.record.replacementTransactionId === activeTransaction.transactionId
             );
-          if (replacementEvidence.length !== 1) {
+          if (replacementEvidence.length > 1) {
             throw new Error('delivered-close-supersession:replacement-evidence');
           }
-          const record = replacementEvidence[0].record;
-          if (
-            record.newAcceptedSha !== activeTransaction.acceptedSha ||
-            record.newReviewAuthority !== activeTransaction.reviewAuthority
-          ) {
-            throw new Error('delivered-close-supersession:replacement-evidence');
+          if (replacementEvidence.length === 1) {
+            const record = replacementEvidence[0].record;
+            const validActivePrefix =
+              activeTransaction.completedSteps.length <= TERMINAL_CLOSE_STEPS.length &&
+              activeTransaction.completedSteps.every(
+                (step, index) => step === TERMINAL_CLOSE_STEPS[index]
+              );
+            if (
+              record.newAcceptedSha !== activeTransaction.acceptedSha ||
+              record.newReviewAuthority !== activeTransaction.reviewAuthority ||
+              !validActivePrefix
+            ) {
+              throw new Error('delivered-close-supersession:replacement-evidence');
+            }
+            const reconstructedOld = {
+              schema: 'aitm.delivered-close/v1',
+              transactionId: record.oldTransactionId,
+              issueNumber: record.issueNumber,
+              acceptedSha: record.oldAcceptedSha,
+              reviewAuthority: record.newReviewAuthority,
+              completedSteps: [...record.completedSteps],
+            };
+            const candidateRecovery = findRecoveryBackedReplacement({
+              body: upsertDeliveredCloseTransaction(convergeBody, reconstructedOld),
+              comments,
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+            });
+            if (candidateRecovery.status === 'ambiguous') {
+              throw new Error('delivered-close-supersession:recovery-backing-ambiguous');
+            }
+            if (candidateRecovery.status === 'found') {
+              oldTransaction = {
+                ...reconstructedOld,
+                reviewAuthority: candidateRecovery.record.newReviewAuthority,
+              };
+              recoveryBacking = candidateRecovery;
+              reopenedCloseRecoveryRecord = candidateRecovery.record;
+              deliveredCloseSupersessionRecord = record;
+            } else if (activeTransaction.completedSteps.length === 0) {
+              oldTransaction = reconstructedOld;
+            }
           }
-          oldTransaction = {
-            schema: 'aitm.delivered-close/v1',
-            transactionId: record.oldTransactionId,
-            issueNumber: record.issueNumber,
-            acceptedSha: record.oldAcceptedSha,
-            reviewAuthority: record.newReviewAuthority,
-            completedSteps: [...record.completedSteps],
-          };
         }
         const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
         const dirty = await inspectDirty({ cwd });
@@ -1768,24 +2245,84 @@ export async function verbClose(ctx) {
           closeLabelsReader({ pexec, cfg, issueNum: closeIssueNum }),
           bindingReleaseInspector({ projectDir, issue: closeTarget }),
         ]);
-        const authorization = authorizeDeliveredCloseRestart({
+        recoveryBacking ??= findRecoveryBackedReplacement({
+          body: upsertDeliveredCloseTransaction(convergeBody, oldTransaction),
+          comments,
           repository: cfg.repo,
           issueNumber: Number(closeIssueNum),
-          oldTransaction,
-          newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
-          newReviewAuthority: terminalReviewAuthority(),
-          live: {
-            boardState,
-            issueClosed: closeSnapshot.issueClosed,
-            terminalDisposition: terminalDisposition || null,
-            labels,
-            bindingStatus: binding?.status,
-          },
         });
+        if (recoveryBacking.status === 'ambiguous') {
+          throw new Error('delivered-close-supersession:recovery-backing-ambiguous');
+        }
+
+        let authorization;
+        if (recoveryBacking.status === 'found') {
+          if (deliveredCloseSupersessionRecord) {
+            if (
+              deliveredCloseSupersessionRecord.newReviewAuthority !== 'human-gate' ||
+              !permitsReopenedOutcomeCorrection({
+                recoveryRecord: recoveryBacking.record,
+                supersessionRecord: deliveredCloseSupersessionRecord,
+                transaction: activeTransaction,
+              })
+            ) {
+              throw new Error('delivered-close-supersession:recovery-chain');
+            }
+            authorization = {
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+              oldTransaction,
+              newAcceptedSha: deliveredCloseSupersessionRecord.newAcceptedSha,
+              newReviewAuthority: deliveredCloseSupersessionRecord.newReviewAuthority,
+            };
+          } else {
+            const bindingOwnership = (
+              ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership
+            )({
+              projectDir,
+              issue: closeTarget,
+              sessionId: (ctx.sessionId ?? currentSessionId)(),
+              recordedWorktreePath: cwd,
+            });
+            authorization = authorizeRecoveryBackedDeliveredCloseRestart({
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+              recoveryRecord: recoveryBacking.record,
+              activeTransaction: oldTransaction,
+              newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+              newReviewAuthority: terminalReviewAuthority(),
+              live: {
+                boardState,
+                issueClosed: closeSnapshot.issueClosed,
+                stateReason: closeSnapshot.stateReason ?? null,
+                terminalDisposition: terminalDisposition || null,
+                dirty: dirty.dirty,
+                bindingOwnership,
+              },
+            });
+          }
+          reopenedCloseRecoveryRecord = recoveryBacking.record;
+        } else {
+          authorization = authorizeDeliveredCloseRestart({
+            repository: cfg.repo,
+            issueNumber: Number(closeIssueNum),
+            oldTransaction,
+            newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+            newReviewAuthority: terminalReviewAuthority(),
+            live: {
+              boardState,
+              issueClosed: closeSnapshot.issueClosed,
+              terminalDisposition: terminalDisposition || null,
+              labels,
+              bindingStatus: binding?.status,
+            },
+          });
+        }
         const evidence = await ensureDeliveredCloseSupersession({
           authorization,
           deps: { ...supersessionDeps, listComments: async () => comments },
         });
+        deliveredCloseSupersessionRecord = evidence.record;
         if (typeof mutateBody !== 'function') {
           throw new Error('delivered-close-supersession:body-write');
         }
@@ -2732,6 +3269,11 @@ export async function verbClose(ctx) {
         issueNumber: closeIssueNum,
         body: closeBody,
         writer: estimationOutcomeWriter,
+        supersedeExisting: permitsReopenedOutcomeCorrection({
+          recoveryRecord: reopenedCloseRecoveryRecord,
+          supersessionRecord: deliveredCloseSupersessionRecord,
+          transaction: deliveredCloseTransaction,
+        }),
       });
     } catch (err) {
       console.error(
@@ -2984,14 +3526,86 @@ export async function verbClose(ctx) {
       process.exitCode = 1;
       return;
     }
+    // #1490 item 2 — a recovery-backed replacement legitimately owns the binding it
+    // rebound after the OLD close, so the inspector's `conflict` is expected for it.
+    // Policy lives in `authorizeTerminalBindingRelease`; "recovery-backed" is proven
+    // from DURABLE evidence (the body's active transaction named as a durable
+    // record's replacement), never an in-memory flag, so an interrupted retry
+    // reaches the same verdict. Any failure to prove it falls through to the
+    // ordinary refusal.
+    let bindingAuthority = { authorized: bindingRelease?.status !== 'conflict', reason: null };
     if (bindingRelease?.status === 'conflict') {
+      let replacement = null;
+      if (reopenedCloseRecoveryRecord) {
+        replacement = { status: 'found', record: reopenedCloseRecoveryRecord };
+      } else if (!SKIP_NETWORK && closeIssueNum) {
+        try {
+          const liveBody = await (
+            ctx.readReopenedCloseBody ??
+            (async () => {
+              const { stdout } = await pexec(
+                'gh',
+                ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              return String(JSON.parse(String(stdout || '{}')).body ?? '');
+            })
+          )();
+          replacement = findRecoveryBackedReplacement({
+            body: liveBody,
+            comments: await (
+              ctx.listReopenedCloseRecoveryComments ??
+              (async () => {
+                const { stdout } = await pexec(
+                  'gh',
+                  [
+                    'api',
+                    '--paginate',
+                    '--slurp',
+                    `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+                  ],
+                  { timeout: GH_API_TIMEOUT_MS }
+                );
+                return JSON.parse(String(stdout || '[]')).flat();
+              })
+            )(),
+            repository: cfg.repo,
+            issueNumber: Number(closeIssueNum),
+          });
+        } catch {
+          replacement = null;
+        }
+      }
+      bindingAuthority = authorizeTerminalBindingRelease({
+        bindingRelease,
+        replacement: replacement?.status === 'found' ? replacement.record : null,
+        ownership:
+          replacement?.status !== 'found'
+            ? null
+            : (ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership)({
+                projectDir,
+                issue: s.active,
+                sessionId: (ctx.sessionId ?? currentSessionId)(),
+                recordedWorktreePath: resolveWorkspaceForIssue({ issueRef: s.active, projectDir }),
+              }),
+      });
+    }
+    if (!bindingAuthority.authorized) {
       console.error(
-        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: a newer binding or occupancy claim supersedes the terminal cleanup authority.`
+        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: a newer binding or occupancy claim supersedes the terminal cleanup authority (${bindingAuthority.reason}).`
       );
       process.exitCode = 1;
       return;
     }
-    if (bindingRelease?.status === 'incomplete') {
+    // NOTE: this must be the HEAD of the status chain below, not a standalone `if`.
+    // As a separate statement, an authorized `conflict` fell through to the chain's
+    // `else if (status !== 'pending')` arm and was refused as an "unknown state" —
+    // the authorization would have been granted and then discarded one branch later.
+    if (bindingRelease?.status === 'conflict') {
+      // The replacement's own post-close rebind: release it and record the step.
+      releaseClosedBinding({ ctx, projectDir, issue: s.active });
+      await markDeliveredCloseStep('binding');
+    } else if (bindingRelease?.status === 'incomplete') {
       try {
         await bindingReleaseResumer({ projectDir, issue: s.active });
       } catch (err) {

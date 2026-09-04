@@ -10,9 +10,10 @@ export async function verbStart(ctx) {
     process.exitCode = 1;
     return;
   }
+  // #1488 — do NOT re-issue the Review resident wake here. `verbResume` owns
+  // that decision (see `wakeReviewResidents`) and deliberately declines it for
+  // the `start` verb, as `verbSwitch` does too. Re-issuing it re-ran the Review
+  // action and re-paused the session this bind had just opened, which left
+  // `deliver` — requiring Review state AND a running binding — unreachable.
   await verbResume(ctx);
-  await ctx.resumeReviewActionsAfterBind?.(
-    /^#/.test(String(raw)) ? String(raw) : `#${raw}`,
-    'bind'
-  );
 }

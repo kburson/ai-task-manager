@@ -434,6 +434,134 @@ test('an epic with only forecast-free legacy children writes an empty aggregatio
   assert.deepEqual(writtenPayload.landscape.childOutcomeRecordIds, []);
 });
 
+test('runtime threads explicit reopened-close correction authority into the immutable outcome chain', async () => {
+  const priorId = '01J00000000000000000000831';
+  const childId = '01J00000000000000000000832';
+  const issueRecords = [
+    {
+      commentNodeId: 'IC_prior',
+      envelope: {
+        recordId: priorId,
+        recordType: 'estimation-outcome',
+        createdAt: '2026-08-02T14:00:00.000Z',
+        supersedes: null,
+        payload: {
+          issue: 1067,
+          kind: 'epic-orchestration',
+          forecastRecordId: null,
+          actual: { engagedHours: 99 },
+        },
+      },
+    },
+  ];
+  let writtenEnvelope = null;
+  const runtime = createEstimationOutcomeRuntime({
+    cfg: { repo: repository },
+    projectDir: '/tmp/fake-adaptive-project',
+    deps: {
+      graphql: async () => ({
+        data: {
+          repository: {
+            issue: {
+              number: 1067,
+              repository: { nameWithOwner: repository },
+              subIssues: {
+                nodes: [{ number: 101 }],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      }),
+      recordIo: {
+        graphql: async () => {},
+        listIssueRecords: async ({ issue }) => {
+          if (issue === 101) {
+            return [
+              {
+                envelope: {
+                  recordId: childId,
+                  recordType: 'estimation-outcome',
+                  createdAt: '2026-08-02T14:00:00.000Z',
+                  supersedes: null,
+                },
+              },
+            ];
+          }
+          return issueRecords;
+        },
+        write: async ({ envelope }) => {
+          writtenEnvelope = envelope;
+          const written = { commentNodeId: 'IC_correction', envelope };
+          issueRecords.push(written);
+          return written;
+        },
+      },
+      readTimingCommentBody: async () => ({
+        status: 'found',
+        body: [
+          '| 2026-08-02 10:00:00 -05:00 | plan:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+          '| 2026-08-02 10:01:00 -05:00 | develop:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+          '| 2026-08-02 10:02:00 -05:00 | test:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+          '| 2026-08-02 10:03:00 -05:00 | review:stopped | | | | | | <!-- row-sec: a=60 i=0 -->',
+        ].join('\n'),
+      }),
+      readDiffEvidence: async () => ({
+        filesChanged: 0,
+        modules: ['epic-orchestration'],
+        lanes: ['sandbox'],
+        dependencyBreadth: 0,
+      }),
+    },
+  });
+
+  const result = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: null,
+    body: '',
+    supersedeExisting: true,
+  });
+
+  assert.equal(result.status, 'written');
+  assert.equal(writtenEnvelope.supersedes, priorId);
+  assert.equal(issueRecords.length, 2);
+
+  const retry = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: null,
+    body: '',
+    supersedeExisting: true,
+  });
+  assert.equal(retry.status, 'existing');
+  assert.equal(retry.recordId, writtenEnvelope.recordId);
+  assert.equal(issueRecords.length, 2);
+
+  issueRecords.push({
+    commentNodeId: 'IC_foreign_active',
+    envelope: {
+      recordId: '01J00000000000000000000833',
+      recordType: 'estimation-outcome',
+      createdAt: '2026-08-02T14:05:00.000Z',
+      supersedes: null,
+      payload: {
+        issue: 1067,
+        kind: 'story',
+        forecastRecordId: '01J00000000000000000000830',
+        actual: { engagedHours: 1 },
+      },
+    },
+  });
+  await assert.rejects(
+    runtime.ensure({
+      issueNumber: 1067,
+      forecastRecordId: null,
+      body: '',
+      supersedeExisting: true,
+    }),
+    /correction-predecessor/
+  );
+});
+
 test('epic close fails closed when an adaptive child has a forecast but no outcome', async () => {
   const runtime = createEstimationOutcomeRuntime({
     cfg: { repo: repository },

@@ -11,6 +11,8 @@ aitm-skill-loaded:rules/review:1.2.0
 
 ## Agent terminal step
 
+For an enrolled v2 issue, Review enters through the common protected-marker selector and installed pinned runtime. The designated authority host, runtime capability, and complete resident-entry inventory must validate before mutation. A malformed marker or incompatible runtime refuses instead of falling back to v1.
+
 `/task review #N` is the **terminal automation step** for an agent on an issue. After it succeeds:
 
 1. The issue moves to **Review** on the project board.

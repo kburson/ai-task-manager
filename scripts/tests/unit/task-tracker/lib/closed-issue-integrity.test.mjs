@@ -45,6 +45,21 @@ test('normalizes GitHub issue close state and reason without inventing completio
     issueClosed: true,
     stateReason: null,
   });
+  // #1490 — REOPENED is the one OPEN reason that is load-bearing: it is the only
+  // signal distinguishing an issue closed and deliberately reopened from one never
+  // closed, and the reopened-close recovery authorizes on exactly that.
+  assert.deepEqual(normalizeIssueCloseSnapshot({ state: 'OPEN', stateReason: 'REOPENED' }), {
+    issueClosed: false,
+    stateReason: 'reopened',
+  });
+  assert.deepEqual(normalizeIssueCloseSnapshot({ state: 'open', stateReason: 'reopened' }), {
+    issueClosed: false,
+    stateReason: 'reopened',
+  });
+  assert.deepEqual(normalizeIssueCloseSnapshot({ state: 'OPEN', stateReason: null }), {
+    issueClosed: false,
+    stateReason: null,
+  });
   assert.deepEqual(normalizeIssueCloseSnapshot({ state: 'OPEN', stateReason: 'COMPLETED' }), {
     issueClosed: false,
     stateReason: null,

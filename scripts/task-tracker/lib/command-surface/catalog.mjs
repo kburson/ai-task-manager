@@ -290,6 +290,24 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     [exit(20, 'provider action required'), ...PREFLIGHT_TARGET_EXITS]
   ),
+  evidence: contract(
+    [
+      'Inspection requires readable issue, source, runtime capability, and resident-entry inputs; enrollment additionally requires the exact plan digest, operation ID, designated authority host, and complete compatible entry inventory.',
+    ],
+    [
+      'Inspection performs no writes. Enrollment reinspects under authority, appends raw legacy import references with no historical outcome claims, verifies read-back, and writes the protected v2 projection last.',
+    ],
+    ['Prints the canonical migration proposal or enrolled projection as JSON.']
+  ),
+  reopen: contract(
+    [
+      'The issue must be closed, enrolled in v2, and running through a compatible designated-host runtime.',
+    ],
+    [
+      'Records a new explicit cycle identity and reopens the issue through the guarded provider adapter.',
+    ],
+    ['Prints the canonical reopen event as JSON.']
+  ),
   'incident-ledger': contract(
     [
       'The target must be #1381; record mode requires a strict 19-row ledger matching fresh live observations.',
@@ -374,11 +392,13 @@ export const VERB_CONTRACTS = Object.freeze({
     [
       'Delivery close requires final approval, pre-close evidence, and a reachable attributed commit; Incorporated close requires an exact approved incident ledger and --of owner.',
       'A stale-transaction restart requires an explicit flag, one stale pre-terminal transaction, fresh exact-SHA Test, Review, and delivery authority, an open Review issue, a clean worktree, close-managed labels, and a pending recorded binding.',
+      'A reopened-transaction restart requires its own explicit flag, one COMPLETED eight-step transaction whose accepted SHA differs from current authority, an OPEN issue whose state reason is REOPENED, board Review, a surviving Delivered disposition, a clean worktree, a pending binding, and correlated pull-request/intent/receipt bundles for both the historical and the current accepted SHA.',
     ],
     [
       'Flushes timing and closes through Done, records a duplicate/not-planned disposition, or converges an approved Incorporated outcome without fabricating delivery evidence.',
       'Partial terminal recovery resumes only the missing suffix from durable transaction authority; an already-closed completed retry is read-only.',
       'Stale-transaction restart writes and verifies immutable supersession audit evidence before replacing the protected marker and replaying the ordinary close saga; terminal-boundary or conflicting evidence refuses before mutation.',
+      'Reopened-transaction restart writes and read-back verifies immutable recovery evidence before replacing the protected marker, reuses that durable evidence (including its replacement identity) on every retry, resumes without rewriting when the marker was already replaced, and verifies the mutation read-back before resuming the ordinary close saga; without the flag the completed/reopened shape refuses as terminal-state-conflict.',
     ],
     ['Prints each close gate, repair action when requested, and the final closed state.'],
     [
@@ -629,6 +649,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   approve: Object.freeze(['review', 'reject', 'close']),
   review: Object.freeze(['approve', 'deliver', 'reject', 'close']),
   deliver: Object.freeze(['review', 'close']),
+  evidence: Object.freeze(['reopen', 'review', 'deliver']),
+  reopen: Object.freeze(['evidence', 'close']),
   'incident-ledger': Object.freeze(['deliver', 'close']),
   'action-ledger': Object.freeze(['review', 'reconcile']),
   reject: Object.freeze(['review', 'demote']),
@@ -718,6 +740,11 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   deliver: Object.freeze([
     positional('#N', 'Required Review-state issue whose exact pull-request head is delivered.'),
   ]),
+  evidence: Object.freeze([
+    positional('<inspect|enroll>', 'Read-only inspection or digest-bound enrollment.'),
+    positional('<N>', 'Issue number whose legacy evidence is inspected or enrolled.'),
+  ]),
+  reopen: Object.freeze([positional('<N>', 'Closed enrolled issue to reopen into a new cycle.')]),
   'incident-ledger': Object.freeze([
     positional('#1381', 'Required convergence issue that owns the incident ledger.'),
   ]),

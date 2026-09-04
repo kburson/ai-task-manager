@@ -1,4 +1,4 @@
-// @story #551 #1279
+// @story #551 #1279 #1497 #1501
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -106,7 +106,12 @@ function repoRoot() {
 // post-change dry-run count is 715 entries; 750 retains 35 entries of bounded
 // growth headroom while staying 47 below the 797-entry pre-tightening surface.
 // The exact introduction-set assertion above keeps additions review-visible.
-const ENTRY_CEILING = 750;
+// #1497 ships eleven evidence-v2 runtime modules and one input-contract guide.
+// Audited npm-pack manifests grow from 742 to 754 entries with no test files or
+// excluded material added. Raise by exactly those twelve entries, preserving
+// the existing eight-entry headroom; path exclusions remain unchanged.
+// #1500 adds the reviewed v2 enrollment, runtime-capability and command adapters.
+const ENTRY_CEILING = 771;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

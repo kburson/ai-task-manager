@@ -29,6 +29,7 @@ test('root epic → its own epic branch, parent trunk', () => {
     branch: 'feature/epic/905',
     epicBranch: 'feature/epic/905',
     parentBranch: 'trunk',
+    parentIssue: null,
   });
 });
 
@@ -38,6 +39,7 @@ test('leaf child → epic branch is its parent, base is that epic', () => {
     branch: 'feature/child/910',
     epicBranch: 'feature/epic/905',
     parentBranch: 'feature/epic/905',
+    parentIssue: 905,
   });
 });
 
@@ -60,6 +62,7 @@ test('nested sub-epic → role epic, own branch, parent is the outer epic', () =
     branch: 'feature/epic/911',
     epicBranch: 'feature/epic/911',
     parentBranch: 'feature/epic/905',
+    parentIssue: 905,
   });
 });
 
@@ -69,6 +72,7 @@ test('child of a nested epic → its epic is the nested epic', () => {
     branch: 'feature/child/920',
     epicBranch: 'feature/epic/911',
     parentBranch: 'feature/epic/911',
+    parentIssue: 911,
   });
 });
 
@@ -78,6 +82,7 @@ test('standalone story → no epic, parent trunk', () => {
     branch: 'feature/story/42',
     epicBranch: null,
     parentBranch: 'trunk',
+    parentIssue: null,
   });
 });
 
@@ -133,7 +138,24 @@ test("#1284: a child uses its parent epic's recorded custom branch authority", (
     branch: 'feature/child/910',
     epicBranch: 'codex/1268-implementation-plan',
     parentBranch: 'codex/1268-implementation-plan',
+    parentIssue: 905,
   });
+});
+
+test('#1485: numeric parent identity is independent of the opaque branch ref', () => {
+  const custom = {
+    graph: (n) =>
+      n === 910
+        ? { ...GRAPH[910], parentAuthoritativeBranch: 'codex/1268-implementation-plan' }
+        : (() => {
+            throw new Error(`unexpected graph lookup for #${n}`);
+          })(),
+  };
+  const customLineage = resolveEpicLineage(910, { deps: custom });
+  // The epic ref is opaque and unparseable by the managed branch grammar, yet
+  // the numeric edge from the graph node survives intact.
+  assert.equal(customLineage.parentIssue, 905);
+  assert.equal(customLineage.epicBranch, 'codex/1268-implementation-plan');
 });
 
 test('#1284: explicit recorded-branch authority errors propagate fail-closed', () => {

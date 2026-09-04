@@ -5,7 +5,7 @@
 // and the fail-closed guard call, so "where should this branch be based" has exactly
 // one answer.
 //
-//   resolveEpicLineage(issueOrBranch, { deps }) → { role, branch, epicBranch, parentBranch }
+//   resolveEpicLineage(issueOrBranch, { deps }) → { role, branch, epicBranch, parentBranch, parentIssue }
 //
 // role classification (branch-name role, from the graph):
 //   has children            → 'epic'   (root epic or nested sub-epic)
@@ -16,6 +16,11 @@
 //                  epic for a child, null for a standalone story.
 //   parentBranch — the ref to cut from / rebase onto: the parent epic's branch for a
 //                  child or a nested epic, else trunk.
+//   parentIssue  — #1485: the graph node's numeric parent issue, or null. This is
+//                  GRAPH identity, never branch-derived identity: an authoritative
+//                  branch is an opaque ref that may not parse as `feature/<role>/<N>`,
+//                  so callers needing the parent epic's issue number must read this
+//                  field rather than parsing `epicBranch`/`parentBranch`.
 //
 // The one external fact — the sub-issue graph edge for an issue — is injected as
 // `deps.graph(issue) → { parent, children, parentAuthoritativeBranch? }`, so this
@@ -51,6 +56,7 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
     throw new Error(`resolve-epic-lineage: ${node.authorityError}`);
   }
   const { parent = null, children = [] } = node;
+  const parentIssue = parent;
   const role = children.length > 0 ? 'epic' : parent != null ? 'child' : 'story';
   const canonicalBranch = composeBranchName({ role, issue });
   if (
@@ -62,7 +68,7 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
   const branch = node.authoritativeBranch || canonicalBranch;
 
   if (role === 'story') {
-    return { role, branch, epicBranch: null, parentBranch: trunk };
+    return { role, branch, epicBranch: null, parentBranch: trunk, parentIssue };
   }
 
   let parentEpicBranch = null;
@@ -84,9 +90,21 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
 
   if (role === 'epic') {
     // A nested sub-epic bases on its parent epic; a root epic bases on trunk.
-    return { role, branch, epicBranch: branch, parentBranch: parentEpicBranch || trunk };
+    return {
+      role,
+      branch,
+      epicBranch: branch,
+      parentBranch: parentEpicBranch || trunk,
+      parentIssue,
+    };
   }
 
   // role === 'child' — belongs to, and bases on, its parent epic.
-  return { role, branch, epicBranch: parentEpicBranch, parentBranch: parentEpicBranch };
+  return {
+    role,
+    branch,
+    epicBranch: parentEpicBranch,
+    parentBranch: parentEpicBranch,
+    parentIssue,
+  };
 }

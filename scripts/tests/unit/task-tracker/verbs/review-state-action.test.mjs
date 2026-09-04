@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { emitReviewGateFailureTimeline } from '../../../../task-tracker/verbs/review.mjs';
+import { wakeReviewResidents } from '../../../../task-tracker/verbs/resume.mjs';
 import reviewState from '../../../../task-tracker/states/review.mjs';
 import { reviewAgentValidationAction } from '../../../../task-tracker/lib/resident-actions/review-agent-validation.mjs';
 import {
@@ -171,12 +172,61 @@ test('Review classifies resident and boundary Cursor outcomes without swallowing
   );
 });
 
-test('start, resume, and switch wake Review resident work through the dispatcher callback', () => {
-  assert.match(startSrc, /resumeReviewActionsAfterBind/);
+test('resume, switch, and the dispatcher carry the Review resident wake', () => {
   assert.match(resumeSrc, /resumeReviewActionsAfterBind/);
   assert.match(switchSrc, /resumeReviewActionsAfterBind/);
   assert.match(trackerSrc, /resumeReviewActionsAfterBind/);
   assert.match(trackerSrc, /state !== 'review'/);
+});
+
+// #1488 — `verbStart` used to re-issue the wake AFTER delegating to
+// `verbResume`, which had already declined it for the `start` verb. That second
+// call re-ran the Review action and re-paused the timer it had just started, so
+// `deliver` — which requires Review state AND a running binding together — was
+// structurally unreachable. The decision belongs in exactly one place.
+test('#1488: verbStart delegates to verbResume and does not re-issue the Review wake', () => {
+  assert.match(startSrc, /verbResume\(ctx\)/);
+  assert.doesNotMatch(
+    startSrc,
+    /resumeReviewActionsAfterBind/,
+    'verbStart must not re-issue the Review wake that verbResume already declined for `start`'
+  );
+});
+
+test('#1488: the wake decision exempts the start verb and no other', () => {
+  const calls = [];
+  const ctx = (verb, rest = []) => ({
+    verb,
+    rest,
+    resumeReviewActionsAfterBind: async (target, command) => {
+      calls.push({ target, command });
+    },
+  });
+
+  // `start` binds without waking Review residents, so the session it opened
+  // survives — this is what makes governed delivery reachable from Review.
+  wakeReviewResidents(ctx('start', ['#1485']), '#1485');
+  assert.deepEqual(calls, []);
+});
+
+test('#1488: resume and rebind still wake Review residents', async () => {
+  const calls = [];
+  const ctx = (verb, rest = []) => ({
+    verb,
+    rest,
+    resumeReviewActionsAfterBind: async (target, command) => {
+      calls.push({ target, command });
+    },
+  });
+
+  // No explicit issue argument — un-pausing the last active task.
+  await wakeReviewResidents(ctx('resume'), '#1485');
+  assert.deepEqual(calls, [{ target: '#1485', command: 'resume' }]);
+
+  // Explicit issue argument — rebinding to a named issue.
+  calls.length = 0;
+  await wakeReviewResidents(ctx('resume', ['#1485']), '#1485');
+  assert.deepEqual(calls, [{ target: '#1485', command: 'rebind' }]);
 });
 
 test('a passing Review probe continues into actions-only resident execution', () => {

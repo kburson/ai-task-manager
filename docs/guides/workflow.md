@@ -1,5 +1,11 @@
 # GitHub Issues & Kanban Workflow
 
+## Explicit evidence v2 enrollment
+
+Legacy remains the default. `npx aitm evidence inspect <N> --json` is read-only and returns predicate sources, raw-history references, missing evidence, runtime requirements, and a canonical digest. Enrollment requires a separately supplied operation UUID and that exact digest: `npx aitm evidence enroll <N> --plan-digest <digest> --operation-id <uuid>`. It reinspects under the designated authority and writes the protected v2 projection only after import read-back. Missing historical verification, review, or delivery facts remain unknown and require fresh evidence.
+
+The installed execution context pins separate tool, source, and authority roots plus provider and host identity. Every v2 mutation entry validates the common selector and complete resident capability inventory. `npx aitm reopen <N> --operation-id <uuid> --reason <text>` creates a new explicit cycle for a closed enrolled issue. A malformed marker or old incompatible writer refuses instead of falling back to v1.
+
 Full workflow rules for projects using `ai-task-manager`. These rules define how Claude Code, Codex, and human operators should manage issues, move Kanban states, and handle cleanup.
 
 ---
@@ -978,6 +984,34 @@ Remaining, Verification, Risks) that a compacted summary cannot.
 Compact around sustained medium-large sessions; don't compact mid-verb.
 Prefer Clear/reload when transcript noise dominates. Compacted summaries
 are hints, not authoritative configuration.
+
+---
+
+## Reopening a delivered-and-closed issue
+
+Reopening an issue that already reached Done is occasionally right — a defect in the
+delivered work belongs to that issue's acceptance scope rather than a successor. It has
+costs you should expect, all observed on #1490:
+
+- **The completed close transaction survives.** `close` then refuses with
+  `close-convergence:terminal-state-conflict`, because an eight-step record asserting the
+  issue was closed contradicts an open issue. Recovering needs the human-only
+  `/task close <N> --restart-reopened-transaction`; see `rules/close.md`.
+- **Stage receipts strand if the branch is re-pointed.** When the branch's commits are
+  already squash-merged into trunk, a rebase drops them and any Test receipt naming a
+  dropped SHA becomes unreachable, refusing the next promote with
+  `evidence-branch-unreachable`. Retire it with the governed receipt lifecycle
+  (`retireVerificationReceipt`), never by hand-editing the body.
+- **Stamped AC evidence is frozen.** A stamped `aitm-verified` marker cannot have its
+  `vc-list` re-pointed — the marker guard refuses, and unchecking does not shed
+  run-props. Plan citations before stamping.
+- **Prefer not to re-point the branch at all.** If the branch tree is already equivalent
+  to trunk, commit the repair directly on top and let the fresh Test receipt supersede
+  the old one. Rebasing "because it was squash-merged" is what strands evidence.
+
+Historical records — the delivered-close transaction, the delivery receipt for the old
+accepted SHA — are true statements about what happened. Supersede them with new evidence;
+do not delete them.
 
 ---
 

@@ -2,6 +2,8 @@
 // Pure immutable accepted-delivery authority. Local HEAD is an observation;
 // Test/Review evidence and the unique exact-head pull request are authority.
 
+import { resolveDeliveryIntent } from './evidence-v2/delivery.mjs';
+
 const SHA_RE = /^[0-9a-f]{40}$/;
 
 export class DeliveryAuthorityError extends TypeError {
@@ -83,4 +85,10 @@ export function resolveAcceptedDeliveryAuthority({
     headRelation: localHeadSha === acceptedSha ? 'current' : 'advanced',
     pullRequest: { ...pullRequest },
   });
+}
+
+// Evidence v2 is selected by the public dispatcher before reaching this seam.
+// The legacy exports above retain their exact-head authority contract.
+export function resolveEvidenceV2DeliveryAuthority(input = {}) {
+  return resolveDeliveryIntent(input);
 }

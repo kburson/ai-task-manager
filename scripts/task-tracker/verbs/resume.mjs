@@ -134,7 +134,11 @@ function bankResumeTranscriptTail(state, sid, task) {
   return bank;
 }
 
-async function wakeReviewResidents(ctx, target) {
+// #1488 — the SINGLE decision point for waking Review resident work on a bind.
+// `start` is exempt: it must leave the timing session it just opened running, or
+// `deliver` (which requires Review state AND a running binding together) becomes
+// unreachable. `verbStart` delegates here and must not re-issue the wake itself.
+export async function wakeReviewResidents(ctx, target) {
   if (ctx.verb === 'start') return;
   await ctx.resumeReviewActionsAfterBind?.(target, ctx.rest[0] ? 'rebind' : 'resume');
 }
