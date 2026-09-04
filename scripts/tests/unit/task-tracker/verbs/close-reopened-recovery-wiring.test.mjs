@@ -287,6 +287,50 @@ test('#1490: durable recovery authorizes an outcome correction only for its repl
   );
 });
 
+test('#1490: outcome correction accepts only the exact recovery-to-supersession chain', async () => {
+  const { args } = harness();
+  const recovered = await runReopenedCloseRecovery(args);
+  const currentTransaction = {
+    ...recovered.transaction,
+    transactionId: NEXT_TX,
+    acceptedSha: NEXT_SHA,
+  };
+  const supersessionRecord = {
+    schema: 'aitm.delivered-close-supersession/v1',
+    issueNumber: ISSUE,
+    oldTransactionId: recovered.transaction.transactionId,
+    oldAcceptedSha: recovered.transaction.acceptedSha,
+    replacementTransactionId: currentTransaction.transactionId,
+    newAcceptedSha: currentTransaction.acceptedSha,
+  };
+
+  assert.equal(
+    permitsReopenedOutcomeCorrection({
+      recoveryRecord: recovered.record,
+      supersessionRecord,
+      transaction: currentTransaction,
+    }),
+    true
+  );
+
+  for (const mismatch of [
+    { recoveryRecord: { ...recovered.record, replacementTransactionId: 'foreign' } },
+    { supersessionRecord: { ...supersessionRecord, oldAcceptedSha: OLD_SHA } },
+    { supersessionRecord: { ...supersessionRecord, replacementTransactionId: 'foreign' } },
+    { transaction: { ...currentTransaction, acceptedSha: OLD_SHA } },
+  ]) {
+    assert.equal(
+      permitsReopenedOutcomeCorrection({
+        recoveryRecord: recovered.record,
+        supersessionRecord,
+        transaction: currentTransaction,
+        ...mismatch,
+      }),
+      false
+    );
+  }
+});
+
 test('#1490: the primary estimation step consumes the durable reopened-recovery authority', () => {
   const source = readFileSync(
     new URL('../../../../task-tracker/verbs/close.mjs', import.meta.url),

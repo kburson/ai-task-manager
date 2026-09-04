@@ -1058,13 +1058,29 @@ export async function ensureCloseEstimationOutcome({
   return result;
 }
 
-export function permitsReopenedOutcomeCorrection({ recoveryRecord, transaction } = {}) {
-  return (
+export function permitsReopenedOutcomeCorrection({
+  recoveryRecord,
+  supersessionRecord = null,
+  transaction,
+} = {}) {
+  const direct =
     recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
     transaction?.schema === 'aitm.delivered-close/v1' &&
     recoveryRecord.issueNumber === transaction.issueNumber &&
     recoveryRecord.replacementTransactionId === transaction.transactionId &&
-    recoveryRecord.newAcceptedSha === transaction.acceptedSha
+    recoveryRecord.newAcceptedSha === transaction.acceptedSha;
+  if (direct) return true;
+
+  return (
+    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
+    supersessionRecord?.schema === 'aitm.delivered-close-supersession/v1' &&
+    transaction?.schema === 'aitm.delivered-close/v1' &&
+    recoveryRecord.issueNumber === supersessionRecord.issueNumber &&
+    supersessionRecord.issueNumber === transaction.issueNumber &&
+    recoveryRecord.replacementTransactionId === supersessionRecord.oldTransactionId &&
+    recoveryRecord.newAcceptedSha === supersessionRecord.oldAcceptedSha &&
+    supersessionRecord.replacementTransactionId === transaction.transactionId &&
+    supersessionRecord.newAcceptedSha === transaction.acceptedSha
   );
 }
 
@@ -1822,7 +1838,7 @@ export async function verbClose(ctx) {
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
   let reopenedCloseRecoveryRecord = null;
-  let _deliveredCloseSupersessionRecord = null;
+  let deliveredCloseSupersessionRecord = null;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -2264,7 +2280,7 @@ export async function verbClose(ctx) {
           authorization,
           deps: { ...supersessionDeps, listComments: async () => comments },
         });
-        _deliveredCloseSupersessionRecord = evidence.record;
+        deliveredCloseSupersessionRecord = evidence.record;
         if (typeof mutateBody !== 'function') {
           throw new Error('delivered-close-supersession:body-write');
         }
@@ -3213,6 +3229,7 @@ export async function verbClose(ctx) {
         writer: estimationOutcomeWriter,
         supersedeExisting: permitsReopenedOutcomeCorrection({
           recoveryRecord: reopenedCloseRecoveryRecord,
+          supersessionRecord: deliveredCloseSupersessionRecord,
           transaction: deliveredCloseTransaction,
         }),
       });

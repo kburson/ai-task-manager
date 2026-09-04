@@ -524,6 +524,42 @@ test('runtime threads explicit reopened-close correction authority into the immu
 
   assert.equal(result.status, 'written');
   assert.equal(writtenEnvelope.supersedes, priorId);
+  assert.equal(issueRecords.length, 2);
+
+  const retry = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: null,
+    body: '',
+    supersedeExisting: true,
+  });
+  assert.equal(retry.status, 'existing');
+  assert.equal(retry.recordId, writtenEnvelope.recordId);
+  assert.equal(issueRecords.length, 2);
+
+  issueRecords.push({
+    commentNodeId: 'IC_foreign_active',
+    envelope: {
+      recordId: '01J00000000000000000000833',
+      recordType: 'estimation-outcome',
+      createdAt: '2026-08-02T14:05:00.000Z',
+      supersedes: null,
+      payload: {
+        issue: 1067,
+        kind: 'story',
+        forecastRecordId: '01J00000000000000000000830',
+        actual: { engagedHours: 1 },
+      },
+    },
+  });
+  await assert.rejects(
+    runtime.ensure({
+      issueNumber: 1067,
+      forecastRecordId: null,
+      body: '',
+      supersedeExisting: true,
+    }),
+    /correction-predecessor/
+  );
 });
 
 test('epic close fails closed when an adaptive child has a forecast but no outcome', async () => {
