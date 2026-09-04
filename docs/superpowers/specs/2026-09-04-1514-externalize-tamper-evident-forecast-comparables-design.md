@@ -1,7 +1,7 @@
 # Externalize Tamper-Evident Forecast Comparables
 
 Issue: #1514  
-Status: Revised design pending approval
+Status: Approved design
 
 ## Purpose
 
