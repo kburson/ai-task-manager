@@ -13,11 +13,17 @@ import {
 import { currentSessionId } from '../word-counter.mjs';
 
 const SUMMARIES = {
-  both: 'both gates OFF (full auto)',
-  plan: 'plan→dev OFF, review→done ON',
-  review: 'plan→dev ON, review→done OFF',
-  off: 'both gates ON (safe default)',
+  both: 'all gates OFF (Full-Auto)',
+  plan: 'plan→dev OFF, PR review OFF, review→done ON',
+  review: 'plan→dev ON, PR review OFF, review→done OFF',
+  off: 'all gates ON (manual review)',
   reset: 'session override cleared (falls back to project config)',
+  'manual-plan': 'manual plan review ON; other gates unchanged',
+  'manual-code': 'manual PR code review ON; other gates unchanged',
+  'manual-task': 'manual final task review ON; other gates unchanged',
+  'auto-plan': 'manual plan review OFF; other gates unchanged',
+  'auto-code': 'manual PR code review OFF; other gates unchanged',
+  'auto-task': 'manual final task review OFF; other gates unchanged',
 };
 
 export async function runAuto({ choice, sessionId, deps = {} } = {}) {

@@ -76,6 +76,98 @@ test('deliver source has no terminal lifecycle dependency', () => {
   }
 });
 
+test('#1512 default adapter resolves @me to an eligible human reviewer', async () => {
+  const commands = [];
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    {
+      async exec(_command, args) {
+        commands.push(args);
+        if (args[1] === 'user') return { stdout: 'kburson\n' };
+        if (args[1] === 'users/kburson') {
+          return { stdout: JSON.stringify({ login: 'kburson', type: 'User' }) };
+        }
+        throw new Error(`unexpected command: ${args.join(' ')}`);
+      },
+    }
+  );
+
+  assert.equal(await deps.resolveManualCodeReviewer({ configuredReviewer: '@me' }), 'kburson');
+  assert.deepEqual(commands, [
+    ['api', 'user', '--jq', '.login'],
+    ['api', 'users/kburson'],
+  ]);
+});
+
+test('#1512 default adapter normalizes exact-head PR review evidence', async () => {
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    {
+      async exec(_command, args) {
+        assert.equal(args[0], 'api');
+        assert.equal(args[1], 'graphql');
+        return {
+          stdout: JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  headRefOid: HEAD,
+                  author: { login: 'aitm-author', __typename: 'User' },
+                  reviewRequests: {
+                    nodes: [{ requestedReviewer: { login: 'kburson', __typename: 'User' } }],
+                    pageInfo: { hasNextPage: false },
+                  },
+                  reviews: {
+                    nodes: [
+                      {
+                        author: { login: 'kburson', __typename: 'User' },
+                        state: 'APPROVED',
+                        submittedAt: '2026-09-04T10:02:00Z',
+                        commit: { oid: HEAD },
+                      },
+                    ],
+                    pageInfo: { hasNextPage: false },
+                  },
+                },
+              },
+            },
+          }),
+        };
+      },
+    }
+  );
+
+  assert.deepEqual(
+    await deps.fetchManualCodeReviewEvidence({ prNumber: 1512, expectedHeadSha: HEAD }),
+    {
+      number: 1512,
+      author: { login: 'aitm-author', isBot: false },
+      reviewRequests: [{ login: 'kburson', isBot: false }],
+      reviews: [
+        {
+          authorLogin: 'kburson',
+          authorIsBot: false,
+          state: 'APPROVED',
+          commitOid: HEAD,
+          submittedAt: '2026-09-04T10:02:00Z',
+        },
+      ],
+    }
+  );
+});
+
 test('default live PR snapshot records a server-confirmed deleted source branch', async () => {
   const commands = [];
   const exec = async (command, args) => {

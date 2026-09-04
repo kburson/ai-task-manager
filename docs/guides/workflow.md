@@ -536,18 +536,21 @@ closed items can then be classified with
 
 ### Human Gates
 
-Two transitions require explicit human approval. Both are toggleable via config; defaults preserve today's behavior (human required).
+AITM has three review boundaries, each independent. Full-Auto is the built-in default, so all gates default to `false`; a project or session may opt into any manual boundary.
 
-| Gate           | Config key                  | Default | Bypass behavior when `false`                                                                            |
-| -------------- | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| Plan → Develop | `gateAnalysisToDevelopment` | `true`  | `/task promote #N` auto-writes the approval marker and moves the issue; emits a `gate-bypassed` status. |
-| Review → Done  | `gateReviewToDone`          | `true`  | `/task close` posts a `gate-bypassed` timing-log row instead of refusing.                               |
+| Gate                          | Config key                  | Default | Behavior when `true`                                                      |
+| ----------------------------- | --------------------------- | ------- | ------------------------------------------------------------------------- |
+| Plan → Develop                | `gateAnalysisToDevelopment` | `false` | Require explicit human plan approval.                                     |
+| CI-green PR → merge authority | `gatePullRequestReview`     | `false` | Request the configured human reviewer and require exact-head PR approval. |
+| Review → Done                 | `gateReviewToDone`          | `false` | Require explicit final task approval.                                     |
 
 The config key `gateAnalysisToDevelopment` retains its legacy name for backward-compatibility with existing project configs; semantically it gates Plan → Develop.
 
 The Plan → Develop gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Plan. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
 
 The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
+
+The PR code-review gate is enforced by `/task deliver` only after required CI is green. The configured `manualCodeReviewer` (default `@me`, resolved through the authenticated GitHub account) may be assigned as the pull-request reviewer. Assignment is only an affordance: merge authority requires that eligible human's latest applicable `APPROVED` review on the exact accepted head SHA. The PR author, bots, stale-head approvals, and spawned-agent review do not satisfy this boundary.
 
 The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task ensureChecked "Deep dive complete"` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
 
@@ -557,24 +560,25 @@ Toggle a gate (project-wide, persisted to `.ai-task-manager/task-tracker.json`):
 
 ```bash
 /task config gateAnalysisToDevelopment false   # full-auto Plan → Develop
+/task config gatePullRequestReview false       # full-auto PR code review
 /task config gateReviewToDone false            # full-auto Review → Done
 ```
 
 ### Session-scoped auto-mode (`/task auto`)
 
-For one-off parallel batches (e.g., dispatching several sub-issues without pausing on each human gate), prefer **session-scoped overrides** over editing project config. They live in `.claude/task-tracker.session.<session-id>.json` when a session ID is available, are gitignored, and apply only to the current agent session.
+Session-scoped overrides are additive and apply only to the current agent session. They live in `.tmp/aitm/gates/task-tracker.session.<session-id>.json` and are gitignored.
 
 ```bash
-/task auto both      # both gates OFF (full auto)
-/task auto plan      # Plan→Develop OFF, Review→Done ON
-/task auto review    # Plan→Develop ON,  Review→Done OFF
-/task auto off       # both gates ON (safe default)
+/task auto manual-plan  # require only manual plan review; other gates unchanged
+/task auto manual-code  # require only manual PR code review; other gates unchanged
+/task auto manual-task  # require only manual final task review; other gates unchanged
+/task auto auto-code    # return PR code review to automatic; other gates unchanged
+/task auto both         # all three gates OFF (Full-Auto)
+/task auto off          # all three gates ON
 /task auto reset     # clear session override → fall back to project config
 ```
 
-**Precedence**: session override > project config > built-in defaults (both gates ON).
-
-**Per-parent prompt**: when both `gateAnalysisToDevelopment` and `gateReviewToDone` are _not_ explicitly set in project config, the first `/task #N` bind under a new parent emits a `PROMPT_REQUIRED: auto-mode #<rootKey>` line so the skill can ask the user which gates to toggle. The `lastPromptedParent` field is keyed by `parentOf(#N) || #N`, so further binds under the same parent do not re-prompt; switching to a different epic does.
+**Precedence**: session override > project config > built-in defaults (all gates OFF, Full-Auto). New binds do not prompt for a mode. The exact phrases `manual plan review`, `manual code review`, and `manual task review` enable their corresponding session gate and can be combined.
 
 **Orphan GC**: on `SessionStart`, override files older than `deadSessionMaxAgeMs` (default 7 days) are swept. Tunable via `/task config deadSessionMaxAgeMs <ms>`.
 

@@ -1,7 +1,8 @@
 // Session-scoped auto-mode store (#89).
 //
-// Per-chat overrides for the two human gates (analysisToDevelopment,
-// reviewToDone). Lives at `.tmp/aitm/gates/task-tracker.session.<session-id>.json`
+// Per-chat overrides for the three human gates (analysisToDevelopment,
+// pullRequestReview, reviewToDone). Lives at
+// `.tmp/aitm/gates/task-tracker.session.<session-id>.json`
 // (#573 — relocated out of the tracked `.claude/` root into the gitignored
 // machine-local tree).
 //
@@ -11,6 +12,7 @@
 //     lastPromptedParent: string|null,   // e.g. "61" or null
 //     gates: {
 //       analysisToDevelopment: bool|null,  // null = not overridden, defer
+//       pullRequestReview:     bool|null,
 //       reviewToDone:          bool|null,
 //     },
 //     updatedAt: ISO8601 string
@@ -43,7 +45,7 @@ function freshState(sessionId) {
   return {
     sessionId,
     lastPromptedParent: null,
-    gates: { analysisToDevelopment: null, reviewToDone: null },
+    gates: { analysisToDevelopment: null, pullRequestReview: null, reviewToDone: null },
     updatedAt: new Date(0).toISOString(),
   };
 }
@@ -74,36 +76,43 @@ export function saveSession(state, { fs = realFs, dir = gatesDir(), now = () => 
   return next;
 }
 
-// Map a user choice to gate booleans. Used by /task auto verb.
-//   both    -> both gates OFF
-//   plan    -> plan→dev OFF, review→done ON
-//   review  -> review→done OFF, plan→dev ON
-//   off     -> both gates ON
-//   reset   -> clear override (null) + clear lastPromptedParent
+// Legacy choices replace the complete policy. Manual/auto boundary choices are
+// additive: they update one gate without erasing explicit choices for others.
 const CHOICE_GATES = {
-  both: { analysisToDevelopment: false, reviewToDone: false },
-  plan: { analysisToDevelopment: false, reviewToDone: true },
-  review: { analysisToDevelopment: true, reviewToDone: false },
-  off: { analysisToDevelopment: true, reviewToDone: true },
+  both: { analysisToDevelopment: false, pullRequestReview: false, reviewToDone: false },
+  plan: { analysisToDevelopment: false, pullRequestReview: false, reviewToDone: true },
+  review: { analysisToDevelopment: true, pullRequestReview: false, reviewToDone: false },
+  off: { analysisToDevelopment: true, pullRequestReview: true, reviewToDone: true },
+};
+
+const CHOICE_PATCHES = {
+  'manual-plan': { analysisToDevelopment: true },
+  'manual-code': { pullRequestReview: true },
+  'manual-task': { reviewToDone: true },
+  'auto-plan': { analysisToDevelopment: false },
+  'auto-code': { pullRequestReview: false },
+  'auto-task': { reviewToDone: false },
 };
 
 export function VALID_CHOICES() {
-  return ['both', 'plan', 'review', 'off', 'reset'];
+  return ['both', 'plan', 'review', 'off', 'reset', ...Object.keys(CHOICE_PATCHES)];
 }
 
 export function applyChoice(state, choice, { parent = null } = {}) {
   if (choice === 'reset') {
     return {
       ...state,
-      gates: { analysisToDevelopment: null, reviewToDone: null },
+      gates: { analysisToDevelopment: null, pullRequestReview: null, reviewToDone: null },
       lastPromptedParent: null,
     };
   }
-  const gates = CHOICE_GATES[choice];
-  if (!gates) throw new Error(`invalid choice: ${choice}`);
+  const replacement = CHOICE_GATES[choice];
+  const patch = CHOICE_PATCHES[choice];
+  if (!replacement && !patch) throw new Error(`invalid choice: ${choice}`);
+  const current = { ...freshState(state?.sessionId || '').gates, ...(state?.gates || {}) };
   return {
     ...state,
-    gates: { ...gates },
+    gates: replacement ? { ...replacement } : { ...current, ...patch },
     lastPromptedParent: parent ?? state.lastPromptedParent,
   };
 }

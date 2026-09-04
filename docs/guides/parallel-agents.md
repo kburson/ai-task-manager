@@ -322,14 +322,15 @@ Forward transitions run through the verb surface — never through direct `move-
 
 ### Gates
 
-Two human gates exist between automation steps:
+Three independent human gates can be enabled between automation steps:
 
 | Gate                                | Config key                  | What it blocks                                                                                                                             |
 | ----------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Refine→R4P, Plan→Develop promotions | `gateAnalysisToDevelopment` | `/task promote` refuses unless the required issue-body evidence or approval marker exists when `true`. (config key retained for stability) |
+| CI-green PR→merge authority         | `gatePullRequestReview`     | `/task deliver` requests an eligible human reviewer and requires exact-head PR approval when `true`.                                       |
 | Review→Done close                   | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve`) when `true`.                                         |
 
-Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disable only for an approved parallel batch (§ Disabling gates for a batch) and restore both to `true` after.
+All live in `.ai-task-manager/task-tracker.json`. **Defaults are `false` (Full-Auto).** Prefer session-scoped `manual-plan`, `manual-code`, and `manual-task` overrides when human review is desired for one run.
 
 ### Disabling gates for a batch
 
@@ -337,11 +338,12 @@ Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disa
 // .ai-task-manager/task-tracker.json
 {
   "gateAnalysisToDevelopment": false,
+  "gatePullRequestReview": false,
   "gateReviewToDone": false,
 }
 ```
 
-After the batch returns and the orchestrator has merged the worktree branches, **set both back to `true`** in the same commit that records the wrap-up. Leaving gates off across sessions is a silent guardrail failure — the next solo run will skip its human checkpoints without anyone noticing.
+Project defaults apply to later sessions. Use `/task auto reset` to clear session overrides after a batch; built-in behavior then returns to Full-Auto unless the project explicitly enables a manual gate.
 
 ---
 

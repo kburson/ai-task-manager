@@ -360,7 +360,10 @@ export const VERB_REFERENCE = {
     summary:
       'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
     usage: '/task deliver #N',
-    exitCodes: [{ code: 20, meaning: 'provider action required' }],
+    exitCodes: [
+      { code: 20, meaning: 'provider action required' },
+      { code: 21, meaning: 'manual code review required after CI; approve the exact PR head' },
+    ],
     examples: ['/task deliver 939', 'npx aitm deliver #N'],
   },
   evidence: {
@@ -600,19 +603,23 @@ export const VERB_REFERENCE = {
   auto: {
     topic: 'board',
     summary:
-      'Toggle Full-Auto gate overrides for the session (disable plan→dev and/or review→done human gates).',
-    usage: '/task auto <both|plan|review|off|reset>',
+      'Full-Auto is the default; add or remove independent manual plan, PR-code, and final-task review gates for this session.',
+    usage:
+      '/task auto <both|plan|review|off|reset|manual-plan|manual-code|manual-task|auto-plan|auto-code|auto-task>',
     flags: [
-      { flag: 'both', desc: 'both gates OFF (full auto)' },
-      { flag: 'plan', desc: 'only the plan→develop gate OFF' },
-      { flag: 'review', desc: 'only the review→done gate OFF' },
-      { flag: 'off / reset', desc: 'restore both human gates' },
+      { flag: 'manual-plan / auto-plan', desc: 'require / remove Plan→Develop review' },
+      { flag: 'manual-code / auto-code', desc: 'require / remove exact-head human PR review' },
+      { flag: 'manual-task / auto-task', desc: 'require / remove Review→Done review' },
+      { flag: 'both', desc: 'all three gates OFF (Full-Auto)' },
+      { flag: 'off', desc: 'all three gates ON (manual review)' },
+      { flag: 'reset', desc: 'clear session overrides and use project or built-in defaults' },
+      { flag: 'plan / review', desc: 'legacy whole-policy choices retained for compatibility' },
     ],
     exitCodes: [
       { code: 2, meaning: 'mode is missing or unknown' },
       { code: 3, meaning: 'no active session exists for the override' },
     ],
-    examples: ['/task auto both', '/task auto off'],
+    examples: ['/task auto manual-code', '/task auto manual-plan', '/task auto both'],
   },
   // ── evidence & proof ──────────────────────────────────────────────────────
   'ac-stamp': {

@@ -13,6 +13,10 @@ Load and follow the canonical shared task workflow:
 
 The router is a Tier-1 stub: hard cross-cutting rules + verb → rule-file routing table. Detailed contracts live in `skill/shared/rules/*.md` (Tier-2) and load JIT only when their verb runs.
 
+Full-Auto defaults and the exact `manual plan review`, `manual code review`,
+and `manual task review` phrases live in `rules/full-auto.md`; load it whenever
+the user names one of those controls.
+
 Claude-specific conventions:
 
 - `/task ...` is the primary user interface through `.claude/commands/task.md`.

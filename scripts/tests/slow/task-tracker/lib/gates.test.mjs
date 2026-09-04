@@ -3,7 +3,7 @@
 // Tests for the human-gate config flags introduced in #58 and the immutable
 // review-authorization ordering introduced in #1381.
 //
-//   gateAnalysisToDevelopment (boolean, default true)
+//   gateAnalysisToDevelopment (boolean, default false)
 //     - false: runApprove auto-approves without prompt, returns 'gate-bypassed'.
 //
 //   Before any legacy prompt or bypass path, close resolves immutable accepted
@@ -269,8 +269,9 @@ function writeState(sandbox, issueNum) {
   const sandbox = mkdtempProjectIsolated('tt-gate-5-');
   const hostileCwd = mkdtempProjectIsolated('tt-gate-5-cwd-');
   try {
-    // Clean project sandbox: gateReviewToDone defaults TRUE, no session override.
-    writeConfig(sandbox);
+    // Clean project sandbox explicitly requires manual task review. A hostile
+    // gate file outside the project must not override that project policy.
+    writeConfig(sandbox, { gateReviewToDone: true });
     writeState(sandbox, 205);
     const { binDir } = makeGhShim(sandbox, {
       bodyOnView: BODY_WITH_FULL_AUTO_MARKER,

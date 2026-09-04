@@ -136,8 +136,8 @@ test('a paused binding opens a timing segment before automated Review work', asy
 test('review handoff policy pauses only when human approval is required', () => {
   assert.equal(
     reviewModule.reviewNeedsHumanApproval?.({ cfg: {}, env: {} }),
-    true,
-    'interactive Review waits for a human'
+    false,
+    'Full-Auto is the default when no policy enables the final-task gate'
   );
   assert.equal(
     reviewModule.reviewNeedsHumanApproval?.({ cfg: {}, env: { TT_FULL_AUTO: '1' } }),
@@ -148,6 +148,20 @@ test('review handoff policy pauses only when human approval is required', () => 
     reviewModule.reviewNeedsHumanApproval?.({ cfg: { gateReviewToDone: false }, env: {} }),
     false,
     'a disabled human gate continues without a human handoff'
+  );
+  assert.equal(
+    reviewModule.reviewNeedsHumanApproval?.({ cfg: { gateReviewToDone: true }, env: {} }),
+    true,
+    'an enabled project gate waits for a human'
+  );
+  assert.equal(
+    reviewModule.reviewNeedsHumanApproval?.({
+      cfg: { gateReviewToDone: true },
+      env: {},
+      session: { gates: { reviewToDone: false } },
+    }),
+    false,
+    'an explicit session Full-Auto choice overrides project policy'
   );
 });
 

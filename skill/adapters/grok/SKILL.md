@@ -16,6 +16,10 @@ Load and follow the canonical shared task workflow:
 
 `node_modules/ai-task-manager/skill/shared/router.md`
 
+Full-Auto defaults and the exact manual review phrases are governed by
+`rules/full-auto.md`; load it when the user names Full-Auto, manual plan review,
+manual code review, or manual task review.
+
 Grok-specific host facts:
 
 - The project skill installs at `.grok/skills/task`.

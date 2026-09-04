@@ -15,7 +15,11 @@ import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
-import { resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
+import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
+import {
+  evaluateManualCodeReview,
+  resolveManualCodeReviewer as resolveManualCodeReviewerPolicy,
+} from '../lib/manual-code-review.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import {
   hasAcceptedApprovalEvidence,
@@ -734,6 +738,59 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const preflight = mergedPullRequest
     ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
     : validateDeliveryPreflight({ ...preflightInput, checks });
+  const manualCodeReviewEnabled = await (
+    deps.resolvePullRequestReviewGate ?? (async () => false)
+  )();
+  if (manualCodeReviewEnabled === true) {
+    const reviewerLogin = await requiredDependency(
+      deps,
+      'resolveManualCodeReviewer'
+    )({
+      configuredReviewer: cfg.manualCodeReviewer,
+    });
+    const reviewEvidence = await requiredDependency(
+      deps,
+      'fetchManualCodeReviewEvidence'
+    )({
+      repository: cfg.repo,
+      prNumber: selectedPullRequest.number,
+      expectedHeadSha: authority.acceptedSha,
+    });
+    const decision = evaluateManualCodeReview({
+      gateEnabled: true,
+      expectedHeadSha: authority.acceptedSha,
+      reviewerLogin,
+      pullRequest: reviewEvidence,
+    });
+    if (decision.status === 'refused') {
+      throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
+    }
+    if (decision.status !== 'authorized') {
+      if (mergedPullRequest) {
+        throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
+      }
+      let reviewRequested = false;
+      if (decision.status === 'request-review') {
+        await requiredDependency(
+          deps,
+          'requestPullRequestReview'
+        )({
+          repository: cfg.repo,
+          prNumber: selectedPullRequest.number,
+          reviewerLogin,
+        });
+        reviewRequested = true;
+      }
+      return {
+        status: 'manual-review-required',
+        reason: decision.reason,
+        prNumber: selectedPullRequest.number,
+        reviewerLogin,
+        expectedHeadSha: authority.acceptedSha,
+        reviewRequested,
+      };
+    }
+  }
   if (mergedPullRequest) {
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
@@ -1073,6 +1130,83 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   };
 
   return {
+    async resolvePullRequestReviewGate() {
+      return resolveGate('pullRequestReview', {
+        session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),
+        projectConfig: (ctx.loadRawProjectConfig || rawProjectConfig)(),
+      });
+    },
+    async resolveManualCodeReviewer({ configuredReviewer }) {
+      const authenticatedLogin = await (async () => {
+        const { stdout } = await run('gh', ['api', 'user', '--jq', '.login']);
+        return String(stdout || '').trim();
+      })();
+      const reviewerLogin = resolveManualCodeReviewerPolicy({
+        configuredReviewer,
+        authenticatedLogin,
+      });
+      const account = await json('gh', ['api', `users/${encodeURIComponent(reviewerLogin)}`]);
+      if (
+        String(account?.login || '').toLowerCase() !== reviewerLogin.toLowerCase() ||
+        account?.type !== 'User'
+      ) {
+        throw new TypeError(
+          `manual-code-review:${account?.type === 'Bot' ? 'reviewer-bot' : 'reviewer-unresolved'}`
+        );
+      }
+      return reviewerLogin;
+    },
+    async fetchManualCodeReviewEvidence({ prNumber, expectedHeadSha }) {
+      const query = `query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid author{login __typename} reviewRequests(first:100){nodes{requestedReviewer{__typename ... on User{login}}} pageInfo{hasNextPage}} reviews(first:100){nodes{author{login __typename} state submittedAt commit{oid}} pageInfo{hasNextPage}}}}}`;
+      const payload = await json('gh', [
+        'api',
+        'graphql',
+        '-f',
+        `query=${query}`,
+        '-f',
+        `owner=${owner}`,
+        '-f',
+        `repo=${repoName}`,
+        '-F',
+        `pr=${prNumber}`,
+      ]);
+      const pr = payload?.data?.repository?.pullRequest;
+      if (
+        pr?.headRefOid !== expectedHeadSha ||
+        pr?.reviewRequests?.pageInfo?.hasNextPage !== false ||
+        pr?.reviews?.pageInfo?.hasNextPage !== false
+      ) {
+        return null;
+      }
+      return {
+        number: Number(prNumber),
+        author: {
+          login: pr.author?.login,
+          isBot: pr.author?.__typename === 'Bot',
+        },
+        reviewRequests: (pr.reviewRequests?.nodes ?? []).map(({ requestedReviewer }) => ({
+          login: requestedReviewer?.login,
+          isBot: requestedReviewer?.__typename === 'Bot',
+        })),
+        reviews: (pr.reviews?.nodes ?? []).map((review) => ({
+          authorLogin: review?.author?.login,
+          authorIsBot: review?.author?.__typename === 'Bot',
+          state: review?.state,
+          commitOid: review?.commit?.oid,
+          submittedAt: review?.submittedAt,
+        })),
+      };
+    },
+    async requestPullRequestReview({ prNumber, reviewerLogin }) {
+      await run('gh', [
+        'api',
+        '--method',
+        'POST',
+        `repos/${owner}/${repoName}/pulls/${prNumber}/requested_reviewers`,
+        '-f',
+        `reviewers[]=${reviewerLogin}`,
+      ]);
+    },
     async resolveReviewAuthorization({ issue, issueNumber, expectedHeadSha, acceptedReviewSha }) {
       const lifecycleEvidence = await resolveDirectoryEvidence({
         issue,
@@ -1351,6 +1485,13 @@ export async function verbDeliver(ctx, injected = {}) {
   if (result.status === 'action-required') {
     writeOutput(serializeProviderActionRequired(result.action));
     setExitCode(20);
+    return result;
+  }
+  if (result.status === 'manual-review-required') {
+    writeOutput(
+      `PROMPT_REQUIRED: manual-code-review #${issueNumber} pr=${result.prNumber} reviewer=${result.reviewerLogin} head=${result.expectedHeadSha}`
+    );
+    setExitCode(21);
     return result;
   }
   writeOutput(`AITM_DELIVERY_RESULT: ${canonicalRecordJson(result)}`);

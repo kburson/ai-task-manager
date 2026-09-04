@@ -111,7 +111,8 @@ function repoRoot() {
 // excluded material added. Raise by exactly those twelve entries, preserving
 // the existing eight-entry headroom; path exclusions remain unchanged.
 // #1500 adds the reviewed v2 enrollment, runtime-capability and command adapters.
-const ENTRY_CEILING = 771;
+// #1512 intentionally ships the manual PR-review policy module and shared rule.
+const ENTRY_CEILING = 773;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
