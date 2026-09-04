@@ -135,6 +135,69 @@ test('recovery-backed stale restart reuses the second link after a lost response
   );
 });
 
+test('recovery-backed stale restart resumes durable progress after the second link', async () => {
+  const fixture = recoveryBackedStaleFixture();
+  const common = {
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: 'reopened' },
+    restartStaleTransaction: true,
+    acceptedSha: RESTART_HEAD,
+    liveLabels: [],
+    terminalDisposition: null,
+    bindingReleaseStatus: 'conflict',
+    bindingOwnership: { authorized: true, disposition: 'own-post-close-claim' },
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'human', standing: true, source: 'test-evidence' },
+  };
+  const interrupted = await runClose({
+    ...common,
+    body: upsertDeliveredCloseTransaction(closeBody(), fixture.activeTransaction),
+    supersessionComments: [fixture.comment],
+    timingResult: { ok: false, queued: true, err: 'lost response' },
+  });
+  assert.equal(interrupted.exitCode, 1);
+  assert.equal(interrupted.calls.supersessionCommentCreates, 1);
+
+  const retryCases = [
+    { completedSteps: ['timing'], overrides: {} },
+    { completedSteps: ['timing', 'estimation'], overrides: {} },
+    {
+      completedSteps: TERMINAL_CLOSE_STEPS.slice(0, -1),
+      overrides: {
+        boardState: 'done',
+        closeSnapshot: { issueClosed: true, stateReason: 'completed' },
+        terminalDisposition: 'Delivered',
+      },
+    },
+  ];
+  for (const { completedSteps, overrides } of retryCases) {
+    const replacement = {
+      ...readDeliveredCloseTransactions(interrupted.body)[0],
+      completedSteps,
+    };
+    const retry = await runClose({
+      ...common,
+      body: upsertDeliveredCloseTransaction(interrupted.body, replacement),
+      supersessionComments: interrupted.supersessionComments,
+      ...overrides,
+    });
+    assert.equal(retry.exitCode, 0, completedSteps.join(','));
+    assert.equal(retry.calls.supersessionCommentCreates, 0, completedSteps.join(','));
+    assert.equal(
+      retry.supersessionComments.filter((comment) =>
+        comment.body.includes('aitm-delivered-close-supersession')
+      ).length,
+      1,
+      completedSteps.join(',')
+    );
+    assert.deepEqual(
+      readDeliveredCloseTransactions(retry.body)[0].completedSteps,
+      [...TERMINAL_CLOSE_STEPS],
+      completedSteps.join(',')
+    );
+  }
+});
+
 test('recovery-backed stale restart refuses contradictions before persistence', async () => {
   const fixture = recoveryBackedStaleFixture();
   const body = upsertDeliveredCloseTransaction(closeBody(), fixture.activeTransaction);
@@ -154,6 +217,15 @@ test('recovery-backed stale restart refuses contradictions before persistence', 
     ['plain open issue', { closeSnapshot: { issueClosed: false, stateReason: null } }],
     ['dirty worktree', { dirtyWorkspace: { dirty: true, total: 1, files: ['x'] } }],
     ['foreign binding', { bindingOwnership: { authorized: false, disposition: 'foreign-claim' } }],
+    [
+      'contradictory review authority',
+      {
+        body: upsertDeliveredCloseTransaction(closeBody(), {
+          ...fixture.activeTransaction,
+          reviewAuthority: 'human-gate',
+        }),
+      },
+    ],
     [
       'four completed steps',
       {

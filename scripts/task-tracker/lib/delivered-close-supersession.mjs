@@ -320,10 +320,16 @@ export function replaceStaleDeliveredCloseTransaction(body, authorization, recor
   const current = readDeliveredCloseTransactions(body);
   if (current.length !== 1) fail('stale-body');
   const transaction = replacementTransaction(authorization, record);
-  if (sameValue(current[0], transaction)) {
-    return deepFreeze({ status: 'already-replaced', body, transaction });
+  const observed = current[0];
+  const observedSteps = Array.isArray(observed.completedSteps) ? observed.completedSteps : null;
+  const validObservedPrefix =
+    observedSteps !== null &&
+    observedSteps.length <= TERMINAL_CLOSE_STEPS.length &&
+    observedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index]);
+  if (validObservedPrefix && sameValue({ ...observed, completedSteps: [] }, transaction)) {
+    return deepFreeze({ status: 'already-replaced', body, transaction: observed });
   }
-  if (!sameValue(current[0], authorization.oldTransaction)) fail('stale-body');
+  if (!sameValue(observed, authorization.oldTransaction)) fail('stale-body');
   return deepFreeze({
     status: 'replaced',
     body: upsertDeliveredCloseTransaction(body, transaction),

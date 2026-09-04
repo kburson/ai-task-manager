@@ -192,6 +192,17 @@ test('replaces only the exact stale body transaction and adopts exact lost-respo
   const adopted = replaceStaleDeliveredCloseTransaction(replaced.body, authorization, record);
   assert.equal(adopted.status, 'already-replaced');
   assert.equal(adopted.body, replaced.body);
+
+  const progressedTransaction = {
+    ...replaced.transaction,
+    completedSteps: ['timing', 'estimation'],
+  };
+  const progressedBody = upsertDeliveredCloseTransaction(replaced.body, progressedTransaction);
+  const resumed = replaceStaleDeliveredCloseTransaction(progressedBody, authorization, record);
+  assert.equal(resumed.status, 'already-replaced');
+  assert.equal(resumed.body, progressedBody);
+  assert.deepEqual(resumed.transaction.completedSteps, ['timing', 'estimation']);
+
   assert.throws(
     () => replaceStaleDeliveredCloseTransaction('body', authorization, record),
     /stale-body/
