@@ -1020,7 +1020,12 @@ async function flushCloseTimingOrThrow({ closeTarget, flushQueueFor }) {
 const ESTIMATION_FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
 
-export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
+export async function ensureCloseEstimationOutcome({
+  issueNumber,
+  body,
+  writer,
+  supersedeExisting = false,
+} = {}) {
   const readyForecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
   if (readyForecastRecordId !== null && frozenForecastRecordId === null) {
@@ -1039,12 +1044,27 @@ export async function ensureCloseEstimationOutcome({ issueNumber, body, writer }
     if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
     throw new Error('estimation-outcome-writer capability is required for a v1 forecast');
   }
-  const result = await ensure({ issueNumber: Number(issueNumber), forecastRecordId, body });
+  const result = await ensure({
+    issueNumber: Number(issueNumber),
+    forecastRecordId,
+    body,
+    supersedeExisting,
+  });
   if (forecastRecordId === null && result?.status === 'legacy-no-forecast') return result;
   if (!['written', 'existing'].includes(result?.status)) {
     throw new Error(`estimation outcome did not converge (status ${result?.status ?? 'missing'})`);
   }
   return result;
+}
+
+export function permitsReopenedOutcomeCorrection({ recoveryRecord, transaction } = {}) {
+  return (
+    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
+    transaction?.schema === 'aitm.delivered-close/v1' &&
+    recoveryRecord.issueNumber === transaction.issueNumber &&
+    recoveryRecord.replacementTransactionId === transaction.transactionId &&
+    recoveryRecord.newAcceptedSha === transaction.acceptedSha
+  );
 }
 
 export function resolveEstimationOutcomeProjectDir({
@@ -1800,6 +1820,7 @@ export async function verbClose(ctx) {
   // classified as delivered, dead, or unauthorized before any mutation.
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
+  let reopenedCloseRecoveryRecord = null;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -2059,6 +2080,7 @@ export async function verbClose(ctx) {
             boardState,
           });
           convergeBody = recovered.body;
+          reopenedCloseRecoveryRecord = recovered.record;
           Object.assign(decisionInput, {
             expectedAcceptedSha: recovered.transaction.acceptedSha,
             closeTransactions: [recovered.transaction],
@@ -3143,6 +3165,10 @@ export async function verbClose(ctx) {
         issueNumber: closeIssueNum,
         body: closeBody,
         writer: estimationOutcomeWriter,
+        supersedeExisting: permitsReopenedOutcomeCorrection({
+          recoveryRecord: reopenedCloseRecoveryRecord,
+          transaction: deliveredCloseTransaction,
+        }),
       });
     } catch (err) {
       console.error(

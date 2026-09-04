@@ -1068,7 +1068,7 @@ export function createEstimationOutcomeRuntime({
   };
 
   return {
-    async ensure({ issueNumber, forecastRecordId, body }) {
+    async ensure({ issueNumber, forecastRecordId, body, supersedeExisting = false }) {
       const records = await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber });
       const discoveredChildren = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(
         issueNumber
@@ -1142,6 +1142,7 @@ export function createEstimationOutcomeRuntime({
         issue: issueNumber,
         forecast: outcomeForecast,
         outcomePayload,
+        supersedeExisting,
         deps: {
           // Re-read after the claim is held. `records` above is preparation
           // evidence for building the payload, not safe creation authority.
@@ -1149,13 +1150,14 @@ export function createEstimationOutcomeRuntime({
             (await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber })).filter(
               (record) => record.envelope.recordType === 'estimation-outcome'
             ),
-          createOutcomeEnvelope: ({ issue, payload }) =>
+          createOutcomeEnvelope: ({ issue, payload, supersedes = null }) =>
             createAitmRecordEnvelope({
               recordType: 'estimation-outcome',
               repository: cfg.repo,
               issue,
               payload,
               actor: 'aitm/close',
+              supersedes,
             }),
           writeOutcome: ({ envelope }) => io.write({ envelope }),
           withLogicalRecordClaim: io.withLogicalRecordClaim,
