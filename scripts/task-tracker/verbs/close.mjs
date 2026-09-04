@@ -85,6 +85,7 @@ import {
   replaceStaleDeliveredCloseTransaction,
 } from '../lib/delivered-close-supersession.mjs';
 import {
+  authorizeRecoveryBackedDeliveredCloseRestart,
   authorizeReopenedCloseRestart,
   classifyRecoveryProgress,
   createReopenedCloseRecoveryRecord,
@@ -1057,13 +1058,29 @@ export async function ensureCloseEstimationOutcome({
   return result;
 }
 
-export function permitsReopenedOutcomeCorrection({ recoveryRecord, transaction } = {}) {
-  return (
+export function permitsReopenedOutcomeCorrection({
+  recoveryRecord,
+  supersessionRecord = null,
+  transaction,
+} = {}) {
+  const direct =
     recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
     transaction?.schema === 'aitm.delivered-close/v1' &&
     recoveryRecord.issueNumber === transaction.issueNumber &&
     recoveryRecord.replacementTransactionId === transaction.transactionId &&
-    recoveryRecord.newAcceptedSha === transaction.acceptedSha
+    recoveryRecord.newAcceptedSha === transaction.acceptedSha;
+  if (direct) return true;
+
+  return (
+    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
+    supersessionRecord?.schema === 'aitm.delivered-close-supersession/v1' &&
+    transaction?.schema === 'aitm.delivered-close/v1' &&
+    recoveryRecord.issueNumber === supersessionRecord.issueNumber &&
+    supersessionRecord.issueNumber === transaction.issueNumber &&
+    recoveryRecord.replacementTransactionId === supersessionRecord.oldTransactionId &&
+    recoveryRecord.newAcceptedSha === supersessionRecord.oldAcceptedSha &&
+    supersessionRecord.replacementTransactionId === transaction.transactionId &&
+    supersessionRecord.newAcceptedSha === transaction.acceptedSha
   );
 }
 
@@ -1821,6 +1838,7 @@ export async function verbClose(ctx) {
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
   let reopenedCloseRecoveryRecord = null;
+  let deliveredCloseSupersessionRecord = null;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -2157,10 +2175,8 @@ export async function verbClose(ctx) {
         await ensureDeliveryAuthorized();
         const comments = await supersessionDeps.listComments();
         let oldTransaction = activeTransaction;
-        if (
-          activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha &&
-          activeTransaction.completedSteps.length === 0
-        ) {
+        let recoveryBacking = null;
+        if (activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha) {
           const replacementEvidence = comments
             .map((comment) =>
               parseDeliveredCloseSupersessionComment(comment, {
@@ -2172,24 +2188,52 @@ export async function verbClose(ctx) {
               (evidence) =>
                 evidence?.record.replacementTransactionId === activeTransaction.transactionId
             );
-          if (replacementEvidence.length !== 1) {
+          if (replacementEvidence.length > 1) {
             throw new Error('delivered-close-supersession:replacement-evidence');
           }
-          const record = replacementEvidence[0].record;
-          if (
-            record.newAcceptedSha !== activeTransaction.acceptedSha ||
-            record.newReviewAuthority !== activeTransaction.reviewAuthority
-          ) {
-            throw new Error('delivered-close-supersession:replacement-evidence');
+          if (replacementEvidence.length === 1) {
+            const record = replacementEvidence[0].record;
+            const validActivePrefix =
+              activeTransaction.completedSteps.length <= TERMINAL_CLOSE_STEPS.length &&
+              activeTransaction.completedSteps.every(
+                (step, index) => step === TERMINAL_CLOSE_STEPS[index]
+              );
+            if (
+              record.newAcceptedSha !== activeTransaction.acceptedSha ||
+              record.newReviewAuthority !== activeTransaction.reviewAuthority ||
+              !validActivePrefix
+            ) {
+              throw new Error('delivered-close-supersession:replacement-evidence');
+            }
+            const reconstructedOld = {
+              schema: 'aitm.delivered-close/v1',
+              transactionId: record.oldTransactionId,
+              issueNumber: record.issueNumber,
+              acceptedSha: record.oldAcceptedSha,
+              reviewAuthority: record.newReviewAuthority,
+              completedSteps: [...record.completedSteps],
+            };
+            const candidateRecovery = findRecoveryBackedReplacement({
+              body: upsertDeliveredCloseTransaction(convergeBody, reconstructedOld),
+              comments,
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+            });
+            if (candidateRecovery.status === 'ambiguous') {
+              throw new Error('delivered-close-supersession:recovery-backing-ambiguous');
+            }
+            if (candidateRecovery.status === 'found') {
+              oldTransaction = {
+                ...reconstructedOld,
+                reviewAuthority: candidateRecovery.record.newReviewAuthority,
+              };
+              recoveryBacking = candidateRecovery;
+              reopenedCloseRecoveryRecord = candidateRecovery.record;
+              deliveredCloseSupersessionRecord = record;
+            } else if (activeTransaction.completedSteps.length === 0) {
+              oldTransaction = reconstructedOld;
+            }
           }
-          oldTransaction = {
-            schema: 'aitm.delivered-close/v1',
-            transactionId: record.oldTransactionId,
-            issueNumber: record.issueNumber,
-            acceptedSha: record.oldAcceptedSha,
-            reviewAuthority: record.newReviewAuthority,
-            completedSteps: [...record.completedSteps],
-          };
         }
         const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
         const dirty = await inspectDirty({ cwd });
@@ -2201,24 +2245,84 @@ export async function verbClose(ctx) {
           closeLabelsReader({ pexec, cfg, issueNum: closeIssueNum }),
           bindingReleaseInspector({ projectDir, issue: closeTarget }),
         ]);
-        const authorization = authorizeDeliveredCloseRestart({
+        recoveryBacking ??= findRecoveryBackedReplacement({
+          body: upsertDeliveredCloseTransaction(convergeBody, oldTransaction),
+          comments,
           repository: cfg.repo,
           issueNumber: Number(closeIssueNum),
-          oldTransaction,
-          newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
-          newReviewAuthority: terminalReviewAuthority(),
-          live: {
-            boardState,
-            issueClosed: closeSnapshot.issueClosed,
-            terminalDisposition: terminalDisposition || null,
-            labels,
-            bindingStatus: binding?.status,
-          },
         });
+        if (recoveryBacking.status === 'ambiguous') {
+          throw new Error('delivered-close-supersession:recovery-backing-ambiguous');
+        }
+
+        let authorization;
+        if (recoveryBacking.status === 'found') {
+          if (deliveredCloseSupersessionRecord) {
+            if (
+              deliveredCloseSupersessionRecord.newReviewAuthority !== 'human-gate' ||
+              !permitsReopenedOutcomeCorrection({
+                recoveryRecord: recoveryBacking.record,
+                supersessionRecord: deliveredCloseSupersessionRecord,
+                transaction: activeTransaction,
+              })
+            ) {
+              throw new Error('delivered-close-supersession:recovery-chain');
+            }
+            authorization = {
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+              oldTransaction,
+              newAcceptedSha: deliveredCloseSupersessionRecord.newAcceptedSha,
+              newReviewAuthority: deliveredCloseSupersessionRecord.newReviewAuthority,
+            };
+          } else {
+            const bindingOwnership = (
+              ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership
+            )({
+              projectDir,
+              issue: closeTarget,
+              sessionId: (ctx.sessionId ?? currentSessionId)(),
+              recordedWorktreePath: cwd,
+            });
+            authorization = authorizeRecoveryBackedDeliveredCloseRestart({
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+              recoveryRecord: recoveryBacking.record,
+              activeTransaction: oldTransaction,
+              newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+              newReviewAuthority: terminalReviewAuthority(),
+              live: {
+                boardState,
+                issueClosed: closeSnapshot.issueClosed,
+                stateReason: closeSnapshot.stateReason ?? null,
+                terminalDisposition: terminalDisposition || null,
+                dirty: dirty.dirty,
+                bindingOwnership,
+              },
+            });
+          }
+          reopenedCloseRecoveryRecord = recoveryBacking.record;
+        } else {
+          authorization = authorizeDeliveredCloseRestart({
+            repository: cfg.repo,
+            issueNumber: Number(closeIssueNum),
+            oldTransaction,
+            newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+            newReviewAuthority: terminalReviewAuthority(),
+            live: {
+              boardState,
+              issueClosed: closeSnapshot.issueClosed,
+              terminalDisposition: terminalDisposition || null,
+              labels,
+              bindingStatus: binding?.status,
+            },
+          });
+        }
         const evidence = await ensureDeliveredCloseSupersession({
           authorization,
           deps: { ...supersessionDeps, listComments: async () => comments },
         });
+        deliveredCloseSupersessionRecord = evidence.record;
         if (typeof mutateBody !== 'function') {
           throw new Error('delivered-close-supersession:body-write');
         }
@@ -3167,6 +3271,7 @@ export async function verbClose(ctx) {
         writer: estimationOutcomeWriter,
         supersedeExisting: permitsReopenedOutcomeCorrection({
           recoveryRecord: reopenedCloseRecoveryRecord,
+          supersessionRecord: deliveredCloseSupersessionRecord,
           transaction: deliveredCloseTransaction,
         }),
       });
@@ -3431,7 +3536,9 @@ export async function verbClose(ctx) {
     let bindingAuthority = { authorized: bindingRelease?.status !== 'conflict', reason: null };
     if (bindingRelease?.status === 'conflict') {
       let replacement = null;
-      if (!SKIP_NETWORK && closeIssueNum) {
+      if (reopenedCloseRecoveryRecord) {
+        replacement = { status: 'found', record: reopenedCloseRecoveryRecord };
+      } else if (!SKIP_NETWORK && closeIssueNum) {
         try {
           const liveBody = await (
             ctx.readReopenedCloseBody ??
