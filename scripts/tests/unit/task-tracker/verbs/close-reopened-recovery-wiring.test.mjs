@@ -18,7 +18,11 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { TERMINAL_CLOSE_STEPS } from '../../../../task-tracker/lib/close-convergence.mjs';
+import {
+  readDeliveredCloseTransactions,
+  TERMINAL_CLOSE_STEPS,
+  upsertDeliveredCloseTransaction,
+} from '../../../../task-tracker/lib/close-convergence.mjs';
 import { normalizeIssueCloseSnapshot } from '../../../../task-tracker/lib/closed-issue-convergence.mjs';
 import {
   buildDeliveryIntent,
@@ -31,6 +35,7 @@ import {
   permitsReopenedOutcomeCorrection,
   runReopenedCloseRecovery,
 } from '../../../../task-tracker/verbs/close.mjs';
+import { closeBody, runClose } from '../../../helpers/close-convergence-wiring-helpers.mjs';
 
 const REPO = 'kburson/ai-task-manager';
 const ISSUE = 1490;
@@ -265,6 +270,68 @@ test('#1490: durable evidence is written BEFORE the body is mutated', async () =
   assert.deepEqual(calls.order, ['comment', 'body']);
   assert.equal(calls.createdComments.length, 1);
   assert.match(calls.createdComments[0], /aitm-reopened-close-recovery id="close-reopened:/);
+});
+
+test('#1490: Delivered survives recovery mint, timing checkpoint, and stale retry', async () => {
+  const seeded = harness({
+    convergeBody: upsertDeliveredCloseTransaction(closeBody(), oldTransaction()),
+  });
+  const recovered = await runReopenedCloseRecovery(seeded.args);
+  const recoveryComment = {
+    id: 900,
+    body: seeded.calls.createdComments[0],
+    user: { login: 'kburson' },
+    created_at: NOW,
+    updated_at: NOW,
+    issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}`,
+  };
+
+  const checkpointed = await runClose({
+    issueNumber: ISSUE,
+    repository: REPO,
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: 'reopened' },
+    body: recovered.body,
+    acceptedSha: NEW_SHA,
+    liveLabels: [],
+    terminalDisposition: 'Delivered',
+    bindingReleaseStatus: 'conflict',
+    bindingOwnership: { authorized: true, disposition: 'own-post-close-claim' },
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'human', standing: true, source: 'test-evidence' },
+    createEstimationOutcomeWriter: () => ({
+      ensure: async () => {
+        throw new Error('intentional interruption after timing');
+      },
+    }),
+  });
+
+  assert.equal(checkpointed.exitCode, 1);
+  assert.deepEqual(readDeliveredCloseTransactions(checkpointed.body)[0].completedSteps, ['timing']);
+
+  const retried = await runClose({
+    issueNumber: ISSUE,
+    repository: REPO,
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: 'reopened' },
+    body: checkpointed.body,
+    restartStaleTransaction: true,
+    supersessionComments: [recoveryComment],
+    acceptedSha: NEXT_SHA,
+    liveLabels: [],
+    terminalDisposition: 'Delivered',
+    bindingReleaseStatus: 'conflict',
+    bindingOwnership: { authorized: true, disposition: 'own-post-close-claim' },
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'human', standing: true, source: 'test-evidence' },
+  });
+
+  assert.equal(retried.exitCode, 0);
+  assert.equal(retried.calls.supersessionCommentCreates, 1);
+  assert.equal(readDeliveredCloseTransactions(retried.body)[0].acceptedSha, NEXT_SHA);
+  assert.deepEqual(readDeliveredCloseTransactions(retried.body)[0].completedSteps, [
+    ...TERMINAL_CLOSE_STEPS,
+  ]);
 });
 
 test('#1490: durable recovery authorizes an outcome correction only for its replacement transaction', async () => {
