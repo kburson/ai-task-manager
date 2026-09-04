@@ -1168,7 +1168,7 @@ export async function runReopenedCloseRecovery({
   // `activeTransaction.completedSteps.length === 0`, which is only true at the
   // instant the replacement is minted. Once the saga marked even one step, a retry
   // fell into the mint branch and treated the REPLACEMENT as though it were the
-  // completed original — so partial progress was unresumable by construction.
+  // completed original — so partial progress could not resume by construction.
   //
   // The identity lookup is self-discriminating and needs no step-count condition:
   // on a fresh mint no durable record names the (old, completed) active

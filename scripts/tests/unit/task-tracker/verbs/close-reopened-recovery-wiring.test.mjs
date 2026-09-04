@@ -448,7 +448,7 @@ test('#1490: the rendered comment round-trips through the strict codec', () => {
 //   (a) fell into the MINT branch and treated the replacement as the completed
 //       original, and
 //   (b) was refused by a precondition the transaction had legitimately passed.
-// Partial progress was therefore unresumable by construction — the exact
+// Partial progress therefore could not resume by construction — the exact
 // interruption case the recovery exists to survive.
 
 // Mint once through the real path, then reuse the durable comment it wrote. This
