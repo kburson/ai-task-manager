@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-// @story #89
-// #89 — session-scoped auto-mode toggles + per-parent prompting.
+// @story #89 #1512
+// Session-scoped auto-mode toggles with Full-Auto defaults.
 //
-// 8 unit cases covering loadSession/saveSession, applyChoice (and `reset`),
-// gate resolution precedence, bothGatesExplicit, sweepOrphans, and the
-// concurrent-session isolation guarantee. The filesystem is faked via a
-// minimal in-memory shim so the tests never touch real disk.
+// Covers load/save, additive choices, Full-Auto defaults, legacy hydration,
+// prompt retirement, precedence, orphan cleanup, and concurrent isolation.
 
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import path from 'node:path';
 
@@ -18,7 +17,9 @@ import {
   sweepOrphans,
   sessionFilePath,
 } from '../../../../task-tracker/lib/session-store.mjs';
-import { resolveGate, bothGatesExplicit } from '../../../../task-tracker/lib/gate-resolve.mjs';
+import { DEFAULTS } from '../../../../task-tracker/config.mjs';
+import { resolveGate } from '../../../../task-tracker/lib/gate-resolve.mjs';
+import { reviewNeedsHumanApproval } from '../../../../task-tracker/verbs/review.mjs';
 
 // In-memory fs shim: subset of node:fs the store needs.
 function memFs(initial = {}) {
@@ -50,26 +51,34 @@ function memFs(initial = {}) {
   };
 }
 
-// Case 1 — resolveGate honors project-config when both keys explicit; no override needed.
-test('case 1: project config with BOTH gate keys explicit → resolveGate reads from project', () => {
+test('new sessions and project defaults are Full-Auto for all three review boundaries', () => {
+  assert.equal(DEFAULTS.gateAnalysisToDevelopment, false);
+  assert.equal(DEFAULTS.gatePullRequestReview, false);
+  assert.equal(DEFAULTS.gateReviewToDone, false);
+  assert.equal(resolveGate('analysisToDevelopment', { projectConfig: {} }), false);
+  assert.equal(resolveGate('pullRequestReview', { projectConfig: {} }), false);
+  assert.equal(resolveGate('reviewToDone', { projectConfig: {} }), false);
+});
+
+test('explicit project policy remains authoritative over Full-Auto defaults', () => {
+  const proj = {
+    gateAnalysisToDevelopment: true,
+    gatePullRequestReview: true,
+    gateReviewToDone: true,
+  };
+  assert.equal(resolveGate('analysisToDevelopment', { projectConfig: proj }), true);
+  assert.equal(resolveGate('pullRequestReview', { projectConfig: proj }), true);
+  assert.equal(resolveGate('reviewToDone', { projectConfig: proj }), true);
+});
+
+test('legacy two-gate project config keeps explicit values and defaults PR review to auto', () => {
   const proj = { gateAnalysisToDevelopment: false, gateReviewToDone: true };
   assert.equal(resolveGate('analysisToDevelopment', { projectConfig: proj }), false);
+  assert.equal(resolveGate('pullRequestReview', { projectConfig: proj }), false);
   assert.equal(resolveGate('reviewToDone', { projectConfig: proj }), true);
-  assert.equal(bothGatesExplicit(proj), true);
 });
 
-// Case 2 — missing key(s) leaves bothGatesExplicit=false → caller should prompt.
-test('case 2: project config missing one or both gate keys → bothGatesExplicit=false (prompt fires)', () => {
-  assert.equal(bothGatesExplicit({}), false);
-  assert.equal(bothGatesExplicit({ gateAnalysisToDevelopment: true }), false);
-  assert.equal(bothGatesExplicit({ gateReviewToDone: false }), false);
-  // Resolution still falls back to default true when nothing set.
-  assert.equal(resolveGate('analysisToDevelopment', { projectConfig: {} }), true);
-  assert.equal(resolveGate('reviewToDone', { projectConfig: {} }), true);
-});
-
-// Case 3 — same parent on second bind → no re-prompt; saved lastPromptedParent guards.
-test('case 3: same parent re-bind reuses prior choice without prompting', () => {
+test('legacy parent metadata survives session round trips without changing gate values', () => {
   const fs = memFs();
   const dir = '.claude';
   let state = loadSession('sid-A', { fs, dir });
@@ -78,24 +87,21 @@ test('case 3: same parent re-bind reuses prior choice without prompting', () => 
   const reloaded = loadSession('sid-A', { fs, dir });
   assert.equal(reloaded.lastPromptedParent, '61');
   assert.equal(reloaded.gates.analysisToDevelopment, false);
+  assert.equal(reloaded.gates.pullRequestReview, false);
   assert.equal(reloaded.gates.reviewToDone, false);
-  // The trigger logic in verbSwitch only re-prompts when lastPromptedParent !== rootKey,
-  // so binding under the same parent keeps the saved gates.
 });
 
-// Case 4 — different parent → prompt should fire (lastPromptedParent diverges).
-test('case 4: different parent on subsequent bind triggers re-prompt', () => {
-  const fs = memFs();
-  const dir = '.claude';
-  let state = loadSession('sid-A', { fs, dir });
-  state = applyChoice(state, 'plan', { parent: '61' });
-  saveSession(state, { fs, dir });
-  const reloaded = loadSession('sid-A', { fs, dir });
-  assert.notEqual(reloaded.lastPromptedParent, '99'); // prompt fires for #99
+test('binding source contains no legacy first-bind auto-mode prompt', () => {
+  const source = readFileSync(
+    new URL('../../../../task-tracker/verbs/switch.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.doesNotMatch(source, /PROMPT_REQUIRED: auto-mode/);
+  assert.doesNotMatch(source, /bothGatesExplicit/);
 });
 
 // Case 5 — /task auto reset clears override AND lastPromptedParent.
-test('case 5: applyChoice("reset") clears gates and lastPromptedParent', () => {
+test('reset clears all three overrides and returns to Full-Auto defaults', () => {
   const fs = memFs();
   const dir = '.claude';
   let state = loadSession('sid-A', { fs, dir });
@@ -106,13 +112,15 @@ test('case 5: applyChoice("reset") clears gates and lastPromptedParent', () => {
   saveSession(reset, { fs, dir });
   const reloaded = loadSession('sid-A', { fs, dir });
   assert.equal(reloaded.gates.analysisToDevelopment, null);
+  assert.equal(reloaded.gates.pullRequestReview, null);
   assert.equal(reloaded.gates.reviewToDone, null);
   assert.equal(reloaded.lastPromptedParent, null);
   // After reset, resolveGate falls back to project / default.
   assert.equal(
     resolveGate('analysisToDevelopment', { session: reloaded, projectConfig: {} }),
-    true
+    false
   );
+  assert.equal(resolveGate('pullRequestReview', { session: reloaded, projectConfig: {} }), false);
 });
 
 // Case 6 — concurrent sessions: separate IDs each get their own file; no cross-read.
@@ -152,16 +160,50 @@ test('case 7: sweepOrphans deletes files older than maxAgeMs and leaves younger 
   assert.equal(fs.existsSync(path.join(dir, 'unrelated.json')), true);
 });
 
-// Case 8 — resumed-after-TTL session: no file present → loadSession returns fresh shell,
-// which means bothGatesExplicit(project)=false → prompt path fires.
-test('case 8: no session file present yields fresh state and unprompted (prompt path)', () => {
+test('fresh and legacy session files hydrate the third nullable override', () => {
   const fs = memFs();
   const state = loadSession('sid-fresh', { fs, dir: '.claude' });
   assert.equal(state.lastPromptedParent, null);
   assert.equal(state.gates.analysisToDevelopment, null);
+  assert.equal(state.gates.pullRequestReview, null);
   assert.equal(state.gates.reviewToDone, null);
-  // resolveGate falls back to default true when both session and project are empty.
-  assert.equal(resolveGate('analysisToDevelopment', { session: state, projectConfig: {} }), true);
+  assert.equal(resolveGate('analysisToDevelopment', { session: state, projectConfig: {} }), false);
+
+  const legacyPath = sessionFilePath('sid-legacy', '.claude');
+  fs._files.set(legacyPath, {
+    content: JSON.stringify({
+      sessionId: 'sid-legacy',
+      gates: { analysisToDevelopment: true, reviewToDone: false },
+    }),
+    mtimeMs: Date.now(),
+  });
+  const legacy = loadSession('sid-legacy', { fs, dir: '.claude' });
+  assert.equal(legacy.gates.analysisToDevelopment, true);
+  assert.equal(legacy.gates.pullRequestReview, null);
+  assert.equal(legacy.gates.reviewToDone, false);
+});
+
+test('manual and auto choices update one gate additively', () => {
+  let state = { gates: {}, lastPromptedParent: null };
+  state = applyChoice(state, 'manual-plan');
+  assert.deepEqual(state.gates, {
+    analysisToDevelopment: true,
+    pullRequestReview: null,
+    reviewToDone: null,
+  });
+  state = applyChoice(state, 'manual-code');
+  state = applyChoice(state, 'manual-task');
+  assert.deepEqual(state.gates, {
+    analysisToDevelopment: true,
+    pullRequestReview: true,
+    reviewToDone: true,
+  });
+  state = applyChoice(state, 'auto-code');
+  assert.deepEqual(state.gates, {
+    analysisToDevelopment: true,
+    pullRequestReview: false,
+    reviewToDone: true,
+  });
 });
 
 // Bonus — session override beats project config (precedence: session > project > default).
@@ -169,10 +211,35 @@ test('precedence: session override takes precedence over project config', () => 
   const session = {
     sessionId: 'x',
     lastPromptedParent: null,
-    gates: { analysisToDevelopment: true, reviewToDone: false },
+    gates: { analysisToDevelopment: true, pullRequestReview: true, reviewToDone: false },
     updatedAt: '',
   };
-  const proj = { gateAnalysisToDevelopment: false, gateReviewToDone: true };
+  const proj = {
+    gateAnalysisToDevelopment: false,
+    gatePullRequestReview: false,
+    gateReviewToDone: true,
+  };
   assert.equal(resolveGate('analysisToDevelopment', { session, projectConfig: proj }), true);
+  assert.equal(resolveGate('pullRequestReview', { session, projectConfig: proj }), true);
   assert.equal(resolveGate('reviewToDone', { session, projectConfig: proj }), false);
+});
+
+test('Review handoff honors the session final-task override over project policy', () => {
+  const projectConfig = { gateReviewToDone: true };
+  assert.equal(
+    reviewNeedsHumanApproval({
+      cfg: projectConfig,
+      env: {},
+      session: { gates: { reviewToDone: false } },
+    }),
+    false
+  );
+  assert.equal(
+    reviewNeedsHumanApproval({
+      cfg: { gateReviewToDone: false },
+      env: {},
+      session: { gates: { reviewToDone: true } },
+    }),
+    true
+  );
 });

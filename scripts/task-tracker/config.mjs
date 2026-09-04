@@ -66,10 +66,13 @@ export const DEFAULTS = {
   reviewPauseThresholdMin: 5,
   recordWallClock: true,
   pickupDirective: true,
-  // Human-gate flags (true = human required; false = full-auto bypass).
-  // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
-  gateAnalysisToDevelopment: true,
-  gateReviewToDone: true,
+  // Human-gate flags (true = human required; false = Full-Auto).
+  // #1512 — Full-Auto is the default; operators opt into each manual boundary.
+  gateAnalysisToDevelopment: false,
+  gatePullRequestReview: false,
+  gateReviewToDone: false,
+  // Human requested for manual PR code review. `@me` resolves through GitHub.
+  manualCodeReviewer: '@me',
   // #1216 — R4P→Plan local WIP budget: at most one active child per epic.
   // Default true preserves sequential execution. Keep enabled until isolated
   // cloud verification is an explicit, proven parallel prerequisite.
@@ -159,7 +162,9 @@ export const TYPES = {
   recordWallClock: 'boolean',
   pickupDirective: 'boolean',
   gateAnalysisToDevelopment: 'boolean',
+  gatePullRequestReview: 'boolean',
   gateReviewToDone: 'boolean',
+  manualCodeReviewer: 'string',
   gatePlanRefineWip: 'boolean',
   lifecycleCheckboxesRequired: 'boolean',
   directMoveStateAllowed: 'boolean',
@@ -405,7 +410,9 @@ const USER_KEYS = [
   'hookNetworkTimeoutMs',
   'pickupDirective',
   'gateAnalysisToDevelopment',
+  'gatePullRequestReview',
   'gateReviewToDone',
+  'manualCodeReviewer',
   'gatePlanRefineWip',
   'lifecycleCheckboxesRequired',
   'directMoveStateAllowed',

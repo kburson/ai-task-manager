@@ -17,9 +17,6 @@ import {
   countWords,
   aiAppName,
 } from '../word-counter.mjs';
-import { loadSession } from '../lib/session-store.mjs';
-import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
-import { rawProjectConfig } from '../config.mjs';
 import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 import {
@@ -40,7 +37,6 @@ export async function verbSwitch(ctx, target) {
     safePostTiming,
     flushActiveToGH,
     runLogIssueTime,
-    fetchParentIssue,
     nowIso,
   } = ctx;
   if (!/^#\d+$/.test(target)) {
@@ -268,25 +264,8 @@ export async function verbSwitch(ctx, target) {
       }
     }
 
-    try {
-      const rawCfg = rawProjectConfig();
-      if (!bothGatesExplicit(rawCfg)) {
-        const sid2 = currentSessionId();
-        if (sid2) {
-          const session = loadSession(sid2);
-          const issueNumOnly = target.replace(/^#/, '');
-          const parentNum = await fetchParentIssue(issueNumOnly);
-          const rootKey = parentNum != null ? String(parentNum) : String(issueNumOnly);
-          if (session.lastPromptedParent !== rootKey) {
-            console.log(`PROMPT_REQUIRED: auto-mode #${rootKey}`);
-            const { saveSession } = await import('../lib/session-store.mjs');
-            saveSession({ ...session, lastPromptedParent: rootKey });
-          }
-        }
-      }
-    } catch {
-      /* best-effort: failure must not abort the primary operation */
-    }
+    // #1512 — missing gate config now has a deterministic Full-Auto default,
+    // so binding never pauses to ask for an auto-mode selection.
     if (ctx.verb !== 'start') await ctx.resumeReviewActionsAfterBind?.(target, 'rebind');
   } catch (error) {
     const recoveryErrors = [];

@@ -63,6 +63,9 @@ Commands`, and the never-promote-untracked-work rule all live there. Loads JIT
   (board `Estimate` in hours, timing fields in minutes — normalize before any
   comparison), the Full-Auto approve footnote, and the Review-Notes → Drivers
   flow live there. Loads JIT on `/task review`.
+- **Full-Auto and manual review phrases** (`full-auto`) →
+  `rules/full-auto.md`. Load it when the user names Full-Auto, manual plan
+  review, manual code review, or manual task review.
 - **State movement** (`state-movement`) → `rules/state-walk.md`.
 - **Project preferences** (`project-preferences`) →
   `rules/preferences.md`. Read

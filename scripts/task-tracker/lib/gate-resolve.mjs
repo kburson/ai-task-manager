@@ -1,13 +1,15 @@
-// Resolve a gate boolean by precedence: session override > project config > default true.
-// (#89) — used by approve.mjs (analysisToDevelopment) and close path (reviewToDone).
+// Resolve a gate boolean by precedence: session override > project config >
+// Full-Auto default. (#89/#1512)
 
 const DEFAULTS = {
-  analysisToDevelopment: true,
-  reviewToDone: true,
+  analysisToDevelopment: false,
+  pullRequestReview: false,
+  reviewToDone: false,
 };
 
 const PROJECT_KEY = {
   analysisToDevelopment: 'gateAnalysisToDevelopment',
+  pullRequestReview: 'gatePullRequestReview',
   reviewToDone: 'gateReviewToDone',
 };
 
@@ -18,7 +20,7 @@ export function resolveGate(name, { session = null, projectConfig = {} } = {}) {
   if (projKey && Object.prototype.hasOwnProperty.call(projectConfig, projKey)) {
     return Boolean(projectConfig[projKey]);
   }
-  return DEFAULTS[name] ?? true;
+  return DEFAULTS[name] ?? false;
 }
 
 function currentEvidence(value, acceptedHeadSha) {
@@ -63,9 +65,8 @@ export function resolveReviewAuthorization({
   return Object.freeze({ mode: 'missing', standing: false, source: 'none' });
 }
 
-// Detects whether BOTH project-config gate keys are explicitly present in raw
-// project JSON. Used by the prompt trigger: when both are set the user has
-// already declared a policy and the prompt is skipped.
+// Compatibility export for callers that still inspect the two original keys.
+// Binding no longer prompts when keys are absent; Full-Auto is deterministic.
 export function bothGatesExplicit(rawProjectConfig = {}) {
   return (
     Object.prototype.hasOwnProperty.call(rawProjectConfig, PROJECT_KEY.analysisToDevelopment) &&

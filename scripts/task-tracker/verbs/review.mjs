@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pexec as reviewPexec } from '../../gh/lib/gh-client.mjs';
 
 import { loadState, saveState, pauseTimingKeepBinding, stateFullWordMarker } from '../state.mjs';
+import { currentSessionId } from '../word-counter.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
@@ -62,6 +63,8 @@ import {
 } from '../lib/verification-receipt.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import { resolveGate } from '../lib/gate-resolve.mjs';
+import { loadSession } from '../lib/session-store.mjs';
 import {
   hasAcceptedTestEvidence,
   resolveLifecycleGateEvidence,
@@ -1611,7 +1614,15 @@ export async function verbReview(ctx) {
     // called from the verb path.
     await runLogIssueTime(target);
     console.log(`✓ ${target} moved to Review — all verification passed.`);
-    if (reviewNeedsHumanApproval({ cfg, env: ctx.env ?? process.env })) {
+    const reviewSession =
+      ctx.session ?? (ctx.loadSession || loadSession)((ctx.currentSessionId || currentSessionId)());
+    if (
+      reviewNeedsHumanApproval({
+        cfg,
+        env: ctx.env ?? process.env,
+        session: reviewSession,
+      })
+    ) {
       const liveState = loadState(statePath);
       const hadActiveSession = hasAgentTiming || liveState.active === target;
       saveState(pauseTimingKeepBinding(liveState, target), statePath);
@@ -1635,6 +1646,7 @@ export async function verbReview(ctx) {
   }
 }
 
-export function reviewNeedsHumanApproval({ cfg = {}, env = process.env } = {}) {
-  return env?.TT_FULL_AUTO !== '1' && cfg?.gateReviewToDone !== false;
+export function reviewNeedsHumanApproval({ cfg = {}, env = process.env, session = null } = {}) {
+  if (env?.TT_FULL_AUTO === '1') return false;
+  return resolveGate('reviewToDone', { session, projectConfig: cfg });
 }

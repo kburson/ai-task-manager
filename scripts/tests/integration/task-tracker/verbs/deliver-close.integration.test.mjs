@@ -138,7 +138,9 @@ test('A to B reused-branch delivery closes historical A through production seams
     },
     { providerActions: 2, intents: 2, receipts: 2 }
   );
-  assert.equal(harness.effects.policyReads, 8);
+  // #1512: each delivery resolves both final-task authorization and the
+  // independent PR-code review gate from session/project policy.
+  assert.equal(harness.effects.policyReads, 16);
 
   const gateInput = await harness.closeGateInput(1381);
   assert.equal(gateInput.acceptedSha, SHA_A);

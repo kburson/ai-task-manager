@@ -239,7 +239,19 @@ Once installed, Claude will use `ref_search_documentation` and `ref_read_url` au
 
 ## Task-tracker settings (`.ai-task-manager/task-tracker.json`)
 
-A few keys gate state transitions. The defaults are safe; flip them off only with intent.
+A few keys gate review boundaries. Full-Auto is the default; turn on only the manual boundaries the team wants.
+
+### Manual review boundaries (defaults `false`)
+
+`gateAnalysisToDevelopment`, `gatePullRequestReview`, and `gateReviewToDone`
+control manual plan review, manual PR code review, and manual final task review,
+respectively. Their built-in defaults are all `false`. Session overrides have
+precedence over project values.
+
+`manualCodeReviewer` selects the eligible human GitHub reviewer for manual code
+review and defaults to `@me`, which resolves to the authenticated GitHub user.
+AITM requests that reviewer only after required CI is green, and requires an
+approval for the exact accepted head SHA before emitting merge authority.
 
 ### `lifecycleCheckboxesRequired` (default `true`)
 

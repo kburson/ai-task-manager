@@ -382,7 +382,7 @@ test('happy tail: approval marker present → emitted, Closed', async () => {
   assert.match(r.stdout, /Closed #5/);
   assert.ok(rows.length >= 2);
 });
-test('happy tail: no approval marker → review:approved suppressed', async () => {
+test('happy tail: Full-Auto default records review approval without a prior marker', async () => {
   const rows = [];
   const r = await run({
     over: {
@@ -391,7 +391,7 @@ test('happy tail: no approval marker → review:approved suppressed', async () =
     },
   });
   assert.match(r.stdout, /Closed #5/);
-  assert.equal(rows.filter((row) => /review:approved/.test(row)).length, 0);
+  assert.equal(rows.filter((row) => /review:approved/.test(row)).length, 1);
 });
 test('happy-tail candidate refuses close when terminal timing is only queued', async () => {
   const r = await run({

@@ -66,6 +66,7 @@ function writeConfig(sandbox) {
         kanbanOptionTest: 'OPT_validate',
         kanbanOptionReview: OPT_REVIEW,
         kanbanOptionDone: 'OPT_done',
+        gateReviewToDone: true,
         preferences: { gateAssigneeMatch: false },
       },
       null,

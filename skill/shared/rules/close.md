@@ -42,7 +42,7 @@ If `/task close` exits 3, unchecked items exist. The CLI prints them to stderr. 
 
 ## Review-approval gate (exit 7 / 8)
 
-When `gateReviewToDone=true` (default), `/task close` refuses unless the body carries `<!-- aitm-review-approved: <ts> -->`:
+When `gateReviewToDone=true` (an explicit manual-task override), `/task close` refuses unless the body carries `<!-- aitm-review-approved: <ts> -->`:
 
 - **Exit 7** — approval marker missing. Run `/task approve #N` first (only valid while the issue is in Review, and only after explicit human approval).
 - **Exit 8** — `--answer yes` passed in an attempt to satisfy the gate. The flag does NOT satisfy this gate; it satisfies only the dirty-workspace gate.

@@ -36,13 +36,13 @@ These rules apply to every verb. Skipping any is a process failure.
 npx aitm <verb> [args...]
 ```
 
-Print stdout verbatim. On non-zero exit, print stderr and surface the error. Exit code 3 from `/task review` or `/task close` means unchecked items (`rules/review.md` / `rules/close.md`).
+Print stdout verbatim and surface non-zero stderr. Exit 3 from review or close means unchecked items; see their rules.
 
 The post-bind metadata fetch (`gh issue view`), reopen-if-closed, and Pickup-Directive follow-up for `/task #N` / `/task resume #N` live in `rules/bind.md`.
 
 ## Verb → rule-file routing
 
-Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-skill-loaded:rules/<name>:<version>` is already in context, skip the read.
+Load a rule JIT unless its versioned sentinel is already live.
 
 <!-- prettier-ignore -->
 | Verb / situation                                                         | Rule file                                                                 |
@@ -59,6 +59,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | `/task config init`                                                      | `rules/config-init.md`                                                    |
 | Parallel fan-out (≥2 candidate children, any worktree dispatch)          | `rules/parallel.md`                                                       |
 | Session start (preferences detail beyond key names)                      | `rules/preferences.md`                                                    |
+| `Full-Auto`, `manual plan review`, `manual code review`, `manual task review` | `rules/full-auto.md`                                                   |
 | First commit in session, commit-trail troubleshooting                    | `rules/commit-trail.md`                                                   |
 | Hook-output diagnosis (rare)                                             | `rules/hooks.md`                                                          |
 | `/task plan-approve`, `/task approve`, `/task reject`                    | `rules/state-walk.md` (gate verbs; covered there)                         |
@@ -66,9 +67,9 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | `/task block`, `/task unblock`, spawning a defect mid-task               | `rules/block.md`                                                          |
 | Skill script blocks you (hook `block`, or `aitm-defect-hint:` on stderr) | `rules/report-on-block.md`                                                |
 
-Verbs not listed (`/task`, `/task discover`, `/task plan`, `/task resume`, `/task pause`, `/task update`, `/task log`, `/task migrate`, `/task check`, `/task fleet`, `/task occupancy`, `/task config`) need no Tier-2 file — invoke the CLI and print output.
+Unlisted verbs need no Tier-2 file; invoke the CLI and print output.
 
-> `/task plan #N` is the Ready for Planning → Plan JIT-planning entry verb — refuses on any other current state. `/task discover` is the separate backlog-item-generation / pre-issue ideation bucket. The two are not interchangeable; the historical `plan → discover` deprecation alias was removed in #299.
+> `/task plan #N` enters Plan from Ready for Planning. `/task discover` is pre-issue ideation; they are not interchangeable (#299).
 
 ## gh issue command policy (bash-guard)
 

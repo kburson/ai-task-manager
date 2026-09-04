@@ -45,6 +45,7 @@ export function makeHarness(options = {}) {
     listPullRequests: 0,
     fetchPullRequest: 0,
     fetchRequiredChecks: 0,
+    requestPullRequestReview: 0,
     fetchOriginTrunk: 0,
     isAncestor: 0,
     squashParentAncestry: 0,
@@ -105,6 +106,10 @@ export function makeHarness(options = {}) {
     reviewAuthorization:
       options.reviewAuthorization ??
       Object.freeze({ mode: 'full-auto', standing: true, source: 'test' }),
+    manualCodeReview: options.manualCodeReview ?? false,
+    reviewerLogin: options.reviewerLogin ?? 'kburson',
+    reviewRequests: structuredClone(options.reviewRequests ?? []),
+    reviews: structuredClone(options.reviews ?? []),
   };
   let intentIdIndex = 0;
 
@@ -165,6 +170,9 @@ export function makeHarness(options = {}) {
           data.prSourceCommits === null ? undefined : structuredClone(data.prSourceCommits),
         sourceCommitsComplete: data.sourceCommitsComplete,
         sourceCommitsHeadSha: data.sourceCommitsHeadSha,
+        author: { login: 'aitm-author', isBot: false },
+        reviewRequests: structuredClone(data.reviewRequests),
+        reviews: structuredClone(data.reviews),
       };
       if (data.prSourceEvidence !== null) {
         pullRequest.sourceCommitEvidence = structuredClone(data.prSourceEvidence);
@@ -176,9 +184,31 @@ export function makeHarness(options = {}) {
     },
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
       calls.fetchRequiredChecks += 1;
+      if (data.manualCodeReview) calls.events.push('checks:read');
       assert.equal(prNumber, 1400);
       assert.equal(expectedHeadSha, data.head);
       return structuredClone(data.checks);
+    },
+    async resolvePullRequestReviewGate() {
+      return data.manualCodeReview;
+    },
+    async resolveManualCodeReviewer() {
+      return data.reviewerLogin;
+    },
+    async fetchManualCodeReviewEvidence() {
+      return {
+        number: 1400,
+        author: { login: 'aitm-author', isBot: false },
+        reviewRequests: structuredClone(data.reviewRequests),
+        reviews: structuredClone(data.reviews),
+      };
+    },
+    async requestPullRequestReview({ prNumber, reviewerLogin }) {
+      calls.requestPullRequestReview += 1;
+      calls.events.push('review:request');
+      assert.equal(prNumber, 1400);
+      assert.equal(reviewerLogin, data.reviewerLogin);
+      data.reviewRequests.push({ login: reviewerLogin, isBot: false });
     },
     async fetchRepositoryMergeMethods() {
       return ['merge', 'squash', 'rebase'];
