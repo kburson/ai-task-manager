@@ -18,6 +18,7 @@ import {
   REOPENED_CLOSE_RECOVERY_REASON,
   REOPENED_CLOSE_RECOVERY_SCHEMA,
   ReopenedCloseRecoveryError,
+  authorizeRecoveryBackedDeliveredCloseRestart,
   authorizeReopenedCloseRestart,
   classifyRecoveryProgress,
   createReopenedCloseRecoveryRecord,
@@ -29,6 +30,7 @@ import {
 
 const OLD_SHA = 'd'.repeat(40);
 const NEW_SHA = 'b'.repeat(40);
+const NEWER_SHA = 'c'.repeat(40);
 const OLD_TX = 'ad96d1e1-8c17-471e-a060-279975761e50';
 const NEW_TX = '11111111-2222-3333-4444-555555555555';
 const NOW = '2026-09-03T06:30:00.000Z';
@@ -185,6 +187,39 @@ function input(overrides = {}) {
   };
 }
 
+function recoveryBackedInput(overrides = {}) {
+  const recoveryRecord = createReopenedCloseRecoveryRecord(authorizeReopenedCloseRestart(input()), {
+    now: NOW,
+    randomUUIDFn: () => NEW_TX,
+  });
+  const activeTransaction = {
+    schema: 'aitm.delivered-close/v1',
+    transactionId: recoveryRecord.replacementTransactionId,
+    issueNumber: 1490,
+    acceptedSha: recoveryRecord.newAcceptedSha,
+    reviewAuthority: recoveryRecord.newReviewAuthority,
+    completedSteps: ['timing'],
+  };
+  const recoveryLive = {
+    boardState: 'review',
+    issueClosed: false,
+    stateReason: 'reopened',
+    terminalDisposition: null,
+    dirty: false,
+    bindingOwnership: { disposition: 'own-post-close-claim', authorized: true },
+  };
+  return {
+    repository: REPO,
+    issueNumber: 1490,
+    recoveryRecord,
+    activeTransaction,
+    newAcceptedSha: NEWER_SHA,
+    newReviewAuthority: 'human-gate',
+    live: recoveryLive,
+    ...overrides,
+  };
+}
+
 function bodyWith(transaction) {
   const props = [
     'schema="' + transaction.schema + '"',
@@ -202,6 +237,76 @@ test('#1490: the exact completed-and-reopened shape authorizes', () => {
   assert.equal(authorization.reason, REOPENED_CLOSE_RECOVERY_REASON);
   assert.equal(authorization.newAcceptedSha, NEW_SHA);
   assert.equal(authorization.oldTransaction.acceptedSha, OLD_SHA);
+});
+
+test('#1490: a recovery-backed timing-only replacement authorizes stale supersession', () => {
+  const recovery = recoveryBackedInput();
+  const authorization = authorizeRecoveryBackedDeliveredCloseRestart(recovery);
+
+  assert.equal(
+    authorization.oldTransaction.transactionId,
+    recovery.activeTransaction.transactionId
+  );
+  assert.equal(authorization.newAcceptedSha, NEWER_SHA);
+  assert.equal(authorization.reason, 'accepted-sha-corrective-amend');
+});
+
+test('#1490: recovery-backed stale supersession fails closed on contradictory evidence', () => {
+  const base = recoveryBackedInput();
+  const refusals = [
+    ['missing backing', { recoveryRecord: null }, /recovery-backed-record/],
+    [
+      'foreign replacement id',
+      { activeTransaction: { ...base.activeTransaction, transactionId: 'foreign' } },
+      /recovery-backed-transaction/,
+    ],
+    [
+      'cross-sha replacement',
+      { activeTransaction: { ...base.activeTransaction, acceptedSha: OLD_SHA } },
+      /recovery-backed-transaction/,
+    ],
+    ['same current sha', { newAcceptedSha: base.activeTransaction.acceptedSha }, /fresh-authority/],
+    [
+      'four completed steps',
+      {
+        activeTransaction: {
+          ...base.activeTransaction,
+          completedSteps: TERMINAL_CLOSE_STEPS.slice(0, 4),
+        },
+      },
+      /terminal-prefix/,
+    ],
+    [
+      'reordered prefix',
+      {
+        activeTransaction: {
+          ...base.activeTransaction,
+          completedSteps: ['estimation', 'timing'],
+        },
+      },
+      /terminal-prefix/,
+    ],
+    ['plain open issue', { live: { ...base.live, stateReason: null } }, /live-terminal-state/],
+    ['dirty worktree', { live: { ...base.live, dirty: true } }, /live-terminal-state/],
+    [
+      'foreign binding',
+      {
+        live: {
+          ...base.live,
+          bindingOwnership: { authorized: false, disposition: 'foreign-claim' },
+        },
+      },
+      /live-terminal-state/,
+    ],
+  ];
+
+  for (const [label, override, expected] of refusals) {
+    assert.throws(
+      () => authorizeRecoveryBackedDeliveredCloseRestart({ ...base, ...override }),
+      expected,
+      label
+    );
+  }
 });
 
 test('#1490: a partial or reordered terminal sequence refuses', () => {

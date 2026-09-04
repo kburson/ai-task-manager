@@ -467,6 +467,88 @@ export function authorizeReopenedCloseRestart(input = {}) {
   });
 }
 
+// A reopened-close recovery may itself be interrupted after its replacement
+// transaction has started. This authorizer is deliberately separate from both
+// the completed-close recovery above and #1466's ordinary stale restart: the
+// immutable recovery record supplies the missing provenance, while the live
+// state must match the still-open corrective close exactly.
+export function authorizeRecoveryBackedDeliveredCloseRestart(input = {}) {
+  const {
+    repository,
+    issueNumber,
+    recoveryRecord,
+    activeTransaction,
+    newAcceptedSha,
+    newReviewAuthority,
+    live,
+  } = input;
+  if (
+    typeof repository !== 'string' ||
+    !REPOSITORY_RE.test(repository) ||
+    !Number.isSafeInteger(issueNumber) ||
+    issueNumber <= 0
+  ) {
+    fail('input');
+  }
+
+  let backing;
+  try {
+    backing = validateReopenedCloseRecoveryRecord(recoveryRecord);
+  } catch {
+    fail('recovery-backed-record');
+  }
+  if (backing.issueNumber !== issueNumber || backing.repository !== repository) {
+    fail('recovery-backed-record');
+  }
+  if (
+    !hasExactKeys(activeTransaction, CLOSE_TRANSACTION_KEYS) ||
+    activeTransaction.schema !== 'aitm.delivered-close/v1' ||
+    activeTransaction.issueNumber !== issueNumber ||
+    typeof activeTransaction.transactionId !== 'string' ||
+    activeTransaction.transactionId.length === 0 ||
+    activeTransaction.transactionId !== backing.replacementTransactionId ||
+    activeTransaction.acceptedSha !== backing.newAcceptedSha ||
+    activeTransaction.reviewAuthority !== backing.newReviewAuthority ||
+    !Array.isArray(activeTransaction.completedSteps)
+  ) {
+    fail('recovery-backed-transaction');
+  }
+  if (
+    activeTransaction.completedSteps.length > 3 ||
+    !activeTransaction.completedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index])
+  ) {
+    fail('terminal-prefix');
+  }
+  if (
+    !SHA_RE.test(newAcceptedSha || '') ||
+    newAcceptedSha === activeTransaction.acceptedSha ||
+    !REVIEW_AUTHORITIES.has(newReviewAuthority)
+  ) {
+    fail('fresh-authority');
+  }
+  if (
+    !isPlainObject(live) ||
+    live.boardState !== 'review' ||
+    live.issueClosed !== false ||
+    live.stateReason !== 'reopened' ||
+    live.terminalDisposition !== null ||
+    live.dirty !== false ||
+    live.bindingOwnership?.authorized !== true ||
+    live.bindingOwnership.disposition !== 'own-post-close-claim'
+  ) {
+    fail('live-terminal-state');
+  }
+  return deepFreeze({
+    repository,
+    issueNumber,
+    oldTransaction: structuredClone(activeTransaction),
+    newAcceptedSha,
+    newReviewAuthority,
+    reason: 'accepted-sha-corrective-amend',
+    live: structuredClone(live),
+  });
+}
+
 export function validateReopenedCloseRecoveryRecord(record) {
   if (!hasExactKeys(record, RECOVERY_RECORD_KEYS)) fail('record');
   if (
