@@ -86,6 +86,7 @@ export async function runClose({
   bindingReleaseStatus = bindingReleased ? 'released' : 'pending',
   bindingReadError = null,
   bindingResumeError = null,
+  bindingOwnership = { authorized: true, disposition: 'own-post-close-claim' },
   force = false,
   extraRest = [],
   restartStaleTransaction = false,
@@ -353,6 +354,7 @@ export async function runClose({
         if (bindingReadError) throw bindingReadError;
         return { status: bindingReleaseStatus, closedAt: '2026-08-28T00:00:00.000Z' };
       },
+      resolveReopenedBindingOwnership: () => structuredClone(bindingOwnership),
       resumeTerminalIssueBindingRelease: async () => {
         calls.bindingResumes += 1;
         if (bindingResumeError) throw bindingResumeError;

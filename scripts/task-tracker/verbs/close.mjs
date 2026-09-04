@@ -85,6 +85,7 @@ import {
   replaceStaleDeliveredCloseTransaction,
 } from '../lib/delivered-close-supersession.mjs';
 import {
+  authorizeRecoveryBackedDeliveredCloseRestart,
   authorizeReopenedCloseRestart,
   classifyRecoveryProgress,
   createReopenedCloseRecoveryRecord,
@@ -1821,6 +1822,7 @@ export async function verbClose(ctx) {
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
   let reopenedCloseRecoveryRecord = null;
+  let _deliveredCloseSupersessionRecord = null;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -2201,24 +2203,68 @@ export async function verbClose(ctx) {
           closeLabelsReader({ pexec, cfg, issueNum: closeIssueNum }),
           bindingReleaseInspector({ projectDir, issue: closeTarget }),
         ]);
-        const authorization = authorizeDeliveredCloseRestart({
+        const recoveryBacking = findRecoveryBackedReplacement({
+          body: upsertDeliveredCloseTransaction(convergeBody, oldTransaction),
+          comments,
           repository: cfg.repo,
           issueNumber: Number(closeIssueNum),
-          oldTransaction,
-          newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
-          newReviewAuthority: terminalReviewAuthority(),
-          live: {
-            boardState,
-            issueClosed: closeSnapshot.issueClosed,
-            terminalDisposition: terminalDisposition || null,
-            labels,
-            bindingStatus: binding?.status,
-          },
         });
+        if (recoveryBacking.status === 'ambiguous') {
+          throw new Error('delivered-close-supersession:recovery-backing-ambiguous');
+        }
+
+        let authorization;
+        if (recoveryBacking.status === 'found') {
+          oldTransaction = {
+            ...oldTransaction,
+            reviewAuthority: recoveryBacking.record.newReviewAuthority,
+          };
+          const bindingOwnership = (
+            ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership
+          )({
+            projectDir,
+            issue: closeTarget,
+            sessionId: (ctx.sessionId ?? currentSessionId)(),
+            recordedWorktreePath: cwd,
+          });
+          authorization = authorizeRecoveryBackedDeliveredCloseRestart({
+            repository: cfg.repo,
+            issueNumber: Number(closeIssueNum),
+            recoveryRecord: recoveryBacking.record,
+            activeTransaction: oldTransaction,
+            newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+            newReviewAuthority: terminalReviewAuthority(),
+            live: {
+              boardState,
+              issueClosed: closeSnapshot.issueClosed,
+              stateReason: closeSnapshot.stateReason ?? null,
+              terminalDisposition: terminalDisposition || null,
+              dirty: dirty.dirty,
+              bindingOwnership,
+            },
+          });
+          reopenedCloseRecoveryRecord = recoveryBacking.record;
+        } else {
+          authorization = authorizeDeliveredCloseRestart({
+            repository: cfg.repo,
+            issueNumber: Number(closeIssueNum),
+            oldTransaction,
+            newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
+            newReviewAuthority: terminalReviewAuthority(),
+            live: {
+              boardState,
+              issueClosed: closeSnapshot.issueClosed,
+              terminalDisposition: terminalDisposition || null,
+              labels,
+              bindingStatus: binding?.status,
+            },
+          });
+        }
         const evidence = await ensureDeliveredCloseSupersession({
           authorization,
           deps: { ...supersessionDeps, listComments: async () => comments },
         });
+        _deliveredCloseSupersessionRecord = evidence.record;
         if (typeof mutateBody !== 'function') {
           throw new Error('delivered-close-supersession:body-write');
         }
@@ -3431,7 +3477,9 @@ export async function verbClose(ctx) {
     let bindingAuthority = { authorized: bindingRelease?.status !== 'conflict', reason: null };
     if (bindingRelease?.status === 'conflict') {
       let replacement = null;
-      if (!SKIP_NETWORK && closeIssueNum) {
+      if (reopenedCloseRecoveryRecord) {
+        replacement = { status: 'found', record: reopenedCloseRecoveryRecord };
+      } else if (!SKIP_NETWORK && closeIssueNum) {
         try {
           const liveBody = await (
             ctx.readReopenedCloseBody ??

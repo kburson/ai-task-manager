@@ -522,7 +522,7 @@ export function authorizeRecoveryBackedDeliveredCloseRestart(input = {}) {
   if (
     !SHA_RE.test(newAcceptedSha || '') ||
     newAcceptedSha === activeTransaction.acceptedSha ||
-    !REVIEW_AUTHORITIES.has(newReviewAuthority)
+    newReviewAuthority !== 'human-gate'
   ) {
     fail('fresh-authority');
   }

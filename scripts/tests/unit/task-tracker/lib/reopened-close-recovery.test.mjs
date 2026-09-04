@@ -266,6 +266,7 @@ test('#1490: recovery-backed stale supersession fails closed on contradictory ev
       /recovery-backed-transaction/,
     ],
     ['same current sha', { newAcceptedSha: base.activeTransaction.acceptedSha }, /fresh-authority/],
+    ['non-human authority', { newReviewAuthority: 'gate-bypassed' }, /fresh-authority/],
     [
       'four completed steps',
       {
