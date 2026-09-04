@@ -437,6 +437,23 @@ test('an epic with only forecast-free legacy children writes an empty aggregatio
 test('runtime threads explicit reopened-close correction authority into the immutable outcome chain', async () => {
   const priorId = '01J00000000000000000000831';
   const childId = '01J00000000000000000000832';
+  const issueRecords = [
+    {
+      commentNodeId: 'IC_prior',
+      envelope: {
+        recordId: priorId,
+        recordType: 'estimation-outcome',
+        createdAt: '2026-08-02T14:00:00.000Z',
+        supersedes: null,
+        payload: {
+          issue: 1067,
+          kind: 'epic-orchestration',
+          forecastRecordId: null,
+          actual: { engagedHours: 99 },
+        },
+      },
+    },
+  ];
   let writtenEnvelope = null;
   const runtime = createEstimationOutcomeRuntime({
     cfg: { repo: repository },
@@ -471,27 +488,13 @@ test('runtime threads explicit reopened-close correction authority into the immu
               },
             ];
           }
-          return [
-            {
-              commentNodeId: 'IC_prior',
-              envelope: {
-                recordId: priorId,
-                recordType: 'estimation-outcome',
-                createdAt: '2026-08-02T14:00:00.000Z',
-                supersedes: null,
-                payload: {
-                  issue: 1067,
-                  kind: 'epic-orchestration',
-                  forecastRecordId: null,
-                  actual: { engagedHours: 99 },
-                },
-              },
-            },
-          ];
+          return issueRecords;
         },
         write: async ({ envelope }) => {
           writtenEnvelope = envelope;
-          return { commentNodeId: 'IC_correction', envelope };
+          const written = { commentNodeId: 'IC_correction', envelope };
+          issueRecords.push(written);
+          return written;
         },
       },
       readTimingCommentBody: async () => ({

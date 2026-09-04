@@ -169,7 +169,11 @@ test('an explicitly authorized reopened close supersedes a differing active outc
         supersedes,
         payload: nextPayload,
       }),
-      writeOutcome: async ({ envelope }) => ({ commentNodeId: 'IC_correction', envelope }),
+      writeOutcome: async ({ envelope }) => {
+        const written = { commentNodeId: 'IC_correction', envelope };
+        records.push(written);
+        return written;
+      },
     },
   });
 
@@ -178,6 +182,122 @@ test('an explicitly authorized reopened close supersedes a differing active outc
     recordId: correctionId,
     commentNodeId: 'IC_correction',
   });
+});
+
+test('reopened correction refuses when the historical outcome is missing', async () => {
+  await assert.rejects(
+    ensureEstimationOutcome({
+      issue: 1091,
+      forecast,
+      outcomePayload: payload,
+      supersedeExisting: true,
+      deps: {
+        listOutcomeRecords: async () => [],
+        createOutcomeEnvelope: () => ({
+          recordId: '01J00000000000000000000912',
+          recordType: 'estimation-outcome',
+          supersedes: null,
+          payload,
+        }),
+        writeOutcome: async ({ envelope }) => ({ commentNodeId: 'IC_new', envelope }),
+      },
+    }),
+    /estimation-outcome-writer:correction-predecessor/
+  );
+});
+
+test('reopened correction refuses when a cross-lineage successor already superseded its predecessor', async () => {
+  const priorId = '01J00000000000000000000902';
+  const successorId = '01J00000000000000000000913';
+  const records = [
+    {
+      envelope: {
+        recordId: priorId,
+        recordType: 'estimation-outcome',
+        supersedes: null,
+        payload: { ...payload, actual: { engagedHours: 1 } },
+      },
+    },
+    {
+      envelope: {
+        recordId: successorId,
+        recordType: 'estimation-outcome',
+        supersedes: priorId,
+        payload: {
+          ...payload,
+          forecastRecordId: '01J00000000000000000000999',
+          actual: { engagedHours: 1.5 },
+        },
+      },
+    },
+  ];
+
+  await assert.rejects(
+    ensureEstimationOutcome({
+      issue: 1091,
+      forecast,
+      outcomePayload: { ...payload, actual: { engagedHours: 2 } },
+      supersedeExisting: true,
+      deps: {
+        listOutcomeRecords: async () => records,
+        createOutcomeEnvelope: () => {
+          throw new Error('must not append a fork');
+        },
+      },
+    }),
+    /estimation-outcome-writer:correction-predecessor/
+  );
+});
+
+test('concurrent reopened corrections append one globally active successor', async () => {
+  const priorId = '01J00000000000000000000902';
+  const correctionId = '01J00000000000000000000914';
+  const correctedPayload = { ...payload, actual: { engagedHours: 2 } };
+  const records = [
+    {
+      commentNodeId: 'IC_prior',
+      envelope: {
+        recordId: priorId,
+        recordType: 'estimation-outcome',
+        supersedes: null,
+        payload: { ...payload, actual: { engagedHours: 1 } },
+      },
+    },
+  ];
+  let writes = 0;
+  const deps = {
+    listOutcomeRecords: async () => [...records],
+    createOutcomeEnvelope: ({ payload: nextPayload, supersedes }) => ({
+      recordId: correctionId,
+      recordType: 'estimation-outcome',
+      supersedes,
+      payload: nextPayload,
+    }),
+    writeOutcome: async ({ envelope }) => {
+      writes += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const written = { commentNodeId: 'IC_correction', envelope };
+      records.push(written);
+      return written;
+    },
+  };
+
+  const results = await Promise.all(
+    [1, 2].map(() =>
+      ensureEstimationOutcome({
+        issue: 1091,
+        forecast,
+        outcomePayload: correctedPayload,
+        supersedeExisting: true,
+        deps,
+      })
+    )
+  );
+
+  assert.equal(writes, 1);
+  assert.equal(records.length, 2);
+  assert.deepEqual(results.map(({ status }) => status).sort(), ['existing', 'written']);
+  assert.equal(records[1].envelope.supersedes, priorId);
 });
 
 test('duplicate or conflicting outcome records fail closed', async () => {

@@ -27,6 +27,11 @@ async function ensureEstimationOutcomeUnlocked({
   if (typeof deps.listOutcomeRecords !== 'function') fail('dependencies');
   const records = await deps.listOutcomeRecords({ issue, forecastRecordId });
   if (!Array.isArray(records)) fail('records');
+  const issueOutcomes = records.filter(
+    (record) =>
+      record?.envelope?.recordType === 'estimation-outcome' &&
+      record.envelope.payload?.issue === issue
+  );
   const matching = records.filter(
     (record) =>
       record?.envelope?.recordType === 'estimation-outcome' &&
@@ -41,6 +46,21 @@ async function ensureEstimationOutcomeUnlocked({
     fail('duplicate');
   }
   if (active.length > 1 || (matching.length > 0 && active.length === 0)) fail('duplicate');
+  if (supersedeExisting) {
+    let globallyActive;
+    try {
+      globallyActive = activeEstimationOutcomes(issueOutcomes);
+    } catch {
+      fail('duplicate');
+    }
+    if (
+      globallyActive.length !== 1 ||
+      active.length !== 1 ||
+      globallyActive[0].envelope.recordId !== active[0].envelope.recordId
+    ) {
+      fail('correction-predecessor');
+    }
+  }
   if (active.length === 1) {
     if (canonicalRecordJson(active[0].envelope.payload) !== canonicalRecordJson(outcomePayload)) {
       if (!supersedeExisting) fail('payload-mismatch');
@@ -62,6 +82,28 @@ async function ensureEstimationOutcomeUnlocked({
         written.envelope.payload?.forecastRecordId !== forecastRecordId ||
         written.envelope.payload?.kind !== kind ||
         written.envelope.supersedes !== active[0].envelope.recordId
+      ) {
+        fail('write-readback');
+      }
+      const refreshed = await deps.listOutcomeRecords({ issue, forecastRecordId });
+      if (!Array.isArray(refreshed)) fail('write-readback');
+      let refreshedActive;
+      try {
+        refreshedActive = activeEstimationOutcomes(
+          refreshed.filter(
+            (record) =>
+              record?.envelope?.recordType === 'estimation-outcome' &&
+              record.envelope.payload?.issue === issue
+          )
+        );
+      } catch {
+        fail('write-readback');
+      }
+      if (
+        refreshedActive.length !== 1 ||
+        refreshedActive[0].envelope.recordId !== written.envelope.recordId ||
+        canonicalRecordJson(refreshedActive[0].envelope.payload) !==
+          canonicalRecordJson(outcomePayload)
       ) {
         fail('write-readback');
       }
