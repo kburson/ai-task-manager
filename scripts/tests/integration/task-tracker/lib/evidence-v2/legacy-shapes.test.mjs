@@ -71,7 +71,7 @@ test('Done board effect before checkpoint remains a resumable production-codec p
   }
 });
 
-test('legacy reopened recovery accepts zero steps but refuses a progressed replacement on retry', () => {
+test('legacy reopened recovery preserves a valid progressed replacement on retry', () => {
   const sandbox = createSandbox();
   try {
     const acceptedSha = sandbox.git(['rev-parse', 'HEAD']);
@@ -101,7 +101,9 @@ test('legacy reopened recovery accepts zero steps but refuses a progressed repla
       ...replacement,
       completedSteps: ['timing'],
     });
-    assert.throws(() => classifyRecoveryProgress(progressed, authorization, record), /stale-body/);
+    const resumed = classifyRecoveryProgress(progressed, authorization, record);
+    assert.equal(resumed.phase, 'body-replaced');
+    assert.deepEqual(resumed.transaction.completedSteps, ['timing']);
   } finally {
     sandbox.dispose();
   }

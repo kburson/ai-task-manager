@@ -89,9 +89,11 @@ import {
   classifyRecoveryProgress,
   createReopenedCloseRecoveryRecord,
   oldTransactionFromRecord,
-  parseReopenedCloseRecoveryComment,
+  findRecoveryBackedReplacement,
+  authorizeTerminalBindingRelease,
   renderReopenedCloseRecoveryComment,
   replaceCompletedDeliveredCloseTransaction,
+  resolveReopenedBindingOwnership,
   resolveReopenedCloseRecovery,
 } from '../lib/reopened-close-recovery.mjs';
 import {
@@ -1097,7 +1099,6 @@ export async function runReopenedCloseRecovery({
   resolvedDeliveryGateRef,
   terminalReviewAuthority,
   dispositionReader,
-  bindingReleaseInspector,
   inspectDirty,
   resolveWorkspaceForIssue,
   projectDir,
@@ -1106,6 +1107,8 @@ export async function runReopenedCloseRecovery({
   mutateBody,
   closeSnapshot,
   boardState,
+  // #1490 — binding OWNERSHIP, not release progress. See `validateLive`.
+  resolveBindingOwnership = resolveReopenedBindingOwnership,
 }) {
   const closeTarget = `#${closeIssueNum}`;
 
@@ -1160,30 +1163,48 @@ export async function runReopenedCloseRecovery({
   const activeTransaction = activeTransactions[0];
   const priorComments = await listComments();
 
-  let oldTransaction = activeTransaction;
-  let resumeRecord = null;
-  if (activeTransaction.completedSteps.length === 0) {
-    // Phase two: the body already carries a replacement. Locate exactly one
-    // durable record whose replacement identity and accepted SHA match it, and
-    // reconstruct the completed original from that record.
-    const candidates = priorComments
-      .map((comment) =>
-        parseReopenedCloseRecoveryComment(comment, {
-          repository: cfg.repo,
-          issueNumber: Number(closeIssueNum),
-        })
-      )
-      .filter((entry) => entry !== null)
-      .filter(
-        (entry) =>
-          entry.record.replacementTransactionId === activeTransaction.transactionId &&
-          entry.record.newAcceptedSha === activeTransaction.acceptedSha
-      );
-    if (candidates.length !== 1) throw new Error('reopened-close-recovery:resume-evidence');
-    resumeRecord = candidates[0].record;
-    oldTransaction = oldTransactionFromRecord(resumeRecord);
-  }
+  // #1490 item 3 — resume by transaction IDENTITY, at any valid completed-step
+  // prefix. The first implementation keyed this on
+  // `activeTransaction.completedSteps.length === 0`, which is only true at the
+  // instant the replacement is minted. Once the saga marked even one step, a retry
+  // fell into the mint branch and treated the REPLACEMENT as though it were the
+  // completed original — so partial progress could not resume by construction.
+  //
+  // The identity lookup is self-discriminating and needs no step-count condition:
+  // on a fresh mint no durable record names the (old, completed) active
+  // transaction as its replacement, so there are zero candidates; on a resume
+  // there is exactly one, whatever the prefix.
+  const backed = findRecoveryBackedReplacement({
+    body: convergeBody,
+    comments: priorComments,
+    repository: cfg.repo,
+    issueNumber: Number(closeIssueNum),
+  });
+  // Ambiguity refuses rather than silently minting a second recovery.
+  if (backed.status === 'ambiguous') throw new Error('reopened-close-recovery:resume-evidence');
+  if (backed.transaction === null) throw new Error('reopened-close-recovery:ambiguous-body');
+  const backedRecord = backed.record;
+  const completedBackedReplacement =
+    backedRecord && activeTransaction.completedSteps.length >= TERMINAL_CLOSE_STEPS.length;
+  // A completed replacement is an idempotent retry only while the issue remains
+  // closed. If that completed replacement is itself reopened for a later accepted
+  // SHA, it becomes the next true historical transaction and must be superseded in
+  // a new link of the recovery chain.
+  const chainCompletedReplacement =
+    completedBackedReplacement && closeSnapshot.issueClosed === false;
+  const resumeRecord = chainCompletedReplacement ? null : backedRecord;
+  // On a mint the active transaction IS the completed original; on a resume the
+  // original is reconstructed from the durable record.
+  const oldTransaction = resumeRecord ? oldTransactionFromRecord(resumeRecord) : activeTransaction;
   if (!oldTransaction) throw new Error('reopened-close-recovery:no-transaction');
+  // The replacement's own prefix: empty on a mint, the observed steps on a resume.
+  const replacementCompletedSteps = resumeRecord ? activeTransaction.completedSteps : [];
+  // A replacement that already ran every step is finished. Returning it unchanged
+  // keeps the retry idempotent instead of refusing (its binding is released, so
+  // ownership no longer resolves) or minting a second recovery.
+  if (completedBackedReplacement && !chainCompletedReplacement) {
+    return { body: convergeBody, transaction: activeTransaction, record: resumeRecord };
+  }
 
   // #1490 — resolve a correlated delivery bundle for one accepted SHA using the
   // gate's own live PR inventory as the SHA-keyed selector, then the existing
@@ -1222,10 +1243,19 @@ export async function runReopenedCloseRecovery({
 
   const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
   const dirty = await inspectDirty({ cwd });
-  const [terminalDisposition, binding] = await Promise.all([
-    dispositionReader({ cfg, issueNumber: Number(closeIssueNum) }),
-    bindingReleaseInspector({ projectDir, issue: closeTarget }),
-  ]);
+  const terminalDisposition = await dispositionReader({
+    cfg,
+    issueNumber: Number(closeIssueNum),
+  });
+  // #1490 — observe ownership explicitly instead of reading a release-progress
+  // status. `cwd` is the issue's governed worktree, so a claim naming any other
+  // path is not this recovery's binding.
+  const bindingOwnership = resolveBindingOwnership({
+    projectDir,
+    issue: closeTarget,
+    sessionId: (ctx.sessionId ?? currentSessionId)(),
+    recordedWorktreePath: cwd,
+  });
 
   const authorization = authorizeReopenedCloseRestart({
     repository: cfg.repo,
@@ -1240,10 +1270,12 @@ export async function runReopenedCloseRecovery({
       stateReason: closeSnapshot.stateReason ?? null,
       terminalDisposition: terminalDisposition || null,
       dirty: dirty?.dirty ?? true,
-      bindingStatus: binding?.status,
+      // #1490 — explicit ownership observation, not a release-progress status.
+      bindingOwnership,
     },
     // Every value below is gate-resolved or record-parsed. Nothing is asserted,
     // and nothing is copied from a record then compared back to that same record.
+    completedSteps: replacementCompletedSteps,
     evidence: {
       historical,
       current: {
@@ -2017,7 +2049,6 @@ export async function verbClose(ctx) {
             resolvedDeliveryGateRef: () => resolvedDeliveryGate,
             terminalReviewAuthority,
             dispositionReader,
-            bindingReleaseInspector,
             inspectDirty,
             resolveWorkspaceForIssue,
             projectDir,
@@ -3364,14 +3395,84 @@ export async function verbClose(ctx) {
       process.exitCode = 1;
       return;
     }
+    // #1490 item 2 — a recovery-backed replacement legitimately owns the binding it
+    // rebound after the OLD close, so the inspector's `conflict` is expected for it.
+    // Policy lives in `authorizeTerminalBindingRelease`; "recovery-backed" is proven
+    // from DURABLE evidence (the body's active transaction named as a durable
+    // record's replacement), never an in-memory flag, so an interrupted retry
+    // reaches the same verdict. Any failure to prove it falls through to the
+    // ordinary refusal.
+    let bindingAuthority = { authorized: bindingRelease?.status !== 'conflict', reason: null };
     if (bindingRelease?.status === 'conflict') {
+      let replacement = null;
+      if (!SKIP_NETWORK && closeIssueNum) {
+        try {
+          const liveBody = await (
+            ctx.readReopenedCloseBody ??
+            (async () => {
+              const { stdout } = await pexec(
+                'gh',
+                ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              return String(JSON.parse(String(stdout || '{}')).body ?? '');
+            })
+          )();
+          replacement = findRecoveryBackedReplacement({
+            body: liveBody,
+            comments: await (
+              ctx.listReopenedCloseRecoveryComments ??
+              (async () => {
+                const { stdout } = await pexec(
+                  'gh',
+                  [
+                    'api',
+                    '--paginate',
+                    '--slurp',
+                    `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+                  ],
+                  { timeout: GH_API_TIMEOUT_MS }
+                );
+                return JSON.parse(String(stdout || '[]')).flat();
+              })
+            )(),
+            repository: cfg.repo,
+            issueNumber: Number(closeIssueNum),
+          });
+        } catch {
+          replacement = null;
+        }
+      }
+      bindingAuthority = authorizeTerminalBindingRelease({
+        bindingRelease,
+        replacement: replacement?.status === 'found' ? replacement.record : null,
+        ownership:
+          replacement?.status !== 'found'
+            ? null
+            : (ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership)({
+                projectDir,
+                issue: s.active,
+                sessionId: (ctx.sessionId ?? currentSessionId)(),
+                recordedWorktreePath: resolveWorkspaceForIssue({ issueRef: s.active, projectDir }),
+              }),
+      });
+    }
+    if (!bindingAuthority.authorized) {
       console.error(
-        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: a newer binding or occupancy claim supersedes the terminal cleanup authority.`
+        `[task-tracker] ⛔ Refusing to finalize ${closeTarget}: a newer binding or occupancy claim supersedes the terminal cleanup authority (${bindingAuthority.reason}).`
       );
       process.exitCode = 1;
       return;
     }
-    if (bindingRelease?.status === 'incomplete') {
+    // NOTE: this must be the HEAD of the status chain below, not a standalone `if`.
+    // As a separate statement, an authorized `conflict` fell through to the chain's
+    // `else if (status !== 'pending')` arm and was refused as an "unknown state" —
+    // the authorization would have been granted and then discarded one branch later.
+    if (bindingRelease?.status === 'conflict') {
+      // The replacement's own post-close rebind: release it and record the step.
+      releaseClosedBinding({ ctx, projectDir, issue: s.active });
+      await markDeliveredCloseStep('binding');
+    } else if (bindingRelease?.status === 'incomplete') {
       try {
         await bindingReleaseResumer({ projectDir, issue: s.active });
       } catch (err) {

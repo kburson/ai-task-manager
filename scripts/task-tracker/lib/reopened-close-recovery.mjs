@@ -20,6 +20,7 @@
 // state refuses BEFORE any mutation.
 
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 
 import {
   readDeliveredCloseTransactions,
@@ -27,6 +28,37 @@ import {
   upsertDeliveredCloseTransaction,
 } from './close-convergence.mjs';
 import { decodeCanonical, encodeCanonical, fingerprint } from './resident-action-ledger-codec.mjs';
+import { occupancyPath } from '../paths.mjs';
+import { getActiveTask } from '../session-state.mjs';
+import {
+  collectBindingCandidateWorktrees,
+  isBindingRecordClosed,
+  readClosedBindingLedger,
+  resolveBindingAuthorityMain,
+} from './worktree-binding-lifecycle.mjs';
+import { readOccupancy } from './occupancy.mjs';
+
+function defaultReadLedger(mainWorktreePath) {
+  return readClosedBindingLedger(mainWorktreePath);
+}
+
+function defaultReadOccupancy(mainWorktreePath) {
+  return readOccupancy(occupancyPath(mainWorktreePath));
+}
+
+function latestIssueClose(ledger, issueRef) {
+  let latest = null;
+  for (const [historicalSessionId, entries] of Object.entries(ledger?.sessions || {})) {
+    const closedAt = entries?.[issueRef]?.closedAt;
+    if (!closedAt) continue;
+    const closedMs = Date.parse(closedAt);
+    if (!Number.isFinite(closedMs)) return { malformed: closedAt };
+    if (!latest || closedMs > latest.closedMs) {
+      latest = { closedAt, closedMs, historicalSessionId };
+    }
+  }
+  return latest;
+}
 
 export const REOPENED_CLOSE_RECOVERY_SCHEMA = 'aitm.reopened-close-recovery/v1';
 export const REOPENED_CLOSE_RECOVERY_REASON = 'completed-close-reopened-corrective-delivery';
@@ -127,19 +159,136 @@ function validateOldTransaction(oldTransaction, issueNumber) {
   if (!isCompleteTerminalSequence(oldTransaction.completedSteps)) fail('incomplete-terminal-close');
 }
 
+// ---- binding ownership ------------------------------------------------------
+//
+// `inspectTerminalIssueBindingRelease` answers "how far did the OLD release get?"
+// — its four statuses (pending / released / incomplete / conflict) describe prior
+// release progress, so NONE of them authorizes a new close. The first version of
+// this recovery required `pending`, which is doubly wrong: it asks the wrong
+// question, and it is unreachable for a reopened issue, because `pending` is
+// returned only when the ledger holds no `closedAt` and a reopened issue
+// necessarily has one.
+//
+// What the recovery actually needs is ownership: is the current occupancy claim
+// the CURRENT session's legitimate post-close claim on the issue's recorded
+// worktree, or is it someone else's? The historical close may belong to an older
+// session: a governed handoff must not erase that true close authority. A current
+// claim bound after the latest historical close is the recovery's own binding —
+// the thing it is entitled to release. A foreign session, a different worktree, or
+// a second live active-task record not marked closed is real contention and must
+// refuse.
+//
+// Deliberately does NOT require an active-task record: a paused session has none,
+// and #1490 is paused. Requiring one would be another false predicate.
+export function resolveReopenedBindingOwnership({
+  projectDir,
+  issue,
+  sessionId,
+  recordedWorktreePath,
+  deps = {},
+} = {}) {
+  const issueRef = String(issue || '').startsWith('#') ? String(issue) : `#${issue}`;
+  const issueKey = String(Number(issueRef.slice(1)));
+  const refuse = (disposition, extra = {}) =>
+    deepFreeze({ disposition, authorized: false, issue: issueRef, ...extra });
+
+  const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
+  const mainWorktreePath = resolveMain(projectDir, deps);
+  const ledger = (deps.readLedger || defaultReadLedger)(mainWorktreePath);
+  const historicalClose = latestIssueClose(ledger, issueRef);
+  if (!historicalClose) return refuse('no-prior-close', { closedAt: null });
+  if (historicalClose.malformed) {
+    return refuse('malformed-ledger', { closedAt: historicalClose.malformed });
+  }
+  const { closedAt, closedMs } = historicalClose;
+
+  const occupancy = (deps.readOccupancy || defaultReadOccupancy)(mainWorktreePath);
+  const row = occupancy?.[issueKey] ?? null;
+  if (!row) return refuse('no-claim', { closedAt });
+  if (row.sid !== sessionId) return refuse('foreign-claim', { closedAt, occupancy: row });
+  if (recordedWorktreePath && row.worktreePath !== recordedWorktreePath) {
+    return refuse('foreign-worktree', { closedAt, occupancy: row });
+  }
+  const boundMs = Date.parse(row.boundAt);
+  if (!Number.isFinite(boundMs)) return refuse('malformed-claim', { closedAt, occupancy: row });
+  // A claim predating the old close is not the recovery's rebind.
+  if (!(boundMs > closedMs)) return refuse('stale-claim', { closedAt, occupancy: row });
+
+  // A live binding record for this issue that the ledger does not mark closed is
+  // genuine contention regardless of session.
+  const collected = deps.collectCandidates
+    ? { candidates: deps.collectCandidates({ projectDir, deps }) }
+    : collectBindingCandidateWorktrees({ projectDir, deps });
+  const candidates = Array.isArray(collected.candidates)
+    ? collected.candidates
+    : [...(collected.candidates || [])];
+  const readActive = deps.getActiveTask || getActiveTask;
+  const isClosed = deps.isBindingRecordClosed || isBindingRecordClosed;
+  const recordedPath = recordedWorktreePath ? path.resolve(recordedWorktreePath) : null;
+  for (const candidate of candidates) {
+    const record = readActive(sessionId, candidate);
+    const recordIssue = record?.issue == null ? null : String(record.issue);
+    if (recordIssue !== issueRef) continue;
+    const candidatePath = path.resolve(candidate);
+    const recordPath = record?.worktreePath ? path.resolve(record.worktreePath) : null;
+    // The current session's record in the governed worktree is the claim being
+    // evaluated, not a competing claim. Every other live record must already be
+    // covered by terminal close authority or the recovery refuses.
+    if (recordedPath && candidatePath === recordedPath && recordPath === recordedPath) continue;
+    if (!isClosed({ record, sessionId, ledger })) {
+      return refuse('live-binding', { closedAt, occupancy: row });
+    }
+  }
+
+  return deepFreeze({
+    disposition: 'own-post-close-claim',
+    authorized: true,
+    issue: issueRef,
+    closedAt,
+    occupancy: { ...row },
+  });
+}
+
 // Live state must be exactly the reopened-after-completed-close shape. Note this
 // requires disposition `Delivered` and does NOT require a managed label — the
 // inverse of #1466's pre-terminal predicates.
-function validateLive(live) {
+// #1490 item 3 — PREFIX-AWARE. The first implementation validated one fixed
+// shape: board `review`, issue open/`reopened`. That shape is only true at step
+// zero. The saga's `board` step moves the board to `done` and its `issue` step
+// closes the issue, so re-applying the initial shape made every resume after
+// those steps unreachable — a retry could never finish what it had legitimately
+// started. Validate against the transaction's completed-step prefix instead.
+//
+// Requires disposition `Delivered` and does NOT require a managed label — the
+// inverse of #1466's pre-terminal predicates.
+function validateLive(live, completedSteps = []) {
+  const done = new Set(Array.isArray(completedSteps) ? completedSteps : []);
+  if (!isPlainObject(live)) fail('live-terminal-state');
+
+  // Invariants that hold at EVERY prefix. A dirty worktree or a claim that is not
+  // this session's own post-close rebind refuses no matter how far the saga got.
+  //
+  // Ownership, NOT a release-progress status: the four statuses from
+  // `inspectTerminalIssueBindingRelease` describe how far the OLD release got, so
+  // none authorizes a new close, and `pending` is structurally unreachable once a
+  // reopened issue carries a ledger `closedAt`.
   if (
-    !isPlainObject(live) ||
-    live.boardState !== 'review' ||
-    live.issueClosed !== false ||
-    live.stateReason !== 'reopened' ||
-    live.terminalDisposition !== 'Delivered' ||
     live.dirty !== false ||
-    live.bindingStatus !== 'pending'
+    live.terminalDisposition !== 'Delivered' ||
+    live.bindingOwnership?.authorized !== true ||
+    live.bindingOwnership.disposition !== 'own-post-close-claim'
   ) {
+    fail('live-terminal-state');
+  }
+
+  // Board: `review` until its own step runs, `done` after.
+  if (live.boardState !== (done.has('board') ? 'done' : 'review')) fail('live-terminal-state');
+
+  // Issue: reopened-and-open until its own step runs, closed after. `stateReason`
+  // is only meaningful while the issue is open.
+  if (done.has('issue')) {
+    if (live.issueClosed !== true) fail('live-terminal-state');
+  } else if (live.issueClosed !== false || live.stateReason !== 'reopened') {
     fail('live-terminal-state');
   }
 }
@@ -281,6 +430,9 @@ export function authorizeReopenedCloseRestart(input = {}) {
     actor,
     live,
     evidence,
+    // #1490 item 3 — the REPLACEMENT transaction's completed-step prefix. Empty on
+    // a fresh mint; on a resume it is however far the replacement legitimately got.
+    completedSteps = [],
   } = input;
   if (
     typeof repository !== 'string' ||
@@ -300,7 +452,7 @@ export function authorizeReopenedCloseRestart(input = {}) {
   ) {
     fail('fresh-authority');
   }
-  validateLive(live);
+  validateLive(live, completedSteps);
   validateEvidence(evidence, issueNumber, repository, oldTransaction.acceptedSha, newAcceptedSha);
   return deepFreeze({
     repository,
@@ -486,8 +638,23 @@ export function classifyRecoveryProgress(body, authorization, record) {
   const current = readDeliveredCloseTransactions(body);
   if (current.length !== 1) fail('ambiguous-body');
   const expected = replacementTransaction(authorization, valid);
-  if (sameValue(current[0], expected)) {
-    return deepFreeze({ phase: 'body-replaced', transaction: expected });
+  // #1490 item 3 — recognize the replacement by IDENTITY plus a VALID completed-step
+  // prefix, not by whole-value equality against the zero-step form. Exact equality
+  // only matched the instant after the marker was written; once the saga marked its
+  // first step the very same replacement was classified `stale-body`, so an
+  // interrupted close could never resume — it refused on its own progress.
+  //
+  // The prefix is checked against the canonical order, so a reordered, duplicated,
+  // or invented step list is still `stale-body`. The transaction returned is the
+  // OBSERVED one, preserving its progress rather than resetting it to zero.
+  const observed = current[0];
+  const steps = Array.isArray(observed.completedSteps) ? observed.completedSteps : null;
+  const validPrefix =
+    steps !== null &&
+    steps.length <= TERMINAL_CLOSE_STEPS.length &&
+    steps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index]);
+  if (validPrefix && sameValue({ ...observed, completedSteps: [] }, expected)) {
+    return deepFreeze({ phase: 'body-replaced', transaction: observed });
   }
   if (sameValue(current[0], oldTransactionFromRecord(valid))) {
     return deepFreeze({ phase: 'body-pending', transaction: null });
@@ -513,4 +680,74 @@ export function replaceCompletedDeliveredCloseTransaction(body, authorization, r
     body: upsertDeliveredCloseTransaction(body, transaction),
     transaction,
   });
+}
+
+// #1490 item 2 — the terminal binding step.
+//
+// `close`'s terminal cleanup refused every `conflict` from
+// `inspectTerminalIssueBindingRelease`. For a recovery-backed replacement that
+// refusal is unconditional: performing the corrective delivery REQUIRES rebinding
+// the issue after the old close, and that rebind is precisely what makes the
+// inspector report `conflict`. The saga therefore completed seven steps and then
+// refused its own eighth on the evidence of its own legitimate work.
+//
+// Authority here is narrow and must stay narrow. `conflict` is forgiven only when
+// ALL of the following hold, so an ordinary close and a genuinely foreign claim
+// are untouched:
+//   - a recovery-backed replacement transaction is in progress, proven from
+//     DURABLE evidence (below), never an in-memory flag; and
+//   - the current claim is this session's own post-close rebind on the issue's
+//     recorded worktree (`resolveReopenedBindingOwnership`).
+
+/**
+ * Locate the durable recovery record naming `body`'s active delivered-close
+ * transaction as its replacement. Reports `none` (the ordinary case for every close
+ * that is not a recovery), `ambiguous`, or `found`.
+ *
+ * This is the single source of that lookup. It was briefly duplicated inline in
+ * both `runReopenedCloseRecovery` and the verb's binding step; two copies of an
+ * identity rule is how the two drift apart.
+ */
+export function findRecoveryBackedReplacement({ body, comments, repository, issueNumber } = {}) {
+  const transactions = readDeliveredCloseTransactions(typeof body === 'string' ? body : '');
+  if (transactions.length !== 1)
+    return deepFreeze({ status: 'none', record: null, transaction: null });
+  const transaction = transactions[0];
+  const matches = (Array.isArray(comments) ? comments : [])
+    .map((comment) => parseReopenedCloseRecoveryComment(comment, { repository, issueNumber }))
+    .filter((entry) => entry !== null)
+    .filter(
+      (entry) =>
+        entry.record.replacementTransactionId === transaction.transactionId &&
+        entry.record.newAcceptedSha === transaction.acceptedSha
+    );
+  // Ambiguity is never resolved by picking one, and it is reported distinctly from
+  // absence: absence is the ordinary non-recovery close, ambiguity is an error.
+  if (matches.length > 1) return deepFreeze({ status: 'ambiguous', record: null, transaction });
+  if (matches.length === 0) return deepFreeze({ status: 'none', record: null, transaction });
+  return deepFreeze({ status: 'found', record: matches[0].record, transaction });
+}
+
+/**
+ * Decide whether the terminal binding step may proceed. Returns a reason on every
+ * refusal so the caller reports WHY rather than a bare exit code.
+ */
+export function authorizeTerminalBindingRelease({
+  bindingRelease,
+  replacement = null,
+  ownership = null,
+} = {}) {
+  const status = bindingRelease?.status ?? null;
+  // Everything the inspector already permits stays permitted, unchanged.
+  if (status !== 'conflict') return deepFreeze({ authorized: true, reason: 'inspector-permitted' });
+  if (replacement === null) {
+    return deepFreeze({ authorized: false, reason: 'no-recovery-backed-replacement' });
+  }
+  if (ownership?.authorized !== true || ownership.disposition !== 'own-post-close-claim') {
+    return deepFreeze({
+      authorized: false,
+      reason: `binding-ownership:${ownership?.disposition ?? 'unresolved'}`,
+    });
+  }
+  return deepFreeze({ authorized: true, reason: 'own-post-close-claim' });
 }

@@ -57,7 +57,12 @@ function live(overrides = {}) {
     stateReason: 'reopened',
     terminalDisposition: 'Delivered',
     dirty: false,
-    bindingStatus: 'pending',
+    // #1490 — binding OWNERSHIP, not release progress. The first implementation
+    // required `bindingStatus === 'pending'`, which was wrong at the CATEGORY level:
+    // the four statuses from `inspectTerminalIssueBindingRelease` describe how far
+    // the OLD release got, so none of them authorizes a NEW close, and `pending` is
+    // structurally unreachable once a reopened issue carries a ledger `closedAt`.
+    bindingOwnership: { disposition: 'own-post-close-claim', authorized: true },
     ...overrides,
   };
 }
@@ -245,7 +250,12 @@ test('#1490: every contradictory live state refuses', () => {
     { terminalDisposition: null },
     { terminalDisposition: 'Incorporated' },
     { dirty: true },
-    { bindingStatus: 'released' },
+    { bindingOwnership: { disposition: 'foreign-claim', authorized: false } },
+    { bindingOwnership: { disposition: 'stale-claim', authorized: false } },
+    { bindingOwnership: null },
+    // Both fields are checked, so an unrecognized future disposition cannot pass by
+    // setting the boolean alone.
+    { bindingOwnership: { disposition: 'own-post-close-claim-v2', authorized: true } },
   ];
   for (const override of contradictions) {
     assert.throws(
