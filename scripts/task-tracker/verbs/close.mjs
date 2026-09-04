@@ -1183,7 +1183,16 @@ export async function runReopenedCloseRecovery({
   // Ambiguity refuses rather than silently minting a second recovery.
   if (backed.status === 'ambiguous') throw new Error('reopened-close-recovery:resume-evidence');
   if (backed.transaction === null) throw new Error('reopened-close-recovery:ambiguous-body');
-  const resumeRecord = backed.record;
+  const backedRecord = backed.record;
+  const completedBackedReplacement =
+    backedRecord && activeTransaction.completedSteps.length >= TERMINAL_CLOSE_STEPS.length;
+  // A completed replacement is an idempotent retry only while the issue remains
+  // closed. If that completed replacement is itself reopened for a later accepted
+  // SHA, it becomes the next true historical transaction and must be superseded in
+  // a new link of the recovery chain.
+  const chainCompletedReplacement =
+    completedBackedReplacement && closeSnapshot.issueClosed === false;
+  const resumeRecord = chainCompletedReplacement ? null : backedRecord;
   // On a mint the active transaction IS the completed original; on a resume the
   // original is reconstructed from the durable record.
   const oldTransaction = resumeRecord ? oldTransactionFromRecord(resumeRecord) : activeTransaction;
@@ -1193,7 +1202,7 @@ export async function runReopenedCloseRecovery({
   // A replacement that already ran every step is finished. Returning it unchanged
   // keeps the retry idempotent instead of refusing (its binding is released, so
   // ownership no longer resolves) or minting a second recovery.
-  if (resumeRecord && replacementCompletedSteps.length >= TERMINAL_CLOSE_STEPS.length) {
+  if (completedBackedReplacement && !chainCompletedReplacement) {
     return { body: convergeBody, transaction: activeTransaction, record: resumeRecord };
   }
 

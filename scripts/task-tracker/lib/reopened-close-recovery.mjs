@@ -20,6 +20,7 @@
 // state refuses BEFORE any mutation.
 
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 
 import {
   readDeliveredCloseTransactions,
@@ -28,7 +29,13 @@ import {
 } from './close-convergence.mjs';
 import { decodeCanonical, encodeCanonical, fingerprint } from './resident-action-ledger-codec.mjs';
 import { occupancyPath } from '../paths.mjs';
-import { readClosedBindingLedger } from './worktree-binding-lifecycle.mjs';
+import { getActiveTask } from '../session-state.mjs';
+import {
+  collectBindingCandidateWorktrees,
+  isBindingRecordClosed,
+  readClosedBindingLedger,
+  resolveBindingAuthorityMain,
+} from './worktree-binding-lifecycle.mjs';
 import { readOccupancy } from './occupancy.mjs';
 
 function defaultReadLedger(mainWorktreePath) {
@@ -37,6 +44,20 @@ function defaultReadLedger(mainWorktreePath) {
 
 function defaultReadOccupancy(mainWorktreePath) {
   return readOccupancy(occupancyPath(mainWorktreePath));
+}
+
+function latestIssueClose(ledger, issueRef) {
+  let latest = null;
+  for (const [historicalSessionId, entries] of Object.entries(ledger?.sessions || {})) {
+    const closedAt = entries?.[issueRef]?.closedAt;
+    if (!closedAt) continue;
+    const closedMs = Date.parse(closedAt);
+    if (!Number.isFinite(closedMs)) return { malformed: closedAt };
+    if (!latest || closedMs > latest.closedMs) {
+      latest = { closedAt, closedMs, historicalSessionId };
+    }
+  }
+  return latest;
 }
 
 export const REOPENED_CLOSE_RECOVERY_SCHEMA = 'aitm.reopened-close-recovery/v1';
@@ -149,11 +170,13 @@ function validateOldTransaction(oldTransaction, issueNumber) {
 // necessarily has one.
 //
 // What the recovery actually needs is ownership: is the current occupancy claim
-// THIS session's legitimate post-close rebind on the issue's recorded worktree, or
-// is it someone else's? A same-session claim bound after the old close is the
-// recovery's own binding — the thing it is entitled to release. A foreign session,
-// a different worktree, or a live active-task record not marked closed is real
-// contention and must refuse.
+// the CURRENT session's legitimate post-close claim on the issue's recorded
+// worktree, or is it someone else's? The historical close may belong to an older
+// session: a governed handoff must not erase that true close authority. A current
+// claim bound after the latest historical close is the recovery's own binding —
+// the thing it is entitled to release. A foreign session, a different worktree, or
+// a second live active-task record not marked closed is real contention and must
+// refuse.
 //
 // Deliberately does NOT require an active-task record: a paused session has none,
 // and #1490 is paused. Requiring one would be another false predicate.
@@ -169,13 +192,15 @@ export function resolveReopenedBindingOwnership({
   const refuse = (disposition, extra = {}) =>
     deepFreeze({ disposition, authorized: false, issue: issueRef, ...extra });
 
-  const mainWorktreePath = (deps.resolveMain || ((dir) => dir))(projectDir);
+  const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
+  const mainWorktreePath = resolveMain(projectDir, deps);
   const ledger = (deps.readLedger || defaultReadLedger)(mainWorktreePath);
-  const closedAt = ledger?.sessions?.[sessionId]?.[issueRef]?.closedAt ?? null;
-  // No prior close by this session means there is nothing to recover from.
-  if (!closedAt) return refuse('no-prior-close', { closedAt: null });
-  const closedMs = Date.parse(closedAt);
-  if (!Number.isFinite(closedMs)) return refuse('malformed-ledger', { closedAt });
+  const historicalClose = latestIssueClose(ledger, issueRef);
+  if (!historicalClose) return refuse('no-prior-close', { closedAt: null });
+  if (historicalClose.malformed) {
+    return refuse('malformed-ledger', { closedAt: historicalClose.malformed });
+  }
+  const { closedAt, closedMs } = historicalClose;
 
   const occupancy = (deps.readOccupancy || defaultReadOccupancy)(mainWorktreePath);
   const row = occupancy?.[issueKey] ?? null;
@@ -191,13 +216,25 @@ export function resolveReopenedBindingOwnership({
 
   // A live binding record for this issue that the ledger does not mark closed is
   // genuine contention regardless of session.
-  const candidates = (deps.collectCandidates || (() => []))({ projectDir, deps }) || [];
-  const readActive = deps.getActiveTask || (() => null);
-  const isClosed = deps.isBindingRecordClosed || (() => true);
+  const collected = deps.collectCandidates
+    ? { candidates: deps.collectCandidates({ projectDir, deps }) }
+    : collectBindingCandidateWorktrees({ projectDir, deps });
+  const candidates = Array.isArray(collected.candidates)
+    ? collected.candidates
+    : [...(collected.candidates || [])];
+  const readActive = deps.getActiveTask || getActiveTask;
+  const isClosed = deps.isBindingRecordClosed || isBindingRecordClosed;
+  const recordedPath = recordedWorktreePath ? path.resolve(recordedWorktreePath) : null;
   for (const candidate of candidates) {
     const record = readActive(sessionId, candidate);
     const recordIssue = record?.issue == null ? null : String(record.issue);
     if (recordIssue !== issueRef) continue;
+    const candidatePath = path.resolve(candidate);
+    const recordPath = record?.worktreePath ? path.resolve(record.worktreePath) : null;
+    // The current session's record in the governed worktree is the claim being
+    // evaluated, not a competing claim. Every other live record must already be
+    // covered by terminal close authority or the recovery refuses.
+    if (recordedPath && candidatePath === recordedPath && recordPath === recordedPath) continue;
     if (!isClosed({ record, sessionId, ledger })) {
       return refuse('live-binding', { closedAt, occupancy: row });
     }

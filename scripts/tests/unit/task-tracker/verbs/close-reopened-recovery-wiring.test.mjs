@@ -32,10 +32,13 @@ const REPO = 'kburson/ai-task-manager';
 const ISSUE = 1490;
 const OLD_SHA = 'd'.repeat(40);
 const NEW_SHA = 'b'.repeat(40);
+const NEXT_SHA = 'c'.repeat(40);
 const OLD_MERGE = '7'.repeat(40);
 const NEW_MERGE = '9'.repeat(40);
+const NEXT_MERGE = '8'.repeat(40);
 const OLD_TX = 'ad96d1e1-8c17-471e-a060-279975761e50';
 const NEW_TX = '11111111-2222-3333-4444-555555555555';
+const NEXT_TX = '66666666-7777-4888-8999-000000000000';
 const NOW = '2026-09-03T06:30:00.000Z';
 
 function oldTransaction(overrides = {}) {
@@ -131,9 +134,15 @@ function pullRequestFor(acceptedSha, mergeSha, prNumber) {
 
 const HISTORICAL = deliveryPair(OLD_SHA, OLD_MERGE, 1491, '01ARZ3NDEKTSV4RRFFQ69G5FAV', 101);
 const CURRENT = deliveryPair(NEW_SHA, NEW_MERGE, 1493, '01ARZ3NDEKTSV4RRFFQ69G5FAW', 201);
+const NEXT = deliveryPair(NEXT_SHA, NEXT_MERGE, 1495, '01ARZ3NDEKTSV4RRFFQ69G5FAX', 301);
 
 function harness(overrides = {}) {
   const calls = { createdComments: [], bodyWrites: [], order: [] };
+  const acceptedSha = overrides.acceptedSha ?? NEW_SHA;
+  const acceptedMergeSha = overrides.acceptedMergeSha ?? NEW_MERGE;
+  const acceptedPrNumber = overrides.acceptedPrNumber ?? 1493;
+  const acceptedIntentId = overrides.acceptedIntentId ?? '01ARZ3NDEKTSV4RRFFQ69G5FAW';
+  const acceptedReceipt = overrides.acceptedReceipt ?? CURRENT.receipt;
   const deliveryComments = overrides.deliveryComments ?? [
     ...HISTORICAL.comments,
     ...CURRENT.comments,
@@ -141,7 +150,7 @@ function harness(overrides = {}) {
   let recoveryComments = overrides.recoveryComments ?? [];
   const gate = {
     gateInput: {
-      acceptedSha: NEW_SHA,
+      acceptedSha,
       // The gate's live PR inventory is the SHA-keyed selector for historical
       // delivery. No separate marker parser exists or should.
       pullRequests: overrides.pullRequests ?? [
@@ -149,22 +158,22 @@ function harness(overrides = {}) {
         pullRequestFor(NEW_SHA, NEW_MERGE, 1493),
       ],
     },
-    testReceiptSha: 'testReceiptSha' in overrides ? overrides.testReceiptSha : NEW_SHA,
+    testReceiptSha: 'testReceiptSha' in overrides ? overrides.testReceiptSha : acceptedSha,
     recoveryReviewApprovedSha:
-      'recoveryReviewApprovedSha' in overrides ? overrides.recoveryReviewApprovedSha : NEW_SHA,
+      'recoveryReviewApprovedSha' in overrides ? overrides.recoveryReviewApprovedSha : acceptedSha,
     // The REAL `verifyCloseDeliveryReceipt` shape: { skipped, receipt, verification }.
     // There is no `status` field; the verified delivery lives at
     // `verification.receiptInput`.
     receipt: {
       skipped: false,
-      receipt: CURRENT.receipt,
+      receipt: acceptedReceipt,
       verification: {
         receiptInput: overrides.verifiedDelivery ?? {
-          intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+          intentId: acceptedIntentId,
           issueNumber: ISSUE,
-          prNumber: 1493,
-          expectedHeadSha: NEW_SHA,
-          mergeCommitSha: NEW_MERGE,
+          prNumber: acceptedPrNumber,
+          expectedHeadSha: acceptedSha,
+          mergeCommitSha: acceptedMergeSha,
           baseRef: 'trunk',
           mergeMethod: 'squash',
           verifiedTrunkRef: 'origin/trunk',
@@ -567,6 +576,33 @@ test('#1490: a retry after ALL steps completed is idempotent, not a refusal or a
   assert.deepEqual(result.transaction.completedSteps, [...TERMINAL_CLOSE_STEPS]);
   assert.deepEqual(calls.createdComments, []);
   assert.deepEqual(calls.bodyWrites, []);
+});
+
+test('#1490: a completed replacement reopened for a new accepted SHA chains recovery', async () => {
+  const durable = await mintedRecoveryComment();
+  const url = `https://api.github.com/repos/${REPO}/issues/${ISSUE}`;
+  const { args, calls } = harness({
+    convergeBody: bodyWith(replacementTransaction([...TERMINAL_CLOSE_STEPS])),
+    recoveryComments: [{ id: 900, body: durable, issue_url: url }],
+    acceptedSha: NEXT_SHA,
+    acceptedMergeSha: NEXT_MERGE,
+    acceptedPrNumber: 1495,
+    acceptedIntentId: '01ARZ3NDEKTSV4RRFFQ69G5FAX',
+    acceptedReceipt: NEXT.receipt,
+    deliveryComments: [...CURRENT.comments, ...NEXT.comments],
+    pullRequests: [
+      pullRequestFor(NEW_SHA, NEW_MERGE, 1493),
+      pullRequestFor(NEXT_SHA, NEXT_MERGE, 1495),
+    ],
+    newUuid: NEXT_TX,
+  });
+  const result = await runReopenedCloseRecovery(args);
+  assert.equal(result.transaction.transactionId, NEXT_TX);
+  assert.equal(result.transaction.acceptedSha, NEXT_SHA);
+  assert.deepEqual(result.transaction.completedSteps, []);
+  assert.equal(calls.createdComments.length, 1);
+  assert.equal(calls.bodyWrites.length, 1);
+  assert.match(calls.createdComments[0], /aitm-reopened-close-recovery/);
 });
 
 test('#1490: a FRESH mint still requires the step-zero shape', async () => {

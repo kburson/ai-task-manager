@@ -21,13 +21,19 @@
 // that suite supplied `pending` directly and never touched a binding.
 
 import { strict as assert } from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { closedBindingsPath, occupancyPath } from '../../../../task-tracker/paths.mjs';
-import { inspectTerminalIssueBindingRelease } from '../../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
+import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
+import {
+  inspectTerminalIssueBindingRelease,
+  markClosedBinding,
+} from '../../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
+import { claimOccupancy } from '../../../../task-tracker/lib/occupancy.mjs';
 import { resolveReopenedBindingOwnership } from '../../../../task-tracker/lib/reopened-close-recovery.mjs';
 
 const SESSION = '09d364b0-4286-4e1b-991b-a6a8ca5db61d';
@@ -35,6 +41,49 @@ const OTHER_SESSION = 'ffffffff-0000-0000-0000-000000000000';
 const CLOSED_AT = '2026-09-03T01:51:22.821Z';
 const REBOUND_AT = '2026-09-03T04:58:36.386Z';
 const BEFORE_CLOSE = '2026-09-03T00:10:00.000Z';
+let linkedSequence = 0;
+
+function addLinkedWorktree(main, label) {
+  linkedSequence += 1;
+  const linked = `${main}-${label}`;
+  execFileSync(
+    'git',
+    ['worktree', 'add', '-q', '-b', `reopened-binding-${label}-${linkedSequence}`, linked],
+    { cwd: main }
+  );
+  return linked;
+}
+
+function productionLinkedProject() {
+  const main = mkdtempProjectIsolated('reopened-binding-main-', 'test');
+  const linked = addLinkedWorktree(main, 'current');
+  const currentSession = 'codex-current-session';
+  markClosedBinding({
+    mainWorktreePath: main,
+    sessionId: SESSION,
+    issue: '#1490',
+    closedAt: CLOSED_AT,
+  });
+  claimOccupancy({
+    projectDir: linked,
+    issue: 1490,
+    sid: currentSession,
+    provider: 'codex',
+    worktreePath: linked,
+    now: () => REBOUND_AT,
+  });
+  setActiveTask(
+    currentSession,
+    {
+      issue: '#1490',
+      boundAt: REBOUND_AT,
+      worktreePath: linked,
+      worktreeResolvedAt: REBOUND_AT,
+    },
+    linked
+  );
+  return { main, linked, currentSession };
+}
 
 // Build a real project directory carrying a real ledger and occupancy file.
 function project({ closedAt = CLOSED_AT, occupancy = null } = {}) {
@@ -154,7 +203,7 @@ test('#1490: a claim predating the old close is not a post-close rebind', () => 
   assert.equal(ownership.authorized, false);
 });
 
-test('#1490: no ledger closedAt means this session never closed the issue', () => {
+test('#1490: no historical ledger closedAt means the issue was never closed', () => {
   const dir = project({ closedAt: null, occupancy: { 1490: OWN_ROW } });
   const ownership = resolveReopenedBindingOwnership({
     projectDir: dir,
@@ -202,4 +251,41 @@ test('#1490: a paused session is authorized — an active-task file is not requi
   });
   assert.equal(ownership.disposition, 'own-post-close-claim');
   assert.equal(ownership.authorized, true);
+});
+
+test('#1490: production defaults resolve historical authority from a linked worktree', () => {
+  const { linked, currentSession } = productionLinkedProject();
+  const ownership = resolveReopenedBindingOwnership({
+    projectDir: linked,
+    issue: '#1490',
+    sessionId: currentSession,
+    recordedWorktreePath: linked,
+  });
+  assert.equal(ownership.disposition, 'own-post-close-claim');
+  assert.equal(ownership.closedAt, CLOSED_AT);
+  assert.equal(ownership.occupancy.sid, currentSession);
+  assert.equal(ownership.authorized, true);
+});
+
+test('#1490: production defaults refuse a second live binding for the current session', () => {
+  const { main, linked, currentSession } = productionLinkedProject();
+  const competing = addLinkedWorktree(main, 'competing');
+  setActiveTask(
+    currentSession,
+    {
+      issue: '#1490',
+      boundAt: '2026-09-03T05:30:00.000Z',
+      worktreePath: competing,
+      worktreeResolvedAt: '2026-09-03T05:30:00.000Z',
+    },
+    competing
+  );
+  const ownership = resolveReopenedBindingOwnership({
+    projectDir: linked,
+    issue: '#1490',
+    sessionId: currentSession,
+    recordedWorktreePath: linked,
+  });
+  assert.equal(ownership.disposition, 'live-binding');
+  assert.equal(ownership.authorized, false);
 });
