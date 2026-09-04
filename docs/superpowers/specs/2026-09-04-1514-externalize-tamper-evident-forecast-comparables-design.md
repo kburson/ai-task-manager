@@ -1,7 +1,7 @@
 # Externalize Tamper-Evident Forecast Comparables
 
 Issue: #1514  
-Status: Approved design
+Status: Revised design pending approval
 
 ## Purpose
 
@@ -48,12 +48,17 @@ The visible comment contains the sole entry copy:
 <details>
   <summary>Comparable outcomes: count = 1</summary>
   <ul id="comparableIssues">
-    <li>#1180: {"outcomeRecordId":"01M1DVK8Q17WQERJQHBEVDM0ET","weight":0.6359}</li>
+    <li>
+      <a href="https://github.com/kburson/ai-task-manager/issues/1180">#1180</a>:
+      {"outcomeRecordId":"01M1DVK8Q17WQERJQHBEVDM0ET","weight":0.6359}
+    </li>
   </ul>
 </details>
 ```
 
 The fixed ID is deliberately not configurable. It gives writers and readers one unambiguous contract and avoids selector parsing.
+
+The issue reference is an explicit HTML anchor, not a bare `#1180`. GitHub assigns bare references in list items its `issue-link js-issue-link` behavior and expands them into status icons plus full issue titles, as seen in the edited #1512 comment. An explicit anchor keeps the legacy compact `#1180` label while remaining clickable. The writer derives the absolute target from `envelope.repository` and the comparable issue number; no invisible character or editor-specific behavior is involved.
 
 ## Authority and integrity
 
@@ -75,7 +80,7 @@ A focused forecast-comment transport codec will own descriptor construction, lis
 The standard estimation writer continues receiving the logical forecast envelope. During `renderAitmRecord`:
 
 1. Validate the logical forecast and its current payload hash as today.
-2. Render or locate the canonical comparable `<details>` section in visible Markdown.
+2. Render or locate the canonical comparable `<details>` section in visible Markdown, using exact compact anchors derived from `envelope.repository`.
 3. Confirm that its parsed entries equal `payload.comparableIssues`.
 4. Compute the count and canonical-array SHA-256.
 5. Serialize a wire-only envelope whose `comparableIssues` value is the descriptor.
@@ -95,12 +100,13 @@ Empty cohorts use the same shape: a collapsed block with `count = 0`, an empty `
 For a descriptor, the reader:
 
 1. Finds exactly one `<ul id="comparableIssues">` inside a `<details>` block with the expected summary.
-2. Parses each list item as `#<positive issue number>: <JSON object>`.
-3. Requires the JSON object to have exactly `outcomeRecordId` and `weight` with the same validations used by forecast records.
-4. Reconstructs ordered objects shaped as `{ issue, outcomeRecordId, weight }`.
-5. Verifies summary count, descriptor count, and descriptor fingerprint.
-6. Replaces the wire descriptor with the reconstructed array in a fresh logical envelope.
-7. Runs the existing forecast validation and whole-payload hash validation.
+2. Parses each list item as an explicit anchor followed by `: <JSON object>`.
+3. Requires anchor text `#<positive issue number>` and the exact absolute target `https://github.com/<expectedRepository>/issues/<same number>`.
+4. Requires the JSON object to have exactly `outcomeRecordId` and `weight` with the same validations used by forecast records.
+5. Reconstructs ordered objects shaped as `{ issue, outcomeRecordId, weight }`.
+6. Verifies summary count, descriptor count, and descriptor fingerprint.
+7. Replaces the wire descriptor with the reconstructed array in a fresh logical envelope.
+8. Runs the existing forecast validation and whole-payload hash validation.
 
 The returned object remains identical in shape to existing parsed forecast records. Runtime projections, rubric learning, supersession handling, and all other consumers continue reading `record.envelope.payload.comparableIssues` without transport awareness.
 
@@ -114,6 +120,7 @@ Parsing fails closed when any of these conditions occurs:
 - the ID appears more than once;
 - the summary count is absent or disagrees;
 - a list item has malformed structure or JSON;
+- an issue anchor has the wrong label, repository, number, protocol, or target shape;
 - an item contains missing or extra fields, an invalid record ID, or an out-of-range weight;
 - the parsed item count disagrees with the descriptor;
 - the canonical-array fingerprint disagrees;
@@ -138,9 +145,10 @@ Focused tests will prove:
 - a new forecast comment contains no comparable array inside `<!-- aitm-record ... -->`;
 - the hidden descriptor and visible #1512-style list round-trip to the original logical envelope;
 - the list is emitted once inside a collapsed `<details>` block with the fixed ID;
+- each issue is rendered as an explicit, repository-correct HTML anchor whose label is only `#<number>`, preventing GitHub's rich list-item title expansion;
 - old v1 and v2 embedded-array comments still parse;
 - empty and large lists round-trip deterministically within comment-size limits;
-- changed entries, changed order, insertion, deletion, bad count, bad digest, duplicate ID, missing block, malformed JSON, extra item keys, and invalid values all fail closed;
+- changed entries, changed order, insertion, deletion, bad count, bad digest, duplicate ID, missing block, malformed JSON, deceptive anchor targets, extra item keys, and invalid values all fail closed;
 - ordinary non-forecast records and visible Markdown behavior remain unchanged;
 - create/update read-back equality still compares the original logical envelope.
 
