@@ -5,6 +5,15 @@
 This document amends #1490 for the live failure discovered after its corrective
 delivery was merged through PR #1508.
 
+It is further amended for the production retry failure discovered after PR
+#1509 delivered the recovery-backed stale-supersession implementation. The
+first corrective restart authorized against the existing `Delivered`
+disposition, persisted a replacement transaction with only `timing` complete,
+and then stopped. Its retry refused because the recovery-backed authorizer's
+fixture expected a null disposition even though the close saga never clears the
+historical `Delivered` value. This amendment corrects that impossible predicate;
+it does not broaden the recovery lane.
+
 The first reopened-close recovery durably superseded completed transaction
 `ad96d1e1-8c17-471e-a060-279975761e50` with replacement transaction
 `b9e5cc8e-033e-4eb3-82fe-80394ec2629a` at accepted SHA `afb0307b`. That
@@ -65,8 +74,10 @@ The recovery-backed authorization is conjunctive:
 5. The current accepted SHA differs from the active transaction SHA and carries
    exact-SHA Test, human Review, pull-request, intent, receipt, and live trunk
    verification.
-6. The issue is OPEN/REOPENED in Review, has null terminal disposition, and the
-   recorded worktree is clean.
+6. The issue is OPEN/REOPENED in Review, retains the exact `Delivered` terminal
+   disposition required by the first reopened-close recovery, and the recorded
+   worktree is clean. The later disposition step rewrites `Delivered`
+   idempotently; no close step clears it.
 7. Binding ownership resolves to the current session's own post-close rebind on
    the recorded worktree.
 
@@ -86,6 +97,12 @@ pending-binding predicates remain authoritative for ordinary stale closes.
 The result uses the same old/new transaction intent shape consumed by the
 existing delivered-close supersession writer. This composes audited mechanisms
 instead of introducing a third marker schema or flag.
+
+For a recovery-backed retry, `Delivered` is a prefix invariant rather than a
+signal that the replacement saga already completed its disposition step. The
+value belongs to the historical completed close and remains present throughout
+the reopened correction. A null or different disposition contradicts the
+immutable recovery record and refuses before mutation.
 
 ### Immutable second link
 
@@ -154,7 +171,7 @@ close --restart-stale-transaction
 - No durable backing record, more than one backing record, or a record that does
   not exactly name the active transaction refuses before mutation.
 - A non-canonical or terminal completed-step sequence refuses.
-- Dirty, foreign-binding, non-REOPENED, non-Review, non-null-disposition, and
+- Dirty, foreign-binding, non-REOPENED, non-Review, non-Delivered-disposition, and
   stale delivery evidence refuse.
 - A lost response after supersession-comment creation reuses the exact durable
   record. A lost response after marker replacement resumes the observed prefix.
@@ -188,6 +205,14 @@ Focused coverage will prove:
 8. the normal close, delivery, marker-protection, and outcome-creation suites
    remain green.
 
+The regression must exercise the production sequence rather than construct an
+unreachable null-disposition fixture: authorize the first reopened recovery
+with `Delivered`, interrupt after the `timing` checkpoint, then retry the
+recovery-backed stale supersession with the same persisted `Delivered` value.
+The test must fail on the old predicate before production code changes and pass
+after the minimal correction. Null and alternate dispositions remain explicit
+refusal cases.
+
 Full lint, format, unit, integration, slow, and governed exact-SHA Test lanes
 remain required before Review.
 
@@ -215,6 +240,18 @@ trail and make lost-response reconciliation ambiguous.
 Current content correctness does not prove authority to retire the active close
 transaction or correct its estimation outcome. Both mutations require the
 immutable transaction chain.
+
+### Clear disposition during reopened recovery
+
+Adding a new clearing mutation would expand the terminal saga, create another
+lost-response boundary, and temporarily discard true historical state. The
+existing disposition step is already an idempotent `Delivered` write.
+
+### Accept either null or Delivered on retry
+
+Permitting both would conceal contradictory project state. The initial recovery
+can only create this replacement after observing `Delivered`, and no intervening
+step clears it, so `Delivered` is the sole reachable and auditable value.
 
 ## Non-goals
 
