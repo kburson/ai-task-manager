@@ -6,7 +6,13 @@ function fail(category) {
   throw new Error(`estimation-outcome-writer:${category}`);
 }
 
-async function ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload, deps }) {
+async function ensureEstimationOutcomeUnlocked({
+  issue,
+  forecast,
+  outcomePayload,
+  supersedeExisting,
+  deps,
+}) {
   if (!forecast && outcomePayload?.kind !== 'epic-orchestration')
     return { status: 'legacy-no-forecast' };
   if (
@@ -37,7 +43,33 @@ async function ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload
   if (active.length > 1 || (matching.length > 0 && active.length === 0)) fail('duplicate');
   if (active.length === 1) {
     if (canonicalRecordJson(active[0].envelope.payload) !== canonicalRecordJson(outcomePayload)) {
-      fail('payload-mismatch');
+      if (!supersedeExisting) fail('payload-mismatch');
+      if (
+        typeof deps.createOutcomeEnvelope !== 'function' ||
+        typeof deps.writeOutcome !== 'function'
+      ) {
+        fail('dependencies');
+      }
+      const envelope = deps.createOutcomeEnvelope({
+        issue,
+        payload: outcomePayload,
+        supersedes: active[0].envelope.recordId,
+      });
+      const written = await deps.writeOutcome({ issue, envelope });
+      if (
+        written?.envelope?.recordType !== 'estimation-outcome' ||
+        written.envelope.payload?.issue !== issue ||
+        written.envelope.payload?.forecastRecordId !== forecastRecordId ||
+        written.envelope.payload?.kind !== kind ||
+        written.envelope.supersedes !== active[0].envelope.recordId
+      ) {
+        fail('write-readback');
+      }
+      return {
+        status: 'written',
+        recordId: written.envelope.recordId,
+        commentNodeId: written.commentNodeId,
+      };
     }
     return {
       status: 'existing',
@@ -74,7 +106,13 @@ async function ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload
   };
 }
 
-export async function ensureEstimationOutcome({ issue, forecast, outcomePayload, deps = {} } = {}) {
+export async function ensureEstimationOutcome({
+  issue,
+  forecast,
+  outcomePayload,
+  supersedeExisting = false,
+  deps = {},
+} = {}) {
   if (!forecast && outcomePayload?.kind !== 'epic-orchestration') {
     return { status: 'legacy-no-forecast' };
   }
@@ -83,6 +121,13 @@ export async function ensureEstimationOutcome({ issue, forecast, outcomePayload,
   return runLogicalRecordClaim(
     deps,
     { key: `outcome:${issue}:${kind}:${forecastRecordId ?? 'none'}`, issue },
-    () => ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload, deps })
+    () =>
+      ensureEstimationOutcomeUnlocked({
+        issue,
+        forecast,
+        outcomePayload,
+        supersedeExisting,
+        deps,
+      })
   );
 }

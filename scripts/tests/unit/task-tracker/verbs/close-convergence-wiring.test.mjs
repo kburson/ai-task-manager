@@ -103,6 +103,23 @@ test('close asks the outcome runtime about forecast-free epics and permits a leg
   assert.equal(legacy.status, 'legacy-no-forecast');
 });
 
+test('close passes explicit reopened-cycle correction authority to the outcome runtime', async () => {
+  let observed = null;
+  await ensureCloseEstimationOutcome({
+    issueNumber: 1490,
+    body: 'reopened issue body',
+    supersedeExisting: true,
+    writer: {
+      ensure: async (input) => {
+        observed = input;
+        return { status: 'written', recordId: '01J00000000000000000001490' };
+      },
+    },
+  });
+
+  assert.equal(observed.supersedeExisting, true);
+});
+
 test('close uses the frozen Plan forecast and refuses a drifted ready marker', async () => {
   const frozen = '01J00000000000000000000941';
   const drifted = '01J00000000000000000000942';

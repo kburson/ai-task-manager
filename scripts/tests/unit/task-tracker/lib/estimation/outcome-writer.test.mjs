@@ -141,6 +141,45 @@ test('repeated close refuses an existing outcome whose immutable payload differs
   );
 });
 
+test('an explicitly authorized reopened close supersedes a differing active outcome', async () => {
+  const priorId = '01J00000000000000000000902';
+  const correctionId = '01J00000000000000000000911';
+  const records = [
+    {
+      commentNodeId: 'IC_existing',
+      envelope: {
+        recordId: priorId,
+        recordType: 'estimation-outcome',
+        supersedes: null,
+        payload: { ...payload, actual: { engagedHours: 1 } },
+      },
+    },
+  ];
+
+  const result = await ensureEstimationOutcome({
+    issue: 1091,
+    forecast,
+    outcomePayload: { ...payload, actual: { engagedHours: 2 } },
+    supersedeExisting: true,
+    deps: {
+      listOutcomeRecords: async () => records,
+      createOutcomeEnvelope: ({ payload: nextPayload, supersedes }) => ({
+        recordId: correctionId,
+        recordType: 'estimation-outcome',
+        supersedes,
+        payload: nextPayload,
+      }),
+      writeOutcome: async ({ envelope }) => ({ commentNodeId: 'IC_correction', envelope }),
+    },
+  });
+
+  assert.deepEqual(result, {
+    status: 'written',
+    recordId: correctionId,
+    commentNodeId: 'IC_correction',
+  });
+});
+
 test('duplicate or conflicting outcome records fail closed', async () => {
   const record = (id, forecastRecordId) => ({
     commentNodeId: `IC_${id}`,

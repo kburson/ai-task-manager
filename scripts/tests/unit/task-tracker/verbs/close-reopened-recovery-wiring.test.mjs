@@ -15,6 +15,7 @@
 // on what actually crosses them.
 
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { TERMINAL_CLOSE_STEPS } from '../../../../task-tracker/lib/close-convergence.mjs';
@@ -26,7 +27,10 @@ import {
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
 import { renderReopenedCloseRecoveryComment } from '../../../../task-tracker/lib/reopened-close-recovery.mjs';
-import { runReopenedCloseRecovery } from '../../../../task-tracker/verbs/close.mjs';
+import {
+  permitsReopenedOutcomeCorrection,
+  runReopenedCloseRecovery,
+} from '../../../../task-tracker/verbs/close.mjs';
 
 const REPO = 'kburson/ai-task-manager';
 const ISSUE = 1490;
@@ -261,6 +265,49 @@ test('#1490: durable evidence is written BEFORE the body is mutated', async () =
   assert.deepEqual(calls.order, ['comment', 'body']);
   assert.equal(calls.createdComments.length, 1);
   assert.match(calls.createdComments[0], /aitm-reopened-close-recovery id="close-reopened:/);
+});
+
+test('#1490: durable recovery authorizes an outcome correction only for its replacement transaction', async () => {
+  const { args } = harness();
+  const recovered = await runReopenedCloseRecovery(args);
+
+  assert.equal(
+    permitsReopenedOutcomeCorrection({
+      recoveryRecord: recovered.record,
+      transaction: recovered.transaction,
+    }),
+    true
+  );
+  assert.equal(
+    permitsReopenedOutcomeCorrection({
+      recoveryRecord: recovered.record,
+      transaction: { ...recovered.transaction, transactionId: 'foreign-transaction' },
+    }),
+    false
+  );
+});
+
+test('#1490: the primary estimation step consumes the durable reopened-recovery authority', () => {
+  const source = readFileSync(
+    new URL('../../../../task-tracker/verbs/close.mjs', import.meta.url),
+    'utf8'
+  );
+  const recoveryAssignment = source.indexOf('reopenedCloseRecoveryRecord = recovered.record');
+  const estimationStep = source.indexOf("if (needsDeliveredCloseStep('estimation'))");
+  const authorityUse = source.indexOf(
+    'supersedeExisting: permitsReopenedOutcomeCorrection({',
+    estimationStep
+  );
+
+  assert.ok(recoveryAssignment > 0, 'recovery must retain its durable record');
+  assert.ok(
+    estimationStep > recoveryAssignment,
+    'estimation must run after recovery authorization'
+  );
+  assert.ok(
+    authorityUse > estimationStep,
+    'estimation must consume only matched recovery authority'
+  );
 });
 
 test('#1490: gate-resolved Test and Review SHAs are the exact values used', async () => {
