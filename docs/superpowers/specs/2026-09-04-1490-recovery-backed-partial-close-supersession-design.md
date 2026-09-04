@@ -5,8 +5,8 @@
 This document amends #1490 for the live failure discovered after its corrective
 delivery was merged through PR #1508.
 
-It is further amended for the production retry failure discovered after PR
-#1509 delivered the recovery-backed stale-supersession implementation. The
+It is further amended for the production retry failure discovered after
+PR #1509 delivered the recovery-backed stale-supersession implementation. The
 first corrective restart authorized against the existing `Delivered`
 disposition, persisted a replacement transaction with only `timing` complete,
 and then stopped. Its retry refused because the recovery-backed authorizer's
