@@ -27,7 +27,7 @@ right-hand commits are the durable commits reachable from trunk.
 | --- | --- | --- |
 | Accepted specification | `1375edfd4b29c98e407ae428a15f992dbdff2cd6` | `c6e0ab5f21d469496ae83d85de93c3c48ba2189a` |
 | Accepted plan | `7187854e13e21b357b4272afe349fc4b74f92767` | `411c441d8b53952c009f90103fb41542a55c0020` |
-| Migrated portfolio WBS | `09b252efcac8d6cda9fef941cf16f5bf87cd87db` | `e3cc46bcba20769b4e6942450b1c46bce6154d29` |
+| Migrated portfolio WBS | `09b252efcac8d6cda9fef941cf16f5bf87cd87db` | `e3cc46bc039c5c55f86486586f8a774e1a0d9170` |
 | Final review formatting | `27bbe7d8c1fde48f228f48957defd0a5e1194690` | `746b141b2bd5dec3069cc214c4aa5a06e5751a91` |
 
 The protocol state and event logs retain their original pre-rebase commit IDs
