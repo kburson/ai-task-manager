@@ -4,7 +4,7 @@
 
 **Date:** 2026-09-04
 
-**Status:** Approved in design discussion; awaiting written-spec review
+**Status:** Spec-only co-review in progress
 
 **Amends:** `2026-09-01-1219-cloud-test-stage-design.md`
 
@@ -69,8 +69,10 @@ The current workflow has five structural problems:
    there.
 7. Make Full-Auto capable of merging, repairing the implementation record, and
    closing a child without human intervention.
-8. Preserve a human-gated mode in which CI passes before a human is invited to
-   approve the PR merge and final implementation record.
+8. Preserve #1512's three independent human-review controls: manual plan review
+   at Plan to Develop, manual code review after green required CI and before
+   merge authority, and manual task review at Review to Done. Enabling one gate
+   must not enable either of the others.
 9. Support optional cross-provider audits only after an issue is closed.
 10. Create linked corrective defects for post-close findings without rewriting
     the original delivery record.
@@ -96,7 +98,14 @@ The current workflow has five structural problems:
 - **Candidate:** one committed story head proposed for Test, identified by its
   exact source SHA, base SHA, PR, issue, target branch, and evidence protocol.
 - **Flow reviewer:** a fresh, read-only agent spawned by the authoring provider
-  after hosted CI passes and before merge.
+  after hosted CI passes and before merge. It produces mandatory exact-candidate
+  evidence but never human PR approval.
+- **Ad hoc implementation reviewer:** the pre-amendment spawned review agent
+  displaced by #1512 when manual code review is enabled. It is not the canonical
+  flow reviewer introduced by this amendment.
+- **Agent Review Gate:** the existing structural Review-state validator. It is
+  neither the flow reviewer nor human PR approval; enrolled issues replace its
+  code-oriented work with the collateral validators defined here.
 - **Implementation record:** the issue-level account of intent, plan,
   acceptance criteria, delivered outcome, evidence, exceptions, estimates,
   ancestry, PR, source SHA, and merge SHA.
@@ -113,7 +122,8 @@ The current workflow has five structural problems:
 1. Repository-tracked source and documentation are part of the candidate and
    freeze at merge. Only issue/project collateral may change in Review.
 2. The PR is open throughout Test and is merged only after exact-head CI and
-   flow review pass.
+   flow review pass, plus eligible exact-head human PR approval when the
+   independent `pullRequestReview` gate is enabled.
 3. Every code or repository-document change creates a new candidate SHA and
    invalidates only candidate-bound CI, review, and merge authority.
 4. Test may return to Develop. Review never returns to Develop in the new
@@ -125,12 +135,16 @@ The current workflow has five structural problems:
 7. The flow reviewer cannot write code, alter the issue, create evidence, or
    approve a different SHA than the one it inspected.
 8. The implementing agent cannot be the sole author of acceptance authority.
-   Hosted CI plus the fresh-agent review are the minimum Full-Auto merge gates.
-9. A pinned trusted runtime, not candidate-controlled lifecycle code, evaluates
-   gates and performs provider mutations.
+   Hosted CI plus the canonical flow review are minimum merge gates in every
+   mode. A flow-review receipt never satisfies `pullRequestReview`.
+9. A pinned trusted runtime executes outside the candidate worktree. Only that
+   runtime evaluates gates, validates receipts, and performs provider mutations;
+   candidate-controlled lifecycle code cannot authorize itself.
 10. Merge success freezes the code proof. Review-stage collateral repair does
     not invalidate CI or flow-review evidence.
-11. Full-Auto removes human approval gates; it does not remove evidence gates.
+11. `analysisToDevelopment`, `pullRequestReview`, and `reviewToDone` are
+    independent. Full-Auto disables all three human gates; it does not remove
+    CI, flow-review, delivery, or implementation-record evidence gates.
 12. A crossover audit never changes the historical terminal state. Findings are
     append-only and corrective work is issue-linked.
 13. Parent epics aggregate immutable child receipts. They do not rerun or
@@ -167,6 +181,7 @@ committed Develop candidate
   -> hosted CI for exact source SHA
   -> fresh-agent flow review for exact source SHA
   -> finding disposition
+  -> eligible exact-head human PR approval when pullRequestReview=true
   -> expected-head merge
   -> live merge readback and delivery receipt
   -> Review
@@ -187,7 +202,11 @@ conversation or chain-of-thought context. The reviewer receives only:
 - a versioned review protocol.
 
 The reviewer is read-only. It returns a canonical verdict instead of editing
-the implementation.
+the implementation. The old ad hoc implementation-review agent is not spawned
+for an enrolled issue. The canonical flow reviewer runs in every mode and is a
+mandatory evidence gate. When manual code review is enabled, the requested
+human approval is a separate, additional merge-authorization gate; neither
+actor substitutes for the other.
 
 #### Finding disposition
 
@@ -208,16 +227,23 @@ review's structured finding, not its free-form reasoning. After the configured
 bounded retry count, unresolved ambiguity parks the issue in Test and requests
 human attention. It does not silently merge or create an endless reviewer loop.
 
-#### Merge modes
+#### Merge authorization
 
-In human-gated mode, passing CI and flow review mark the PR ready for human code
-approval. No human is asked to review a red or incomplete PR. Repository rules
-remain authoritative for the approval requirement.
+Plan to Develop continues to use #1512's independent
+`analysisToDevelopment` gate and is otherwise outside this amendment.
 
-In Full-Auto mode, passing CI and flow review authorize the existing sanctioned
-expected-head provider action. AITM reads the PR and target branch back,
-validates the resulting commit and attribution, and records the source SHA,
-merge SHA, PR, checks, review receipt, target, and merge method before moving to
+After required CI and flow review pass, `pullRequestReview=true` requests the
+configured eligible human reviewer. No human is requested for a red or
+incomplete PR. Assignment is not approval. Merge remains blocked until the
+latest applicable server-authored review is `APPROVED`, belongs to the eligible
+non-author, non-bot human, and names the exact current candidate head. No flow
+review, Agent Review Gate result, or approval of an older head satisfies this
+gate.
+
+When `pullRequestReview=false`, passing CI and flow review authorize the
+existing sanctioned expected-head provider action without human PR approval.
+In both cases AITM reads the PR and target branch back, validates the resulting
+commit and attribution, and records the delivery receipt before moving to
 Review.
 
 Merge conflict, stale head, changed base, or expected-head rejection retires
@@ -256,9 +282,11 @@ been violated: the code-quality check belongs in Test. The delivered story
 record remains truthful and a linked corrective defect is created. This path is
 not expected during ordinary Review because Review runs no functional tests.
 
-Human-gated mode requests one implementation-record approval after all static
-validators pass. Full-Auto records that human approval was bypassed by policy,
-validates the same collateral contract, and proceeds automatically.
+After all static validators pass, `reviewToDone=true` requires the existing
+human implementation-record approval. When `reviewToDone=false`, AITM records
+that this human gate was disabled by policy, validates the same collateral
+contract, and proceeds automatically. This setting is independent of
+`pullRequestReview` and `analysisToDevelopment`.
 
 ### Done
 
@@ -283,14 +311,41 @@ Every issue delivers to its immediate stable target:
 - a nested epic targets its parent epic branch; and
 - a root epic or standalone story targets trunk.
 
+When a nested epic's recorded branch equals its parent's recorded branch, that
+tier is not a repository delivery boundary: it produces no PR or merge receipt.
+Its implementation record aggregates the terminal receipts of children already
+delivered to the shared branch. A child story still needs a distinct governed
+head branch before it can open a PR to that shared target.
+
+`merge-back.mjs` remains the governed child-to-parent entry surface. For an
+enrolled issue it delegates to the same target-aware PR, hosted-CI, flow-review,
+expected-head merge, and delivery-receipt service used by Test. Its legacy local
+rebase, test, and fast-forward implementation remains available only to legacy
+issues.
+
+An enrolled target ref is append-only: it advances only by fast-forward or
+merge commit and is never rebased or force-updated. A stale child refreshes its
+own head against the target; it never rewrites the target beneath sibling
+candidates. The enrolled merge-back path runs no local functional suite and
+does not delete a child branch or worktree until live merge readback and receipt
+persistence succeed.
+
+Before enrollment, the literal immediate target ref must have active
+pull-request enforcement, strict exact-head required checks, deletion
+protection, and non-fast-forward protection. Recorded opaque refs such as
+`cloud-test-automation` are checked literally and are never assumed to match a
+conventional `feature/epic/*` pattern.
+
 Each PR receives its own target-aware Test cycle and merge receipt. After a
 child merges, its Review and close operate solely on its record. The parent
 epic consumes the child's terminal receipt as an immutable input.
 
-The parent does not rerun child suites. Its own final candidate still receives
-hosted CI and flow review against the combined target tree, catching integration
-effects before the parent merges upward. This creates bounded verification at
-each integration boundary without replaying every child lifecycle.
+The parent does not rerun child suites. At a real upward repository boundary,
+its own final candidate still receives hosted CI and flow review against the
+combined target tree, catching integration effects before the parent merges
+upward. A collapsed shared-ref tier aggregates receipts without manufacturing a
+candidate, PR, or merge receipt. This creates bounded verification at each real
+integration boundary without replaying every child lifecycle.
 
 ## Evidence Model
 
@@ -319,6 +374,9 @@ each integration boundary without replaying every child lifecycle.
 
 The logical key is `(issueNumber, generation)`. A second byte-different record
 for one key is a conflict. A new source or base SHA requires a new generation.
+The `runtime` entry references the existing `aitm.runtime-capability/v2`
+identity and its pinned execution-root digest; it does not define a third,
+parallel runtime authority concept.
 
 ### Flow-review receipt
 
@@ -345,6 +403,41 @@ for one key is a conflict. A new source or base SHA requires a new generation.
 `verdict` is one of `pass`, `block`, `pass-with-defect`, or `uncertain`. Each
 finding names affected acceptance criteria, provenance, impact, evidence, and
 required action. A receipt may authorize only its exact candidate.
+
+### Delivery receipt
+
+The delivery receipt binds the accepted candidate to the observed mutation of
+its literal target ref:
+
+```json
+{
+  "schema": "aitm.delivery-receipt/v1",
+  "receiptId": "01...",
+  "candidateId": "01...",
+  "issueNumber": 1219,
+  "sourceSha": "40-hex",
+  "testedBaseSha": "40-hex",
+  "headRef": "feature/ref",
+  "targetRef": "trunk",
+  "targetHeadShaBeforeMerge": "40-hex",
+  "expectedTargetHeadSha": "40-hex",
+  "mergeSha": "40-hex",
+  "mergeMethod": "squash",
+  "prNumber": 1500,
+  "ciEvidenceIds": ["opaque-id"],
+  "flowReviewId": "01...",
+  "humanApprovalId": null,
+  "runtimeCapabilityId": "opaque-id",
+  "mergedAt": "canonical instant",
+  "readBackAt": "canonical instant"
+}
+```
+
+The logical key is the candidate ID. The receipt is authoritative only after
+live PR and target readback prove the exact source, target, resulting head,
+merge method, attribution, and required evidence. Commit trailers are
+non-authoritative projections: they may corroborate live evidence but can never
+independently create, reconstruct, or authorize a delivery receipt.
 
 ### Implementation-record receipt
 
@@ -402,33 +495,44 @@ ordinary bug as cheating or infer intent from one defect.
 
 ## Trusted Runtime Boundary
 
-Lifecycle authorization runs from a pinned trusted runtime resolved from the
-target branch or an installed release. Candidate-controlled code may define the
-product under test, fixtures, and declared verification commands, but it cannot
-replace the parser, gate, receipt validator, reviewer protocol, merge adapter,
-or close machine used to authorize itself.
+Lifecycle authorization executes from a pinned root materialized outside the
+candidate worktree. The root must resolve to an immutable installed package or
+to a commit on a protected ref whose literal rules satisfy the enrollment
+requirements above. An unprotected target branch is never an eligible runtime
+source. The runtime identity extends `aitm.runtime-capability/v2` with the pinned
+root, commit or package digest, command-catalog digest, and protocol inventory.
 
-The runtime record includes its SHA or immutable package identity. If the story
-intentionally changes governance code, hosted CI tests those changes as product
-code while the previously trusted runtime governs the story. The new runtime
-becomes eligible only after merge and an explicit activation boundary.
+Every gate evaluator, receipt validator, reviewer protocol, provider-mutation
+adapter, migration authorizer, and close machine is spawned from that pinned
+root. Candidate-controlled code may define the product under test, fixtures,
+and declared verification commands, but it cannot replace the control-plane
+bytes used to authorize itself.
+
+If a story changes governance code, hosted CI tests those changes as product
+code while the previously trusted runtime governs delivery. After verified
+merge to an eligible protected ref, the previous runtime on the designated
+`authorityHostId` may append an `aitm.runtime-activation/v1` record binding the
+old and new runtime identities, protected-ref merge evidence, activation time,
+and authorizing host. The proposed runtime may never author or countersign its
+own activation. Only that durable activation makes the new runtime eligible for
+later candidates.
 
 ## Failure Recovery
 
-| Failure point                             | Recovery                                                                             |
-| ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| Push succeeds before candidate record     | Adopt the unique exact-head PR and append the missing record                         |
-| PR exists before awaiting-CI projection   | Reconstruct from PR plus candidate record                                            |
-| CI red/cancelled                          | Clear parking, record disposition, return to Develop                                 |
-| CI result transport ambiguous             | Poll live exact-head check state; do not infer success or failure                    |
-| Flow reviewer crashes                     | Retry from the immutable review package without changing the candidate               |
-| Flow reviewer blocks                      | Persist finding, keep PR open, return to Develop                                     |
-| Linked-defect creation partially succeeds | Recover the emitted issue number and finish tether/linking before merge              |
-| Merge action times out                    | Read PR and target state; append receipt only after verified merge                   |
-| Merge succeeds before receipt             | Reconstruct delivery receipt from live PR, commit, candidate, CI, and review records |
-| Review projection write fails             | Stay in Review and repair only the missing collateral projection                     |
-| Close partially succeeds                  | Resume the idempotent terminal transaction at the first missing step                 |
-| Crossover audit defect creation fails     | Preserve the audit finding and retry governed defect creation                        |
+| Failure point                             | Recovery                                                                                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Push succeeds before candidate record     | Adopt the unique exact-head PR and append the missing record                                                                                           |
+| PR exists before awaiting-CI projection   | Reconstruct from PR plus candidate record                                                                                                              |
+| CI red/cancelled                          | Clear parking, record disposition, return to Develop                                                                                                   |
+| CI result transport ambiguous             | Poll live exact-head check state; do not infer success or failure                                                                                      |
+| Flow reviewer crashes                     | Retry from the immutable review package without changing the candidate                                                                                 |
+| Flow reviewer blocks                      | Persist finding, keep PR open, return to Develop                                                                                                       |
+| Linked-defect creation partially succeeds | Recover the emitted issue number and finish tether/linking before merge                                                                                |
+| Merge action times out                    | Read PR and target state; append receipt only after verified merge                                                                                     |
+| Merge succeeds before receipt             | Reconstruct from live PR and target readback plus candidate, CI, flow-review, approval, and runtime records; commit data and trailers only corroborate |
+| Review projection write fails             | Stay in Review and repair only the missing collateral projection                                                                                       |
+| Close partially succeeds                  | Resume the idempotent terminal transaction at the first missing step                                                                                   |
+| Crossover audit defect creation fails     | Preserve the audit finding and retry governed defect creation                                                                                          |
 
 Every recovery path has a bounded retry count and a stable idempotency key.
 Repeated identical transport ambiguity parks the issue and requests attention;
@@ -436,10 +540,14 @@ it does not generate a chain of recovery defects.
 
 ## Migration
 
-The new protocol is piloted on a bounded #1219 child path. After the pilot proves
-successful hosted CI, flow review, Test-owned merge, collateral-only Review,
-Full-Auto close, crash recovery, and one deliberate failure-to-Develop cycle,
-the protocol becomes the default for all open issues.
+The new protocol is piloted on a bounded, dependency-ready #1219 child path whose
+own contract is not a foundation needed to run the protocol. The implementation
+is first delivered under the previous trusted runtime to an eligible protected
+ref, then activated by the previous runtime's durable activation record. Only
+the activated runtime may run the pilot. After the pilot proves successful
+hosted CI, flow review, Test-owned merge, collateral-only Review, Full-Auto
+close, crash recovery, and one deliberate failure-to-Develop cycle, the
+protocol becomes eligible to become the default for open issues.
 
 Enrollment is stage-aware:
 
@@ -455,6 +563,13 @@ Enrollment is stage-aware:
 Legacy evidence remains readable as historical data but cannot authorize a new
 candidate unless it satisfies the new exact-record contracts. Migration never
 rewrites old comments or claims that an earlier flow review occurred.
+Creating a fresh candidate generation retires every prior
+`acceptedHeadSha`-bound CI, flow-review, merge, and human-approval authority.
+
+The enrollment manifest is generated and digested by the trusted runtime from
+live issue, PR, target, merge, runtime, and evidence observations. Immediately
+before each idempotent mutation the trusted runtime rereads live state and
+refuses a hand-edited manifest, a digest mismatch, or a stale observation.
 
 ## Telemetry and Service Objectives
 
@@ -492,13 +607,16 @@ The implementation is incomplete until automated tests prove:
 6. A critical unrelated defect blocks merge and emits a human alarm.
 7. A passing exact-head candidate merges in Test and records source and merge
    SHAs before entering Review.
-8. Human-gated mode waits for PR approval only after CI and flow review pass.
-9. Full-Auto mode merges without human code approval.
+8. `pullRequestReview=true` requests an eligible human only after CI and flow
+   review pass, and only that human's exact-head approval satisfies the gate.
+9. `pullRequestReview=false` merges without human code approval while retaining
+   the same CI and flow-review evidence gates.
 10. Review rejects repository mutations and never runs functional tests.
 11. Review collateral repair invalidates only the implementation-record receipt.
-12. Full-Auto closes a child without a human prompt after record validation.
+12. `reviewToDone=false` closes a child without a human prompt after record
+    validation; `reviewToDone=true` requires the existing human task approval.
 13. A parent epic aggregates closed child receipts and runs one final
-    target-boundary CI/review/merge cycle.
+    CI/review/merge cycle only when it has a real upward repository boundary.
 14. Crash recovery is idempotent before and after merge and during close.
 15. A crossover audit runs only on a closed issue and creates a new linked
     defect for findings.
@@ -507,6 +625,15 @@ The implementation is incomplete until automated tests prove:
     findings do alarm humans.
 18. stage-aware migration handles every open-state row without blessing
     unverifiable legacy evidence.
+19. A hostile candidate edit to lifecycle authorization code is not executed by
+    the trusted runtime and cannot mint valid authority.
+20. A runtime cannot author or countersign its own activation record.
+21. An enrolled opaque target is literally protected and never rebased or
+    force-updated; merge-back waits for readback before cleanup.
+22. A delivery receipt binds exact source, tested base, target pre-head,
+    expected target head, observed merge, PR, evidence, and runtime identity.
+23. Migration rejects hand-edited or stale manifests and retires prior
+    accepted-head approval evidence.
 
 ## Documentation Changes
 
@@ -514,13 +641,16 @@ Implementation updates must revise:
 
 - `docs/guides/workflow.md` to describe Test-owned merge and collateral-only
   Review;
-- `skill/shared/rules/test.md` to define CI, flow review, finding disposition,
-  and merge;
+- create `skill/shared/rules/test.md` to define CI, flow review, finding
+  disposition, and Test-owned merge;
 - `skill/shared/rules/review.md` to remove functional verification and delivery
   authority;
+- `skill/shared/rules/deliver.md` to route enrolled delivery through Test while
+  retaining only the declared legacy behavior;
+- `skill/shared/rules/full-auto.md` and its documentation contract tests to
+  distinguish the displaced ad hoc reviewer, canonical flow reviewer, and
+  independent human gates;
 - `skill/shared/rules/close.md` to describe record-only idempotent closure;
-- Full-Auto documentation to distinguish bypassed human gates from preserved
-  evidence gates; and
 - the #1219 portfolio plan and child contracts whose current ordering conflicts
   with this amendment.
 
@@ -537,6 +667,14 @@ The pilot must publish one compact evidence bundle showing:
 - crash-safe retry; and
 - telemetry that reports every cycle honestly.
 
-Only after that bundle passes an independent written-spec and implementation
-review may AITM enroll every open issue. Rollout is an explicit protocol-default
-change, not an undocumented config flip.
+Before the pilot, the exported ruleset delta for every literal pilot target must
+receive the explicit authenticated-maintainer approval required by #1240 and
+must be applied and read back without a protection gap. This external human
+dependency protects the target; it does not enable any of #1512's three
+per-issue review gates.
+
+Only after the specification reaches independent co-review consensus, the
+implementation plan is rewritten from that accepted specification and receives
+its own later review. Only after implementation, protected-target activation,
+and the pilot bundle pass their declared gates may AITM enroll open issues.
+Rollout is an explicit protocol-default change, not an undocumented config flip.
