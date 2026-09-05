@@ -17,6 +17,20 @@ runner topology, exact-head native Actions evidence, target-branch
 serialization, integration freezes, receipt retention, and crash recovery
 unless this amendment explicitly changes a boundary.
 
+## Review Sequence
+
+This specification is reviewed to consensus before its implementation plan is
+rewritten or reviewed. During specification co-review, the existing plan may be
+read only as historical consistency evidence; it is not a second review
+artifact, cannot contribute normative requirements, and must not be edited.
+
+Every author handoff in the specification co-review contains a new commit that
+changes only this file and explains how the revision answers the preceding
+review. The reviewer evaluates the complete specification at that commit, not a
+parallel plan or an uncommitted workspace. After reviewer acceptance, the plan
+is rewritten from the accepted specification and enters a separate fresh
+co-review protocol.
+
 The central correction is:
 
 > Test proves and merges the code. Review certifies the implementation record.
