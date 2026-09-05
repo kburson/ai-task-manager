@@ -184,8 +184,42 @@ export function auditSlowBucket(records, thresholdMs = 2000) {
 // context (lane, timestamp, totals). Pure — the runner writes the JSON.
 export function serializeArtifact(records, meta = {}) {
   const list = Array.isArray(records) ? records : [];
+  if (!Number.isFinite(Date.parse(meta.generatedAt || ''))) {
+    throw new Error('test timing artifact: generatedAt must be an ISO timestamp');
+  }
+  if (!String(meta.lane || '').trim()) {
+    throw new Error('test timing artifact: lane is required');
+  }
+  if (!String(meta.command || '').trim()) {
+    throw new Error('test timing artifact: command is required');
+  }
+  if (!/^[0-9a-f]{40,64}$/.test(String(meta.commit || ''))) {
+    throw new Error('test timing artifact: commit must be a full hexadecimal object id');
+  }
+  const runnerProfile = meta.runnerProfile;
+  if (
+    !runnerProfile ||
+    !String(runnerProfile.label || '').trim() ||
+    !String(runnerProfile.platform || '').trim() ||
+    !String(runnerProfile.arch || '').trim() ||
+    !String(runnerProfile.nodeVersion || '').trim() ||
+    !Number.isInteger(runnerProfile.logicalCpuCount) ||
+    runnerProfile.logicalCpuCount <= 0
+  ) {
+    throw new Error('test timing artifact: runnerProfile is incomplete');
+  }
+  if (!Array.isArray(meta.discoveryInventory)) {
+    throw new Error('test timing artifact: discovery inventory is required');
+  }
+  const discoveryInventory = [...new Set(meta.discoveryInventory.map(String))].sort();
+  if (discoveryInventory.length !== meta.discoveryInventory.length) {
+    throw new Error('test timing artifact: discovery inventory contains duplicates');
+  }
   const files = {};
   for (const r of list) {
+    if (Object.hasOwn(files, r.file)) {
+      throw new Error(`test timing artifact: duplicate timing record for ${r.file}`);
+    }
     files[r.file] = {
       label: r.label,
       wallMs: round(r.wallMs),
@@ -202,10 +236,21 @@ export function serializeArtifact(records, meta = {}) {
     slowPoolElapsedMs: meta.slowPoolElapsedMs,
     serialElapsedMs: meta.serialElapsedMs,
   });
+  const measuredFiles = Object.keys(files).sort();
+  if (
+    measuredFiles.length !== discoveryInventory.length ||
+    measuredFiles.some((file, index) => file !== discoveryInventory[index])
+  ) {
+    throw new Error('test timing artifact: discovery inventory differs from measured files');
+  }
   return {
-    schema: 4,
-    generatedAt: meta.generatedAt || null,
-    lane: meta.lane || null,
+    schema: 5,
+    generatedAt: meta.generatedAt,
+    lane: meta.lane,
+    command: meta.command,
+    commit: meta.commit,
+    runnerProfile: { ...runnerProfile },
+    discoveryInventory,
     count: list.length,
     elapsed: report.elapsed,
     sums: {
@@ -224,7 +269,7 @@ export function serializeArtifact(records, meta = {}) {
 // runner elapsed; never fabricate a phase duration from per-file sums.
 export function normalizeTimingArtifact(artifact) {
   const value = artifact && typeof artifact === 'object' ? artifact : {};
-  if (value.schema === 2 || value.schema === 3 || value.schema === 4) {
+  if ([2, 3, 4, 5].includes(value.schema)) {
     return {
       ...value,
       sourceSchema: value.schema,
@@ -236,7 +281,7 @@ export function normalizeTimingArtifact(artifact) {
             ? value.elapsed.subprocessPoolMs
             : null,
         slowPoolMs:
-          value.schema === 4 && Number.isFinite(value.elapsed?.slowPoolMs)
+          value.schema >= 4 && Number.isFinite(value.elapsed?.slowPoolMs)
             ? value.elapsed.slowPoolMs
             : null,
         serialMs: Number.isFinite(value.elapsed?.serialMs) ? value.elapsed.serialMs : null,

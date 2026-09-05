@@ -227,10 +227,14 @@ separate 2026-08-11 Slow run now replaces the unmeasured Slow estimate:
 The 2026-08-11 artifacts in this section are immutable historical inputs. They
 must be preserved for provenance, but no current shard-width, family assignment,
 or performance-story target may be selected from them. The refreshed corpus has
-1,005 files and different scheduling phases. Task 1 records a new exact-head
-schema-3 baseline, including command, commit, runner profile, canonical lane,
-file count, and source digest; Task 3 refuses calibration when any discovered
-file lacks measured or explicitly labeled fallback evidence.
+1,006 files and different scheduling phases. Task 1 records a new exact-head
+schema-5 baseline, including command, commit, runner profile, canonical lane,
+file count, source digest, and a calibration-input digest over canonical lane
+inventories, test-file blob IDs, and the dependency lock. A descendant may reuse
+the weights only while that digest and the discovered set remain identical; the
+partition proof itself always binds the exact execution head. Task 3 refuses
+calibration when any discovered file lacks measured or explicitly labeled
+fallback evidence.
 
 Both source artifacts survive, if present, only as ignored inspection copies at
 `.tmp/inspect/test-timing-fast-2026-08-11.json` and
@@ -238,18 +242,19 @@ Both source artifacts survive, if present, only as ignored inspection copies at
 current repository evidence and need not be materialized into a production
 weights fixture. Their reported provenance remains documented here so Task 1
 can preserve the distinction between historical context and its fresh
-exact-head schema-3 baseline:
+exact-head schema-5 baseline:
 
 | Baseline | Generated at               | Command provenance                                                                                    | Host class                                              | SHA-256                                                            |
 | -------- | -------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
 | Fast     | `2026-08-11T11:23:39.827Z` | Original shell spelling was not retained; canonical equivalent is `npm test` (`lane=fast`, 845 files) | Apple M1 Max, 10 logical CPUs, 64 GiB RAM, macOS 26.5.1 | `a470c73077e6e429ff0f95eae794a2352182985acc6078eddba6a9a1c28f9016` |
 | Slow     | `2026-08-12T01:50:03.480Z` | `node scripts/run-tests.mjs --lane slow` (`lane=slow`, 50 files)                                      | Apple M1 Max, 10 logical CPUs, 64 GiB RAM, macOS 26.5.1 | `cece9471149992c46806f3206f20701a4c5bc9b820ef9bc1dc2af3cbee08af9c` |
 
-The current JSON schema does not embed host metadata. The host class above is
+The current schema-4 JSON does not embed host metadata. The host class above is
 the reported and locally verified measurement machine, not a claim extracted
 from either artifact. This historical record preserves that limitation and the
-missing original Fast command rather than inventing provenance. Future timing
-artifacts must embed command, commit, runner/host profile, lane, and file count.
+missing original Fast command rather than inventing provenance. Schema-5 timing
+artifacts must embed command, commit, runner/host profile, lane, and file count
+while preserving schema-1 through schema-4 reads.
 
 `poolConcurrency(4)` is three because the runner reserves one vCPU. An unsplit
 Unit executor therefore has an optimistic pooled floor of `798.241 / 3 =
@@ -1437,7 +1442,7 @@ Ordered roughly by rollout; explicit dependencies below control which work may
 proceed in parallel. Each item is independently reviewable.
 
 1. **Slow sharding and cloud calibration.** First commit the normalized local
-   baseline fixture and provenance described above. Then add a disposable,
+   schema-5 baseline fixture and provenance described above. Then add a disposable,
    read-only canary workflow whose provisional in-workflow family assignments
    run Slow widths two and three against the same head and runner profile for at
    least five paired workflow runs across controlled cold and warm npm-cache

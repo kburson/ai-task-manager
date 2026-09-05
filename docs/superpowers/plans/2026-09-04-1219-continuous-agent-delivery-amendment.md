@@ -26,7 +26,8 @@ GitHub Projects v2, and Markdown workflow skills.
 
 - Normative specification:
   `docs/superpowers/specs/2026-09-04-1219-continuous-agent-delivery-amendment-design.md`
-  at accepted commit `1375edfd4b29c98e407ae428a15f992dbdff2cd6`.
+  at trunk commit `c6e0ab5f21d469496ae83d85de93c3c48ba2189a`, patch-identical
+  to accepted pre-rebase commit `1375edfd4b29c98e407ae428a15f992dbdff2cd6`.
 - Specification co-review protocol:
   `c1655cdd-f0c8-48fd-95e3-57af190d9f0c`; reviewer consensus accepted that
   exact spec commit.
