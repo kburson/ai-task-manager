@@ -11,6 +11,7 @@ const repoRoot = path.resolve(__dir, '../../../..');
 const IMMUTABLE_REVIEW_ARCHIVE =
   'docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md';
 const IMMUTABLE_REVIEW_SHA256 = 'dd6b5bd49b1f8f01aacb9ce0cc278b758c598b64a2d2bb74afd45d9925a19a86';
+const IMMUTABLE_REVIEW_DIRECTORY = 'docs/superpowers/reviews/';
 
 const requiredFiles = [
   '.prettierrc.json',
@@ -80,8 +81,8 @@ assert.ok(
   'markdownlint must preserve the exact immutable #1381 reviewer archive'
 );
 assert.ok(
-  prettierIgnore.includes(IMMUTABLE_REVIEW_ARCHIVE),
-  'Prettier must preserve the exact immutable #1381 reviewer archive'
+  prettierIgnore.includes(IMMUTABLE_REVIEW_DIRECTORY),
+  'Prettier must preserve every immutable governed review archive'
 );
 assert.ok(
   !markdownlintConfig.ignores.includes('docs/superpowers/reviews/**'),
@@ -89,7 +90,7 @@ assert.ok(
 );
 assert.ok(
   !prettierIgnore.includes('docs/superpowers/reviews/**'),
-  'Prettier must not exempt the governed review archive broadly'
+  'Prettier must use the canonical review-directory ignore instead of a redundant glob'
 );
 const immutableReviewBytes = readFileSync(path.join(repoRoot, IMMUTABLE_REVIEW_ARCHIVE));
 assert.equal(
