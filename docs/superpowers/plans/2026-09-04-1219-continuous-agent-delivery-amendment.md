@@ -110,11 +110,15 @@ The live graph checked for this plan has six sub-epics and 22 existing stories.
 Issue #1226 is already in Review with accepted work at
 `ed9ae834d43fda0b3abf2a8c52cc6394befb1c22`; its body, branch, worktree,
 receipts, and approval evidence are immutable migration inputs. Its lifecycle
-state is not immutable: because the accepted commit is not delivered to trunk,
-Task 12 must classify #1226 as the one-time `review-to-test` migration row,
-carry its reviewed O1 work and evidence forward unchanged as the first candidate
-generation, and record that the reclassification is not a Review failure. The
-six reusable stories below are still unused in Backlog. Revalidate those facts
+state is not immutable, but this plan does not enroll #1226 before the protected
+pilot. #1226 must finish its already-started legacy Review/delivery path and
+reach Done before #1244 enters the pilot; preserve its reviewed O1 work and
+evidence throughout that completion. The stage-aware classifier evaluates live
+state only during the post-pilot migration; it does not retroactively assign
+Issue #1226's planning-time snapshot to `review-to-test`. If #1226 is still
+Review with an unmerged PR at the pilot gate, stop and amend the execution
+schedule rather than using it as an enrolled delivery before the pilot. The six
+reusable stories below are still unused in Backlog. Revalidate those facts
 immediately before migration; if any reusable story has acquired implementation
 or moved out of Backlog, stop and amend this mapping instead of overwriting its
 work.
@@ -159,9 +163,15 @@ project, branch, or remote mutation.
    ```
 
    Capture the emitted issue number after every successful create before
-   proceeding. Do not run generic `split-plan --confirm`, because it would try
-   to materialize all thirteen amendment sections instead of preserving the six
-   mapped issues.
+   proceeding. Creation deliberately leaves Priority, Size, Estimate, and start
+   time unset while each new child remains in Backlog. Before work begins on a
+   new child, refine it through the sanctioned
+   `npx aitm refine <created-id> --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --rank <N> --reason "<approved reason>"`
+   path using then-current, human-approved values; do not invent estimates in
+   this migration gate. Its Backlog-to-Refine transition stamps Start Time
+   through the existing governed entry hook. Do not run generic
+   `split-plan --confirm`, because it would try to materialize all thirteen
+   amendment sections instead of preserving the six mapped issues.
 
 3. After the seven issue numbers exist, update the portfolio WBS with those
    exact IDs. Replace the affected contiguous child ranges with explicit child
@@ -172,15 +182,15 @@ project, branch, or remote mutation.
    affected sub-epics, the six reused stories, the seven new stories, and the
    retained stories whose dependency contract changes to `PLAN_SHA` and
    `WBS_SHA`. Preserve every issue's history, parent edge, labels, estimation
-   evidence, and current state during this WBS/body migration. For #1226, that
-   current-state preservation expires only when the implemented Task 12 runtime
-   performs its mandated one-time `review-to-test` reclassification. Do not
-   alter #1226's body, branch, worktree, receipts, approval evidence, or
-   accepted implementation bytes.
-5. Set ranks in the stable order below, preserving the relative order of all
-   22 existing stories while inserting each new prerequisite immediately
-   before its first dependent. Replace every title reference with the created
-   issue number before persisting dependencies.
+   evidence, and current state during this WBS/body migration. Do not alter
+   #1226's body, branch, worktree, receipts, approval evidence, or accepted
+   implementation bytes.
+5. Record the stable relative rank order below, preserving the relative order
+   of all 22 existing stories while inserting each new prerequisite immediately
+   before its first dependent. Assign each new child's actual numeric Rank when
+   that child enters Refine, using its required `npx aitm refine` transaction
+   and the then-current live board. Replace every title reference with the
+   created issue number before persisting dependencies.
 6. Run the root decomposition check, validate each sub-epic's child bijection,
    and prove there are six unique sub-epics and 29 uniquely owned stories:
 
@@ -188,8 +198,9 @@ project, branch, or remote mutation.
    npx aitm decompose-check 1219 --plan docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md --json
    ```
 
-   A1 may begin only after all checks pass and the issue bodies read back
-   exactly.
+   A1 may begin only after all checks pass, the issue bodies read back exactly,
+   and A1 has completed Refine with approved Priority, Size, Estimate, Rank, and
+   start time. Apply the same Refine prerequisite to each later new child.
 
 ### Existing-story reuse and dependency rewrite
 
@@ -206,6 +217,12 @@ A13 intentionally does not depend on #1245 or #1246: their O20/O21 measurement
 outcomes remain measurement-gated follow-ons and do not block protocol-default
 rollout. Their ranks remain before #1247 so their original relative order is
 preserved without turning their results into A13 prerequisites.
+
+Every direct dependency in the A13 row means terminal Done/closed, not merely
+enrolled or reclassified. Consequently #1226 completes through its existing
+legacy path before the pilot, #1244 reaches Done through the accepted pilot
+bundle, and Task 13's all-open migration sees #1226 as `done-noop` rather than
+using it as a pre-pilot `review-to-test` candidate.
 
 The following retained contracts also lose an old semantic dependency and must
 be rewritten. #1241 replaces its O13 dependency on #1238 with A3 at #1237;
@@ -234,10 +251,9 @@ path before A13 starts.
 - #1219 continues to own the same six ranked sub-epics, but its WBS and child
   count change from 22 to 29 stories and its authority becomes the original
   plan plus this accepted amendment.
-- #1220 retains O1-O3 exactly. In particular, #1226's one-time Test
-  reclassification must preserve its completed and reviewed O1 work and all
-  evidence as the first candidate generation; it is migration, not invalidation
-  or a Review failure.
+- #1220 retains O1-O3 exactly. In particular, #1226 completes its existing
+  legacy Review/delivery path before the protected pilot without invalidating
+  or reopening its completed and reviewed O1 work.
 - #1221 retains O4-O6 and O9-O10 exactly; #1222 retains O7-O8 exactly.
 - #1223 changes from O11-O14 to O11 plus A1-A5: #1236 remains O11, #1237-#1239
   become A3-A5, and new A1-A2 are attached here.
@@ -1201,10 +1217,12 @@ bypassEvidence, record })` preserves #1512's task-review gate.
   Cover Backlog-Plan, Develop, Test/open PR, Review/unmerged PR, Review/verified
   merged PR, and Done. A Review-to-Test migration is an explicit one-time
   reclassification, not a Review failure. A fresh generation retires every old
-  accepted-head authority. Include #1226's preserved accepted O1 commit and
-  evidence as the Review/unmerged fixture: the result is `review-to-test`, its
-  existing bytes become the first candidate generation, and no Review-failure
-  marker is emitted. Reject stale or hand-edited manifest rows before mutation.
+  accepted-head authority. Use a generic preserved accepted commit and evidence
+  as the Review/unmerged fixture: the result is `review-to-test`, its existing
+  bytes become the first candidate generation, and no Review-failure marker is
+  emitted. This fixture proves the post-pilot classifier contract; it does not
+  schedule live #1226 mutation. Reject stale or hand-edited manifest rows before
+  mutation.
 
 - [ ] **Step 2: Write failing genesis and successor activation tests**
 
