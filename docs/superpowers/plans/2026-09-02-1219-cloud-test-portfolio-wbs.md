@@ -17,6 +17,20 @@ pinned implementation plans owned by each nested epic.
 `docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md`
 at `7187854e13e21b357b4272afe349fc4b74f92767`
 
+## Migrated story order
+
+The stable portfolio order preserves all 22 existing stories and inserts each
+new prerequisite immediately before its first dependent:
+
+`#1226–#1236`, `#1518`, `#1519`, `#1237–#1239`, `#1240`, `#1241`, `#1520`,
+`#1242`, `#1243`, `#1521`, `#1522`, `#1523`, `#1524`, and `#1244–#1247`.
+
+The six in-place replacements are #1237/A3, #1238/A4, #1239/A5, #1242/A7,
+#1243/A8, and #1247/A13. The seven new contracts are #1518/A1, #1519/A2,
+#1520/A6, #1521/A9, #1522/A10, #1523/A11, and #1524/A12. Numeric board Rank
+for a new story remains unset in Backlog and is assigned through its governed
+Refine transaction using then-current human-approved values.
+
 ### Task 1: 🧑‍🧒‍🧒 [Epic] Cloud Test Calibration and Shard Bootstrap
 
 Deliver nested epic #1220 and its ordered children #1226–#1228. Produce a fresh
