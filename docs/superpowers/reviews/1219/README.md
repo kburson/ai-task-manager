@@ -33,3 +33,14 @@ right-hand commits are the durable commits reachable from trunk.
 The protocol state and event logs retain their original pre-rebase commit IDs
 as historical evidence. Use the mapping above when resolving those IDs after
 the temporary pre-rebase safety branch is removed.
+
+## Legacy local preservation commit
+
+The local-only branch `codex/preserve-cloud-test-stage-design` retained one
+unmerged initial design commit. Its complete mail-formatted patch is archived at
+`spec/legacy-commits/26a5d5b5-cloud-test-stage-design.patch` before branch
+removal.
+
+| Commit | Subject | Original path |
+| --- | --- | --- |
+| `26a5d5b5f6f2ff75ce7e5a2c9e980733a2ed025f` | `docs(spec): cloud test-stage and merge-queue delivery design` | `docs/superpowers/specs/2026-08-10-cloud-test-stage-design.md` |
