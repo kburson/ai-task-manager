@@ -96,28 +96,121 @@ GitHub Projects v2, and Markdown workflow skills.
   `[#1219]` commit subjects below are the root-plan fallback; replace that token
   with the materialized child issue number before executing a child plan.
 
-## Decomposition and Existing-WBS Effect
+## Decomposition and Post-Acceptance WBS Migration
 
-The amendment is thirteen reviewable units. Do not implement two units in one
-child merely because they touch the same orchestration verb.
+The amendment is thirteen reviewable units. In this section, `O1` through
+`O22` mean tasks in the original cloud Test plan and `A1` through `A13` mean
+tasks in this amendment. Do not implement two units in one child merely because
+they touch the same orchestration verb.
 
-| Original #1219 contract | Amendment disposition                                                                    |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| Tasks 1-11              | Retained; Task 11's Actions receipt is validation evidence, not the new delivery receipt |
-| Task 12 / #1237         | Replaced by Tasks 2-3 below                                                              |
-| Task 13 / #1238         | Replaced by Tasks 4-7 below                                                              |
-| Task 14 / #1239         | Absorbed into Task 3's candidate and awaiting-CI recovery                                |
-| Task 15 / #1240         | Retained and extended by Task 8's literal-ref protection gate                            |
-| Task 16 / #1241         | Retained; its freezes consume the new immediate-target candidate identity                |
-| Task 17 / #1242         | Replaced by Tasks 7-8; merge moves from Review to Test                                   |
-| Task 18 / #1243         | Replaced by Tasks 3, 5, and 7 rework paths                                               |
-| Tasks 19-21             | Retained; they consume delivery-v2 observations and telemetry                            |
-| Task 22 / #1247         | Replaced by Tasks 9-13 documentation, migration, pilot, and rollout work                 |
+The live graph checked for this plan has six sub-epics and 22 existing stories.
+Issue #1226 is already in Review with accepted work at
+`ed9ae834d43fda0b3abf2a8c52cc6394befb1c22`; its body, branch, worktree,
+receipts, approval, and state are immutable migration inputs. The six reusable
+stories below are still unused in Backlog. Revalidate those facts immediately
+before migration; if any reusable story has acquired implementation or moved
+out of Backlog, stop and amend this mapping instead of overwriting its work.
 
-After plan acceptance, update the portfolio WBS and affected child contracts,
-then materialize new children for amendment tasks without an existing one-to-one
-owner. Preserve the six-epic hierarchy and dependency ranks; do not treat this
-planning commit as permission to mutate issues.
+| Original contract | Exact disposition                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| O1-O11            | Retain #1226-#1236; O11's Actions receipt is validation evidence, not the new delivery receipt |
+| O12 / #1237       | Replace in place with A3, candidate generation, Test entry, PR adoption, and hosted CI         |
+| O13 / #1238       | Replace in place with A4, canonical clean-context flow review                                  |
+| O14 / #1239       | Replace in place with A5, finding disposition, adjudication, and governed defects              |
+| O15 / #1240       | Retain; A8 extends its literal-ref protection contract                                         |
+| O16 / #1241       | Retain; its freezes consume A3's immediate-target candidate identity                           |
+| O17 / #1242       | Replace in place with A7, Test-owned expected-head merge and delivery receipt v2               |
+| O18 / #1243       | Replace in place with A8, hierarchical delivery, protected opaque refs, and merge-back         |
+| O19-O21           | Retain #1244-#1246; consume A7 delivery observations and A12 telemetry                         |
+| O22 / #1247       | Replace in place with A13, protected pilot evidence, documentation, and default rollout        |
+
+### Acceptance-to-implementation migration gate
+
+This gate is root-orchestrator planning work, not A13 implementation. Run it
+only after this plan has independent accepted review evidence and before any
+A1-A12 implementation begins. The planning review itself authorizes no issue,
+project, branch, or remote mutation.
+
+1. Record the accepted amendment-plan commit as `PLAN_SHA`, refresh the live
+   #1219 graph and all 29 intended child contracts, and re-prove the reuse and
+   #1226 invariants above.
+2. Create exactly seven new governed sub-issues with the sanctioned
+   `npx aitm create-issue --shape sub-issue` path. Do not run generic
+   `split-plan --confirm`, because it would try to materialize all thirteen
+   amendment sections instead of preserving the six mapped issues.
+3. After the seven issue numbers exist, update the portfolio WBS with those
+   exact IDs and commit the WBS-only migration with `[#1219]`. Record that
+   commit as `WBS_SHA`.
+4. Through fresh-base governed issue-body operations, repoint #1219, the
+   affected sub-epics, the six reused stories, the seven new stories, and the
+   retained stories whose dependency contract changes to `PLAN_SHA` and
+   `WBS_SHA`. Preserve every issue's history, parent edge, labels, estimation
+   evidence, and current state. Do not edit #1226.
+5. Set ranks in the stable order below, preserving the relative order of all
+   22 existing stories while inserting each new prerequisite immediately
+   before its first dependent. Replace every title reference with the created
+   issue number before persisting dependencies.
+6. Run the root decomposition check, validate each sub-epic's child bijection,
+   and prove there are six unique sub-epics and 29 uniquely owned stories:
+
+   ```bash
+   npx aitm decompose-check 1219 --plan docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md --json
+   ```
+
+   A1 may begin only after all checks pass and the issue bodies read back
+   exactly.
+
+### Existing-story reuse and dependency rewrite
+
+| Issue | New owner | Parent | Exact direct dependencies after migration            |
+| ----- | --------- | ------ | ---------------------------------------------------- |
+| #1237 | A3        | #1223  | A1, A2, #1234, #1235, #1236                          |
+| #1238 | A4        | #1223  | #1237                                                |
+| #1239 | A5        | #1223  | #1238                                                |
+| #1242 | A7        | #1224  | A1, A2, #1237, #1238, #1239, A6                      |
+| #1243 | A8        | #1224  | A2, #1240, #1241, #1242                              |
+| #1247 | A13       | #1225  | current #1226-#1244 set plus all seven new issue IDs |
+
+The following retained contracts also lose an old semantic dependency and must
+be rewritten. #1241 replaces its O13 dependency on #1238 with A3 at #1237;
+Issue #1244 replaces its O13 dependency on #1238 with A12 while retaining #1230;
+issue #1245 retains #1242 and adds A12; and #1246 retains #1242, adds #1226's fresh
+baseline and A12, and keeps its measurement gate. No other retained story
+dependency changes. #1244 also becomes the named non-foundational pilot: after
+A12 activation, its preserved O19 implementation is the first enrolled
+delivery and must exercise the deliberate failure/retry and accepted-bundle
+path before A13 starts.
+
+### Seven new children
+
+| Amendment task | Exact title                                              | Parent | Direct dependencies                                   |
+| -------------- | -------------------------------------------------------- | ------ | ----------------------------------------------------- |
+| A1             | Runtime capability v3 and isolated execution root        | #1223  | #1512 present in the synchronized implementation base |
+| A2             | Stage-aware enrollment and literal target authority      | #1223  | A1                                                    |
+| A6             | #1512-compatible human PR approval bridge                | #1224  | #1237, #1238, #1239                                   |
+| A9             | Collateral-only Review and implementation record         | #1224  | #1242, #1243                                          |
+| A10            | Review authorization, idempotent close, epic aggregation | #1224  | #1243, A9                                             |
+| A11            | Closed-story crossover assurance and integrity alarms    | #1225  | #1239, A10                                            |
+| A12            | Stage-aware migration, runtime activation, telemetry     | #1225  | A1, A2, #1237-#1239, A6, #1242, #1243, A9, A10        |
+
+### Root and sub-epic contract changes
+
+- #1219 continues to own the same six ranked sub-epics, but its WBS and child
+  count change from 22 to 29 stories and its authority becomes the original
+  plan plus this accepted amendment.
+- #1220 retains O1-O3 exactly. In particular, the migration must not invalidate
+  or reopen #1226's completed and reviewed O1 work.
+- #1221 retains O4-O6 and O9-O10 exactly; #1222 retains O7-O8 exactly.
+- #1223 changes from O11-O14 to O11 plus A1-A5: #1236 remains O11, #1237-#1239
+  become A3-A5, and new A1-A2 are attached here.
+- #1224 changes from O15-O18 to O15-O16 plus A6-A10: #1240-#1241 remain
+  O15-O16, #1242-#1243 become A7-A8, and new A6, A9, and A10 are attached here.
+- #1225 changes from O19-O22 to O19-O21 plus A11-A13: #1244-#1246 remain
+  O19-O21, #1247 becomes A13, and new A11-A12 are attached here.
+
+The rank order is #1226-#1236, A1, A2, #1237-#1239, #1240, #1241, A6,
+then #1242, #1243, A9, A10, A11, A12, and #1244-#1247. This is topological for every
+declared edge and keeps every existing story in its current relative order.
 
 ```text
 1 trusted runtime
@@ -132,7 +225,7 @@ planning commit as permission to mutate issues.
                        -> 10 close and epic aggregation
                           -> 11 crossover assurance
 1-10 -> 12 migration, activation, and telemetry
-1-12 -> 13 protected pilot, WBS/docs, and default rollout
+1-12 -> 13 protected pilot evidence, docs, and default rollout
 ```
 
 ---
@@ -1021,6 +1114,7 @@ bypassEvidence, record })` preserves #1512's task-review gate.
 - Create: `scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs`
+- Create: `scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs`
 
 **Interfaces:**
 
@@ -1032,6 +1126,10 @@ bypassEvidence, record })` preserves #1512's task-review gate.
 - `activateRuntime(input, ports)` can be authorized only by the prior active
   runtime on the designated `authorityHostId`.
 - `recordDeliveryTelemetry(event)` preserves every attempt and disposition.
+- `/task continuous-delivery pilot #N` runs one activated, enrolled pilot and
+  emits a compact evidence bundle without changing the repository default.
+- `/task continuous-delivery enroll-open --manifest <path>` applies one
+  reviewed stage-aware manifest and reports a deterministic result per issue.
 
 - [ ] **Step 1: Write failing stage-row migration tests**
 
@@ -1065,10 +1163,17 @@ bypassEvidence, record })` preserves #1512's task-review gate.
   retries, crossover findings/alarms, and lifecycle wall time. Never collapse a
   failed or non-cycle attempt out of reports.
 
+  In the end-to-end pilot fixture, prove one hosted-CI failure and Develop
+  return, one fresh successful generation, flow-review block or pass, optional
+  human-code gate behavior, exact-head merge in Test, receipt readback,
+  collateral repair without code-proof invalidation, Full-Auto close, one
+  crash-safe retry, and complete telemetry. The pilot command must refuse until
+  the selected issue is enrolled under an activated runtime.
+
 - [ ] **Step 4: Run focused tests and confirm RED**
 
   ```bash
-  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs
+  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs
   ```
 
 - [ ] **Step 5: Implement migration, activation, and event recording**
@@ -1082,7 +1187,7 @@ bypassEvidence, record })` preserves #1512's task-review gate.
 - [ ] **Step 6: Run focused plus evidence-v2 migration regressions**
 
   ```bash
-  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/migration.test.mjs
+  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/migration.test.mjs
   ```
 
 - [ ] **Step 7: Commit**
@@ -1092,12 +1197,22 @@ bypassEvidence, record })` preserves #1512's task-review gate.
   git commit -m "feat(task): add delivery migration and trusted activation [#1219]"
   ```
 
+- [ ] **Step 8: Deliver and activate the runtime before the pilot**
+
+  After A1-A12 are integrated, use the incumbent pre-amendment runtime to
+  deliver those bytes to the eligible protected authority ref. Verify the live
+  merge and protection readback, then have that incumbent append the first
+  `aitm.runtime-activation/v1` record. The proposed v3 runtime cannot author or
+  countersign this record. #1244 cannot enter its pilot until the activation
+  record validates from the incumbent execution root.
+
 ---
 
-### Task 13: Protected pilot, documentation, WBS repair, and default rollout
+### Task 13: Protected pilot evidence, documentation, and default rollout
 
-**Prerequisites:** Tasks 1-12 and the retained cloud-CI foundation from the
-original #1219 plan.
+**Prerequisites:** The acceptance-to-implementation migration gate, Tasks 1-12,
+the retained cloud-CI foundation, the activated v3 runtime, and #1244's accepted
+pilot bundle.
 
 **Files:**
 
@@ -1110,32 +1225,21 @@ original #1219 plan.
 - Modify: `skill/shared/rules/deliver.md`
 - Modify: `skill/shared/rules/close.md`
 - Modify: `skill/shared/rules/full-auto.md`
-- Modify: `docs/superpowers/plans/2026-09-02-1219-cloud-test-portfolio-wbs.md`
-- Modify: affected #1219 child contracts through governed issue-body writers
-- Create: `scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/core/continuous-delivery-doc.test.mjs`
 - Create: `docs/operations/continuous-delivery-pilot.md`
 
 **Interfaces:**
 
-- `/task continuous-delivery pilot #N` runs one activated, enrolled pilot and
-  emits a compact evidence bundle; it does not change the repository default.
-- `/task continuous-delivery enroll-open --manifest
-.scratch/aitm/continuous-delivery-open-issues.json` applies the reviewed
-  stage-aware manifest and reports one deterministic result per issue.
+- Consume Task 12's `/task continuous-delivery pilot #N` evidence bundle. The
+  migration gate reserves #1244 for this role because its retained O19 scope is
+  downstream of A12 and is not a protocol foundation.
+- Consume Task 12's `/task continuous-delivery enroll-open --manifest <path>`
+  operation with the reviewed
+  `.scratch/aitm/continuous-delivery-open-issues.json` manifest.
 - The protocol default changes only after pilot acceptance and protected-target
   readiness are both durably recorded.
 
-- [ ] **Step 1: Write the failing end-to-end pilot fixture**
-
-  The selected dependency-ready #1219 child must not be foundational to the
-  protocol. The fixture proves: one hosted-CI failure and Develop return; one
-  fresh successful generation; flow-review block or pass; optional human-code
-  gate behavior; exact-head merge in Test; receipt readback; collateral repair
-  without code-proof invalidation; Full-Auto close; one crash-safe retry; and
-  complete telemetry.
-
-- [ ] **Step 2: Write failing documentation-contract tests**
+- [ ] **Step 1: Write failing documentation-contract tests**
 
   Require exact language for Test-owned merge, collateral-only Review, the
   displaced ad hoc reviewer versus canonical flow reviewer, and all three
@@ -1143,28 +1247,39 @@ original #1219 plan.
   demotion and functional tests in Review while retaining the declared legacy
   path.
 
-- [ ] **Step 3: Reconcile the portfolio WBS and issue contracts**
+- [ ] **Step 2: Verify external protection and CI readiness**
 
-  Update the WBS mapping in this plan, then use governed issue-body mutation to
-  supersede conflicting #1237-#1239, #1242-#1243, and #1247 text and materialize
-  new one-owner tasks. Preserve issue history, parent edges, ranks, and explicit
-  dependencies. Do not mark work complete merely because its prior contract was
-  replaced.
+  Read #1240's explicit authenticated-maintainer approval, exported ruleset,
+  deterministic delta, and no-gap live readback for #1244's literal target.
+  Independently verify every exact required context from the non-authoritative
+  rehearsal PR. Protection and CI readiness are separate fail-closed
+  prerequisites; Task 13 does not recreate or infer either record.
 
-- [ ] **Step 4: Prepare external protection and CI readiness**
+- [ ] **Step 3: Validate the reserved #1244 pilot bundle**
 
-  Select the literal pilot target from its accepted enrollment manifest. Save
-  the exported ruleset and deterministic delta, obtain #1240's explicit
-  authenticated-maintainer approval, apply/read back without a protection gap,
-  and observe every exact required context on a non-authoritative rehearsal PR.
-  Protection and CI readiness are separate fail-closed prerequisites.
+  The root orchestrator runs `npx aitm continuous-delivery pilot 1244` while
+  executing #1244, after A12 activation and before A13 begins. Require one
+  accepted bundle with the exact candidate/runtime identities, deliberate CI
+  failure and fresh successful generation, flow-review result, Test-owned merge,
+  Review collateral repair, Full-Auto close, crash-safe retry, and complete
+  telemetry. Refuse A13 entry if #1244 was delivered through a legacy path or
+  any required bundle field is absent.
 
-- [ ] **Step 5: Deliver and activate the implementation under prior authority**
+- [ ] **Step 4: Apply the reviewed all-open migration manifest**
 
-  Use the pre-amendment trusted runtime to deliver the implementation to the
-  eligible protected ref. That incumbent then appends the activation record;
-  the proposed runtime cannot author or countersign it. Only the activated v3
-  runtime may enroll and execute the pilot.
+  ```bash
+  npx aitm continuous-delivery enroll-open --manifest .scratch/aitm/continuous-delivery-open-issues.json
+  ```
+
+  Expected: every open issue reports `enrolled`, `already-enrolled`, or a stable
+  refusal; every Done issue reports `done-noop`. No row invents legacy authority.
+
+- [ ] **Step 5: Change the default only after accepted evidence**
+
+  Set `continuousDelivery.protocol` to `continuous-delivery/v1` only after the
+  #1244 pilot bundle, activated runtime, protection readback, CI rehearsal,
+  deliberate failure-to-Develop cycle, Test merge, Review repair, Full-Auto
+  close, and crash recovery are all durable and validated.
 
 - [ ] **Step 6: Run focused pilot and documentation tests**
 
@@ -1186,60 +1301,34 @@ original #1219 plan.
 
   Expected: all commands exit 0.
 
-- [ ] **Step 8: Execute the governed pilot and inspect the bundle**
+- [ ] **Step 8: Commit documentation and rollout records**
 
   ```bash
-  npx aitm continuous-delivery pilot 1237
-  ```
-
-  Expected: either one accepted bundle satisfying every rollout-gate item or a
-  specific refusal. If #1237 remains foundational after WBS reconciliation,
-  select another dependency-ready child and record the governed amendment
-  before execution; never silently substitute a pilot.
-
-- [ ] **Step 9: Review and apply all-open migration**
-
-  ```bash
-  npx aitm continuous-delivery enroll-open --manifest .scratch/aitm/continuous-delivery-open-issues.json
-  ```
-
-  Expected: every open issue reports `enrolled`, `already-enrolled`, or a stable
-  refusal; every Done issue reports `done-noop`. No row invents legacy authority.
-
-- [ ] **Step 10: Change the default only after accepted evidence**
-
-  Set `continuousDelivery.protocol` to `continuous-delivery/v1` only after the
-  pilot bundle, activated runtime, protection readback, CI rehearsal, deliberate
-  failure-to-Develop cycle, Test merge, Review repair, Full-Auto close, and
-  crash recovery are all durable and validated.
-
-- [ ] **Step 11: Commit documentation and rollout records**
-
-  ```bash
-  git add docs/guides/workflow.md docs/guides/settings-guide.md docs/operations/continuous-delivery-pilot.md skill/shared/rules docs/superpowers/plans/2026-09-02-1219-cloud-test-portfolio-wbs.md scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs scripts/tests/unit/task-tracker/core/continuous-delivery-doc.test.mjs scripts/task-tracker/config.mjs
+  git add docs/guides/workflow.md docs/guides/settings-guide.md docs/operations/continuous-delivery-pilot.md skill/shared/rules scripts/tests/unit/task-tracker/core/continuous-delivery-doc.test.mjs scripts/task-tracker/config.mjs
   git commit -m "docs(task): activate continuous delivery after pilot [#1219]"
   ```
 
 ## Spec-to-Plan Coverage Audit
 
-| Accepted specification requirement                                      | Owning task(s)           |
-| ----------------------------------------------------------------------- | ------------------------ |
-| Trusted runtime outside candidate; v3 identity; no self-activation      | 1, 12, 13                |
-| Recorded literal branches and immutable boundary classification         | 2, 8                     |
-| Candidate generation, PR entry, hosted CI, awaiting recovery            | 3                        |
-| Mandatory clean-context spawned flow review                             | 4                        |
-| Acceptance-first finding disposition and bounded adjudication           | 5                        |
-| Three independent #1512 gates and exact-head eligible human approval    | 6, 10, 13                |
-| Test-owned expected-head merge and delivery receipt v2                  | 7                        |
-| Nested delivery, collapsed tiers, target protection, merge-back         | 2, 7, 8, 10              |
-| Collateral-only Review and implementation record                        | 9                        |
-| Full-Auto/manual-task close and epic receipt aggregation                | 10                       |
-| Closed-only crossover audits and bounded alarms                         | 11                       |
-| Recovery and idempotency at every mutation boundary                     | 2-13                     |
-| Stage-aware migration, legacy readability, retirement                   | 2, 3, 7, 12, 13          |
-| Telemetry and service-objective inputs                                  | 12, 13                   |
-| Documentation, child-contract repair, protected pilot, all-open rollout | 13                       |
-| #1486 is advisable but not required                                     | 8 and Global Constraints |
+| Accepted specification requirement                                   | Owning task(s)           |
+| -------------------------------------------------------------------- | ------------------------ |
+| Trusted runtime outside candidate; v3 identity; no self-activation   | 1, 12                    |
+| Recorded literal branches and immutable boundary classification      | 2, 8                     |
+| Candidate generation, PR entry, hosted CI, awaiting recovery         | 3                        |
+| Mandatory clean-context spawned flow review                          | 4                        |
+| Acceptance-first finding disposition and bounded adjudication        | 5                        |
+| Three independent #1512 gates and exact-head eligible human approval | 6, 10, 13                |
+| Test-owned expected-head merge and delivery receipt v2               | 7                        |
+| Nested delivery, collapsed tiers, target protection, merge-back      | 2, 7, 8, 10              |
+| Collateral-only Review and implementation record                     | 9                        |
+| Full-Auto/manual-task close and epic receipt aggregation             | 10                       |
+| Closed-only crossover audits and bounded alarms                      | 11                       |
+| Recovery and idempotency at every mutation boundary                  | 2-13                     |
+| Stage-aware migration, legacy readability, retirement                | 2, 3, 7, 12, 13          |
+| Telemetry and service-objective inputs                               | 12, 13                   |
+| Child-contract repair before implementation                          | Migration gate           |
+| Documentation, protected pilot evidence, all-open rollout            | 13                       |
+| #1486 is advisable but not required                                  | 8 and Global Constraints |
 
 ## Plan Self-Review Checklist
 
