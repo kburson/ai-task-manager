@@ -90,6 +90,9 @@ GitHub Projects v2, and Markdown workflow skills.
   delivery. They create linked corrective defects without rewriting history.
 - #1486 is advisable adapter consolidation, not a prerequisite. This plan must
   work against the current five adapters and the later consolidated form.
+- If #1486 is scheduled, its cheapest placement is after A2 establishes the
+  recorded-branch contract and before A8 adds two more consumers; it remains
+  advisory and does not gate either task.
 - Use the sanctioned issue and provider-action paths; no direct use of
   `gh issue create`, shell merge, or fallback mutation may bypass them.
 - Use TDD. Each materialized task gets its own governed issue and commits. The
@@ -106,10 +109,15 @@ they touch the same orchestration verb.
 The live graph checked for this plan has six sub-epics and 22 existing stories.
 Issue #1226 is already in Review with accepted work at
 `ed9ae834d43fda0b3abf2a8c52cc6394befb1c22`; its body, branch, worktree,
-receipts, approval, and state are immutable migration inputs. The six reusable
-stories below are still unused in Backlog. Revalidate those facts immediately
-before migration; if any reusable story has acquired implementation or moved
-out of Backlog, stop and amend this mapping instead of overwriting its work.
+receipts, and approval evidence are immutable migration inputs. Its lifecycle
+state is not immutable: because the accepted commit is not delivered to trunk,
+Task 12 must classify #1226 as the one-time `review-to-test` migration row,
+carry its reviewed O1 work and evidence forward unchanged as the first candidate
+generation, and record that the reclassification is not a Review failure. The
+six reusable stories below are still unused in Backlog. Revalidate those facts
+immediately before migration; if any reusable story has acquired implementation
+or moved out of Backlog, stop and amend this mapping instead of overwriting its
+work.
 
 | Original contract | Exact disposition                                                                              |
 | ----------------- | ---------------------------------------------------------------------------------------------- |
@@ -134,18 +142,41 @@ project, branch, or remote mutation.
 1. Record the accepted amendment-plan commit as `PLAN_SHA`, refresh the live
    #1219 graph and all 29 intended child contracts, and re-prove the reuse and
    #1226 invariants above.
-2. Create exactly seven new governed sub-issues with the sanctioned
-   `npx aitm create-issue --shape sub-issue` path. Do not run generic
-   `split-plan --confirm`, because it would try to materialize all thirteen
-   amendment sections instead of preserving the six mapped issues.
+2. Create exactly seven new governed sub-issues with the sanctioned issue
+   creator. For each A1, A2, A6, and A9-A12 row, prepare
+   `.scratch/aitm/1219-amendment-migration/<amendment-task>/` containing
+   `user-story.md`,
+   `scope.md`, `acceptance-criteria.md`, `story-origin.md`,
+   `plan-metadata.md`, and `verification-commands.md`. Populate `TITLE` and
+   `PARENT` from the Seven new children table, then render and create each body
+   through the exact CLI contract:
+
+   ```bash
+   A_TASK=A1
+   FRAGMENTS=".scratch/aitm/1219-amendment-migration/$A_TASK"
+   npx aitm preflight-issue --shape sub-issue --user-story-file "$FRAGMENTS/user-story.md" --scope-file "$FRAGMENTS/scope.md" --ac-file "$FRAGMENTS/acceptance-criteria.md" --story-origin-file "$FRAGMENTS/story-origin.md" --plan-metadata-file "$FRAGMENTS/plan-metadata.md" --verification-commands-file "$FRAGMENTS/verification-commands.md" --parent "$PARENT" > "$FRAGMENTS/body.md"
+   npx aitm create-issue --title "$TITLE" --body-file "$FRAGMENTS/body.md" --parent "$PARENT"
+   ```
+
+   Capture the emitted issue number after every successful create before
+   proceeding. Do not run generic `split-plan --confirm`, because it would try
+   to materialize all thirteen amendment sections instead of preserving the six
+   mapped issues.
+
 3. After the seven issue numbers exist, update the portfolio WBS with those
-   exact IDs and commit the WBS-only migration with `[#1219]`. Record that
+   exact IDs. Replace the affected contiguous child ranges with explicit child
+   ID enumerations because the seven new issues will not be contiguous with
+   #1226-#1247. Commit the WBS-only migration with `[#1219]` and record that
    commit as `WBS_SHA`.
 4. Through fresh-base governed issue-body operations, repoint #1219, the
    affected sub-epics, the six reused stories, the seven new stories, and the
    retained stories whose dependency contract changes to `PLAN_SHA` and
    `WBS_SHA`. Preserve every issue's history, parent edge, labels, estimation
-   evidence, and current state. Do not edit #1226.
+   evidence, and current state during this WBS/body migration. For #1226, that
+   current-state preservation expires only when the implemented Task 12 runtime
+   performs its mandated one-time `review-to-test` reclassification. Do not
+   alter #1226's body, branch, worktree, receipts, approval evidence, or
+   accepted implementation bytes.
 5. Set ranks in the stable order below, preserving the relative order of all
    22 existing stories while inserting each new prerequisite immediately
    before its first dependent. Replace every title reference with the created
@@ -170,6 +201,11 @@ project, branch, or remote mutation.
 | #1242 | A7        | #1224  | A1, A2, #1237, #1238, #1239, A6                      |
 | #1243 | A8        | #1224  | A2, #1240, #1241, #1242                              |
 | #1247 | A13       | #1225  | current #1226-#1244 set plus all seven new issue IDs |
+
+A13 intentionally does not depend on #1245 or #1246: their O20/O21 measurement
+outcomes remain measurement-gated follow-ons and do not block protocol-default
+rollout. Their ranks remain before #1247 so their original relative order is
+preserved without turning their results into A13 prerequisites.
 
 The following retained contracts also lose an old semantic dependency and must
 be rewritten. #1241 replaces its O13 dependency on #1238 with A3 at #1237;
@@ -198,8 +234,10 @@ path before A13 starts.
 - #1219 continues to own the same six ranked sub-epics, but its WBS and child
   count change from 22 to 29 stories and its authority becomes the original
   plan plus this accepted amendment.
-- #1220 retains O1-O3 exactly. In particular, the migration must not invalidate
-  or reopen #1226's completed and reviewed O1 work.
+- #1220 retains O1-O3 exactly. In particular, #1226's one-time Test
+  reclassification must preserve its completed and reviewed O1 work and all
+  evidence as the first candidate generation; it is migration, not invalidation
+  or a Review failure.
 - #1221 retains O4-O6 and O9-O10 exactly; #1222 retains O7-O8 exactly.
 - #1223 changes from O11-O14 to O11 plus A1-A5: #1236 remains O11, #1237-#1239
   become A3-A5, and new A1-A2 are attached here.
@@ -221,9 +259,9 @@ declared edge and keeps every existing story in its current relative order.
               -> 6 #1512 human-code-review bridge
                  -> 7 Test merge and delivery receipt
                     -> 8 hierarchy and merge-back
-                    -> 9 collateral Review
-                       -> 10 close and epic aggregation
-                          -> 11 crossover assurance
+                       -> 9 collateral Review
+                          -> 10 close and epic aggregation
+                             -> 11 crossover assurance
 1-10 -> 12 migration, activation, and telemetry
 1-12 -> 13 protected pilot evidence, docs, and default rollout
 ```
@@ -272,6 +310,8 @@ authorityRoot, materializationPolicy })` returning resolved non-overlapping
       'aitm.flow-review/v1',
       'aitm.delivery-receipt/v2',
       'aitm.implementation-record/v1',
+      'aitm.runtime-activation/v1',
+      'aitm.crossover-audit/v1',
     ],
   });
   assert.equal(capability.schema, 'aitm.runtime-capability/v3');
@@ -281,6 +321,13 @@ authorityRoot, materializationPolicy })` returning resolved non-overlapping
   );
   assert.equal(validateRuntimeCapabilityAny(legacyV2).schema, 'aitm.runtime-capability/v2');
   ```
+
+  Also build a hostile candidate fixture that plants a modified lifecycle-
+  authorization module beneath `sourceRoot`. Assert that
+  `resolveContinuousDeliveryRoot()` and `runtime-adapter.mjs` load the trusted
+  `toolRoot` module, never execute the candidate copy, and reject a capability
+  or authority receipt minted by that candidate copy under
+  `validateRuntimeCapabilityV3()`.
 
 - [ ] **Step 2: Run the focused tests and confirm RED**
 
@@ -365,7 +412,12 @@ authorityRoot, materializationPolicy })` returning resolved non-overlapping
   Pin issue/parent bodies, lifecycle state, PR observation, target head and
   protection digest, runtime capability digest, migration action, and evidence
   disposition. Prove byte-different manifests for one generation conflict and
-  later collateral cannot reclassify an existing generation.
+  later collateral cannot reclassify an existing generation. At enrollment,
+  independently remove PR enforcement, strict exact-head required checks,
+  deletion protection, and non-fast-forward protection from a literal target;
+  assert that each missing protection produces a stable refusal before any
+  enrollment record or projection is written. Task 8 later audits the same
+  protections across the hierarchy but is not the first enforcement point.
 
 - [ ] **Step 3: Run focused tests and confirm RED**
 
@@ -500,7 +552,9 @@ Actions-receipt work (original Tasks 9-11).
 - `buildFlowReviewPackage(input)` emits deterministic immutable bytes and a
   digest; it excludes author transcript and chain-of-thought.
 - `buildFlowReviewReceipt(input)` and `validateFlowReviewReceipt(value,
-candidate, packageDigest)` own `aitm.flow-review/v1`.
+candidate, reviewPackage)` own `aitm.flow-review/v1`. The validator recomputes
+  the expected `issueBodyDigest` and `planDigest` from the immutable package; the
+  receipt does not invent a `packageDigest` field.
 - `requestFlowReview(input)` emits one read-only fresh-agent provider action for
   every candidate generation.
 
@@ -521,13 +575,13 @@ candidate, packageDigest)` own `aitm.flow-review/v1`.
       'ciEvidenceIds',
       'completedAt',
       'findings',
-      'flowReviewId',
       'issueBodyDigest',
       'issueNumber',
       'model',
       'planDigest',
       'protocolVersion',
       'provider',
+      'reviewId',
       'schema',
       'sourceSha',
       'verdict',
@@ -657,7 +711,9 @@ trunk baseline.
 - Modify: `scripts/task-tracker/verbs/deliver.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/continuous-delivery/merge-authorization.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/manual-code-review-delivery.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs`
+- Consume unchanged: `scripts/task-tracker/lib/gate-resolve.mjs`
+- Consume unchanged: `scripts/task-tracker/lib/session-store.mjs`
+- Consume unchanged: `scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs`
 
 **Interfaces:**
 
@@ -718,7 +774,7 @@ pullRequestReview, pullRequest, reviewerLogin })` returns `authorized`,
 - [ ] **Step 6: Commit**
 
   ```bash
-  git add scripts/task-tracker/lib/continuous-delivery/merge-authorization.mjs scripts/task-tracker/lib/manual-code-review.mjs scripts/task-tracker/verbs/test.mjs scripts/task-tracker/verbs/deliver.mjs scripts/tests/unit/task-tracker/lib/continuous-delivery/merge-authorization.test.mjs scripts/tests/unit/task-tracker/lib/manual-code-review-delivery.test.mjs scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs
+  git add scripts/task-tracker/lib/continuous-delivery/merge-authorization.mjs scripts/task-tracker/lib/manual-code-review.mjs scripts/task-tracker/verbs/test.mjs scripts/task-tracker/verbs/deliver.mjs scripts/tests/unit/task-tracker/lib/continuous-delivery/merge-authorization.test.mjs scripts/tests/unit/task-tracker/lib/manual-code-review-delivery.test.mjs
   git commit -m "feat(task): preserve exact-head human code review in Test [#1219]"
   ```
 
@@ -831,6 +887,7 @@ protection and freeze work (original Tasks 15-16).
 - Modify: `scripts/task-tracker/lib/no-commit-delivery-record.mjs`
 - Create: `scripts/gh/audit-ci-rulesets.mjs`
 - Create: `docs/operations/cloud-test-ruleset-migration.md`
+- Create: `scripts/tests/unit/gh/audit-ci-rulesets.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/continuous-delivery/hierarchical-delivery.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/merge-back.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/lib/continuous-delivery/enrolled-merge-back.test.mjs`
@@ -1109,9 +1166,13 @@ bypassEvidence, record })` preserves #1512's task-review gate.
 - Create: `scripts/task-tracker/lib/continuous-delivery/runtime-activation.mjs`
 - Create: `scripts/task-tracker/lib/continuous-delivery/telemetry.mjs`
 - Create: `scripts/task-tracker/verbs/continuous-delivery.mjs`
+- Modify: `scripts/task-tracker/task-tracker.mjs`
 - Modify: `scripts/task-tracker/config.mjs`
 - Modify: `scripts/task-tracker/verbs/help-data.mjs`
+- Modify: `scripts/task-tracker/lib/command-surface/routing.mjs`
+- Modify: `scripts/task-tracker/lib/command-surface/catalog.mjs`
 - Create: `scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs`
+- Modify: `scripts/tests/unit/task-tracker/core/command-manifest.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs`
 - Create: `scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs`
@@ -1130,14 +1191,20 @@ bypassEvidence, record })` preserves #1512's task-review gate.
   emits a compact evidence bundle without changing the repository default.
 - `/task continuous-delivery enroll-open --manifest <path>` applies one
   reviewed stage-aware manifest and reports a deterministic result per issue.
+- Register `continuous-delivery` through the verb-hub switch, preflight mode,
+  route identity, explicit catalog contract, related-command metadata, and help
+  reference so `npx aitm continuous-delivery ...` is reachable and the current
+  command-manifest parity test stays closed.
 
 - [ ] **Step 1: Write failing stage-row migration tests**
 
   Cover Backlog-Plan, Develop, Test/open PR, Review/unmerged PR, Review/verified
   merged PR, and Done. A Review-to-Test migration is an explicit one-time
   reclassification, not a Review failure. A fresh generation retires every old
-  accepted-head authority. Reject stale or hand-edited manifest rows before
-  mutation.
+  accepted-head authority. Include #1226's preserved accepted O1 commit and
+  evidence as the Review/unmerged fixture: the result is `review-to-test`, its
+  existing bytes become the first candidate generation, and no Review-failure
+  marker is emitted. Reject stale or hand-edited manifest rows before mutation.
 
 - [ ] **Step 2: Write failing genesis and successor activation tests**
 
@@ -1173,7 +1240,7 @@ bypassEvidence, record })` preserves #1512's task-review gate.
 - [ ] **Step 4: Run focused tests and confirm RED**
 
   ```bash
-  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs
+  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs
   ```
 
 - [ ] **Step 5: Implement migration, activation, and event recording**
@@ -1187,13 +1254,13 @@ bypassEvidence, record })` preserves #1512's task-review gate.
 - [ ] **Step 6: Run focused plus evidence-v2 migration regressions**
 
   ```bash
-  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/migration.test.mjs
+  node --test scripts/tests/unit/task-tracker/lib/continuous-delivery/runtime-activation.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/migration.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery/telemetry.test.mjs scripts/tests/integration/task-tracker/continuous-delivery-pilot.test.mjs scripts/tests/unit/task-tracker/lib/evidence-v2/migration.test.mjs
   ```
 
 - [ ] **Step 7: Commit**
 
   ```bash
-  git add scripts/task-tracker/lib/continuous-delivery scripts/task-tracker/verbs/continuous-delivery.mjs scripts/task-tracker/config.mjs scripts/task-tracker/verbs/help-data.mjs scripts/tests/unit/task-tracker/lib/continuous-delivery scripts/tests/integration/task-tracker/lib/continuous-delivery
+  git add scripts/task-tracker/lib/continuous-delivery scripts/task-tracker/verbs/continuous-delivery.mjs scripts/task-tracker/task-tracker.mjs scripts/task-tracker/config.mjs scripts/task-tracker/verbs/help-data.mjs scripts/task-tracker/lib/command-surface/routing.mjs scripts/task-tracker/lib/command-surface/catalog.mjs scripts/tests/unit/task-tracker/lib/continuous-delivery scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/integration/task-tracker/lib/continuous-delivery
   git commit -m "feat(task): add delivery migration and trusted activation [#1219]"
   ```
 
@@ -1218,6 +1285,7 @@ pilot bundle.
 
 - Modify: `docs/guides/workflow.md`
 - Modify: `docs/guides/settings-guide.md`
+- Modify: `scripts/task-tracker/config.mjs`
 - Create: `skill/shared/rules/test.md`
 - Modify: `skill/shared/rules/review.md`
 - Modify: `skill/shared/rules/state-walk.md`
@@ -1226,6 +1294,7 @@ pilot bundle.
 - Modify: `skill/shared/rules/close.md`
 - Modify: `skill/shared/rules/full-auto.md`
 - Create: `scripts/tests/unit/task-tracker/core/continuous-delivery-doc.test.mjs`
+- Modify: `scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs`
 - Create: `docs/operations/continuous-delivery-pilot.md`
 
 **Interfaces:**
@@ -1304,7 +1373,7 @@ pilot bundle.
 - [ ] **Step 8: Commit documentation and rollout records**
 
   ```bash
-  git add docs/guides/workflow.md docs/guides/settings-guide.md docs/operations/continuous-delivery-pilot.md skill/shared/rules scripts/tests/unit/task-tracker/core/continuous-delivery-doc.test.mjs scripts/task-tracker/config.mjs
+  git add docs/guides/workflow.md docs/guides/settings-guide.md docs/operations/continuous-delivery-pilot.md skill/shared/rules scripts/tests/unit/task-tracker/core/continuous-delivery-doc.test.mjs scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs scripts/task-tracker/config.mjs
   git commit -m "docs(task): activate continuous delivery after pilot [#1219]"
   ```
 
