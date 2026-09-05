@@ -1,0 +1,92 @@
+{
+  "schema": "aitm.co-review/v1",
+  "protocolId": "7374809a-7f65-493f-b74d-d66b8d173eca",
+  "repositoryRoot": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1219-cloud-test-automation",
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1219-cloud-test-automation",
+  "branch": "cloud-test-automation",
+  "revision": 13,
+  "lifecycle": "accepted",
+  "roles": {
+    "owner": "codex",
+    "reviewer": "claude"
+  },
+  "currentRole": null,
+  "turnState": null,
+  "round": 7,
+  "claim": null,
+  "artifact": {
+    "path": "docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md",
+    "commit": "7187854e13e21b357b4272afe349fc4b74f92767",
+    "blob": "3f0b33303b0aa2f5aaa29696fe5de5d468f4f860",
+    "sha256": "sha256:e2a1389cd6aaffd976510a4da6e8c28e01d44ea9341efd5d7e63c043862c09a7"
+  },
+  "reviewTurnsUsed": 3,
+  "maxReviewTurns": 12,
+  "remainingReviewTurns": 9,
+  "lastHandoff": {
+    "from": "reviewer",
+    "to": null,
+    "at": "2026-09-05T03:45:03.987Z",
+    "message": "plan accepted",
+    "commit": "7187854e13e21b357b4272afe349fc4b74f92767",
+    "decision": "accepted",
+    "artifacts": {
+      "review": {
+        "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-6-reviewer-review.md",
+        "sha256": "sha256:b40fa593c51a4a065adddff54f01353eb201b4c1b0a7749c8aa7f7e1b1496283"
+      }
+    },
+    "claim": {
+      "revision": 12,
+      "role": "reviewer",
+      "actor": "claude",
+      "provider": "claude",
+      "sid": "109dd576-3d29-4f84-97e6-b82a2446a345",
+      "at": "2026-09-05T03:42:31.395Z"
+    }
+  },
+  "immutableArtifacts": {
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-1-author-response.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-1-author-response.md",
+      "sha256": "sha256:3fe6b7587e9318ee61095b5b26d67e1800d49431be79b8ae43048b3529b0ffbc"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-2-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-2-reviewer-review.md",
+      "sha256": "sha256:7dd05a82673750e26c403a4a0d8adae39ce79edfff61d5738f303d261dd9eb12"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-3-author-response.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-3-author-response.md",
+      "sha256": "sha256:a3b8b9a74237b65bbbda2395f3638f5f8c76f68b5b9018c95fe2e4b1be66662b"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-4-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-4-reviewer-review.md",
+      "sha256": "sha256:545f5199056b6defadb4c3cd09843293ed87a4bb47d8e7ac14784ee7880f5edd"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-5-author-response.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-5-author-response.md",
+      "sha256": "sha256:88ba1c729a12fd916a9e7fd6b2e9451fd6970c3e9ce8a341f742c19350534304"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-6-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart/round-6-reviewer-review.md",
+      "sha256": "sha256:b40fa593c51a4a065adddff54f01353eb201b4c1b0a7749c8aa7f7e1b1496283"
+    }
+  },
+  "initialization": {
+    "runtimeDir": ".scratch/co-review/1219-continuous-agent-delivery-plan-only-restart",
+    "artifact": "docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md",
+    "artifactSha256": "sha256:acd1b77ee70dc66fa1edaab6929041fe0b7f54d9b29260a0fbc707d3e32c6f87",
+    "owner": "codex",
+    "reviewer": "claude",
+    "maxReviewTurns": 12,
+    "importedReview": null,
+    "reviewOf": null,
+    "claimProvenance": "provider-session/v1"
+  },
+  "createdAt": "2026-09-05T02:32:49.464Z",
+  "updatedAt": "2026-09-05T03:45:03.987Z",
+  "acceptance": {
+    "basis": "reviewer-consensus",
+    "at": "2026-09-05T03:45:03.987Z",
+    "reviewer": "claude"
+  }
+}

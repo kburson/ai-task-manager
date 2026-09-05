@@ -1,0 +1,80 @@
+{
+  "schema": "aitm.co-review/v1",
+  "protocolId": "429f06e0-39d7-4565-b5e3-c42b880ff479",
+  "repositoryRoot": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1219-cloud-test-automation",
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1219-cloud-test-automation",
+  "branch": "cloud-test-automation",
+  "revision": 9,
+  "lifecycle": "active",
+  "roles": {
+    "owner": "codex",
+    "reviewer": "claude"
+  },
+  "currentRole": "owner",
+  "turnState": "available",
+  "round": 5,
+  "claim": null,
+  "artifact": {
+    "path": "docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md",
+    "commit": "c685199a0729d4792c4c120b2d30d41716a1b077",
+    "blob": "8feb6a8167f30ed6745930be44f7153320da16be",
+    "sha256": "sha256:dd1db9ad575a11cf50c56e6016a4bb203ad173064da2b3d01b5b32108b1c6527"
+  },
+  "reviewTurnsUsed": 2,
+  "maxReviewTurns": 10,
+  "remainingReviewTurns": 8,
+  "lastHandoff": {
+    "from": "reviewer",
+    "to": "owner",
+    "at": "2026-09-04T23:52:40.057Z",
+    "message": "plan round 4: correction set confirmed; F-107 conceded non-blocking; +F-111 merge-back behaviors, +F-112 blocked ruleset prerequisite",
+    "commit": "c685199a0729d4792c4c120b2d30d41716a1b077",
+    "decision": "changes-requested",
+    "artifacts": {
+      "review": {
+        "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-4-reviewer-review.md",
+        "sha256": "sha256:60b22ef24562d55d4b44c2bf3e652d0179c9f3b3a01824be317dc60f96bc7437"
+      }
+    },
+    "claim": {
+      "revision": 8,
+      "role": "reviewer",
+      "actor": "claude",
+      "provider": "claude",
+      "sid": "c5e18cb0-84f9-401d-8c76-b16271e37e90",
+      "at": "2026-09-04T23:50:54.175Z"
+    }
+  },
+  "immutableArtifacts": {
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-1-author-response.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-1-author-response.md",
+      "sha256": "sha256:c334bfc1643c622365a308f25abf43e4c980a9d8d7da3713a83e89bb5af4eb22"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-2-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-2-reviewer-review.md",
+      "sha256": "sha256:643c06bb32c16efd37a130730249919a9cb21b8c643b9388393f6f1bf702f8cb"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-3-author-response.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-3-author-response.md",
+      "sha256": "sha256:a263ca18a944f1662c8a297e50deaefce9ba77005518595a60715d3b5fefc6c4"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-4-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/round-4-reviewer-review.md",
+      "sha256": "sha256:60b22ef24562d55d4b44c2bf3e652d0179c9f3b3a01824be317dc60f96bc7437"
+    }
+  },
+  "initialization": {
+    "runtimeDir": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude",
+    "artifact": "docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md",
+    "artifactSha256": "sha256:dd1db9ad575a11cf50c56e6016a4bb203ad173064da2b3d01b5b32108b1c6527",
+    "owner": "codex",
+    "reviewer": "claude",
+    "maxReviewTurns": 10,
+    "importedReview": null,
+    "reviewOf": null,
+    "claimProvenance": "provider-session/v1",
+    "archiveDir": "docs/superpowers/reviews/1219/plan"
+  },
+  "createdAt": "2026-09-04T23:30:23.265Z",
+  "updatedAt": "2026-09-04T23:52:40.057Z"
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "aitm.co-review/v1",
+  "protocolId": "c1655cdd-f0c8-48fd-95e3-57af190d9f0c",
+  "repositoryRoot": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1219-cloud-test-automation",
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1219-cloud-test-automation",
+  "branch": "cloud-test-automation",
+  "revision": 9,
+  "lifecycle": "accepted",
+  "roles": {
+    "owner": "codex",
+    "reviewer": "claude"
+  },
+  "currentRole": null,
+  "turnState": null,
+  "round": 5,
+  "claim": null,
+  "artifact": {
+    "path": "docs/superpowers/specs/2026-09-04-1219-continuous-agent-delivery-amendment-design.md",
+    "commit": "1375edfd4b29c98e407ae428a15f992dbdff2cd6",
+    "blob": "c7f340fc3cfa020be08c8023bac9c7077e263bfb",
+    "sha256": "sha256:16b4af266d2b6e05df2ee3c7b84f47ed720527363cb27ac2023e708675889f48"
+  },
+  "reviewTurnsUsed": 2,
+  "maxReviewTurns": 12,
+  "remainingReviewTurns": 10,
+  "lastHandoff": {
+    "from": "reviewer",
+    "to": null,
+    "at": "2026-09-05T00:52:25.076Z",
+    "message": "ACCEPT: all 11 findings corrected and verified against origin/trunk; no blocking findings; 2 non-blocking follow-ups",
+    "commit": "1375edfd4b29c98e407ae428a15f992dbdff2cd6",
+    "decision": "accepted",
+    "artifacts": {
+      "review": {
+        "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-4-reviewer-review.md",
+        "sha256": "sha256:9d8f957dc39fb9c2a2a1a2e7d80cdca0d750b0eaedeb23bb719452e1bd197f53"
+      }
+    },
+    "claim": {
+      "revision": 8,
+      "role": "reviewer",
+      "actor": "claude",
+      "provider": "claude",
+      "sid": "ae407787-5f1b-4649-ac12-4c5bb98def28",
+      "at": "2026-09-05T00:47:51.658Z"
+    }
+  },
+  "immutableArtifacts": {
+    ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/author-invitation-to-reviewer.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/author-invitation-to-reviewer.md",
+      "sha256": "sha256:b3e0fbd6cfbb656681a61f8b3f564b2b202b7883890f8842d79a4fa9eabdf8ed"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-2-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-2-reviewer-review.md",
+      "sha256": "sha256:c7c4c2fa0dee1b1313713865a9651cd4777c922c878d250c1541c6590f2f8ad7"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-3-owner-response.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-3-owner-response.md",
+      "sha256": "sha256:ba617b9528ed643d015b17664d57429cb24a7891faf5c415cc18b6f89b291621"
+    },
+    ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-4-reviewer-review.md": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/round-4-reviewer-review.md",
+      "sha256": "sha256:9d8f957dc39fb9c2a2a1a2e7d80cdca0d750b0eaedeb23bb719452e1bd197f53"
+    }
+  },
+  "initialization": {
+    "runtimeDir": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart",
+    "artifact": "docs/superpowers/specs/2026-09-04-1219-continuous-agent-delivery-amendment-design.md",
+    "artifactSha256": "sha256:b80a6fd438664b86d5814c0279189e32d15b5624353c74d39592900fc868afbb",
+    "owner": "codex",
+    "reviewer": "claude",
+    "maxReviewTurns": 12,
+    "importedReview": null,
+    "reviewOf": null,
+    "claimProvenance": "provider-session/v1",
+    "archiveDir": "docs/superpowers/reviews/1219/spec"
+  },
+  "createdAt": "2026-09-05T00:22:59.574Z",
+  "updatedAt": "2026-09-05T00:52:25.076Z",
+  "acceptance": {
+    "basis": "reviewer-consensus",
+    "at": "2026-09-05T00:52:25.076Z",
+    "reviewer": "claude"
+  }
+}

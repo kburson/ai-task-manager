@@ -1,0 +1,30 @@
+{
+  "schema": "aitm.co-review-start/v1",
+  "protocolId": "c1655cdd-f0c8-48fd-95e3-57af190d9f0c",
+  "runtimeDir": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart",
+  "artifact": "docs/superpowers/specs/2026-09-04-1219-continuous-agent-delivery-amendment-design.md",
+  "owner": "codex",
+  "reviewer": "claude",
+  "maxReviewTurns": 12,
+  "initialization": {
+    "claimProvenance": "provider-session/v1"
+  },
+  "waitCycles": 15,
+  "waitIntervalSeconds": 60,
+  "hostArchive": {
+    "issue": 1219,
+    "artifactKind": "spec",
+    "archiveDir": "docs/superpowers/reviews/1219/spec"
+  },
+  "handoffs": {
+    "author": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/author-handoff.md",
+      "sha256": "sha256:ffc2ca906c842bbe9de5c99af812e516873df66ca65cad675085752ae758b183"
+    },
+    "reviewer": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-spec-only-restart/reviewer-handoff.md",
+      "sha256": "sha256:d5a27c79da4121a8326942096054cb51422bfbe3557a2dadaa39e5ef7c354d98"
+    }
+  },
+  "createdAt": "2026-09-05T00:22:59.574Z"
+}
