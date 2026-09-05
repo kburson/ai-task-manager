@@ -108,7 +108,7 @@ test('checked-in baseline is internally complete and provenance-bound', () => {
     Object.fromEntries(
       Object.entries(baseline.lanes).map(([lane, value]) => [lane, value.fileCount])
     ),
-    { unit: 812, integration: 142, slow: 52 }
+    { unit: 831, integration: 157, slow: 53 }
   );
   const inventory = Object.entries(baseline.lanes).flatMap(([lane, value]) => {
     assert.match(value.sourceSha256, /^[0-9a-f]{64}$/);
@@ -117,7 +117,7 @@ test('checked-in baseline is internally complete and provenance-bound', () => {
     return value.discoveryInventory;
   });
   assert.equal(new Set(inventory).size, inventory.length);
-  assert.equal(inventory.length, 1006);
+  assert.equal(inventory.length, 1041);
   assert.equal(inventory.length, Object.keys(baseline.weights).length);
 });
 
