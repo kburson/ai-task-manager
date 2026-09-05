@@ -10,12 +10,15 @@
 
 ## Status and Authority
 
-This amendment governs #1219 wherever the accepted cloud Test-stage design or
-portfolio plan conflicts with the lifecycle, review, merge, or assurance
-boundaries defined here. The original design remains authoritative for cloud
-runner topology, exact-head native Actions evidence, target-branch
-serialization, integration freezes, receipt retention, and crash recovery
-unless this amendment explicitly changes a boundary.
+This amendment governs #1219 wherever the accepted cloud Test-stage design,
+portfolio plan, or accepted #1512 Full-Auto design conflicts with the lifecycle,
+review, merge, or assurance boundaries defined here. The original #1219 design
+remains authoritative for cloud runner topology, exact-head native Actions
+evidence, target-branch serialization, integration freezes, receipt retention,
+and crash recovery unless this amendment explicitly changes a boundary. #1512
+remains authoritative for the three independent human gates; this amendment
+adds the mandatory flow-review step before its manual-code-review decision and
+does not redefine an enabled gate's human authority.
 
 ## Review Sequence
 
@@ -130,6 +133,9 @@ The current workflow has five structural problems:
   impact, or a repeated provider-quality pattern.
 - **Collateral:** mutable GitHub issue, project, and audit content that does not
   change the merged repository tree.
+- **Recorded branch:** the branch in the issue's latest valid, unambiguous
+  `aitm-worktree-location` authority record. A synthesized canonical fallback is
+  never a recorded branch for enrollment or delivery-boundary classification.
 
 ## Core Invariants
 
@@ -313,6 +319,13 @@ Close is an idempotent collateral transaction. It requires:
 - the mode-appropriate Review authorization; and
 - a clean terminal transaction state.
 
+For an issue classified by its trusted enrollment manifest as a collapsed
+shared-ref tier, the first three requirements are replaced by a validated set
+of terminal child delivery receipts and one existing
+`aitm.no-commit-delivery/v1` authorization bound to the epic deliverable and the
+accepted shared-ref SHA. The implementation record must cite both. No issue
+with a real repository delivery boundary may use this exemption.
+
 Close does not push, merge, rebase, run functional tests, or manufacture missing
 delivery evidence. Partial bookkeeping failure resumes from the first missing
 collateral step and never reopens the code-quality loop.
@@ -324,6 +337,15 @@ Every issue delivers to its immediate stable target:
 - a child story targets its recorded epic branch;
 - a nested epic targets its parent epic branch; and
 - a root epic or standalone story targets trunk.
+
+Enrollment resolves each non-trunk tier from the issue and parent issue's
+latest valid, unambiguous `aitm-worktree-location` authority records. It refuses
+missing, malformed, or ambiguous authority rather than synthesizing a canonical
+branch name. The trusted runtime records both literal refs and the resulting
+real-boundary or collapsed-tier classification in the digested enrollment
+manifest. That classification is immutable for the enrollment generation; a
+later collateral edit cannot create, remove, or reclassify its delivery
+boundary and instead requires a new enrollment generation.
 
 When a nested epic's recorded branch equals its parent's recorded branch, that
 tier is not a repository delivery boundary: it produces no PR or merge receipt.
@@ -361,6 +383,12 @@ upward. A collapsed shared-ref tier aggregates receipts without manufacturing a
 candidate, PR, or merge receipt. This creates bounded verification at each real
 integration boundary without replaying every child lifecycle.
 
+The behavior-preserving #1486 adapter consolidation is advisable cleanup before
+or alongside the enrolled merge-back implementation, but it is not a
+prerequisite for this specification or rollout. Whether consolidated or not,
+every enrolled consumer must implement the single fail-closed recorded-branch
+contract above.
+
 ## Evidence Model
 
 ### Candidate record
@@ -379,8 +407,9 @@ integration boundary without replaying every child lifecycle.
   "prNumber": 1500,
   "createdAt": "canonical instant",
   "runtime": {
-    "source": "trusted-target",
-    "sha": "40-hex",
+    "schema": "aitm.runtime-capability/v3",
+    "capabilityDigest": "64-hex",
+    "executionRootDigest": "64-hex",
     "protocol": "continuous-delivery/v1"
   }
 }
@@ -388,9 +417,13 @@ integration boundary without replaying every child lifecycle.
 
 The logical key is `(issueNumber, generation)`. A second byte-different record
 for one key is a conflict. A new source or base SHA requires a new generation.
-The `runtime` entry references the existing `aitm.runtime-capability/v2`
-identity and its pinned execution-root digest; it does not define a third,
-parallel runtime authority concept.
+The `runtime` entry references the strict `aitm.runtime-capability/v3` successor
+by capability digest. Version 3 preserves the version 2 identity fields and adds
+an execution-root digest over the immutable root manifest and materialization
+policy, plus the continuous-delivery command and schema inventory. Existing
+`aitm.runtime-capability/v2` records remain legacy-readable under their closed
+version 2 validator; they are never extended in place and cannot authorize an
+enrolled candidate.
 
 ### Flow-review receipt
 
@@ -425,7 +458,7 @@ its literal target ref:
 
 ```json
 {
-  "schema": "aitm.delivery-receipt/v1",
+  "schema": "aitm.delivery-receipt/v2",
   "receiptId": "01...",
   "candidateId": "01...",
   "issueNumber": 1219,
@@ -453,6 +486,10 @@ merge method, attribution, and required evidence. Commit trailers are
 non-authoritative projections: they may corroborate live evidence but can never
 independently create, reconstruct, or authorize a delivery receipt.
 
+`aitm.delivery-receipt/v1` remains the closed legacy delivery record. It is
+never emitted for an enrolled candidate and is never accepted as delivery
+authority for one.
+
 ### Implementation-record receipt
 
 The Review receipt binds mutable collateral separately from immutable code:
@@ -465,6 +502,7 @@ The Review receipt binds mutable collateral separately from immutable code:
   "mergeSha": "40-hex",
   "deliveryReceiptId": "01...",
   "flowReviewId": "01...",
+  "noCommitDeliveryRecordId": null,
   "issueBodyDigest": "64-hex",
   "projectProjectionDigest": "64-hex",
   "childReceiptIds": [],
@@ -476,6 +514,12 @@ The Review receipt binds mutable collateral separately from immutable code:
 
 Changing collateral invalidates only this receipt and affected static checks.
 It does not invalidate CI, flow review, or delivery.
+
+The field variants are exclusive. A real repository delivery boundary requires
+non-null source, merge, delivery, and flow-review fields and a null no-commit
+field. A collapsed shared-ref tier requires those four fields to be null, a
+non-null `noCommitDeliveryRecordId`, and a non-empty `childReceiptIds` set whose
+terminal receipts all target the enrolled shared ref.
 
 ## Crossover Assurance
 
@@ -510,11 +554,13 @@ ordinary bug as cheating or infer intent from one defect.
 ## Trusted Runtime Boundary
 
 Lifecycle authorization executes from a pinned root materialized outside the
-candidate worktree. The root must resolve to an immutable installed package or
-to a commit on a protected ref whose literal rules satisfy the enrollment
-requirements above. An unprotected target branch is never an eligible runtime
-source. The runtime identity extends `aitm.runtime-capability/v2` with the pinned
-root, commit or package digest, command-catalog digest, and protocol inventory.
+candidate worktree. After resolving symlinks, the trusted runtime refuses when
+either root contains the other; mere path inequality is insufficient. The root
+must resolve to an immutable installed package or to a commit on a protected ref
+whose literal rules satisfy the enrollment requirements above. An unprotected
+target branch is never an eligible runtime source. The runtime identity is the
+`aitm.runtime-capability/v3` successor defined above: it binds the execution-root
+manifest, exact commit or package, command catalog, and protocol inventory.
 
 Every gate evaluator, receipt validator, reviewer protocol, provider-mutation
 adapter, migration authorizer, and close machine is spawned from that pinned
@@ -530,6 +576,12 @@ old and new runtime identities, protected-ref merge evidence, activation time,
 and authorizing host. The proposed runtime may never author or countersign its
 own activation. Only that durable activation makes the new runtime eligible for
 later candidates.
+
+The genesis authority for the first activation is the incumbent pre-amendment
+runtime on the designated `authorityHostId`, identified by a valid
+`aitm.runtime-capability/v2` capability and installed execution context. Its
+sole new-protocol authority is to validate the protected-ref delivery and
+append the first activation record; it cannot authorize an enrolled candidate.
 
 ## Failure Recovery
 
@@ -648,6 +700,19 @@ The implementation is incomplete until automated tests prove:
     expected target head, observed merge, PR, evidence, and runtime identity.
 23. Migration rejects hand-edited or stale manifests and retires prior
     accepted-head approval evidence.
+24. Each of `analysisToDevelopment`, `pullRequestReview`, and `reviewToDone` can
+    be enabled alone without enabling either other gate, while all three default
+    to disabled in Full-Auto.
+25. Enrollment refuses missing or invalid explicit branch authority, pins the
+    literal-ref tier classification, and does not let a later collateral edit
+    reclassify that generation.
+26. A collapsed shared-ref tier closes only with validated terminal child
+    receipts plus its bound `aitm.no-commit-delivery/v1` authorization; a real
+    delivery boundary cannot use that lane.
+27. `aitm.runtime-capability/v2` and `aitm.delivery-receipt/v1` records remain
+    readable legacy evidence but cannot authorize an enrolled candidate, and
+    only the incumbent genesis runtime may author the first version 3
+    activation.
 
 ## Documentation Changes
 
@@ -659,9 +724,13 @@ Implementation updates must revise:
   disposition, and Test-owned merge;
 - `skill/shared/rules/review.md` to remove functional verification and delivery
   authority;
+- `skill/shared/rules/state-walk.md` and the Review guidance in
+  `skill/shared/rules/functional-dod.md` to prohibit enrolled Review-to-Develop
+  demotion while preserving the declared legacy path;
 - `skill/shared/rules/deliver.md` to route enrolled delivery through Test while
   retaining only the declared legacy behavior;
-- `skill/shared/rules/full-auto.md` and its documentation contract tests to
+- `docs/guides/workflow.md` → “Full-Auto Doctrine (autonomy boundary)” and
+  `scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs` to
   distinguish the displaced ad hoc reviewer, canonical flow reviewer, and
   independent human gates;
 - `skill/shared/rules/close.md` to describe record-only idempotent closure;
@@ -686,6 +755,11 @@ receive the explicit authenticated-maintainer approval required by #1240 and
 must be applied and read back without a protection gap. This external human
 dependency protects the target; it does not enable any of #1512's three
 per-issue review gates.
+
+The pilot also requires a hosted CI workflow whose exact required contexts are
+configured on every literal pilot target and successfully observed on a
+non-authoritative rehearsal PR before enrollment. Protection and CI readiness
+are separate prerequisites and both fail closed.
 
 Only after the specification reaches independent co-review consensus, the
 implementation plan is rewritten from that accepted specification and receives
