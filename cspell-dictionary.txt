@@ -126,6 +126,7 @@ footrulewidth
 forgeable
 Forrester
 frontmatter
+genericity
 gitdir
 greppable
 gridline
@@ -402,6 +403,7 @@ unparked
 unparking
 unparks
 unparseable
+unpiloted
 unrebuildable
 unrecognised
 Unrecognised
