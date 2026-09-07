@@ -246,6 +246,7 @@ deliveries/
 handoffs/
 locks/
 snapshots/
+supplements/
 ```
 
 The CLI resolves canonical paths and refuses symlink escapes. With explicit
@@ -291,14 +292,20 @@ AITM configures:
 ```
 
 This exactly preserves AITM's documented issue-first directory convention while
-letting unrelated hosts use the package default. Output names inside the resolved
-directory are:
+letting unrelated hosts use the package default. A template containing
+`<review-id>` creates a review-scoped directory, whose output names are:
 
 ```text
-<date>-<name>-<review-id>-reviewer-response-<turn>.md
-<date>-<name>-<review-id>-author-response-<turn>.md
-<date>-<name>-<review-id>-review-manifest.md
+reviewer-response-<turn>.md
+author-response-<turn>.md
+human-decision.md
+review-manifest.md
 ```
+
+For a shared destination template such as AITM's `<issue>/<kind>`, each filename
+uses the collision-resistant qualified prefix
+`<date>-<name>-<review-id>-`. The human-decision file is created only for
+`accepted-over-objections`; ordinary reviewer acceptance does not create one.
 
 The resolved output path must stay inside the repository, and existing files are
 never silently overwritten.
@@ -345,15 +352,82 @@ refreshed at every `submit`. A model change within the same session appends an
 identity-change event and is reflected in that turn's response metadata; it does
 not create a new participant.
 
-Stable participant provenance is separate from live turn ownership. Each turn
-claim is scratch-only and contains the stable session fingerprint plus a random
-process-instance ID, PID, host, acquisition time, and heartbeat time. An adapter
-must prove local process liveness and a current heartbeat before the claim may
-mutate protocol state. Unsupported, stale, PID-reused, or otherwise ambiguous
-liveness never permits automatic claim stealing; it moves the review to
-`intervention-required` with reason `participant-loss`. `recover` may release or
-replace the participant only through an explicit operation that records the old
-claim, replacement identity, human approver, reason, and time.
+Stable participant provenance is separate from turn ownership. Every scratch-only
+claim contains the session fingerprint, a random claim ID, role, host, claimed
+time, last protocol activity, expiry time, and the short-lived CLI PID as a
+forensic breadcrumb. In Phase 1 that PID names only the CLI invocation; it is not
+the agent session and is never treated as a liveness handle. With no resident
+process, Phase 1 provides bounded staleness detection: after a configured claim
+TTL, `status` derives `intervention-required` with reason `stale-claim`, and the
+next authorized recovery records that transition under the lock. A stale claim
+is never released or stolen automatically.
+
+In Phase 2, an adapter may advertise `resident-liveness` only when an official
+host runtime or the local MCP service remains resident for the claimed turn. The
+adapter returns a process-instance ID, PID or official opaque process handle,
+host, observation time, and lease expiry; the resident component refreshes the
+heartbeat before expiry. The core validates the adapter capability and lease but
+does not infer liveness from a PID alone. Generic `other` adapters default to
+`staleness-only` and cannot advertise `live-wait`, `native-push`, or
+`resident-liveness` without implementing and testing that contract.
+
+Unsupported, stale, PID-reused, expired, or otherwise ambiguous Phase 2
+liveness derives `intervention-required` with reason `participant-loss` and
+never permits automatic claim stealing. A signed recovery grant may release or
+replace the participant only through an operation that records the old claim,
+replacement identity, human attestation, reason, and time.
+
+## Human Authority
+
+The agent under review is inside the threat model for every human-gated action.
+Assume it can run arbitrary package commands and read or modify the repository,
+scratch workspace, ordinary environment variables, user-writable configuration,
+and an attached TTY. Therefore a CLI prompt, TTY detection, `gh api user`, an
+`--approved-by` string, or a key stored in agent-readable local state can identify
+an account or interaction but cannot prove a separate human authorized the exact
+action.
+
+Normal commit mode uses a one-time, out-of-band signed grant. `start
+--request-grant` performs the ordinary non-mutating preflight and emits a
+bootstrap challenge without creating a review. `start --grant <file>` repeats
+the preflight and creates the review only after verifying that challenge. Before
+any `continue`, supplement registration, good-enough finalization, participant
+replacement, or abandonment, `request-grant` similarly emits a canonical
+challenge:
+
+```yaml
+schema: ai-peer-review.grant-challenge/v1
+review_id: stable-review-id-or-start-nonce
+protocol_revision: exact-revision-or-zero
+action: start | continue | supplement | accept-over-objections | replace-participant | abandon
+parameters_digest: sha256
+nonce: cryptographically-random-value
+expires_at: RFC-3339 timestamp
+```
+
+The human approves that challenge through a trust boundary the agent cannot use:
+either an external detached-signature tool whose private key remains outside the
+agent-accessible runtime, or an official host approval service that returns a
+signed action receipt. The repository or user configuration contains only a
+pinned public key or host verifier identity. The bootstrap `start` grant pins the
+verifier fingerprint into protocol authority; changing the verifier requires a
+new review. If the environment cannot supply such a boundary, normal mode fails
+closed rather than claiming a human-controlled budget.
+
+The resulting grant may be visible to the agent because it is bound to the exact
+review, revision, action, parameter digest, nonce, and expiry. The mutating
+command verifies the signature or host receipt under the protocol-pinned
+verifier, consumes the nonce atomically with the authorized event, and rejects
+expired, replayed, cross-review, cross-revision, or parameter-mismatched grants.
+There is no self-declared `--approved-by` fallback and an authenticated GitHub
+login alone is insufficient.
+
+Every protected event and the review manifest record the attestation source,
+strength, stable signer identity, verifier fingerprint, challenge digest, and
+verification time. Only `cryptographic-external` and `host-verified` grants are
+valid in normal mode. No-commit mode may explicitly use an `unverified-test`
+fixture signer, but every prompt, response, status result, and manifest exposes
+that weaker strength and the terminal result remains non-durable.
 
 ## Startup and Generated Prompts
 
@@ -400,6 +474,7 @@ The package ships versioned templates for:
 - `reviewer-invitation.md`;
 - reviewer response;
 - author response;
+- human good-enough decision;
 - review manifest.
 
 Reviewer responses contain these prose sections:
@@ -451,6 +526,35 @@ submission it validates that protected fields were not edited, refreshes model
 identity, fills `submitted_at`, hashes the result, makes it immutable to protocol
 transitions, and emits the handoff event.
 
+The CLI renders `human-decision.md` from its own template after it verifies a
+good-enough grant. Its sealed frontmatter contains:
+
+```yaml
+schema: ai-peer-review.human-decision/v1
+review_id: stable-review-id
+decision: accepted-over-objections
+artifact_path: repository-relative-path
+artifact_commit: git-commit | null
+artifact_blob: git-blob-id | null
+artifact_digest: sha256
+unresolved_findings:
+  - reviewer_response_path: repository-relative-path
+    reviewer_response_digest: sha256
+    finding_ids: [stable-finding-id]
+human_attestation:
+  source: detached-signature | host-approval | test-fixture
+  strength: cryptographic-external | host-verified | unverified-test
+  signer_id: stable-human-identifier
+  signer_fingerprint: public-key-or-host-principal-fingerprint
+  challenge_digest: sha256
+  verified_at: RFC-3339 timestamp
+decided_at: RFC-3339 timestamp
+```
+
+The prose records the human's rationale and enumerates the unresolved findings
+being overridden. Protected fields come from the signed grant and protocol
+authority, not agent-authored text.
+
 ## Lifecycle
 
 The normal state sequence is:
@@ -465,8 +569,11 @@ awaiting-reviewer
   -> accepted
 
 final revisions-requested -> author-revision -> intervention-required
-intervention-required -> human continuation -> reviewer-turn
-intervention-required -> human good-enough finalization -> accepted-over-objections
+intervention-required(turn-budget-exhausted) -> signed continuation -> reviewer-turn
+intervention-required(turn-budget-exhausted) -> signed good-enough -> accepted-over-objections
+claimed turn -> stale-claim | participant-loss -> intervention-required
+intervention-required(participant-loss) -> signed participant replacement -> role turn
+intervention-required(any reason) -> signed abandonment -> abandoned
 ```
 
 On turn 1, the reviewer reads `reviewer-invitation.md` and the current artifact.
@@ -499,27 +606,39 @@ author may still submit the one answer needed to complete that two-sided round;
 the protocol then enters `intervention-required` with reason
 `turn-budget-exhausted` instead of starting another reviewer turn.
 
-Only an explicitly authenticated human may continue from intervention. The
-`continue` command records the approver, time, prior maximum, requested increase,
-effective maximum, resume role, and optional focus document. It adds only the
-number of reviewer turns granted by the human and never silently resets usage.
+Only a Human Authority grant may continue from intervention. The `continue`
+command records the complete attestation, time, prior maximum, requested
+increase, effective maximum, resume role, and optional focus document. It adds
+only the number of reviewer turns bound into the grant and never silently resets
+usage.
 
-During intervention the human may register immutable Markdown supplements with
-`supplement --for author|reviewer`. The package canonicalizes and hashes each
-file, records its human source and target role/turn, freezes it on continuation,
-and requires the targeted participant's next response to acknowledge every
-supplement ID. Supplement content comes from the host or human; its integrity and
-acknowledgment lifecycle belong to the package.
+During intervention a signed grant may register immutable Markdown supplements
+with `supplement --for author|reviewer`. The package imports each regular file
+into `.scratch/peer-review/<review-id>/supplements/<supplement-id>.md`,
+canonicalizes and hashes the copied bytes, records the attestation and target
+role/turn, freezes it on continuation, and requires the targeted participant's
+next response to acknowledge every supplement ID. Supplement content remains
+scratch-only and is never copied to tracked collateral automatically. The
+manifest records each supplement's ID, digest, target, registering human
+attestation, acknowledgment response, and `content_retention: scratch-only` so
+the evidentiary limitation is explicit.
 
-If consensus is not reached, an authenticated human may finalize the completed
-two-sided exhausted round as `accepted-over-objections`. This is a distinct
-terminal status and manifest acceptance basis, never rewritten as reviewer
-`accepted`. In normal mode, the final author-owned commit contains the human
-decision record and manifest, and binds the already committed final two-sided
-round against the still-current artifact blob. No-commit mode instead terminates
-as `accepted-over-objections-uncommitted` with equivalent scratch hashes and no
-Git mutation. No agent may choose this outcome or expand the turn budget without
-human action.
+If consensus is not reached, a signed Human Authority grant may finalize the
+completed two-sided exhausted round as `accepted-over-objections`. This is a
+distinct terminal status and manifest acceptance basis, never rewritten as
+reviewer `accepted`. In normal mode, the final author-owned commit contains the
+sealed human-decision record and manifest, and binds the already committed final
+two-sided round against the still-current artifact blob. No-commit mode instead
+terminates as `accepted-over-objections-uncommitted` with equivalent scratch
+hashes and no Git mutation. No agent may choose this outcome or expand the turn
+budget without a valid action-specific grant.
+
+A valid abandonment grant may move any intervention reason to terminal
+`abandoned`. Abandonment records the attestation and retained paths in scratch,
+releases the package's destination reservation, and emits terminal status so a
+host may release its own occupancy cache. It creates no acceptance manifest,
+deletes nothing, and cannot later resume. Existing tracked responses remain
+ordinary incomplete review collateral rather than acceptance evidence.
 
 ## Git Ownership and Integrity
 
@@ -538,9 +657,29 @@ containing exactly:
 
 The CLI tolerates unrelated staged and unstaged changes and leaves their index
 and working-tree bytes untouched. It refuses pre-existing changes that overlap a
-protocol-owned path, validates only the owned-path delta for the round, and uses
-an exact-path commit so no unrelated content enters the review commit. A changed
-`HEAD`, worktree identity, or protocol-owned path still fails closed.
+protocol-owned path and validates only the owned-path delta for the round. A
+changed `HEAD`, worktree identity, or unexpected protocol-owned path still fails
+closed.
+
+Normal-mode revision commits use this explicit sequence:
+
+1. snapshot unrelated staged index entries and refuse pre-existing overlap on
+   the artifact or pending response paths;
+2. stage exactly the sealed reviewer response, authoritative artifact, and
+   sealed author response with path-limited `git add -- <three-paths>`;
+3. verify those index entries match the sealed bytes and no other index entry was
+   changed by the protocol;
+4. create a path-limited `git commit --only -- <three-paths>` with the required
+   trailers;
+5. inspect the resulting commit tree and refuse completion unless its changed
+   path set is exactly the three expected paths; and
+6. verify every unrelated staged entry still has its pre-commit object ID and
+   remains staged and uncommitted.
+
+Acceptance finalization applies the same sequence to the sealed acceptance
+response and manifest. Good-enough finalization applies it to the sealed human
+decision and manifest. Recovery recognizes a commit only after the exact path
+set, index preservation, trailers, and sealed hashes all agree.
 
 If a finding requires no artifact change, the author must explicitly submit
 `--no-artifact-change --reason <text>`. The CLI injects that reason into the
@@ -576,6 +715,11 @@ review. The initial event records `commitMode: no-commit`; this field is
 immutable and cannot be converted after startup. `normal` commit mode remains
 the default.
 
+Only no-commit mode may replace the signed bootstrap grant with
+`--test-human-authority <fixture-id>`. That test authority choice and its
+`unverified-test` strength are immutable after startup. The flag is rejected in
+normal mode and cannot authorize any committed acceptance evidence.
+
 The author startup, reviewer invitation, status output, response frontmatter,
 next-action text, and manifest display `NO-COMMIT TEST MODE`. This prevents test
 collateral from being mistaken for durable review approval.
@@ -587,11 +731,11 @@ evolving artifact and its generated response and manifest paths. Pre-existing
 unrelated changes may remain, but their paths and bytes must not change during
 the review.
 
-Every transition verifies that:
+Every transition in no-commit mode verifies that:
 
 - `HEAD` equals the startup commit;
 - the index tree equals the startup index tree;
-- no protocol command has staged content;
+- no protocol command in that mode has staged content;
 - only protocol-owned paths differ from their startup state;
 - the working artifact matches the digest and scratch snapshot sealed by the
   preceding handoff before the next actor begins.
@@ -626,15 +770,17 @@ The initial command surface is:
 ```text
 peer-review setup
 peer-review doctor
-peer-review start <artifact> --artifact-kind <spec|plan> [--issue-id <id>] [--reviews-root <path>] [--review-path-template <template>] [--max-turns <N>] [--no-commit]
+peer-review start <artifact> --artifact-kind <spec|plan> [configuration] (--request-grant | --grant <signed-grant> | --no-commit --test-human-authority <fixture-id>)
+peer-review request-grant <workspace> --action <protected-action> [action parameters]
 peer-review join <reviewer-invitation.md>
 peer-review status <workspace>
 peer-review resume <workspace>
 peer-review submit <workspace> [--decision revisions-requested|accepted]
-peer-review supplement <workspace> <file> --for <author|reviewer>
-peer-review continue <workspace> [--additional-turns <N>] [--focus <file>]
-peer-review finalize <workspace> [--good-enough]
-peer-review recover <workspace> [--replace-participant <role>]
+peer-review supplement <workspace> <file> --for <author|reviewer> --grant <signed-grant>
+peer-review continue <workspace> [--additional-turns <N>] [--focus <file>] --grant <signed-grant>
+peer-review finalize <workspace> [--good-enough --grant <signed-grant>]
+peer-review recover <workspace> [--replace-participant <role> --grant <signed-grant>]
+peer-review abandon <workspace> --grant <signed-grant>
 ```
 
 `setup` supports agent selection, user or project scope, `--dry-run`, and
@@ -647,8 +793,12 @@ requirement.
 
 `doctor` is read-only. It reports package resolution, skill availability,
 identity source, session fingerprint availability, Git/worktree safety, scratch
-ignore status, MCP connectivity, timeout configuration, supported wake mode,
-and whether automatic-required review is possible.
+ignore status, Human Authority verifier and strength, supported wake mode, and
+whether the requested review mode is possible. In Phase 1, MCP connectivity,
+resident liveness, long tool timeout, and automatic-required rows report
+`not-installed (Phase 2 optional)` and do not make manual or resume-only health
+fail. In Phase 2 they become active checks; requesting automatic-required mode
+makes an unavailable or unhealthy row fail.
 
 `status` and `resume` reconstruct the current actor's exact next action from
 events. They do not wake the model by polling. `recover` validates integrity,
@@ -734,8 +884,9 @@ Errors use stable `APR_*` (`ai-peer-review`) codes, structured fields, and one
 exact recovery command. Representative categories include unsafe paths,
 unignored scratch, artifact drift, duplicate session, wrong role, protected
 metadata changes, unexpected worktree changes, output collision, stale delivery,
-transport unavailable, projection drift, commit failure, no-commit mode
-conflict, test baseline drift, and participant loss.
+transport unavailable, missing/invalid/replayed Human Authority grant, projection
+drift, commit failure, no-commit mode conflict, test baseline drift, stale claim,
+and participant loss.
 
 All mutating commands follow this order:
 
@@ -803,33 +954,48 @@ upgrade or rewrite legacy protocols.
 
 ## Testing Strategy
 
+### Phase 1 suite
+
 The extracted project carries forward applicable tests and adds:
 
 - unit tests for state transitions, identity normalization, hashing, path
   containment, error codes, projections, and manifest generation;
 - Git integration tests for reviewer restrictions, exact-path author commits,
   revision triads, no-artifact-change receipts, acceptance finalization, a dirty
-  tree with unrelated staged and unstaged changes, interrupted commits, and
-  trailer recovery;
+  tree whose unrelated staged entry remains staged and uncommitted after the
+  review commit, interrupted commits, and trailer recovery;
 - lifecycle tests for default and adjusted turn budgets, exhaustion,
-  authenticated continuation, frozen supplement acknowledgment, and distinct
+  signed continuation, frozen supplement acknowledgment, abandonment, and distinct
   accepted-over-objections evidence;
+- Human Authority tests for start bootstrapping, exact action/parameter/revision
+  binding, expiry, replay, signer mismatch, verifier pinning, host receipts, and
+  no-commit-only test fixtures;
 - no-commit integration tests proving unchanged `HEAD` and index, permitted
   working-tree paths, per-turn artifact snapshots, digest mismatch refusal,
   idempotent recovery, no Git-mutating subprocesses, and
   `accepted-uncommitted` finalization;
-- MCP tests for blocking waits, delivery-before-subscribe races, simultaneous
-  delivery, timeout, reconnect, duplicate delivery, and token-free idle behavior;
 - adapter tests using fake Codex, Claude Code, Grok, and generic provider
-  surfaces, including model changes and declared-identity fallback;
+  surfaces, including model changes, declared-identity fallback, and Phase 1
+  staleness-only claims;
 - golden tests for every template, help topic, JSON schema, generated next
-  action, and `APR_*` explanation;
+  action, human-decision record, and `APR_*` explanation;
 - packaging tests that inspect `npm pack` contents and execute the packed binary;
 - macOS, Linux, and Windows smoke tests for installation, setup dry-run,
   `npx ai-peer-review --help`, start, join, one revision triad, and acceptance;
 - AITM migration parity tests and the active-legacy-review removal guard.
 
 Phase 1 targets Node.js 22 or later and zero third-party runtime dependencies.
+
+### Phase 2 suite
+
+Phase 2 adds:
+
+- MCP tests for blocking waits, delivery-before-subscribe races, simultaneous
+  delivery, timeout, reconnect, duplicate delivery, and token-free idle behavior;
+- resident-liveness tests for heartbeat refresh, lease expiry, PID reuse, opaque
+  host handles, adapter downgrade, and participant-loss intervention;
+- automatic-required setup, doctor, adapter, and cross-platform transport tests.
+
 Phase 2 may add the official MCP SDK if interoperability requires it; every new
 runtime dependency requires a recorded necessity, license check, security audit,
 and packed-size impact. Test and development dependencies remain separately
@@ -847,6 +1013,9 @@ repositories.
   scratch delivery.
 - Secrets, raw session IDs, transcript paths, wake handles, and provider tokens
   are prohibited from tracked collateral and redacted from diagnostics.
+- Human Authority private keys and approval-service credentials never enter the
+  agent-accessible runtime; only pinned public verifiers, scoped signed grants,
+  and non-secret attestation metadata may appear in protocol state.
 - Template content is data, never executed shell or JavaScript.
 - Configuration edits require explicit setup scope, preserve prior content, and
   are reversible.
@@ -943,18 +1112,25 @@ Phase 1 extraction and manual release are complete when:
    to the configured tracked reviews root.
 10. Complete offline and JSON help lets an agent recover syntax and next actions
     without guessing.
-11. Review budgets stop an exhausted loop, authenticated continuation grants add
+11. Normal mode requires one-time action-, parameter-, revision-, nonce-, and
+    expiry-bound Human Authority grants whose signer cannot be impersonated by
+    an agent invoking the CLI.
+12. Review budgets stop an exhausted loop, signed continuation grants add only
     bounded turns, supplements are integrity-bound and acknowledged, and
     accepted-over-objections remains distinct from reviewer acceptance.
-12. Stable participant provenance and per-turn liveness claims detect stale or
-    ambiguous ownership without silently stealing a claim.
-13. AITM consumes the package without retaining a duplicate CLI or schema and
+13. A good-enough outcome includes a sealed human-decision record naming the
+    attestation and every unresolved finding; supplement metadata and its
+    scratch-only retention are explicit in the manifest.
+14. Phase 1 claims record the CLI PID only as a forensic value, detect expiry by
+    a configured TTL, describe the result as staleness rather than liveness, and
+    never release or steal a stale claim automatically.
+15. AITM consumes the package without retaining a duplicate CLI or schema and
     protects active legacy reviews during migration.
-14. Unit, Git integration, manual/resume adapter, golden, packaging,
+16. Unit, Git integration, manual/resume adapter, golden, packaging,
     cross-platform, and AITM parity suites pass.
-15. The public release contains signed relicensing and independently archived
+17. The public release contains signed relicensing and independently archived
     provenance for the source, package, and extraction history.
-16. A `--no-commit` review completes the normal author/reviewer dialogue while
+18. A `--no-commit` review completes the normal author/reviewer dialogue while
     leaving `HEAD` and the index unchanged, recording immutable scratch snapshots,
     leaving all collateral uncommitted, and terminating as
     `accepted-uncommitted`.
@@ -967,4 +1143,7 @@ Phase 2 automatic transport is complete when:
 3. Automatic-required mode fails closed unless both adapters and the end-to-end
    health check support it.
 4. Manual and resume-only fallbacks recover transport failures without data loss.
-5. MCP, automatic adapter, setup, and cross-platform transport suites pass.
+5. Resident adapters provide current heartbeat-backed liveness through a tested
+   process-instance or official host handle; generic adapters remain
+   staleness-only.
+6. MCP, automatic adapter, setup, and cross-platform transport suites pass.
