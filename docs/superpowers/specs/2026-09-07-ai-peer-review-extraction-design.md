@@ -1,6 +1,6 @@
 # AI Peer Review Extraction Design
 
-<!-- cspell:words Zenodo -->
+<!-- cspell:words Zenodo licensor relicenses -->
 
 - **Date:** 2026-09-07
 - **Status:** Proposed
@@ -16,8 +16,9 @@ Extract AITM's co-review engine into a public, independently installable
 that collaborate on one specification or implementation plan in the same Git
 worktree. It provides a provider-neutral protocol, a `peer-review` CLI, an
 installable `peer-review` skill, reusable handoff templates, structured identity
-provenance, and a local MCP handoff service that blocks without spending model
-tokens.
+provenance, and bounded human-controlled review loops. The first release uses
+manual or official session-resume handoff. A later transport release adds a local
+MCP service that blocks without spending model tokens.
 
 The reviewer never edits the authoritative artifact and never commits. During a
 revision round, the author commits the reviewer response, updated artifact, and
@@ -55,8 +56,8 @@ provider, including two sessions using the same model.
    directory while keeping coordination state in ignored scratch storage.
 6. In normal mode, preserve every revision round as an integrity-bound Git
    commit triad.
-7. Resume agents only when a real handoff arrives, without timer-driven model
-   wake events or mutation of provider session logs.
+7. In the transport release, resume agents only when a real handoff arrives,
+   without timer-driven model wake events or mutation of provider session logs.
 8. Give agents complete, offline, machine-queryable CLI help and stable recovery
    instructions.
 9. Integrate cleanly with AITM without importing AITM concepts into the core.
@@ -78,6 +79,7 @@ provider, including two sessions using the same model.
 - Providing cryptographic proof of an agent vendor's claimed runtime identity.
 - Treating uncommitted test acceptance as durable committed review evidence.
 - Automatically deleting or restoring no-commit test collateral.
+- Owning a host project's cross-worktree task or agent occupancy index.
 
 ## Naming and Distribution
 
@@ -135,6 +137,8 @@ The standalone package owns:
 - scratch protocol state and immutable event history;
 - response templates and generated frontmatter;
 - session, provider, and model provenance;
+- reviewer-turn budgets, explicit continuation grants, and supplements;
+- per-turn process claims and participant-loss recovery;
 - handoff delivery and token-free waiting;
 - author-owned exact-path commits and review manifests;
 - CLI, JSON contracts, help, diagnostics, and recovery.
@@ -146,9 +150,11 @@ The host project owns:
 - project-specific review-output configuration;
 - installing or invoking the skill;
 - supplying additional context to either agent.
+- any cross-worktree task or agent occupancy index.
 
-An optional issue ID is opaque host metadata. It may be included in filenames
-and the manifest, but it has no effect on protocol eligibility or state.
+An optional issue ID is opaque host metadata. It may be included in the resolved
+output path and the manifest, but it has no effect on protocol eligibility or
+state.
 
 ## Repository Extraction
 
@@ -174,10 +180,47 @@ The extracted code is reorganized behind the package layout above. No runtime
 module in `src/` may import AITM, inspect `.ai-task-manager`, invoke AITM commands,
 or assume a GitHub issue exists.
 
+The direct-write model replaces `archive.mjs`'s final copy/publish step, but not
+all of its guarantees. The extraction retains or reimplements canonical path
+resolution, destination-absence checks, consistent-snapshot reads,
+complete-identical retry recognition, foreign-output inspection, and
+deterministic collision recovery. It drops only the
+staging-directory-to-archive copy and AITM-specific archive layout/schema.
+
 Before publishing the new history, scan every retained commit for credentials,
 private data, generated runtime state, and unrelated AITM content. Rewrite the
 filtered repository before public release if the scan finds material that does
 not belong in the standalone project.
+
+## Scope and Sequencing
+
+This project contains both a port and new product work. The ported foundation is
+the existing lifecycle, turn budget, supplement, good-enough, locking, event,
+integrity, Git, recovery, and test behavior under `scripts/review/**`. Its AITM
+imports, names, paths, command routing, and copy-based archive publication are
+replaced at the extraction boundary.
+
+New work includes the standalone CLI and package layout, setup and doctor
+commands, stable `APR_*` errors and offline help, provider-neutral identity
+adapters, direct tracked collateral, no-commit mode, transport capability
+negotiation, and the MCP handoff server.
+
+Delivery is phased:
+
+1. **Phase 1 — extraction and manual release (`0.1.x`).** Publish the extracted
+   package, CLI, skill, bounded lifecycle, identity/provenance, configurable
+   tracked output, exact-path commit flow, no-commit mode, offline help, and
+   `manual` plus adapter-proven `resume-only` transport. No MCP server or
+   automatic-required mode is needed to release this phase.
+2. **Phase 2 — automatic transport (`0.2.x`).** Add the local MCP server,
+   `live-wait` and official `native-push` adapters, long tool-timeout setup,
+   end-to-end transport health checks, and automatic-required mode. This phase
+   must preserve Phase 1's manual recovery route and protocol schema
+   compatibility.
+
+AITM migrates only after the applicable phase's dependency integration and
+parity checks pass. Automatic handoff is not a hidden prerequisite for the
+standalone extraction or AITM's initial dependency migration.
 
 ## Workspace Model
 
@@ -205,10 +248,15 @@ locks/
 snapshots/
 ```
 
-The CLI resolves canonical paths and refuses symlink escapes. It verifies that
-the scratch directory is not tracked. With explicit confirmation from `setup`,
-it may add `.scratch/peer-review/` to the worktree's `.git/info/exclude`; it does
-not edit the repository's tracked `.gitignore` automatically.
+The CLI resolves canonical paths and refuses symlink escapes. With explicit
+confirmation from `setup`, it may add `.scratch/peer-review/` to the exclude file
+reported by `git rev-parse --git-path info/exclude`; it never constructs that
+path by appending to the textual `.git` entry and does not edit the repository's
+tracked `.gitignore` automatically. After repository configuration is applied,
+`setup` and every `start` verify a representative path with
+`git check-ignore --quiet --no-index`. If Git cannot prove the scratch path is
+ignored, startup fails without creating protocol state as
+`APR_SCRATCH_NOT_IGNORED`.
 
 `events.jsonl` is append-only authority. `protocol.json` and
 `participants.json` are atomic projections that can be rebuilt from events.
@@ -220,24 +268,40 @@ scratch-only. They must never appear in tracked responses or manifests.
 
 ### Tracked review collateral
 
-The default output root is:
+The package defaults are:
 
 ```text
-docs/superpowers/reviews/<spec|plan>/
+reviews root: docs/peer-reviews
+path template: <kind>/<date>-<name>-<review-id>
 ```
 
-Projects may configure another repository-contained root. The artifact kind is
-derived or explicitly selected as `spec` or `plan`. Output names are:
+Projects configure a repository-contained `--reviews-root` and a constrained
+`--review-path-template`. Supported placeholders are `<issue>`, `<kind>`,
+`<name>`, `<date>`, and `<review-id>`; substitutions are canonicalized and must
+remain beneath the reviews root. A template containing `<issue>` requires an
+explicit positive issue ID. Artifact kind is never guessed from the filename:
+`start` requires an explicit `--artifact-kind spec|plan`, either on the command
+line or in host configuration.
+
+AITM configures:
 
 ```text
-YYYY-MM-DD-<name>-reviewer-response-<turn>.md
-YYYY-MM-DD-<name>-author-response-<turn>.md
-YYYY-MM-DD-<name>-review-manifest.md
+--reviews-root docs/superpowers/reviews
+--review-path-template <issue>/<kind>
 ```
 
-When an issue ID is supplied, insert `<issue-id>-` before `<name>`. The resolved
-output path must stay inside the repository, and existing files are never
-silently overwritten.
+This exactly preserves AITM's documented issue-first directory convention while
+letting unrelated hosts use the package default. Output names inside the resolved
+directory are:
+
+```text
+<date>-<name>-<review-id>-reviewer-response-<turn>.md
+<date>-<name>-<review-id>-author-response-<turn>.md
+<date>-<name>-<review-id>-review-manifest.md
+```
+
+The resolved output path must stay inside the repository, and existing files are
+never silently overwritten.
 
 Agents write response prose directly to these tracked paths. The scratch
 workspace stores delivery receipts and hashes, not duplicate canonical copies.
@@ -281,6 +345,16 @@ refreshed at every `submit`. A model change within the same session appends an
 identity-change event and is reflected in that turn's response metadata; it does
 not create a new participant.
 
+Stable participant provenance is separate from live turn ownership. Each turn
+claim is scratch-only and contains the stable session fingerprint plus a random
+process-instance ID, PID, host, acquisition time, and heartbeat time. An adapter
+must prove local process liveness and a current heartbeat before the claim may
+mutate protocol state. Unsupported, stale, PID-reused, or otherwise ambiguous
+liveness never permits automatic claim stealing; it moves the review to
+`intervention-required` with reason `participant-loss`. `recover` may release or
+replace the participant only through an explicit operation that records the old
+claim, replacement identity, human approver, reason, and time.
+
 ## Startup and Generated Prompts
 
 The user starts a review by asking an agent to peer-review an artifact, supplying
@@ -289,11 +363,13 @@ to be the author.
 
 `peer-review start` performs a non-mutating preflight before it creates anything:
 
-1. resolve the repository, physical worktree, artifact, and output root;
+1. resolve the repository, physical worktree, artifact, reviews root, explicit
+   artifact kind, and output template;
 2. require the artifact to be tracked and clean relative to `HEAD`;
 3. capture author identity and session transport capability;
 4. verify the scratch path is safe and ignored;
-5. verify every intended tracked output path is available;
+5. reserve the resolved review destination and verify its initial tracked output
+   paths are available or are a complete-identical retry;
 6. create the scratch workspace and initial event only after all checks pass;
 7. hydrate `author-startup.md` and `reviewer-invitation.md` from versioned package
    templates.
@@ -354,7 +430,7 @@ schema: ai-peer-review.response/v1
 review_id: stable-review-id
 role: author | reviewer
 turn: positive-integer
-commit_mode: enabled | disabled
+commit_mode: normal | no-commit
 artifact_path: repository-relative-path
 artifact_commit: git-commit | null
 artifact_blob: git-blob-id | null
@@ -383,14 +459,19 @@ The normal state sequence is:
 awaiting-reviewer
   -> reviewer-turn
   -> author-revision
-  -> reviewer-turn
+  -> reviewer-turn (while budget remains)
   -> acceptance-pending
   -> author-finalization
   -> accepted
+
+final revisions-requested -> author-revision -> intervention-required
+intervention-required -> human continuation -> reviewer-turn
+intervention-required -> human good-enough finalization -> accepted-over-objections
 ```
 
-The reviewer reads the current artifact and the preceding author response, then
-writes one reviewer response. Its decision is exactly
+On turn 1, the reviewer reads `reviewer-invitation.md` and the current artifact.
+On later turns, the reviewer also reads the preceding author response and every
+frozen supplement. The reviewer writes one response whose decision is exactly
 `revisions-requested` or `accepted`.
 
 For `revisions-requested`, the author reads the response, edits the artifact,
@@ -409,6 +490,37 @@ Finalization generates the manifest and moves the protocol to
 `accepted-uncommitted`; it can never enter `accepted` without a commit-backed
 review.
 
+### Turn budgets, intervention, and supplements
+
+`start` accepts `--max-turns <positive-integer>` and defaults to 10 reviewer
+responses. Each sealed reviewer response consumes one turn, including an
+acceptance response. When the final allowed response requests revisions, the
+author may still submit the one answer needed to complete that two-sided round;
+the protocol then enters `intervention-required` with reason
+`turn-budget-exhausted` instead of starting another reviewer turn.
+
+Only an explicitly authenticated human may continue from intervention. The
+`continue` command records the approver, time, prior maximum, requested increase,
+effective maximum, resume role, and optional focus document. It adds only the
+number of reviewer turns granted by the human and never silently resets usage.
+
+During intervention the human may register immutable Markdown supplements with
+`supplement --for author|reviewer`. The package canonicalizes and hashes each
+file, records its human source and target role/turn, freezes it on continuation,
+and requires the targeted participant's next response to acknowledge every
+supplement ID. Supplement content comes from the host or human; its integrity and
+acknowledgment lifecycle belong to the package.
+
+If consensus is not reached, an authenticated human may finalize the completed
+two-sided exhausted round as `accepted-over-objections`. This is a distinct
+terminal status and manifest acceptance basis, never rewritten as reviewer
+`accepted`. In normal mode, the final author-owned commit contains the human
+decision record and manifest, and binds the already committed final two-sided
+round against the still-current artifact blob. No-commit mode instead terminates
+as `accepted-over-objections-uncommitted` with equivalent scratch hashes and no
+Git mutation. No agent may choose this outcome or expand the turn budget without
+human action.
+
 ## Git Ownership and Integrity
 
 The reviewer is read-only except for its exact generated response path and
@@ -424,11 +536,17 @@ containing exactly:
 2. the authoritative specification or plan;
 3. the sealed author response.
 
-The CLI uses exact path arguments and refuses staged or unstaged changes outside the
-expected paths. Unrelated worktree changes remain untouched. If a finding
-requires no artifact change, the author must explicitly submit
-`--no-artifact-change --reason <text>`; the receipt then binds the unchanged
-artifact blob instead of pretending a change occurred.
+The CLI tolerates unrelated staged and unstaged changes and leaves their index
+and working-tree bytes untouched. It refuses pre-existing changes that overlap a
+protocol-owned path, validates only the owned-path delta for the round, and uses
+an exact-path commit so no unrelated content enters the review commit. A changed
+`HEAD`, worktree identity, or protocol-owned path still fails closed.
+
+If a finding requires no artifact change, the author must explicitly submit
+`--no-artifact-change --reason <text>`. The CLI injects that reason into the
+author response's `Declined changes and rationale` section before sealing it, and
+the receipt binds the unchanged artifact blob instead of pretending a change
+occurred.
 
 Each revision commit includes trailers:
 
@@ -454,9 +572,9 @@ transcript locations, tokens, or IPC details.
 ### No-commit test mode
 
 `peer-review start <artifact> --no-commit` selects no-commit mode for the entire
-review. The initial event records `commitMode: disabled`; this field is immutable
-and cannot be enabled, disabled, or converted after startup. Normal commit mode
-remains the default.
+review. The initial event records `commitMode: no-commit`; this field is
+immutable and cannot be converted after startup. `normal` commit mode remains
+the default.
 
 The author startup, reviewer invitation, status output, response frontmatter,
 next-action text, and manifest display `NO-COMMIT TEST MODE`. This prevents test
@@ -487,7 +605,7 @@ Finalization writes the ordinary tracked manifest but sets:
 
 ```yaml
 status: accepted-uncommitted
-commit_mode: disabled
+commit_mode: no-commit
 final_commit: null
 ```
 
@@ -508,21 +626,24 @@ The initial command surface is:
 ```text
 peer-review setup
 peer-review doctor
-peer-review start <artifact> [--issue-id <id>] [--reviews-root <path>] [--no-commit]
+peer-review start <artifact> --artifact-kind <spec|plan> [--issue-id <id>] [--reviews-root <path>] [--review-path-template <template>] [--max-turns <N>] [--no-commit]
 peer-review join <reviewer-invitation.md>
 peer-review status <workspace>
 peer-review resume <workspace>
 peer-review submit <workspace> [--decision revisions-requested|accepted]
-peer-review finalize <workspace>
-peer-review recover <workspace>
+peer-review supplement <workspace> <file> --for <author|reviewer>
+peer-review continue <workspace> [--additional-turns <N>] [--focus <file>]
+peer-review finalize <workspace> [--good-enough]
+peer-review recover <workspace> [--replace-participant <role>]
 ```
 
 `setup` supports agent selection, user or project scope, `--dry-run`, and
-`--remove`. It can install the skill, identity adapter, MCP handoff server, and
-provider-specific timeout settings. It preserves existing configuration,
-displays the proposed diff, creates a backup before edits, and marks only its own
-reversible additions. It works in non-Node host projects; Node is a tool runtime,
-not a project-language requirement.
+`--remove`. In Phase 1 it installs the skill and identity/resume adapters. In
+Phase 2 it may also install the MCP handoff server and provider-specific timeout
+settings. It preserves existing configuration, displays the proposed diff,
+creates a backup before edits, and marks only its own reversible additions. It
+works in non-Node host projects; Node is a tool runtime, not a project-language
+requirement.
 
 `doctor` is read-only. It reports package resolution, skill availability,
 identity source, session fingerprint availability, Git/worktree safety, scratch
@@ -571,7 +692,7 @@ Help is offline, read-only, exits zero when the topic exists, and is covered by
 golden tests. The skill explicitly tells an agent to query help instead of
 guessing syntax. Machine output never mixes prose or ANSI decoration with JSON.
 
-## Token-Free Automatic Handoff
+## Phase 2: Token-Free Automatic Handoff
 
 The primary transport is a local MCP tool:
 
@@ -609,12 +730,12 @@ resume remains the final recovery route.
 
 ## Error and Recovery Contract
 
-Errors use stable `APR_*` codes, structured fields, and one exact recovery
-command. Representative categories include unsafe paths, unignored scratch,
-artifact drift, duplicate session, wrong role, protected metadata changes,
-unexpected worktree changes, stale delivery, transport unavailable, projection
-drift, commit failure, no-commit mode conflict, test baseline drift, and
-participant loss.
+Errors use stable `APR_*` (`ai-peer-review`) codes, structured fields, and one
+exact recovery command. Representative categories include unsafe paths,
+unignored scratch, artifact drift, duplicate session, wrong role, protected
+metadata changes, unexpected worktree changes, output collision, stale delivery,
+transport unavailable, projection drift, commit failure, no-commit mode
+conflict, test baseline drift, and participant loss.
 
 All mutating commands follow this order:
 
@@ -633,6 +754,16 @@ expected turn. A missing participant may be replaced only through an explicit
 recovery operation that records the old and new fingerprints, actor, reason, and
 time; replacement never rewrites earlier provenance.
 
+Output recovery distinguishes three cases. A complete-identical file whose
+protected metadata and digest match the current review is reused idempotently. An
+unsealed same-review draft may be resumed only when event authority identifies it
+as the pending turn. A complete foreign review at the configured destination may
+cause the new review to select only the deterministic sibling suffix
+`-recovery-<review-id>` after foreign-manifest validation. Partial, mixed, or
+conflicting content returns
+`APR_OUTPUT_COLLISION`, preserves every byte, and prints the inspection and human
+recovery command; it is never overwritten or silently renumbered.
+
 In no-commit mode, recovery never searches for or creates commit trailers. It
 rebuilds authority from events, content hashes, immutable scratch snapshots, the
 unchanged startup `HEAD` and index, and the current protocol-owned paths. Missing
@@ -647,10 +778,16 @@ AITM adds `ai-peer-review` as a package dependency and invokes its installed
 - include its skill in agent bootstrap;
 - pass an issue ID as opaque metadata;
 - configure its preferred tracked reviews root;
+- configure the `<issue>/<kind>` review path template and require both inputs;
 - provide richer backlog context in its own author or reviewer prompt;
-- read active review occupancy through the standalone package's read-only API.
+- read per-review status through the standalone package's read-only API.
 
-AITM's governed production workflow may reject `commitMode: disabled` while its
+AITM continues to own its main-worktree-anchored cross-worktree occupancy index.
+It may cache standalone review IDs and status there, but that cache is not review
+evidence or package authority. The standalone package does not scan sibling
+worktrees or maintain a global occupancy registry.
+
+AITM's governed production workflow may reject `commitMode: no-commit` while its
 test harness enables it explicitly. The standalone package does not infer that
 policy from the presence of AITM.
 
@@ -671,8 +808,12 @@ The extracted project carries forward applicable tests and adds:
 - unit tests for state transitions, identity normalization, hashing, path
   containment, error codes, projections, and manifest generation;
 - Git integration tests for reviewer restrictions, exact-path author commits,
-  revision triads, no-artifact-change receipts, acceptance finalization, dirty
-  worktrees, interrupted commits, and trailer recovery;
+  revision triads, no-artifact-change receipts, acceptance finalization, a dirty
+  tree with unrelated staged and unstaged changes, interrupted commits, and
+  trailer recovery;
+- lifecycle tests for default and adjusted turn budgets, exhaustion,
+  authenticated continuation, frozen supplement acknowledgment, and distinct
+  accepted-over-objections evidence;
 - no-commit integration tests proving unchanged `HEAD` and index, permitted
   working-tree paths, per-turn artifact snapshots, digest mismatch refusal,
   idempotent recovery, no Git-mutating subprocesses, and
@@ -687,6 +828,12 @@ The extracted project carries forward applicable tests and adds:
 - macOS, Linux, and Windows smoke tests for installation, setup dry-run,
   `npx ai-peer-review --help`, start, join, one revision triad, and acceptance;
 - AITM migration parity tests and the active-legacy-review removal guard.
+
+Phase 1 targets Node.js 22 or later and zero third-party runtime dependencies.
+Phase 2 may add the official MCP SDK if interoperability requires it; every new
+runtime dependency requires a recorded necessity, license check, security audit,
+and packed-size impact. Test and development dependencies remain separately
+audited and are not shipped as runtime dependencies.
 
 Live-provider tests are opt-in and never required for ordinary pull requests.
 The default suite uses deterministic fake transports and temporary Git
@@ -708,13 +855,47 @@ repositories.
 - The protocol records provenance and hashes, but does not claim that local
   identity metadata is cryptographic vendor attestation.
 
-## License, Publication, and Provenance
+## License, Relicensing, Publication, and Provenance
 
-Publish the standalone repository under Apache License 2.0. Include the complete
-license text and a `CONTRIBUTING.md` statement that submitted contributions are
-licensed under Apache-2.0. Before extraction, confirm that retained source is
-owned by contributors who can license it and preserve required notices for any
-third-party material.
+Publish the standalone repository under Apache License 2.0. This is an explicit
+relicensing of the extracted subset by its copyright holder, not a conclusion
+derived from AITM's existing license. Before the extraction commit, preserve the
+audit command and normalized result in the extraction manifest:
+
+```text
+git log --format='%an <%ae>' -- scripts/review | sort -fu
+```
+
+At source commit `4b3bcd43cba141a611da4a2b861433b915462806`, the audit identifies
+only Kendrick Burson under two historical email identities. A repository-wide
+audit identifies the same copyright holder under three email identities. The
+holder must sign the extraction manifest's Apache-2.0 relicensing declaration;
+any newly discovered contributor or third-party material blocks publication
+until its license grant and required notices are resolved. This design records a
+release gate, not legal advice.
+
+The filtered history retains only the selected review source, tests,
+documentation, templates, and skill paths, plus AITM's root AGPL `LICENSE`,
+`NOTICE`, and `LICENSE-COMMERCIAL` as they existed in each source commit. Those
+rewritten historical trees remain available under the original AGPL/commercial
+terms; they are not silently presented as Apache-licensed historical releases.
+The new repository's bootstrap commit replaces the root licensing files with the
+complete Apache-2.0 `LICENSE`, an accurate `NOTICE`, SPDX headers or a documented
+header policy, the signed relicensing declaration, and a `CONTRIBUTING.md`
+statement that new contributions are Apache-2.0. The declaration identifies the
+retained source snapshot covered by the new grant. The standalone repository and
+releases are distributed under Apache-2.0 from that first publishable bootstrap
+commit onward, while original AITM commits and releases remain under their
+existing terms.
+
+The business consequence is intentional and must be approved in the signed
+relicensing declaration: Apache-2.0 permits proprietary and closed-source forks
+of the standalone engine without AGPL reciprocity, subject to Apache-2.0's terms.
+That reduces the exclusive scope of AITM's commercial license for this extracted
+component. If the copyright holder does not approve that consequence, Phase 1
+must not publish under Apache-2.0 and the license choice returns to design review.
+AITM may depend on the Apache-2.0 package while AITM remains AGPL/commercially
+dual-licensed.
 
 Apache-2.0 grants recipients a copyright license and an express patent license
 for patent claims necessarily infringed by their contributions. Its patent grant
@@ -744,7 +925,7 @@ themselves guarantee freedom to operate or prevent every later patent claim.
 
 ## Acceptance Criteria
 
-The extraction is complete when:
+Phase 1 extraction and manual release are complete when:
 
 1. `ai-peer-review` is public, Apache-2.0 licensed, and installable from npm.
 2. `npx ai-peer-review --help` works without AITM and the installed
@@ -758,19 +939,32 @@ The extraction is complete when:
    response, artifact, and author response, with verified hashes and trailers.
 8. In normal commit mode, acceptance becomes final only after the author commits
    the acceptance and manifest against the still-current accepted artifact blob.
-9. A live MCP wait resumes on a real handoff without periodic model turns, and
-   documented fallback modes recover without data loss.
-10. Scratch protocol state is ignored while review collateral is written directly
-    to the configured tracked reviews root.
-11. Complete offline and JSON help lets an agent recover syntax and next actions
+9. Scratch protocol state is ignored while review collateral is written directly
+   to the configured tracked reviews root.
+10. Complete offline and JSON help lets an agent recover syntax and next actions
     without guessing.
-12. AITM consumes the package without retaining a duplicate CLI or schema and
+11. Review budgets stop an exhausted loop, authenticated continuation grants add
+    bounded turns, supplements are integrity-bound and acknowledged, and
+    accepted-over-objections remains distinct from reviewer acceptance.
+12. Stable participant provenance and per-turn liveness claims detect stale or
+    ambiguous ownership without silently stealing a claim.
+13. AITM consumes the package without retaining a duplicate CLI or schema and
     protects active legacy reviews during migration.
-13. Unit, Git integration, transport, adapter, golden, packaging, cross-platform,
-    and AITM parity suites pass.
-14. The public release contains signed, independently archived provenance for the
-    source, package, and extraction history.
-15. A `--no-commit` review completes the normal author/reviewer dialogue while
+14. Unit, Git integration, manual/resume adapter, golden, packaging,
+    cross-platform, and AITM parity suites pass.
+15. The public release contains signed relicensing and independently archived
+    provenance for the source, package, and extraction history.
+16. A `--no-commit` review completes the normal author/reviewer dialogue while
     leaving `HEAD` and the index unchanged, recording immutable scratch snapshots,
     leaving all collateral uncommitted, and terminating as
     `accepted-uncommitted`.
+
+Phase 2 automatic transport is complete when:
+
+1. A live MCP wait resumes on a real handoff without periodic model turns.
+2. Delivery-before-subscribe, reconnect, timeout, and duplicate-delivery tests
+   prove that sealed handoffs are neither lost nor repeated.
+3. Automatic-required mode fails closed unless both adapters and the end-to-end
+   health check support it.
+4. Manual and resume-only fallbacks recover transport failures without data loss.
+5. MCP, automatic adapter, setup, and cross-platform transport suites pass.
