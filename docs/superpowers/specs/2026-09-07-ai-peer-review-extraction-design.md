@@ -357,10 +357,15 @@ claim contains the session fingerprint, a random claim ID, role, host, claimed
 time, last protocol activity, expiry time, and the short-lived CLI PID as a
 forensic breadcrumb. In Phase 1 that PID names only the CLI invocation; it is not
 the agent session and is never treated as a liveness handle. With no resident
-process, Phase 1 provides bounded staleness detection: after a configured claim
-TTL, `status` derives `intervention-required` with reason `stale-claim`, and the
-next authorized recovery records that transition under the lock. A stale claim
-is never released or stolen automatically.
+process, Phase 1 provides bounded staleness detection. `--claim-ttl` defaults to
+8 hours and is fixed at startup. After that TTL, `status` derives
+`intervention-required` with reason `stale-claim`, and the next recovery records
+that transition under the lock. The same session fingerprint may reclaim its own
+role without a grant when no Human Authority challenge is pending; the package
+records a non-revision-advancing `same-session-reclaim` audit event with the old
+and new claim IDs and expiry. A different fingerprint is participant replacement
+and still requires a signed grant. No stale claim is released or stolen
+automatically.
 
 In Phase 2, an adapter may advertise `resident-liveness` only when an official
 host runtime or the local MCP service remains resident for the claimed turn. The
@@ -387,32 +392,68 @@ and an attached TTY. Therefore a CLI prompt, TTY detection, `gh api user`, an
 an account or interaction but cannot prove a separate human authorized the exact
 action.
 
-Normal commit mode uses a one-time, out-of-band signed grant. `start
---request-grant` performs the ordinary non-mutating preflight and emits a
-bootstrap challenge without creating a review. `start --grant <file>` repeats
-the preflight and creates the review only after verifying that challenge. Before
-any `continue`, supplement registration, good-enough finalization, participant
-replacement, or abandonment, `request-grant` similarly emits a canonical
+Human Authority has three explicit assurance grades:
+
+- **Prevention-grade** uses a hardware-backed key requiring user presence for
+  each signature, a separate signing device, or an official host approval
+  service whose credential the agent cannot present. It is intended to prevent
+  the agent from minting grants.
+- **Detection-grade** uses a same-user software key. It provides a signed signer
+  identity and audit trail, but an agent that can read or invoke the key may forge
+  a grant. Its manifest strength is `cryptographic-local`, never
+  `cryptographic-external`.
+- **Test-only** uses a deterministic fixture signer only in no-commit mode. It
+  provides protocol coverage, not human attestation.
+
+The package accepts prevention-grade authority by default. A host may explicitly
+configure `authority_policy: detection-allowed`; every startup/status display,
+protected event, human decision, and manifest then warns that grants are
+detection-grade and do not enforce the budget against an agent with same-user key
+access. `unverified-test` remains exclusive to no-commit mode. The package cannot
+prove that a claimed external key is physically isolated, so the configured
+adapter supplies its grade and the manifest records that claim without elevating
+it.
+
+Ordinary `start` is not human-gated: starting a review cannot expand the default
+budget, replace a participant, or produce acceptance evidence. It pins the
+verifier fingerprint, assurance grade, and authority policy from existing setup
+configuration, or records `authority_policy: unavailable` for a consensus-only
+review. A verifier change is visible in startup output and the manifest. An
+optional hardened `start --bootstrap-grant <file>` prevents verifier substitution
+by binding the initial configuration to a prevention-grade grant; this adds a
+second human relay and is not the default Phase 1 path.
+
+The effective attestation strength is the weaker of the signer boundary and the
+verifier-binding boundary. A default start from same-user mutable configuration
+is therefore detection-grade even if the later signature claims an external key.
+Only a hardened bootstrap grant or an official host configuration channel that
+the agent cannot mutate may establish prevention-grade verifier binding. Under
+the default `prevention-required` policy, a detection-bound consensus review must
+stop at intervention or obtain a prevention-grade verifier bootstrap through a
+new review; under explicit `detection-allowed` policy it may proceed with the
+manifest warning intact.
+
+Signed Human Authority grants remain mandatory for `continue`, supplement
+registration, good-enough finalization, and different-session participant
+replacement. Before one of these actions, `request-grant` emits a canonical
 challenge:
 
 ```yaml
 schema: ai-peer-review.grant-challenge/v1
 review_id: stable-review-id-or-start-nonce
 protocol_revision: exact-revision-or-zero
-action: start | continue | supplement | accept-over-objections | replace-participant | abandon
+action: pin-verifier | continue | supplement | accept-over-objections | replace-participant
 parameters_digest: sha256
 nonce: cryptographically-random-value
 expires_at: RFC-3339 timestamp
 ```
 
-The human approves that challenge through a trust boundary the agent cannot use:
-either an external detached-signature tool whose private key remains outside the
-agent-accessible runtime, or an official host approval service that returns a
-signed action receipt. The repository or user configuration contains only a
-pinned public key or host verifier identity. The bootstrap `start` grant pins the
-verifier fingerprint into protocol authority; changing the verifier requires a
-new review. If the environment cannot supply such a boundary, normal mode fails
-closed rather than claiming a human-controlled budget.
+The human may approve that challenge through a prevention-grade boundary or a
+detection-grade local signer when policy permits it. The repository and protocol
+store only a pinned public verifier or official host identity, never a required
+private credential. If authority is unavailable, the review may still reach
+ordinary reviewer consensus within its original budget, but protected actions
+fail closed and `doctor` reports their unavailability.
 
 The resulting grant may be visible to the agent because it is bound to the exact
 review, revision, action, parameter digest, nonce, and expiry. The mutating
@@ -424,10 +465,38 @@ login alone is insufficient.
 
 Every protected event and the review manifest record the attestation source,
 strength, stable signer identity, verifier fingerprint, challenge digest, and
-verification time. Only `cryptographic-external` and `host-verified` grants are
-valid in normal mode. No-commit mode may explicitly use an `unverified-test`
-fixture signer, but every prompt, response, status result, and manifest exposes
-that weaker strength and the terminal result remains non-durable.
+verification time. Strength is exactly `cryptographic-external`,
+`hardware-presence`, `host-verified`, `cryptographic-local`, or
+`unverified-test`. No-commit mode may explicitly use an `unverified-test` fixture
+signer, but every prompt, response, status result, and manifest exposes that
+weaker strength and the terminal result remains non-durable.
+
+### Grant parameter binding and intervention freeze
+
+`parameters_digest` is SHA-256 over UTF-8 bytes of
+`ai-peer-review.grant-parameters/v1` canonical JSON. Object keys are recursively
+sorted, strings are Unicode NFC, repository paths are canonical POSIX-relative
+paths, integers are base-10 JSON integers, absent optional values are explicit
+`null`, and arrays preserve declared order. Unknown, omitted, duplicate, or
+non-canonical fields are rejected before signature verification.
+
+Each action binds exactly:
+
+| Action                   | Canonical parameters                                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pin-verifier`           | verifier fingerprint, assurance grade, authority policy, artifact path, artifact kind, reviews root, path template, issue ID, maximum turns, commit mode |
+| `continue`               | additional turns, resulting effective maximum, resume role, focus path and content digest or `null`                                                      |
+| `supplement`             | supplement content digest, target role, and target turn                                                                                                  |
+| `accept-over-objections` | artifact path/blob/digest, final round, reviewer response path/digest, ordered unresolved finding IDs, and human-rationale digest                        |
+| `replace-participant`    | role, outgoing claim ID and session fingerprint, incoming session fingerprint                                                                            |
+
+While the protocol is `intervention-required`, agent commands cannot advance
+the protocol revision. `status`, help, and challenge generation are read-only
+with respect to that revision. A challenge carries the immutable intervention
+ID as well as the revision and remains valid until `expires_at`, successful
+consumption, or a conflicting Human Authority grant. Once an unexpired challenge
+exists, same-session reclaim and abandonment are temporarily refused so an agent
+cannot invalidate a grant while the human signs it.
 
 ## Startup and Generated Prompts
 
@@ -455,7 +524,10 @@ generated file records its template version and content hash.
 
 The author agent reads `author-startup.md` and gives the user the absolute path
 to `reviewer-invitation.md`. The user copies that path into the collaborating
-agent's chat. This invitation transfer is the only required manual relay.
+agent's chat. This invitation transfer is the only required peer-session relay
+for a default consensus review. A protected intervention action adds one signed-
+grant relay when it is actually needed; optional hardened bootstrap adds one
+before startup.
 
 The reviewer runs `peer-review join <reviewer-invitation.md>`. Join verifies the
 same physical worktree, registers a distinct session, records its identity and
@@ -486,6 +558,20 @@ Required changes
 Optional suggestions
 Decision
 ```
+
+Every item under `Findings` uses a review-unique heading ID:
+
+```text
+### R<reviewer-turn>-F<three-digit-sequence> — <title>
+```
+
+For example, the first finding in reviewer turn 2 is `R2-F001`. IDs are never
+renumbered or reused. At submission the CLI parses the heading grammar, rejects
+missing or duplicate IDs and a mismatched turn prefix, and seals the ordered ID
+set into reviewer-response frontmatter. Author responses reference each finding
+ID in their dispositions. Optional suggestions that may later be overridden use
+the same ID grammar; unnumbered prose cannot appear in
+`human-decision.unresolved_findings`.
 
 Author responses contain:
 
@@ -519,6 +605,8 @@ agent:
   identity_source: runtime | declared
 started_at: RFC-3339 timestamp
 submitted_at: RFC-3339 timestamp
+finding_ids: [review-unique-finding-id] # reviewer responses only
+answered_finding_ids: [review-unique-finding-id] # author responses only
 ```
 
 At turn creation the CLI writes protected metadata and empty prose sections. At
@@ -543,7 +631,7 @@ unresolved_findings:
     finding_ids: [stable-finding-id]
 human_attestation:
   source: detached-signature | host-approval | test-fixture
-  strength: cryptographic-external | host-verified | unverified-test
+  strength: cryptographic-external | hardware-presence | host-verified | cryptographic-local | unverified-test
   signer_id: stable-human-identifier
   signer_fingerprint: public-key-or-host-principal-fingerprint
   challenge_digest: sha256
@@ -572,8 +660,9 @@ final revisions-requested -> author-revision -> intervention-required
 intervention-required(turn-budget-exhausted) -> signed continuation -> reviewer-turn
 intervention-required(turn-budget-exhausted) -> signed good-enough -> accepted-over-objections
 claimed turn -> stale-claim | participant-loss -> intervention-required
+intervention-required(stale-claim) -> same-session reclaim -> role turn
 intervention-required(participant-loss) -> signed participant replacement -> role turn
-intervention-required(any reason) -> signed abandonment -> abandoned
+intervention-required(any reason) -> participant abandonment -> abandoned
 ```
 
 On turn 1, the reviewer reads `reviewer-invitation.md` and the current artifact.
@@ -633,12 +722,16 @@ terminates as `accepted-over-objections-uncommitted` with equivalent scratch
 hashes and no Git mutation. No agent may choose this outcome or expand the turn
 budget without a valid action-specific grant.
 
-A valid abandonment grant may move any intervention reason to terminal
-`abandoned`. Abandonment records the attestation and retained paths in scratch,
-releases the package's destination reservation, and emits terminal status so a
-host may release its own occupancy cache. It creates no acceptance manifest,
-deletes nothing, and cannot later resume. Existing tracked responses remain
-ordinary incomplete review collateral rather than acceptance evidence.
+Either registered participant may move any intervention reason to terminal
+`abandoned` without a grant when no unexpired Human Authority challenge is
+pending. Abandonment records the acting participant identity, reason, and
+retained paths in scratch, releases the package's destination reservation, and
+emits terminal status so a host may release its own occupancy cache. It creates
+no acceptance manifest, deletes nothing, and cannot later resume. Existing
+tracked responses remain ordinary incomplete review collateral rather than
+acceptance evidence. A host may impose a stricter abandonment policy, but the
+package default treats it as evidence-preserving termination rather than an
+authority escalation.
 
 ## Git Ownership and Integrity
 
@@ -667,8 +760,8 @@ Normal-mode revision commits use this explicit sequence:
    the artifact or pending response paths;
 2. stage exactly the sealed reviewer response, authoritative artifact, and
    sealed author response with path-limited `git add -- <three-paths>`;
-3. verify those index entries match the sealed bytes and no other index entry was
-   changed by the protocol;
+3. verify the index and working-tree bytes for those paths both match the sealed
+   bytes and no other index entry was changed by the protocol;
 4. create a path-limited `git commit --only -- <three-paths>` with the required
    trailers;
 5. inspect the resulting commit tree and refuse completion unless its changed
@@ -715,10 +808,10 @@ review. The initial event records `commitMode: no-commit`; this field is
 immutable and cannot be converted after startup. `normal` commit mode remains
 the default.
 
-Only no-commit mode may replace the signed bootstrap grant with
-`--test-human-authority <fixture-id>`. That test authority choice and its
-`unverified-test` strength are immutable after startup. The flag is rejected in
-normal mode and cannot authorize any committed acceptance evidence.
+Only no-commit mode may select `--test-human-authority <fixture-id>`. That test
+authority choice and its `unverified-test` strength are immutable after startup.
+The flag is rejected in normal mode and cannot authorize any committed acceptance
+evidence.
 
 The author startup, reviewer invitation, status output, response frontmatter,
 next-action text, and manifest display `NO-COMMIT TEST MODE`. This prevents test
@@ -770,7 +863,7 @@ The initial command surface is:
 ```text
 peer-review setup
 peer-review doctor
-peer-review start <artifact> --artifact-kind <spec|plan> [configuration] (--request-grant | --grant <signed-grant> | --no-commit --test-human-authority <fixture-id>)
+peer-review start <artifact> --artifact-kind <spec|plan> [configuration] [--bootstrap-grant <signed-grant>] [--no-commit [--test-human-authority <fixture-id>]]
 peer-review request-grant <workspace> --action <protected-action> [action parameters]
 peer-review join <reviewer-invitation.md>
 peer-review status <workspace>
@@ -779,8 +872,8 @@ peer-review submit <workspace> [--decision revisions-requested|accepted]
 peer-review supplement <workspace> <file> --for <author|reviewer> --grant <signed-grant>
 peer-review continue <workspace> [--additional-turns <N>] [--focus <file>] --grant <signed-grant>
 peer-review finalize <workspace> [--good-enough --grant <signed-grant>]
-peer-review recover <workspace> [--replace-participant <role> --grant <signed-grant>]
-peer-review abandon <workspace> --grant <signed-grant>
+peer-review recover <workspace> [--reclaim | --replace-participant <role> --grant <signed-grant>]
+peer-review abandon <workspace> --reason <text>
 ```
 
 `setup` supports agent selection, user or project scope, `--dry-run`, and
@@ -965,10 +1058,13 @@ The extracted project carries forward applicable tests and adds:
   tree whose unrelated staged entry remains staged and uncommitted after the
   review commit, interrupted commits, and trailer recovery;
 - lifecycle tests for default and adjusted turn budgets, exhaustion,
-  signed continuation, frozen supplement acknowledgment, abandonment, and distinct
+  signed continuation, frozen supplement acknowledgment, same-session reclaim,
+  participant replacement, abandonment, intervention freeze, and distinct
   accepted-over-objections evidence;
-- Human Authority tests for start bootstrapping, exact action/parameter/revision
-  binding, expiry, replay, signer mismatch, verifier pinning, host receipts, and
+- Human Authority tests for default grant-free startup, optional hardened
+  bootstrap, canonical parameters for every protected action, exact
+  action/parameter/intervention binding, expiry, replay, signer mismatch,
+  verifier pinning, prevention/detection grading, host receipts, and
   no-commit-only test fixtures;
 - no-commit integration tests proving unchanged `HEAD` and index, permitted
   working-tree paths, per-turn artifact snapshots, digest mismatch refusal,
@@ -978,7 +1074,8 @@ The extracted project carries forward applicable tests and adds:
   surfaces, including model changes, declared-identity fallback, and Phase 1
   staleness-only claims;
 - golden tests for every template, help topic, JSON schema, generated next
-  action, human-decision record, and `APR_*` explanation;
+  action, parsed/sealed finding ID set, human-decision record, and `APR_*`
+  explanation;
 - packaging tests that inspect `npm pack` contents and execute the packed binary;
 - macOS, Linux, and Windows smoke tests for installation, setup dry-run,
   `npx ai-peer-review --help`, start, join, one revision triad, and acceptance;
@@ -1013,9 +1110,12 @@ repositories.
   scratch delivery.
 - Secrets, raw session IDs, transcript paths, wake handles, and provider tokens
   are prohibited from tracked collateral and redacted from diagnostics.
-- Human Authority private keys and approval-service credentials never enter the
-  agent-accessible runtime; only pinned public verifiers, scoped signed grants,
-  and non-secret attestation metadata may appear in protocol state.
+- Prevention-grade deployments keep Human Authority private keys or approval
+  credentials outside the agent's usable boundary. The package cannot enforce
+  that isolation for same-user software keys: those are detection-grade because
+  an agent may read or invoke them and forge grants. Protocol state stores only
+  pinned public verifiers, scoped grants, and non-secret attestation metadata,
+  and the manifest preserves the configured grade and residual risk.
 - Template content is data, never executed shell or JavaScript.
 - Configuration edits require explicit setup scope, preserve prior content, and
   are reversible.
@@ -1112,25 +1212,34 @@ Phase 1 extraction and manual release are complete when:
    to the configured tracked reviews root.
 10. Complete offline and JSON help lets an agent recover syntax and next actions
     without guessing.
-11. Normal mode requires one-time action-, parameter-, revision-, nonce-, and
-    expiry-bound Human Authority grants whose signer cannot be impersonated by
-    an agent invoking the CLI.
-12. Review budgets stop an exhausted loop, signed continuation grants add only
+11. A default consensus review starts without a signing ceremony, pins and
+    displays any configured verifier/grade, and cannot exceed its initial budget
+    or create override evidence without Human Authority.
+12. Protected actions use one-time action-, parameter-, intervention-, nonce-,
+    and expiry-bound grants. Prevention-grade and detection-grade deployments are
+    named accurately, and same-user software keys never claim key isolation.
+13. Reviewer submission validates review-unique finding headings and seals their
+    ordered IDs so author dispositions, manifests, and human decisions have a
+    stable reference producer.
+14. Review budgets stop an exhausted loop, signed continuation grants add only
     bounded turns, supplements are integrity-bound and acknowledged, and
     accepted-over-objections remains distinct from reviewer acceptance.
-13. A good-enough outcome includes a sealed human-decision record naming the
+15. A good-enough outcome includes a sealed human-decision record naming the
     attestation and every unresolved finding; supplement metadata and its
     scratch-only retention are explicit in the manifest.
-14. Phase 1 claims record the CLI PID only as a forensic value, detect expiry by
-    a configured TTL, describe the result as staleness rather than liveness, and
-    never release or steal a stale claim automatically.
-15. AITM consumes the package without retaining a duplicate CLI or schema and
+16. Phase 1 claims record the CLI PID only as a forensic value, default to an
+    eight-hour TTL, describe expiry as staleness rather than liveness, allow only
+    same-fingerprint reclaim without a grant, and never steal a stale claim.
+17. A participant may terminate intervention as `abandoned` without fabricating
+    acceptance or deleting evidence, while an outstanding Human Authority
+    challenge freezes agent state changes until it expires or is consumed.
+18. AITM consumes the package without retaining a duplicate CLI or schema and
     protects active legacy reviews during migration.
-16. Unit, Git integration, manual/resume adapter, golden, packaging,
+19. Unit, Git integration, manual/resume adapter, golden, packaging,
     cross-platform, and AITM parity suites pass.
-17. The public release contains signed relicensing and independently archived
+20. The public release contains signed relicensing and independently archived
     provenance for the source, package, and extraction history.
-18. A `--no-commit` review completes the normal author/reviewer dialogue while
+21. A `--no-commit` review completes the normal author/reviewer dialogue while
     leaving `HEAD` and the index unchanged, recording immutable scratch snapshots,
     leaving all collateral uncommitted, and terminating as
     `accepted-uncommitted`.
