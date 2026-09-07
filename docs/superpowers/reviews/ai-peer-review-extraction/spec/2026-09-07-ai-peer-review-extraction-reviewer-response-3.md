@@ -146,7 +146,7 @@ turns.
 **Required:** pick one and specify it:
 
 - add a finding-ID convention to the reviewer response template (for example
-  `### F<n> — ` headings), and have `submit` parse and seal the extracted ID set
+  `### F<n> —` headings), and have `submit` parse and seal the extracted ID set
   into the response frontmatter so later records can reference it; or
 - drop `finding_ids` and require the human-decision prose to quote the overridden
   findings, with the frontmatter binding only `reviewer_response_path` and
