@@ -1,6 +1,6 @@
 # AI Peer Review Extraction Implementation Plan
 
-<!-- cspell:words Zenodo -->
+<!-- cspell:words Gitleaks objectname prefilter reflog Zenodo -->
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
@@ -68,6 +68,8 @@ if the Phase 2 dependency gate approves it.
   conflicts.
 - No command pushes. Publication, relicensing, package release, and hosted
   integration remain explicit human gates.
+- Tasks are executed in numeric order. `src/cli/run.mjs` is the serialized
+  dispatch composition root; tasks that extend it must not execute in parallel.
 - Use `APR_*` stable errors with one exact recovery command and JSON output that
   never mixes prose or ANSI decoration.
 - Tests use temporary Git repositories and fake provider/authority/transport
@@ -76,19 +78,21 @@ if the Phase 2 dependency gate approves it.
 ## Repository and File Map
 
 All paths in Tasks 1–14 and 16–17 are relative to the new `ai-peer-review`
-repository. Paths explicitly prefixed `ai-task-manager/` in Task 15 are relative
-to the parent directory containing both repositories.
+repository. Paths explicitly prefixed `ai-task-manager/` in Tasks 15 and 18 are
+relative to the parent directory containing both repositories.
 
 ```text
 ai-peer-review/
   bin/peer-review.mjs                 # executable CLI shim
-  src/cli/{parse,run,help-data}.mjs   # closed command grammar and rendering
-  src/config/{load,setup}.mjs         # host-neutral configuration edits
+  src/errors.mjs                      # stable APR error contract
+  src/cli/{parse,run,help-data}.mjs   # closed command grammar and dispatch
+  src/config/{load,setup,guards}.mjs  # host-neutral configuration edits
   src/git/{repository,transaction}.mjs
   src/identity/{registry,codex,claude,grok,generic}.mjs
   src/authority/{canonicalize,challenge,verify}.mjs
   src/protocol/{events,reducer,store,service}.mjs
-  src/collateral/{paths,responses,templates}.mjs
+  src/collateral/{paths,responses}.mjs
+  src/templates/index.mjs             # hydrates top-level package templates
   src/manifest/render.mjs
   src/transport/{registry,manual,resume}.mjs
   src/doctor.mjs
@@ -98,15 +102,16 @@ ai-peer-review/
   schemas/*.json
   templates/*.md
   skills/peer-review/SKILL.md
-  scripts/{verify-extraction,verify-release}.mjs
-  provenance/{extraction-manifest,relicensing-declaration}.json
+  scripts/{verify-extraction,run-secret-scan,verify-release}.mjs
+  provenance/{extraction-manifest,relicensing-declaration,release-manifest}.json
   test/{unit,integration,golden,packaging,smoke,mcp,helpers}/
   .github/workflows/{ci,release}.yml
   README.md CONTRIBUTING.md LICENSE NOTICE package.json
 ```
 
 Phase 1 ends after Task 14. Task 15 consumes that published release from AITM.
-Tasks 16–17 are the separately releasable Phase 2 milestone.
+Tasks 16–17 are the separately releasable Phase 2 milestone. Task 18 upgrades
+AITM only after the Phase 2 package is published and verified.
 
 ---
 
@@ -115,11 +120,15 @@ Tasks 16–17 are the separately releasable Phase 2 milestone.
 **Files:**
 
 - Create: `scripts/verify-extraction.mjs`
+- Create: `scripts/run-secret-scan.mjs`
+- Create: `.gitleaks.toml`
 - Create: `provenance/extraction-manifest.json`
 - Create: `provenance/relicensing-declaration.json`
 - Create: `LICENSE`
 - Create: `NOTICE`
 - Create: `CONTRIBUTING.md`
+- Create: `README.md`
+- Create: `docs/spdx-policy.md`
 - Create: `docs/design/2026-09-07-ai-peer-review-extraction-design.md`
 - Preserve through filtering: `scripts/review/**`
 - Preserve through filtering: `scripts/providers/**`
@@ -133,31 +142,53 @@ Tasks 16–17 are the separately releasable Phase 2 milestone.
 
 - Consumes: a fresh clone of AITM and immutable source commit
   `4b3bcd43cba141a611da4a2b861433b915462806`.
-- Produces: a filtered `ai-peer-review` repository whose extraction manifest
-  records source SHA, retained paths, contributor audit, secret-scan result, and
-  relicensing gate.
+- Produces: `verifyExtraction({ root, manifest, runGit }) -> Promise<Result>` and
+  a filtered `ai-peer-review` repository whose extraction manifest records
+  source SHA, the post-filter source-history boundary, exact retained path
+  rules, contributor audit, secret-scan result, and relicensing gate.
 
 - [ ] **Step 1: Create and verify the fresh extraction clone**
 
 ```bash
-git clone --no-local git@github.com:kburson/ai-task-manager.git ai-peer-review
-git -C ai-peer-review checkout 4b3bcd43cba141a611da4a2b861433b915462806
-test "$(git -C ai-peer-review rev-parse HEAD)" = "4b3bcd43cba141a611da4a2b861433b915462806"
+git clone --no-local --no-tags --single-branch --branch trunk \
+  git@github.com:kburson/ai-task-manager.git ai-peer-review
+git -C ai-peer-review checkout --detach 4b3bcd43cba141a611da4a2b861433b915462806
+git -C ai-peer-review for-each-ref --format='delete %(refname)' \
+  refs/heads refs/remotes refs/tags | git -C ai-peer-review update-ref --stdin
+git -C ai-peer-review update-ref refs/heads/extraction-source \
+  4b3bcd43cba141a611da4a2b861433b915462806
+git -C ai-peer-review symbolic-ref HEAD refs/heads/extraction-source
+git -C ai-peer-review reset --hard 4b3bcd43cba141a611da4a2b861433b915462806
+git -C ai-peer-review reflog expire --expire=now --all
+git -C ai-peer-review gc --prune=now
+test "$(git -C ai-peer-review for-each-ref --format='%(refname) %(objectname)')" = \
+  "refs/heads/extraction-source 4b3bcd43cba141a611da4a2b861433b915462806"
 ```
 
-Expected: the final command exits 0. Do not run filtering in an existing AITM
-checkout or worktree.
+Expected: the final command exits 0 and the pre-filter ref inventory is exactly
+one branch at the ratified source commit. Do not run filtering in an existing
+AITM checkout or worktree.
 
 - [ ] **Step 2: Record the pre-filter contributor and path inventories**
 
 ```bash
 APR_AUDIT_DIR="$(mktemp -d)"
-git -C ai-peer-review log --format='%an <%ae>' -- scripts/review | sort -fu > "$APR_AUDIT_DIR/contributors.txt"
-git -C ai-peer-review ls-tree -r --name-only HEAD | rg '^(scripts/review/|scripts/providers/|scripts/tests/.+co-review|docs/superpowers/(specs|plans)/.+co-review|LICENSE$|NOTICE$|LICENSE-COMMERCIAL$)' > "$APR_AUDIT_DIR/retained-paths.txt"
+git -C ai-peer-review log --format='%an <%ae>' -- \
+  scripts/review scripts/providers \
+  ':(glob)scripts/tests/**/*co-review*' \
+  ':(glob)docs/superpowers/specs/*co-review*' \
+  ':(glob)docs/superpowers/plans/*co-review*' \
+  LICENSE NOTICE LICENSE-COMMERCIAL | sort -fu > "$APR_AUDIT_DIR/contributors.txt"
+git -C ai-peer-review ls-tree -r --name-only HEAD | \
+  rg '^(scripts/review/|scripts/providers/|scripts/tests/.+co-review|docs/superpowers/(specs|plans)/.+co-review|LICENSE$|NOTICE$|LICENSE-COMMERCIAL$)' \
+  > "$APR_AUDIT_DIR/retained-paths.txt"
 ```
 
 Expected: the contributor file contains only Kendrick Burson's two historical
 email identities. Any additional contributor stops this task for license review.
+Record the exact command, normalized contributor list, retained-path inventory,
+and SHA-256 digest of each inventory in the extraction manifest; neither file is
+throwaway evidence.
 
 - [ ] **Step 3: Filter only the ratified source boundary**
 
@@ -176,28 +207,50 @@ git -C ai-peer-review filter-repo --force \
 Expected: every retained commit contains only selected review/provider/test and
 historical licensing paths. If `git filter-repo` is unavailable, install it
 outside the repository and rerun this exact command; do not substitute a manual
-history rewrite.
+history rewrite. Read `.git/filter-repo/commit-map`, resolve the rewritten commit
+for source `4b3bcd43cba141a611da4a2b861433b915462806`, and record it as
+`filtered_history_tip`. Assert `refs/heads/extraction-source` is the only ref and
+points to that rewritten commit; this is the source-history boundary and parent
+of the first standalone bootstrap commit.
 
 - [ ] **Step 4: Add an executable extraction verifier**
 
 Implement `scripts/verify-extraction.mjs` with this exported contract:
 
 ```js
-export async function verifyExtraction({ root, manifest, runGit, scanSecrets }) {
-  const allowed = manifest.retained_path_prefixes;
-  const paths = await runGit(root, ['log', '--all', '--name-only', '--format=']);
+export async function verifyExtraction({ root, manifest, runGit }) {
+  const paths = await runGit(root, [
+    'log',
+    manifest.filtered_history_tip,
+    '--name-only',
+    '--format=',
+  ]);
   const foreign = [...new Set(paths.split('\n').filter(Boolean))].filter(
-    (file) => !allowed.some((prefix) => file === prefix || file.startsWith(`${prefix}/`))
+    (file) => !matchesRetainedRule(file, manifest.retained_path_rules)
   );
   if (foreign.length) throw new Error(`foreign retained paths: ${foreign.join(', ')}`);
-  const findings = await scanSecrets(root);
-  if (findings.length) throw new Error(`secret scan findings: ${findings.join(', ')}`);
-  return { sourceCommit: manifest.source_commit, retainedPaths: allowed, findings: [] };
+  const currentPaths = await runGit(root, ['ls-tree', '-r', '--name-only', 'HEAD']);
+  assertStandaloneLayout(currentPaths, manifest.standalone_path_rules);
+  assert.equal(manifest.prefilter_ref_inventory.length, 1);
+  assert.equal(manifest.prefilter_ref_inventory[0].object, manifest.source_commit);
+  assert.deepEqual(manifest.contributor_audit.normalized_result, EXPECTED_HOLDER_IDENTITIES);
+  assert.equal(manifest.secret_scan.tool, 'gitleaks');
+  assert.equal(manifest.secret_scan.result, 'pass');
+  assert.match(manifest.secret_scan.tool_version, /^\d+\.\d+\.\d+/);
+  assert.match(manifest.relicensing_declaration_digest, SHA256_RE);
+  return { sourceCommit: manifest.source_commit, filteredTip: manifest.filtered_history_tip };
 }
 ```
 
-Add `test/unit/verify-extraction.test.mjs` with fixtures proving foreign paths and
-secret findings fail closed and an exact allowed history passes.
+`matchesRetainedRule` supports only the exact paths, directory prefixes, and the
+three explicit `*co-review*` glob rules stored in the manifest; it must not widen
+those globs into whole-directory prefixes. `assertStandaloneLayout` validates
+current `HEAD` against a separate standalone layout allowlist, so new package
+commits are not misclassified as filtered AITM history. Add
+`test/unit/verify-extraction.test.mjs` with fixtures proving a leaked non-co-review
+file, later source ref, foreign standalone path, failed/missing scan, empty or
+changed contributor audit, null declaration digest, and malformed boundary fail
+closed while an exact filtered history passes.
 
 - [ ] **Step 5: Write and validate the provenance records**
 
@@ -208,21 +261,84 @@ Create `provenance/extraction-manifest.json` with this stable shape:
   "schema": "ai-peer-review.extraction/v1",
   "source_repository": "https://github.com/kburson/ai-task-manager",
   "source_commit": "4b3bcd43cba141a611da4a2b861433b915462806",
-  "retained_path_prefixes": [
-    "scripts/review",
-    "scripts/providers",
-    "scripts/tests",
-    "docs/superpowers/specs",
-    "docs/superpowers/plans",
-    "LICENSE",
-    "NOTICE",
-    "LICENSE-COMMERCIAL"
+  "filtered_history_tip": null,
+  "prefilter_ref_inventory": [
+    {
+      "ref": "refs/heads/extraction-source",
+      "object": "4b3bcd43cba141a611da4a2b861433b915462806"
+    }
   ],
-  "contributor_audit": [],
-  "secret_scan": { "tool": null, "result": "pending" },
+  "retained_path_rules": {
+    "prefixes": ["scripts/review", "scripts/providers"],
+    "globs": [
+      "scripts/tests/**/*co-review*",
+      "docs/superpowers/specs/*co-review*",
+      "docs/superpowers/plans/*co-review*"
+    ],
+    "exact": ["LICENSE", "NOTICE", "LICENSE-COMMERCIAL"]
+  },
+  "standalone_path_rules": {
+    "prefixes": [
+      ".github",
+      "bin",
+      "docs",
+      "provenance",
+      "schemas",
+      "scripts",
+      "skills",
+      "src",
+      "templates",
+      "test"
+    ],
+    "exact": [
+      ".gitleaks.toml",
+      "CONTRIBUTING.md",
+      "LICENSE",
+      "NOTICE",
+      "README.md",
+      "package-lock.json",
+      "package.json"
+    ]
+  },
+  "retained_path_inventory": { "paths": [], "digest": null },
+  "contributor_audit": {
+    "command_argv": [
+      "git",
+      "log",
+      "--format=%an <%ae>",
+      "--",
+      "scripts/review",
+      "scripts/providers",
+      ":(glob)scripts/tests/**/*co-review*",
+      ":(glob)docs/superpowers/specs/*co-review*",
+      ":(glob)docs/superpowers/plans/*co-review*",
+      "LICENSE",
+      "NOTICE",
+      "LICENSE-COMMERCIAL"
+    ],
+    "normalizer": "LC_ALL=C sort -fu",
+    "normalized_result": [
+      "kendrick burson <kpburson@pm.me>",
+      "Kendrick Burson <spam.kpb@gmail.com>"
+    ],
+    "digest": null
+  },
+  "secret_scan": {
+    "tool": "gitleaks",
+    "tool_version": null,
+    "config_digest": null,
+    "scanned_ref": null,
+    "report_digest": null,
+    "result": "pending"
+  },
   "relicensing_declaration_digest": null
 }
 ```
+
+The Task 1 generator must replace every pending `null` and empty inventory with
+observed data before the first commit; the verifier rejects any remaining
+pending value. The closed standalone rules cover only the file map in this plan
+plus `docs/`, `.github/`, and root project metadata.
 
 Create `provenance/relicensing-declaration.json` with fields for copyright holder,
 covered source commit, Apache-2.0 grant, proprietary-fork consequence acceptance,
@@ -235,13 +351,35 @@ Copy the ratified design bytes from AITM commit
 `docs/design/2026-09-07-ai-peer-review-extraction-design.md` and record that
 source repository, commit, path, and SHA-256 digest in the extraction manifest.
 
-- [ ] **Step 6: Install the new license only after the human gate**
+- [ ] **Step 6: Scan the complete filtered history and close provenance fields**
+
+Use Gitleaks in Git-history mode with a repository-owned `.gitleaks.toml`. The
+wrapper records `gitleaks version`, the configuration digest, scanned ref, and
+redacted JSON report digest, and writes `result: pass` only when the command exits
+zero with no findings. It never stores discovered secret bytes.
+
+```bash
+node scripts/run-secret-scan.mjs --ref "$(git rev-parse refs/heads/extraction-source)"
+node --test test/unit/verify-extraction.test.mjs
+```
+
+Expected: both commands exit 0. Any credential, private data, generated runtime
+state, unrelated AITM content, missing scanner, empty contributor audit, or scan
+result other than `pass` blocks the bootstrap. The full extraction verifier is
+intentionally deferred until Step 7 supplies the mandatory relicensing digest;
+there is no flag that weakens its fail-closed contract.
+
+- [ ] **Step 7: Install the new license only after the human gate**
 
 After the copyright holder provides a valid signed declaration, replace the
 filtered root licensing files with the complete Apache-2.0 `LICENSE`, accurate
 `NOTICE`, and Apache contribution statement in `CONTRIBUTING.md`. Add SPDX
-headers or `docs/spdx-policy.md`. Record the declaration digest in the extraction
-manifest.
+headers or `docs/spdx-policy.md`, and remove `LICENSE-COMMERCIAL` from publishable
+`HEAD`. `NOTICE` and the initial `README.md` must name the recorded
+`filtered_history_tip` boundary and explain that its ancestors remain under
+AITM's historical AGPL/commercial terms while the first standalone bootstrap
+commit and descendants are Apache-2.0. Record the declaration digest in the
+extraction manifest.
 
 ```bash
 node --test test/unit/verify-extraction.test.mjs
@@ -252,12 +390,20 @@ git diff --check
 Expected: all commands exit 0. Without the signed declaration, stop before this
 step and do not create a public repository or npm release.
 
-- [ ] **Step 7: Commit the auditable extraction boundary**
+- [ ] **Step 8: Commit the auditable extraction boundary**
 
 ```bash
-git add LICENSE NOTICE CONTRIBUTING.md docs provenance scripts/verify-extraction.mjs test/unit/verify-extraction.test.mjs
+git add .gitleaks.toml LICENSE NOTICE README.md CONTRIBUTING.md \
+  docs/spdx-policy.md docs/design/2026-09-07-ai-peer-review-extraction-design.md \
+  provenance/extraction-manifest.json provenance/relicensing-declaration.json \
+  scripts/verify-extraction.mjs scripts/run-secret-scan.mjs \
+  test/unit/verify-extraction.test.mjs
 git commit -m "chore: establish extracted repository provenance"
 ```
+
+Record this bootstrap commit in `provenance/release-manifest.json` during Task 14
+and verify its first parent is `filtered_history_tip`; do not attempt to embed a
+commit's own SHA in the commit that creates it.
 
 ### Task 2: Create the Standalone Package and Stable Error Surface
 
@@ -269,12 +415,13 @@ git commit -m "chore: establish extracted repository provenance"
 - Create: `src/public-api.mjs`
 - Create: `src/errors.mjs`
 - Create: `src/cli/parse.mjs`
+- Create: `src/cli/run.mjs`
 - Create: `test/unit/errors.test.mjs`
 - Create: `test/unit/cli-parse.test.mjs`
 
 **Interfaces:**
 
-- Produces: `run(argv, io) -> Promise<number>`, `AprError`,
+- Produces: `run(argv, io) -> Promise<number>`, `AprError`, `COMMAND_FLAGS`,
   `parseCommand(argv) -> { command, args, options }`, and a read-only public API
   placeholder that later exports `statusReview` and `explainError`.
 - Consumes: no runtime package dependency.
@@ -301,10 +448,27 @@ Assert `package.json` has name `ai-peer-review`, Node `>=22`, bin key
 `peer-review`, ESM type, empty `dependencies`, and a `files` allowlist containing
 only runtime/docs/schema/template/skill/license content.
 
-Define `test`, `test:unit`, `test:integration`, `test:packaging`, `format`,
-`format:check`, and `lint` scripts using Node's test runner and development-only
-format/lint/spell tools. Generate `package-lock.json` with `npm install`; verify
-that every non-Node package is under `devDependencies`, not `dependencies`.
+Define these non-overlapping scripts using Node's test runner and
+development-only format/lint/spell tools:
+
+```json
+{
+  "test": "npm run test:unit && npm run test:golden",
+  "test:unit": "node --test test/unit",
+  "test:golden": "node --test test/golden",
+  "test:integration": "node --test test/integration",
+  "test:packaging": "node --test test/packaging",
+  "test:smoke": "node --test test/smoke",
+  "test:mcp": "node --test test/mcp",
+  "format": "prettier --write .",
+  "format:check": "prettier --check .",
+  "lint": "eslint . && markdownlint-cli2 \"**/*.md\" && cspell --no-progress \"**/*.{md,mjs,js,json}\""
+}
+```
+
+Phase 1 never runs `test:mcp`; Phase 2 adds that named gate. Generate
+`package-lock.json` with `npm install`; verify that every non-Node package is
+under `devDependencies`, not `dependencies`.
 Start at version `0.1.0` and use the repository-validated development versions
 `cspell@8.19.4`, `eslint@9.39.4`, `markdownlint-cli2@0.23.0`, and
 `prettier@3.8.3`.
@@ -315,6 +479,81 @@ The closed parser catalog contains exactly:
 setup, doctor, start, request-grant, join, status, resume, submit,
 supplement, continue, finalize, recover, abandon, help, explain
 ```
+
+Define one frozen `COMMAND_FLAGS` object beside that command catalog. Boolean
+flags reject values, singleton value flags reject duplicates, and only `--agent`
+may repeat:
+
+```js
+export const COMMAND_FLAGS = Object.freeze({
+  setup: ['--agent', '--scope', '--dry-run', '--remove', '--confirm-scratch-exclude'],
+  doctor: ['--mode', '--json'],
+  start: [
+    '--artifact-kind',
+    '--reviews-root',
+    '--review-path-template',
+    '--issue',
+    '--max-turns',
+    '--claim-ttl',
+    '--transport-mode',
+    '--bootstrap-grant',
+    '--no-commit',
+    '--test-human-authority',
+  ],
+  'request-grant': [
+    '--action',
+    '--verifier-fingerprint',
+    '--assurance-grade',
+    '--authority-policy',
+    '--artifact-path',
+    '--artifact-kind',
+    '--reviews-root',
+    '--review-path-template',
+    '--issue',
+    '--max-turns',
+    '--commit-mode',
+    '--additional-turns',
+    '--resulting-effective-maximum',
+    '--resume-role',
+    '--focus-path',
+    '--focus-digest',
+    '--content-digest',
+    '--target-role',
+    '--target-turn',
+    '--artifact-blob',
+    '--artifact-digest',
+    '--final-round',
+    '--reviewer-response-path',
+    '--reviewer-response-digest',
+    '--unresolved-finding-id',
+    '--human-rationale-digest',
+    '--role',
+    '--outgoing-claim-id',
+    '--outgoing-session-fingerprint',
+    '--incoming-session-fingerprint',
+  ],
+  join: [],
+  status: ['--json', '--next'],
+  resume: [],
+  submit: ['--decision', '--no-artifact-change', '--reason'],
+  supplement: ['--for', '--grant'],
+  continue: ['--additional-turns', '--focus', '--grant'],
+  finalize: ['--good-enough', '--grant'],
+  recover: ['--reclaim', '--replace-participant', '--grant'],
+  abandon: ['--reason'],
+  help: ['--all', '--json'],
+  explain: ['--json'],
+});
+```
+
+The parser also owns a frozen positional grammar and per-command constraints.
+`--unresolved-finding-id` and `--agent` are repeatable; all other flags are
+singletons. `request-grant` accepts only the flags corresponding to the selected
+action's `GRANT_PARAMETER_FIELDS`, and converts CLI kebab-case names to the
+canonical snake-case fields. `--issue`, turn counts, and TTL are positive
+integers; `--no-artifact-change` requires a non-empty `--reason`; `--reason`
+without it is rejected. Phase 1 rejects `automatic-required` while retaining the
+catalog entry for Phase 2 compatibility.
 
 - [ ] **Step 2: Run the focused tests and verify RED**
 
@@ -349,7 +588,7 @@ export class AprError extends Error {
 }
 ```
 
-Implement `parseCommand` from a frozen command/flag catalog. Reject unknown
+Implement `parseCommand` from the frozen command/flag catalog. Reject unknown
 commands, flags, duplicate singleton flags, non-positive integer budgets, nested
 `--no-commit`, and `--test-human-authority` without `--no-commit` as
 `APR_USAGE`. Parse values without evaluating shell text.
@@ -376,7 +615,9 @@ commands not yet connected. Never call `process.exit()` inside library code.
 ```bash
 node --test test/unit/errors.test.mjs test/unit/cli-parse.test.mjs
 node bin/peer-review.mjs --help
-git add package.json package-lock.json bin src/errors.mjs src/public-api.mjs src/cli test/unit/errors.test.mjs test/unit/cli-parse.test.mjs
+git add package.json package-lock.json bin/peer-review.mjs src/errors.mjs \
+  src/public-api.mjs src/cli/parse.mjs src/cli/run.mjs \
+  test/unit/errors.test.mjs test/unit/cli-parse.test.mjs
 git commit -m "feat: establish standalone CLI contract"
 ```
 
@@ -480,7 +721,9 @@ lock. Never delete a lock owned by a different token.
 
 ```bash
 node --test test/unit/repository.test.mjs test/unit/paths.test.mjs test/unit/store.test.mjs
-git add src/git/repository.mjs src/collateral/paths.mjs src/protocol/store.mjs test/helpers/repository-fixture.mjs test/unit
+git add src/git/repository.mjs src/collateral/paths.mjs src/protocol/store.mjs \
+  test/helpers/repository-fixture.mjs test/unit/repository.test.mjs \
+  test/unit/paths.test.mjs test/unit/store.test.mjs
 git commit -m "feat: add repository and storage boundaries"
 ```
 
@@ -494,6 +737,7 @@ git commit -m "feat: add repository and storage boundaries"
 - Create: `src/protocol/events.mjs`
 - Create: `src/protocol/reducer.mjs`
 - Create: `src/protocol/service.mjs`
+- Create: `test/helpers/review-fixture.mjs`
 - Create: `test/unit/events.test.mjs`
 - Create: `test/unit/reducer.test.mjs`
 - Create: `test/integration/recovery.test.mjs`
@@ -514,6 +758,7 @@ Table-drive every allowed edge and assert all other `(state, event)` pairs throw
 no-commit terminal variants.
 
 ```js
+const RESTORE_INTERRUPTED_ROLE = Symbol('restore-interrupted-role');
 const allowed = [
   [null, 'review-created', 'awaiting-reviewer'],
   ['awaiting-reviewer', 'reviewer-joined', 'reviewer-turn'],
@@ -526,23 +771,41 @@ const allowed = [
   ['author-finalization', 'acceptance-sealed-no-commit', 'accepted-uncommitted'],
   ['intervention-required', 'continued-to-reviewer', 'reviewer-turn'],
   ['intervention-required', 'continued-to-author', 'author-revision'],
+  ['intervention-required', 'same-session-reclaim', RESTORE_INTERRUPTED_ROLE],
+  ['intervention-required', 'participant-replaced', RESTORE_INTERRUPTED_ROLE],
   ['intervention-required', 'override-committed', 'accepted-over-objections'],
   ['intervention-required', 'override-sealed-no-commit', 'accepted-over-objections-uncommitted'],
   ['intervention-required', 'abandoned', 'abandoned'],
 ];
 ```
 
-`turn-claimed`, `same-session-reclaim`, `identity-changed`,
-`challenge-requested`, `challenge-superseded`, `supplement-registered`,
-`delivery-written`, and `delivery-acknowledged` update projections without
-changing lifecycle state. Only claim/reclaim and challenge events explicitly
-marked by the schema are non-revision-advancing. `intervention-entered` may be
-derived from `turn-budget-exhausted`, `stale-claim`, or `participant-loss` and
-must name an immutable intervention ID.
+`turn-claimed`, `identity-changed`, `challenge-requested`,
+`challenge-superseded`, `supplement-registered`, `delivery-written`, and
+`delivery-acknowledged` update projections without changing lifecycle state.
+`same-session-reclaim` is non-revision-advancing but, when recovering
+`intervention-required(stale-claim)`, restores the exact reviewer or author role
+state recorded by the intervention. `participant-replaced` consumes its grant,
+advances revision, and restores the exact role state interrupted by
+`participant-loss`. The schema models revision advancement and lifecycle-state
+change as independent properties. A reclaim event outside stale-claim
+intervention is valid only as an idempotent same-claim retry and must leave the
+lifecycle state unchanged; a conflicting reclaim fails closed. Neither recovery
+edge is allowed while an unexpired Human Authority challenge exists.
+
+`intervention-entered` may be derived from `turn-budget-exhausted`,
+`stale-claim`, or `participant-loss` and must name an immutable intervention ID
+plus the interrupted role state.
 
 Add tests that event sequence/revision must be contiguous, terminal states never
 transition, unknown fields/events fail, and projection corruption is rebuilt
 byte-for-byte from `events.jsonl`.
+
+Create `test/helpers/review-fixture.mjs` with
+`createReviewWorkspace({ repository, events })`. It creates a real ignored
+workspace by validating and appending the supplied event sequence through Task
+4's store, then rebuilds both projections with `reduceEvents`; tests must never
+hand-write projection JSON. Provide named builders for reviewer turn, author
+revision, acceptance pending, and each intervention reason.
 
 - [ ] **Step 2: Run the focused tests and verify RED**
 
@@ -582,7 +845,10 @@ not projection files; conflicting or truncated event bytes fail closed.
 
 ```bash
 node --test test/unit/events.test.mjs test/unit/reducer.test.mjs test/integration/recovery.test.mjs
-git add schemas/event-v1.json schemas/protocol-v1.json schemas/participants-v1.json src/protocol test/unit/events.test.mjs test/unit/reducer.test.mjs test/integration/recovery.test.mjs
+git add schemas/event-v1.json schemas/protocol-v1.json schemas/participants-v1.json \
+  src/protocol/events.mjs src/protocol/reducer.mjs src/protocol/service.mjs \
+  test/helpers/review-fixture.mjs test/unit/events.test.mjs \
+  test/unit/reducer.test.mjs test/integration/recovery.test.mjs
 git commit -m "feat: add event-sourced review lifecycle"
 ```
 
@@ -600,7 +866,8 @@ git commit -m "feat: add event-sourced review lifecycle"
 
 **Interfaces:**
 
-- Produces: `resolveIdentity(context) -> ParticipantIdentity`,
+- Produces: `participantIdentity(input) -> ParticipantIdentity`,
+  `resolveIdentity(context) -> ParticipantIdentity`,
   `fingerprintSession(provider, rawSessionId) -> string`,
   `claimRole(review, identity, now)`, and `reclaimRole(review, identity, now)`.
 - Consumes: injected official runtime metadata; never tracked raw identifiers.
@@ -667,7 +934,9 @@ records old/new claim IDs and expiry. Never auto-release or steal a claim.
 
 ```bash
 node --test test/unit/identity.test.mjs test/integration/claims.test.mjs
-git add src/identity test/unit/identity.test.mjs test/integration/claims.test.mjs
+git add src/identity/registry.mjs src/identity/codex.mjs \
+  src/identity/claude.mjs src/identity/grok.mjs src/identity/generic.mjs \
+  test/unit/identity.test.mjs test/integration/claims.test.mjs
 git commit -m "feat: add participant identity and claims"
 ```
 
@@ -686,12 +955,14 @@ git commit -m "feat: add participant identity and claims"
 
 **Interfaces:**
 
-- Produces: `canonicalGrantParameters(action, input) -> Buffer`,
+- Produces: `GRANT_PARAMETER_FIELDS`,
+  `canonicalGrantParameters(action, input) -> Buffer`,
   `requestChallenge(review, action, parameters, now) -> Challenge`, and
   `verifyAndConsumeGrant(review, grant, expected) -> Attestation`, plus the
   `request-grant` CLI handler.
 - Consumes: protocol-pinned public verifier or official host receipt adapter;
-  never a required private credential.
+  never a required private credential; Task 4's event-built review fixture for
+  arbitrary intervention states.
 
 - [ ] **Step 1: Write RED canonicalization vectors**
 
@@ -712,6 +983,11 @@ assert.equal(
   'ai-peer-review.grant-parameters/v1\n{"additional_turns":2,"focus_digest":null,"focus_path":null,"resulting_effective_maximum":12,"resume_role":"reviewer"}'
 );
 ```
+
+The `ai-peer-review.grant-parameters/v1\n` byte prefix is an explicit
+implementation-level domain-separation decision made by this plan: it is part of
+the hashed bytes before canonical JSON, not merely a schema label in prose. Pin
+that decision in every golden vector.
 
 Give `pin-verifier`, `supplement`, `accept-over-objections`, and
 `replace-participant` equally explicit golden vectors using the exact parameter
@@ -834,7 +1110,10 @@ while an unexpired challenge exists.
 
 ```bash
 node --test test/unit/authority-canonicalize.test.mjs test/integration/authority.test.mjs
-git add schemas/grant-challenge-v1.json schemas/human-decision-v1.json src/authority src/cli/run.mjs test/unit/authority-canonicalize.test.mjs test/integration/authority.test.mjs
+git add schemas/grant-challenge-v1.json schemas/human-decision-v1.json \
+  src/authority/canonicalize.mjs src/authority/challenge.mjs \
+  src/authority/verify.mjs src/cli/run.mjs \
+  test/unit/authority-canonicalize.test.mjs test/integration/authority.test.mjs
 git commit -m "feat: enforce graded human authority"
 ```
 
@@ -844,7 +1123,7 @@ git commit -m "feat: enforce graded human authority"
 
 - Create: `schemas/response-v1.json`
 - Create: `src/collateral/responses.mjs`
-- Create: `src/collateral/templates.mjs`
+- Create: `src/templates/index.mjs`
 - Create: `templates/author-startup.md`
 - Create: `templates/reviewer-invitation.md`
 - Create: `templates/reviewer-response.md`
@@ -860,7 +1139,11 @@ git commit -m "feat: enforce graded human authority"
 - Produces: `hydrateTemplate(name, variables) -> Buffer`,
   `createResponseDraft(review, role, turn)`, and
   `sealResponse(review, file, identity) -> SealedResponse`.
-- Consumes: Task 3 path resolver and Task 5 normalized identity.
+- Consumes: Task 3 path resolver, Task 4 event authority and event-built review
+  fixture, and Task 5 normalized identity. Top-level `templates/*.md` are package
+  data; `src/templates/index.mjs` is the sole runtime loader/hydrator, preserving
+  both directories named by the ratified package layout without duplicate
+  implementations.
 
 - [ ] **Step 1: Write RED template and response tests**
 
@@ -886,11 +1169,14 @@ Declined changes and rationale, and Verification.
 
 - [ ] **Step 2: Write RED stable finding-ID tests**
 
-Parse only headings matching
+Within both `Findings` and `Optional suggestions`, parse only headings matching
 `^### R<reviewer-turn>-F<three digits> — <non-empty title>$`. Assert missing IDs,
 duplicates, wrong-turn prefixes, reuse from prior turns, and unnumbered finding
-headings fail. Seal ordered `finding_ids` in reviewer frontmatter and require the
-author's `answered_finding_ids` to equal the preceding sealed set.
+headings fail. Both sections share one ordered ID sequence with no renumbering or
+reuse across sections. Seal ordered `finding_ids` in reviewer frontmatter and
+require the author's `answered_finding_ids` to equal the preceding sealed set.
+Add a fixture proving an optional-suggestion ID may be named in an
+`accept-over-objections` human decision.
 
 Use `review-unique-finding-id` consistently in response and human-decision schema
 examples.
@@ -949,7 +1235,12 @@ content and preserve every byte.
 
 ```bash
 node --test test/unit/responses.test.mjs test/golden/templates.test.mjs
-git add schemas/response-v1.json src/collateral templates test/unit/responses.test.mjs test/golden
+git add schemas/response-v1.json src/collateral/responses.mjs \
+  src/templates/index.mjs templates/author-startup.md \
+  templates/reviewer-invitation.md templates/reviewer-response.md \
+  templates/author-response.md templates/human-decision.md \
+  templates/review-manifest.md test/unit/responses.test.mjs \
+  test/golden/templates.test.mjs ':(glob)test/golden/templates/*.md'
 git commit -m "feat: generate integrity-bound review collateral"
 ```
 
@@ -1007,18 +1298,25 @@ peer-review doctor
 peer-review start <artifact> --artifact-kind <spec|plan> [configuration] [--bootstrap-grant <signed-grant>] [--no-commit [--test-human-authority <fixture-id>]]
 peer-review request-grant <workspace> --action <protected-action> [action parameters]
 peer-review join <reviewer-invitation.md>
-peer-review status <workspace>
+peer-review status <workspace> [--json] [--next]
 peer-review resume <workspace>
-peer-review submit <workspace> [--decision revisions-requested|accepted]
+peer-review submit <workspace> [--decision revisions-requested|accepted] [--no-artifact-change --reason <text>]
 peer-review supplement <workspace> <file> --for <author|reviewer> --grant <signed-grant>
 peer-review continue <workspace> [--additional-turns <N>] [--focus <file>] --grant <signed-grant>
 peer-review finalize <workspace> [--good-enough --grant <signed-grant>]
 peer-review recover <workspace> [--reclaim | --replace-participant <role> --grant <signed-grant>]
 peer-review abandon <workspace> --reason <text>
+peer-review help [<command>] [--all] [--json]
+peer-review help search <term>
+peer-review explain <error-code> [--json]
 ```
 
 Document explicitly that `start --bootstrap-grant` consumes a protected
-`pin-verifier` action grant.
+`pin-verifier` action grant. Golden-test each help form from the ratified spec,
+including `help --all`, `help search <term>`, `help submit --json`,
+`status --json`, and `status --next`. Derive every usage line from Task 2's
+frozen command/positional/flag catalog and assert each catalog flag appears in
+exactly one owning help topic; hand-authored syntax drift fails the golden test.
 
 - [ ] **Step 4: Run the focused tests and verify RED**
 
@@ -1040,7 +1338,10 @@ accepts the invitation path, not ambient guesses. `status --next` and
 
 ```bash
 node --test test/integration/start-join.test.mjs test/integration/status-resume.test.mjs test/golden/help.test.mjs
-git add schemas/cli-result-v1.json src/cli src/protocol/service.mjs test/integration/start-join.test.mjs test/integration/status-resume.test.mjs test/golden/help*
+git add schemas/cli-result-v1.json src/cli/help-data.mjs src/cli/run.mjs \
+  src/protocol/service.mjs test/integration/start-join.test.mjs \
+  test/integration/status-resume.test.mjs test/golden/help.test.mjs \
+  ':(glob)test/golden/help/*.txt'
 git commit -m "feat: start and resume standalone reviews"
 ```
 
@@ -1060,7 +1361,7 @@ git commit -m "feat: start and resume standalone reviews"
 - Produces: `submitReviewTurn(input)`, `submitAuthorTurn(input)`, and
   `commitExactPaths(repository, sealed, message, trailers) -> CommitReceipt`.
 - Consumes: sealed response bytes, authoritative artifact bytes, protocol role,
-  and repository index observations.
+  repository index observations, and Task 4's event-built review fixture.
 
 - [ ] **Step 1: Write RED reviewer-boundary tests**
 
@@ -1145,6 +1446,7 @@ git commit -m "feat: commit author-owned review rounds"
 - Produces: `continueReview`, `registerSupplement`, `recoverReview`, and
   `abandonReview` command handlers.
 - Consumes: Task 6 action-specific grants and frozen intervention authority.
+  Integration setup uses Task 4's event-built review fixture.
 
 - [ ] **Step 1: Write RED budget and intervention tests**
 
@@ -1199,7 +1501,10 @@ as historical evidence without a matching seal.
 
 ```bash
 node --test test/integration/budget-intervention.test.mjs test/integration/supplements.test.mjs test/integration/claims.test.mjs test/integration/recovery.test.mjs
-git add src/protocol src/cli/run.mjs test/integration
+git add src/protocol/reducer.mjs src/protocol/service.mjs src/cli/run.mjs \
+  test/integration/budget-intervention.test.mjs \
+  test/integration/supplements.test.mjs test/integration/claims.test.mjs \
+  test/integration/recovery.test.mjs
 git commit -m "feat: govern review intervention and recovery"
 ```
 
@@ -1215,11 +1520,12 @@ git commit -m "feat: govern review intervention and recovery"
 
 **Interfaces:**
 
-- Produces: immutable `commitMode: no-commit`, per-handoff artifact snapshots,
-  and terminal `accepted-uncommitted` or
-  `accepted-over-objections-uncommitted` evidence.
-- Consumes: the same lifecycle and response validators as normal mode, replacing
-  Git commits with ignored immutable snapshots.
+- Produces: `sealNoCommitHandoff(input) -> NoCommitSeal`, immutable
+  `commitMode: no-commit`, per-handoff artifact snapshots, and terminal
+  `accepted-uncommitted` or `accepted-over-objections-uncommitted` evidence.
+- Consumes: the same lifecycle and response validators as normal mode, Task 4's
+  event-built review fixture, and ignored immutable snapshots in place of Git
+  commits.
 
 - [ ] **Step 1: Write RED mode-immutability and baseline tests**
 
@@ -1274,7 +1580,8 @@ and scratch path and provides no automatic cleanup command.
 
 ```bash
 node --test test/integration/no-commit.test.mjs
-git add src/protocol src/cli/run.mjs test/integration/no-commit.test.mjs test/helpers/git-spy.mjs
+git add src/protocol/reducer.mjs src/protocol/service.mjs src/cli/run.mjs \
+  test/integration/no-commit.test.mjs test/helpers/git-spy.mjs
 git commit -m "feat: add no-commit review mode"
 ```
 
@@ -1293,7 +1600,10 @@ git commit -m "feat: add no-commit review mode"
 **Interfaces:**
 
 - Produces: `buildManifest(review) -> ManifestModel`,
-  `renderManifest(model) -> Buffer`, and `finalizeReview(input)`.
+  `renderManifest(model) -> Buffer`, `sealHumanDecision(review, authority) ->
+SealedDecision`, `sealManifest(model) -> SealedManifest`,
+  `pathsToSeals(items) -> SealedPathSet`, `finalMessage(review) -> string`,
+  `finalTrailers(paths) -> Record<string, string>`, and `finalizeReview(input)`.
 - Consumes: complete event history, sealed response/decision bytes, current
   artifact blob/digest, attestation records, and Task 9 Git transaction.
 
@@ -1382,7 +1692,10 @@ non-durable terminal statuses from Task 11.
 
 ```bash
 node --test test/unit/manifest.test.mjs test/integration/finalization.test.mjs
-git add schemas/manifest-v1.json src/manifest src/protocol/service.mjs src/cli/run.mjs test/unit/manifest.test.mjs test/integration/finalization.test.mjs test/golden/manifests
+git add schemas/manifest-v1.json src/manifest/render.mjs \
+  src/protocol/service.mjs src/cli/run.mjs test/unit/manifest.test.mjs \
+  test/integration/finalization.test.mjs \
+  ':(glob)test/golden/manifests/*.md'
 git commit -m "feat: finalize reviews with durable manifests"
 ```
 
@@ -1407,8 +1720,9 @@ git commit -m "feat: finalize reviews with durable manifests"
 
 **Interfaces:**
 
-- Produces: `setup(options) -> ChangePlan`, `doctor(context) -> DoctorReport`,
-  `registerTransport(adapter)`, and Phase 1 `manual|resume-only` capabilities.
+- Produces: `planSetup(input) -> ChangePlan`, `setup(options) -> ChangePlan`,
+  `doctor(context) -> DoctorReport`, `registerTransport(adapter)`, and Phase 1
+  `manual|resume-only` capabilities.
 - Consumes: user/project config, official provider setup surfaces, and
   repository-reported Git exclude path.
 
@@ -1487,7 +1801,12 @@ knowledge inside adapters.
 
 ```bash
 node --test test/integration/setup-doctor.test.mjs test/integration/reviewer-guard.test.mjs test/unit/transport.test.mjs test/golden/skill.test.mjs
-git add schemas/config-v1.json src/config src/doctor.mjs src/transport src/cli/run.mjs skills test/integration/setup-doctor.test.mjs test/integration/reviewer-guard.test.mjs test/unit/transport.test.mjs test/golden/skill.test.mjs
+git add schemas/config-v1.json src/config/load.mjs src/config/setup.mjs \
+  src/config/guards.mjs src/doctor.mjs src/transport/registry.mjs \
+  src/transport/manual.mjs src/transport/resume.mjs src/cli/run.mjs \
+  skills/peer-review/SKILL.md test/integration/setup-doctor.test.mjs \
+  test/integration/reviewer-guard.test.mjs test/unit/transport.test.mjs \
+  test/golden/skill.test.mjs
 git commit -m "feat: install and diagnose peer review"
 ```
 
@@ -1495,7 +1814,7 @@ git commit -m "feat: install and diagnose peer review"
 
 **Files:**
 
-- Create: `README.md`
+- Modify: `README.md`
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/release.yml`
 - Create: `scripts/verify-release.mjs`
@@ -1504,6 +1823,7 @@ git commit -m "feat: install and diagnose peer review"
 - Create: `test/integration/ported-behavior-parity.test.mjs`
 - Modify: `package.json`
 - Modify: `provenance/extraction-manifest.json`
+- Create: `provenance/release-manifest.json`
 - Modify: `src/public-api.mjs`
 - Delete after parity passes: extracted legacy `scripts/review/**`
 - Delete after parity passes: extracted legacy `scripts/providers/**`
@@ -1529,14 +1849,26 @@ peer-review start docs/spec.md --artifact-kind spec
 The package must contain runtime source, schemas, templates, skill, README,
 LICENSE, and NOTICE; it must exclude tests, scratch state, transcripts, provider
 tokens, and AITM files. Assert `npm ls --omit=dev --json` has zero dependencies.
+Read the packed NOTICE and README and assert both identify the recorded
+standalone bootstrap commit, its `filtered_history_tip` parent, and the
+historical AGPL/commercial versus Apache-2.0 licensing split.
+
+Scan templates, help topics, the skill, and README for zero-install examples.
+Generated and recovery commands may use only `npx ai-peer-review`; any
+`npx peer-review` occurrence must be immediately qualified as requiring a
+confirmed local installation. Add a failing fixture for an unqualified
+occurrence.
 
 - [ ] **Step 2: Add the Phase 1 CI matrix**
 
-Run Node 22 on current Ubuntu, macOS, and Windows. Each job runs install, unit and
-integration tests, formatter/linter/spell/schema checks, package inspection,
-setup dry-run, start/join, one revision triad, acceptance finalization, and
-no-commit acceptance. Use fake provider/authority adapters and temporary Git
-repositories; keep live-provider jobs optional and non-required.
+Run Node 22 on current Ubuntu, macOS, and Windows. Add Ubuntu compatibility jobs
+for `lts/*` and `current` Node so supported later runtimes, including odd-current
+behavior, are exercised without weakening the Node 22 floor. Each job runs
+install, `test`, `test:integration`, `test:packaging`, and `test:smoke`, plus
+formatter/linter/spell/schema checks, package inspection, setup dry-run,
+start/join, one revision triad, acceptance finalization, and no-commit
+acceptance. Use fake provider/authority adapters and temporary Git repositories;
+keep live-provider jobs optional and non-required.
 
 - [ ] **Step 3: Prove port parity and remove the AITM-shaped working tree**
 
@@ -1561,9 +1893,13 @@ export { explainError } from './cli/help-data.mjs';
 
 `scripts/verify-release.mjs` must fail unless the extraction verifier is clean,
 the relicensing declaration signature is present and valid, source SHA matches,
-repository is public, tag is signed and resolves to HEAD, GitHub release and npm
-tarball agree, npm provenance is present when supported, checksums match, and
-Zenodo/Software Heritage identifiers are recorded.
+the bootstrap commit's first parent equals `filtered_history_tip`, the complete
+contributor audit is non-empty, `secret_scan.result` is `pass`, the declaration
+digest is non-null, repository is public, tag is signed and resolves to HEAD,
+GitHub release and npm tarball agree, npm provenance is present when supported,
+checksums match, and Zenodo/Software Heritage identifiers are recorded. Store
+the bootstrap commit, release commit, public URLs, checksums, and archive IDs in
+`provenance/release-manifest.json`.
 
 - [ ] **Step 5: Run the complete Phase 1 gate**
 
@@ -1573,6 +1909,7 @@ npm run lint
 npm test
 npm run test:integration
 npm run test:packaging
+npm run test:smoke
 npm pack --dry-run
 node scripts/verify-extraction.mjs
 git diff --check
@@ -1585,7 +1922,10 @@ starts an MCP server or depends on resident liveness.
 - [ ] **Step 6: Commit the release candidate**
 
 ```bash
-git add README.md .github package.json src/public-api.mjs scripts test provenance/extraction-manifest.json
+git add README.md .github/workflows/ci.yml .github/workflows/release.yml package.json \
+  src/public-api.mjs scripts/verify-release.mjs test/packaging/package.test.mjs \
+  test/smoke/cli.test.mjs test/integration/ported-behavior-parity.test.mjs \
+  provenance/extraction-manifest.json provenance/release-manifest.json
 git commit -m "release: prepare ai-peer-review 0.1"
 ```
 
@@ -1605,6 +1945,7 @@ evidence.
 **Files:**
 
 - Modify: `ai-task-manager/package.json`
+- Modify: `ai-task-manager/package-lock.json`
 - Create: `ai-task-manager/scripts/task-tracker/lib/peer-review-adapter.mjs`
 - Modify: `ai-task-manager/scripts/task-tracker/lib/occupancy.mjs`
 - Modify: `ai-task-manager/scripts/task-tracker/lib/command-surface/entrypoints.mjs`
@@ -1620,12 +1961,34 @@ evidence.
 **Interfaces:**
 
 - Consumes: an exact published `ai-peer-review@0.1.x` package and its read-only
-  `statusReview` public API.
-- Produces: AITM configuration using reviews root
+  `statusReview` public API, plus a real governed AITM migration issue supplied
+  before this task begins. Do not invent an issue ID. If no issue exists, stop
+  and create one through `/task new` / the sanctioned
+  `scripts/gh/create-issue.mjs --shape solo` workflow, then take it through the
+  ordinary Refine, Plan approval, and Develop gates.
+- Produces: `AITM_PEER_REVIEW_CONFIG`, `peerReviewStatus({ workspace, api }) ->
+HostReviewStatus`, and AITM configuration using reviews root
   `docs/superpowers/reviews`, template `<issue>/<kind>`, opaque positive issue
   metadata, and AITM-owned occupancy caching.
 
-- [ ] **Step 1: Write RED dependency-boundary and parity tests**
+- [ ] **Step 1: Bind the governed AITM issue and capture its real ID**
+
+Set `APR_AITM_ISSUE` to the supplied issue's returned positive integer, bind it
+with `npx aitm start`, and confirm it is in Develop with the required
+planning/deep-dive evidence. This is runtime evidence, not a plan placeholder:
+
+```bash
+: "${APR_AITM_ISSUE:?set APR_AITM_ISSUE to the governed migration issue ID}"
+test "$APR_AITM_ISSUE" -gt 0
+npx aitm start "$APR_AITM_ISSUE"
+npx aitm status "$APR_AITM_ISSUE"
+```
+
+Expected: both commands exit 0 and status names this worktree, the migration
+issue, and Develop. Every AITM commit in this task must begin with
+`[#${APR_AITM_ISSUE}]`.
+
+- [ ] **Step 2: Write RED dependency-boundary and parity tests**
 
 Install the exact released version. Assert AITM invokes the installed
 `peer-review` binary or read-only API, never adds `npx aitm peer-review`, rejects
@@ -1637,7 +2000,7 @@ supplement, good-enough, dirty-tree, collision, and recovery fixtures through th
 package. Compare semantic state/evidence, allowing only ratified schema/path/name
 changes.
 
-- [ ] **Step 2: Write RED active-legacy-review removal tests**
+- [ ] **Step 3: Write RED active-legacy-review removal tests**
 
 Create an active legacy runtime/index row and assert migration refuses to remove
 or disable `scripts/review/**`. Create accepted and abandoned legacy records and
@@ -1645,7 +2008,7 @@ assert their archived bytes remain immutable and readable but are never upgraded
 or rewritten. Prove AITM occupancy remains main-worktree anchored while package
 state is per-review authority.
 
-- [ ] **Step 3: Run the focused tests and verify RED**
+- [ ] **Step 4: Run the focused tests and verify RED**
 
 ```bash
 node --test scripts/tests/integration/review/peer-review-package-parity.test.mjs scripts/tests/integration/review/peer-review-migration-guard.test.mjs
@@ -1653,7 +2016,7 @@ node --test scripts/tests/integration/review/peer-review-package-parity.test.mjs
 
 Expected: FAIL while AITM still routes through `scripts/review/co-review.mjs`.
 
-- [ ] **Step 4: Implement the narrow host adapter**
+- [ ] **Step 5: Implement the narrow host adapter**
 
 ```js
 export const AITM_PEER_REVIEW_CONFIG = Object.freeze({
@@ -1675,29 +2038,40 @@ export function peerReviewStatus({ workspace, api }) {
 Keep issue lifecycle, backlog context, and occupancy policy in AITM. Cache package
 status only as non-authoritative occupancy data. Do not import package internals.
 
-- [ ] **Step 5: Remove duplicate runtime only after the guard passes**
+- [ ] **Step 6: Remove duplicate runtime only after the guard passes**
 
 Run parity with both engines present. If and only if no active legacy review
 exists and parity passes, delete the duplicate CLI/runtime/templates and only
 those tests now owned by the package. Preserve provider code still used elsewhere
 in AITM and every accepted archive.
 
-- [ ] **Step 6: Run AITM verification and commit**
+- [ ] **Step 7: Run governed AITM Develop verification and commit**
 
 ```bash
 node --test scripts/tests/integration/review/peer-review-package-parity.test.mjs scripts/tests/integration/review/peer-review-migration-guard.test.mjs
-npm run format:check
-npm run lint
-npm test
-npm run test:slow
+node scripts/task-tracker/verify-develop.mjs --mode iteration
 git diff --check
 git status --short
-git add package.json scripts skill
-git commit -m "feat: consume standalone peer review package"
+git add package.json package-lock.json \
+  scripts/task-tracker/lib/peer-review-adapter.mjs \
+  scripts/task-tracker/lib/occupancy.mjs \
+  scripts/task-tracker/lib/command-surface/entrypoints.mjs \
+  scripts/task-tracker/test-impact-manifest.json \
+  scripts/task-tracker/verbs/help-data.mjs \
+  skill/shared/rules/review.md \
+  scripts/tests/integration/review/peer-review-package-parity.test.mjs \
+  scripts/tests/integration/review/peer-review-migration-guard.test.mjs
+git add -A -- scripts/review
+git commit -m "[#${APR_AITM_ISSUE}] feat: consume standalone peer review package"
+node scripts/task-tracker/verify-develop.mjs --mode final --issue "$APR_AITM_ISSUE"
+npx aitm test "$APR_AITM_ISSUE"
 ```
 
-Expected: all checks pass, no AITM `src`/runtime copy of package authority
-remains, and active legacy review removal is still refused.
+Expected: focused and iteration checks pass before the attributed commit; exact-
+SHA finalization passes on the clean commit; the governed Test transition runs
+AITM's configured verification contract. No AITM `src`/runtime copy of package
+authority remains, and active legacy review removal is still refused. Do not
+substitute direct state mutation or a duplicate ad hoc full-suite run.
 
 ### Task 16: Add Race-Safe MCP Waiting in Phase 2
 
@@ -1715,8 +2089,9 @@ remains, and active legacy review removal is still refused.
 **Interfaces:**
 
 - Produces: MCP tool
-  `wait_for_handoff(review_id, participant) -> Delivery` and `live-wait`
-  transport capability.
+  `wait_for_handoff(review_id, participant) -> Delivery`,
+  `waitForHandoff(input) -> Promise<Delivery>`, and `live-wait` transport
+  capability.
 - Consumes: durable delivery sequence/receipt files from Phase 1; optionally the
   official MCP SDK after dependency approval.
 
@@ -1769,7 +2144,10 @@ exact manual resume command.
 
 ```bash
 node --test test/mcp/wait.test.mjs test/mcp/server.test.mjs
-git add src/mcp src/transport/live-wait.mjs src/transport/registry.mjs src/cli/run.mjs test/mcp docs/dependency-audit-mcp.md package.json package-lock.json
+git add src/mcp/server.mjs src/mcp/wait.mjs src/transport/live-wait.mjs \
+  src/transport/registry.mjs src/cli/run.mjs test/mcp/wait.test.mjs \
+  test/mcp/server.test.mjs docs/dependency-audit-mcp.md package.json \
+  package-lock.json
 git commit -m "feat: add token-free MCP handoff waits"
 ```
 
@@ -1784,13 +2162,16 @@ git commit -m "feat: add token-free MCP handoff waits"
 - Modify: `skills/peer-review/SKILL.md`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `README.md`
+- Modify: `provenance/release-manifest.json`
+- Modify: `scripts/verify-release.mjs`
 - Create: `test/mcp/resident-liveness.test.mjs`
 - Create: `test/integration/automatic-required.test.mjs`
 - Create: `test/smoke/transport.test.mjs`
 
 **Interfaces:**
 
-- Produces: adapter-validated `resident-liveness`, `native-push`, and
+- Produces: `validateResidentLease(lease, now) -> ResidentLease`,
+  adapter-validated `resident-liveness`, `native-push`, and
   `automatic-required` negotiation for `0.2.x`.
 - Consumes: official process instance/opaque handle and heartbeat source; never
   infers liveness from a bare PID.
@@ -1841,12 +2222,13 @@ and removal semantics from Task 13. Doctor upgrades Phase 2 rows to active check
 - [ ] **Step 5: Run the complete Phase 2 gate**
 
 ```bash
-node --test test/mcp/*.test.mjs test/integration/automatic-required.test.mjs test/smoke/transport.test.mjs
+npm run test:mcp
 npm run format:check
 npm run lint
 npm test
 npm run test:integration
 npm run test:packaging
+npm run test:smoke
 npm pack --dry-run
 git diff --check
 git status --short
@@ -1858,15 +2240,96 @@ produce no model turns; manual/resume-only Phase 1 workflows remain green.
 - [ ] **Step 6: Commit and pause for the Phase 2 publication gate**
 
 ```bash
-git add src/transport src/config/setup.mjs src/doctor.mjs skills/peer-review/SKILL.md .github/workflows/ci.yml README.md test
+git add src/transport/resident.mjs src/transport/native-push.mjs \
+  src/config/setup.mjs src/doctor.mjs skills/peer-review/SKILL.md \
+  .github/workflows/ci.yml README.md provenance/release-manifest.json \
+  scripts/verify-release.mjs test/mcp/resident-liveness.test.mjs \
+  test/integration/automatic-required.test.mjs test/smoke/transport.test.mjs
 git commit -m "release: prepare ai-peer-review 0.2"
 ```
 
 Present the exact commit, dependency audit, packed-size delta, cross-platform CI,
 live opt-in evidence, signed tag proposal, tarball hash, and updated release
-manifest. Publish and archive `0.2.x` only after explicit approval. Then update
-AITM's exact dependency version and parity test; do not add a second AITM command
-surface or remove manual recovery.
+manifest. Publish and archive `0.2.x` only after explicit approval, populate its
+public evidence, and rerun `node scripts/verify-release.mjs`. Do not alter AITM
+until that verifier passes.
+
+### Task 18: Upgrade AITM to the Verified Phase 2 Release
+
+**Files:**
+
+- Modify: `ai-task-manager/package.json`
+- Modify: `ai-task-manager/package-lock.json`
+- Modify: `ai-task-manager/scripts/task-tracker/lib/peer-review-adapter.mjs`
+- Extend: `ai-task-manager/scripts/tests/integration/review/peer-review-package-parity.test.mjs`
+- Create: `ai-task-manager/scripts/tests/integration/review/peer-review-phase2-compatibility.test.mjs`
+
+**Interfaces:**
+
+- Consumes: an exact published and release-verified `ai-peer-review@0.2.x`, the
+  Task 15 Phase 1 adapter, and a separately supplied governed AITM upgrade issue.
+- Produces: an exact AITM dependency bump that exposes optional Phase 2
+  capability without changing Phase 1 schemas, adding an AITM CLI wrapper, or
+  removing manual recovery.
+
+- [ ] **Step 1: Bind a real governed AITM upgrade issue**
+
+If no issue exists, stop and create one through `/task new` / the sanctioned
+`scripts/gh/create-issue.mjs --shape solo` workflow. Set `APR_AITM_PHASE2_ISSUE`
+to its returned positive ID and take it through the ordinary gates:
+
+```bash
+: "${APR_AITM_PHASE2_ISSUE:?set APR_AITM_PHASE2_ISSUE to the governed upgrade issue ID}"
+test "$APR_AITM_PHASE2_ISSUE" -gt 0
+npx aitm start "$APR_AITM_PHASE2_ISSUE"
+npx aitm status "$APR_AITM_PHASE2_ISSUE"
+```
+
+- [ ] **Step 2: Write RED compatibility tests**
+
+Pin the exact `0.2.x` version and add tests proving all Phase 1 manifest,
+response, manual, resume-only, and recovery fixtures remain byte/schema
+compatible. Add opt-in `live-wait`, `native-push`, resident-liveness, downgrade,
+and automatic-required cases through the same narrow adapter. Assert AITM still
+has no `npx aitm peer-review` surface.
+
+- [ ] **Step 3: Run the focused tests and verify RED**
+
+```bash
+node --test scripts/tests/integration/review/peer-review-package-parity.test.mjs \
+  scripts/tests/integration/review/peer-review-phase2-compatibility.test.mjs
+```
+
+Expected: FAIL while AITM remains pinned to the Phase 1 package.
+
+- [ ] **Step 4: Upgrade only the package boundary**
+
+Update `package.json` and `package-lock.json` to the exact verified `0.2.x`
+release. Extend the adapter only for capability/status fields required by Phase
+2; keep all package authority inside `ai-peer-review` and preserve manual
+fallback.
+
+- [ ] **Step 5: Run governed verification, commit, and enter Test**
+
+```bash
+node --test scripts/tests/integration/review/peer-review-package-parity.test.mjs \
+  scripts/tests/integration/review/peer-review-phase2-compatibility.test.mjs
+node scripts/task-tracker/verify-develop.mjs --mode iteration
+git diff --check
+git status --short
+git add package.json package-lock.json \
+  scripts/task-tracker/lib/peer-review-adapter.mjs \
+  scripts/tests/integration/review/peer-review-package-parity.test.mjs \
+  scripts/tests/integration/review/peer-review-phase2-compatibility.test.mjs
+git commit -m "[#${APR_AITM_PHASE2_ISSUE}] feat: consume ai-peer-review 0.2"
+node scripts/task-tracker/verify-develop.mjs --mode final \
+  --issue "$APR_AITM_PHASE2_ISSUE"
+npx aitm test "$APR_AITM_PHASE2_ISSUE"
+```
+
+Expected: compatibility and iteration checks pass before the attributed commit;
+exact-SHA finalization passes afterward; AITM's Test transition runs the hosted
+contract without changing package schemas or the manual recovery path.
 
 ## Final Spec-Coverage Gate
 
@@ -1888,6 +2351,7 @@ spec to a task, test name, and exact passing commit. At minimum:
 | Phase 1 packaging, platform matrix, public release           | 14           |
 | AITM package-boundary migration and legacy guard             | 15           |
 | MCP waiting, resident liveness, automatic-required transport | 16, 17       |
+| AITM Phase 2 dependency bump and compatibility               | 18           |
 
 Run the placeholder scan below and resolve every match as either literal test
 data or a plan defect:
@@ -1898,4 +2362,4 @@ rg -n 'T''BD|TO''DO|implement lat''er|appropriate error hand''ling|handle edge c
 
 Expected: no matches. Recheck every interface/function name across tasks, verify
 all target paths are owned by exactly one task or intentionally extended later,
-and confirm Task 14 remains independently shippable without Tasks 16–17.
+and confirm Task 14 remains independently shippable without Tasks 16–18.
