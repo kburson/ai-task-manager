@@ -26,6 +26,11 @@ commits the reviewer acceptance and generated review manifest together. AITM may
 consume the standalone package, but issue tracking, backlog context, kanban
 state, and AITM-specific policy are outside this package.
 
+An explicit `--no-commit` test mode runs the same collaboration without staging
+or committing any collateral. It keeps exact artifact snapshots and hashes in
+the ignored workspace and terminates as `accepted-uncommitted`, allowing repeated
+protocol testing without rewriting Git history.
+
 ## Problem
 
 AITM's current co-review implementation is valuable outside AITM, but the engine
@@ -48,7 +53,8 @@ provider, including two sessions using the same model.
 4. Make reviewer and author responsibilities unambiguous and enforceable.
 5. Write durable review collateral directly to a configurable tracked reviews
    directory while keeping coordination state in ignored scratch storage.
-6. Preserve every revision round as an integrity-bound Git commit triad.
+6. In normal mode, preserve every revision round as an integrity-bound Git
+   commit triad.
 7. Resume agents only when a real handoff arrives, without timer-driven model
    wake events or mutation of provider session logs.
 8. Give agents complete, offline, machine-queryable CLI help and stable recovery
@@ -56,6 +62,8 @@ provider, including two sessions using the same model.
 9. Integrate cleanly with AITM without importing AITM concepts into the core.
 10. Preserve source history and publish strong independently timestamped release
     provenance.
+11. Provide an explicit no-commit mode for protocol testing without weakening or
+    silently changing the normal commit-backed workflow.
 
 ## Non-goals
 
@@ -68,6 +76,8 @@ provider, including two sessions using the same model.
 - Maintaining `npx aitm co-review` or adding `npx aitm peer-review` compatibility.
 - Rewriting previously accepted AITM review archives into the new format.
 - Providing cryptographic proof of an agent vendor's claimed runtime identity.
+- Treating uncommitted test acceptance as durable committed review evidence.
+- Automatically deleting or restoring no-commit test collateral.
 
 ## Naming and Distribution
 
@@ -192,6 +202,7 @@ reviewer-invitation.md
 deliveries/
 handoffs/
 locks/
+snapshots/
 ```
 
 The CLI resolves canonical paths and refuses symlink escapes. It verifies that
@@ -230,6 +241,9 @@ silently overwritten.
 
 Agents write response prose directly to these tracked paths. The scratch
 workspace stores delivery receipts and hashes, not duplicate canonical copies.
+The sole exception is no-commit test mode, which stores an immutable artifact
+snapshot for each handoff because Git commits are unavailable as historical byte
+authority.
 
 ## Participants and Identity
 
@@ -340,9 +354,11 @@ schema: ai-peer-review.response/v1
 review_id: stable-review-id
 role: author | reviewer
 turn: positive-integer
+commit_mode: enabled | disabled
 artifact_path: repository-relative-path
-artifact_commit: git-commit
-artifact_blob: git-blob-id
+artifact_commit: git-commit | null
+artifact_blob: git-blob-id | null
+artifact_digest: sha256
 agent:
   host: runtime-host
   provider: provider-name
@@ -386,6 +402,13 @@ An acceptance response is sealed but remains uncommitted in
 still current, generates the manifest, and commits the acceptance plus manifest.
 Only that successful author commit moves the protocol to `accepted`.
 
+In no-commit mode the conversational turns are identical, but author submission
+seals the three logical triad members without staging or committing them. Each
+handoff records an immutable scratch snapshot and digest of the working artifact.
+Finalization generates the manifest and moves the protocol to
+`accepted-uncommitted`; it can never enter `accepted` without a commit-backed
+review.
+
 ## Git Ownership and Integrity
 
 The reviewer is read-only except for its exact generated response path and
@@ -394,7 +417,8 @@ the artifact, stage files, create commits, amend history, switch branches, or
 push. Provider hooks and guards should enforce this boundary where supported;
 the CLI independently verifies it on every transition.
 
-For every revision round, the author creates one commit containing exactly:
+For every revision round in normal commit mode, the author creates one commit
+containing exactly:
 
 1. the sealed reviewer response;
 2. the authoritative specification or plan;
@@ -416,15 +440,66 @@ Peer-Review-Reviewer-Response: <sha256>
 Peer-Review-Author-Response: <sha256>
 ```
 
-The final author commit contains exactly the sealed acceptance response and the
-generated review manifest. Its trailers bind the accepted artifact blob,
-acceptance response hash, and manifest hash. The tool never pushes.
+In normal commit mode, the final author commit contains exactly the sealed
+acceptance response and the generated review manifest. Its trailers bind the
+accepted artifact blob, acceptance response hash, and manifest hash. The tool
+never pushes.
 
 The manifest summarizes participant identities, identity-source caveats, every
 turn and decision, artifact commits and blobs, response paths and hashes, model
 changes, recovery or participant-replacement events, acceptance, and final
 commit. It contains session fingerprints but no raw session identifiers,
 transcript locations, tokens, or IPC details.
+
+### No-commit test mode
+
+`peer-review start <artifact> --no-commit` selects no-commit mode for the entire
+review. The initial event records `commitMode: disabled`; this field is immutable
+and cannot be enabled, disabled, or converted after startup. Normal commit mode
+remains the default.
+
+The author startup, reviewer invitation, status output, response frontmatter,
+next-action text, and manifest display `NO-COMMIT TEST MODE`. This prevents test
+collateral from being mistaken for durable review approval.
+
+Startup still requires a tracked artifact that is clean relative to `HEAD`. It
+also records the initial Git status, `HEAD`, index tree, artifact blob, and
+content digests for pre-existing changes. The protocol then owns only the
+evolving artifact and its generated response and manifest paths. Pre-existing
+unrelated changes may remain, but their paths and bytes must not change during
+the review.
+
+Every transition verifies that:
+
+- `HEAD` equals the startup commit;
+- the index tree equals the startup index tree;
+- no protocol command has staged content;
+- only protocol-owned paths differ from their startup state;
+- the working artifact matches the digest and scratch snapshot sealed by the
+  preceding handoff before the next actor begins.
+
+Author submission validates the same logical triad as commit mode, hashes its
+three members, copies the exact artifact bytes to an immutable ignored snapshot,
+and appends the handoff event. It runs no Git-mutating command. Reviewer
+acceptance similarly remains an uncommitted response.
+
+Finalization writes the ordinary tracked manifest but sets:
+
+```yaml
+status: accepted-uncommitted
+commit_mode: disabled
+final_commit: null
+```
+
+The manifest contains the startup commit and blob, every working-artifact digest,
+snapshot hash, response hash, decision, and expected dirty path. It is itself
+left uncommitted. The terminal `accepted-uncommitted` state means the protocol
+completed successfully as a test; it is not interchangeable with durable
+`accepted` evidence.
+
+No automatic cleanup command is provided. Human-readable status and JSON output
+list every protocol-owned tracked and scratch path so a test harness or human can
+remove or restore them deliberately without resetting Git history.
 
 ## CLI Contract
 
@@ -433,7 +508,7 @@ The initial command surface is:
 ```text
 peer-review setup
 peer-review doctor
-peer-review start <artifact> [--issue-id <id>] [--reviews-root <path>]
+peer-review start <artifact> [--issue-id <id>] [--reviews-root <path>] [--no-commit]
 peer-review join <reviewer-invitation.md>
 peer-review status <workspace>
 peer-review resume <workspace>
@@ -459,6 +534,10 @@ events. They do not wake the model by polling. `recover` validates integrity,
 rebuilds projections, reconciles idempotent deliveries and Git trailers, and
 prints an explicit recovery plan before any approved mutation.
 
+`--no-commit` is valid only on `start`. Passing it to another command or trying
+to change the stored mode returns a stable usage or mode-conflict error. Commands
+infer the mode from protocol state after startup.
+
 ## Agent-Queryable Help
 
 Help is a first-class offline API:
@@ -482,6 +561,7 @@ Every command topic documents:
 - preconditions and fail-closed checks;
 - every file, Git, configuration, and transport effect;
 - whether it commits, pushes, blocks, wakes, or spends model tokens;
+- behavior differences and terminal-state meaning in no-commit mode;
 - copyable examples for installed and zero-install use;
 - resulting state and exact next action;
 - stable errors and their recovery commands;
@@ -533,7 +613,8 @@ Errors use stable `APR_*` codes, structured fields, and one exact recovery
 command. Representative categories include unsafe paths, unignored scratch,
 artifact drift, duplicate session, wrong role, protected metadata changes,
 unexpected worktree changes, stale delivery, transport unavailable, projection
-drift, commit failure, and participant loss.
+drift, commit failure, no-commit mode conflict, test baseline drift, and
+participant loss.
 
 All mutating commands follow this order:
 
@@ -552,6 +633,12 @@ expected turn. A missing participant may be replaced only through an explicit
 recovery operation that records the old and new fingerprints, actor, reason, and
 time; replacement never rewrites earlier provenance.
 
+In no-commit mode, recovery never searches for or creates commit trailers. It
+rebuilds authority from events, content hashes, immutable scratch snapshots, the
+unchanged startup `HEAD` and index, and the current protocol-owned paths. Missing
+or conflicting snapshots fail closed rather than treating the current artifact
+as historical evidence.
+
 ## AITM Integration and Migration
 
 AITM adds `ai-peer-review` as a package dependency and invokes its installed
@@ -562,6 +649,10 @@ AITM adds `ai-peer-review` as a package dependency and invokes its installed
 - configure its preferred tracked reviews root;
 - provide richer backlog context in its own author or reviewer prompt;
 - read active review occupancy through the standalone package's read-only API.
+
+AITM's governed production workflow may reject `commitMode: disabled` while its
+test harness enables it explicitly. The standalone package does not infer that
+policy from the presence of AITM.
 
 AITM does not wrap the CLI with `npx aitm peer-review`. The standalone package's
 help and templates remain authoritative, preventing two command surfaces from
@@ -582,6 +673,10 @@ The extracted project carries forward applicable tests and adds:
 - Git integration tests for reviewer restrictions, exact-path author commits,
   revision triads, no-artifact-change receipts, acceptance finalization, dirty
   worktrees, interrupted commits, and trailer recovery;
+- no-commit integration tests proving unchanged `HEAD` and index, permitted
+  working-tree paths, per-turn artifact snapshots, digest mismatch refusal,
+  idempotent recovery, no Git-mutating subprocesses, and
+  `accepted-uncommitted` finalization;
 - MCP tests for blocking waits, delivery-before-subscribe races, simultaneous
   delivery, timeout, reconnect, duplicate delivery, and token-free idle behavior;
 - adapter tests using fake Codex, Claude Code, Grok, and generic provider
@@ -659,10 +754,10 @@ The extraction is complete when:
 5. Identity and model provenance appear in every response without exposing raw
    session data in Git.
 6. The reviewer cannot edit or commit the artifact.
-7. Each revision is one author commit containing reviewer response, artifact, and
-   author response, with verified hashes and trailers.
-8. Acceptance becomes final only after the author commits the acceptance and
-   manifest against the still-current accepted artifact blob.
+7. In normal commit mode, each revision is one author commit containing reviewer
+   response, artifact, and author response, with verified hashes and trailers.
+8. In normal commit mode, acceptance becomes final only after the author commits
+   the acceptance and manifest against the still-current accepted artifact blob.
 9. A live MCP wait resumes on a real handoff without periodic model turns, and
    documented fallback modes recover without data loss.
 10. Scratch protocol state is ignored while review collateral is written directly
@@ -675,3 +770,7 @@ The extraction is complete when:
     and AITM parity suites pass.
 14. The public release contains signed, independently archived provenance for the
     source, package, and extraction history.
+15. A `--no-commit` review completes the normal author/reviewer dialogue while
+    leaving `HEAD` and the index unchanged, recording immutable scratch snapshots,
+    leaving all collateral uncommitted, and terminating as
+    `accepted-uncommitted`.
