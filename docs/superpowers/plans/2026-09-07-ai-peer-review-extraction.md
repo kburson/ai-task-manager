@@ -268,7 +268,9 @@ those globs into whole-directory prefixes. `assertStandaloneLayout` validates
 current `HEAD` against a narrow standalone layout allowlist. Before parity
 removal it permits only the separately declared retained legacy paths; with
 `requireLegacyRemoved: true` it refuses any of them, proving the publishable tree
-contains only standalone layout. Add
+contains only standalone layout. The executable wrapper accepts only
+`node scripts/verify-extraction.mjs [--require-legacy-removed]`, maps that flag
+to `requireLegacyRemoved: true`, and rejects unknown arguments. Add
 `test/unit/verify-extraction.test.mjs` with fixtures proving a leaked non-co-review
 file, later source ref, foreign standalone path, retained legacy path under the
 release gate, failed/missing scan, empty or changed contributor audit, null
@@ -425,6 +427,7 @@ commit and descendants are Apache-2.0. Record the declaration digest in the
 extraction manifest.
 
 ```bash
+git rm -- LICENSE-COMMERCIAL
 node --test test/unit/verify-extraction.test.mjs
 git diff --check
 ```
@@ -441,6 +444,7 @@ git add .gitleaks.toml LICENSE NOTICE README.md CONTRIBUTING.md \
   scripts/verify-extraction.mjs scripts/run-secret-scan.mjs \
   test/unit/verify-extraction.test.mjs
 git commit -m "chore: establish extracted repository provenance"
+! git ls-tree -r --name-only HEAD | rg '^LICENSE-COMMERCIAL$'
 node scripts/verify-extraction.mjs
 ```
 
@@ -448,9 +452,10 @@ Record this bootstrap commit in `provenance/release-manifest.json` during Task 1
 and verify its first parent is `filtered_history_tip`; do not attempt to embed a
 commit's own SHA in the commit that creates it.
 
-Expected: the commit succeeds, its first parent is `filtered_history_tip`, and
-the post-commit extraction verifier exits 0 while permitting only the explicitly
-declared retained legacy paths pending Task 14's parity removal.
+Expected: the commit succeeds, its first parent is `filtered_history_tip`,
+`LICENSE-COMMERCIAL` is absent from the bootstrap commit tree, and the post-commit
+extraction verifier exits 0 while permitting only the explicitly declared
+retained legacy paths pending Task 14's parity removal.
 
 ### Task 2: Create the Standalone Package and Stable Error Surface
 
@@ -1985,13 +1990,11 @@ npm run test:integration
 npm run test:packaging
 npm run test:smoke
 npm pack --dry-run
-node scripts/verify-extraction.mjs --require-legacy-removed
-git diff --check
-git status --short
 ```
 
-Expected: all commands exit 0, the working tree is clean, and no Phase 1 test
-starts an MCP server or depends on resident liveness.
+Expected: all commands exit 0, and no Phase 1 test starts an MCP server or depends
+on resident liveness. The working tree contains the reviewed release-candidate
+changes and parity-gated legacy deletions that Step 6 will commit.
 
 - [ ] **Step 6: Commit the release candidate**
 
@@ -2004,7 +2007,13 @@ git add -A -- scripts/review scripts/providers scripts/tests \
   ':(glob)docs/superpowers/specs/*co-review*' \
   ':(glob)docs/superpowers/plans/*co-review*'
 git commit -m "release: prepare ai-peer-review 0.1"
+node scripts/verify-extraction.mjs --require-legacy-removed
+git diff --check
+git status --short
 ```
+
+Expected: the commit and all post-commit checks exit 0, the release-candidate
+tree contains no retained legacy paths, and the working tree is clean.
 
 - [ ] **Step 7: Pause for the human publication gate, then publish**
 
