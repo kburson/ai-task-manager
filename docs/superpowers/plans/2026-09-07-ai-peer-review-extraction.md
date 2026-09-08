@@ -106,6 +106,8 @@ ai-peer-review/
   provenance/{extraction-manifest,relicensing-declaration,release-manifest}.json
   test/{unit,integration,golden,packaging,smoke,mcp,helpers}/
   .github/workflows/{ci,release}.yml
+  .gitignore .npmrc .prettierignore .prettierrc.json
+  .markdownlint-cli2.jsonc cspell.json eslint.config.mjs
   README.md CONTRIBUTING.md LICENSE NOTICE package.json
 ```
 
@@ -142,8 +144,9 @@ AITM only after the Phase 2 package is published and verified.
 
 - Consumes: a fresh clone of AITM and immutable source commit
   `4b3bcd43cba141a611da4a2b861433b915462806`.
-- Produces: `verifyExtraction({ root, manifest, runGit }) -> Promise<Result>` and
-  a filtered `ai-peer-review` repository whose extraction manifest records
+- Produces:
+  `verifyExtraction({ root, manifest, runGit, requireLegacyRemoved }) -> Promise<Result>`
+  and a filtered `ai-peer-review` repository whose extraction manifest records
   source SHA, the post-filter source-history boundary, exact retained path
   rules, contributor audit, secret-scan result, and relicensing gate.
 
@@ -153,8 +156,9 @@ AITM only after the Phase 2 package is published and verified.
 git clone --no-local --no-tags --single-branch --branch trunk \
   git@github.com:kburson/ai-task-manager.git ai-peer-review
 git -C ai-peer-review checkout --detach 4b3bcd43cba141a611da4a2b861433b915462806
+git -C ai-peer-review remote remove origin
 git -C ai-peer-review for-each-ref --format='delete %(refname)' \
-  refs/heads refs/remotes refs/tags | git -C ai-peer-review update-ref --stdin
+  refs/heads | git -C ai-peer-review update-ref --stdin
 git -C ai-peer-review update-ref refs/heads/extraction-source \
   4b3bcd43cba141a611da4a2b861433b915462806
 git -C ai-peer-review symbolic-ref HEAD refs/heads/extraction-source
@@ -178,17 +182,29 @@ git -C ai-peer-review log --format='%an <%ae>' -- \
   ':(glob)scripts/tests/**/*co-review*' \
   ':(glob)docs/superpowers/specs/*co-review*' \
   ':(glob)docs/superpowers/plans/*co-review*' \
-  LICENSE NOTICE LICENSE-COMMERCIAL | sort -fu > "$APR_AUDIT_DIR/contributors.txt"
+  LICENSE NOTICE LICENSE-COMMERCIAL | LC_ALL=C sort -fu \
+  > "$APR_AUDIT_DIR/contributors.txt"
 git -C ai-peer-review ls-tree -r --name-only HEAD | \
   rg '^(scripts/review/|scripts/providers/|scripts/tests/.+co-review|docs/superpowers/(specs|plans)/.+co-review|LICENSE$|NOTICE$|LICENSE-COMMERCIAL$)' \
   > "$APR_AUDIT_DIR/retained-paths.txt"
 ```
 
-Expected: the contributor file contains only Kendrick Burson's two historical
-email identities. Any additional contributor stops this task for license review.
+Expected: at source commit `4b3bcd43`, the widened command produces exactly the
+two lines below. A repository-wide third identity does not touch this retained
+path set. Any identity outside this recorded holder set stops this task for
+license review.
+
+```text
+kendrick burson <kpburson@pm.me>
+Kendrick Burson <spam.kpb@gmail.com>
+```
+
 Record the exact command, normalized contributor list, retained-path inventory,
 and SHA-256 digest of each inventory in the extraction manifest; neither file is
-throwaway evidence.
+throwaway evidence. `EXPECTED_HOLDER_IDENTITIES` is a source constant defined in
+`verify-extraction.mjs`, independently of the manifest being checked. Changing
+that constant is a relicensing decision requiring human review, never a test fix
+derived from observed output.
 
 - [ ] **Step 3: Filter only the ratified source boundary**
 
@@ -218,7 +234,7 @@ of the first standalone bootstrap commit.
 Implement `scripts/verify-extraction.mjs` with this exported contract:
 
 ```js
-export async function verifyExtraction({ root, manifest, runGit }) {
+export async function verifyExtraction({ root, manifest, runGit, requireLegacyRemoved = false }) {
   const paths = await runGit(root, [
     'log',
     manifest.filtered_history_tip,
@@ -230,7 +246,11 @@ export async function verifyExtraction({ root, manifest, runGit }) {
   );
   if (foreign.length) throw new Error(`foreign retained paths: ${foreign.join(', ')}`);
   const currentPaths = await runGit(root, ['ls-tree', '-r', '--name-only', 'HEAD']);
-  assertStandaloneLayout(currentPaths, manifest.standalone_path_rules);
+  assertStandaloneLayout(currentPaths, {
+    standaloneRules: manifest.standalone_path_rules,
+    legacyRules: manifest.legacy_retained_path_rules,
+    requireLegacyRemoved,
+  });
   assert.equal(manifest.prefilter_ref_inventory.length, 1);
   assert.equal(manifest.prefilter_ref_inventory[0].object, manifest.source_commit);
   assert.deepEqual(manifest.contributor_audit.normalized_result, EXPECTED_HOLDER_IDENTITIES);
@@ -245,12 +265,15 @@ export async function verifyExtraction({ root, manifest, runGit }) {
 `matchesRetainedRule` supports only the exact paths, directory prefixes, and the
 three explicit `*co-review*` glob rules stored in the manifest; it must not widen
 those globs into whole-directory prefixes. `assertStandaloneLayout` validates
-current `HEAD` against a separate standalone layout allowlist, so new package
-commits are not misclassified as filtered AITM history. Add
+current `HEAD` against a narrow standalone layout allowlist. Before parity
+removal it permits only the separately declared retained legacy paths; with
+`requireLegacyRemoved: true` it refuses any of them, proving the publishable tree
+contains only standalone layout. Add
 `test/unit/verify-extraction.test.mjs` with fixtures proving a leaked non-co-review
-file, later source ref, foreign standalone path, failed/missing scan, empty or
-changed contributor audit, null declaration digest, and malformed boundary fail
-closed while an exact filtered history passes.
+file, later source ref, foreign standalone path, retained legacy path under the
+release gate, failed/missing scan, empty or changed contributor audit, null
+declaration digest, and malformed boundary fail closed while an exact filtered
+history passes.
 
 - [ ] **Step 5: Write and validate the provenance records**
 
@@ -279,25 +302,44 @@ Create `provenance/extraction-manifest.json` with this stable shape:
   },
   "standalone_path_rules": {
     "prefixes": [
-      ".github",
+      ".github/workflows",
       "bin",
-      "docs",
+      "docs/design",
       "provenance",
       "schemas",
-      "scripts",
-      "skills",
+      "skills/peer-review",
       "src",
       "templates",
       "test"
     ],
     "exact": [
+      ".gitignore",
       ".gitleaks.toml",
+      ".markdownlint-cli2.jsonc",
+      ".npmrc",
+      ".prettierignore",
+      ".prettierrc.json",
       "CONTRIBUTING.md",
       "LICENSE",
       "NOTICE",
       "README.md",
+      "cspell.json",
+      "docs/dependency-audit-mcp.md",
+      "docs/spdx-policy.md",
+      "eslint.config.mjs",
       "package-lock.json",
-      "package.json"
+      "package.json",
+      "scripts/run-secret-scan.mjs",
+      "scripts/verify-extraction.mjs",
+      "scripts/verify-release.mjs"
+    ]
+  },
+  "legacy_retained_path_rules": {
+    "prefixes": ["scripts/review", "scripts/providers"],
+    "globs": [
+      "scripts/tests/**/*co-review*",
+      "docs/superpowers/specs/*co-review*",
+      "docs/superpowers/plans/*co-review*"
     ]
   },
   "retained_path_inventory": { "paths": [], "digest": null },
@@ -366,8 +408,9 @@ node --test test/unit/verify-extraction.test.mjs
 Expected: both commands exit 0. Any credential, private data, generated runtime
 state, unrelated AITM content, missing scanner, empty contributor audit, or scan
 result other than `pass` blocks the bootstrap. The full extraction verifier is
-intentionally deferred until Step 7 supplies the mandatory relicensing digest;
-there is no flag that weakens its fail-closed contract.
+intentionally deferred until Step 7 supplies the mandatory relicensing digest
+and Step 8 commits the standalone tree that its `HEAD` check observes; there is
+no flag that weakens its fail-closed contract.
 
 - [ ] **Step 7: Install the new license only after the human gate**
 
@@ -383,7 +426,6 @@ extraction manifest.
 
 ```bash
 node --test test/unit/verify-extraction.test.mjs
-node scripts/verify-extraction.mjs
 git diff --check
 ```
 
@@ -399,11 +441,16 @@ git add .gitleaks.toml LICENSE NOTICE README.md CONTRIBUTING.md \
   scripts/verify-extraction.mjs scripts/run-secret-scan.mjs \
   test/unit/verify-extraction.test.mjs
 git commit -m "chore: establish extracted repository provenance"
+node scripts/verify-extraction.mjs
 ```
 
 Record this bootstrap commit in `provenance/release-manifest.json` during Task 14
 and verify its first parent is `filtered_history_tip`; do not attempt to embed a
 commit's own SHA in the commit that creates it.
+
+Expected: the commit succeeds, its first parent is `filtered_history_tip`, and
+the post-commit extraction verifier exits 0 while permitting only the explicitly
+declared retained legacy paths pending Task 14's parity removal.
 
 ### Task 2: Create the Standalone Package and Stable Error Surface
 
@@ -416,6 +463,13 @@ commit's own SHA in the commit that creates it.
 - Create: `src/errors.mjs`
 - Create: `src/cli/parse.mjs`
 - Create: `src/cli/run.mjs`
+- Create: `eslint.config.mjs`
+- Create: `cspell.json`
+- Create: `.markdownlint-cli2.jsonc`
+- Create: `.prettierrc.json`
+- Create: `.prettierignore`
+- Create: `.gitignore`
+- Create: `.npmrc`
 - Create: `test/unit/errors.test.mjs`
 - Create: `test/unit/cli-parse.test.mjs`
 
@@ -447,6 +501,16 @@ test('AprError has a stable machine contract', () => {
 Assert `package.json` has name `ai-peer-review`, Node `>=22`, bin key
 `peer-review`, ESM type, empty `dependencies`, and a `files` allowlist containing
 only runtime/docs/schema/template/skill/license content.
+
+Create explicit tool configuration owned by this task: ESLint 9 flat config in
+`eslint.config.mjs`, spelling configuration in `cspell.json`, Markdown rules and
+ignores in `.markdownlint-cli2.jsonc`, and Prettier rules/ignores in
+`.prettierrc.json` plus `.prettierignore`. `.npmrc` enables public-package
+provenance without credentials. The standalone repository's tracked `.gitignore`
+ignores `node_modules/`, coverage/tarball outputs, and
+`.scratch/peer-review/`. This repository-development policy does not change the
+installed package rule: host `setup` still uses the Git-reported `info/exclude`
+path and never edits a host's tracked `.gitignore`.
 
 Define these non-overlapping scripts using Node's test runner and
 development-only format/lint/spell tools:
@@ -551,9 +615,11 @@ The parser also owns a frozen positional grammar and per-command constraints.
 singletons. `request-grant` accepts only the flags corresponding to the selected
 action's `GRANT_PARAMETER_FIELDS`, and converts CLI kebab-case names to the
 canonical snake-case fields. `--issue`, turn counts, and TTL are positive
-integers; `--no-artifact-change` requires a non-empty `--reason`; `--reason`
-without it is rejected. Phase 1 rejects `automatic-required` while retaining the
-catalog entry for Phase 2 compatibility.
+integers. `--claim-ttl` is measured in whole hours, defaults to `8`, and is
+converted once to internal `claimTtlMs`; retain the ratified flag name rather
+than adding a unit-renamed alias. `--no-artifact-change` requires a non-empty
+`--reason`; `--reason` without it is rejected. Phase 1 rejects
+`automatic-required` while retaining the catalog entry for Phase 2 compatibility.
 
 - [ ] **Step 2: Run the focused tests and verify RED**
 
@@ -615,8 +681,10 @@ commands not yet connected. Never call `process.exit()` inside library code.
 ```bash
 node --test test/unit/errors.test.mjs test/unit/cli-parse.test.mjs
 node bin/peer-review.mjs --help
-git add package.json package-lock.json bin/peer-review.mjs src/errors.mjs \
-  src/public-api.mjs src/cli/parse.mjs src/cli/run.mjs \
+git add package.json package-lock.json .gitignore .npmrc .prettierignore \
+  .prettierrc.json .markdownlint-cli2.jsonc cspell.json eslint.config.mjs \
+  bin/peer-review.mjs src/errors.mjs src/public-api.mjs src/cli/parse.mjs \
+  src/cli/run.mjs \
   test/unit/errors.test.mjs test/unit/cli-parse.test.mjs
 git commit -m "feat: establish standalone CLI contract"
 ```
@@ -883,7 +951,9 @@ responses/manifests.
 Test claims for random claim ID, role, fingerprint, host, claimed/activity/expiry
 times, diagnostic CLI PID, default eight-hour TTL, stale-claim derivation,
 same-fingerprint reclaim without a grant, different-fingerprint refusal, and no
-reclaim while an unexpired authority challenge exists.
+reclaim while an unexpired authority challenge exists. Parse `--claim-ttl` as
+whole hours, test `1` and `8`, convert exactly once to milliseconds, and reject
+zero, fractional, negative, and unit-suffixed values.
 
 - [ ] **Step 2: Run the focused tests and verify RED**
 
@@ -1828,6 +1898,8 @@ git commit -m "feat: install and diagnose peer review"
 - Delete after parity passes: extracted legacy `scripts/review/**`
 - Delete after parity passes: extracted legacy `scripts/providers/**`
 - Delete after parity passes: extracted legacy `scripts/tests/**`
+- Delete after parity passes: extracted legacy
+  `docs/superpowers/{specs,plans}/*co-review*`
 
 **Interfaces:**
 
@@ -1878,9 +1950,10 @@ test for each lifecycle, budget, supplement, good-enough, consistency, handoff,
 provider-session, boundary, finalization, and index behavior that remains in
 scope; mark AITM archive/index/occupancy behavior as intentionally replaced with
 the ratified standalone test name. Only after that ledger passes, delete the
-extracted legacy runtime/provider/test paths from the new repository. Their
-history remains reachable, but publishable `HEAD` uses only `src/`, `test/`, and
-the standalone layout.
+extracted legacy runtime/provider/test paths and co-review spec/plan working-tree
+copies from the new repository. Their history remains reachable through
+`filtered_history_tip`, while the ratified design remains at `docs/design/` and
+publishable `HEAD` uses only the narrow standalone layout.
 
 - [ ] **Step 4: Finalize the read-only public API and release verifier**
 
@@ -1891,7 +1964,8 @@ export { statusReview } from './protocol/service.mjs';
 export { explainError } from './cli/help-data.mjs';
 ```
 
-`scripts/verify-release.mjs` must fail unless the extraction verifier is clean,
+`scripts/verify-release.mjs` must call the extraction verifier with
+`requireLegacyRemoved: true` and fail unless it is clean,
 the relicensing declaration signature is present and valid, source SHA matches,
 the bootstrap commit's first parent equals `filtered_history_tip`, the complete
 contributor audit is non-empty, `secret_scan.result` is `pass`, the declaration
@@ -1911,7 +1985,7 @@ npm run test:integration
 npm run test:packaging
 npm run test:smoke
 npm pack --dry-run
-node scripts/verify-extraction.mjs
+node scripts/verify-extraction.mjs --require-legacy-removed
 git diff --check
 git status --short
 ```
@@ -1926,6 +2000,9 @@ git add README.md .github/workflows/ci.yml .github/workflows/release.yml package
   src/public-api.mjs scripts/verify-release.mjs test/packaging/package.test.mjs \
   test/smoke/cli.test.mjs test/integration/ported-behavior-parity.test.mjs \
   provenance/extraction-manifest.json provenance/release-manifest.json
+git add -A -- scripts/review scripts/providers scripts/tests \
+  ':(glob)docs/superpowers/specs/*co-review*' \
+  ':(glob)docs/superpowers/plans/*co-review*'
 git commit -m "release: prepare ai-peer-review 0.1"
 ```
 
@@ -1975,7 +2052,9 @@ HostReviewStatus`, and AITM configuration using reviews root
 
 Set `APR_AITM_ISSUE` to the supplied issue's returned positive integer, bind it
 with `npx aitm start`, and confirm it is in Develop with the required
-planning/deep-dive evidence. This is runtime evidence, not a plan placeholder:
+planning/deep-dive evidence. In the current AITM command surface, `start` is the
+documented bind-and-start operation; there is no separate `aitm bind` verb. This
+is runtime evidence, not a plan placeholder:
 
 ```bash
 : "${APR_AITM_ISSUE:?set APR_AITM_ISSUE to the governed migration issue ID}"
@@ -2043,7 +2122,9 @@ status only as non-authoritative occupancy data. Do not import package internals
 Run parity with both engines present. If and only if no active legacy review
 exists and parity passes, delete the duplicate CLI/runtime/templates and only
 those tests now owned by the package. Preserve provider code still used elsewhere
-in AITM and every accepted archive.
+in AITM and every accepted archive. Step 7's path-limited `git add -A` records
+only deletions this guard actually authorized; when the guard retains legacy
+runtime, that staging command is a no-op for unchanged paths.
 
 - [ ] **Step 7: Run governed AITM Develop verification and commit**
 
@@ -2064,14 +2145,15 @@ git add package.json package-lock.json \
 git add -A -- scripts/review
 git commit -m "[#${APR_AITM_ISSUE}] feat: consume standalone peer review package"
 node scripts/task-tracker/verify-develop.mjs --mode final --issue "$APR_AITM_ISSUE"
-npx aitm test "$APR_AITM_ISSUE"
+npx aitm promote "$APR_AITM_ISSUE"
 ```
 
 Expected: focused and iteration checks pass before the attributed commit; exact-
-SHA finalization passes on the clean commit; the governed Test transition runs
-AITM's configured verification contract. No AITM `src`/runtime copy of package
-authority remains, and active legacy review removal is still refused. Do not
-substitute direct state mutation or a duplicate ad hoc full-suite run.
+SHA finalization passes on the clean commit; governed promotion runs the
+Develop-to-Test preflights and then AITM's configured Test verification
+contract. No AITM `src`/runtime copy of package authority remains, and active
+legacy review removal is still refused. Do not substitute direct state mutation
+or a duplicate ad hoc full-suite run.
 
 ### Task 16: Add Race-Safe MCP Waiting in Phase 2
 
@@ -2276,7 +2358,9 @@ until that verifier passes.
 
 If no issue exists, stop and create one through `/task new` / the sanctioned
 `scripts/gh/create-issue.mjs --shape solo` workflow. Set `APR_AITM_PHASE2_ISSUE`
-to its returned positive ID and take it through the ordinary gates:
+to its returned positive ID and take it through the ordinary gates. `aitm start`
+is the documented bind-and-start operation; there is no separate `aitm bind`
+verb:
 
 ```bash
 : "${APR_AITM_PHASE2_ISSUE:?set APR_AITM_PHASE2_ISSUE to the governed upgrade issue ID}"
@@ -2324,12 +2408,13 @@ git add package.json package-lock.json \
 git commit -m "[#${APR_AITM_PHASE2_ISSUE}] feat: consume ai-peer-review 0.2"
 node scripts/task-tracker/verify-develop.mjs --mode final \
   --issue "$APR_AITM_PHASE2_ISSUE"
-npx aitm test "$APR_AITM_PHASE2_ISSUE"
+npx aitm promote "$APR_AITM_PHASE2_ISSUE"
 ```
 
 Expected: compatibility and iteration checks pass before the attributed commit;
-exact-SHA finalization passes afterward; AITM's Test transition runs the hosted
-contract without changing package schemas or the manual recovery path.
+exact-SHA finalization passes afterward; governed promotion runs the
+Develop-to-Test preflights and then AITM's hosted verification contract without
+changing package schemas or the manual recovery path.
 
 ## Final Spec-Coverage Gate
 
