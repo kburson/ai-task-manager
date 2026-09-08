@@ -22,7 +22,7 @@ The in-memory forecast remains `aitm.estimation-forecast/v2` and continues to co
   "comparableIssues": [
     {
       "issue": 1180,
-      "outcomeRecordId": "01M1DVK8Q17WQERJQHBEVDM0ET",
+      "outcomeRecordId": "01J00000000000000000000110",
       "weight": 0.6359
     }
   ]
@@ -50,7 +50,7 @@ The visible comment contains the sole entry copy:
   <ul id="comparableIssues">
     <li>
       <a href="https://github.com/kburson/ai-task-manager/issues/1180">#1180</a>:
-      {"outcomeRecordId":"01M1DVK8Q17WQERJQHBEVDM0ET","weight":0.6359}
+      {"outcomeRecordId":"01J00000000000000000000110","weight":0.6359}
     </li>
   </ul>
 </details>

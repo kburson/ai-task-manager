@@ -771,7 +771,7 @@ assert.match(emptyRendered, /Comparable outcomes: count = 0/);
 assert.match(emptyRendered, /<ul id="comparableIssues">\n<\/ul>/);
 ```
 
-Assert that omitting or malforming `repository` fails so a writer cannot emit deceptive or relative targets:
+Assert that omitting or supplying a malformed `repository` fails so a writer cannot emit deceptive or relative targets:
 
 ```js
 for (const repository of [undefined, 'not-a-repository', 'owner/repo/extra']) {
