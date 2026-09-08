@@ -11,11 +11,13 @@ pinned implementation plans owned by each nested epic.
 
 - `docs/superpowers/specs/2026-09-01-1219-cloud-test-stage-design.md`
 - `docs/superpowers/specs/2026-09-04-1219-continuous-agent-delivery-amendment-design.md`
-  at `1375edfd4b29c98e407ae428a15f992dbdff2cd6`
+  at trunk commit `c6e0ab5f21d469496ae83d85de93c3c48ba2189a`, patch-identical
+  to pre-rebase commit `1375edfd4b29c98e407ae428a15f992dbdff2cd6`
 
 **Accepted amendment plan:**
 `docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md`
-at `7187854e13e21b357b4272afe349fc4b74f92767`
+at trunk commit `411c441d8b53952c009f90103fb41542a55c0020`, patch-identical to
+pre-rebase commit `7187854e13e21b357b4272afe349fc4b74f92767`
 
 ## Migrated story order
 

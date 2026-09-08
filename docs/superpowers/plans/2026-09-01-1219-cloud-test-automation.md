@@ -298,8 +298,11 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       Slow lanes on the declared host profile and normalize them into the
       checked-in fixture. Record command, commit, generated timestamp, SHA-256,
       runner/host profile, lane, file count, per-file timings, and discovery
-      inventory. Refuse a fixture whose commit or discovered file set differs
-      from the partitioned head.
+      inventory. Also record a calibration-input SHA-256 over the canonical lane
+      inventories, test-file blob IDs, and dependency lock. A consumer may run at
+      a descendant commit only when that digest and the discovered file set are
+      unchanged; otherwise refuse the fixture. The partition itself still binds
+      the exact execution head.
 - [ ] Extend timing serialization to schema 5 so future artifacts include command,
       commit, runner/host profile, lane, and file count without changing schema-1
       through schema-4 reads.
@@ -362,8 +365,9 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 - [ ] Implement `partition-tests.mjs` as the CLI adapter around
       `planWeightedShards`; it loads the exact-head lane manifest and normalized
       baseline weight list, fills only genuinely new files with the labeled
-      lane-median fallback, verifies the output, and writes only the requested
-      repository-relative JSON path.
+      lane-median fallback, verifies that the baseline's measured commit is an
+      ancestor and its calibration-input digest still matches, verifies the
+      output, and writes only the requested repository-relative JSON path.
 - [ ] Extend the runner with `--shard slow-1` and
       `--partition .tmp/aitm/canary-slow-width-2.json`. Treat those values as
       repeatable CLI parameters rather than hard-coded constants. Resolve the

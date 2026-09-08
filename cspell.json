@@ -24,6 +24,7 @@
     "*.tgz",
     "docs/postmortems/**",
     "docs/ai-memory/**",
+    "docs/superpowers/reviews/1219/**/protocol-runs/**",
     "scripts/reports/regional-rates.json",
     "cspell-dictionary.txt"
   ]

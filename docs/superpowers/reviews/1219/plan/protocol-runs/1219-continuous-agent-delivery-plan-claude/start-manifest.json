@@ -1,0 +1,30 @@
+{
+  "schema": "aitm.co-review-start/v1",
+  "protocolId": "429f06e0-39d7-4565-b5e3-c42b880ff479",
+  "runtimeDir": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude",
+  "artifact": "docs/superpowers/plans/2026-09-04-1219-continuous-agent-delivery-amendment.md",
+  "owner": "codex",
+  "reviewer": "claude",
+  "maxReviewTurns": 10,
+  "initialization": {
+    "claimProvenance": "provider-session/v1"
+  },
+  "waitCycles": 15,
+  "waitIntervalSeconds": 60,
+  "hostArchive": {
+    "issue": 1219,
+    "artifactKind": "plan",
+    "archiveDir": "docs/superpowers/reviews/1219/plan"
+  },
+  "handoffs": {
+    "author": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/author-handoff.md",
+      "sha256": "sha256:7f9ef1b579a445bda81a412a646c957b6fed13006b012f4dab0634b62cdfed3c"
+    },
+    "reviewer": {
+      "path": ".scratch/co-review/1219-continuous-agent-delivery-plan-claude/reviewer-handoff.md",
+      "sha256": "sha256:d0d56fdabd41bb3ede03c4de50958d7836f57921851ca7ac73b52bd7461c4596"
+    }
+  },
+  "createdAt": "2026-09-04T23:30:23.265Z"
+}

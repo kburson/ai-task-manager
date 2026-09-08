@@ -113,6 +113,24 @@ function sample() {
   ];
 }
 
+function provenanceMeta(overrides = {}) {
+  return {
+    lane: 'all',
+    generatedAt: '2026-09-02T00:00:00Z',
+    command: 'node scripts/run-tests.mjs --lane all',
+    commit: 'a'.repeat(40),
+    runnerProfile: {
+      label: 'local-test',
+      platform: 'darwin',
+      arch: 'arm64',
+      nodeVersion: '25.6.0',
+      logicalCpuCount: 10,
+    },
+    discoveryInventory: sample().map(({ file }) => file),
+    ...overrides,
+  };
+}
+
 test('buildTimingReport aggregates totals, ordering, and share', () => {
   const r = buildTimingReport(sample());
   assert.equal(r.count, 5);
@@ -161,18 +179,26 @@ test('auditSlowBucket classifies against the ≥2000ms rule', () => {
 
 test('serializeArtifact keys files by path and carries totals + slow bucket', () => {
   const art = serializeArtifact(sample(), {
-    lane: 'all',
-    generatedAt: '2026-07-19T00:00:00Z',
+    ...provenanceMeta({ generatedAt: '2026-07-19T00:00:00Z' }),
     runnerElapsedMs: 4800,
     poolElapsedMs: 2100,
     subprocessPoolElapsedMs: 700,
     slowPoolElapsedMs: 600,
     serialElapsedMs: 2000,
   });
-  assert.equal(art.schema, 4);
+  assert.equal(art.schema, 5);
   assert.equal(art.lane, 'all');
   assert.equal(art.generatedAt, '2026-07-19T00:00:00Z');
   assert.equal(art.count, 5);
+  assert.equal(art.command, 'node scripts/run-tests.mjs --lane all');
+  assert.equal(art.commit, 'a'.repeat(40));
+  assert.equal(art.runnerProfile.label, 'local-test');
+  assert.deepEqual(
+    art.discoveryInventory,
+    sample()
+      .map(({ file }) => file)
+      .sort()
+  );
   assert.equal(art.elapsed.runnerMs, 4800);
   assert.equal(art.elapsed.poolMs, 2100);
   assert.equal(art.elapsed.subprocessPoolMs, 700);
@@ -187,6 +213,26 @@ test('serializeArtifact keys files by path and carries totals + slow bucket', ()
   assert.equal(art.slowBucket.slowBucketFiles, 2);
   // artifact must survive a JSON round trip (it is written to disk as JSON)
   assert.deepEqual(JSON.parse(JSON.stringify(art)), art);
+});
+
+test('serializeArtifact refuses missing or inconsistent schema-5 provenance', () => {
+  assert.throws(() => serializeArtifact(sample(), { lane: 'all' }), /generatedAt/);
+  assert.throws(
+    () => serializeArtifact(sample(), provenanceMeta({ commit: 'not-a-sha' })),
+    /commit/
+  );
+  assert.throws(
+    () =>
+      serializeArtifact(
+        sample(),
+        provenanceMeta({
+          discoveryInventory: sample()
+            .slice(1)
+            .map(({ file }) => file),
+        })
+      ),
+    /discovery inventory/
+  );
 });
 
 test('normalizeTimingArtifact preserves schema 1 wall as a sum, never actual elapsed', () => {
@@ -244,6 +290,23 @@ test('normalizeTimingArtifact preserves every schema 3 elapsed phase', () => {
   });
 });
 
+test('normalizeTimingArtifact preserves schema 4 and schema 5 without fabricating provenance', () => {
+  const schema4 = normalizeTimingArtifact({
+    schema: 4,
+    elapsed: { runnerMs: 10, poolMs: 4, subprocessPoolMs: 2, slowPoolMs: 1, serialMs: 3 },
+    sums: { fileWallMs: 12, inProcessMs: 10, estimatedSpawnIoMs: 2 },
+  });
+  assert.equal(schema4.sourceSchema, 4);
+  assert.equal(schema4.command, undefined);
+
+  const schema5Artifact = serializeArtifact(sample(), provenanceMeta());
+  const schema5 = normalizeTimingArtifact(schema5Artifact);
+  assert.equal(schema5.sourceSchema, 5);
+  assert.equal(schema5.command, 'node scripts/run-tests.mjs --lane all');
+  assert.equal(schema5.commit, 'a'.repeat(40));
+  assert.equal(schema5.runnerProfile.label, 'local-test');
+});
+
 test('formatTimingReport renders a non-empty block and handles empty input', () => {
   const out = formatTimingReport(buildTimingReport(sample()));
   assert.match(out, /Test timing report/);
@@ -267,7 +330,7 @@ test('timing aggregation adds only bounded overhead per record', () => {
   }
   const t0 = process.hrtime.bigint();
   const report = buildTimingReport(big);
-  serializeArtifact(big, { lane: 'all' });
+  serializeArtifact(big, provenanceMeta({ discoveryInventory: big.map(({ file }) => file) }));
   const perRecordMs = Number(process.hrtime.bigint() - t0) / 1e6 / big.length;
   assert.equal(report.count, 600);
   assert.ok(perRecordMs < 1, `expected < 1ms/record, got ${perRecordMs.toFixed(4)}ms`);

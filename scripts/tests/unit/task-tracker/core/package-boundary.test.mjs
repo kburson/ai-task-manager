@@ -112,7 +112,8 @@ function repoRoot() {
 // the existing eight-entry headroom; path exclusions remain unchanged.
 // #1500 adds the reviewed v2 enrollment, runtime-capability and command adapters.
 // #1512 intentionally ships the manual PR-review policy module and shared rule.
-const ENTRY_CEILING = 773;
+// #1226 intentionally ships the cloud Test performance-baseline runtime module.
+const ENTRY_CEILING = 774;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
