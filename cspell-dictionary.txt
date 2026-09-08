@@ -109,6 +109,7 @@ ensp
 entrancy
 Erlikh
 etoolbox
+exfiltrates
 fancyfoot
 fancyhdr
 fancyhead
@@ -128,6 +129,7 @@ Forrester
 frontmatter
 genericity
 gitdir
+goldens
 greppable
 gridline
 headheight
@@ -226,6 +228,7 @@ oneside
 OOPSLA
 otplib
 overbroad
+overclaim
 Overclaiming
 overexplaining
 overinterpreted
@@ -238,6 +241,8 @@ paperheight
 papersize
 parskip
 pasteable
+pathspec
+pathspecs
 paydown
 paywalled
 pexec
@@ -294,6 +299,8 @@ Reeval
 REEVAL
 refcounted
 refetched
+reflog
+reflogs
 reflowable
 regenerable
 Reincludes
@@ -307,6 +314,7 @@ requalified
 requalify
 rescan
 rescanning
+rescope
 retargeted
 rmdirs
 rollups
@@ -327,6 +335,7 @@ setlength
 shellcheck
 sidechain
 Sidechain
+signingkey
 Skank
 spawnable
 speccing
@@ -341,6 +350,8 @@ Stmts
 stopword
 stopwords
 strawman
+subclaim
+subclaims
 subdirs
 subfolder
 subfolders
@@ -349,6 +360,7 @@ subheaders
 subshell
 Swiftorial
 symlink
+symref
 tangoes
 testaudit
 testless
@@ -384,6 +396,7 @@ tzset
 unblockers
 unbold
 unbolded
+unbuilt
 unbypassable
 uncallable
 uncited
@@ -434,6 +447,7 @@ usepackage
 Verif
 Vijayvergiya
 virality
+watchpoints
 Willison
 Willison's
 winget
