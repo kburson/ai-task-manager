@@ -482,7 +482,6 @@ test('/task test audits --force before rerunning a valid exact-SHA Test receipt'
 
 test('/task test refuses when the completed sandbox fingerprint is dirty', async () => {
   let body = issueBody();
-  let fingerprintCalls = 0;
   const comments = [];
   const result = await runVerbTest({
     cfg,
@@ -505,10 +504,10 @@ test('/task test refuses when the completed sandbox fingerprint is dirty', async
       removeWorktree: async () => {},
       npmCi: async () => {},
       getSandboxHeadSha: async () => SHA,
-      buildFingerprint: () => {
-        fingerprintCalls += 1;
-        const value = fingerprint('/sandbox');
-        if (fingerprintCalls === 2) value.environment.sandbox.clean = false;
+      buildFingerprint: ({ projectDir }) => {
+        const isSandbox = projectDir !== process.cwd();
+        const value = fingerprint(isSandbox ? '/sandbox' : '/outer');
+        if (isSandbox) value.environment.sandbox.clean = false;
         return value;
       },
       execInSandbox: async () => ({ exit: 0, stdout: '', stderr: '', durationMs: 1 }),
