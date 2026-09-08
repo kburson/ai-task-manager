@@ -1263,7 +1263,8 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
             for (const [key, value] of Object.entries(variables)) {
               args.push(Number.isInteger(value) ? '-F' : '-f', `${key}=${value}`);
             }
-            return json('gh', args);
+            const payload = await json('gh', args);
+            return payload?.data;
           },
         },
       });
