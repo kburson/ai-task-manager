@@ -1263,7 +1263,18 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
             for (const [key, value] of Object.entries(variables)) {
               args.push(Number.isInteger(value) ? '-F' : '-f', `${key}=${value}`);
             }
-            return json('gh', args);
+            const payload = await json('gh', args);
+            const issue = payload?.data?.repository?.issue;
+            const parent = issue?.parent;
+            if (
+              payload?.errors ||
+              !issue ||
+              !Object.hasOwn(issue, 'parent') ||
+              (parent !== null && (!Number.isSafeInteger(parent?.number) || parent.number <= 0))
+            ) {
+              throw deliverError('lineage');
+            }
+            return payload?.data;
           },
         },
       });
