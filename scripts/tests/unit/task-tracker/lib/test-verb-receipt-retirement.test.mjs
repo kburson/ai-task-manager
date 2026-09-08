@@ -58,9 +58,9 @@ function testReceipt() {
   });
 }
 
-function testBody(receipt = testReceipt()) {
+function testBody(receipt = testReceipt(), state = 'test') {
   const body = [
-    '<!-- aitm-last-known-state: test -->',
+    `<!-- aitm-last-known-state: ${state} -->`,
     '## Verification Commands',
     ...VERIFICATION_COMMANDS.map((command) => `- [ ] \`${command}\``),
   ].join('\n');
@@ -135,6 +135,23 @@ test('retires stale claimed Test evidence before finalization or worktree creati
     projectDir: process.cwd(),
     now: () => INSTANT,
     deps: passingDeps(testBody(receipt), events, receipt),
+  });
+
+  assert.ok(['passed', 'reverified'].includes(result.status), JSON.stringify(result));
+  assert.equal(events[0], 'retire');
+  assert.ok(events.indexOf('retire') < events.indexOf('finalize'));
+  assert.ok(events.indexOf('retire') < events.indexOf('worktree'));
+});
+
+test('retires stale claimed Test evidence from Develop before replacement verification', async () => {
+  const receipt = testReceipt();
+  const events = [];
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: ISSUE,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps: passingDeps(testBody(receipt, 'develop'), events, receipt),
   });
 
   assert.ok(['passed', 'reverified'].includes(result.status), JSON.stringify(result));

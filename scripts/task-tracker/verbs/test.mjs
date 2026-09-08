@@ -674,22 +674,27 @@ export async function runVerbTest({
     return { status: 'receipt-retirement-failed', sha, reasons };
   }
 
-  if (runDevelopFinalization && currentState === 'test') {
-    const currentFingerprint = await buildFingerprint({
-      projectDir,
-      commitSha: sha,
-      verificationCommands: vcs,
-    });
+  if (runDevelopFinalization) {
     const existingTestReceipt = parseVerificationReceipt(body, 'test');
     const claimedTestReceipt = hasClaimedVerificationReceiptMarker(body, 'test');
-    const existingValidation = validateVerificationReceipt({
-      receipt: existingTestReceipt,
-      expectedIssue: Number(issueNum),
-      expectedStage: 'test',
-      fingerprint: currentFingerprint,
-      required: requiredTestReceiptClassifications(existingTestReceipt),
-    });
-    if (existingValidation.ok && deps.forceRerun !== true) {
+    const shouldInspectTestReceipt = currentState === 'test' || claimedTestReceipt;
+    const currentFingerprint = shouldInspectTestReceipt
+      ? await buildFingerprint({
+          projectDir,
+          commitSha: sha,
+          verificationCommands: vcs,
+        })
+      : null;
+    const existingValidation = shouldInspectTestReceipt
+      ? validateVerificationReceipt({
+          receipt: existingTestReceipt,
+          expectedIssue: Number(issueNum),
+          expectedStage: 'test',
+          fingerprint: currentFingerprint,
+          required: requiredTestReceiptClassifications(existingTestReceipt),
+        })
+      : { ok: false, reasons: [] };
+    if (currentState === 'test' && existingValidation.ok && deps.forceRerun !== true) {
       return {
         status: 'already-verified',
         sha,
@@ -697,7 +702,7 @@ export async function runVerbTest({
         reasons: [],
       };
     }
-    if (existingValidation.ok && deps.forceRerun === true) {
+    if (currentState === 'test' && existingValidation.ok && deps.forceRerun === true) {
       await postComment({
         cfg,
         issueNum,

@@ -10,6 +10,7 @@ import {
   canonicalVerificationCommandSet,
   parseVerificationReceipt,
 } from '../../../../task-tracker/lib/verification-receipt.mjs';
+import { retireVerificationReceiptMarker } from '../../../../task-tracker/lib/verification-receipt-retirement.mjs';
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 import { resolveReviewVerificationEvidence } from '../../../../task-tracker/verbs/review.mjs';
 
@@ -103,6 +104,15 @@ test('unchanged lifecycle owns each standard command once and invalidates on a n
         mutateBody: async ({ mutate }) => {
           body = mutate(body);
           return { status: 'ok' };
+        },
+        retireVerificationReceipt: async ({ stage, receiptId }) => {
+          const retired = retireVerificationReceiptMarker(body, {
+            expectedIssue: 1089,
+            stage,
+            receiptId,
+          });
+          body = retired.body;
+          return retired;
         },
         postComment: async () => {},
         getHeadSha: async () => sha,
