@@ -26,6 +26,10 @@ const ALLOWLIST = new Map(
       1,
       'immutable historical defect reproduction',
     ],
+    'docs/superpowers/reviews/1219/spec/legacy-commits/26a5d5b5-cloud-test-stage-design.patch': [
+      1,
+      'immutable historical review provenance',
+    ],
     'docs/ai-memory/MEMORY.md': [1, 'mirrored factual state-rename history'],
     'docs/ai-memory/project_board_columns_2026_05.md': [2, 'mirrored factual state-rename history'],
     'scripts/gh/init-project-config.sh': [8, 'explicit migration refusal and guidance'],
