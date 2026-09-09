@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   classifyLegacyDependencyIssue,
+  listLegacyDependencyIssues,
   migrateLegacyDependencyIssue,
   parseMigrationArgs,
   removeStrictVisibleMarker,
@@ -11,6 +12,27 @@ import {
 } from '../../../../task-tracker/verbs/migrate-dependencies.mjs';
 
 const marker = '<!-- aitm-blocked-by refs="#42,#48" -->';
+
+test('issue enumeration stays below GitHub GraphQL node-cost limits', async () => {
+  let source = '';
+  const issues = await listLegacyDependencyIssues({
+    cfg: { repo: 'o/r', projectId: 'P' },
+    deps: {
+      gql: async (query) => {
+        source = query;
+        return {
+          repository: {
+            issues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+          },
+        };
+      },
+    },
+  });
+  assert.deepEqual(issues, []);
+  assert.match(source, /projectItems\(first:20\)/);
+  assert.match(source, /fieldValues\(first:50\)/);
+  assert.doesNotMatch(source, /projectItems\(first:100\)/);
+});
 
 test('classification migrates only strict open markers and ignores fenced examples', () => {
   assert.deepEqual(

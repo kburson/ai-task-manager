@@ -237,8 +237,8 @@ export async function listLegacyDependencyIssues({ cfg, deps = {} } = {}) {
             nodes{
               number state body
               labels(first:100){nodes{name} pageInfo{hasNextPage}}
-              projectItems(first:100){
-                nodes{id project{id} fieldValues(first:100){
+              projectItems(first:20){
+                nodes{id project{id} fieldValues(first:50){
                   nodes{... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{id}}}}
                   pageInfo{hasNextPage}
                 }}
