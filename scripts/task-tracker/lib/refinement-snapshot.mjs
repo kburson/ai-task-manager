@@ -11,8 +11,8 @@ import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { parseBlockedByStrict } from './blocked-marker.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 
-export const REFINEMENT_SNAPSHOT_SCHEMA = '2';
-const LEGACY_REFINEMENT_SNAPSHOT_SCHEMA = '1';
+export const REFINEMENT_SNAPSHOT_SCHEMA = '3';
+const LEGACY_REFINEMENT_SNAPSHOT_SCHEMAS = new Set(['1', '2']);
 export const REFINEMENT_SNAPSHOT_MARKER_RE = /<!--\s*aitm-refinement-snapshot\s+[^>]*?-->/gi;
 
 const REQUIRED_FIELDS = Object.freeze(['priority', 'size', 'estimate', 'rank']);
@@ -34,10 +34,11 @@ function rootSection(body, heading) {
   return normalizedText(match?.[1]);
 }
 
-function normalizedLabels(labels) {
+function normalizedLabels(labels, { excludeLegacyBlocked = false } = {}) {
   if (!Array.isArray(labels)) fail('labels');
   const values = [...new Set(labels.map((label) => String(label || '').trim()).filter(Boolean))]
     .map((label) => label.toLowerCase())
+    .filter((label) => !excludeLegacyBlocked || label !== 'blocked')
     .sort();
   if (values.length === 0) fail('labels');
   return values;
@@ -66,7 +67,7 @@ function snapshotBlockedByRefs(value) {
   return parseBlockedByStrict(serializeMarker('blocked-by', { refs: value }));
 }
 
-function legacyRefinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
+function schema1RefinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
   const withoutMarker = String(body || '').replace(REFINEMENT_SNAPSHOT_MARKER_RE, '');
   const scope = rootSection(withoutMarker, 'Scope');
   if (scope.length < 12) fail('scope');
@@ -108,7 +109,7 @@ function provenanceDigest(body, fallback) {
   return createHash('sha256').update(JSON.stringify(parsed)).digest('hex');
 }
 
-function refinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
+function schema2RefinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
   const withoutMarker = String(body || '').replace(REFINEMENT_SNAPSHOT_MARKER_RE, '');
   const scope = rootSection(withoutMarker, 'Scope');
   if (scope.length < 12) fail('scope');
@@ -125,6 +126,24 @@ function refinementInputs(body, labels, { durableProvenance, durableFields } = {
     fields: fieldValues,
     dependencies,
     labels: normalizedLabels(labels),
+    provenance: provenanceDigest(withoutMarker, durableProvenance),
+  };
+}
+
+function refinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
+  const withoutMarker = String(body || '')
+    .replace(REFINEMENT_SNAPSHOT_MARKER_RE, '')
+    .replace(/^[ \t]*<!--\s*aitm-blocked-by\b[^\n]*?-->[ \t]*(?:\n|$)/gim, '')
+    .replace(/"blockedBy"\s*:\s*(?:null|"[^"]*"|\[[^\]]*\])/g, '"blockedBy":null');
+  const scope = rootSection(withoutMarker, 'Scope');
+  if (scope.length < 12) fail('scope');
+  const acceptanceCriteria = rootSection(withoutMarker, 'Acceptance Criteria');
+  if (!/^- \[[ x]\]\s+\S+/m.test(acceptanceCriteria)) fail('acceptance-criteria');
+  return {
+    scope,
+    acceptanceCriteria,
+    fields: durableFields || requiredFieldValues(withoutMarker),
+    labels: normalizedLabels(labels, { excludeLegacyBlocked: true }),
     provenance: provenanceDigest(withoutMarker, durableProvenance),
   };
 }
@@ -147,7 +166,6 @@ export function buildRefinementSnapshotMarker(body, { labels, ts } = {}) {
     size: fields.size,
     estimate: fields.estimate,
     rank: fields.rank,
-    'blocked-by': fields.blockedBy ?? '',
     ts: timestamp,
   });
 }
@@ -166,7 +184,7 @@ export function parseRefinementSnapshot(body) {
   if (!parsed || parsed.name !== 'refinement-snapshot') return null;
   const { schema, digest, provenance, priority, size, estimate, rank, ts } = parsed.props || {};
   if (
-    ![LEGACY_REFINEMENT_SNAPSHOT_SCHEMA, REFINEMENT_SNAPSHOT_SCHEMA].includes(schema) ||
+    (!LEGACY_REFINEMENT_SNAPSHOT_SCHEMAS.has(schema) && schema !== REFINEMENT_SNAPSHOT_SCHEMA) ||
     !/^[0-9a-f]{64}$/.test(digest || '') ||
     !/^[0-9a-f]{64}$/.test(provenance || '') ||
     !Number.isFinite(Date.parse(ts || '')) ||
@@ -176,18 +194,21 @@ export function parseRefinementSnapshot(body) {
     !Number.isFinite(Number(rank))
   )
     return null;
+  const fields = {
+    priority,
+    size,
+    estimate: Number(estimate),
+    rank: Number(rank),
+  };
+  if (LEGACY_REFINEMENT_SNAPSHOT_SCHEMAS.has(schema)) {
+    fields.blockedBy = parsed.props['blocked-by'] || null;
+  }
   return {
     schema,
     digest,
     provenance,
     ts,
-    fields: {
-      priority,
-      size,
-      estimate: Number(estimate),
-      rank: Number(rank),
-      blockedBy: parsed.props['blocked-by'] || null,
-    },
+    fields,
   };
 }
 
@@ -195,16 +216,22 @@ export function verifyRefinementSnapshot(body, { labels, allowPlanProjection = f
   const snapshot = parseRefinementSnapshot(body);
   if (!snapshot) return { ok: false, reason: 'missing or malformed refinement snapshot' };
   try {
-    const legacy = snapshot.schema === LEGACY_REFINEMENT_SNAPSHOT_SCHEMA;
+    const historical = LEGACY_REFINEMENT_SNAPSHOT_SCHEMAS.has(snapshot.schema);
+    const schema1 = snapshot.schema === '1';
     const durableFields = allowPlanProjection
       ? {
-          ...requiredFieldValues(body, { includeBlockedBy: legacy }),
+          ...requiredFieldValues(body, { includeBlockedBy: schema1 }),
           size: snapshot.fields.size,
           estimate: snapshot.fields.estimate,
-          ...(legacy ? { blockedBy: snapshot.fields.blockedBy } : {}),
+          ...(schema1 ? { blockedBy: snapshot.fields.blockedBy } : {}),
         }
       : undefined;
-    const inputBuilder = legacy ? legacyRefinementInputs : refinementInputs;
+    const inputBuilder =
+      snapshot.schema === '1'
+        ? schema1RefinementInputs
+        : snapshot.schema === '2'
+          ? schema2RefinementInputs
+          : refinementInputs;
     const digest = digestInputs(
       inputBuilder(body, labels, {
         durableProvenance: snapshot.provenance,
@@ -214,10 +241,12 @@ export function verifyRefinementSnapshot(body, { labels, allowPlanProjection = f
     if (digest !== snapshot.digest) {
       return { ok: false, reason: 'stale refinement snapshot', snapshot };
     }
-    const liveBlockers = parseBlockedByStrict(body);
-    const snapshotBlockers = snapshotBlockedByRefs(snapshot.fields.blockedBy);
-    if (JSON.stringify(liveBlockers) !== JSON.stringify(snapshotBlockers)) {
-      return { ok: false, reason: 'stale refinement snapshot', snapshot };
+    if (historical) {
+      const liveBlockers = parseBlockedByStrict(body);
+      const snapshotBlockers = snapshotBlockedByRefs(snapshot.fields.blockedBy);
+      if (JSON.stringify(liveBlockers) !== JSON.stringify(snapshotBlockers)) {
+        return { ok: false, reason: 'stale refinement snapshot', snapshot };
+      }
     }
     return { ok: true, snapshot };
   } catch (error) {
@@ -241,7 +270,7 @@ export function verifyLegacyRefinementSnapshotForBlockerRefresh(body, { labels }
     ...extra,
   });
   if (!snapshot) return refused('missing or malformed refinement snapshot');
-  if (snapshot.schema !== LEGACY_REFINEMENT_SNAPSHOT_SCHEMA) {
+  if (snapshot.schema !== '1') {
     return refused('legacy blocker refresh requires a schema-1 refinement snapshot');
   }
 
@@ -254,7 +283,7 @@ export function verifyLegacyRefinementSnapshotForBlockerRefresh(body, { labels }
               .toLowerCase() !== 'blocked'
         )
       : labels;
-    const inputs = legacyRefinementInputs(body, historicalLabels, {
+    const inputs = schema1RefinementInputs(body, historicalLabels, {
       durableProvenance: snapshot.provenance,
     });
     const snapshotFieldsMatch = REQUIRED_FIELDS.every(

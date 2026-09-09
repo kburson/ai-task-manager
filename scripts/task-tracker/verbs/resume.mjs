@@ -39,6 +39,7 @@ import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 import { isTerminalReviewHandoffOpen } from '../lib/terminal-review-handoff.mjs';
+import { reconcileAfterSuccessfulBind } from '../lib/dependency-disposition.mjs';
 
 function claimForBind(ctx, issue) {
   const claim = ctx.claimBindingOccupancy ?? claimBindingOccupancy;
@@ -259,6 +260,11 @@ export async function verbResume(ctx) {
         issueNumber: String(s.lastActive).replace(/^#/, ''),
         cfg,
       });
+      await reconcileAfterSuccessfulBind({
+        issueNumber: s.lastActive,
+        cfg,
+        reconcile: ctx.reconcileDependencyDisposition,
+      });
       console.log(`Resumed ${s.lastActive}.`);
       await wakeReviewResidents(ctx, s.lastActive);
       return;
@@ -302,6 +308,11 @@ export async function verbResume(ctx) {
     } catch {
       /* best-effort: failure must not turn the timing-safe no-op into an error */
     }
+    await reconcileAfterSuccessfulBind({
+      issueNumber: normalizedTarget,
+      cfg,
+      reconcile: ctx.reconcileDependencyDisposition,
+    });
     console.log(`already active: ${normalizedTarget}`);
     await wakeReviewResidents(ctx, normalizedTarget);
     return;
@@ -514,6 +525,11 @@ export async function verbResume(ctx) {
     await runMoveInvariantAudit({
       issueNumber: String(normalizedTarget).replace(/^#/, ''),
       cfg,
+    });
+    await reconcileAfterSuccessfulBind({
+      issueNumber: normalizedTarget,
+      cfg,
+      reconcile: ctx.reconcileDependencyDisposition,
     });
     console.log(
       reopeningBoundTimer

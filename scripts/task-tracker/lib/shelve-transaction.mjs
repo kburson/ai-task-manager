@@ -91,7 +91,7 @@ function exactProjectItem(issue, cfg) {
   return matches[0];
 }
 
-async function defaultFetchSnapshot({ issueNumber, cfg }) {
+async function defaultFetchSnapshot({ issueNumber, cfg, includeLegacyBlockedBy = false }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
     `query($owner:String!,$repo:String!,$issue:Int!){
@@ -131,7 +131,7 @@ async function defaultFetchSnapshot({ issueNumber, cfg }) {
     if (!fieldId) throw new Error(`shelve: configured project field id is missing for ${key}`);
     fields[key] = fieldValue(nodes.find((node) => node?.field?.id === fieldId));
   }
-  const blockedByFieldId = fieldIdFor(cfg, 'blockedBy');
+  const blockedByFieldId = includeLegacyBlockedBy ? fieldIdFor(cfg, 'blockedBy') : null;
   return {
     itemId: item.id,
     issueState: issue.state,
@@ -553,7 +553,9 @@ export async function runShelveTransaction({
 
   (deps.assertIssueLockHeld || defaultAssertIssueLockHeld)(issueNumber);
 
-  const fetchSnapshot = deps.fetchSnapshot || defaultFetchSnapshot;
+  const fetchSnapshotImpl = deps.fetchSnapshot || defaultFetchSnapshot;
+  const fetchSnapshot = (args) =>
+    fetchSnapshotImpl({ ...args, includeLegacyBlockedBy: refreshStaleBlockers });
   const mutateBodyFn = deps.mutateBody || mutateIssueBody;
   const clearBoardFields = deps.clearBoardFields || defaultClearBoardFields;
   const runMoveState =

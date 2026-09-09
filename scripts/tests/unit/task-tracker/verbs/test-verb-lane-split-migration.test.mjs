@@ -33,13 +33,14 @@ const LEGACY_BODY = [
 ].join('\n');
 
 function makeDeps(bodyText) {
-  const calls = { bodyWrites: [], sandboxRuns: [], moves: [], comments: [], logs: [] };
+  const calls = { bodyWrites: [], sandboxRuns: [], moves: [], comments: [], logs: [], events: [] };
   const deps = { fetchBody: async () => bodyText };
   deps.mutateBody = async ({ mutate }) => {
     const base = await deps.fetchBody();
     const next = mutate(base);
     if (next === base) return { status: 'no-op' };
     calls.bodyWrites.push(next);
+    calls.events.push({ kind: 'body', body: next });
     return { status: 'ok' };
   };
   Object.assign(deps, {
@@ -52,7 +53,10 @@ function makeDeps(bodyText) {
       calls.sandboxRuns.push(argv.join(' '));
       return { exit: 0, stdout: '', stderr: '' };
     },
-    moveState: async ({ target }) => calls.moves.push(target),
+    moveState: async ({ target }) => {
+      calls.moves.push(target);
+      calls.events.push({ kind: 'move', target });
+    },
     logIssueTime: async (n) => calls.logs.push(n),
   });
   return { calls, deps };
@@ -91,6 +95,40 @@ test('#952: pre-#864 body — sandbox never sees npm run test:all, both lanes ru
     );
     assert.ok(migrationWrite, 'expected a body write with the migrated two-lane DoD line');
     assert.match(migrationWrite, /aitm-vc-tombstone id=1 cmd="npm run test:all"/);
+  });
+});
+
+test('#1557: Test entry repairs an unchecked provenance-only declaration before moving', async () => {
+  await withTmpDir(async (projectDir) => {
+    const staleBody = [
+      '## Scope',
+      'stuff',
+      '',
+      '## Verification Commands',
+      '- [ ] `npm test` <!-- id=1 -->',
+      '- [ ] `npm run test:slow` <!-- id=2 -->',
+      '',
+      '## Definition of Done',
+      '',
+      '### Functional (verified at Test)',
+      '',
+      `- [ ] All automated tests pass <!-- aitm-verified cmd="\`npm test\` \`npm run test:slow\`" worktree="${projectDir}/.scratch/old-test" branch="HEAD" bound-issue="1557" --> <!-- dod:functional:tests -->`,
+      '',
+    ].join('\n');
+    const { deps, calls } = makeDeps(staleBody);
+
+    const result = await runVerbTest({ cfg, issueNumber: 1557, projectDir, deps });
+
+    assert.equal(result.status, 'passed');
+    const moveIndex = calls.events.findIndex((event) => event.kind === 'move');
+    const repairIndex = calls.events.findIndex(
+      (event) =>
+        event.kind === 'body' &&
+        event.body.includes('dod:functional:tests') &&
+        !/aitm-verified[^>]*(?:worktree|branch|bound-issue)=/.test(event.body)
+    );
+    assert.ok(repairIndex >= 0, 'expected a fresh-base provenance-only repair write');
+    assert.ok(repairIndex < moveIndex, 'repair must persist before the Develop-to-Test move');
   });
 });
 

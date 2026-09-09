@@ -2,7 +2,7 @@
 
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { parseBlockedByStrict } from './blocked-marker.mjs';
+import { observeDependencyReadiness } from './dependency-disposition.mjs';
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 import { normalizeStateId } from './lifecycle-policy/index.mjs';
 
@@ -55,6 +55,7 @@ export async function fetchEpicChildren({ cfg, parentEpicNumber, deps = {} } = {
     repo: cfg.repo,
     projectId: cfg.projectId,
     cfg,
+    deps: deps.waveAdmission || deps,
   });
   if (!Array.isArray(children)) throw new Error('fetchEpicChildren: malformed child list');
   return children;
@@ -195,14 +196,6 @@ export function findNextEligibleChild(children = []) {
 
   if (list.some(isActiveChild)) return null;
 
-  // Set of issue numbers that are Done — used to test whether a blocker cleared.
-  const doneNumbers = new Set(
-    list
-      .filter(isAcceptedTerminalChild)
-      .map((c) => Number(c.number))
-      .filter((n) => Number.isInteger(n))
-  );
-
   // Set of issue numbers that block at least one sibling — used for ordering.
   const blockingNumbers = new Set();
   for (const c of list) {
@@ -213,9 +206,8 @@ export function findNextEligibleChild(children = []) {
     .filter((c) => childState(c) === CHILD_STAGING_STATE)
     .filter((c) => c.hasCurrentRefinement === true)
     .filter((c) => Array.isArray(c.blockedBy))
+    .filter((c) => c.dependencyReadiness === 'ready')
     .filter((c) => (c.rank ?? c.sequence) != null && Number.isFinite(Number(c.rank ?? c.sequence)))
-    // Exclude any child whose blockers are not all Done.
-    .filter((c) => childBlockers(c).every((b) => doneNumbers.has(b)))
     .sort((a, b) => {
       // Blocking-first: a child that blocks a sibling outranks one that doesn't.
       const aBlocks = blockingNumbers.has(Number(a.number)) ? 0 : 1;
@@ -347,23 +339,37 @@ async function defaultFetchBody({ issueNumber, cfg }) {
 export async function enrichChildrenWithBlockedBy({ children = [], cfg, deps = {} } = {}) {
   if (!cfg) throw new Error('enrichChildrenWithBlockedBy: cfg is required');
   const fetchBody = deps.fetchBody || defaultFetchBody;
+  const observe = deps.observeDependencyReadiness || observeDependencyReadiness;
   const list = children || [];
   return Promise.all(
     list.map(async (child) => {
-      if (Array.isArray(child.blockedBy) && typeof child.hasCurrentRefinement === 'boolean') {
+      if (
+        Array.isArray(child.blockedBy) &&
+        child.dependencyStates instanceof Map &&
+        typeof child.dependencyReadiness === 'string' &&
+        typeof child.hasCurrentRefinement === 'boolean'
+      ) {
         return child;
       }
       try {
-        const body = await fetchBody({ issueNumber: child.number, cfg });
+        const observation = await observe({ issueNumber: child.number, cfg, deps });
+        const hasCurrentRefinement =
+          typeof child.hasCurrentRefinement === 'boolean'
+            ? child.hasCurrentRefinement
+            : Boolean(parseRefinementSnapshot(await fetchBody({ issueNumber: child.number, cfg })));
         return {
           ...child,
-          blockedBy: parseBlockedByStrict(body),
-          hasCurrentRefinement: Boolean(parseRefinementSnapshot(body)),
+          blockedBy: observation.blockedBy,
+          dependencyStates: observation.states,
+          dependencyReadiness: observation.status,
+          hasCurrentRefinement,
         };
       } catch (error) {
         return {
           ...child,
           blockedBy: null,
+          dependencyStates: new Map(),
+          dependencyReadiness: 'unknown',
           hasCurrentRefinement: false,
           childEvidenceError: error.message,
         };

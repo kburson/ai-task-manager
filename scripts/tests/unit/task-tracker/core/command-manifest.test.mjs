@@ -89,3 +89,13 @@ test('incident-ledger is a directly routed target-required evidence verb', () =>
   assert.equal(routeIdentityForCommand('incident-ledger'), route);
   assert.equal(PREFLIGHT_MODE['incident-ledger'], 'target-required');
 });
+
+test('migrate-dependencies is globally routed without issue preflight', () => {
+  const route = routeIdentityForVerb('migrate-dependencies');
+  assert.deepEqual(route, {
+    verb: 'migrate-dependencies',
+    dispatch: 'verbs/migrate-dependencies.mjs',
+  });
+  assert.equal(commandByName('migrate-dependencies').routing, 'verbs/migrate-dependencies.mjs');
+  assert.equal(PREFLIGHT_MODE['migrate-dependencies'], undefined);
+});

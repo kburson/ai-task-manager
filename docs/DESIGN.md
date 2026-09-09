@@ -67,9 +67,15 @@ group below.
 | `close`             | Close the active or specified task (runs the pre-close gate).                                                                                                            |
 | `inflate-estimate`  | Adjust Size/Estimate mid-flight and record the change on the board + comment.                                                                                            |
 | `kind`              | Set the issue kind, or clear its marker by selecting the default code lane.                                                                                              |
-| `block` / `unblock` | Mark #N blocked by one or more other issues (label + board field + body marker) / clear a block.                                                                         |
+| `block` / `unblock` | Upsert or subtract GitHub native dependencies and reconcile Disposition `BLOCKED` / empty.                                                                               |
 | `supersede`         | Mark a dead issue as superseded by another and close it out.                                                                                                             |
 | `auto`              | Toggle Full-Auto gate overrides for the session (disable plan→dev and/or review→done human gates).                                                                       |
+
+GitHub native issue dependencies are the sole live dependency authority. AITM
+considers an edge satisfied only when the upstream issue's Project Status is
+Done; GitHub open/closed state and commit ancestry do not substitute for that
+signal. Legacy `BLOCKED` labels, `Blocked By` fields, and body markers remain
+readable only for historical compatibility and explicit migration.
 
 ### Evidence & DoD verbs (`topic: evidence`) — proof that gates a checkbox
 

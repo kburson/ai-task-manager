@@ -1,329 +1,213 @@
-// @story #309
-// Tests for scripts/task-tracker/verbs/block.mjs and verbs/unblock.mjs —
-// the user-facing block / unblock verbs (#285).
-//
-// Every gh side effect is mocked via injected `deps`. The runner core
-// (`runBlock`, `runUnblock`) is exercised directly; the verb-wrapper exit
-// codes are not — see the dispatcher tests for that.
-
-import { test } from 'node:test';
+// @story #1557
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 import {
-  runBlock,
   parseArgs as parseBlockArgs,
   parseByList,
+  runBlock,
 } from '../../../../task-tracker/verbs/block.mjs';
 import {
-  runUnblock,
   parseArgs as parseUnblockArgs,
+  runUnblock,
 } from '../../../../task-tracker/verbs/unblock.mjs';
-import { parseBlockedBy } from '../../../../task-tracker/lib/blocked-marker.mjs';
 
-const CFG = { repo: 'kburson/ai-task-manager' };
+const CFG = {
+  repo: 'kburson/ai-task-manager',
+  projectId: 'P',
+  fieldDisposition: 'F_DISPOSITION',
+};
 
-// Simple in-memory issue store backed by a body string and a label set.
-function makeFakeIssue({ body = '', labels = [] } = {}) {
+function nativeHarness(initial = []) {
+  let blockedBy = [...initial].sort((left, right) => left - right);
+  const convergeCalls = [];
+  const comments = [];
+  const validated = [];
+  let projections = 0;
+  const deps = {
+    validateIssue: async ({ issueNumber }) => {
+      validated.push(issueNumber);
+      return { exists: true, state: issueNumber === 4 ? 'CLOSED' : 'OPEN' };
+    },
+    readNativeDependencies: async () => ({ blockedBy: [...blockedBy], blocking: [] }),
+    convergeBlockedBySet: async (input) => {
+      convergeCalls.push(input);
+      const existing = [...blockedBy];
+      const requested = new Set(input.refs || []);
+      const desired =
+        input.operation === 'union'
+          ? [...new Set([...existing, ...requested])].sort((left, right) => left - right)
+          : input.operation === 'subtract'
+            ? existing.filter((ref) => !requested.has(ref))
+            : input.operation === 'clear'
+              ? []
+              : [...new Set(input.desired)].sort((left, right) => left - right);
+      const added = desired.filter((ref) => !existing.includes(ref));
+      const removed = existing.filter((ref) => !desired.includes(ref));
+      blockedBy = desired;
+      return {
+        status: added.length || removed.length ? 'updated' : 'idempotent',
+        existing,
+        desired,
+        added,
+        removed,
+      };
+    },
+    reconcileDependencyDisposition: async () => {
+      projections += 1;
+      return { status: blockedBy.length ? 'projected' : 'cleared' };
+    },
+    postComment: async ({ body }) => comments.push(body),
+  };
   return {
-    body,
-    labels: new Set(labels),
-    comments: [],
-    labelCalls: 0,
+    deps,
+    convergeCalls,
+    comments,
+    validated,
+    get blockedBy() {
+      return [...blockedBy];
+    },
+    get projections() {
+      return projections;
+    },
   };
 }
 
-function makeDeps({
-  store,
-  openBlockers = new Set(),
-  closedBlockers = new Set(),
-  writeFieldValue,
-} = {}) {
-  const d = {
-    validateBlocker: async ({ blockerNumber }) => {
-      if (openBlockers.has(blockerNumber)) return { exists: true, state: 'OPEN' };
-      if (closedBlockers.has(blockerNumber)) return { exists: true, state: 'CLOSED' };
-      return { exists: false, state: null };
-    },
-    // #295 — verbs write through `mutateIssueBody({mutate})`; closure runs
-    // on FRESH base. The fake feeds the live store body in and stamps the
-    // result back so the audit-comment + label logic sees what landed.
-    mutateIssueBody: async ({ mutate }) => {
-      const before = store.body;
-      const next = mutate(before);
-      if (next === before) return { status: 'no-op' };
-      store.body = next;
-      return { status: 'ok' };
-    },
-    runLabel: async ({ args }) => {
-      store.labelCalls += 1;
-      // args = ['issue','edit',<n>,'--add-label'|'--remove-label','BLOCKED']
-      const op = args[3];
-      const label = args[4];
-      if (op === '--add-label') store.labels.add(label);
-      if (op === '--remove-label') store.labels.delete(label);
-    },
-    postComment: async ({ body }) => {
-      store.comments.push(body);
-    },
-  };
-  if (writeFieldValue) d.writeFieldValue = writeFieldValue;
-  return d;
-}
-
-// ── parseByList ──────────────────────────────────────────────────────────────
-
-test('parseByList: parses single int', () => {
-  assert.deepEqual(parseByList('5'), [5]);
-  assert.deepEqual(parseByList('#5'), [5]);
-});
-
-test('parseByList: parses comma-list, dedupes, sorts', () => {
+test('parseByList and block arguments normalize valid issue refs and reject partial-invalid input', () => {
   assert.deepEqual(parseByList('7, 5, #5'), [5, 7]);
-});
-
-test('parseByList: drops non-positive / non-int / empty', () => {
-  assert.deepEqual(parseByList('5, -3, 0, abc, , 7'), [5, 7]);
-  assert.deepEqual(parseByList(''), []);
   assert.deepEqual(parseByList(null), []);
-});
-
-// ── parseArgs (block) ────────────────────────────────────────────────────────
-
-test('block parseArgs: --by flag with positional target', () => {
-  const { target, refs } = parseBlockArgs(['#100', '--by', '5,7'], null);
-  assert.equal(target, 100);
-  assert.deepEqual(refs, [5, 7]);
-});
-
-test('block parseArgs: falls back to active issue when no positional', () => {
-  const { target, refs } = parseBlockArgs(['--by', '5'], '#200');
-  assert.equal(target, 200);
-  assert.deepEqual(refs, [5]);
-});
-
-test('block parseArgs: missing --by → empty refs', () => {
-  const { target, refs, byProvided } = parseBlockArgs(['#100'], null);
-  assert.equal(target, 100);
-  assert.deepEqual(refs, []);
-  assert.equal(byProvided, false);
-});
-
-// ── runBlock ─────────────────────────────────────────────────────────────────
-
-test('runBlock: adds single ref to issue with no marker', async () => {
-  const store = makeFakeIssue({ body: '## Scope\n\nbody.\n' });
-  const deps = makeDeps({ store, openBlockers: new Set([5]) });
-  const r = await runBlock({ target: 100, refs: [5], cfg: CFG, deps });
-  assert.equal(r.status, 'added');
-  assert.deepEqual(parseBlockedBy(store.body), [5]);
-  assert.equal(store.labels.has('BLOCKED'), true);
-  assert.equal(store.labelCalls, 1);
-  assert.deepEqual(store.comments, ['### 🔒 Blocked by #5 added']);
-});
-
-test('runBlock: multi-ref add → sorted+deduped marker, one comment per ref', async () => {
-  const store = makeFakeIssue({ body: 'x\n' });
-  const deps = makeDeps({ store, openBlockers: new Set([5, 7]) });
-  const r = await runBlock({ target: 100, refs: [7, 5, 5], cfg: CFG, deps });
-  assert.equal(r.status, 'added');
-  assert.deepEqual(parseBlockedBy(store.body), [5, 7]);
-  assert.deepEqual(store.comments, ['### 🔒 Blocked by #5 added', '### 🔒 Blocked by #7 added']);
-});
-
-test('runBlock: idempotent when refs already present', async () => {
-  const store = makeFakeIssue({
-    body: 'x\n\n<!-- aitm-blocked-by: #5 -->\n',
-    labels: ['BLOCKED'],
-  });
-  const deps = makeDeps({ store, openBlockers: new Set([5]) });
-  const r = await runBlock({ target: 100, refs: [5], cfg: CFG, deps });
-  assert.equal(r.status, 'idempotent');
-  assert.equal(store.labelCalls, 0);
-  assert.deepEqual(store.comments, []);
-});
-
-// ── partial-failure + repair lanes (#847) ────────────────────────────────────
-// Before this fix, `writeBlockedByField` was unreachable on the idempotent
-// no-op branch, so a field left unset by a prior failure could never be
-// repaired by re-running `aitm block <N> --by <M>`, and a field-mirror
-// failure on the added path was swallowed and still reported as a `✓`.
-
-test('runBlock: partial-failure lane — marker/label write succeeds, field mirror throws → no ✓ line, status marks field unwritten', async () => {
-  const store = makeFakeIssue({ body: '## Scope\n\nbody.\n' });
-  const cfgWithField = { repo: CFG.repo, projectId: 'P', fieldBlockedBy: 'F' };
-  const deps = makeDeps({
-    store,
-    openBlockers: new Set([5]),
-    writeFieldValue: async () => {
-      throw new Error('graphql boom');
-    },
-  });
-  const logs = [];
-  const errs = [];
-  const origLog = console.log;
-  const origErr = console.error;
-  console.log = (msg) => logs.push(msg);
-  console.error = (msg) => errs.push(msg);
-  let r;
-  try {
-    r = await runBlock({ target: 100, refs: [5], cfg: cfgWithField, deps });
-  } finally {
-    console.log = origLog;
-    console.error = origErr;
+  for (const raw of ['7,nope', '7,0', '7,', '#-1', '9007199254740992']) {
+    assert.throws(() => parseByList(raw), /invalid issue number/);
   }
-  assert.equal(r.status, 'added');
-  assert.equal(r.fieldMirrorOk, false);
-  // marker + label + audit comment still land — field mirror is best-effort.
-  assert.deepEqual(parseBlockedBy(store.body), [5]);
-  assert.equal(store.labels.has('BLOCKED'), true);
-  assert.deepEqual(store.comments, ['### 🔒 Blocked by #5 added']);
-  // the unconditional ✓ success line must NOT print over a partial failure.
-  assert.ok(!logs.some((l) => /^\[task-tracker\] ✓/.test(l)));
-  assert.ok(errs.some((l) => /Blocked By field mirror failed/.test(l)));
+  assert.deepEqual(parseBlockArgs(['#100', '--by', '5,7'], null), {
+    target: 100,
+    refs: [5, 7],
+    byProvided: true,
+  });
+  assert.deepEqual(parseBlockArgs(['--by', '5'], '#200'), {
+    target: 200,
+    refs: [5],
+    byProvided: true,
+  });
 });
 
-test('runBlock: repair lane — marker already correct (idempotent), field write is invoked and repairs the field', async () => {
-  const store = makeFakeIssue({
-    body: 'x\n\n<!-- aitm-blocked-by: #5 -->\n',
-    labels: ['BLOCKED'],
+test('unblock arguments distinguish subtract-some from clear-all', () => {
+  assert.deepEqual(parseUnblockArgs(['#100', '--by', '5'], null), {
+    target: 100,
+    refs: [5],
+    byProvided: true,
   });
-  const cfgWithField = { repo: CFG.repo, projectId: 'P', fieldBlockedBy: 'F' };
-  let fieldCalls = 0;
-  let capturedRefs = null;
-  const deps = makeDeps({
-    store,
-    openBlockers: new Set([5]),
-    writeFieldValue: async ({ value }) => {
-      fieldCalls += 1;
-      capturedRefs = value;
-      return true;
-    },
+  assert.deepEqual(parseUnblockArgs(['#100'], null), {
+    target: 100,
+    refs: null,
+    byProvided: false,
   });
-  const r = await runBlock({ target: 100, refs: [5], cfg: cfgWithField, deps });
-  assert.equal(r.status, 'idempotent');
-  assert.equal(r.fieldMirrorOk, true);
-  // the previously-unreachable line: writeBlockedByField IS invoked on the
-  // no-op branch, repairing a field a prior partial failure left unset.
-  assert.equal(fieldCalls, 1);
-  assert.equal(capturedRefs, '#5');
-  // idempotent contract preserved — no redundant label/comment churn.
-  assert.equal(store.labelCalls, 0);
-  assert.deepEqual(store.comments, []);
 });
 
-test('runBlock: refuses non-existent blocker; no body write', async () => {
-  const store = makeFakeIssue({ body: 'x\n' });
-  const deps = makeDeps({ store, openBlockers: new Set() });
+test('block unions requested refs into the native set without duplicates', async () => {
+  const harness = nativeHarness([4, 9]);
+  const result = await runBlock({ target: 20, refs: [9, 12, 12], cfg: CFG, deps: harness.deps });
+  assert.equal(harness.convergeCalls[0].operation, 'union');
+  assert.deepEqual(harness.convergeCalls[0].refs, [9, 12]);
+  assert.deepEqual(result.added, [12]);
+  assert.deepEqual(result.remaining, [4, 9, 12]);
+  assert.equal(harness.comments.length, 1);
+  assert.match(harness.comments[0], /#12/);
+  assert.deepEqual(harness.validated, [9, 12]);
+  assert.equal(harness.projections, 1);
+});
+
+test('block accepts existing closed issues because AITM Status decides readiness', async () => {
+  const harness = nativeHarness([]);
+  const result = await runBlock({ target: 20, refs: [4], cfg: CFG, deps: harness.deps });
+  assert.deepEqual(result.added, [4]);
+  assert.deepEqual(harness.validated, [4]);
+});
+
+test('block is idempotent when every requested ref already exists but still projects', async () => {
+  const harness = nativeHarness([4, 9]);
+  const result = await runBlock({ target: 20, refs: [9, 4], cfg: CFG, deps: harness.deps });
+  assert.equal(result.status, 'idempotent');
+  assert.deepEqual(result.added, []);
+  assert.deepEqual(harness.comments, []);
+  assert.equal(harness.projections, 1);
+});
+
+test('block refuses self, invalid, and missing refs before graph mutation', async () => {
+  const self = nativeHarness([]);
   await assert.rejects(
-    runBlock({ target: 100, refs: [999], cfg: CFG, deps }),
-    /blocker #999 does not exist/
+    runBlock({ target: 20, refs: [20], cfg: CFG, deps: self.deps }),
+    /cannot block #20 on itself/
   );
-  assert.equal(store.body, 'x\n');
-  assert.equal(store.labelCalls, 0);
-});
+  assert.equal(self.convergeCalls.length, 0);
 
-test('runBlock: refuses closed blocker; no body write', async () => {
-  const store = makeFakeIssue({ body: 'x\n' });
-  const deps = makeDeps({ store, closedBlockers: new Set([5]) });
+  await assert.rejects(runBlock({ target: 0, refs: [4], cfg: CFG }), /no target issue/);
+  await assert.rejects(runBlock({ target: 20, refs: [], cfg: CFG }), /--by is required/);
+
+  const missing = nativeHarness([]);
+  missing.deps.validateIssue = async () => ({ exists: false, state: null });
   await assert.rejects(
-    runBlock({ target: 100, refs: [5], cfg: CFG, deps }),
-    /blocker #5 is closed/
+    runBlock({ target: 20, refs: [99], cfg: CFG, deps: missing.deps }),
+    /blocker #99 does not exist/
   );
-  assert.equal(store.body, 'x\n');
-  assert.equal(store.labelCalls, 0);
+  assert.equal(missing.convergeCalls.length, 0);
 });
 
-test('runBlock: refuses self-block', async () => {
-  const store = makeFakeIssue({ body: 'x\n' });
-  const deps = makeDeps({ store, openBlockers: new Set([100]) });
+test('block retry converges after projection failed without duplicating graph edges or comments', async () => {
+  const harness = nativeHarness([4]);
+  let attempts = 0;
+  harness.deps.reconcileDependencyDisposition = async () => {
+    attempts += 1;
+    if (attempts === 1) throw new Error('projection unavailable');
+    return { status: 'projected' };
+  };
   await assert.rejects(
-    runBlock({ target: 100, refs: [100], cfg: CFG, deps }),
-    /cannot block #100 on itself/
+    runBlock({ target: 20, refs: [9], cfg: CFG, deps: harness.deps }),
+    /projection unavailable/
   );
+  assert.deepEqual(harness.blockedBy, [4, 9]);
+  assert.deepEqual(harness.comments, []);
+
+  const result = await runBlock({ target: 20, refs: [9], cfg: CFG, deps: harness.deps });
+  assert.equal(result.status, 'idempotent');
+  assert.deepEqual(result.added, []);
+  assert.deepEqual(harness.comments, []);
 });
 
-test('runBlock: requires target', async () => {
-  await assert.rejects(runBlock({ target: 0, refs: [5], cfg: CFG }), /no target issue/);
+test('unblock subtracts only present requested refs and ignores absent refs', async () => {
+  const harness = nativeHarness([4, 9, 12]);
+  const result = await runUnblock({ target: 20, refs: [9, 99], cfg: CFG, deps: harness.deps });
+  assert.equal(harness.convergeCalls[0].operation, 'subtract');
+  assert.deepEqual(harness.convergeCalls[0].refs, [9, 99]);
+  assert.deepEqual(result.removed, [9]);
+  assert.deepEqual(result.remaining, [4, 12]);
+  assert.equal(result.cleared, false);
+  assert.equal(harness.comments.length, 1);
+  assert.match(harness.comments[0], /#9/);
+  assert.equal(harness.projections, 1);
 });
 
-test('runBlock: requires refs', async () => {
-  await assert.rejects(runBlock({ target: 100, refs: [], cfg: CFG }), /--by is required/);
+test('unblock without --by clears the native set', async () => {
+  const harness = nativeHarness([4, 9]);
+  const result = await runUnblock({ target: 20, refs: null, cfg: CFG, deps: harness.deps });
+  assert.equal(harness.convergeCalls[0].operation, 'clear');
+  assert.deepEqual(result.removed, [4, 9]);
+  assert.deepEqual(result.remaining, []);
+  assert.equal(result.cleared, true);
+  assert.equal(harness.comments.length, 2);
+  assert.equal(harness.projections, 1);
 });
 
-// ── runUnblock ───────────────────────────────────────────────────────────────
-
-test('unblock parseArgs: --by drops one ref', () => {
-  const { target, refs, byProvided } = parseUnblockArgs(['#100', '--by', '5'], null);
-  assert.equal(target, 100);
-  assert.deepEqual(refs, [5]);
-  assert.equal(byProvided, true);
-});
-
-test('unblock parseArgs: no --by → refs is null (drop all)', () => {
-  const { target, refs, byProvided } = parseUnblockArgs(['#100'], null);
-  assert.equal(target, 100);
-  assert.equal(refs, null);
-  assert.equal(byProvided, false);
-});
-
-test('runUnblock --by: removes single ref, label stays when others remain', async () => {
-  const store = makeFakeIssue({
-    body: 'x\n\n<!-- aitm-blocked-by: #5, #7 -->\n',
-    labels: ['BLOCKED'],
-  });
-  const deps = makeDeps({ store });
-  const r = await runUnblock({ target: 100, refs: [5], cfg: CFG, deps });
-  assert.equal(r.status, 'removed');
-  assert.equal(r.cleared, false);
-  assert.deepEqual(parseBlockedBy(store.body), [7]);
-  assert.equal(store.labels.has('BLOCKED'), true);
-  assert.equal(store.labelCalls, 0);
-  assert.deepEqual(store.comments, ['### 🔓 Blocked by #5 cleared']);
-});
-
-test('runUnblock all-refs: drops everything, removes label', async () => {
-  const store = makeFakeIssue({
-    body: 'x\n\n<!-- aitm-blocked-by: #5, #7 -->\n',
-    labels: ['BLOCKED'],
-  });
-  const deps = makeDeps({ store });
-  const r = await runUnblock({ target: 100, refs: null, cfg: CFG, deps });
-  assert.equal(r.status, 'removed');
-  assert.equal(r.cleared, true);
-  assert.deepEqual(parseBlockedBy(store.body), []);
-  assert.equal(store.labels.has('BLOCKED'), false);
-  assert.equal(store.labelCalls, 1);
-  assert.deepEqual(store.comments, ['### 🔓 All blockers cleared']);
-});
-
-test('runUnblock: idempotent when no marker present', async () => {
-  const store = makeFakeIssue({ body: 'x\n' });
-  const deps = makeDeps({ store });
-  const r = await runUnblock({ target: 100, refs: null, cfg: CFG, deps });
-  assert.equal(r.status, 'idempotent');
-  assert.deepEqual(store.comments, []);
-  assert.equal(store.labelCalls, 0);
-});
-
-test('runUnblock --by: idempotent when requested ref absent', async () => {
-  const store = makeFakeIssue({
-    body: 'x\n\n<!-- aitm-blocked-by: #5 -->\n',
-    labels: ['BLOCKED'],
-  });
-  const deps = makeDeps({ store });
-  const r = await runUnblock({ target: 100, refs: [99], cfg: CFG, deps });
-  assert.equal(r.status, 'idempotent');
-  assert.deepEqual(parseBlockedBy(store.body), [5]);
-  assert.equal(store.labels.has('BLOCKED'), true);
-});
-
-test('runUnblock --by: clears last ref → drops label', async () => {
-  const store = makeFakeIssue({
-    body: 'x\n\n<!-- aitm-blocked-by: #5 -->\n',
-    labels: ['BLOCKED'],
-  });
-  const deps = makeDeps({ store });
-  const r = await runUnblock({ target: 100, refs: [5], cfg: CFG, deps });
-  assert.equal(r.cleared, true);
-  assert.equal(store.labels.has('BLOCKED'), false);
+test('unblock repeat is idempotent and still projects', async () => {
+  for (const refs of [[99], null]) {
+    const harness = nativeHarness([4]);
+    if (refs === null) {
+      await runUnblock({ target: 20, refs, cfg: CFG, deps: harness.deps });
+      harness.deps.postComment = async () => assert.fail('retry must not comment');
+    }
+    const result = await runUnblock({ target: 20, refs, cfg: CFG, deps: harness.deps });
+    assert.equal(result.status, 'idempotent');
+    assert.deepEqual(result.removed, []);
+    assert.equal(harness.projections, refs === null ? 2 : 1);
+  }
 });

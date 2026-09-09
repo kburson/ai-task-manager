@@ -138,11 +138,12 @@ abandoned** — leaving it half-done desyncs the epic head and hides the reason 
 work stopped. There are exactly two sanctioned outcomes:
 
 - **Block it.** When the child is blocked by a defect that must be fixed first,
-  annotate it as blocked the moment the blocker issue is filed: add the `BLOCKED`
-  label, set the project `Blocked By` field, and write the `aitm-blocked-by: #B`
-  body marker. Then drive the blocker chain **deepest-first** — finish the blocker
-  (and anything it itself spawns) to Done before resuming the child; `pull-next`
-  auto-unparks the child when its blocker lands. See the
+  record GitHub native dependencies the moment the blocker issue is filed with
+  `npx aitm block <child> --by <defect>`. Then drive the blocker chain
+  **deepest-first** — finish the blocker (and anything it itself spawns) to Done
+  before resuming the child. An epic child's Done status may follow its merge to
+  the epic feature branch; it need not wait for that branch to reach trunk.
+  `pull-next` admits the child after every dependency is Done. See the
   [Blocking-defect isolation dance](workflow.md#blocking-defect-isolation-dance).
 - **Drop it.** When the feature is not merely blocked but should not ship at all,
   remove it from the epic's child set explicitly (unlink the sub-issue and close it

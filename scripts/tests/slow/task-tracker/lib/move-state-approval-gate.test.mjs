@@ -83,6 +83,7 @@ function makeSandbox(body, { currentState = 'Analyze' } = {}) {
       {
         repo: 'o/r',
         projectId: PROJECT_ID,
+        fieldDisposition: 'PVTF_disposition',
         kanbanFieldId: 'PVTF_x',
         kanbanOptionBacklog: 'OP_b',
         kanbanOptionRefine: 'OP_g',
@@ -141,6 +142,13 @@ if (args[0] === 'issue' && args[1] === 'edit' && args.includes('--body-file')) {
   process.exit(0);
 }
 if (args[0] === 'issue' && args[1] === 'view') {
+  if (args.includes('blockedBy,blocking')) {
+    fs.writeSync(1, JSON.stringify({
+      blockedBy: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+      blocking: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+    }));
+    process.exit(0);
+  }
   // Emulate real gh's two body-fetch shapes: a jq filter (\`--jq\`/\`-q\`) makes
   // gh emit the RAW body string; \`--json body\` with no jq filter emits a JSON
   // object {"body": ...} that stampEntryMarkers JSON.parse's.
@@ -216,7 +224,8 @@ if (args[0] === 'api' && args[1] === 'graphql') {
         assignees: { nodes: [{ login: 'kburson' }] },
         projectItems: { nodes: [
         { project: { id: ${JSON.stringify(PROJECT_ID)} },
-          fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt } },
+          fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt },
+          fieldValues: { nodes: [] } },
         ], pageInfo: { hasNextPage: false, endCursor: null } },
       } } },
     };

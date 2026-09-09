@@ -326,24 +326,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      2496,
+      2480,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      2694,
+      2678,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 2839, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 2823, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3073,
+      3057,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
@@ -379,17 +379,17 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 248, 'event-call', "'resumed'", [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 249, 'event-call', "'resumed'", [
       'resumed',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      476,
+      487,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 501, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 512, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),
@@ -409,10 +409,10 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 48, 'flush-call', "'stop'", ['stop']),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 113, 'flush-call', 'eventSlug', [
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 119, 'flush-call', 'eventSlug', [
       'switch-out:#1007',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 231, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 237, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

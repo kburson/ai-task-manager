@@ -79,6 +79,13 @@ const BARE_BODY = '## Scope\n\nno marker here\n';
 // STATES.plan.exitGuards). Returns a refine-estimate comment whose
 // `### Planned Estimate` appendix satisfies the gate.
 const PLANNED_ESTIMATE_OK_DEPS = {
+  observeDependencyReadiness: async () => ({
+    blockedBy: [],
+    states: new Map(),
+    status: 'ready',
+    unfinished: [],
+  }),
+  reconcileDependencyDisposition: async () => ({ status: 'idempotent', disposition: '' }),
   // #1052 — keep registry integration tests offline while the decomposition
   // guard reads its own project Size/Estimate inputs.
   decomposition: {
@@ -613,6 +620,7 @@ test('runGuards(plan,refine): rollback bypasses plan-exit guards', async () => {
     toState: 'refine',
     body: BARE_BODY,
     cfg: CFG,
+    deps: PLANNED_ESTIMATE_OK_DEPS,
     fetchBlockerState: async () => null,
   });
   assert.equal(r.ok, true, JSON.stringify(r.refusals));

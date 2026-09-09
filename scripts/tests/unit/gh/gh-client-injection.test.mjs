@@ -73,7 +73,7 @@ test('all 29 scoped modules resolve through the shared client', () => {
     );
     assert.match(
       source,
-      /gh-client\.mjs|\{[^}]*\bpexec\b[^}]*\}\s*=\s*ctx|ctx\.pexec/s,
+      /gh-client\.mjs|native-dependencies\.mjs|\{[^}]*\bpexec\b[^}]*\}\s*=\s*ctx|ctx\.pexec/s,
       `${relativePath} must resolve pexec through the shared import or runtime context`
     );
   }
@@ -92,28 +92,20 @@ test('unpark defaults resolve the shared client without changing the gh call', a
   const calls = [];
   ghClient.pexec = async (...args) => {
     calls.push(args);
-    return { stdout: '', stderr: '' };
+    return {
+      stdout: JSON.stringify({
+        blockedBy: { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false } },
+        blocking: { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false } },
+      }),
+      stderr: '',
+    };
   };
   try {
     assert.deepEqual(await unparkDependents({ doneIssueNumber: 1409, cfg: { repo: 'o/r' } }), []);
-    assert.deepEqual(calls, [
-      [
-        'gh',
-        [
-          'issue',
-          'list',
-          '-R',
-          'o/r',
-          '--label',
-          'BLOCKED',
-          '--state',
-          'open',
-          '--json',
-          'number',
-          '--jq',
-          '.[].number',
-        ],
-      ],
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].slice(0, 2), [
+      'gh',
+      ['issue', 'view', '1409', '-R', 'o/r', '--json', 'blockedBy,blocking'],
     ]);
   } finally {
     ghClient.pexec = original;

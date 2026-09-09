@@ -52,6 +52,13 @@ ${MARKERS(
 // Deps that prove the audit lane never touches the commit trail / SHAs, and
 // that neutralize the orthogonal (parent / epic-children) guards.
 const DEPS = {
+  observeDependencyReadiness: async () => ({
+    blockedBy: [],
+    states: new Map(),
+    status: 'ready',
+    unfinished: [],
+  }),
+  reconcileDependencyDisposition: async () => ({ status: 'idempotent', disposition: '' }),
   // child-cannot-lead-epic: solo issue (no parent).
   fetchParentIssue: async () => null,
   // epic-children-done: treat as a leaf that passes.

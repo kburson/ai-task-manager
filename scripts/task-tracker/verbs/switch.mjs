@@ -26,6 +26,7 @@ import {
 } from '../lib/bind-event.mjs';
 import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
+import { reconcileAfterSuccessfulBind } from '../lib/dependency-disposition.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
@@ -74,6 +75,11 @@ export async function verbSwitch(ctx, target) {
       } catch {
         /* best-effort: keep the fleet registry warm; never block a no-op */
       }
+      await reconcileAfterSuccessfulBind({
+        issueNumber: target,
+        cfg,
+        reconcile: ctx.reconcileDependencyDisposition,
+      });
       console.log(`Active: ${target} (already bound; no-op).`);
       return;
     }
@@ -238,6 +244,11 @@ export async function verbSwitch(ctx, target) {
       description: role,
     });
     await safePostTiming(target, row);
+    await reconcileAfterSuccessfulBind({
+      issueNumber: target,
+      cfg,
+      reconcile: ctx.reconcileDependencyDisposition,
+    });
     console.log(`Active: ${target}.${previousNote}`);
 
     // #486 — discuss reconcile + banner. On first reference (bind), converge any

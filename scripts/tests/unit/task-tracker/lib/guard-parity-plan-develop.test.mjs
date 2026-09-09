@@ -55,6 +55,8 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
     toState: 'develop',
     body,
     cfg: CFG,
+    readDependencies: async () => ({ blockedBy: [] }),
+    reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     deps: {
       epicChildren: { fetchSiblings: async () => epicChildren },
       // #1052 — the newly registered decomposition guard must receive the

@@ -1,4 +1,4 @@
-// @story #1035
+// @story #1035 #1557
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 import { runDispose } from '../../../../task-tracker/lib/close-disposition.mjs';
 import {
+  isTerminalDisposition,
+  TERMINAL_DISPOSITIONS,
   writeTerminalDisposition,
   writeTerminalStatusDone,
 } from '../../../../task-tracker/lib/terminal-disposition.mjs';
@@ -19,6 +21,12 @@ const cfg = {
   kanbanFieldId: 'F_STATUS',
   kanbanOptionDone: 'O_DONE',
 };
+
+test('terminal disposition predicate recognizes only terminal values', () => {
+  for (const value of TERMINAL_DISPOSITIONS) assert.equal(isTerminalDisposition(value), true);
+  for (const value of ['', 'BLOCKED', 'Delivered '])
+    assert.equal(isTerminalDisposition(value), false);
+});
 
 function writerHarness({ itemId = 'ITEM', optionMap } = {}) {
   const writes = [];
@@ -98,9 +106,37 @@ test('terminal helper fails loud for missing field, project item, or option', as
 
 test('terminal Done helper writes the configured Status option without option discovery', async () => {
   const h = writerHarness();
-  await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps: h.deps });
+  const reconciled = [];
+  h.deps.unparkDependents = async (input) => {
+    reconciled.push(input);
+    return [{ issue: 2000, reconciled: 'cleared' }];
+  };
+  const result = await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps: h.deps });
   assert.equal(h.writes[0].fieldId, 'F_STATUS');
   assert.deepEqual(h.writes[0].optionMap, { F_STATUS: { Done: 'O_DONE' } });
+  assert.equal(reconciled[0].doneIssueNumber, 1035);
+  assert.deepEqual(result.dependentReconciliation, [{ issue: 2000, reconciled: 'cleared' }]);
+});
+
+test('terminal Done helper surfaces every best-effort dependent reconciliation error', async () => {
+  const h = writerHarness();
+  const warnings = [];
+  h.deps.unparkDependents = async () => [
+    { issue: null, error: 'native dependency read failed: provider unavailable' },
+    { issue: 2001, error: 'dependency-disposition:readback' },
+  ];
+  h.deps.warn = (message) => warnings.push(message);
+
+  const result = await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps: h.deps });
+
+  assert.deepEqual(result.dependentReconciliation, [
+    { issue: null, error: 'native dependency read failed: provider unavailable' },
+    { issue: 2001, error: 'dependency-disposition:readback' },
+  ]);
+  assert.deepEqual(warnings, [
+    '[unpark] #1035: native dependency read failed: provider unavailable',
+    '[unpark] #1035 -> #2001: dependency-disposition:readback',
+  ]);
 });
 
 test('close-as retains the board item and writes matching terminal values', async () => {

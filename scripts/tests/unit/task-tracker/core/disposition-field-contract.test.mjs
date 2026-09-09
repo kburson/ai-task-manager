@@ -30,6 +30,11 @@ const expectedDisposition = {
       description:
         'Implementation retained on trunk without complete issue-local delivery authority',
     },
+    {
+      name: 'BLOCKED',
+      color: 'RED',
+      description: 'Waiting on unfinished issue dependencies.',
+    },
   ],
 };
 

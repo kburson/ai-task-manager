@@ -35,6 +35,13 @@ function baseDeps(overrides = {}) {
       mutate('');
       return { status: 'no-op' };
     },
+    observeDependencyReadiness: async () => ({
+      blockedBy: [],
+      states: new Map(),
+      status: 'ready',
+      unfinished: [],
+    }),
+    reconcileDependencyDisposition: async () => ({ status: 'idempotent' }),
     stampStartTime: async () => {},
     ...overrides,
   };
