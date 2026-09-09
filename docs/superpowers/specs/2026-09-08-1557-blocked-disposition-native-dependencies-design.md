@@ -1,7 +1,7 @@
 # BLOCKED Disposition and Native Dependency Readiness Design
 
 **Issue:** #1557
-**Status:** Awaiting written-spec review
+**Status:** Approved
 **Date:** 2026-09-08
 
 ## Problem
