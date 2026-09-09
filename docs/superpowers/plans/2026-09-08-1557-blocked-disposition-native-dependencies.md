@@ -800,7 +800,7 @@ git commit -m "[#1557] feat: migrate legacy dependencies"
 - Consumes: final public command names, result language, and authority boundaries from Tasks 1-6.
 - Produces: operator-facing documentation and a static regression test preventing legacy authority claims from returning.
 
-- [ ] **Step 1: Write the failing static documentation test**
+- [x] **Step 1: Write the failing static documentation test**
 
 Create `native-dependency-docs.test.mjs` to read the five documents and assert:
 
@@ -817,7 +817,7 @@ assert.match(workflow, /feature branch/i);
 assert.match(workflow, /no webhook|without a webhook/i);
 ```
 
-- [ ] **Step 2: Run the static test and observe RED**
+- [x] **Step 2: Run the static test and observe RED**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/native-dependency-docs.test.mjs
@@ -825,7 +825,7 @@ node --test scripts/tests/unit/task-tracker/lib/native-dependency-docs.test.mjs
 
 Expected: FAIL on legacy carrier language.
 
-- [ ] **Step 3: Update operator documentation**
+- [x] **Step 3: Update operator documentation**
 
 Document:
 
@@ -841,7 +841,7 @@ Document:
 
 Update the guard table evidence source but keep guard registration unchanged.
 
-- [ ] **Step 4: Run documentation tests and formatting GREEN**
+- [x] **Step 4: Run documentation tests and formatting GREEN**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/native-dependency-docs.test.mjs
@@ -850,7 +850,7 @@ npx prettier --check docs/DESIGN.md docs/guides/workflow.md docs/guides/guard-ar
 
 Expected: both commands pass.
 
-- [ ] **Step 5: Commit documentation**
+- [x] **Step 5: Commit documentation**
 
 ```bash
 git add docs/DESIGN.md docs/guides/workflow.md docs/guides/guard-architecture.md docs/guides/parallel-agents.md .ai-task-manager/templates/references/pickup-directive-rationale.md scripts/tests/unit/task-tracker/lib/native-dependency-docs.test.mjs

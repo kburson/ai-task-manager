@@ -100,10 +100,13 @@ do not hand-edit this table without re-verifying against the source.
 > tests document that compatibility name. `backlog.exit` itself only runs
 > `blocked-by-not-done` and `discuss-unresolved`.
 
+The `blocked-by-not-done` guard reads GitHub native dependencies and requires
+AITM Status Done for every upstream issue; legacy carriers are not evidence.
+
 | State          | Slot  | Guard ID                                          | What it checks                                                           |
 | -------------- | ----- | ------------------------------------------------- | ------------------------------------------------------------------------ |
 | backlog        | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
-| backlog        | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| backlog        | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | backlog        | exit  | `discuss-unresolved`                              | No unresolved `{discuss}` token in the body                              |
 | refine         | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
 | refine         | entry | `backlog-exit-child-parent-refine-or-plan`        | Child's parent epic has reached refine/plan+                             |
@@ -111,18 +114,18 @@ do not hand-edit this table without re-verifying against the source.
 | refine         | exit  | `refine-exit-complete-marker`                     | `aitm-refine-complete` marker present                                    |
 | refine         | exit  | `refine-exit-stub-placeholder`                    | Stub `_TBD_` AC placeholder has been replaced                            |
 | refine         | exit  | `refine-exit-current-snapshot`                    | A current refinement snapshot exists                                     |
-| refine         | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| refine         | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | refine         | exit  | `plan-entry-fields-body`                          | Size / Estimate / Priority / AC items / rationale present                |
 | refine         | exit  | `plan-entry-fields-board`                         | Rank / Labels / Start time set; AC-command lint passes                   |
 | refine         | exit  | `user-story-block`                                | `## User Story` present and not a placeholder (hard block)               |
 | ready-for-plan | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
-| ready-for-plan | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| ready-for-plan | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | ready-for-plan | exit  | `ready-for-plan-exit-epic-children-r4p-or-beyond` | Epic children have reached Ready for Planning or beyond                  |
 | ready-for-plan | exit  | `refine-exit-wip-budget`                          | Epic WIP budget not exceeded                                             |
 | ready-for-plan | exit  | `refine-exit-child-parent-developing-or-beyond`   | Parent epic has reached develop or beyond                                |
 | ready-for-plan | exit  | `child-cannot-lead-epic-exit`                     | An epic issue cannot lead this transition alone                          |
 | plan           | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
-| plan           | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| plan           | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | plan           | exit  | `plan-exit-plan-approved`                         | `aitm-plan-approved` marker present                                      |
 | plan           | exit  | `plan-exit-planned-estimate`                      | `### Planned Estimate` appendix present on the refine-estimate comment   |
 | plan           | exit  | `plan-exit-deep-dive`                             | Deep-dive markers/section + ticked Pickup Directive present              |
@@ -133,7 +136,7 @@ do not hand-edit this table without re-verifying against the source.
 | plan           | exit  | `plan-exit-epic-children-r4p-or-beyond`           | Epic's children are at Ready for Planning or beyond                      |
 | plan           | exit  | `child-cannot-lead-epic-exit`                     | An epic issue cannot lead this transition alone                          |
 | develop        | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
-| develop        | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| develop        | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | develop        | exit  | `develop-exit-code-complete`                      | Functional ACs ticked/verified, `aitm-commits` populated, no dirty files |
 | develop        | exit  | `develop-exit-sandbox-proof`                      | `aitm-dod-verified` sandbox-proof marker present                         |
 | develop        | exit  | `develop-exit-commit-trail-head`                  | `aitm-commits` marker contains the current outer-HEAD SHA                |
@@ -141,13 +144,13 @@ do not hand-edit this table without re-verifying against the source.
 | develop        | exit  | `child-cannot-lead-epic-exit`                     | An epic issue cannot lead this transition alone                          |
 | test           | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
 | test           | entry | `body-gates-entry-test`                           | Structural body-gate checks for entering test                            |
-| test           | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| test           | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | test           | exit  | `test-exit-dod-verified`                          | `aitm-dod-verified` marker present                                       |
 | test           | exit  | `test-exit-pre-close-completeness`                | No unticked non-lifecycle, non-close-owned checkboxes                    |
 | test           | exit  | `child-cannot-lead-epic-exit`                     | An epic issue cannot lead this transition alone                          |
 | review         | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
 | review         | entry | `body-gates-entry-review`                         | Structural body-gate checks for entering review                          |
-| review         | exit  | `blocked-by-not-done`                             | No open `aitm-blocked-by` blocker issue                                  |
+| review         | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | review         | exit  | `review-exit-review-approved`                     | `aitm-review-approved` marker present                                    |
 | review         | exit  | `review-exit-epic-children-done`                  | Epic's children are done                                                 |
 | review         | exit  | `review-exit-epic-child-disposition`              | Epic child disposition recorded                                          |

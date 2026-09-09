@@ -205,11 +205,13 @@ rarely, so they live here rather than in the resident directive.
   active child still consumes the budget. Future parallel waves require an
   explicit dependency re-triage, isolated worktrees, distinct owners, and
   isolated exact-SHA cloud validation for every child.
-- **Dependency representation** — a blocked issue carries the `BLOCKED`
-  label, a `Blocked By` project-field reference to its blocker, and a
-  `<!-- aitm-blocked-by: #N -->` body marker. Drive blocker chains
-  deepest-first; `pull-next` auto-unparks a blocked issue when its blocker
-  reaches Done.
+- **Dependency representation** — GitHub native dependencies are the sole live
+  graph. Use `aitm block A --by B,C` for union/upsert and `aitm unblock A --by B`
+  for idempotent subtraction; bare `unblock` clears the set. AITM requires each
+  upstream issue's Status to be Done, projects unfinished edges to Disposition
+  `BLOCKED`, and clears it when all edges are satisfied. Drive blocker chains
+  deepest-first; a child merged to its epic feature branch may reach Done and
+  release downstream work before the epic reaches trunk.
 
 There is no force-promote env override — promotion gates are fail-closed by
 design.
