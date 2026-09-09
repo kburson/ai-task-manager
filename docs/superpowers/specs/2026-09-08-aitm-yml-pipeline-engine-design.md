@@ -44,7 +44,7 @@ That is a guard on `develop.exitGuards` re-checking its own scope, because the r
 
 **3.4 Two migration precedents already exist in the repo.**
 
-- _Alias and canonicalize forward_: `lib/stage-entry-markers.mjs` has `LEGACY_READY_FOR_PLAN_STAGES = {'assigned','on-deck'}`, `canonicalStage()`, `markerStagePattern()`, and `OPTIONAL_CONTIGUITY_STAGES`. No bodies were rewritten when the stage was renamed.
+- _Alias and canonicalize forward_: `lib/stage-entry-markers.mjs` carries a legacy-slug alias set for the stage now called `ready-for-plan`, together with `canonicalStage()`, `markerStagePattern()`, and `OPTIONAL_CONTIGUITY_STAGES`. Readers canonicalize the retired slugs on the way in; no issue bodies were rewritten when the stage was renamed. (The retired slugs themselves are deliberately not quoted here — an integration guard asserts that vocabulary appears only inside its audited compatibility allowlist.)
 - _One-shot in-place rewrite_: `lib/timing-slug-rename.mjs` (#520) relabels historical timing-log slugs from a static dictionary, idempotent by construction, every other cell byte-for-byte preserved, explicitly forbidden from synthesizing missing rows.
 
 Any future migration work generalizes these two rather than inventing a mechanism.
