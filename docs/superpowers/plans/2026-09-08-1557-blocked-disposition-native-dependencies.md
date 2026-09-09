@@ -223,7 +223,7 @@ git commit -m "[#1557] feat: add native dependency adapter"
 - Consumes: `readNativeDependencies({issueNumber, repo, deps})`, `fetchAssignmentSnapshot`, `projectItemForIssue`, `fieldOptionMap`, `writeProjectFieldValue`, and `clearProjectFieldValue`.
 - Produces: `deriveDependencyProjection({blockedBy, states})` and `reconcileDependencyDisposition({issueNumber, cfg, observation, deps})`.
 
-- [ ] **Step 1: Write failing pure projection tests**
+- [x] **Step 1: Write failing pure projection tests**
 
 Create tests for this exact result model:
 
@@ -252,7 +252,7 @@ assert.deepEqual(deriveDependencyProjection({ blockedBy: [], states: new Map() }
 
 Add an assertion that missing state for ref 9 returns `status: 'unknown'` and includes ref 9.
 
-- [ ] **Step 2: Write failing reconciliation tests**
+- [x] **Step 2: Write failing reconciliation tests**
 
 Cover the following injected scenarios:
 
@@ -279,7 +279,7 @@ Loop over `TERMINAL_DISPOSITIONS` and assert zero writes/clears with result
 Assert a missing field, missing option, write failure, clear failure, and readback
 mismatch return or throw a stable `dependency-disposition:` category.
 
-- [ ] **Step 3: Run the projection test and observe RED**
+- [x] **Step 3: Run the projection test and observe RED**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/native-dependency-projection.test.mjs
@@ -287,7 +287,7 @@ node --test scripts/tests/unit/task-tracker/lib/native-dependency-projection.tes
 
 Expected: FAIL with module-not-found.
 
-- [ ] **Step 4: Implement the projector**
+- [x] **Step 4: Implement the projector**
 
 Implement:
 
@@ -316,7 +316,7 @@ writes or clears only when needed, and confirms readback. Return structured
 Keep `TERMINAL_DISPOSITIONS` unchanged and export a reusable
 `isTerminalDisposition(value)` predicate from `terminal-disposition.mjs`.
 
-- [ ] **Step 5: Run focused tests and observe GREEN**
+- [x] **Step 5: Run focused tests and observe GREEN**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/native-dependency-projection.test.mjs scripts/tests/unit/task-tracker/lib/terminal-disposition.test.mjs
@@ -324,7 +324,7 @@ node --test scripts/tests/unit/task-tracker/lib/native-dependency-projection.tes
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the projector**
+- [x] **Step 6: Commit the projector**
 
 ```bash
 git add scripts/task-tracker/lib/dependency-disposition.mjs scripts/task-tracker/lib/terminal-disposition.mjs scripts/tests/unit/task-tracker/lib/native-dependency-projection.test.mjs scripts/tests/unit/task-tracker/lib/terminal-disposition.test.mjs

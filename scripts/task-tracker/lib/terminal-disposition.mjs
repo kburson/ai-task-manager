@@ -14,6 +14,10 @@ export const TERMINAL_DISPOSITIONS = Object.freeze([
   'Incorporated',
 ]);
 
+export function isTerminalDisposition(value) {
+  return TERMINAL_DISPOSITIONS.includes(value);
+}
+
 function assertTerminalConfig(cfg, issueNumber) {
   if (!cfg?.repo || !cfg.projectId) {
     throw new Error(`terminal disposition for #${issueNumber} requires cfg.repo and cfg.projectId`);
@@ -37,7 +41,7 @@ async function resolveItem({ cfg, issueNumber, deps }) {
 
 export async function writeTerminalDisposition({ cfg, issueNumber, disposition, deps = {} } = {}) {
   assertTerminalConfig(cfg, issueNumber);
-  if (!TERMINAL_DISPOSITIONS.includes(disposition)) {
+  if (!isTerminalDisposition(disposition)) {
     throw new Error(
       `terminal disposition for #${issueNumber} must be one of ${TERMINAL_DISPOSITIONS.join(', ')}`
     );

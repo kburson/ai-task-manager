@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 import { runDispose } from '../../../../task-tracker/lib/close-disposition.mjs';
 import {
+  isTerminalDisposition,
+  TERMINAL_DISPOSITIONS,
   writeTerminalDisposition,
   writeTerminalStatusDone,
 } from '../../../../task-tracker/lib/terminal-disposition.mjs';
@@ -19,6 +21,12 @@ const cfg = {
   kanbanFieldId: 'F_STATUS',
   kanbanOptionDone: 'O_DONE',
 };
+
+test('terminal disposition predicate recognizes only terminal values', () => {
+  for (const value of TERMINAL_DISPOSITIONS) assert.equal(isTerminalDisposition(value), true);
+  for (const value of ['', 'BLOCKED', 'Delivered '])
+    assert.equal(isTerminalDisposition(value), false);
+});
 
 function writerHarness({ itemId = 'ITEM', optionMap } = {}) {
   const writes = [];
