@@ -19,7 +19,10 @@ import {
   DEMOTE_TARGET,
   LEGAL_FROM,
 } from '../../../../task-tracker/verbs/demote.mjs';
-import { invalidateEvidence } from '../../../../task-tracker/lib/evidence-invalidation.mjs';
+import {
+  invalidateEvidence,
+  repairInvalidatedEvidenceProvenance,
+} from '../../../../task-tracker/lib/evidence-invalidation.mjs';
 import { upsertProofMarker } from '../../../../task-tracker/lib/proof-marker.mjs';
 import { findLostMarkers } from '../../../../task-tracker/lib/body-invariants.mjs';
 
@@ -287,6 +290,27 @@ test('#932 demote-with-nothing-to-strip: a body with only declarations is a safe
   assert.equal(next, body);
   assert.deepEqual(invalidated, []);
   assert.deepEqual(findLostMarkers(body, next), []);
+});
+
+test('#1557 compatibility repair accepts only the exact valid stranded provenance tuple', () => {
+  const valid =
+    '- [ ] valid <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->';
+  const unchanged = [
+    '- [x] checked <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] proof <!-- aitm-verified cmd="`npm test`" sha="abc1234" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] partial <!-- aitm-verified cmd="`npm test`" branch="HEAD" -->',
+    '- [ ] invalid issue <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="not-an-issue" -->',
+    '- [ ] mismatched issue <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="936" -->',
+    '- [ ] exit residue <!-- aitm-verified cmd="`npm test`" exit="1" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] malformed <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935 -->',
+  ];
+  const body = [valid, ...unchanged].join('\n');
+
+  const result = repairInvalidatedEvidenceProvenance(body, { boundIssue: 935 });
+
+  assert.match(result.body, /- \[ \] valid <!-- aitm-verified cmd="`npm test`" -->/);
+  for (const line of unchanged) assert.ok(result.body.includes(line), `must preserve: ${line}`);
+  assert.equal(result.repaired.length, 1);
 });
 
 test('#932 runDemote wires invalidateEvidence into the state-recording mutate and reports it', async () => {

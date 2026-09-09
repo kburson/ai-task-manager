@@ -971,7 +971,9 @@ instructions rather than bypassing it.
 Extend the demotion fixture with `worktree`, `branch`, and `bound-issue`, then
 assert all three are stripped with the run proof. Add a Test-verb case whose
 unchecked tests declaration has only those three stale properties; assert the
-fresh-base body is normalized before the Develop-to-Test move.
+fresh-base body is normalized before the Develop-to-Test move. Add negative
+cases for checked and proof-bearing lines, partial tuples, invalid or mismatched
+issue identity, residual `exit`, and malformed marker grammar.
 
 - [x] **Step 2: Verify both tests fail for the stranded provenance shape**
 
@@ -985,8 +987,10 @@ Expected: the new assertions fail because execution-context properties remain.
 
 Treat `worktree`, `branch`, and `bound-issue` as execution-owned properties in
 `stripExecutionProof`. Export an idempotent fresh-base normalizer that applies
-that stripping only to unchecked checkbox declarations with no execution proof,
-and call it from `aitm test` before the entry move using `evidenceStamp: true`.
+that stripping only to an unchecked, valid declaration with one complete
+execution-context tuple matching the active issue and no residual run or unknown
+property. Call it from `aitm test` before the entry move using
+`evidenceStamp: true`.
 
 - [x] **Step 4: Verify focused and repository regressions**
 

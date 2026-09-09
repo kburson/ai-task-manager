@@ -16,8 +16,9 @@
 // are untouched by construction. Invariant/lifecycle markers live outside any
 // checkbox line and are never matched by `CHECKED_LINE_RE`.
 
-import { hasExecutionProof, parseProofMarker, stripExecutionProof } from './proof-marker.mjs';
+import { hasExecutionProof, hasVerifiedDeclaration, stripExecutionProof } from './proof-marker.mjs';
 import { stripMarkers } from './ac-evidence.mjs';
+import { parseMarker } from './marker-grammar.mjs';
 
 const CHECKED_LINE_RE = /^(\s*- \[)x(\]\s+)(.+)$/gm;
 
@@ -37,18 +38,40 @@ export function invalidateEvidence(body) {
 
 const UNCHECKED_LINE_RE = /^(\s*- \[ \]\s+)(.+)$/gm;
 const EXECUTION_CONTEXT_KEYS = ['worktree', 'branch', 'bound-issue'];
+const STRANDED_ALLOWED_KEYS = new Set(['cmd', 'vc-list', 'key', ...EXECUTION_CONTEXT_KEYS]);
+const VERIFIED_MARKER_RE = /<!--\s*aitm-verified\s+[\s\S]*?-->/g;
 
 // Compatibility repair for bodies written by the pre-#1557 invalidator. It
 // left execution context on an unchecked declaration after removing sha/ts,
 // which stranded the next Test entry behind partial-provenance validation.
 // Checked lines and markers that still claim execution proof remain untouched.
-export function repairInvalidatedEvidenceProvenance(body) {
+export function repairInvalidatedEvidenceProvenance(body, { boundIssue } = {}) {
   const src = String(body || '');
   const repaired = [];
   const next = src.replace(UNCHECKED_LINE_RE, (line, prefix, rest) => {
     if (hasExecutionProof(rest)) return line;
-    const props = parseProofMarker(rest);
-    if (!props || !EXECUTION_CONTEXT_KEYS.some((key) => key in props)) return line;
+    const markers = rest.match(VERIFIED_MARKER_RE) || [];
+    if (markers.length !== 1) return line;
+    const parsed = parseMarker(markers[0]);
+    if (parsed?.name !== 'verified' || !hasVerifiedDeclaration(markers[0])) return line;
+    const props = parsed.props;
+    if (Object.keys(props).some((key) => !STRANDED_ALLOWED_KEYS.has(key))) return line;
+    if (
+      !EXECUTION_CONTEXT_KEYS.every(
+        (key) => typeof props[key] === 'string' && props[key].trim().length > 0
+      )
+    ) {
+      return line;
+    }
+    const recordedIssue = Number(props['bound-issue']);
+    if (
+      !Number.isSafeInteger(recordedIssue) ||
+      recordedIssue <= 0 ||
+      !Number.isSafeInteger(Number(boundIssue)) ||
+      recordedIssue !== Number(boundIssue)
+    ) {
+      return line;
+    }
     const normalized = stripExecutionProof(rest);
     if (normalized === rest) return line;
     repaired.push(normalized);

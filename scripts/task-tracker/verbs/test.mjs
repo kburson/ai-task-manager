@@ -601,14 +601,17 @@ export async function runVerbTest({
   // its execution context. Repair only that unchecked, declaration-only shape
   // before the Develop→Test provenance audit; genuine proof remains fail-closed.
   {
-    const repaired = repairInvalidatedEvidenceProvenance(body);
+    const repaired = repairInvalidatedEvidenceProvenance(body, {
+      boundIssue: Number(issueNum),
+    });
     if (repaired.repaired.length > 0) {
       body = repaired.body;
       await mutateBody({
         cfg,
         issueNum,
         evidenceStamp: true,
-        mutate: (base) => repairInvalidatedEvidenceProvenance(base).body,
+        mutate: (base) =>
+          repairInvalidatedEvidenceProvenance(base, { boundIssue: Number(issueNum) }).body,
       });
     }
   }
