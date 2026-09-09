@@ -18,6 +18,26 @@ function canonicalRefs(refs, { issueNumber } = {}) {
   return [...new Set(normalized)].sort((left, right) => left - right);
 }
 
+function repositoryIdentity(node, relation) {
+  const declared = node?.repository?.nameWithOwner;
+  let fromUrl = null;
+  if (node?.url != null) {
+    try {
+      const parts = new URL(node.url).pathname.split('/').filter(Boolean);
+      if (parts.length !== 4 || parts[2] !== 'issues' || Number(parts[3]) !== node?.number) {
+        fail(`${relation}-identity`);
+      }
+      fromUrl = `${decodeURIComponent(parts[0])}/${decodeURIComponent(parts[1])}`;
+    } catch (error) {
+      if (String(error?.message || '').startsWith('native-dependencies:')) throw error;
+      fail(`${relation}-identity`);
+    }
+  }
+  if (!declared && !fromUrl) fail(`${relation}-identity`);
+  if (declared && fromUrl && declared !== fromUrl) fail(`${relation}-identity`);
+  return declared || fromUrl;
+}
+
 export function normalizeDependencyConnection(
   connection,
   { repo, issueNumber, relation = 'dependency' } = {}
@@ -32,8 +52,8 @@ export function normalizeDependencyConnection(
 
   const refs = connection.nodes.map((node) => {
     if (!Number.isSafeInteger(node?.number) || node.number <= 0) fail(`${relation}-node`);
-    const observedRepo = node.repository?.nameWithOwner;
-    if (observedRepo && observedRepo !== repo) fail(`${relation}-repository`);
+    const observedRepo = repositoryIdentity(node, relation);
+    if (observedRepo !== repo) fail(`${relation}-repository`);
     if (node.number === issueNumber) fail(`${relation}-self`);
     return node.number;
   });
@@ -84,13 +104,35 @@ function sameRefs(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export async function convergeBlockedBySet({ issueNumber, repo, desired, deps = {} } = {}) {
+export async function convergeBlockedBySet({
+  issueNumber,
+  repo,
+  desired,
+  operation,
+  refs,
+  deps = {},
+} = {}) {
   assertIssueInput(issueNumber, repo);
-  const canonicalDesired = canonicalRefs(desired, { issueNumber });
+  if (operation !== undefined && !['union', 'subtract', 'clear'].includes(operation)) {
+    fail('operation');
+  }
+  if (operation !== undefined && desired !== undefined) fail('operation-shape');
+  const requested = operation === undefined ? null : canonicalRefs(refs || [], { issueNumber });
+  if (operation === 'clear' && requested.length) fail('operation-shape');
+  if (operation === undefined) canonicalRefs(desired, { issueNumber });
   const read = deps.readNativeDependencies || readNativeDependencies;
   const edit = deps.editDependency || editNativeDependency;
   const before = await read({ issueNumber, repo, deps: deps.nativeRead });
   const existing = canonicalRefs(before?.blockedBy, { issueNumber });
+  const requestedSet = new Set(requested || []);
+  const canonicalDesired =
+    operation === 'union'
+      ? canonicalRefs([...existing, ...requested], { issueNumber })
+      : operation === 'subtract'
+        ? existing.filter((ref) => !requestedSet.has(ref))
+        : operation === 'clear'
+          ? []
+          : canonicalRefs(desired, { issueNumber });
   const desiredSet = new Set(canonicalDesired);
   const existingSet = new Set(existing);
   const removed = existing.filter((ref) => !desiredSet.has(ref));

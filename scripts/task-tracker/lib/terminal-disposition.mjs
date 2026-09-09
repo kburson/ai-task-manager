@@ -96,7 +96,22 @@ export async function writeTerminalStatusDone({ cfg, issueNumber, deps = {} } = 
   if (!written) {
     throw new Error(`terminal status write for #${issueNumber} did not resolve Done`);
   }
-  return { issueNumber, status: 'Done', itemId };
+  let dependentReconciliation = [];
+  try {
+    const unpark =
+      deps.unparkDependents || (await import('./unpark-dependents.mjs')).unparkDependents;
+    dependentReconciliation = await unpark({
+      doneIssueNumber: issueNumber,
+      cfg,
+      deps: deps.dependencyReconciliation,
+    });
+  } catch (error) {
+    dependentReconciliation = [{ issue: null, error: error.message }];
+    (deps.warn || ((message) => process.stderr.write(`${message}\n`)))(
+      `[unpark] #${issueNumber}: enforcement failed: ${error.message}`
+    );
+  }
+  return { issueNumber, status: 'Done', itemId, dependentReconciliation };
 }
 
 export async function readTerminalDisposition({ cfg, issueNumber, deps = {} } = {}) {

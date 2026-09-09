@@ -69,20 +69,41 @@ test('derives blocked, ready, and fail-closed unknown projections', () => {
   );
 });
 
-test('projects BLOCKED for unfinished or unknown dependencies', async () => {
-  for (const observation of [
-    { blockedBy: [9], states: new Map([[9, 'develop']]) },
-    { blockedBy: [9], states: new Map() },
+test('projects BLOCKED for unfinished dependencies', async () => {
+  const harness = reconciliationHarness();
+  const result = await reconcileDependencyDisposition({
+    issueNumber: 12,
+    cfg,
+    observation: { blockedBy: [9], states: new Map([[9, 'develop']]) },
+    deps: harness.deps,
+  });
+  assert.deepEqual(harness.writes, ['BLOCKED']);
+  assert.equal(result.status, 'projected');
+});
+
+test('requires BLOCKED before failing closed on unknown or unreadable dependency evidence', async () => {
+  for (const configure of [
+    (harness) => ({ observation: { blockedBy: [9], states: new Map() }, deps: harness.deps }),
+    (harness) => {
+      harness.deps.readNativeDependencies = async () => {
+        throw new Error('graph offline');
+      };
+      return { deps: harness.deps };
+    },
+    (harness) => {
+      harness.deps.readNativeDependencies = async () => ({ blockedBy: [9], blocking: [] });
+      harness.deps.fetchAssignmentSnapshot = async () => {
+        throw new Error('status offline');
+      };
+      return { deps: harness.deps };
+    },
   ]) {
     const harness = reconciliationHarness();
-    const result = await reconcileDependencyDisposition({
-      issueNumber: 12,
-      cfg,
-      observation,
-      deps: harness.deps,
-    });
+    await assert.rejects(
+      reconcileDependencyDisposition({ issueNumber: 12, cfg, ...configure(harness) }),
+      /dependency-disposition:unknown/
+    );
     assert.deepEqual(harness.writes, ['BLOCKED']);
-    assert.equal(result.status, 'projected');
   }
 });
 

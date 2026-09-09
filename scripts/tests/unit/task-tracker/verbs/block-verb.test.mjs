@@ -32,8 +32,16 @@ function nativeHarness(initial = []) {
     readNativeDependencies: async () => ({ blockedBy: [...blockedBy], blocking: [] }),
     convergeBlockedBySet: async (input) => {
       convergeCalls.push(input);
-      const desired = [...new Set(input.desired)].sort((left, right) => left - right);
       const existing = [...blockedBy];
+      const requested = new Set(input.refs || []);
+      const desired =
+        input.operation === 'union'
+          ? [...new Set([...existing, ...requested])].sort((left, right) => left - right)
+          : input.operation === 'subtract'
+            ? existing.filter((ref) => !requested.has(ref))
+            : input.operation === 'clear'
+              ? []
+              : [...new Set(input.desired)].sort((left, right) => left - right);
       const added = desired.filter((ref) => !existing.includes(ref));
       const removed = existing.filter((ref) => !desired.includes(ref));
       blockedBy = desired;
@@ -65,9 +73,12 @@ function nativeHarness(initial = []) {
   };
 }
 
-test('parseByList and block arguments normalize issue refs', () => {
-  assert.deepEqual(parseByList('7, 5, #5, nope, 0'), [5, 7]);
+test('parseByList and block arguments normalize valid issue refs and reject partial-invalid input', () => {
+  assert.deepEqual(parseByList('7, 5, #5'), [5, 7]);
   assert.deepEqual(parseByList(null), []);
+  for (const raw of ['7,nope', '7,0', '7,', '#-1', '9007199254740992']) {
+    assert.throws(() => parseByList(raw), /invalid issue number/);
+  }
   assert.deepEqual(parseBlockArgs(['#100', '--by', '5,7'], null), {
     target: 100,
     refs: [5, 7],
@@ -96,7 +107,8 @@ test('unblock arguments distinguish subtract-some from clear-all', () => {
 test('block unions requested refs into the native set without duplicates', async () => {
   const harness = nativeHarness([4, 9]);
   const result = await runBlock({ target: 20, refs: [9, 12, 12], cfg: CFG, deps: harness.deps });
-  assert.deepEqual(harness.convergeCalls[0].desired, [4, 9, 12]);
+  assert.equal(harness.convergeCalls[0].operation, 'union');
+  assert.deepEqual(harness.convergeCalls[0].refs, [9, 12]);
   assert.deepEqual(result.added, [12]);
   assert.deepEqual(result.remaining, [4, 9, 12]);
   assert.equal(harness.comments.length, 1);
@@ -165,7 +177,8 @@ test('block retry converges after projection failed without duplicating graph ed
 test('unblock subtracts only present requested refs and ignores absent refs', async () => {
   const harness = nativeHarness([4, 9, 12]);
   const result = await runUnblock({ target: 20, refs: [9, 99], cfg: CFG, deps: harness.deps });
-  assert.deepEqual(harness.convergeCalls[0].desired, [4, 12]);
+  assert.equal(harness.convergeCalls[0].operation, 'subtract');
+  assert.deepEqual(harness.convergeCalls[0].refs, [9, 99]);
   assert.deepEqual(result.removed, [9]);
   assert.deepEqual(result.remaining, [4, 12]);
   assert.equal(result.cleared, false);
@@ -177,7 +190,7 @@ test('unblock subtracts only present requested refs and ignores absent refs', as
 test('unblock without --by clears the native set', async () => {
   const harness = nativeHarness([4, 9]);
   const result = await runUnblock({ target: 20, refs: null, cfg: CFG, deps: harness.deps });
-  assert.deepEqual(harness.convergeCalls[0].desired, []);
+  assert.equal(harness.convergeCalls[0].operation, 'clear');
   assert.deepEqual(result.removed, [4, 9]);
   assert.deepEqual(result.remaining, []);
   assert.equal(result.cleared, true);

@@ -11,6 +11,7 @@ import {
 const repoNode = (number, repo = 'o/r') => ({
   number,
   repository: { nameWithOwner: repo },
+  url: `https://github.com/${repo}/issues/${number}`,
 });
 
 test('normalizes a complete connection into sorted repository issue refs', () => {
@@ -23,14 +24,40 @@ test('normalizes a complete connection into sorted repository issue refs', () =>
   );
 });
 
-test('accepts provider nodes that omit redundant repository identity', () => {
+test('derives repository identity from production-shaped dependency URLs', () => {
   assert.deepEqual(
     normalizeDependencyConnection(
-      { nodes: [{ number: 4 }], totalCount: 1 },
+      { nodes: [{ number: 4, url: 'https://github.com/o/r/issues/4' }], totalCount: 1 },
       { repo: 'o/r', issueNumber: 12, relation: 'blockedBy' }
     ),
     [4]
   );
+  assert.deepEqual(
+    normalizeDependencyConnection(
+      { nodes: [{ number: 4, repository: { nameWithOwner: 'o/r' } }], totalCount: 1 },
+      { repo: 'o/r', issueNumber: 12, relation: 'blockedBy' }
+    ),
+    [4]
+  );
+});
+
+test('rejects absent, malformed, conflicting, and foreign repository identity', () => {
+  for (const node of [
+    { number: 4 },
+    { number: 4, url: 'not-a-url' },
+    { number: 4, url: 'https://github.com/o/r/issues/9' },
+    { number: 4, url: 'https://github.com/other/repo/issues/4' },
+    { number: 4, repository: { nameWithOwner: 'o/r' }, url: 'https://github.com/x/y/issues/4' },
+  ]) {
+    assert.throws(
+      () =>
+        normalizeDependencyConnection(
+          { nodes: [node], totalCount: 1 },
+          { repo: 'o/r', issueNumber: 12, relation: 'blockedBy' }
+        ),
+      /native-dependencies:blockedBy-(repository|identity)/
+    );
+  }
 });
 
 test('refuses incomplete, malformed, foreign, duplicate, and self connections', () => {
@@ -171,4 +198,34 @@ test('exact-set convergence fails when provider readback differs', async () => {
     }),
     /native-dependencies:readback/
   );
+});
+
+test('operation-aware union and subtraction preserve edges added between caller intent and convergence', async () => {
+  for (const [operation, refs, before, after, expected] of [
+    ['union', [9], [4, 77], [4, 9, 77], { added: [9], removed: [] }],
+    ['subtract', [9], [4, 9, 77], [4, 77], { added: [], removed: [9] }],
+  ]) {
+    const edits = [];
+    let reads = 0;
+    const result = await convergeBlockedBySet({
+      issueNumber: 20,
+      repo: 'o/r',
+      operation,
+      refs,
+      deps: {
+        readNativeDependencies: async () => {
+          reads += 1;
+          return { blockedBy: reads === 1 ? before : after, blocking: [] };
+        },
+        editDependency: async (input) => edits.push(input),
+      },
+    });
+    assert.deepEqual(
+      edits.map(({ operation: editOperation, ref }) => ({ operation: editOperation, ref })),
+      expected.added
+        .map((ref) => ({ operation: 'add', ref }))
+        .concat(expected.removed.map((ref) => ({ operation: 'remove', ref })))
+    );
+    assert.deepEqual(result.desired, after);
+  }
 });

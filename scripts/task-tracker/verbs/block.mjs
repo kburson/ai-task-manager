@@ -5,7 +5,7 @@
 import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { reconcileDependencyDisposition } from '../lib/dependency-disposition.mjs';
-import { convergeBlockedBySet, readNativeDependencies } from '../lib/native-dependencies.mjs';
+import { convergeBlockedBySet } from '../lib/native-dependencies.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { loadState } from '../state.mjs';
 
@@ -13,8 +13,15 @@ export function parseByList(raw) {
   if (raw == null) return [];
   const out = new Set();
   for (const tok of String(raw).split(',')) {
-    const n = Number(tok.trim().replace(/^#/, ''));
-    if (Number.isInteger(n) && n > 0) out.add(n);
+    const normalized = tok.trim();
+    if (!/^#?[1-9]\d*$/.test(normalized)) {
+      throw new TypeError(`block: --by contains an invalid issue number: ${JSON.stringify(tok)}`);
+    }
+    const n = Number(normalized.replace(/^#/, ''));
+    if (!Number.isSafeInteger(n)) {
+      throw new TypeError(`block: --by contains an invalid issue number: ${JSON.stringify(tok)}`);
+    }
+    out.add(n);
   }
   return [...out].sort((a, b) => a - b);
 }
@@ -95,20 +102,12 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
     if (!observed?.exists) throw new Error(`block: blocker #${issueNumber} does not exist`);
   }
 
-  const readDependencies = deps.readNativeDependencies || readNativeDependencies;
-  const before = await readDependencies({
-    issueNumber: target,
-    repo: cfg.repo,
-    deps: deps.nativeDependencies,
-  });
-  const desired = [...new Set([...before.blockedBy, ...requested])].sort(
-    (left, right) => left - right
-  );
   const converge = deps.convergeBlockedBySet || convergeBlockedBySet;
   const convergence = await converge({
     issueNumber: target,
     repo: cfg.repo,
-    desired,
+    operation: 'union',
+    refs: requested,
     deps: deps.nativeDependencies,
   });
   const reconcile = deps.reconcileDependencyDisposition || reconcileDependencyDisposition;
@@ -145,7 +144,15 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
 export async function verbBlock(ctx) {
   const { cfg, statePath, rest } = ctx;
   const state = loadState(statePath);
-  const { target, refs } = parseArgs(rest, state.active || null);
+  let parsed;
+  try {
+    parsed = parseArgs(rest, state.active || null);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(2);
+    return;
+  }
+  const { target, refs } = parsed;
   if (!target) {
     console.error('Usage: /task block [#N] --by <M>[,<P>...]');
     process.exit(2);

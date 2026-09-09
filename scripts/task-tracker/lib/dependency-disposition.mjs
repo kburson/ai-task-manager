@@ -105,6 +105,7 @@ export async function reconcileDependencyDisposition({
   issueNumber,
   cfg,
   observation,
+  observationError,
   deps = {},
 } = {}) {
   if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) fail('issue');
@@ -118,16 +119,26 @@ export async function reconcileDependencyDisposition({
   if (!fieldIdFor(cfg, 'disposition')) fail('field');
 
   let observed = observation;
+  let observedError = observationError || null;
   if (!observed) {
     try {
       observed = await observeDependencyReadiness({ issueNumber, cfg, deps });
     } catch (error) {
-      fail('dependencies', errorMessage(error));
+      observedError = error;
+      observed = { blockedBy: [], states: new Map(), status: 'unknown', unfinished: [] };
     }
   }
-  const projection = deriveDependencyProjection(observed);
+  const projection = observedError
+    ? { status: 'unknown', unfinished: [], error: errorMessage(observedError) }
+    : deriveDependencyProjection(observed);
   const target = projection.status === 'ready' ? '' : 'BLOCKED';
   if (current === target) {
+    if (projection.status === 'unknown') {
+      fail(
+        'unknown',
+        projection.error || projection.unfinished.map(({ ref }) => `#${ref}`).join(',')
+      );
+    }
     return { status: 'idempotent', disposition: current, projection };
   }
 
@@ -172,6 +183,12 @@ export async function reconcileDependencyDisposition({
   const readback = await readDisposition({ cfg, issueNumber, deps, category: 'readback' });
   if (readback !== target) {
     fail('readback', `expected ${target || 'empty'}; observed ${readback || 'empty'}`);
+  }
+  if (projection.status === 'unknown') {
+    fail(
+      'unknown',
+      projection.error || projection.unfinished.map(({ ref }) => `#${ref}`).join(',')
+    );
   }
   return {
     status: target ? 'projected' : 'cleared',

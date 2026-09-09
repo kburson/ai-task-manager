@@ -20,13 +20,22 @@ function tmpState(state) {
 function nativeDeps(existing = [], onComment) {
   return {
     readNativeDependencies: async () => ({ blockedBy: existing, blocking: [] }),
-    convergeBlockedBySet: async ({ desired }) => ({
-      status: JSON.stringify(desired) === JSON.stringify(existing) ? 'idempotent' : 'updated',
-      existing,
-      desired,
-      added: desired.filter((ref) => !existing.includes(ref)),
-      removed: existing.filter((ref) => !desired.includes(ref)),
-    }),
+    convergeBlockedBySet: async ({ operation, refs = [] }) => {
+      const requested = new Set(refs);
+      const desired =
+        operation === 'subtract'
+          ? existing.filter((ref) => !requested.has(ref))
+          : operation === 'clear'
+            ? []
+            : [...existing];
+      return {
+        status: JSON.stringify(desired) === JSON.stringify(existing) ? 'idempotent' : 'updated',
+        existing,
+        desired,
+        added: desired.filter((ref) => !existing.includes(ref)),
+        removed: existing.filter((ref) => !desired.includes(ref)),
+      };
+    },
     reconcileDependencyDisposition: async () => ({
       status: existing.length ? 'projected' : 'cleared',
     }),

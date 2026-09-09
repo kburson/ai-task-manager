@@ -113,10 +113,12 @@ test('AC4: runUnblock clears a native blocker without rewriting a marker-heavy b
     cfg,
     deps: {
       readNativeDependencies: async () => ({ blockedBy, blocking: [] }),
-      convergeBlockedBySet: async ({ desired }) => {
+      convergeBlockedBySet: async ({ operation, refs }) => {
         const existing = blockedBy;
-        blockedBy = desired;
-        return { status: 'updated', existing, desired, added: [], removed: existing };
+        assert.equal(operation, 'clear');
+        assert.deepEqual(refs, []);
+        blockedBy = [];
+        return { status: 'updated', existing, desired: blockedBy, added: [], removed: existing };
       },
       reconcileDependencyDisposition: async () => ({ status: 'cleared' }),
       postComment: async ({ body }) => comments.push(body),

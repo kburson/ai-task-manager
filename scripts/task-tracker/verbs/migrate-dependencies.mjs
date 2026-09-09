@@ -167,8 +167,25 @@ async function defaultRemoveLegacyMarker({ candidate, cfg }) {
   });
 }
 
+async function defaultValidateLiveMarker({ candidate, cfg }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(candidate.issue), '-R', cfg.repo, '--json', 'body,state,updatedAt'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const live = JSON.parse(stdout);
+  if (String(live?.state || '').toUpperCase() !== 'OPEN') {
+    throw new Error('migrate-dependencies: live candidate is no longer open');
+  }
+  const refs = parseBlockedByStrict(stripFencedCodeBlocks(String(live?.body || '')));
+  if (!sameRefs(refs, candidate.refs)) {
+    throw new Error('migrate-dependencies: live legacy marker changed before migration');
+  }
+  return { refs: canonicalRefs(refs), updatedAt: live.updatedAt || null };
+}
+
 export async function migrateLegacyDependencyIssue({ candidate, cfg, apply, deps = {} } = {}) {
-  if (candidate?.kind !== 'strict-open') {
+  if (!['strict-open', 'already-native'].includes(candidate?.kind)) {
     throw new Error('migrate-dependencies: only strict-open candidates may be migrated');
   }
   if (!cfg?.repo || !cfg?.projectId) throw new Error('migrate-dependencies: cfg is required');
@@ -195,11 +212,20 @@ export async function migrateLegacyDependencyIssue({ candidate, cfg, apply, deps
     };
   }
 
+  const validateLiveMarker = deps.validateLiveMarker || defaultValidateLiveMarker;
+  await validateLiveMarker({ candidate: prepared, cfg });
   const converge = deps.convergeBlockedBySet || convergeBlockedBySet;
-  await converge({ issueNumber: prepared.issue, repo: cfg.repo, desired, deps });
+  const convergence = await converge({
+    issueNumber: prepared.issue,
+    repo: cfg.repo,
+    operation: 'union',
+    refs,
+    deps,
+  });
+  const appliedDesired = canonicalRefs(convergence.desired);
   const readDependencies = deps.readNativeDependencies || readNativeDependencies;
   const graph = await readDependencies({ issueNumber: prepared.issue, repo: cfg.repo, deps });
-  if (!sameRefs(graph?.blockedBy || [], desired)) {
+  if (!sameRefs(graph?.blockedBy || [], appliedDesired)) {
     throw new Error('migrate-dependencies: native dependency readback mismatch');
   }
   const reconcile = deps.reconcileDependencyDisposition || reconcileDependencyDisposition;
@@ -216,7 +242,7 @@ export async function migrateLegacyDependencyIssue({ candidate, cfg, apply, deps
     kind: prepared.kind,
     refs,
     nativeBefore,
-    nativeAfter: desired,
+    nativeAfter: appliedDesired,
     actions,
     projection,
     cleanup: { field, label, marker },
@@ -340,13 +366,14 @@ export async function runDependencyMigration({ cfg, apply, deps = {} } = {}) {
       const readDependencies = deps.readNativeDependencies || readNativeDependencies;
       const graph = await readDependencies({ issueNumber: issue.number, repo: cfg.repo, deps });
       const desired = canonicalRefs([...(graph?.blockedBy || []), ...classification.refs]);
+      const kind = sameRefs(graph?.blockedBy || [], desired) ? 'already-native' : 'strict-open';
       const projectionTarget = await projectionTargetForRefs(desired, cfg, deps);
       results.push(
         await migrateLegacyDependencyIssue({
           candidate: {
             ...issue,
             issue: issue.number,
-            kind: classification.kind,
+            kind,
             refs: classification.refs,
             nativeBefore: graph?.blockedBy || [],
             projectionTarget,

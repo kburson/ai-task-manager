@@ -42,20 +42,27 @@ function nativeDeps({ existing = [], validateIssue, onComment } = {}) {
   return {
     ...(validateIssue ? { validateIssue } : {}),
     readNativeDependencies: async () => ({ blockedBy: existing, blocking: [] }),
-    convergeBlockedBySet: async ({ desired }) => ({
-      status: JSON.stringify(desired) === JSON.stringify(existing) ? 'idempotent' : 'updated',
-      existing,
-      desired,
-      added: desired.filter((ref) => !existing.includes(ref)),
-      removed: existing.filter((ref) => !desired.includes(ref)),
-    }),
+    convergeBlockedBySet: async ({ operation, refs = [] }) => {
+      const desired =
+        operation === 'union'
+          ? [...new Set([...existing, ...refs])].sort((left, right) => left - right)
+          : [...existing];
+      return {
+        status: JSON.stringify(desired) === JSON.stringify(existing) ? 'idempotent' : 'updated',
+        existing,
+        desired,
+        added: desired.filter((ref) => !existing.includes(ref)),
+        removed: existing.filter((ref) => !desired.includes(ref)),
+      };
+    },
     reconcileDependencyDisposition: async () => ({ status: 'projected' }),
     postComment: async ({ body }) => onComment?.(body),
   };
 }
 
 test('block helpers parse, sort, deduplicate, and resolve the active fallback', () => {
-  assert.deepEqual(parseByList('#7, #5, 5, nope'), [5, 7]);
+  assert.deepEqual(parseByList('#7, #5, 5'), [5, 7]);
+  assert.throws(() => parseByList('#7, nope'), /invalid issue number/);
   assert.equal(resolveTargetIssue({ rest: ['x', '#42'], activeIssue: '#9' }), 42);
   assert.equal(resolveTargetIssue({ rest: [], activeIssue: '#9' }), 9);
   assert.deepEqual(parseArgs(['#5', '--by', '7,9'], null), {

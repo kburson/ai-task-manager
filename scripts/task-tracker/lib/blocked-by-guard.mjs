@@ -42,6 +42,23 @@ export const blockedByGuard = {
         deps: observationDeps,
       });
     } catch (error) {
+      const reconcile =
+        ctx.reconcileDisposition ||
+        ctx.deps?.reconcileDependencyDisposition ||
+        reconcileDependencyDisposition;
+      try {
+        await reconcile({
+          issueNumber: ctx.issueNumber,
+          cfg,
+          observationError: error,
+          deps: ctx.deps?.dependencyDisposition,
+        });
+      } catch (projectionError) {
+        return {
+          ok: false,
+          reason: `dependency readiness unavailable: ${error.message}; ${projectionError.message}`,
+        };
+      }
       return { ok: false, reason: `dependency readiness unavailable: ${error.message}` };
     }
 

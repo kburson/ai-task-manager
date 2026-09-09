@@ -6,7 +6,7 @@
 import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { reconcileDependencyDisposition } from '../lib/dependency-disposition.mjs';
-import { convergeBlockedBySet, readNativeDependencies } from '../lib/native-dependencies.mjs';
+import { convergeBlockedBySet } from '../lib/native-dependencies.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { loadState } from '../state.mjs';
 import { parseByList, resolveTargetIssue } from './block.mjs';
@@ -46,22 +46,12 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
   }
   if (!cfg?.repo) throw new Error('unblock: cfg.repo is required');
   const requested = canonicalRequested(refs);
-  const readDependencies = deps.readNativeDependencies || readNativeDependencies;
-  const before = await readDependencies({
-    issueNumber: target,
-    repo: cfg.repo,
-    deps: deps.nativeDependencies,
-  });
-  const requestedSet = requested === null ? null : new Set(requested);
-  const desired =
-    requestedSet === null
-      ? []
-      : before.blockedBy.filter((issueNumber) => !requestedSet.has(issueNumber));
   const converge = deps.convergeBlockedBySet || convergeBlockedBySet;
   const convergence = await converge({
     issueNumber: target,
     repo: cfg.repo,
-    desired,
+    operation: requested === null ? 'clear' : 'subtract',
+    refs: requested || [],
     deps: deps.nativeDependencies,
   });
   const reconcile = deps.reconcileDependencyDisposition || reconcileDependencyDisposition;
@@ -99,7 +89,15 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
 export async function verbUnblock(ctx) {
   const { cfg, statePath, rest } = ctx;
   const state = loadState(statePath);
-  const { target, refs, byProvided } = parseArgs(rest, state.active || null);
+  let parsed;
+  try {
+    parsed = parseArgs(rest, state.active || null);
+  } catch (error) {
+    console.error(error.message.replace(/^block:/, 'unblock:'));
+    process.exit(2);
+    return;
+  }
+  const { target, refs, byProvided } = parsed;
   if (!target) {
     console.error('Usage: /task unblock [#N] [--by <M>[,<P>...]]');
     process.exit(2);

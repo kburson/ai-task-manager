@@ -104,6 +104,7 @@ function mutationHarness({ failAt = null } = {}) {
   return {
     calls,
     deps: {
+      validateLiveMarker: step('legacy-marker-validate', { refs: [42, 48] }),
       convergeBlockedBySet: step('native-converge', {
         desired: [42, 48],
         added: [48],
@@ -152,6 +153,7 @@ test('apply orders native convergence and readback before destructive legacy cle
     deps: h.deps,
   });
   assert.deepEqual(h.calls, [
+    'legacy-marker-validate',
     'native-converge',
     'native-readback',
     'projection-reconcile',
@@ -164,6 +166,7 @@ test('apply orders native convergence and readback before destructive legacy cle
 
 test('every partial failure preserves the final legacy marker step for retry', async () => {
   const ordered = [
+    'legacy-marker-validate',
     'native-converge',
     'native-readback',
     'projection-reconcile',
@@ -183,6 +186,36 @@ test('every partial failure preserves the final legacy marker step for retry', a
     );
     assert.equal(h.calls.includes('legacy-marker-remove'), false, failAt);
   }
+});
+
+test('apply refuses a changed live marker before any graph or cleanup mutation', async () => {
+  const h = mutationHarness({ failAt: 'legacy-marker-validate' });
+  await assert.rejects(
+    migrateLegacyDependencyIssue({
+      candidate: candidate(),
+      cfg: { repo: 'o/r', projectId: 'P', fieldBlockedBy: 'FIELD' },
+      apply: true,
+      deps: h.deps,
+    }),
+    /boom:legacy-marker-validate/
+  );
+  assert.deepEqual(h.calls, ['legacy-marker-validate']);
+});
+
+test('strict candidates with no missing native edge report already-native', async () => {
+  const result = await runDependencyMigration({
+    cfg: { repo: 'o/r', projectId: 'P' },
+    apply: false,
+    deps: {
+      listIssues: async () => [
+        { number: 41, state: 'OPEN', body: marker, labels: ['BLOCKED'], legacyBlockedBy: '' },
+      ],
+      readNativeDependencies: async () => ({ blockedBy: [42, 48], blocking: [] }),
+      fetchAssignmentSnapshot: async () => ({ state: 'done' }),
+    },
+  });
+  assert.equal(result.results[0].kind, 'already-native');
+  assert.equal(result.results[0].status, 'dry-run');
 });
 
 test('run reports ambiguous open carriers as exit 3 only for apply', async () => {

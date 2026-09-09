@@ -20,7 +20,10 @@ test('default native reader discovers the complete blocking set through injected
           return {
             stdout: JSON.stringify({
               blockedBy: { nodes: [], totalCount: 0 },
-              blocking: { nodes: [{ number: 700 }], totalCount: 1 },
+              blocking: {
+                nodes: [{ number: 700, url: 'https://github.com/o/r/issues/700' }],
+                totalCount: 1,
+              },
             }),
           };
         },

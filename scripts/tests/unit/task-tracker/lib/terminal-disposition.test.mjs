@@ -1,4 +1,4 @@
-// @story #1035
+// @story #1035 #1557
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -106,9 +106,16 @@ test('terminal helper fails loud for missing field, project item, or option', as
 
 test('terminal Done helper writes the configured Status option without option discovery', async () => {
   const h = writerHarness();
-  await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps: h.deps });
+  const reconciled = [];
+  h.deps.unparkDependents = async (input) => {
+    reconciled.push(input);
+    return [{ issue: 2000, reconciled: 'cleared' }];
+  };
+  const result = await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps: h.deps });
   assert.equal(h.writes[0].fieldId, 'F_STATUS');
   assert.deepEqual(h.writes[0].optionMap, { F_STATUS: { Done: 'O_DONE' } });
+  assert.equal(reconciled[0].doneIssueNumber, 1035);
+  assert.deepEqual(result.dependentReconciliation, [{ issue: 2000, reconciled: 'cleared' }]);
 });
 
 test('close-as retains the board item and writes matching terminal values', async () => {

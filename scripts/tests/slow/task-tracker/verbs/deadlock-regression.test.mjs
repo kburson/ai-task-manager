@@ -103,10 +103,12 @@ test('AC5: entanglement clears via unblock alone (no board/state-file edit)', as
     cfg,
     deps: {
       readNativeDependencies: async () => ({ blockedBy, blocking: [] }),
-      convergeBlockedBySet: async ({ desired }) => {
+      convergeBlockedBySet: async ({ operation, refs }) => {
         const existing = blockedBy;
-        blockedBy = desired;
-        return { status: 'updated', existing, desired, added: [], removed: existing };
+        assert.equal(operation, 'clear');
+        assert.deepEqual(refs, []);
+        blockedBy = [];
+        return { status: 'updated', existing, desired: blockedBy, added: [], removed: existing };
       },
       reconcileDependencyDisposition: async () => ({ status: 'cleared' }),
       postComment: async () => {},
