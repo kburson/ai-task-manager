@@ -662,3 +662,39 @@ export function buildDeliveryRealPrEvidence(input = {}) {
     })
   );
 }
+
+// @story #1562 — observe a merged pull request's merge method WITHOUT running
+// the full delivery verification. The merge-method reconciliation lane needs the
+// observed topology before it can build an intent, and the intent is what
+// `verifyLiveDelivery` consumes — so the observation cannot come from inside it.
+//
+// Deliberately narrower than `classifyMergeMethod` + the squash-proving ladder
+// used by `verifyLiveDelivery`. Only an unambiguous two-parent merge commit whose
+// second parent is the expected head is attributable here. A single-parent
+// rewrite is ambiguous between squash and rebase without the authorized-bytes or
+// single/multi-source proofs, and this lane must never guess a method an operator
+// is about to have recorded as fact — so it refuses instead.
+export async function observeMergeMethod({
+  mergeCommitSha,
+  expectedHeadSha,
+  inspectMergeCommit,
+} = {}) {
+  if (
+    typeof mergeCommitSha !== 'string' ||
+    !SHA_RE.test(mergeCommitSha) ||
+    typeof expectedHeadSha !== 'string' ||
+    !SHA_RE.test(expectedHeadSha) ||
+    typeof inspectMergeCommit !== 'function'
+  ) {
+    throw verificationError('input');
+  }
+  let inspection;
+  try {
+    inspection = await inspectMergeCommit({ mergeCommitSha, expectedHeadSha });
+  } catch (error) {
+    throw verificationError('merge-method-evidence', error);
+  }
+  const classified = classifyMergeMethod(inspection, expectedHeadSha, mergeCommitSha);
+  if (classified !== 'merge') throw verificationError('merge-method-unattributable');
+  return classified;
+}
