@@ -72,7 +72,7 @@
 - Consumes: shared `pexec` from `scripts/gh/lib/gh-client.mjs` and configured repository strings.
 - Produces: `normalizeDependencyConnection(connection, options)`, `readNativeDependencies(options)`, and `convergeBlockedBySet(options)` for every later task.
 
-- [ ] **Step 1: Add failing field-definition assertions**
+- [x] **Step 1: Add failing field-definition assertions**
 
 Extend `disposition-install-repair.test.mjs` to load both canonical definition files and assert:
 
@@ -94,7 +94,7 @@ for (const defs of [workspaceDefs, defaultDefs]) {
 
 Retain the existing repair test that supplies observed option IDs and assert the GraphQL update preserves those IDs while appending only `BLOCKED`.
 
-- [ ] **Step 2: Run the field test and observe RED**
+- [x] **Step 2: Run the field test and observe RED**
 
 Run:
 
@@ -104,7 +104,7 @@ node --test scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.m
 
 Expected: FAIL because `BLOCKED` is absent and `blockedBy` is still provisioned.
 
-- [ ] **Step 3: Add failing native connection tests**
+- [x] **Step 3: Add failing native connection tests**
 
 Create `native-dependencies.test.mjs` with injected I/O and these concrete cases:
 
@@ -145,7 +145,7 @@ for (const connection of [
 
 Add async tests showing `readNativeDependencies` parses `{blockedBy, blocking}` and `convergeBlockedBySet` calls only missing `--add-blocked-by` or present `--remove-blocked-by` edges before exact readback.
 
-- [ ] **Step 4: Run the adapter test and observe RED**
+- [x] **Step 4: Run the adapter test and observe RED**
 
 Run:
 
@@ -155,7 +155,7 @@ node --test scripts/tests/unit/task-tracker/lib/native-dependencies.test.mjs
 
 Expected: FAIL with module-not-found for `native-dependencies.mjs`.
 
-- [ ] **Step 5: Implement the field and adapter minimum**
+- [x] **Step 5: Implement the field and adapter minimum**
 
 Add the exact `BLOCKED` option to both Disposition definitions and remove the `blockedBy` field object from both arrays.
 
@@ -191,7 +191,7 @@ export async function convergeBlockedBySet({ issueNumber, repo, desired, deps = 
 
 Use one `gh issue edit` call per relationship so partial mutation results can be attributed precisely. Keep all process calls injectable.
 
-- [ ] **Step 6: Run focused tests and observe GREEN**
+- [x] **Step 6: Run focused tests and observe GREEN**
 
 Run:
 
@@ -201,7 +201,7 @@ node --test scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.m
 
 Expected: PASS with zero failed tests.
 
-- [ ] **Step 7: Commit the adapter**
+- [x] **Step 7: Commit the adapter**
 
 ```bash
 git add config/project-fields.default.json .ai-task-manager/project-fields.json scripts/task-tracker/lib/native-dependencies.mjs scripts/tests/unit/task-tracker/lib/native-dependencies.test.mjs scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.mjs

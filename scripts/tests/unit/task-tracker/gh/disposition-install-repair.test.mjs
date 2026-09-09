@@ -1,5 +1,6 @@
 // @story #1035
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { ensureDispositionField, persistDispositionField } from '../../../../gh/init-repair.mjs';
@@ -20,8 +21,29 @@ const definition = {
       description:
         'Implementation retained on trunk without complete issue-local delivery authority',
     },
+    {
+      name: 'BLOCKED',
+      color: 'RED',
+      description: 'Waiting on unfinished issue dependencies.',
+    },
   ],
 };
+
+test('canonical project definitions add BLOCKED and stop provisioning Blocked By', () => {
+  const files = [
+    new URL('../../../../../config/project-fields.default.json', import.meta.url),
+    new URL('../../../../../.ai-task-manager/project-fields.json', import.meta.url),
+  ];
+  for (const file of files) {
+    const fields = JSON.parse(readFileSync(file, 'utf8'));
+    const disposition = fields.find((field) => field.key === 'disposition');
+    assert.deepEqual(
+      disposition.options.find((option) => option.name === 'BLOCKED'),
+      definition.options.at(-1)
+    );
+    assert.equal(fields.some((field) => field.key === 'blockedBy'), false);
+  }
+});
 
 function gqlHarness(fields = []) {
   const calls = [];
@@ -94,11 +116,11 @@ test('repair appends missing canonical options while preserving existing option 
   });
   assert.deepEqual(
     update.variables.options.slice(1).map((option) => option.name),
-    ['Replaced', 'Discarded', 'Duplicate', 'Incorporated']
+    ['Replaced', 'Discarded', 'Duplicate', 'Incorporated', 'BLOCKED']
   );
 });
 
-test('repair appends only Incorporated when all historical options are exact', async () => {
+test('repair appends only BLOCKED when all terminal options are exact', async () => {
   const field = {
     id: 'F_EXISTING',
     name: 'Disposition',
