@@ -41,6 +41,7 @@ import {
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 import { verifyRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
+import { observeDependencyReadiness } from '../../task-tracker/lib/dependency-disposition.mjs';
 
 const IN_FLIGHT_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review']);
 
@@ -85,11 +86,44 @@ export function normalizeCloseReason(sub) {
 // each sub-issue's project status (kanban single-select) and Sequence number.
 //
 // Throws if `repo` or `projectId` is missing — wave-admission is fail-closed.
-export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId, cfg = {} } = {}) {
+export async function defaultFetchSiblings({
+  parentEpicNumber,
+  repo,
+  projectId,
+  cfg = {},
+  deps = {},
+} = {}) {
   if (!repo) throw new Error('wave-admission: repo is required');
   if (!projectId) throw new Error('wave-admission: projectId is required');
   const nodes = await fetchAllSubIssueNodes({ parentEpicNumber, repo, projectId });
-  return mapSubIssueNodes(nodes, { ...cfg, projectId });
+  const fullCfg = { ...cfg, repo, projectId };
+  return enrichSiblingDependencies(mapSubIssueNodes(nodes, fullCfg), fullCfg, deps);
+}
+
+export async function enrichSiblingDependencies(children, cfg, deps = {}) {
+  const observe = deps.observeDependencyReadiness || observeDependencyReadiness;
+  return Promise.all(
+    (children || []).map(async (child) => {
+      if (!Number.isSafeInteger(Number(child?.number)) || Number(child.number) <= 0) return child;
+      try {
+        const observation = await observe({ issueNumber: child.number, cfg, deps });
+        return {
+          ...child,
+          blockedBy: observation.blockedBy,
+          dependencyStates: observation.states,
+          dependencyReadiness: observation.status,
+        };
+      } catch (error) {
+        return {
+          ...child,
+          blockedBy: null,
+          dependencyStates: new Map(),
+          dependencyReadiness: 'unknown',
+          childEvidenceError: child.childEvidenceError || error.message,
+        };
+      }
+    })
+  );
 }
 
 function projectFieldSelection() {

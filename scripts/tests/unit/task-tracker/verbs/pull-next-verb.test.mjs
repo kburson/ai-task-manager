@@ -24,6 +24,8 @@ function ready(number, rank, extra = {}) {
     state: 'ready-for-plan',
     rank,
     blockedBy: [],
+    dependencyStates: new Map(),
+    dependencyReadiness: 'ready',
     hasCurrentRefinement: true,
     ...extra,
   };
@@ -71,9 +73,15 @@ function makeDeps({
       epicChildren: {
         fetchSiblings: async () => children,
       },
-      // No-op body fetch → no blockers → selection stays pure-rank (#248).
       enrich: {
-        fetchBody: async () => '',
+        observeDependencyReadiness: async ({ issueNumber }) => {
+          const child = children.find((candidate) => candidate.number === issueNumber);
+          return {
+            blockedBy: child?.blockedBy || [],
+            states: child?.dependencyStates || new Map(),
+            status: child?.dependencyReadiness || 'ready',
+          };
+        },
       },
       promote: async (rest) => {
         calls.promotes.push(rest);
@@ -251,6 +259,13 @@ Promote the selected refined child into durable planning readiness.
       fetchSnapshot: async () => ({ state: 'ready-for-plan', assignees: [] }),
       fetchCurrentUser: async () => 'alice',
     },
+    observeDependencyReadiness: async () => ({
+      blockedBy: [],
+      states: new Map(),
+      status: 'ready',
+      unfinished: [],
+    }),
+    reconcileDependencyDisposition: async () => ({ status: 'idempotent' }),
     // This models the active epic bind that rejects a direct child promote.
     // pull-next must replace it only for its already-selected child.
     assertBound: (issueNumber) => {
@@ -299,7 +314,11 @@ Promote the selected refined child into durable planning readiness.
   assert.equal(result.status, 'pulled');
   assert.equal(result.childNumber, 103);
   assert.deepEqual(resolvedIssues, [100], 'execution authority comes from the bound epic');
-  assert.deepEqual(moves, [{ issueNumber: 103, target: 'plan' }]);
+  assert.deepEqual(
+    moves,
+    [{ issueNumber: 103, target: 'plan' }],
+    JSON.stringify(result.promoteResult)
+  );
 });
 
 test('selected-child promotion reuses its held lock instead of entering the locking verb wrapper', async () => {
@@ -343,20 +362,37 @@ test('direct promote remains fail-closed on a mismatched bind (#1114)', async ()
   );
 });
 
-test('runPullNext skips a child whose blocker is not Done (#248)', async () => {
-  // #103 (lowest rank) is blocked by #105, which is not terminal.
-  // Enrichment surfaces that marker, so #104 is pulled instead.
+test('runPullNext skips a child whose external native dependency is not Done', async () => {
   const { deps, calls } = makeDeps({
     children: [
-      ready(103, 3, { blockedBy: [105] }),
+      ready(103, 3, {
+        blockedBy: [88],
+        dependencyStates: new Map([[88, 'develop']]),
+        dependencyReadiness: 'blocked',
+      }),
       ready(104, 4),
-      { number: 105, state: 'backlog', rank: 5, blockedBy: [], hasCurrentRefinement: false },
     ],
   });
   const result = await runPullNext({ epicNumber: 100, cfg, deps });
   assert.equal(result.status, 'pulled');
   assert.equal(result.childNumber, 104);
   assert.deepEqual(calls.promotes, [['104']]);
+});
+
+test('runPullNext selects a child when its external native dependency is Done', async () => {
+  const { deps, calls } = makeDeps({
+    children: [
+      ready(103, 3, {
+        blockedBy: [88],
+        dependencyStates: new Map([[88, 'done']]),
+        dependencyReadiness: 'ready',
+      }),
+    ],
+  });
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'pulled');
+  assert.equal(result.childNumber, 103);
+  assert.deepEqual(calls.promotes, [['103']]);
 });
 
 test('runPullNext audits the epic before child selection (#758)', async () => {

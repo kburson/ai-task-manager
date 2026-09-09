@@ -1,178 +1,82 @@
-// @story #309 #1339
-// Tests for scripts/task-tracker/lib/blocked-by-guard.mjs and the
-// guard-bootstrap that registers it at delivery exit slots (#286, #1339).
-
-import { test } from 'node:test';
+// @story #1557
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
-import { blockedByGuard, GUARD_ID } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
-import { GUARDS, runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { bootstrapGuards, EXIT_STATES } from '../../../../task-tracker/lib/guard-bootstrap.mjs';
+import { GUARDS } from '../../../../task-tracker/lib/guard-registry.mjs';
+import { blockedByGuard, GUARD_ID } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
 
-function makeCtx({ body = '', stateMap = {} } = {}) {
+function makeCtx({ blockedBy = [], states = {}, graphError, stateError, projectionError } = {}) {
+  const reconciliations = [];
   return {
     issueNumber: 100,
     repo: 'owner/name',
+    cfg: {
+      repo: 'owner/name',
+      projectId: 'P',
+      fieldDisposition: 'F_DISPOSITION',
+    },
     fromState: 'develop',
     toState: 'test',
-    body,
-    fetchBlockerState: async (n) => stateMap[n] ?? null,
+    readDependencies: async () => {
+      if (graphError) throw new Error(graphError);
+      return { blockedBy, blocking: [] };
+    },
+    fetchBlockerState: async (ref) => {
+      if (stateError) throw new Error(stateError);
+      return states[ref] ?? null;
+    },
+    reconcileDisposition: async (input) => {
+      reconciliations.push(input);
+      if (projectionError) throw new Error(projectionError);
+      return { status: blockedBy.length ? 'projected' : 'cleared' };
+    },
+    reconciliations,
   };
 }
 
-// ── guard.run ────────────────────────────────────────────────────────────────
-
-test('blockedByGuard: no marker → ok', async () => {
-  const r = await blockedByGuard.run(makeCtx({ body: '## Scope\n\nbody.\n' }));
-  assert.deepEqual(r, { ok: true });
+test('native dependency guard allows no dependencies and all-Done dependencies', async () => {
+  for (const ctx of [makeCtx(), makeCtx({ blockedBy: [5, 7], states: { 5: 'done', 7: 'done' } })]) {
+    const result = await blockedByGuard.run(ctx);
+    assert.deepEqual(result, { ok: true });
+    assert.equal(ctx.reconciliations.length, 1);
+  }
 });
 
-test('blockedByGuard: single blocker, done → ok', async () => {
-  const r = await blockedByGuard.run(
-    makeCtx({
-      body: 'x\n<!-- aitm-blocked-by: #5 -->\n',
-      stateMap: { 5: 'done' },
-    })
+test('native dependency guard refuses unfinished and unknown dependencies', async () => {
+  const unfinished = await blockedByGuard.run(
+    makeCtx({ blockedBy: [5, 7], states: { 5: 'done', 7: 'test' } })
   );
-  assert.deepEqual(r, { ok: true });
+  assert.equal(unfinished.ok, false);
+  assert.match(unfinished.reason, /#7 \(test\)/);
+  assert.doesNotMatch(unfinished.reason, /#5/);
+
+  const unknown = await blockedByGuard.run(makeCtx({ blockedBy: [9], states: {} }));
+  assert.equal(unknown.ok, false);
+  assert.match(unknown.reason, /#9 \(unknown\)/);
 });
 
-test('blockedByGuard: single blocker, refine → refuse', async () => {
-  const r = await blockedByGuard.run(
-    makeCtx({
-      body: 'x\n<!-- aitm-blocked-by: #5 -->\n',
-      stateMap: { 5: 'refine' },
-    })
-  );
-  assert.equal(r.ok, false);
-  assert.match(r.reason, /cannot exit because blockers are open: #5 \(refine\)/);
+test('native dependency guard fails closed on graph, state, or projection failure', async () => {
+  for (const [input, message] of [
+    [{ graphError: 'graph unavailable' }, /graph unavailable/],
+    [{ blockedBy: [5], stateError: 'status unavailable' }, /status unavailable/],
+    [{ projectionError: 'project unavailable' }, /project unavailable/],
+  ]) {
+    const result = await blockedByGuard.run(makeCtx(input));
+    assert.equal(result.ok, false);
+    assert.match(result.reason, message);
+  }
 });
 
-test('blockedByGuard: three blockers, mixed → refusal lists only open ones', async () => {
-  const r = await blockedByGuard.run(
-    makeCtx({
-      body: 'x\n<!-- aitm-blocked-by: #5, #7, #9 -->\n',
-      stateMap: { 5: 'done', 7: 'test', 9: 'done' },
-    })
-  );
-  assert.equal(r.ok, false);
-  assert.match(r.reason, /#7 \(test\)/);
-  assert.doesNotMatch(r.reason, /#5/);
-  assert.doesNotMatch(r.reason, /#9/);
-});
-
-test('blockedByGuard: multiple open blockers listed in sorted order', async () => {
-  const r = await blockedByGuard.run(
-    makeCtx({
-      body: 'x\n<!-- aitm-blocked-by: #11, #3, #7 -->\n',
-      stateMap: { 3: 'refine', 7: 'test', 11: 'plan' },
-    })
-  );
-  assert.equal(r.ok, false);
-  assert.match(r.reason, /#3 \(refine\), #7 \(test\), #11 \(plan\)/);
-});
-
-test('blockedByGuard: null state from fetcher counts as open (unknown)', async () => {
-  const r = await blockedByGuard.run(
-    makeCtx({
-      body: 'x\n<!-- aitm-blocked-by: #5 -->\n',
-      stateMap: {},
-    })
-  );
-  assert.equal(r.ok, false);
-  assert.match(r.reason, /#5 \(unknown\)/);
-});
-
-test('blockedByGuard: fetcher throws → counts as open', async () => {
-  const ctx = makeCtx({ body: 'x\n<!-- aitm-blocked-by: #5 -->\n' });
-  ctx.fetchBlockerState = async () => {
-    throw new Error('boom');
-  };
-  const r = await blockedByGuard.run(ctx);
-  assert.equal(r.ok, false);
-});
-
-test('blockedByGuard: missing fetchBlockerState → ok (fail-open)', async () => {
-  const r = await blockedByGuard.run({
-    issueNumber: 100,
-    repo: 'r',
-    body: 'x\n<!-- aitm-blocked-by: #5 -->\n',
-  });
-  assert.deepEqual(r, { ok: true });
-});
-
-test('blockedByGuard: malformed blocker evidence refuses fail-closed', async () => {
-  const r = await blockedByGuard.run(
-    makeCtx({
-      body: 'x\n<!-- aitm-blocked-by refs="#5,garbage" -->\n',
-      stateMap: { 5: 'done' },
-    })
-  );
-  assert.equal(r.ok, false);
-  assert.match(r.reason, /blocked marker/i);
-});
-
-// ── bootstrap registration ───────────────────────────────────────────────────
-
-test('bootstrap: guard starts at Ready for Planning exit and has no entry slots', () => {
+test('bootstrap keeps the native dependency guard on every forward delivery exit', () => {
   bootstrapGuards();
   for (const state of EXIT_STATES) {
-    const ids = GUARDS[state].exit.map((g) => g.id);
+    const ids = GUARDS[state].exit.map((guard) => guard.id);
     const shouldGuard = !['backlog', 'refine'].includes(state);
-    assert.equal(ids.includes(GUARD_ID), shouldGuard, `unexpected exit guard policy at ${state}`);
-    const entryIds = GUARDS[state].entry.map((g) => g.id);
-    assert.ok(!entryIds.includes(GUARD_ID), `unexpected entry guard at ${state}`);
+    assert.equal(ids.includes(GUARD_ID), shouldGuard, `unexpected exit policy at ${state}`);
   }
-  // done has no exit slot for our guard
-  const doneIds = GUARDS.done.exit.map((g) => g.id);
-  assert.ok(!doneIds.includes(GUARD_ID), 'done should not have blocked-by guard');
-});
-
-test('bootstrap: idempotent on repeat call', () => {
-  bootstrapGuards();
-  const before = GUARDS.develop.exit.filter((g) => g.id === GUARD_ID).length;
-  bootstrapGuards();
-  bootstrapGuards();
-  const after = GUARDS.develop.exit.filter((g) => g.id === GUARD_ID).length;
-  assert.equal(after, before, 'guard must not duplicate across bootstrap calls');
-  assert.equal(after, 1);
-});
-
-test('runGuards: invokes registered guard and surfaces refusal', async () => {
-  bootstrapGuards();
-  const ctx = makeCtx({
-    body: 'x\n<!-- aitm-blocked-by: #5 -->\n',
-    stateMap: { 5: 'develop' },
-  });
-  const r = await runGuards('develop', 'test', ctx);
-  assert.equal(r.ok, false);
-  const refusal = r.refusals.find((x) => x.id === GUARD_ID);
-  assert.ok(refusal, 'expected blocked-by-not-done refusal');
-  assert.match(refusal.reason, /#5 \(develop\)/);
-});
-
-test('runGuards: clean transition when all blockers done', async () => {
-  bootstrapGuards();
-  // #355 — contiguity guard now fires on every forward transition; need
-  // prior-stage entry markers so develop→test passes contiguity check.
-  const ENTRY_MARKERS = [
-    '<!-- aitm-entered-backlog: 2026-06-07T05:00:00Z -->',
-    '<!-- aitm-entered-refine: 2026-06-07T05:30:00Z -->',
-    '<!-- aitm-entered-plan: 2026-06-07T05:45:00Z -->',
-    '<!-- aitm-entered-develop: 2026-06-07T06:00:00Z -->',
-  ].join('\n');
-  const ctx = makeCtx({
-    body: `${ENTRY_MARKERS}\nx\n<!-- aitm-blocked-by: #5, #7 -->\n`,
-    stateMap: { 5: 'done', 7: 'done' },
-  });
-  ctx.headSha = 'a'.repeat(40);
-  ctx.deps = {
-    readDevelopReceipt: async () => ({
-      ok: true,
-      stage: 'develop-final',
-      commitSha: 'a'.repeat(40),
-    }),
-  };
-  const r = await runGuards('develop', 'test', ctx);
-  assert.equal(r.ok, true, JSON.stringify(r.refusals));
+  assert.equal(
+    GUARDS.done.exit.some((guard) => guard.id === GUARD_ID),
+    false
+  );
 });

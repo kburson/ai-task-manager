@@ -456,7 +456,7 @@ git commit -m "[#1557] feat: make blocker commands set based"
 - Consumes: native graph and projector APIs from Tasks 1 and 2.
 - Produces: `observeDependencyReadiness`, native-enriched child records, and Done/bind reconciliation results.
 
-- [ ] **Step 1: Write failing universal guard tests**
+- [x] **Step 1: Write failing universal guard tests**
 
 Replace body-marker contexts with injected `readDependencies`, `fetchBlockerState`,
 and `reconcileDisposition`. Assert:
@@ -473,7 +473,7 @@ Add graph-read failure, state-read failure, projection failure, all-Done, and no
 dependency cases. Iterate the state registry and assert the guard remains on all
 five forward exits.
 
-- [ ] **Step 2: Write failing pull-next and Done tests**
+- [x] **Step 2: Write failing pull-next and Done tests**
 
 Use a child with no legacy marker and injected native `blockedBy: [88]`. Return
 Status `develop` for #88 and assert the child is not selected. Return `done` and
@@ -482,14 +482,14 @@ assert selection succeeds. Include a dependency outside the sibling list.
 For Done fan-out, inject `blocking: [21, 22]`, reconcile both, throw for #22,
 and assert results preserve both relationships while surfacing one error.
 
-- [ ] **Step 3: Write failing bind reconciliation tests**
+- [x] **Step 3: Write failing bind reconciliation tests**
 
 In `native-dependency-reconciliation.test.mjs`, drive switch and resume seams and
 assert reconciliation runs only after successful binding. A projector failure
 must leave the binding active and emit a warning naming the issue and retryable
 projection step.
 
-- [ ] **Step 4: Run focused tests and observe RED**
+- [x] **Step 4: Run focused tests and observe RED**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs scripts/tests/unit/task-tracker/lib/epic-children-gate-blocked.test.mjs scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs scripts/tests/unit/task-tracker/lib/unpark-dependents.test.mjs scripts/tests/unit/task-tracker/lib/native-dependency-reconciliation.test.mjs
@@ -497,7 +497,7 @@ node --test scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs script
 
 Expected: FAIL against legacy marker behavior.
 
-- [ ] **Step 5: Implement one shared observation path**
+- [x] **Step 5: Implement one shared observation path**
 
 In `dependency-disposition.mjs`, expose:
 
@@ -524,7 +524,7 @@ export async function observeDependencyReadiness({ issueNumber, cfg, deps = {} }
 Make the guard consume this observation, run projector reconciliation from it,
 and fail closed when either operation fails.
 
-- [ ] **Step 6: Rewire child admission**
+- [x] **Step 6: Rewire child admission**
 
 Replace `enrichChildrenWithBlockedBy` body fetches with native observations.
 Each enriched child carries:
@@ -543,7 +543,7 @@ Keep the current refinement and rank gates. `findNextEligibleChild` requires
 membership. Update wave admission to query native relations and use the same
 readiness rule.
 
-- [ ] **Step 7: Rewire eager and lazy reconciliation**
+- [x] **Step 7: Rewire eager and lazy reconciliation**
 
 Change `unparkDependents` to read the Done issue's native `blocking` set and call
 the projector for each dependent. Do not mutate body, label, field mirror, or
@@ -554,7 +554,7 @@ Catch and print a single retryable warning without rolling back the binding.
 Keep `cache-unpark.mjs` best-effort after the committed Done transition, but
 rename its log language from released/cleared to reconciled/partial.
 
-- [ ] **Step 8: Run focused tests and observe GREEN**
+- [x] **Step 8: Run focused tests and observe GREEN**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs scripts/tests/unit/task-tracker/lib/epic-children-gate-blocked.test.mjs scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs scripts/tests/unit/task-tracker/lib/unpark-dependents.test.mjs scripts/tests/unit/task-tracker/lib/native-dependency-reconciliation.test.mjs
@@ -562,7 +562,7 @@ node --test scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs script
 
 Expected: PASS.
 
-- [ ] **Step 9: Commit lifecycle reconciliation**
+- [x] **Step 9: Commit lifecycle reconciliation**
 
 ```bash
 git add scripts/task-tracker/lib/blocked-by-guard.mjs scripts/task-tracker/lib/epic-children-gate.mjs scripts/task-tracker/verbs/pull-next.mjs scripts/gh/lib/wave-admission.mjs scripts/task-tracker/lib/unpark-dependents.mjs scripts/task-tracker/lib/move-state/cache-unpark.mjs scripts/task-tracker/verbs/switch.mjs scripts/task-tracker/verbs/resume.mjs scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs scripts/tests/unit/task-tracker/lib/epic-children-gate-blocked.test.mjs scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs scripts/tests/unit/task-tracker/lib/unpark-dependents.test.mjs scripts/tests/unit/task-tracker/lib/native-dependency-reconciliation.test.mjs

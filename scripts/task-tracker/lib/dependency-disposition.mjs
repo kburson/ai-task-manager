@@ -6,6 +6,7 @@ import {
 } from '../../gh/lib/github-projects.mjs';
 import { fieldIdFor } from '../project-fields.mjs';
 import { fetchAssignmentSnapshot } from './assignment-snapshot.mjs';
+import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { readNativeDependencies } from './native-dependencies.mjs';
 import { isTerminalDisposition, readTerminalDisposition } from './terminal-disposition.mjs';
 
@@ -41,30 +42,30 @@ export function deriveDependencyProjection({ blockedBy = [], states = new Map() 
     : { status: 'ready', unfinished: [] };
 }
 
-async function observeDependencies({ issueNumber, cfg, deps }) {
-  const readDependencies = deps.readNativeDependencies || readNativeDependencies;
-  let graph;
-  try {
-    graph = await readDependencies({ issueNumber, repo: cfg.repo, deps: deps.nativeDependencies });
-  } catch (error) {
-    fail('dependencies', errorMessage(error));
+export async function observeDependencyReadiness({ issueNumber, cfg, deps = {} } = {}) {
+  if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+    fail('observation-issue');
   }
+  if (!cfg?.repo || !cfg.projectId) fail('observation-config');
+  const readDependencies = deps.readNativeDependencies || readNativeDependencies;
+  const graph = await readDependencies({
+    issueNumber,
+    repo: cfg.repo,
+    deps: deps.nativeDependencies,
+  });
   const blockedBy = canonicalBlockedBy(graph?.blockedBy);
   const states = new Map();
   const fetchSnapshot = deps.fetchAssignmentSnapshot || fetchAssignmentSnapshot;
   for (const ref of blockedBy) {
-    try {
-      const snapshot = await fetchSnapshot({
-        issueNumber: ref,
-        cfg,
-        deps: deps.assignmentSnapshot,
-      });
-      states.set(ref, snapshot?.state ?? null);
-    } catch {
-      states.set(ref, null);
-    }
+    const snapshot = await fetchSnapshot({
+      issueNumber: ref,
+      cfg,
+      deps: deps.assignmentSnapshot,
+    });
+    const state = normalizeStateId(snapshot?.state);
+    states.set(ref, state || null);
   }
-  return { blockedBy, states };
+  return { blockedBy, states, ...deriveDependencyProjection({ blockedBy, states }) };
 }
 
 async function readDisposition({ cfg, issueNumber, deps, category = 'read' }) {
@@ -116,7 +117,14 @@ export async function reconcileDependencyDisposition({
   if (current !== '' && current !== 'BLOCKED') fail('unexpected-current', current);
   if (!fieldIdFor(cfg, 'disposition')) fail('field');
 
-  const observed = observation || (await observeDependencies({ issueNumber, cfg, deps }));
+  let observed = observation;
+  if (!observed) {
+    try {
+      observed = await observeDependencyReadiness({ issueNumber, cfg, deps });
+    } catch (error) {
+      fail('dependencies', errorMessage(error));
+    }
+  }
   const projection = deriveDependencyProjection(observed);
   const target = projection.status === 'ready' ? '' : 'BLOCKED';
   if (current === target) {
@@ -170,4 +178,23 @@ export async function reconcileDependencyDisposition({
     disposition: target,
     projection,
   };
+}
+
+export async function reconcileAfterSuccessfulBind({
+  issueNumber,
+  cfg,
+  reconcile = reconcileDependencyDisposition,
+  deps = {},
+  warn = (message) => process.stderr.write(`${message}\n`),
+} = {}) {
+  const number = Number(String(issueNumber || '').replace(/^#/, ''));
+  try {
+    return await reconcile({ issueNumber: number, cfg, deps });
+  } catch (error) {
+    const message =
+      `[dependency-disposition] #${number}: binding remains active; ` +
+      `retry dependency projection (${errorMessage(error)})`;
+    warn(message);
+    return { status: 'warning', issueNumber: number, error: errorMessage(error) };
+  }
 }

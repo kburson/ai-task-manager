@@ -27,6 +27,8 @@ function ready(number, rank, extra = {}) {
     state: 'ready-for-plan',
     rank,
     blockedBy: [],
+    dependencyStates: new Map(),
+    dependencyReadiness: 'ready',
     hasCurrentRefinement: true,
     ...extra,
   };
@@ -51,7 +53,11 @@ test('findNextEligibleChild excludes a child whose blocker is not Done', () => {
   // #6 is blocked by #9 (still in develop, not Done) → must be skipped even
   // though it has the lower sequence. #7 (unblocked) is chosen instead.
   const next = findNextEligibleChild([
-    ready(6, 1, { blockedBy: [9] }),
+    ready(6, 1, {
+      blockedBy: [9],
+      dependencyStates: new Map([[9, 'develop']]),
+      dependencyReadiness: 'blocked',
+    }),
     ready(7, 2),
     { number: 9, state: 'backlog', rank: 0, blockedBy: [] },
   ]);
@@ -71,27 +77,50 @@ test('findNextEligibleChild keeps rank-ascending tiebreak among equals', () => {
 });
 
 test('findNextEligibleChild makes a child eligible once its blocker is Done', () => {
-  // #6 blocked by #9; #9 is now Done → #6 becomes selectable (and it blocks
-  // nobody, but it is the only eligible refine child here).
-  const next = findNextEligibleChild([ready(6, 2, { blockedBy: [9] }), terminal(9, 1)]);
+  // #6 depends on external issue #88, whose AITM Status is Done. It becomes
+  // selectable without requiring the dependency to be a sibling.
+  const next = findNextEligibleChild([
+    ready(6, 2, {
+      blockedBy: [88],
+      dependencyStates: new Map([[88, 'done']]),
+      dependencyReadiness: 'ready',
+    }),
+  ]);
   assert.equal(next.number, 6);
 });
 
-test('enrichChildrenWithBlockedBy attaches parsed blockedBy per child', async () => {
-  const bodies = {
-    6: 'Scope...\n<!-- aitm-blocked-by: #8, #9 -->\n',
-    7: 'No marker here.',
-  };
+test('enrichChildrenWithBlockedBy attaches native dependency readiness per child', async () => {
   const enriched = await enrichChildrenWithBlockedBy({
     children: [
-      { number: 6, state: 'refine', rank: 1 },
-      { number: 7, state: 'refine', rank: 2 },
+      { number: 6, state: 'refine', rank: 1, hasCurrentRefinement: true },
+      { number: 7, state: 'refine', rank: 2, hasCurrentRefinement: true },
     ],
     cfg,
-    deps: { fetchBody: async ({ issueNumber }) => bodies[issueNumber] ?? '' },
+    deps: {
+      observeDependencyReadiness: async ({ issueNumber }) =>
+        issueNumber === 6
+          ? {
+              blockedBy: [8, 9],
+              states: new Map([
+                [8, 'done'],
+                [9, 'test'],
+              ]),
+              status: 'blocked',
+            }
+          : { blockedBy: [], states: new Map(), status: 'ready' },
+    },
   });
   assert.deepEqual(enriched[0].blockedBy, [8, 9]);
+  assert.deepEqual(
+    enriched[0].dependencyStates,
+    new Map([
+      [8, 'done'],
+      [9, 'test'],
+    ])
+  );
+  assert.equal(enriched[0].dependencyReadiness, 'blocked');
   assert.deepEqual(enriched[1].blockedBy, []);
+  assert.equal(enriched[1].dependencyReadiness, 'ready');
 });
 
 test('enrichChildrenWithBlockedBy fails closed when evidence fetch fails', async () => {
@@ -99,7 +128,7 @@ test('enrichChildrenWithBlockedBy fails closed when evidence fetch fails', async
     children: [{ number: 6, state: 'refine', rank: 1 }],
     cfg,
     deps: {
-      fetchBody: async () => {
+      observeDependencyReadiness: async () => {
         throw new Error('network down');
       },
     },
@@ -182,7 +211,11 @@ test('planRefineWipGate: refuses when an epic sibling already advances', async (
         { number: 10, state: 'develop' },
         { number: 11, state: 'refine' },
       ],
-      fetchBody: async () => '', // no blockers anywhere
+      observeDependencyReadiness: async () => ({
+        blockedBy: [],
+        states: new Map(),
+        status: 'ready',
+      }),
     },
   });
   assert.equal(r.ok, false);

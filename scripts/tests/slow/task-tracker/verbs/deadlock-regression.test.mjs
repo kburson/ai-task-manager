@@ -88,9 +88,11 @@ test('AC5: entanglement clears via unblock alone (no board/state-file edit)', as
   const before = await blockedByGuard.run({
     issueNumber: 701,
     repo: 'o/r',
+    cfg,
     body: body701,
     readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop',
+    reconcileDisposition: async () => ({ status: 'projected' }),
   });
   assert.equal(before.ok, false, 'entangled: #701 cannot exit while #702 open');
 
@@ -117,9 +119,11 @@ test('AC5: entanglement clears via unblock alone (no board/state-file edit)', as
   const after = await blockedByGuard.run({
     issueNumber: 701,
     repo: 'o/r',
+    cfg,
     body: body701,
     readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop',
+    reconcileDisposition: async () => ({ status: 'cleared' }),
   });
   assert.equal(after.ok, true, 'after unblock, #701 may exit — entanglement broken non-manually');
 });

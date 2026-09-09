@@ -14,7 +14,11 @@
 //     the raw column in `boardState`
 
 import { strict as assert } from 'node:assert';
-import { admit, mapSubIssueNodes } from '../../../../../gh/lib/wave-admission.mjs';
+import {
+  admit,
+  enrichSiblingDependencies,
+  mapSubIssueNodes,
+} from '../../../../../gh/lib/wave-admission.mjs';
 
 function stub(siblings) {
   return async () => siblings;
@@ -282,6 +286,24 @@ function node({
     fetchSiblings: stub(siblings),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
+}
+
+// 18. Default sibling enrichment carries native dependencies and readiness.
+{
+  const [child] = await enrichSiblingDependencies(
+    [{ number: 18, state: 'ready-for-plan', hasCurrentRefinement: true }],
+    { repo: 'o/r', projectId: BOARD },
+    {
+      observeDependencyReadiness: async () => ({
+        blockedBy: [88],
+        states: new Map([[88, 'done']]),
+        status: 'ready',
+      }),
+    }
+  );
+  assert.deepEqual(child.blockedBy, [88]);
+  assert.deepEqual(child.dependencyStates, new Map([[88, 'done']]));
+  assert.equal(child.dependencyReadiness, 'ready');
 }
 
 console.log('wave-admission.test.mjs: all passed');

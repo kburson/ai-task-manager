@@ -28,6 +28,8 @@ function currentChild(number, state, rank, extra = {}) {
     boardState: state,
     rank,
     blockedBy: [],
+    dependencyStates: new Map(),
+    dependencyReadiness: 'ready',
     hasCurrentRefinement: true,
     ...extra,
   };
@@ -101,6 +103,8 @@ test('blocked R4P child stays current for epic admission but waits for its prede
 
   assert.deepEqual(blockedChild.blockedBy, [11]);
   assert.equal(blockedChild.hasCurrentRefinement, true);
+  blockedChild.dependencyStates = new Map([[11, 'ready-for-plan']]);
+  blockedChild.dependencyReadiness = 'blocked';
 
   const admission = await planEpicDevelopChildrenGate({
     cfg,
@@ -122,7 +126,12 @@ test('blocked R4P child stays current for epic admission but waits for its prede
     issueState: 'closed',
     closeReason: 'completed',
   };
-  assert.equal(findNextEligibleChild([predecessorDone, blockedChild]).number, 12);
+  const dependencySatisfied = {
+    ...blockedChild,
+    dependencyStates: new Map([[11, 'done']]),
+    dependencyReadiness: 'ready',
+  };
+  assert.equal(findNextEligibleChild([predecessorDone, dependencySatisfied]).number, 12);
 });
 
 test('configured-project mapping rejects ambiguous blocker markers', () => {
@@ -315,7 +324,11 @@ test('R4P state enforces epic child admission before entering Plan', () => {
 test('next-child selection uses only dependency-ready R4P children and rank', () => {
   const next = findNextEligibleChild([
     currentChild(10, 'refine', 1),
-    currentChild(11, 'ready-for-plan', 2, { blockedBy: [13] }),
+    currentChild(11, 'ready-for-plan', 2, {
+      blockedBy: [13],
+      dependencyStates: new Map([[13, 'done']]),
+      dependencyReadiness: 'ready',
+    }),
     currentChild(12, 'ready-for-plan', 3, { blockedBy: [] }),
     {
       number: 13,
@@ -406,7 +419,13 @@ test('pull-next advances one dependency-ready R4P child exactly one edge and the
         currentChild(1216, 'done', 6, { issueState: 'closed', closeReason: 'completed' }),
         currentChild(1217, 'ready-for-plan', 7),
       ]),
-      enrich: { fetchBody: async () => '' },
+      enrich: {
+        observeDependencyReadiness: async () => ({
+          blockedBy: [],
+          states: new Map(),
+          status: 'ready',
+        }),
+      },
       promote: async (rest) => {
         calls.push(rest);
         return { status: 'ok', target: 'plan' };

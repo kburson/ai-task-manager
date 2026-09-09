@@ -138,9 +138,11 @@ test('AC4: backward demote exit guard fires while a blocker is open (confirmed c
   const refused = await blockedByGuard.run({
     issueNumber: 501,
     repo: 'o/r',
+    cfg,
     body,
     readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop', // open
+    reconcileDisposition: async () => ({ status: 'projected' }),
   });
   assert.equal(refused.ok, false, 'open blocker must refuse the test exit slot');
   assert.match(refused.reason, /blockers are open: #600/);
@@ -149,9 +151,11 @@ test('AC4: backward demote exit guard fires while a blocker is open (confirmed c
   const allowedWhenDone = await blockedByGuard.run({
     issueNumber: 501,
     repo: 'o/r',
+    cfg,
     body,
     readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'done',
+    reconcileDisposition: async () => ({ status: 'cleared' }),
   });
   assert.equal(allowedWhenDone.ok, true, 'done blocker must permit the exit');
 
@@ -159,9 +163,11 @@ test('AC4: backward demote exit guard fires while a blocker is open (confirmed c
   const allowedWhenRemoved = await blockedByGuard.run({
     issueNumber: 501,
     repo: 'o/r',
+    cfg,
     body,
     readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop',
+    reconcileDisposition: async () => ({ status: 'cleared' }),
   });
   assert.equal(allowedWhenRemoved.ok, true, 'removed blocker must permit the exit');
 });
