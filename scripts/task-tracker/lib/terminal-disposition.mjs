@@ -107,9 +107,12 @@ export async function writeTerminalStatusDone({ cfg, issueNumber, deps = {} } = 
     });
   } catch (error) {
     dependentReconciliation = [{ issue: null, error: error.message }];
-    (deps.warn || ((message) => process.stderr.write(`${message}\n`)))(
-      `[unpark] #${issueNumber}: enforcement failed: ${error.message}`
-    );
+  }
+  const warn = deps.warn || ((message) => process.stderr.write(`${message}\n`));
+  for (const result of dependentReconciliation) {
+    if (!result?.error) continue;
+    const dependent = Number.isSafeInteger(result.issue) ? ` -> #${result.issue}` : '';
+    warn(`[unpark] #${issueNumber}${dependent}: ${result.error}`);
   }
   return { issueNumber, status: 'Done', itemId, dependentReconciliation };
 }

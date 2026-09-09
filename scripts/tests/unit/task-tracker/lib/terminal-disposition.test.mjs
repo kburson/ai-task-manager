@@ -118,6 +118,27 @@ test('terminal Done helper writes the configured Status option without option di
   assert.deepEqual(result.dependentReconciliation, [{ issue: 2000, reconciled: 'cleared' }]);
 });
 
+test('terminal Done helper surfaces every best-effort dependent reconciliation error', async () => {
+  const h = writerHarness();
+  const warnings = [];
+  h.deps.unparkDependents = async () => [
+    { issue: null, error: 'native dependency read failed: provider unavailable' },
+    { issue: 2001, error: 'dependency-disposition:readback' },
+  ];
+  h.deps.warn = (message) => warnings.push(message);
+
+  const result = await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps: h.deps });
+
+  assert.deepEqual(result.dependentReconciliation, [
+    { issue: null, error: 'native dependency read failed: provider unavailable' },
+    { issue: 2001, error: 'dependency-disposition:readback' },
+  ]);
+  assert.deepEqual(warnings, [
+    '[unpark] #1035: native dependency read failed: provider unavailable',
+    '[unpark] #1035 -> #2001: dependency-disposition:readback',
+  ]);
+});
+
 test('close-as retains the board item and writes matching terminal values', async () => {
   const events = [];
   const deps = {
