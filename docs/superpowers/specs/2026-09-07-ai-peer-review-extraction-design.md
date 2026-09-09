@@ -738,8 +738,13 @@ authority escalation.
 The reviewer is read-only except for its exact generated response path and
 scratch transport files written through the protocol. The reviewer must not edit
 the artifact, stage files, create commits, amend history, switch branches, or
-push. Provider hooks and guards should enforce this boundary where supported;
-the CLI independently verifies it on every transition.
+push. The package exposes only read-only repository observations to reviewer
+submission code and refuses observable artifact, index, `HEAD`, branch,
+worktree, protocol-path, or local/remote-ref drift at transition time. A no-op,
+failed, or arbitrary-URL `git push` attempt leaves no repository state for a
+post-hoc library check to observe; preventing those command attempts is an
+explicit host/provider responsibility enforced with hooks, sandbox policy, or a
+command guard. The core never invokes or exposes a push capability.
 
 For every revision round in normal commit mode, the author creates one commit
 containing exactly:
