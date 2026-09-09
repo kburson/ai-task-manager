@@ -331,6 +331,7 @@ test('findNextEligibleChild never selects a child closed from Refine (#947)', ()
     ghNode({ number: 945, state: 'CLOSED', stateReason: 'NOT_PLANNED', column: 'Refine', rank: 1 }),
     ghNode({ number: 946, column: 'Ready for Planning', rank: 2, body: currentRefinementBody() }),
   ]);
+  children[1].blockedBy = [];
   children[1].dependencyStates = new Map();
   children[1].dependencyReadiness = 'ready';
   assert.equal(

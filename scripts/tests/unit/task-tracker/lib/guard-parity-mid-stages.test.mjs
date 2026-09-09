@@ -305,6 +305,8 @@ describe('guard-parity: test→review via-registry (#267)', () => {
       cfg: CFG,
       fromState: 'test',
       toState: 'review',
+      readDependencies: async () => ({ blockedBy: [] }),
+      reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     };
     const promote = await runGuards('test', 'review', ctx);
     const direct = await runGuards('test', 'review', ctx);
@@ -335,6 +337,8 @@ describe('guard-parity: test→review via-registry (#267)', () => {
       cfg: CFG,
       fromState: 'test',
       toState: 'review',
+      readDependencies: async () => ({ blockedBy: [] }),
+      reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     };
     const promote = await runGuards('test', 'review', ctx);
     const direct = await runGuards('test', 'review', ctx);
@@ -371,6 +375,8 @@ describe('guard-parity: test→review via-registry (#267)', () => {
       cfg: CFG,
       fromState: 'test',
       toState: 'review',
+      readDependencies: async () => ({ blockedBy: [] }),
+      reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     };
     const promote = await runGuards('test', 'review', ctx);
     const direct = await runGuards('test', 'review', ctx);

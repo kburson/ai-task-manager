@@ -48,6 +48,8 @@ function makeCtx({ fromState, toState, childState }) {
     toState,
     body: epicBody(),
     cfg: CFG,
+    readDependencies: async () => ({ blockedBy: [] }),
+    reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     deps: {
       // The seam both epic-children gates read through.
       epicChildren: {

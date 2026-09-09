@@ -55,6 +55,8 @@ function makeCtx({ body }) {
     toState: 'done',
     body,
     cfg: CFG,
+    readDependencies: async () => ({ blockedBy: [] }),
+    reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     deps: {
       // #877 — review exit now runs reviewExitEpicChildrenDoneGuard. This
       // fixture is a leaf issue, so stub the children fetch to empty; without

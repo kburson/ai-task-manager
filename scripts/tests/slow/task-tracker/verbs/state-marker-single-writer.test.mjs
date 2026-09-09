@@ -76,6 +76,16 @@ function makeDeps({ body, live, liveAfter, moveCode = 0 } = {}) {
         headSha: 'deadbeef',
         trailShas: ['deadbeef'],
       }),
+      observeDependencyReadiness: async () => ({
+        blockedBy: [],
+        states: new Map(),
+        status: 'ready',
+        unfinished: [],
+      }),
+      reconcileDependencyDisposition: async () => ({
+        status: 'idempotent',
+        disposition: '',
+      }),
     },
   };
 }

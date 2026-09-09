@@ -63,7 +63,7 @@ test('refinement snapshot records and validates current scope, AC, fields, depen
     ts: TS,
   });
   assert.match(marker, /aitm-refinement-snapshot/);
-  assert.match(marker, /schema="2"/);
+  assert.match(marker, /schema="3"/);
 
   const stamped = stampRefinementSnapshot(body, {
     labels: ['team-ready', 'enhancement'],
@@ -79,7 +79,6 @@ test('refinement snapshot records and validates current scope, AC, fields, depen
     size: 'M',
     estimate: 8,
     rank: 4,
-    blockedBy: null,
   });
 });
 
@@ -97,7 +96,7 @@ test('refinement snapshot fails closed when refinement inputs or labels become s
   assert.equal(verifyRefinementSnapshot(stamped, { labels: ['bug'] }).ok, false);
 });
 
-test('refinement snapshot records the protected blocker marker as dependency authority', () => {
+test('refinement snapshot schema 3 excludes legacy blocker carriers from authority', () => {
   const stamped = stampRefinementSnapshot(refinedBody({ blocker: 1212 }), {
     labels: ['BLOCKED', 'enhancement'],
     ts: TS,
@@ -107,13 +106,12 @@ test('refinement snapshot records the protected blocker marker as dependency aut
   });
 
   assert.equal(verified.ok, true);
-  assert.equal(verified.snapshot.fields.blockedBy, '#1212');
+  assert.equal(verified.snapshot.fields.blockedBy, undefined);
 
   const stale = verifyRefinementSnapshot(stamped.replace('refs="#1212"', 'refs="#1213"'), {
-    labels: ['BLOCKED', 'enhancement'],
+    labels: ['enhancement'],
   });
-  assert.equal(stale.ok, false);
-  assert.equal(stale.reason, 'stale refinement snapshot');
+  assert.equal(stale.ok, true);
 });
 
 test('the Refine success hook may remove transient rationale without invalidating the durable snapshot', async () => {

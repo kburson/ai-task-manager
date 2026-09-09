@@ -87,7 +87,7 @@ function projectNode({
   };
 }
 
-test('blocked R4P child stays current for epic admission but waits for its predecessor', async () => {
+test('native-blocked R4P child stays current for epic admission but waits for its predecessor', async () => {
   const [blockedChild] = mapSubIssueNodes(
     [
       projectNode({
@@ -101,8 +101,9 @@ test('blocked R4P child stays current for epic admission but waits for its prede
     cfg.projectId
   );
 
-  assert.deepEqual(blockedChild.blockedBy, [11]);
+  assert.equal(blockedChild.blockedBy, null);
   assert.equal(blockedChild.hasCurrentRefinement, true);
+  blockedChild.blockedBy = [11];
   blockedChild.dependencyStates = new Map([[11, 'ready-for-plan']]);
   blockedChild.dependencyReadiness = 'blocked';
 
@@ -134,7 +135,7 @@ test('blocked R4P child stays current for epic admission but waits for its prede
   assert.equal(findNextEligibleChild([predecessorDone, dependencySatisfied]).number, 12);
 });
 
-test('configured-project mapping rejects ambiguous blocker markers', () => {
+test('configured-project mapping ignores legacy blocker markers as dependency authority', () => {
   const ambiguous = refinementBody({ blocker: 11, rank: 2 }).replace(
     '<!-- aitm-blocked-by refs="#11" -->',
     '<!-- aitm-blocked-by refs="#11" -->\n<!-- aitm-blocked-by refs="#12" -->'
@@ -152,8 +153,9 @@ test('configured-project mapping rejects ambiguous blocker markers', () => {
     cfg.projectId
   );
 
-  assert.equal(mapped.hasCurrentRefinement, false);
-  assert.match(mapped.childEvidenceError, /blocked marker/i);
+  assert.equal(mapped.hasCurrentRefinement, true, JSON.stringify(mapped));
+  assert.equal(mapped.blockedBy, null);
+  assert.equal(mapped.childEvidenceError, undefined);
 });
 
 test('configured-project child mapping carries current refinement and terminal evidence', () => {

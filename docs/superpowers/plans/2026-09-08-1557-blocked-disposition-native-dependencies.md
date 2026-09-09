@@ -871,7 +871,7 @@ git commit -m "[#1557] docs: adopt native dependency workflow"
 - Consumes: every focused verifier and repository quality command.
 - Produces: clean commit-bound evidence ready for AITM Test and Review gates.
 
-- [ ] **Step 1: Run issue-focused verification**
+- [x] **Step 1: Run issue-focused verification**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.mjs scripts/tests/unit/task-tracker/lib/native-dependency-projection.test.mjs
@@ -884,7 +884,7 @@ node --test scripts/tests/unit/task-tracker/lib/close-gates-lineage.test.mjs
 
 Expected: every command exits zero with zero failed tests.
 
-- [ ] **Step 2: Run format and lint before suites**
+- [x] **Step 2: Run format and lint before suites**
 
 ```bash
 npm run lint
@@ -894,7 +894,7 @@ npm run format:check
 Expected: both exit zero. If either formatter changes files, commit those exact
 mechanical changes and rerun both commands before continuing.
 
-- [ ] **Step 3: Run repository suites**
+- [x] **Step 3: Run repository suites**
 
 ```bash
 npm test
@@ -903,7 +903,7 @@ npm run test:slow
 
 Expected: both exit zero with zero failures.
 
-- [ ] **Step 4: Audit legacy runtime imports and worktree state**
+- [x] **Step 4: Audit legacy runtime imports and worktree state**
 
 ```bash
 rg -n "from ['\"].*(blocked-marker|blocked-by-field)" scripts/task-tracker scripts/gh -g '*.mjs'

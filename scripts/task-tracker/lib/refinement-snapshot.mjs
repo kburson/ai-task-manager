@@ -34,10 +34,11 @@ function rootSection(body, heading) {
   return normalizedText(match?.[1]);
 }
 
-function normalizedLabels(labels) {
+function normalizedLabels(labels, { excludeLegacyBlocked = false } = {}) {
   if (!Array.isArray(labels)) fail('labels');
   const values = [...new Set(labels.map((label) => String(label || '').trim()).filter(Boolean))]
     .map((label) => label.toLowerCase())
+    .filter((label) => !excludeLegacyBlocked || label !== 'blocked')
     .sort();
   if (values.length === 0) fail('labels');
   return values;
@@ -130,7 +131,10 @@ function schema2RefinementInputs(body, labels, { durableProvenance, durableField
 }
 
 function refinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
-  const withoutMarker = String(body || '').replace(REFINEMENT_SNAPSHOT_MARKER_RE, '');
+  const withoutMarker = String(body || '')
+    .replace(REFINEMENT_SNAPSHOT_MARKER_RE, '')
+    .replace(/^[ \t]*<!--\s*aitm-blocked-by\b[^\n]*?-->[ \t]*(?:\n|$)/gim, '')
+    .replace(/"blockedBy"\s*:\s*(?:null|"[^"]*"|\[[^\]]*\])/g, '"blockedBy":null');
   const scope = rootSection(withoutMarker, 'Scope');
   if (scope.length < 12) fail('scope');
   const acceptanceCriteria = rootSection(withoutMarker, 'Acceptance Criteria');
@@ -139,7 +143,7 @@ function refinementInputs(body, labels, { durableProvenance, durableFields } = {
     scope,
     acceptanceCriteria,
     fields: durableFields || requiredFieldValues(withoutMarker),
-    labels: normalizedLabels(labels),
+    labels: normalizedLabels(labels, { excludeLegacyBlocked: true }),
     provenance: provenanceDigest(withoutMarker, durableProvenance),
   };
 }

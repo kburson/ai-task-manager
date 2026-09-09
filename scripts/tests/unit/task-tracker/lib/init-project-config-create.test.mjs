@@ -152,13 +152,14 @@ assert.match(inputLog, optionMatch('XL', 'RED', '24\\+ hours'));
 // AC3/AC4: timing fields and the start-time field are created as TEXT, by their
 // canonical names, and NO DATE or NUMBER field is ever created (the config loop
 // owns the schema; estimate/rank map to the existing NUMBER fields).
-for (const name of ['Engaged', 'Session', 'Review', 'Plan', 'Started', 'Blocked By']) {
+for (const name of ['Engaged', 'Session', 'Review', 'Plan', 'Started']) {
   assert.match(
     calls,
     new RegExp(`dataType:TEXT[\\s\\S]*?name=${name}\\b`),
     `${name} not created as TEXT`
   );
 }
+assert.doesNotMatch(calls, /name=Blocked By\b/, 'legacy Blocked By field must not be created');
 assert.doesNotMatch(calls, /dataType:DATE/, 'installer must not create any DATE field');
 assert.doesNotMatch(calls, /dataType:NUMBER/, 'installer must not create any NUMBER field');
 // AC1: the legacy apply_project_template "End date" field is gone for good.

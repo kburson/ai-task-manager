@@ -105,6 +105,16 @@ function makeDeps({
       },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
       commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),
+      observeDependencyReadiness: async () => ({
+        blockedBy: [],
+        states: new Map(),
+        status: 'ready',
+        unfinished: [],
+      }),
+      reconcileDependencyDisposition: async () => ({
+        status: 'idempotent',
+        disposition: '',
+      }),
     },
   };
 }
