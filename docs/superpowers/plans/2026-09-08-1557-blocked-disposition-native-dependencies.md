@@ -689,7 +689,7 @@ git commit -m "[#1557] refactor: retire legacy blocker authority"
 - Consumes: `parseBlockedByStrict`, `removeBlockedBy`, native set convergence, projector reconciliation, Project field clear, label removal, and `mutateIssueBody`.
 - Produces: `classifyLegacyDependencyIssue`, `migrateLegacyDependencyIssue`, `runDependencyMigration`, and public `migrate-dependencies` CLI.
 
-- [ ] **Step 1: Write failing classification tests**
+- [x] **Step 1: Write failing classification tests**
 
 Create fixtures for:
 
@@ -703,7 +703,7 @@ assert.equal(classifyLegacyDependencyIssue(openMalformed).kind, 'malformed');
 The classifier must ignore marker-looking examples in code fences by using the
 existing strict parser rather than a new regular expression.
 
-- [ ] **Step 2: Write failing dry-run and apply-order tests**
+- [x] **Step 2: Write failing dry-run and apply-order tests**
 
 Dry-run must emit intended native additions and cleanup without invoking any
 mutation seam. Apply must record this exact call sequence:
@@ -723,7 +723,7 @@ Inject a failure at every step and assert the marker-remove call is absent until
 all earlier calls have succeeded. Rerun from each partial state and assert final
 convergence without duplicate edges.
 
-- [ ] **Step 3: Run migration tests and observe RED**
+- [x] **Step 3: Run migration tests and observe RED**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/verbs/migrate-dependencies.test.mjs
@@ -731,7 +731,7 @@ node --test scripts/tests/unit/task-tracker/verbs/migrate-dependencies.test.mjs
 
 Expected: FAIL with module-not-found.
 
-- [ ] **Step 4: Implement classification and per-issue migration**
+- [x] **Step 4: Implement classification and per-issue migration**
 
 Use the existing paginated issue enumeration pattern. Fetch open and closed
 issues read-only, classify all carriers, and expose a stable result:
@@ -753,7 +753,7 @@ and use `mutateIssueBody` to remove only the verified strict marker last. If the
 legacy field is not configured, report `field-not-configured` as an idempotent
 cleanup state rather than provisioning it.
 
-- [ ] **Step 5: Register the public command**
+- [x] **Step 5: Register the public command**
 
 Add `migrate-dependencies` to routing, dispatch, preflight/init exemptions,
 command contract, help data, positional metadata, and self-documentation. Parse
@@ -767,7 +767,7 @@ Use exit codes:
 - `2`: invalid flags;
 - `3`: ambiguous/malformed candidates reported during apply.
 
-- [ ] **Step 6: Run migration and command-surface tests GREEN**
+- [x] **Step 6: Run migration and command-surface tests GREEN**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/verbs/migrate-dependencies.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs
@@ -775,7 +775,7 @@ node --test scripts/tests/unit/task-tracker/verbs/migrate-dependencies.test.mjs 
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit migration command**
+- [x] **Step 7: Commit migration command**
 
 ```bash
 git add scripts/task-tracker/verbs/migrate-dependencies.mjs scripts/task-tracker/task-tracker.mjs scripts/task-tracker/lib/command-surface/catalog.mjs scripts/task-tracker/lib/command-surface/routing.mjs scripts/task-tracker/verbs/help-data.mjs scripts/lib/self-doc.mjs scripts/tests/unit/task-tracker/verbs/migrate-dependencies.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs

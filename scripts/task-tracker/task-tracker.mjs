@@ -58,7 +58,15 @@ function checkRepoMismatch(ctx) {
   }
 }
 
-const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet']);
+const INIT_EXEMPT = new Set([
+  'config',
+  'help',
+  '?',
+  'migrate',
+  'migrate-dependencies',
+  'status',
+  'fleet',
+]);
 
 // #208 — shared preflight verbs. `target-required` parses `#N` from rest and
 // enforces bind-match. `target-optional` falls back to active when no `#N` is
@@ -695,6 +703,11 @@ if (_isMain)
         case 'unblock': {
           const { verbUnblock } = await import('./verbs/unblock.mjs');
           await verbUnblock(ctx);
+          break;
+        }
+        case 'migrate-dependencies': {
+          const { verbMigrateDependencies } = await import('./verbs/migrate-dependencies.mjs');
+          await verbMigrateDependencies(ctx);
           break;
         }
         case 'supersede': {
