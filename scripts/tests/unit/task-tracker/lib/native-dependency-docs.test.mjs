@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { VERB_REFERENCE } from '../../../../task-tracker/verbs/help-data.mjs';
+
 const requiredDocs = [
   'docs/DESIGN.md',
   'docs/guides/workflow.md',
@@ -13,6 +15,8 @@ const requiredDocs = [
 ];
 
 test('operator documents identify native dependency authority without reviving legacy carriers', () => {
+  assert.match(VERB_REFERENCE.block.summary, /GitHub native dependencies/i);
+  assert.match(VERB_REFERENCE['migrate-dependencies'].usage, /--dry-run\|--apply/);
   const sources = Object.fromEntries(
     requiredDocs.map((file) => [file, readFileSync(file, 'utf8')])
   );
