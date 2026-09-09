@@ -54,12 +54,22 @@ export const blockedByGuard = {
     if (!ctx || typeof ctx !== 'object') {
       return { ok: false, reason: `${GUARD_ID}: missing ctx` };
     }
-    const { body = '', fetchBlockerState } = ctx;
+    const { body = '', fetchBlockerState, readDependencies } = ctx;
     let refs;
-    try {
-      refs = parseBlockedByStrict(body);
-    } catch (error) {
-      return { ok: false, reason: error.message };
+    if (typeof readDependencies === 'function') {
+      try {
+        const observed = await readDependencies(ctx.issueNumber);
+        refs = Array.isArray(observed) ? observed : observed?.blockedBy;
+        if (!Array.isArray(refs)) throw new Error(`${GUARD_ID}: native dependencies unreadable`);
+      } catch (error) {
+        return { ok: false, reason: error.message };
+      }
+    } else {
+      try {
+        refs = parseBlockedByStrict(body);
+      } catch (error) {
+        return { ok: false, reason: error.message };
+      }
     }
     if (typeof fetchBlockerState !== 'function') {
       // No way to resolve blocker states — fail open (no refusal) rather than

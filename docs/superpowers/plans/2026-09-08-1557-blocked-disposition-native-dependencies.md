@@ -350,7 +350,7 @@ git commit -m "[#1557] feat: project dependency readiness"
 - Consumes: `readNativeDependencies`, `convergeBlockedBySet`, and `reconcileDependencyDisposition`.
 - Produces: public `runBlock` and `runUnblock` results with exact native deltas and projection status.
 
-- [ ] **Step 1: Replace block fixtures with failing set-union cases**
+- [x] **Step 1: Replace block fixtures with failing set-union cases**
 
 Drive `runBlock` with an injected existing set `[4, 9]` and requested refs
 `[9, 12, 12]`. Assert:
@@ -367,14 +367,14 @@ Add cases for all-requested-existing idempotence, self-refusal before mutation,
 invalid issue refusal, projection partial failure after a verified native union,
 and retry convergence with no second audit comment.
 
-- [ ] **Step 2: Replace unblock fixtures with failing set-subtraction cases**
+- [x] **Step 2: Replace unblock fixtures with failing set-subtraction cases**
 
 For existing `[4, 9, 12]` and `--by 9,99`, assert desired `[4, 12]`, removed
 `[9]`, one comment, and no removal call for 99. For `refs === null`, assert
 desired `[]`. Repeating either operation must be idempotent but still call the
 projector.
 
-- [ ] **Step 3: Run command tests and observe RED**
+- [x] **Step 3: Run command tests and observe RED**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/verbs/block-verb.test.mjs scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs
@@ -383,7 +383,7 @@ node --test scripts/tests/unit/task-tracker/verbs/block-verb.test.mjs scripts/te
 Expected: FAIL because the verbs still mutate body markers, labels, and the
 `Blocked By` field.
 
-- [ ] **Step 4: Rewrite `runBlock`**
+- [x] **Step 4: Rewrite `runBlock`**
 
 Preserve `parseByList`, `resolveTargetIssue`, and CLI validation. Replace the
 mutation sequence with:
@@ -404,14 +404,14 @@ Validate requested issue existence before graph mutation. Do not require a
 blocker to be GitHub-open; AITM Status, not issue open state, decides readiness.
 Post comments only for `convergence.added`.
 
-- [ ] **Step 5: Rewrite `runUnblock`**
+- [x] **Step 5: Rewrite `runUnblock`**
 
 Use the same fresh-read/converge/project sequence. Calculate desired as empty for
 `refs === null`, otherwise filter only requested numbers. Post comments only for
 `convergence.removed`. Remove every import and call involving `mutateIssueBody`,
 `blocked-marker`, `blocked-by-field`, or label edit arguments.
 
-- [ ] **Step 6: Update recovery tests and run GREEN**
+- [x] **Step 6: Update recovery tests and run GREEN**
 
 Inject native graph harnesses in the two slow recovery tests and prove unblock
 allows the next lifecycle guard without a body mutation.
@@ -424,7 +424,7 @@ node --test scripts/tests/unit/task-tracker/verbs/block-verb.test.mjs scripts/te
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit native commands**
+- [x] **Step 7: Commit native commands**
 
 ```bash
 git add scripts/task-tracker/verbs/block.mjs scripts/task-tracker/verbs/unblock.mjs scripts/tests/unit/task-tracker/verbs/block-verb.test.mjs scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs
