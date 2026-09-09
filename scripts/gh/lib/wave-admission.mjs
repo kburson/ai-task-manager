@@ -33,7 +33,6 @@
 //   `closeReason` (#888). Gates read `state`.
 
 import { gql, splitRepo } from './github-projects.mjs';
-import { parseBlockedByStrict } from '../../task-tracker/lib/blocked-marker.mjs';
 import {
   hasUnauthorizedCloseRecoveryMarker,
   readUnauthorizedCloseRecovery,
@@ -537,17 +536,9 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     const closeReason = normalizeCloseReason(sub);
     const issueClosed = String(sub.state || '').toUpperCase() === 'CLOSED';
     const labels = sub.labels;
-    let blockedBy = null;
     let childEvidenceError = null;
-    try {
-      blockedBy = parseBlockedByStrict(sub.body);
-    } catch (error) {
-      childEvidenceError = error.message;
-    }
     let hasCurrentRefinement = false;
-    if (childEvidenceError) {
-      // Strict blocker evidence is required before any child can be admitted.
-    } else if (recoveryMarkerPresent && !recovery)
+    if (recoveryMarkerPresent && !recovery)
       childEvidenceError = 'unauthorized-close recovery marker malformed';
     else if (projectMatches.length > 1)
       childEvidenceError = 'configured project membership ambiguous';
@@ -568,16 +559,9 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
         labels: labels.nodes.map((label) => label?.name).filter(Boolean),
       });
       const snapshotRank = verified.snapshot?.fields?.rank;
-      const snapshotBlocked = String(verified.snapshot?.fields?.blockedBy || '')
-        .split(',')
-        .map((value) => Number(String(value).trim().replace(/^#/, '')))
-        .filter((value) => Number.isSafeInteger(value) && value > 0)
-        .sort((a, b) => a - b);
       if (!verified.ok) childEvidenceError = verified.reason;
       else if (!Number.isFinite(rank) || Number(snapshotRank) !== Number(rank)) {
         childEvidenceError = 'live board rank disagrees with refinement snapshot';
-      } else if (JSON.stringify(snapshotBlocked) !== JSON.stringify(blockedBy)) {
-        childEvidenceError = 'live dependencies disagree with refinement snapshot';
       } else hasCurrentRefinement = true;
     }
     out.push({
@@ -591,7 +575,9 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
       closeReason,
       recoveryPhase: pendingRecovery?.phase ?? null,
       recoveryTx: pendingRecovery?.tx ?? null,
-      blockedBy,
+      blockedBy: null,
+      dependencyStates: new Map(),
+      dependencyReadiness: 'unknown',
       hasCurrentRefinement,
       ...(childEvidenceError ? { childEvidenceError } : {}),
     });

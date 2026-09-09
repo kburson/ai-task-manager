@@ -64,7 +64,6 @@ function live(overrides = {}) {
     sourceOnTrunk: true,
     trunkSha: SHA('c'),
     deliveryReceiptStatus: 'absent',
-    blockerCarriers: { labelCleared: true, fieldCleared: true, bodyCleared: true },
     ...overrides,
   };
 }
@@ -425,16 +424,14 @@ test('a closed issue needs a durable close transaction and COMPLETED reason', ()
   );
 });
 
-test('all three sanctioned blocker carriers must be cleared before authorization', () => {
-  for (const key of ['labelCleared', 'fieldCleared', 'bodyCleared']) {
-    assert.throws(
-      () =>
-        authorize({
-          live: live({ blockerCarriers: { ...live().blockerCarriers, [key]: false } }),
-        }),
-      /incorporated-close:blocker-not-cleared/
-    );
-  }
+test('legacy blocker carriers do not participate in Incorporated authorization', () => {
+  assert.doesNotThrow(() =>
+    authorize({
+      live: live({
+        blockerCarriers: { labelCleared: false, fieldCleared: false, bodyCleared: false },
+      }),
+    })
+  );
 });
 
 function mutationHarness({

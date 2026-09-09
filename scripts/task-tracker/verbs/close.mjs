@@ -115,7 +115,6 @@ import {
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
-import { parseBlockedByStrict } from '../lib/blocked-marker.mjs';
 import { writeTerminalStatusDone } from '../lib/terminal-disposition.mjs';
 import {
   authorizeIncorporatedClose,
@@ -213,7 +212,6 @@ async function readProjectCloseValues({ cfg, issueNumber, read = projectValuesFo
     cfg,
     fieldDefs: [
       { key: 'disposition', type: 'single_select' },
-      { key: 'blockedBy', type: 'text' },
     ],
     issueNumber,
   });
@@ -381,16 +379,11 @@ export async function prepareIncorporatedCloseAuthorization({
     acceptedSha: row.acceptedSha,
   });
   const trunkSha = await runtime.liveObservationDeps.readTrunkSha();
-  const [issue, pullRequest, sourceOnTrunk, comments, values] = await Promise.all([
+  const [issue, pullRequest, sourceOnTrunk, comments] = await Promise.all([
     runtime.liveObservationDeps.fetchIssue(issueNumber),
     runtime.liveObservationDeps.fetchPullRequest(row.prNumber),
     runtime.liveObservationDeps.isOnTrunk(row.mergeSha ?? row.acceptedSha),
     runtime.liveObservationDeps.listComments(issueNumber),
-    readProjectCloseValues({
-      cfg,
-      issueNumber,
-      read: ctx.projectValuesForIssue || projectValuesForIssue,
-    }),
   ]);
   const receiptProjection = projectExactDeliveryReceipt({
     comments,
@@ -433,13 +426,6 @@ export async function prepareIncorporatedCloseAuthorization({
       sourceOnTrunk,
       trunkSha,
       deliveryReceiptStatus: receiptProjection.status,
-      blockerCarriers: {
-        labelCleared: !(issue.labels || []).some(
-          (label) => String(label?.name || label).toUpperCase() === 'BLOCKED'
-        ),
-        fieldCleared: String(values.blockedBy || '') === '',
-        bodyCleared: parseBlockedByStrict(issue.body || '').length === 0,
-      },
     },
     deps: { resolveApprovedIncidentLedger: () => authority },
   });
@@ -879,7 +865,7 @@ async function stripCloseLabels({ pexec, cfg, issueNum }) {
     return true;
   } catch (err) {
     console.error(
-      `[task-tracker] warn: failed to strip ToDo/BLOCKED labels on #${issueNum}: ${err.message}`
+      `[task-tracker] warn: failed to strip ToDo label on #${issueNum}: ${err.message}`
     );
     return false;
   }
@@ -3503,7 +3489,7 @@ export async function verbClose(ctx) {
       process.exitCode = 1;
       return;
     }
-    if (!observedLabels.some((label) => label === 'ToDo' || label === 'BLOCKED')) {
+    if (!observedLabels.some((label) => label === 'ToDo')) {
       await markDeliveredCloseStep('labels');
     }
   }

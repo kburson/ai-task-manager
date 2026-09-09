@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // @story #705
-// When a task is closed it is no longer tracked by the board or blocking
-// anything, so the `ToDo` and `BLOCKED` labels are stale once closed. Drives
+// When a task is closed it is no longer tracked by the board, so its `ToDo`
+// label is stale. Legacy `BLOCKED` labels are no longer mutated. Drives
 // the real `verbClose` (SKIP_NETWORK:false) and asserts a
-// `gh issue edit <n> --remove-label ToDo --remove-label BLOCKED` call fires
+// `gh issue edit <n> --remove-label ToDo` call fires
 // alongside `gh issue close`, on both the convergence close-issue path and
 // the main close path. A label-strip failure must not fail the close.
 
@@ -129,12 +129,10 @@ test('closeLabelRemoveArgs builds the expected gh args', () => {
     '705',
     '--remove-label',
     'ToDo',
-    '--remove-label',
-    'BLOCKED',
   ]);
 });
 
-test('convergence close-issue path strips ToDo/BLOCKED labels after gh close', async () => {
+test('convergence close-issue path strips only ToDo after gh close', async () => {
   const calls = [];
   await run({
     over: {
@@ -158,12 +156,12 @@ test('convergence close-issue path strips ToDo/BLOCKED labels after gh close', a
     'expected an issue close call'
   );
   assert.ok(
-    calls.some((c) => c.includes('issue edit 5 --remove-label ToDo --remove-label BLOCKED')),
+    calls.some((c) => c.includes('issue edit 5 --remove-label ToDo')),
     `expected a label-strip call; got ${JSON.stringify(calls)}`
   );
 });
 
-test('main close path strips ToDo/BLOCKED labels after gh close', async () => {
+test('main close path strips only ToDo after gh close', async () => {
   const ghCalls = [];
   const r = await run({
     over: {
@@ -188,7 +186,7 @@ test('main close path strips ToDo/BLOCKED labels after gh close', async () => {
     'expected an issue close call'
   );
   assert.ok(
-    ghCalls.some((c) => c.includes('issue edit 5 --remove-label ToDo --remove-label BLOCKED')),
+    ghCalls.some((c) => c.includes('issue edit 5 --remove-label ToDo')),
     `expected a label-strip call; got ${JSON.stringify(ghCalls)}`
   );
 });
@@ -212,7 +210,7 @@ test('label-strip failure leaves close incomplete for a truthful retry', async (
     },
   });
   assert.doesNotMatch(r.stdout, /Closed #5/);
-  assert.match(r.stderr, /failed to strip ToDo\/BLOCKED labels/);
+  assert.match(r.stderr, /failed to strip ToDo label/);
 });
 
 console.log('close-strip-labels.test.mjs: ok');

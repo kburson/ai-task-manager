@@ -11,7 +11,10 @@ import {
 import { verifyRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { runShelveTransaction } from '../../../../task-tracker/lib/shelve-transaction.mjs';
 import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
-import { mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
+import {
+  enrichSiblingDependencies,
+  mapSubIssueNodes,
+} from '../../../../gh/lib/wave-admission.mjs';
 
 import { CFG, FIELD_DEFS, harness } from './shelve-transaction.fixture.mjs';
 
@@ -59,7 +62,7 @@ function epicChildNode(store) {
   };
 }
 
-test('legacy blocker recovery returns a current schema-2 child to epic admission while its dependency is open', async () => {
+test('legacy blocker recovery returns a schema-3 child whose admission uses native dependencies', async () => {
   const h = harness({ state: 'ready-for-plan', legacyBlockers: [1212, 1213] });
   const migrated = await runShelveTransaction({
     issueNumber: 1215,
@@ -89,17 +92,24 @@ test('legacy blocker recovery returns a current schema-2 child to epic admission
 
   const verified = verifyRefinementSnapshot(h.store.body, { labels: h.store.labels });
   assert.equal(verified.ok, true, verified.reason);
-  assert.equal(verified.snapshot.schema, '2');
+  assert.equal(verified.snapshot.schema, '3');
   const expectedRefs = [1212, 1213];
   assert.deepEqual(parseBlockedByStrict(h.store.body), expectedRefs);
-  assert.equal(
-    verified.snapshot.fields.blockedBy,
-    expectedRefs.map((number) => `#${number}`).join(',')
-  );
+  assert.equal(Object.hasOwn(verified.snapshot.fields, 'blockedBy'), false);
   assert.ok(h.store.labels.includes('BLOCKED'));
   assert.equal(h.store.blockedBy, expectedRefs.map((number) => `#${number}`).join(', '));
 
-  const [child] = mapSubIssueNodes([epicChildNode(h.store)], CFG);
+  const [mapped] = mapSubIssueNodes([epicChildNode(h.store)], CFG);
+  const [child] = await enrichSiblingDependencies([mapped], CFG, {
+    observeDependencyReadiness: async () => ({
+      blockedBy: expectedRefs,
+      states: new Map([
+        [1212, 'ready-for-plan'],
+        [1213, 'done'],
+      ]),
+      status: 'blocked',
+    }),
+  });
   assert.equal(child.issueState, 'open');
   assert.deepEqual(child.blockedBy, expectedRefs);
   assert.equal(child.hasCurrentRefinement, true, child.childEvidenceError);
@@ -109,6 +119,8 @@ test('legacy blocker recovery returns a current schema-2 child to epic admission
     issueState: 'open',
     rank: 1,
     blockedBy: [],
+    dependencyStates: new Map(),
+    dependencyReadiness: 'ready',
     hasCurrentRefinement: true,
   };
   const admission = await planEpicDevelopChildrenGate({

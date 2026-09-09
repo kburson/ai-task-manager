@@ -590,7 +590,7 @@ git commit -m "[#1557] feat: gate lifecycle on native dependencies"
 - Consumes: historical `parseBlockedByStrict` only when validating schema-1/schema-2 or explicit legacy evidence.
 - Produces: `REFINEMENT_SNAPSHOT_SCHEMA = '3'` with no blocker property or dependency digest input.
 
-- [ ] **Step 1: Write failing schema-3 tests**
+- [x] **Step 1: Write failing schema-3 tests**
 
 Update `refinement-snapshot-schema.test.mjs` to assert a new snapshot:
 
@@ -606,7 +606,7 @@ change snapshot verification because no graph data enters the body digest.
 Retain fixtures proving valid schema-1/schema-2 markers still parse and verify
 with their historical semantics.
 
-- [ ] **Step 2: Run snapshot tests and observe RED**
+- [x] **Step 2: Run snapshot tests and observe RED**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/refinement-snapshot-schema.test.mjs scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs
@@ -614,7 +614,7 @@ node --test scripts/tests/unit/task-tracker/lib/refinement-snapshot-schema.test.
 
 Expected: FAIL because writers still emit schema 2 and `blocked-by`.
 
-- [ ] **Step 3: Implement schema 3**
+- [x] **Step 3: Implement schema 3**
 
 Set:
 
@@ -629,7 +629,7 @@ labels, and provenance only. Do not parse the blocker marker. Parse historical
 accepts all three schemas but only exposes `fields.blockedBy` for historical
 ones.
 
-- [ ] **Step 4: Remove live carrier assumptions**
+- [x] **Step 4: Remove live carrier assumptions**
 
 Refinement history records schema-3 fields without `blockedBy`. Shelving uses
 native observations for current dependency safety and limits marker/field/label
@@ -641,7 +641,7 @@ dependency check is required.
 Keep `blocked-marker.mjs` and `blocked-by-field.mjs` available for Task 6's
 migration, but remove their imports from ordinary runtime modules.
 
-- [ ] **Step 5: Run compatibility tests and observe GREEN**
+- [x] **Step 5: Run compatibility tests and observe GREEN**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/refinement-snapshot-schema.test.mjs scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs scripts/tests/unit/task-tracker/core/verify-delivery-incident-reconciliation.test.mjs
@@ -649,7 +649,7 @@ node --test scripts/tests/unit/task-tracker/lib/refinement-snapshot-schema.test.
 
 Expected: PASS.
 
-- [ ] **Step 6: Audit production imports**
+- [x] **Step 6: Audit production imports**
 
 Run:
 
@@ -661,7 +661,7 @@ Expected: imports remain only in the migration verb and explicitly named
 historical compatibility modules. `block`, `unblock`, guards, pull-next, wave
 admission, and Done reconciliation must not appear.
 
-- [ ] **Step 7: Commit snapshot migration**
+- [x] **Step 7: Commit snapshot migration**
 
 ```bash
 git add scripts/task-tracker/lib/refinement-snapshot.mjs scripts/task-tracker/lib/refinement-history.mjs scripts/task-tracker/lib/shelve-transaction.mjs scripts/task-tracker/verbs/close.mjs scripts/task-tracker/verify-delivery-incident-reconciliation.mjs scripts/tests/unit/task-tracker/lib/refinement-snapshot-schema.test.mjs scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs scripts/tests/unit/task-tracker/core/verify-delivery-incident-reconciliation.test.mjs

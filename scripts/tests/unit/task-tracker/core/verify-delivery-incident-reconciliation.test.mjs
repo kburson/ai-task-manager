@@ -242,18 +242,21 @@ for (const phase of ['pre-close', 'terminal']) {
         },
         projectValuesForIssue: async ({ fieldDefs, issueNumber }) => {
           calls.push(`project:${fieldDefs[0].key}:${issueNumber}`);
-          return fieldDefs[0].key === 'blockedBy'
-            ? { blockedBy: `#${blockerByIssue.get(issueNumber)}` }
-            : {
-                disposition:
-                  phase === 'terminal'
-                    ? issueNumber === 1403
-                      ? 'Incorporated'
-                      : issueNumber === 1378
-                        ? 'Replaced'
-                        : 'Delivered'
-                    : '',
-              };
+          return {
+            disposition:
+              phase === 'terminal'
+                ? issueNumber === 1403
+                  ? 'Incorporated'
+                  : issueNumber === 1378
+                    ? 'Replaced'
+                    : 'Delivered'
+                : '',
+          };
+        },
+        readNativeDependencies: async ({ issueNumber }) => {
+          calls.push(`dependencies:${issueNumber}`);
+          const blocker = blockerByIssue.get(issueNumber);
+          return { blockedBy: blocker === undefined ? [] : [blocker], blocking: [] };
         },
         readParentIssue: async () => {
           calls.push('parent:1381');

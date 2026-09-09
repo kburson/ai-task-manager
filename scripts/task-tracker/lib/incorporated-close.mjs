@@ -178,14 +178,6 @@ export function authorizeIncorporatedClose({
   } else if (issueState !== 'OPEN') {
     fail('issue-state');
   }
-  const carriers = live?.blockerCarriers;
-  if (
-    carriers?.labelCleared !== true ||
-    carriers?.fieldCleared !== true ||
-    carriers?.bodyCleared !== true
-  ) {
-    fail('blocker-not-cleared');
-  }
   const incorporatedPayload = buildIncorporatedPayload({
     schema: 'aitm.delivery-incident-incorporated/v1',
     repository,
