@@ -11,10 +11,7 @@ import {
 import { verifyRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { runShelveTransaction } from '../../../../task-tracker/lib/shelve-transaction.mjs';
 import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
-import {
-  enrichSiblingDependencies,
-  mapSubIssueNodes,
-} from '../../../../gh/lib/wave-admission.mjs';
+import { enrichSiblingDependencies, mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
 
 import { CFG, FIELD_DEFS, harness } from './shelve-transaction.fixture.mjs';
 

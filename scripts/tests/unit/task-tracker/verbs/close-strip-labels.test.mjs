@@ -123,13 +123,7 @@ async function run({ state = baseState(), over = {} } = {}) {
 }
 
 test('closeLabelRemoveArgs builds the expected gh args', () => {
-  assert.deepEqual(closeLabelRemoveArgs(705), [
-    'issue',
-    'edit',
-    '705',
-    '--remove-label',
-    'ToDo',
-  ]);
+  assert.deepEqual(closeLabelRemoveArgs(705), ['issue', 'edit', '705', '--remove-label', 'ToDo']);
 });
 
 test('convergence close-issue path strips only ToDo after gh close', async () => {

@@ -180,7 +180,7 @@ export function parseRefinementSnapshot(body) {
   if (!parsed || parsed.name !== 'refinement-snapshot') return null;
   const { schema, digest, provenance, priority, size, estimate, rank, ts } = parsed.props || {};
   if (
-    !LEGACY_REFINEMENT_SNAPSHOT_SCHEMAS.has(schema) && schema !== REFINEMENT_SNAPSHOT_SCHEMA ||
+    (!LEGACY_REFINEMENT_SNAPSHOT_SCHEMAS.has(schema) && schema !== REFINEMENT_SNAPSHOT_SCHEMA) ||
     !/^[0-9a-f]{64}$/.test(digest || '') ||
     !/^[0-9a-f]{64}$/.test(provenance || '') ||
     !Number.isFinite(Date.parse(ts || '')) ||

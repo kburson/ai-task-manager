@@ -1,5 +1,5 @@
 // Best-effort Disposition reconciliation for issues blocked by a newly-Done issue.
-// Native relationships remain intact; each dependent is reprojected independently.
+// Native relationships remain intact; each dependent is reconciled independently.
 
 import { reconcileDependencyDisposition } from './dependency-disposition.mjs';
 import { readNativeDependencies } from './native-dependencies.mjs';

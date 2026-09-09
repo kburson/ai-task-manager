@@ -41,7 +41,10 @@ test('canonical project definitions add BLOCKED and stop provisioning Blocked By
       disposition.options.find((option) => option.name === 'BLOCKED'),
       definition.options.at(-1)
     );
-    assert.equal(fields.some((field) => field.key === 'blockedBy'), false);
+    assert.equal(
+      fields.some((field) => field.key === 'blockedBy'),
+      false
+    );
   }
 });
 

@@ -833,7 +833,7 @@ Document:
 - feature-branch child Done behavior;
 - `block` union and `unblock` subtraction/remove-all;
 - Disposition BLOCKED/empty projection and terminal preservation;
-- all eager and lazy reconciliation touchpoints;
+- all eager and lazy reconciliation touch points;
 - UI-added dependency eventual projection repair;
 - no webhook and no commit-level gate;
 - dry-run/apply migration and ambiguous label-only handling; and

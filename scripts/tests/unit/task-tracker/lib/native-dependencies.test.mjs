@@ -163,9 +163,7 @@ test('exact-set convergence fails when provider readback differs', async () => {
       deps: {
         readNativeDependencies: async () => {
           reads += 1;
-          return reads === 1
-            ? { blockedBy: [4], blocking: [] }
-            : { blockedBy: [4], blocking: [] };
+          return reads === 1 ? { blockedBy: [4], blocking: [] } : { blockedBy: [4], blocking: [] };
         },
         editDependency: async () => {},
       },

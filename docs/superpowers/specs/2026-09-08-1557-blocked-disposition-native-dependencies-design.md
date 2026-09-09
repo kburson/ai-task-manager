@@ -45,7 +45,7 @@ introduce a second branch or commit check.
 6. Make `aitm block` an idempotent set union and `aitm unblock` an idempotent
    set subtraction, including an explicit remove-all form.
 7. Reconcile the projection eagerly for AITM mutations and Done transitions,
-   and lazily at normal workflow touchpoints.
+   and lazily at normal workflow touch points.
 8. Provide an explicit, auditable, interruption-safe migration for unambiguous
    open legacy records.
 9. Preserve historical snapshot and incident readers without allowing legacy
@@ -286,7 +286,7 @@ which delivery boundary applied; the upstream lifecycle already certified it.
 
 ## Eager and lazy reconciliation
 
-### Eager touchpoints
+### Eager touch points
 
 Reconciliation runs immediately after:
 
@@ -299,7 +299,7 @@ reconciles every dependent issue. It does not remove any relationship. The Done
 move is already committed, so dependent projection failures are surfaced but
 do not roll the upstream issue backward.
 
-### Lazy touchpoints
+### Lazy touch points
 
 Reconciliation also runs when:
 
@@ -453,7 +453,7 @@ converges from what actually landed.
 
 Audit comment failure is reported separately and does not roll back a verified
 graph or projection. Done fan-out remains best-effort because the upstream Done
-transition has committed; later lazy touchpoints provide repair.
+transition has committed; later lazy touch points provide repair.
 
 No error path reconstructs the native graph from the old label, field, body
 marker, Plan Metadata prose, issue state, or local cache.

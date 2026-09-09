@@ -210,9 +210,7 @@ function closeAuditMarker(recordId) {
 async function readProjectCloseValues({ cfg, issueNumber, read = projectValuesForIssue }) {
   return read({
     cfg,
-    fieldDefs: [
-      { key: 'disposition', type: 'single_select' },
-    ],
+    fieldDefs: [{ key: 'disposition', type: 'single_select' }],
     issueNumber,
   });
 }

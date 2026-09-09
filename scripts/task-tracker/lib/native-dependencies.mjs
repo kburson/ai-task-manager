@@ -48,15 +48,7 @@ export async function readNativeDependencies({ issueNumber, repo, deps = {} } = 
   try {
     const { stdout } = await run(
       'gh',
-      [
-        'issue',
-        'view',
-        String(issueNumber),
-        '-R',
-        repo,
-        '--json',
-        'blockedBy,blocking',
-      ],
+      ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'blockedBy,blocking'],
       { timeout: GH_API_TIMEOUT_MS }
     );
     parsed = JSON.parse(stdout);
@@ -83,11 +75,9 @@ export async function editNativeDependency({ issueNumber, ref, repo, operation, 
   if (!['add', 'remove'].includes(operation)) fail('operation');
   const flag = operation === 'add' ? '--add-blocked-by' : '--remove-blocked-by';
   const run = deps.pexec || pexec;
-  await run(
-    'gh',
-    ['issue', 'edit', String(issueNumber), '-R', repo, flag, String(canonicalRef)],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
+  await run('gh', ['issue', 'edit', String(issueNumber), '-R', repo, flag, String(canonicalRef)], {
+    timeout: GH_API_TIMEOUT_MS,
+  });
 }
 
 function sameRefs(left, right) {
