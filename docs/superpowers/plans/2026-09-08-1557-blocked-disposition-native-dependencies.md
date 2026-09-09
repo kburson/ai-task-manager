@@ -973,7 +973,8 @@ assert all three are stripped with the run proof. Add a Test-verb case whose
 unchecked tests declaration has only those three stale properties; assert the
 fresh-base body is normalized before the Develop-to-Test move. Add negative
 cases for checked and proof-bearing lines, partial tuples, invalid or mismatched
-issue identity, residual `exit`, and malformed marker grammar.
+issue identity, residual `exit`, malformed marker grammar, malformed inline
+commands, and invalid or dangling `vc-list` citations.
 
 - [x] **Step 2: Verify both tests fail for the stranded provenance shape**
 
@@ -989,8 +990,9 @@ Treat `worktree`, `branch`, and `bound-issue` as execution-owned properties in
 `stripExecutionProof`. Export an idempotent fresh-base normalizer that applies
 that stripping only to an unchecked, valid declaration with one complete
 execution-context tuple matching the active issue and no residual run or unknown
-property. Call it from `aitm test` before the entry move using
-`evidenceStamp: true`.
+property. Validate inline commands semantically and resolve `vc-list` citations
+strictly against the body's live Verification Commands before repairing. Call it
+from `aitm test` before the entry move using `evidenceStamp: true`.
 
 - [x] **Step 4: Verify focused and repository regressions**
 

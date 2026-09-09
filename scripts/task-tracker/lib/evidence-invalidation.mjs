@@ -16,9 +16,11 @@
 // are untouched by construction. Invariant/lifecycle markers live outside any
 // checkbox line and are never matched by `CHECKED_LINE_RE`.
 
-import { hasExecutionProof, hasVerifiedDeclaration, stripExecutionProof } from './proof-marker.mjs';
+import { hasExecutionProof, stripExecutionProof, validateDeclarationCmd } from './proof-marker.mjs';
 import { stripMarkers } from './ac-evidence.mjs';
 import { parseMarker } from './marker-grammar.mjs';
+import { resolveCitedOrLiteralCommands, resolveVcListStrict } from './vc-ref.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
 
 const CHECKED_LINE_RE = /^(\s*- \[)x(\]\s+)(.+)$/gm;
 
@@ -41,21 +43,41 @@ const EXECUTION_CONTEXT_KEYS = ['worktree', 'branch', 'bound-issue'];
 const STRANDED_ALLOWED_KEYS = new Set(['cmd', 'vc-list', 'key', ...EXECUTION_CONTEXT_KEYS]);
 const VERIFIED_MARKER_RE = /<!--\s*aitm-verified\s+[\s\S]*?-->/g;
 
+function hasValidDeclaration(props, vcItems) {
+  let found = false;
+  if (Object.hasOwn(props, 'cmd')) {
+    if (validateDeclarationCmd(props.cmd)) return false;
+    if (resolveCitedOrLiteralCommands(props.cmd, vcItems).length === 0) return false;
+    found = true;
+  }
+  if (Object.hasOwn(props, 'vc-list')) {
+    try {
+      if (resolveVcListStrict(props['vc-list'], vcItems).length === 0) return false;
+    } catch {
+      return false;
+    }
+    found = true;
+  }
+  return found;
+}
+
 // Compatibility repair for bodies written by the pre-#1557 invalidator. It
 // left execution context on an unchecked declaration after removing sha/ts,
 // which stranded the next Test entry behind partial-provenance validation.
 // Checked lines and markers that still claim execution proof remain untouched.
 export function repairInvalidatedEvidenceProvenance(body, { boundIssue } = {}) {
   const src = String(body || '');
+  const vcItems = parseVerificationCommands(src);
   const repaired = [];
   const next = src.replace(UNCHECKED_LINE_RE, (line, prefix, rest) => {
     if (hasExecutionProof(rest)) return line;
     const markers = rest.match(VERIFIED_MARKER_RE) || [];
     if (markers.length !== 1) return line;
     const parsed = parseMarker(markers[0]);
-    if (parsed?.name !== 'verified' || !hasVerifiedDeclaration(markers[0])) return line;
+    if (parsed?.name !== 'verified') return line;
     const props = parsed.props;
     if (Object.keys(props).some((key) => !STRANDED_ALLOWED_KEYS.has(key))) return line;
+    if (!hasValidDeclaration(props, vcItems)) return line;
     if (
       !EXECUTION_CONTEXT_KEYS.every(
         (key) => typeof props[key] === 'string' && props[key].trim().length > 0

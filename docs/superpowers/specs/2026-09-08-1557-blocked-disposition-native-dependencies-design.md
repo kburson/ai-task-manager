@@ -539,8 +539,11 @@ For compatibility with bodies already stranded by the older invalidator,
 `aitm test` repairs only unchecked checkbox lines with a valid verifier
 declaration, one well-formed marker, all three nonempty execution-context
 properties, a positive `bound-issue` equal to the active issue, and no residual
-run or unknown property. The repair runs through the evidence-authorized
-fresh-base mutation path before the Test entry audit. Checked lines, partial or
-malformed tuples, mismatched issue identity, and any marker that still carries
-`exit`, `proof`, `sha`, `ts`, or `evidence` remain fail-closed; this recovery
-cannot launder malformed or unreachable evidence.
+run or unknown property. An inline `cmd` must pass declaration validation and
+resolve to at least one literal command; a `vc-list` must strictly resolve
+against the body's live Verification Commands entries. The repair runs through
+the evidence-authorized fresh-base mutation path before the Test entry audit.
+Checked lines, partial or malformed tuples, invalid or dangling declarations,
+mismatched issue identity, and any marker that still carries `exit`, `proof`,
+`sha`, `ts`, or `evidence` remain fail-closed; this recovery cannot launder
+malformed or unreachable evidence.

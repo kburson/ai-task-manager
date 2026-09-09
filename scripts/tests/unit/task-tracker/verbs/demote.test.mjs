@@ -295,6 +295,8 @@ test('#932 demote-with-nothing-to-strip: a body with only declarations is a safe
 test('#1557 compatibility repair accepts only the exact valid stranded provenance tuple', () => {
   const valid =
     '- [ ] valid <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->';
+  const validVcList =
+    '- [ ] valid vc-list <!-- aitm-verified vc-list="vc:1" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->';
   const unchanged = [
     '- [x] checked <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
     '- [ ] proof <!-- aitm-verified cmd="`npm test`" sha="abc1234" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
@@ -302,15 +304,30 @@ test('#1557 compatibility repair accepts only the exact valid stranded provenanc
     '- [ ] invalid issue <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="not-an-issue" -->',
     '- [ ] mismatched issue <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="936" -->',
     '- [ ] exit residue <!-- aitm-verified cmd="`npm test`" exit="1" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] malformed cmd <!-- aitm-verified cmd="`npm test` returned green" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] malformed vc-list <!-- aitm-verified vc-list="not-a-citation" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] dangling vc-list <!-- aitm-verified vc-list="vc:99" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] missing declaration <!-- aitm-verified worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] unknown key <!-- aitm-verified cmd="`npm test`" mystery="value" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] multiple markers <!-- aitm-verified cmd="`npm test`" --><!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
     '- [ ] malformed <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935 -->',
   ];
-  const body = [valid, ...unchanged].join('\n');
+  const body = [
+    valid,
+    validVcList,
+    ...unchanged,
+    '',
+    '## Verification Commands',
+    '',
+    '- [ ] `npm test` <!-- id=1 -->',
+  ].join('\n');
 
   const result = repairInvalidatedEvidenceProvenance(body, { boundIssue: 935 });
 
   assert.match(result.body, /- \[ \] valid <!-- aitm-verified cmd="`npm test`" -->/);
+  assert.match(result.body, /- \[ \] valid vc-list <!-- aitm-verified vc-list="vc:1" -->/);
   for (const line of unchanged) assert.ok(result.body.includes(line), `must preserve: ${line}`);
-  assert.equal(result.repaired.length, 1);
+  assert.equal(result.repaired.length, 2);
 });
 
 test('#932 runDemote wires invalidateEvidence into the state-recording mutate and reports it', async () => {
