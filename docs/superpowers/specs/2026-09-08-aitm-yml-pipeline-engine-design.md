@@ -201,8 +201,8 @@ Appended by `aitm compile`, regenerable, not hand-edited:
 ```yaml
 resolved:
   compiled_at: 2026-09-08T00:00:00Z
-  projectId: PVT_kwHOABCEY84BXill
-  statusFieldId: PVTSSF_lAHOABCEY84BXillzhSuw0o
+  projectId: PVT_kw<redacted>
+  statusFieldId: PVTSSF_lA<redacted>
   options:
     backlog: 1f366e8c
     develop: 47fc9ee4
