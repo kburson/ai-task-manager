@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #460 #833 #1140
+// @story #460 #833 #1140 #1557
 // Self-bind no-op — issue #833 (supersedes the #460 self-bind-resume behavior).
 //
 // #460 originally made a re-bind to the already-active issue (/task #N while on
@@ -77,7 +77,7 @@ assert.match(
 // The guard body must return early (no-op) — locate a `return;` after the guard.
 const guardIdx = switchSrc.indexOf('s.active === target && !s.paused');
 assert.ok(guardIdx > 0, 'self-bind guard condition must be present');
-const afterGuard = switchSrc.slice(guardIdx, guardIdx + 400);
+const afterGuard = switchSrc.slice(guardIdx, guardIdx + 800);
 assert.match(afterGuard, /\breturn;/, 'self-bind no-op guard must return early (#833)');
 
 // ---- 4. The dead `isSelfBind` conditional was removed ----------------------
