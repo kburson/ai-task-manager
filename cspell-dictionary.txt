@@ -2,8 +2,8 @@ ABCDEFGHJKMNPQRSTVWXYZ
 ACMR
 actuals
 Actuals
-adrs
 adjustbox
+adrs
 affordances
 Agentic
 aitm
@@ -28,9 +28,9 @@ backticked
 baselined
 basenames
 basictex
-bfseries
 behaviour
 Behaviour
+bfseries
 bindingless
 blockquotes
 Boehm
@@ -179,8 +179,8 @@ makeidx
 makeindex
 maketitle
 Manushree
-markerlint
 markerless
+markerlint
 mediaanalysisd
 menlo
 metachar
@@ -232,8 +232,8 @@ overclaim
 Overclaiming
 overexplaining
 overinterpreted
-pagebreak
 pageanchor
+pagebreak
 Palatino
 pandoc
 pandocbounded
@@ -252,6 +252,7 @@ PLOS
 Poppendieck
 Pramida
 prebody
+precedented
 preflighted
 preflights
 prefs
@@ -273,7 +274,6 @@ pytest
 quotepath
 Qwik
 RDBMS
-RRFFQ
 readback
 realdir
 realpath
@@ -293,7 +293,6 @@ Reengagement
 reengagements
 Reengagements
 reentrancy
-renewcommand
 reeval
 Reeval
 REEVAL
@@ -306,9 +305,12 @@ regenerable
 Reincludes
 relane
 relanes
+remediations
+renewcommand
 reparsed
 replayable
 repoint
+repointing
 repoints
 requalified
 requalify
@@ -319,6 +321,7 @@ retargeted
 rmdirs
 rollups
 Rovo
+RRFFQ
 Sadowski
 sandboxed
 Sandboxed
@@ -452,7 +455,6 @@ Willison
 Willison's
 winget
 wontfixed
-Δwords
 workstreams
 worktree
 Worktree
@@ -461,8 +463,8 @@ worktree's
 worktreeinclude
 worktrees
 Worktrees
-xcolor
 xcodeproj
+xcolor
 xcresult
 xelatex
 xlink
@@ -471,3 +473,4 @@ xurl
 Yoder
 zxcvbn
 Zylos
+Δwords
