@@ -525,3 +525,19 @@ three separate concerns:
 That separation removes duplicate authority, preserves provenance, retains the
 existing lifecycle safety boundary, and supports eventual UI consistency
 without introducing a background service.
+
+## Rework-cycle evidence recovery
+
+A Review-to-Develop code-rework demotion invalidates execution evidence. The
+invalidation must remove the execution context (`worktree`, `branch`, and
+`bound-issue`) together with `exit`, `sha`, and `ts`, while retaining only the
+verifier declaration (`cmd`, `vc-list`, and AC `key`). Otherwise the next
+Develop-to-Test audit sees a declaration with partial provenance and cannot
+distinguish it from malformed evidence.
+
+For compatibility with bodies already stranded by the older invalidator,
+`aitm test` repairs only unchecked checkbox lines that carry execution-context
+properties but no execution-proof property. The repair runs through the
+evidence-authorized fresh-base mutation path before the Test entry audit.
+Checked lines and any marker that still claims execution proof remain
+fail-closed; this recovery cannot launder malformed or unreachable evidence.

@@ -946,3 +946,65 @@ Do not fabricate human review evidence. Continue through orchestrator-owned
 review automation only where AITM authorizes it; if AITM requires a human
 approval or close action, leave the issue at that enforced gate with exact
 instructions rather than bypassing it.
+
+---
+
+### Task 9: Repair demotion-stranded evidence provenance
+
+**Files:**
+
+- Modify: `scripts/task-tracker/lib/proof-marker.mjs`
+- Modify: `scripts/task-tracker/lib/evidence-invalidation.mjs`
+- Modify: `scripts/task-tracker/verbs/test.mjs`
+- Test: `scripts/tests/unit/task-tracker/verbs/demote.test.mjs`
+- Test: `scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs`
+
+**Interfaces:**
+
+- Consumes: consolidated `aitm-verified` declarations and the governed Test
+  body mutation seam.
+- Produces: complete demotion invalidation for new cycles and a narrow
+  compatibility repair for already-unchecked provenance-only declarations.
+
+- [x] **Step 1: Write failing invalidation and Test-entry recovery tests**
+
+Extend the demotion fixture with `worktree`, `branch`, and `bound-issue`, then
+assert all three are stripped with the run proof. Add a Test-verb case whose
+unchecked tests declaration has only those three stale properties; assert the
+fresh-base body is normalized before the Develop-to-Test move.
+
+- [x] **Step 2: Verify both tests fail for the stranded provenance shape**
+
+```bash
+node --test scripts/tests/unit/task-tracker/verbs/demote.test.mjs scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs
+```
+
+Expected: the new assertions fail because execution-context properties remain.
+
+- [x] **Step 3: Implement the narrow repair**
+
+Treat `worktree`, `branch`, and `bound-issue` as execution-owned properties in
+`stripExecutionProof`. Export an idempotent fresh-base normalizer that applies
+that stripping only to unchecked checkbox declarations with no execution proof,
+and call it from `aitm test` before the entry move using `evidenceStamp: true`.
+
+- [x] **Step 4: Verify focused and repository regressions**
+
+```bash
+node --test scripts/tests/unit/task-tracker/verbs/demote.test.mjs scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs
+npm test
+npm run test:slow
+```
+
+Expected: every command exits zero; malformed checked/proof-bearing evidence
+continues to fail closed.
+
+- [x] **Step 5: Commit and repeat exact-SHA evidence**
+
+```bash
+git add scripts/task-tracker/lib/proof-marker.mjs scripts/task-tracker/lib/evidence-invalidation.mjs scripts/task-tracker/verbs/test.mjs scripts/tests/unit/task-tracker/verbs/demote.test.mjs scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs docs/superpowers/specs/2026-09-08-1557-blocked-disposition-native-dependencies-design.md docs/superpowers/plans/2026-09-08-1557-blocked-disposition-native-dependencies.md
+git commit -m "[#1557] fix: recover demotion-stranded evidence"
+```
+
+Expected: the final committed SHA has fresh Develop-final, AC, DoD, Test, and
+Review evidence before delivery.

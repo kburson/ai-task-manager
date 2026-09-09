@@ -153,13 +153,13 @@ function fixtureBody() {
     '',
     '## Acceptance Criteria',
     '',
-    '- [x] Demote invalidates stale evidence <!-- aitm-verified vc-list="vc:1" cmd="`node --test x`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" key="abc12345" -->',
+    '- [x] Demote invalidates stale evidence <!-- aitm-verified vc-list="vc:1" cmd="`node --test x`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" key="abc12345" worktree="/repo/.worktrees/935" branch="codex/defect-935" bound-issue="935" -->',
     '- [ ] A not-yet-verified AC <!-- aitm-verified cmd="`node --test y`" -->',
     '',
     '### Functional (verified at Test)',
     '',
-    '- [x] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" --> <!-- dod:functional:tests -->',
-    '- [x] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" --> <!-- dod:functional:lint -->',
+    '- [x] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" worktree="/repo/.worktrees/935" branch="codex/defect-935" bound-issue="935" --> <!-- dod:functional:tests -->',
+    '- [x] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" worktree="/repo/.worktrees/935" branch="codex/defect-935" bound-issue="935" --> <!-- dod:functional:lint -->',
     '- [x] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->',
     '- [x] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
     '',
@@ -207,6 +207,7 @@ test('#932 demote-strips-VC-evidence: uncheck + drop run-props, keep declaration
   assert.doesNotMatch(next, /aitm-verified[^>]*sha="abc1234"/);
   assert.doesNotMatch(next, /aitm-verified[^>]*ts="2026-07-20T00:00:00\.000Z"/);
   assert.doesNotMatch(next, /aitm-verified[^>]*exit="0"/);
+  assert.doesNotMatch(next, /aitm-verified[^>]*(?:worktree|branch|bound-issue)=/);
 
   assert.equal(invalidated.length, 3);
   assert.ok(invalidated.some((l) => l.includes('Demote invalidates stale evidence')));

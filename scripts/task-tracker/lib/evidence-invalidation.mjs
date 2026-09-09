@@ -16,7 +16,7 @@
 // are untouched by construction. Invariant/lifecycle markers live outside any
 // checkbox line and are never matched by `CHECKED_LINE_RE`.
 
-import { hasExecutionProof, stripExecutionProof } from './proof-marker.mjs';
+import { hasExecutionProof, parseProofMarker, stripExecutionProof } from './proof-marker.mjs';
 import { stripMarkers } from './ac-evidence.mjs';
 
 const CHECKED_LINE_RE = /^(\s*- \[)x(\]\s+)(.+)$/gm;
@@ -33,4 +33,26 @@ export function invalidateEvidence(body) {
     return `${pre} ${post}${stripExecutionProof(rest)}`;
   });
   return { body: next, invalidated };
+}
+
+const UNCHECKED_LINE_RE = /^(\s*- \[ \]\s+)(.+)$/gm;
+const EXECUTION_CONTEXT_KEYS = ['worktree', 'branch', 'bound-issue'];
+
+// Compatibility repair for bodies written by the pre-#1557 invalidator. It
+// left execution context on an unchecked declaration after removing sha/ts,
+// which stranded the next Test entry behind partial-provenance validation.
+// Checked lines and markers that still claim execution proof remain untouched.
+export function repairInvalidatedEvidenceProvenance(body) {
+  const src = String(body || '');
+  const repaired = [];
+  const next = src.replace(UNCHECKED_LINE_RE, (line, prefix, rest) => {
+    if (hasExecutionProof(rest)) return line;
+    const props = parseProofMarker(rest);
+    if (!props || !EXECUTION_CONTEXT_KEYS.some((key) => key in props)) return line;
+    const normalized = stripExecutionProof(rest);
+    if (normalized === rest) return line;
+    repaired.push(normalized);
+    return `${prefix}${normalized}`;
+  });
+  return { body: next, repaired };
 }

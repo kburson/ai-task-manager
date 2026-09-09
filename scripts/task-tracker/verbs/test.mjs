@@ -50,6 +50,7 @@ import {
 } from '../lib/verification-receipt.mjs';
 import { retireVerificationReceipt as defaultRetireVerificationReceipt } from '../lib/verification-receipt-retirement.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
+import { repairInvalidatedEvidenceProvenance } from '../lib/evidence-invalidation.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -595,6 +596,21 @@ export async function runVerbTest({
       issueNum,
       body: `⚠️ Functional DoD regression: command-backed items pre-ticked before sandbox evidence and were auto-un-ticked: ${labels}. The sandbox re-ticks them on a passing exit code.`,
     });
+  }
+  // #1557 — older Review→Develop invalidation removed run proof but retained
+  // its execution context. Repair only that unchecked, declaration-only shape
+  // before the Develop→Test provenance audit; genuine proof remains fail-closed.
+  {
+    const repaired = repairInvalidatedEvidenceProvenance(body);
+    if (repaired.repaired.length > 0) {
+      body = repaired.body;
+      await mutateBody({
+        cfg,
+        issueNum,
+        evidenceStamp: true,
+        mutate: (base) => repairInvalidatedEvidenceProvenance(base).body,
+      });
+    }
   }
   // #952 — a pre-#864 body's `tests` DoD verifier may still declare the
   // retired single `npm run test:all` command. Auto-migrate it to the
