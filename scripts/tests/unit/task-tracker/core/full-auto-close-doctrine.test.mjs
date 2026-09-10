@@ -11,6 +11,7 @@ import { applyChoice } from '../../../../task-tracker/lib/session-store.mjs';
 import {
   validateDeliveryPreflight,
   validateHistoricalRecoveryPreflight,
+  validateHistoricalReconstructionPreflight,
 } from '../../../../task-tracker/lib/delivery-preflight.mjs';
 import { buildDeliveryCommitText } from '../../../../task-tracker/lib/delivery-attribution.mjs';
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
@@ -166,6 +167,121 @@ test('standing Full-Auto authorizes immutable A while a reused branch is observe
   });
   assert.equal(result.acceptedSha, HEAD);
   assert.equal(result.observedLocalHeadSha, OTHER_HEAD);
+});
+
+function historicalReconstructionPreflight() {
+  return {
+    issue: {
+      number: 939,
+      state: 'OPEN',
+      projectState: 'Review',
+      assignees: ['kpburson'],
+      agentReviewPassed: true,
+      approvalEvidence: 'full-auto',
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
+    },
+    binding: {
+      issueNumber: 939,
+      timerState: 'running',
+      branch: 'codex/reused-branch',
+    },
+    lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+    pullRequests: [
+      {
+        number: 1400,
+        state: 'MERGED',
+        merged: true,
+        mergedAt: '2026-08-28T00:01:00.000Z',
+        isDraft: false,
+        baseRefName: 'trunk',
+        headRefName: 'codex/reused-branch',
+        headRefOid: HEAD,
+        mergeCommit: { oid: 'c'.repeat(40) },
+        mergeCommitSha: 'c'.repeat(40),
+        mergeMethod: 'squash',
+        headRefDeleted: false,
+      },
+    ],
+    localHeadSha: OTHER_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    dirtyPaths: [],
+    config: {
+      repo: 'kburson/ai-task-manager',
+      assignee: 'kpburson',
+      trunkRef: 'origin/trunk',
+      fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+      repositoryMergeMethods: ['squash'],
+    },
+    commitSubjects: ['[#939] integrated immutable A'],
+  };
+}
+
+test('reconstructs intent authority only from an advanced merged historical delivery', () => {
+  const result = validateHistoricalReconstructionPreflight(historicalReconstructionPreflight());
+
+  assert.deepEqual(result, {
+    issue: {
+      number: 939,
+      state: 'OPEN',
+      projectState: 'Review',
+      assignees: ['kpburson'],
+      agentReviewPassed: true,
+      approvalEvidence: 'full-auto',
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
+    },
+    pr: {
+      number: 1400,
+      state: 'MERGED',
+      merged: true,
+      mergedAt: '2026-08-28T00:01:00.000Z',
+      isDraft: false,
+      baseRefName: 'trunk',
+      headRefName: 'codex/reused-branch',
+      headRefOid: HEAD,
+      mergeCommit: { oid: 'c'.repeat(40) },
+      mergeCommitSha: 'c'.repeat(40),
+      mergeMethod: 'squash',
+      headRefDeleted: false,
+    },
+    expectedHeadSha: HEAD,
+    acceptedSha: HEAD,
+    observedLocalHeadSha: OTHER_HEAD,
+    headRelation: 'advanced',
+    mergeMethod: 'squash',
+    commitText: buildDeliveryCommitText({
+      issueNumber: 939,
+      prNumber: 1400,
+      expectedHeadSha: HEAD,
+      commitSubjects: ['[#939] integrated immutable A'],
+    }),
+  });
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(Object.isFrozen(result.issue), true);
+  assert.equal(Object.isFrozen(result.pr), true);
+  assert.equal(Object.isFrozen(result.commitText), true);
+});
+
+test('historical reconstruction refuses authority that is not an advanced, clean merged delivery', () => {
+  const cases = [
+    ['head-relation', (value) => (value.localHeadSha = HEAD)],
+    ['pull-request-not-merged', (value) => {
+      value.pullRequests[0].state = 'OPEN';
+      value.pullRequests[0].merged = false;
+    }],
+    ['head-mismatch', (value) => (value.testReceiptSha = OTHER_HEAD)],
+    ['dirty-overlap', (value) => value.dirtyPaths.push('tracked.mjs')],
+    ['child-lineage', (value) => (value.lineage.parentIssueNumber = 938)],
+    ['configuration', (value) => (value.config.fullAutoMerge.mechanism = 'unknown')],
+  ];
+  for (const [category, mutate] of cases) {
+    const value = historicalReconstructionPreflight();
+    mutate(value);
+    assert.throws(
+      () => validateHistoricalReconstructionPreflight(value),
+      new RegExp(`delivery-preflight:${category}`)
+    );
+  }
 });
 
 function preflight() {
