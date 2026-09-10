@@ -81,8 +81,11 @@ For an advanced local head:
    new reconstruction preflight and observe the merge topology.
 4. Resolve the declared method against observed and configured methods.
 5. Build the v2 reconciliation record and a prospective external intent.
-6. Run the unchanged external delivery verifier before any comment write. This
-   proves trunk reachability and rechecks topology and merge-method equality.
+6. Run the external delivery verifier in its existing recovery mode before any
+   comment write. Its internal recovery flag is carried into the authority-SHA
+   check so the truthful advanced local HEAD is accepted; the exact public input
+   schema, trunk-reachability proof, topology inspection, and merge-method
+   equality remain unchanged.
 7. Append the reconciliation record, append/read back the external intent, and
    append/read back the receipt.
 
@@ -116,6 +119,8 @@ Focused tests cover:
 - explicit reconciliation producing a reconstructed intent and receipt;
 - zero writes when the flag is absent, the reason is invalid, topology is
   unattributable or mismatched, or the merge is unreachable from trunk;
+- focused RED/GREEN proof that external recovery accepts an advanced observed
+  local HEAD without adding `recovery` to the exact public input schema;
 - unchanged success for ordinary historical recovery with a prior intent;
 - unchanged merge-method equality regression coverage in
   `delivery-verification.mjs`.
@@ -126,9 +131,11 @@ provider/Git proof target.
 
 ## Scope Boundaries
 
-This change does not weaken `delivery-verification.mjs`, add a generic close
-bypass, accept an operator-supplied intent or SHA, rewrite historical records,
-or implement #1573's help-text work.
+This change does not weaken `delivery-verification.mjs` merge-method equality,
+add a generic close bypass, accept an operator-supplied intent or SHA, rewrite
+historical records, or implement #1573's help-text work. The only verifier
+change carries its already-selected internal external-recovery mode into the
+authority-SHA check; it does not expand the public input schema.
 
 ## Dependency Map
 
