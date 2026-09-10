@@ -1,10 +1,12 @@
 // @story #1562
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
+import * as reconciliation from '../../../../task-tracker/lib/delivery-method-reconciliation.mjs';
 
 import {
   METHOD_RECONCILIATION_SCHEMA,
   buildMethodReconciliation,
+  renderMethodReconciliationComment,
   resolveReconciledMergeMethod,
   validateMethodReconciliation,
 } from '../../../../task-tracker/lib/delivery-method-reconciliation.mjs';
@@ -14,6 +16,30 @@ const issueNumber = 1562;
 const prNumber = 1556;
 const acceptedSha = 'a'.repeat(40);
 const mergeCommitSha = 'b'.repeat(40);
+
+test('parses one exact canonical reconciliation marker and validates all record fields', () => {
+  assert.equal(typeof reconciliation.parseMethodReconciliationComment, 'function');
+  const parse = reconciliation.parseMethodReconciliationComment;
+  for (const intentOrigin of [undefined, 'retroactively-reconstructed']) {
+    const record = buildMethodReconciliation(input({ intentOrigin }));
+    const body = renderMethodReconciliationComment(record);
+    assert.deepEqual(parse({ body }), record);
+    assert.equal(Object.isFrozen(parse({ body })), true);
+    for (const malformed of [
+      `prefix ${body}`,
+      `${body}\n${body}`,
+      body.replace(' -->', ''),
+      body.replaceAll('{', '{ '),
+      body.replace('"acceptedSha":', '"unknown":'),
+      body.replace(repository, 'invalid-repository'),
+      body.replace('2026-09-09T04:00:00.000Z', 'invalid-date'),
+      body.replace('2026-09-09T04:00:00.000Z', '2026-99-09T04:00:00.000Z'),
+    ]) {
+      assert.throws(() => parse({ body: malformed }), /delivery-method-reconciliation:/);
+    }
+  }
+  assert.equal(parse({ body: 'An ordinary issue comment.' }), null);
+});
 
 function input(overrides = {}) {
   return {
@@ -34,12 +60,65 @@ function input(overrides = {}) {
 test('builds a reconciliation record carrying both methods and the reason', () => {
   const record = buildMethodReconciliation(input());
   assert.equal(record.schema, METHOD_RECONCILIATION_SCHEMA);
+  assert.deepEqual(Object.keys(record).sort(), [
+    'acceptedSha',
+    'clientCreatedAt',
+    'configuredMergeMethod',
+    'divergent',
+    'issueNumber',
+    'mergeCommitSha',
+    'observedMergeMethod',
+    'operator',
+    'prNumber',
+    'reason',
+    'repository',
+    'schema',
+  ]);
   assert.equal(record.configuredMergeMethod, 'squash');
   assert.equal(record.observedMergeMethod, 'merge');
   assert.equal(record.divergent, true);
   assert.equal(record.reason, 'merged from the GitHub UI with the merge-commit button');
   assert.equal(record.acceptedSha, acceptedSha);
   assert.equal(record.mergeCommitSha, mergeCommitSha);
+});
+
+test('builds a frozen v2 reconstruction record with the exact retroactive origin', () => {
+  const record = buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }));
+  assert.equal(record.schema, 'aitm.delivery-method-reconciliation/v2');
+  assert.equal(record.intentOrigin, 'retroactively-reconstructed');
+  assert.deepEqual(Object.keys(record).sort(), [
+    'acceptedSha',
+    'clientCreatedAt',
+    'configuredMergeMethod',
+    'divergent',
+    'intentOrigin',
+    'issueNumber',
+    'mergeCommitSha',
+    'observedMergeMethod',
+    'operator',
+    'prNumber',
+    'reason',
+    'repository',
+    'schema',
+  ]);
+  assert.equal(Object.isFrozen(record), true);
+});
+
+test('validates a v2 reconstruction record and refuses a tampered origin', () => {
+  const record = buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }));
+  assert.equal(validateMethodReconciliation(record).ok, true);
+  assert.throws(
+    () => validateMethodReconciliation({ ...record, intentOrigin: 'delivery-time' }),
+    /delivery-method-reconciliation:intent-origin/
+  );
+});
+
+test('renders v2 with the no-delivery-time-intent reconstruction explanation', () => {
+  const comment = renderMethodReconciliationComment(
+    buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }))
+  );
+  assert.match(comment, /No delivery-time intent existed/);
+  assert.match(comment, /reconstructed from provider and Git evidence/);
 });
 
 test('records are frozen so a caller cannot mutate recorded evidence', () => {

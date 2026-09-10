@@ -30,6 +30,7 @@
 // several record types side by side.
 
 export const METHOD_RECONCILIATION_SCHEMA = 'aitm.delivery-method-reconciliation/v1';
+export const METHOD_RECONCILIATION_V2_SCHEMA = 'aitm.delivery-method-reconciliation/v2';
 
 const MERGE_METHODS = new Set(['merge', 'squash', 'rebase']);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -52,6 +53,13 @@ export const METHOD_RECONCILIATION_KEYS = Object.freeze([
   'repository',
   'schema',
 ]);
+
+export const METHOD_RECONCILIATION_V2_KEYS = Object.freeze([
+  ...METHOD_RECONCILIATION_KEYS,
+  'intentOrigin',
+]);
+
+const RETROACTIVE_INTENT_ORIGIN = 'retroactively-reconstructed';
 
 function fail(category) {
   throw new TypeError(`delivery-method-reconciliation:${category}`);
@@ -98,6 +106,7 @@ export function buildMethodReconciliation({
   reason,
   operator,
   clientCreatedAt,
+  intentOrigin,
 } = {}) {
   if (typeof repository !== 'string' || !REPOSITORY_RE.test(repository)) fail('repository');
   if (typeof clientCreatedAt !== 'string' || !ISO_RE.test(clientCreatedAt)) {
@@ -105,9 +114,14 @@ export function buildMethodReconciliation({
   }
   const configured = requireMergeMethod(configuredMergeMethod, 'configured-merge-method');
   const observed = requireMergeMethod(observedMergeMethod, 'observed-merge-method');
+  const retroactivelyReconstructed = intentOrigin === RETROACTIVE_INTENT_ORIGIN;
+  if (intentOrigin !== undefined && !retroactivelyReconstructed) fail('intent-origin');
 
   return Object.freeze({
-    schema: METHOD_RECONCILIATION_SCHEMA,
+    schema: retroactivelyReconstructed
+      ? METHOD_RECONCILIATION_V2_SCHEMA
+      : METHOD_RECONCILIATION_SCHEMA,
+    ...(retroactivelyReconstructed ? { intentOrigin: RETROACTIVE_INTENT_ORIGIN } : {}),
     issueNumber: requirePositiveInteger(issueNumber, 'issue-number'),
     repository,
     prNumber: requirePositiveInteger(prNumber, 'pr-number'),
@@ -128,9 +142,21 @@ export function buildMethodReconciliation({
 export function validateMethodReconciliation(record) {
   if (record === null || typeof record !== 'object' || Array.isArray(record)) fail('record');
   const keys = Object.keys(record).sort();
-  const expected = [...METHOD_RECONCILIATION_KEYS].sort();
+  let expected;
+  if (record.schema === METHOD_RECONCILIATION_SCHEMA) {
+    expected = [...METHOD_RECONCILIATION_KEYS].sort();
+  } else if (record.schema === METHOD_RECONCILIATION_V2_SCHEMA) {
+    expected = [...METHOD_RECONCILIATION_V2_KEYS].sort();
+  } else {
+    fail('schema');
+  }
   if (keys.length !== expected.length || keys.some((key, i) => key !== expected[i])) fail('keys');
-  if (record.schema !== METHOD_RECONCILIATION_SCHEMA) fail('schema');
+  if (
+    record.schema === METHOD_RECONCILIATION_V2_SCHEMA &&
+    record.intentOrigin !== RETROACTIVE_INTENT_ORIGIN
+  ) {
+    fail('intent-origin');
+  }
 
   const configured = requireMergeMethod(record.configuredMergeMethod, 'configured-merge-method');
   const observed = requireMergeMethod(record.observedMergeMethod, 'observed-merge-method');
@@ -165,6 +191,38 @@ export const METHOD_RECONCILIATION_MARKER = 'aitm-delivery-method-reconciliation
 
 const MAX_RECORD_JSON_BYTES = 256 * 1024;
 
+export function parseMethodReconciliationComment(comment) {
+  const body = comment?.body;
+  if (typeof body !== 'string') fail('comment-body');
+  const markers = [...body.matchAll(/<!--\s*aitm-delivery-method-reconciliation\b/g)];
+  if (markers.length === 0) return null;
+  if (markers.length !== 1 || markers[0].index !== 0) fail('malformed-marker');
+  const match = body.match(/^<!-- aitm-delivery-method-reconciliation ([^\r\n]+) -->/);
+  if (match === null) fail('malformed-marker');
+  if (Buffer.byteLength(match[1], 'utf8') > MAX_RECORD_JSON_BYTES) fail('record-too-large');
+  let record;
+  try {
+    record = JSON.parse(match[1]);
+  } catch {
+    fail('malformed-marker');
+  }
+  validateMethodReconciliation(record);
+  // The builder also validates repository/timestamp fields and normalizes text.
+  // Exact canonical bytes reject duplicate keys and noncanonical payloads.
+  const validated = buildMethodReconciliation(record);
+  const timestamp = Date.parse(validated.clientCreatedAt);
+  if (
+    !Number.isFinite(timestamp) ||
+    new Date(timestamp).toISOString() !== validated.clientCreatedAt
+  ) {
+    fail('client-created-at');
+  }
+  if (JSON.stringify(validated, Object.keys(validated).sort()) !== match[1]) {
+    fail('noncanonical-record');
+  }
+  return validated;
+}
+
 // Rendered as a hidden canonical record plus visible prose, matching the
 // intent/receipt comment shape in `delivery-records.mjs`. The visible half
 // matters: a reader scanning the issue should see the divergence and its reason
@@ -175,20 +233,40 @@ export function renderMethodReconciliationComment(record) {
   if (Buffer.byteLength(json, 'utf8') > MAX_RECORD_JSON_BYTES) {
     throw new TypeError('delivery-method-reconciliation:record-too-large');
   }
-  const visible = [
-    '### Merge-method reconciliation',
-    '',
-    `PR #${record.prNumber} was merged as \`${record.observedMergeMethod}\`, while this project's`,
-    `delivery configuration declares \`${record.configuredMergeMethod}\`. The delivery intent is`,
-    'restated to the observed method so the receipt describes what actually happened.',
-    '',
-    `**Reason given:** ${record.reason}`,
-    '',
-    `**Merge commit:** \`${record.mergeCommitSha}\` · **Accepted head:** \`${record.acceptedSha}\``,
-    `· **Reconciled by:** @${record.operator}`,
-    '',
-    'The verifier was not relaxed: the declared method was checked against the merge topology',
-    'before this record was written, and a declaration contradicting observation is refused.',
-  ].join('\n');
+  const visible =
+    record.schema === METHOD_RECONCILIATION_V2_SCHEMA
+      ? [
+          '### Merge-method reconciliation',
+          '',
+          'No delivery-time intent existed. The external delivery intent was',
+          'reconstructed from provider and Git evidence after the merge was verified.',
+          '',
+          `PR #${record.prNumber} was merged as \`${record.observedMergeMethod}\`, while this project's`,
+          `delivery configuration declares \`${record.configuredMergeMethod}\`. The delivery intent is`,
+          'restated to the observed method so the receipt describes what actually happened.',
+          '',
+          `**Reason given:** ${record.reason}`,
+          '',
+          `**Merge commit:** \`${record.mergeCommitSha}\` · **Accepted head:** \`${record.acceptedSha}\``,
+          `· **Reconciled by:** @${record.operator}`,
+          '',
+          'The verifier was not relaxed: the declared method was checked against the merge topology',
+          'before this record was written, and a declaration contradicting observation is refused.',
+        ].join('\n')
+      : [
+          '### Merge-method reconciliation',
+          '',
+          `PR #${record.prNumber} was merged as \`${record.observedMergeMethod}\`, while this project's`,
+          `delivery configuration declares \`${record.configuredMergeMethod}\`. The delivery intent is`,
+          'restated to the observed method so the receipt describes what actually happened.',
+          '',
+          `**Reason given:** ${record.reason}`,
+          '',
+          `**Merge commit:** \`${record.mergeCommitSha}\` · **Accepted head:** \`${record.acceptedSha}\``,
+          `· **Reconciled by:** @${record.operator}`,
+          '',
+          'The verifier was not relaxed: the declared method was checked against the merge topology',
+          'before this record was written, and a declaration contradicting observation is refused.',
+        ].join('\n');
   return `<!-- ${METHOD_RECONCILIATION_MARKER} ${json} -->\n${visible}`;
 }

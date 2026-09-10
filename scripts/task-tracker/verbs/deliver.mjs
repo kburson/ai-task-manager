@@ -39,6 +39,7 @@ import {
 } from '../lib/delivery-records.mjs';
 import {
   validateDeliveryPreflight,
+  validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
@@ -67,6 +68,8 @@ import {
 import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
 import {
   buildMethodReconciliation,
+  METHOD_RECONCILIATION_V2_SCHEMA,
+  parseMethodReconciliationComment,
   renderMethodReconciliationComment,
   resolveReconciledMergeMethod,
 } from '../lib/delivery-method-reconciliation.mjs';
@@ -294,6 +297,28 @@ function authorizedIntentBytes(intent) {
   );
 }
 
+function matchingReconstruction(comments, expected) {
+  const records = comments
+    .map(parseMethodReconciliationComment)
+    .filter((record) => record?.schema === METHOD_RECONCILIATION_V2_SCHEMA);
+  if (records.length === 0) return null;
+  const keys = [
+    'issueNumber',
+    'repository',
+    'prNumber',
+    'acceptedSha',
+    'mergeCommitSha',
+    'configuredMergeMethod',
+    'observedMergeMethod',
+    'reason',
+    'intentOrigin',
+  ];
+  if (records.length !== 1 || keys.some((key) => records[0][key] !== expected[key])) {
+    throw deliverError('historical-reconstruction-provenance');
+  }
+  return records[0];
+}
+
 function buildIntentFromPreflight({
   preflight,
   cfg,
@@ -499,6 +524,38 @@ function requiredDependency(deps, name) {
   const dependency = deps?.[name];
   if (typeof dependency !== 'function') throw deliverError(`missing-dependency:${name}`);
   return dependency;
+}
+
+async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, merged }) {
+  const enabled = await (deps.resolvePullRequestReviewGate ?? (async () => false))();
+  if (enabled !== true) return { status: 'authorized' };
+  const reviewerLogin = await requiredDependency(
+    deps,
+    'resolveManualCodeReviewer'
+  )({
+    configuredReviewer: cfg.manualCodeReviewer,
+  });
+  const reviewEvidence = await requiredDependency(
+    deps,
+    'fetchManualCodeReviewEvidence'
+  )({
+    repository: cfg.repo,
+    prNumber,
+    expectedHeadSha,
+  });
+  const decision = evaluateManualCodeReview({
+    gateEnabled: true,
+    expectedHeadSha,
+    reviewerLogin,
+    pullRequest: reviewEvidence,
+  });
+  if (decision.status === 'refused') {
+    throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
+  }
+  if (merged && decision.status !== 'authorized') {
+    throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
+  }
+  return decision;
 }
 
 async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
@@ -777,6 +834,130 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     commitSubjects,
   };
   if (authority.headRelation === 'advanced') {
+    if (reconcile !== null && (live === null || live.record.provider === 'external')) {
+      const historical = validateHistoricalReconstructionPreflight(preflightInput);
+      await checkManualCodeReview({
+        deps,
+        cfg,
+        prNumber: historical.pr.number,
+        expectedHeadSha: authority.acceptedSha,
+        merged: true,
+      });
+      const mergeCommitSha =
+        typeof historical.pr.mergeCommitSha === 'string'
+          ? historical.pr.mergeCommitSha
+          : historical.pr.mergeCommit?.oid;
+      const observed = await observeMergeMethod({
+        mergeCommitSha,
+        expectedHeadSha: historical.expectedHeadSha,
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+      });
+      const mergeMethod = resolveReconciledMergeMethod({
+        declared: reconcile.declaredMergeMethod,
+        observed,
+        configured: historical.mergeMethod,
+      });
+      const reconstruction = buildMethodReconciliation({
+        issueNumber,
+        repository: cfg.repo,
+        prNumber: historical.pr.number,
+        acceptedSha: historical.acceptedSha,
+        mergeCommitSha,
+        configuredMergeMethod: historical.mergeMethod,
+        observedMergeMethod: mergeMethod,
+        reason: reconcile.reason,
+        operator: reconcile.operator,
+        clientCreatedAt: normalizeGitHubInstant(historical.pr.mergedAt),
+        intentOrigin: 'retroactively-reconstructed',
+      });
+      const priorReconstruction = matchingReconstruction(initial.comments, reconstruction);
+      if (live !== null) {
+        if (priorReconstruction === null)
+          throw deliverError('historical-reconstruction-provenance');
+        const expected = buildIntentFromPreflight({
+          preflight: { ...historical, mergeMethod },
+          cfg,
+          intentId: live.record.intentId,
+          supersedesIntentId: null,
+          provider: 'external',
+          sessionId: live.record.sessionId,
+          clientCreatedAt: live.record.clientCreatedAt,
+          commitTitle: live.record.commitTitle,
+          commitMessage: live.record.commitMessage,
+        });
+        if (canonicalRecordJson(expected) !== canonicalRecordJson(live.record)) {
+          throw deliverError('intent-divergence');
+        }
+        return verifyAndFinalize({
+          deps,
+          issueNumber,
+          repository: cfg.repo,
+          context,
+          liveIntent: live,
+          matchingReceipt: initial.projection.matchingReceipt,
+          pullRequest: historical.pr,
+          recovery: true,
+          mode: 'historical-reconstruction',
+          acceptedSha: historical.acceptedSha,
+          localHeadSha: historical.observedLocalHeadSha,
+          testReceiptSha,
+          acceptedReviewSha,
+        });
+      }
+      const verified = await verifyExternalDeliveredPullRequest({
+        intentInput: buildExternalIntentInput({
+          preflight: historical,
+          cfg,
+          intentId: createIntentId(),
+          sessionId: sessionId(),
+          clientCreatedAt: historical.pr.mergedAt,
+          mergeMethodOverride: mergeMethod,
+        }),
+        pullRequest: historical.pr,
+        acceptedSha: historical.acceptedSha,
+        localHeadSha: historical.observedLocalHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+        isAncestor: requiredDependency(deps, 'isAncestor'),
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+        attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      });
+      // #1574 — establish provider/Git proof before the first ledger write.
+      if (priorReconstruction === null) {
+        await requiredDependency(
+          deps,
+          'createIssueComment'
+        )({
+          issueNumber,
+          repository: cfg.repo,
+          body: renderMethodReconciliationComment(reconstruction),
+        });
+      }
+      const liveIntent = await appendIntent({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        intent: verified.intent,
+      });
+      return verifyAndFinalize({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        liveIntent,
+        matchingReceipt: null,
+        pullRequest: historical.pr,
+        recovery: true,
+        mode: 'historical-reconstruction',
+        acceptedSha: historical.acceptedSha,
+        localHeadSha: historical.observedLocalHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        verified,
+      });
+    }
     const historical = validateHistoricalRecoveryPreflight({
       ...preflightInput,
       intent: live?.record ?? null,
@@ -806,58 +987,35 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   const preflight = mergedPullRequest
     ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
     : validateDeliveryPreflight({ ...preflightInput, checks });
-  const manualCodeReviewEnabled = await (
-    deps.resolvePullRequestReviewGate ?? (async () => false)
-  )();
-  if (manualCodeReviewEnabled === true) {
-    const reviewerLogin = await requiredDependency(
-      deps,
-      'resolveManualCodeReviewer'
-    )({
-      configuredReviewer: cfg.manualCodeReviewer,
-    });
-    const reviewEvidence = await requiredDependency(
-      deps,
-      'fetchManualCodeReviewEvidence'
-    )({
-      repository: cfg.repo,
-      prNumber: selectedPullRequest.number,
-      expectedHeadSha: authority.acceptedSha,
-    });
-    const decision = evaluateManualCodeReview({
-      gateEnabled: true,
-      expectedHeadSha: authority.acceptedSha,
-      reviewerLogin,
-      pullRequest: reviewEvidence,
-    });
-    if (decision.status === 'refused') {
-      throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
-    }
-    if (decision.status !== 'authorized') {
-      if (mergedPullRequest) {
-        throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
-      }
-      let reviewRequested = false;
-      if (decision.status === 'request-review') {
-        await requiredDependency(
-          deps,
-          'requestPullRequestReview'
-        )({
-          repository: cfg.repo,
-          prNumber: selectedPullRequest.number,
-          reviewerLogin,
-        });
-        reviewRequested = true;
-      }
-      return {
-        status: 'manual-review-required',
-        reason: decision.reason,
+  const decision = await checkManualCodeReview({
+    deps,
+    cfg,
+    prNumber: selectedPullRequest.number,
+    expectedHeadSha: authority.acceptedSha,
+    merged: mergedPullRequest,
+  });
+  if (decision.status !== 'authorized') {
+    const reviewerLogin = decision.reviewerLogin;
+    let reviewRequested = false;
+    if (decision.status === 'request-review') {
+      await requiredDependency(
+        deps,
+        'requestPullRequestReview'
+      )({
+        repository: cfg.repo,
         prNumber: selectedPullRequest.number,
         reviewerLogin,
-        expectedHeadSha: authority.acceptedSha,
-        reviewRequested,
-      };
+      });
+      reviewRequested = true;
     }
+    return {
+      status: 'manual-review-required',
+      reason: decision.reason,
+      prNumber: selectedPullRequest.number,
+      reviewerLogin,
+      expectedHeadSha: authority.acceptedSha,
+      reviewRequested,
+    };
   }
   if (mergedPullRequest) {
     let liveIntent = live;

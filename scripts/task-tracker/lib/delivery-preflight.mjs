@@ -16,6 +16,7 @@ const INPUT_KEYS = [
   'testReceiptSha',
 ];
 const HISTORICAL_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks').concat('intent');
+const HISTORICAL_RECONSTRUCTION_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks');
 const SHA_RE = /^[0-9a-f]{40}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MERGE_METHODS = ['merge', 'squash', 'rebase'];
@@ -324,5 +325,71 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
     observedLocalHeadSha: authority.observedLocalHeadSha,
     headRelation: authority.headRelation,
     intent: { ...intent },
+  });
+}
+
+export function validateHistoricalReconstructionPreflight(input = {}) {
+  if (!hasExactKeys(input, HISTORICAL_RECONSTRUCTION_INPUT_KEYS)) fail('input');
+  validateIssueAndBinding(input.issue, input.binding, input.config);
+  const baseRef = trunkBaseRef(input.config);
+  validateLineage(input.lineage, baseRef);
+
+  let authority;
+  try {
+    authority = resolveAcceptedDeliveryAuthority({
+      issueNumber: input.issue.number,
+      branch: input.binding.branch,
+      localHeadSha: input.localHeadSha,
+      testReceiptSha: input.testReceiptSha,
+      reviewReceiptSha: input.acceptedReviewSha,
+      agentReviewPassed: input.issue.agentReviewPassed,
+      pullRequests: input.pullRequests,
+    });
+  } catch (error) {
+    if (!(error instanceof DeliveryAuthorityError)) throw error;
+    const category =
+      error.category === 'ambiguous-pr'
+        ? 'pull-request-count'
+        : error.category === 'branch-mismatch'
+          ? 'pull-request-head'
+          : error.category === 'accepted-evidence'
+            ? 'head-mismatch'
+            : 'input';
+    fail(category, error);
+  }
+  if (authority.headRelation !== 'advanced') fail('head-relation');
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged: true });
+  if (
+    !isSha(input.testReceiptSha) ||
+    !isSha(input.acceptedReviewSha) ||
+    new Set([authority.acceptedSha, pr.headRefOid, input.testReceiptSha, input.acceptedReviewSha])
+      .size !== 1
+  ) {
+    fail('head-mismatch');
+  }
+  if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 0) fail('dirty-overlap');
+  const resolved = validateConfiguration(input.config);
+
+  let commitText;
+  try {
+    commitText = buildDeliveryCommitText({
+      issueNumber: input.issue.number,
+      prNumber: pr.number,
+      expectedHeadSha: authority.acceptedSha,
+      commitSubjects: input.commitSubjects,
+    });
+  } catch (error) {
+    fail('attribution', error);
+  }
+
+  return deepFreeze({
+    issue: { ...input.issue, assignees: [...input.issue.assignees] },
+    pr: { ...pr },
+    expectedHeadSha: authority.acceptedSha,
+    acceptedSha: authority.acceptedSha,
+    observedLocalHeadSha: authority.observedLocalHeadSha,
+    headRelation: authority.headRelation,
+    mergeMethod: resolved.mergeMethod,
+    commitText,
   });
 }

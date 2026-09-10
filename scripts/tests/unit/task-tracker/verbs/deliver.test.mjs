@@ -22,7 +22,6 @@ import {
   NEXT_HEAD,
   NOW,
   RECEIPT_SERVER_NOW,
-  SERVER_NOW,
   advancePendingDelivery,
   cfg,
   deliver,
@@ -489,60 +488,6 @@ test('advanced local head rejects duplicate and divergent historical receipts', 
     );
     assert.equal(harness.calls.createIssueComment, 2);
   }
-});
-
-test('advanced local head refuses historical recovery without a prior intent', async () => {
-  const harness = makeHarness({
-    prState: 'MERGED',
-    prHead: HEAD,
-    head: NEXT_HEAD,
-    testReceiptSha: HEAD,
-    acceptedReviewSha: HEAD,
-  });
-
-  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
-
-  assert.equal(harness.calls.createIssueComment, 0);
-  assert.equal(harness.data.comments.length, 0);
-});
-
-test('advanced local head refuses an external recovery intent', async () => {
-  const externalIntent = buildDeliveryIntent({
-    intentId: INTENT_IDS[0],
-    supersedesIntentId: null,
-    issueNumber: 939,
-    repository: 'kburson/ai-task-manager',
-    prNumber: 1400,
-    baseRef: 'trunk',
-    headRef: 'codex/939-full-auto-merge',
-    expectedHeadSha: HEAD,
-    mergeMethod: 'squash',
-    attributionTokens: ['#939'],
-    commitTitle: '[#939] Governed PR delivery',
-    commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`,
-    provider: 'external',
-    sessionId: 'session-previous',
-    clientCreatedAt: '2026-08-22T13:59:00.000Z',
-  });
-  const harness = makeHarness({
-    prState: 'MERGED',
-    prHead: HEAD,
-    head: NEXT_HEAD,
-    testReceiptSha: HEAD,
-    acceptedReviewSha: HEAD,
-    comments: [
-      {
-        id: 'comment-existing',
-        createdAt: SERVER_NOW,
-        body: renderDeliveryIntentComment(externalIntent),
-      },
-    ],
-  });
-
-  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
-
-  assert.equal(harness.calls.createIssueComment, 0);
-  assert.equal(harness.data.comments.length, 1);
 });
 
 test('lost receipt POST response is reconciled from the single server-visible receipt', async () => {
