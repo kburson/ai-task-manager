@@ -7,7 +7,7 @@
 // and warning against demoting. These tests cover the pure hint lib and the
 // integration point where `verbResume` prints the attached hint.
 
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -150,4 +150,4 @@ test('verbResume stays silent when the seed attaches no hint', async () => {
   assert.equal(/Do NOT demote/.test(out), false, 'no hint printed when none is attached');
 });
 
-test.after(() => rmSync(tmp, { recursive: true, force: true }));
+after(() => rmSync(tmp, { recursive: true, force: true }));
