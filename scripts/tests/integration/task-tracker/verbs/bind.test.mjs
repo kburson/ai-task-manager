@@ -7,7 +7,7 @@
 // and warning against demoting. These tests cover the pure hint lib and the
 // integration point where `verbResume` prints the attached hint.
 
-import { after, test } from 'node:test';
+import { after, describe, test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -122,32 +122,34 @@ function makeCtx({ rest, seedKanban, statePath }) {
   };
 }
 
-test('verbResume prints the review-remediation hint when the seed attaches one', async () => {
-  process.env.AI_TASK_MANAGER_SESSION_ID = 'bind-hint-present';
-  const hint = formatReviewRemediationHint(935, REVIEW_NOT_RUN_BODY);
-  const statePath = writeState({ active: null, lastActive: null });
-  const out = await captureResume(
-    makeCtx({
-      rest: ['#935'],
-      statePath,
-      seedKanban: async () => ({ kanbanState: 'review', reviewRemediationHint: hint }),
-    })
-  );
-  assert.match(out, /\/task review #935/, 'hint reaches stdout');
-  assert.match(out, /Do NOT demote/);
-});
+describe('verbResume review-remediation hints', () => {
+  after(() => rmSync(tmp, { recursive: true, force: true }));
 
-test('verbResume stays silent when the seed attaches no hint', async () => {
-  process.env.AI_TASK_MANAGER_SESSION_ID = 'bind-hint-absent';
-  const statePath = writeState({ active: null, lastActive: null });
-  const out = await captureResume(
-    makeCtx({
-      rest: ['#936'],
-      statePath,
-      seedKanban: async () => ({ kanbanState: 'review', reviewRemediationHint: null }),
-    })
-  );
-  assert.equal(/Do NOT demote/.test(out), false, 'no hint printed when none is attached');
-});
+  test('verbResume prints the review-remediation hint when the seed attaches one', async () => {
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'bind-hint-present';
+    const hint = formatReviewRemediationHint(935, REVIEW_NOT_RUN_BODY);
+    const statePath = writeState({ active: null, lastActive: null });
+    const out = await captureResume(
+      makeCtx({
+        rest: ['#935'],
+        statePath,
+        seedKanban: async () => ({ kanbanState: 'review', reviewRemediationHint: hint }),
+      })
+    );
+    assert.match(out, /\/task review #935/, 'hint reaches stdout');
+    assert.match(out, /Do NOT demote/);
+  });
 
-after(() => rmSync(tmp, { recursive: true, force: true }));
+  test('verbResume stays silent when the seed attaches no hint', async () => {
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'bind-hint-absent';
+    const statePath = writeState({ active: null, lastActive: null });
+    const out = await captureResume(
+      makeCtx({
+        rest: ['#936'],
+        statePath,
+        seedKanban: async () => ({ kanbanState: 'review', reviewRemediationHint: null }),
+      })
+    );
+    assert.equal(/Do NOT demote/.test(out), false, 'no hint printed when none is attached');
+  });
+});
