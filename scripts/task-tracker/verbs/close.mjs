@@ -204,6 +204,21 @@ const INCIDENT_AUTHORITY_TYPES = new Set([
   'delivery-incident-incorporated',
 ]);
 
+// #1562 - a pull request merged with a method the configuration does not
+// declare can never satisfy `delivery-verification`, and `--force` does not
+// reach this gate: `refuseDeliveryGate` catches the error and refuses without
+// consulting the flag. Name the reconciliation lane in the refusal itself so
+// it is discoverable from the message rather than only from the source.
+export function buildDeliveryGateRefusal(closeTarget, reason) {
+  return (
+    `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${reason}. ` +
+    'Run `/task deliver` until a verified exact-head receipt exists, then retry. ' +
+    'If the pull request was merged with a method this project does not declare ' +
+    '(`delivery-verification:merge-method`), reconcile it with ' +
+    '`/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason \"<why>\"`.'
+  );
+}
+
 function closeAuditMarker(recordId) {
   return `<!-- aitm-incorporated-close-audit record-id="${recordId}" -->`;
 }
@@ -1755,17 +1770,7 @@ export async function verbClose(ctx) {
       await ensureDeliveryAuthorized(options);
       return false;
     } catch (error) {
-      console.error(
-        `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${error.message}. ` +
-          'Run `/task deliver` until a verified exact-head receipt exists, then retry. ' +
-          // #1562 — a pull request merged with a method the configuration does
-          // not declare cannot ever satisfy the verifier, and `--force` does not
-          // reach this gate. Name the reconciliation lane so it is discoverable
-          // from the refusal itself rather than only from the source.
-          'If the pull request was merged with a method this project does not declare ' +
-          '(`delivery-verification:merge-method`), reconcile it with ' +
-          '`/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason "<why>"`.'
-      );
+      console.error(buildDeliveryGateRefusal(closeTarget, error.message));
       process.exitCode = 1;
       return true;
     }
