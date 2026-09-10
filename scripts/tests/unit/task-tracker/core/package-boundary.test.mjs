@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501
+// @story #551 #1279 #1497 #1501 #1578
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -117,7 +117,10 @@ function repoRoot() {
 // the delivery recovery lane. Exactly one packed entry on top of the 777 surface
 // this branch merged from trunk; raise by one so any further package-surface
 // growth still requires an explicit review.
-const ENTRY_CEILING = 778;
+// #1578 accounts for #1546's shipped peer-review adapter. The synchronized
+// branch surface was 778 before that one required runtime entry; raise by one
+// and retain no contingency headroom.
+const ENTRY_CEILING = 779;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -210,6 +213,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
+    'scripts/task-tracker/lib/peer-review-adapter.mjs',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',
