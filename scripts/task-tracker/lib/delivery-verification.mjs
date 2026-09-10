@@ -110,7 +110,7 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function assertAuthorityShas(input, intent) {
+function assertAuthorityShas(input, intent, recovery) {
   const authorities = [
     input.pullRequest?.headRefOid,
     intent?.expectedHeadSha,
@@ -125,7 +125,7 @@ function assertAuthorityShas(input, intent) {
   if (typeof input.localHeadSha !== 'string' || !SHA_RE.test(input.localHeadSha)) {
     throw verificationError('authority-sha');
   }
-  if (input.localHeadSha !== input.acceptedSha && input.recovery !== true) {
+  if (input.localHeadSha !== input.acceptedSha && recovery !== true) {
     throw verificationError('authority-sha-mismatch');
   }
 }
@@ -386,6 +386,27 @@ function provesDefaultSquashBodyAttribution({ intent, inspection }) {
   return true;
 }
 
+function provesDefaultMergeBodyAttribution({ intent, inspection }) {
+  const repositoryOwner = intent.repository.split('/')[0];
+  const expectedTitle =
+    `Merge pull request #${intent.prNumber} from ` + `${repositoryOwner}/${intent.headRef}`;
+  if (inspection.commitTitle !== expectedTitle) return false;
+  const leading = ISSUE_PREFIX_RE.exec(inspection.commitMessage || '');
+  if (leading === null || leading[1] !== String(intent.issueNumber)) return false;
+  const observed = new Set(
+    [...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE)].map(
+      (match) => `#${match[1]}`
+    )
+  );
+  const expected = new Set(intent.attributionTokens);
+  expected.add(`#${intent.issueNumber}`);
+  if (observed.size !== expected.size) return false;
+  for (const token of expected) {
+    if (!observed.has(token)) return false;
+  }
+  return true;
+}
+
 function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSquash, options = {}) {
   const topLevelToken = `#${intent.issueNumber}`;
   const messageTokens = [
@@ -417,6 +438,14 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   ) {
     return;
   }
+  if (
+    !claimsCanonicalAttribution &&
+    options.provenMerge === true &&
+    intent.provider === 'external' &&
+    provesDefaultMergeBodyAttribution({ intent, inspection })
+  ) {
+    return;
+  }
   throw verificationError('attribution');
 }
 
@@ -432,7 +461,7 @@ function assertVerificationFunctions(input) {
 }
 
 async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
-  assertAuthorityShas(input, intent);
+  assertAuthorityShas(input, intent, recovery);
   const { pullRequest } = input;
   const merged = assertMergedPullRequest(pullRequest, intent);
   if (intent.provider !== 'external') {
@@ -532,6 +561,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
       });
   assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash, {
     provenMultiSourceSquash,
+    provenMerge: observedMergeMethod === 'merge',
   });
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
@@ -661,4 +691,40 @@ export function buildDeliveryRealPrEvidence(input = {}) {
       ...input,
     })
   );
+}
+
+// @story #1562 — observe a merged pull request's merge method WITHOUT running
+// the full delivery verification. The merge-method reconciliation lane needs the
+// observed topology before it can build an intent, and the intent is what
+// `verifyLiveDelivery` consumes — so the observation cannot come from inside it.
+//
+// Deliberately narrower than `classifyMergeMethod` + the squash-proving ladder
+// used by `verifyLiveDelivery`. Only an unambiguous two-parent merge commit whose
+// second parent is the expected head is attributable here. A single-parent
+// rewrite is ambiguous between squash and rebase without the authorized-bytes or
+// single/multi-source proofs, and this lane must never guess a method an operator
+// is about to have recorded as fact — so it refuses instead.
+export async function observeMergeMethod({
+  mergeCommitSha,
+  expectedHeadSha,
+  inspectMergeCommit,
+} = {}) {
+  if (
+    typeof mergeCommitSha !== 'string' ||
+    !SHA_RE.test(mergeCommitSha) ||
+    typeof expectedHeadSha !== 'string' ||
+    !SHA_RE.test(expectedHeadSha) ||
+    typeof inspectMergeCommit !== 'function'
+  ) {
+    throw verificationError('input');
+  }
+  let inspection;
+  try {
+    inspection = await inspectMergeCommit({ mergeCommitSha, expectedHeadSha });
+  } catch (error) {
+    throw verificationError('merge-method-evidence', error);
+  }
+  const classified = classifyMergeMethod(inspection, expectedHeadSha, mergeCommitSha);
+  if (classified !== 'merge') throw verificationError('merge-method-unattributable');
+  return classified;
 }

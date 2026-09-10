@@ -39,6 +39,7 @@ import {
 } from '../lib/delivery-records.mjs';
 import {
   validateDeliveryPreflight,
+  validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
@@ -53,6 +54,7 @@ import {
 import {
   verifyDeliveredPullRequest,
   verifyExternalDeliveredPullRequest,
+  observeMergeMethod,
 } from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
 import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
@@ -64,6 +66,13 @@ import {
   sameNoCommitDeliveryAuthority,
 } from '../lib/no-commit-delivery-record.mjs';
 import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
+import {
+  buildMethodReconciliation,
+  METHOD_RECONCILIATION_V2_SCHEMA,
+  parseMethodReconciliationComment,
+  renderMethodReconciliationComment,
+  resolveReconciledMergeMethod,
+} from '../lib/delivery-method-reconciliation.mjs';
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -89,6 +98,55 @@ function issueTarget(rest = []) {
     if (match) return Number(match[1]);
   }
   return null;
+}
+
+// @story #1562 — argument surface for the merge-method reconciliation lane.
+//
+// Both parts are mandatory together: the flag without a reason leaves the ledger
+// unable to say WHY a divergence was accepted, and a reason without the flag
+// would be silently discarded. Repeats refuse rather than resolving to one, so a
+// mistyped invocation never quietly reconciles to something the operator did not
+// intend.
+const RECONCILE_MERGE_METHODS = new Set(['merge', 'squash', 'rebase']);
+const RECONCILE_PLACEHOLDER_RE = /^(?:tbd|todo|placeholder|n\/a|none|\.\.\.)$/i;
+const RECONCILE_MIN_REASON = 8;
+
+function singleFlagValue(rest, flag, category) {
+  const values = [];
+  for (let i = 0; i < rest.length; i += 1) {
+    const token = String(rest[i]);
+    if (token === flag) {
+      const next = rest[i + 1];
+      if (next === undefined || String(next).startsWith('--')) throw deliverError(category);
+      values.push(String(next));
+      i += 1;
+      continue;
+    }
+    if (token.startsWith(`${flag}=`)) values.push(token.slice(flag.length + 1));
+  }
+  if (values.length > 1) throw deliverError(category);
+  return values.length === 1 ? values[0] : null;
+}
+
+export function parseReconcileArgs(rest = []) {
+  const declaredMergeMethod = singleFlagValue(
+    rest,
+    '--reconcile-merge-method',
+    'reconcile-merge-method'
+  );
+  const reason = singleFlagValue(rest, '--reason', 'reason');
+  if (declaredMergeMethod === null) {
+    if (reason !== null) throw deliverError('reason');
+    return null;
+  }
+  if (!RECONCILE_MERGE_METHODS.has(declaredMergeMethod)) {
+    throw deliverError('reconcile-merge-method');
+  }
+  const trimmed = (reason ?? '').trim();
+  if (trimmed.length < RECONCILE_MIN_REASON || RECONCILE_PLACEHOLDER_RE.test(trimmed)) {
+    throw deliverError('reconcile-reason');
+  }
+  return { declaredMergeMethod, reason: trimmed };
 }
 
 function baseRefFrom(cfg) {
@@ -239,6 +297,28 @@ function authorizedIntentBytes(intent) {
   );
 }
 
+function matchingReconstruction(comments, expected) {
+  const records = comments
+    .map(parseMethodReconciliationComment)
+    .filter((record) => record?.schema === METHOD_RECONCILIATION_V2_SCHEMA);
+  if (records.length === 0) return null;
+  const keys = [
+    'issueNumber',
+    'repository',
+    'prNumber',
+    'acceptedSha',
+    'mergeCommitSha',
+    'configuredMergeMethod',
+    'observedMergeMethod',
+    'reason',
+    'intentOrigin',
+  ];
+  if (records.length !== 1 || keys.some((key) => records[0][key] !== expected[key])) {
+    throw deliverError('historical-reconstruction-provenance');
+  }
+  return records[0];
+}
+
 function buildIntentFromPreflight({
   preflight,
   cfg,
@@ -269,7 +349,14 @@ function buildIntentFromPreflight({
   });
 }
 
-function buildExternalIntentInput({ preflight, cfg, intentId, sessionId, clientCreatedAt }) {
+function buildExternalIntentInput({
+  preflight,
+  cfg,
+  intentId,
+  sessionId,
+  clientCreatedAt,
+  mergeMethodOverride = null,
+}) {
   return {
     intentId,
     supersedesIntentId: null,
@@ -279,7 +366,10 @@ function buildExternalIntentInput({ preflight, cfg, intentId, sessionId, clientC
     baseRef: preflight.pr.baseRefName,
     headRef: preflight.pr.headRefName,
     expectedHeadSha: preflight.expectedHeadSha,
-    mergeMethod: preflight.mergeMethod,
+    // #1562 — the reconciliation lane restates the intent to the OBSERVED method
+    // after proving observation agrees with the operator's declaration. Absent
+    // the lane this is the configured method exactly as before.
+    mergeMethod: mergeMethodOverride ?? preflight.mergeMethod,
     attributionTokens: preflight.commitText.attributionTokens,
     provider: 'external',
     sessionId,
@@ -436,6 +526,38 @@ function requiredDependency(deps, name) {
   return dependency;
 }
 
+async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, merged }) {
+  const enabled = await (deps.resolvePullRequestReviewGate ?? (async () => false))();
+  if (enabled !== true) return { status: 'authorized' };
+  const reviewerLogin = await requiredDependency(
+    deps,
+    'resolveManualCodeReviewer'
+  )({
+    configuredReviewer: cfg.manualCodeReviewer,
+  });
+  const reviewEvidence = await requiredDependency(
+    deps,
+    'fetchManualCodeReviewEvidence'
+  )({
+    repository: cfg.repo,
+    prNumber,
+    expectedHeadSha,
+  });
+  const decision = evaluateManualCodeReview({
+    gateEnabled: true,
+    expectedHeadSha,
+    reviewerLogin,
+    pullRequest: reviewEvidence,
+  });
+  if (decision.status === 'refused') {
+    throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
+  }
+  if (merged && decision.status !== 'authorized') {
+    throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
+  }
+  return decision;
+}
+
 async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   const deliverable = parseDeliverablePosted(issue.body);
   if (!deliverable) throw new TypeError('delivery-preflight:no-commit-deliverable');
@@ -551,7 +673,10 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   };
 }
 
-export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
+export async function runDeliver({ issueNumber, cfg, state, reconcile = null, deps = {} } = {}) {
+  // #1562 — carries the reconciliation record from the recovery path out to the
+  // caller so it can be appended to the issue ledger beside the receipt.
+  let methodReconciliation = null;
   if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
     throw deliverError('issue-number');
   }
@@ -709,6 +834,130 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     commitSubjects,
   };
   if (authority.headRelation === 'advanced') {
+    if (reconcile !== null && (live === null || live.record.provider === 'external')) {
+      const historical = validateHistoricalReconstructionPreflight(preflightInput);
+      await checkManualCodeReview({
+        deps,
+        cfg,
+        prNumber: historical.pr.number,
+        expectedHeadSha: authority.acceptedSha,
+        merged: true,
+      });
+      const mergeCommitSha =
+        typeof historical.pr.mergeCommitSha === 'string'
+          ? historical.pr.mergeCommitSha
+          : historical.pr.mergeCommit?.oid;
+      const observed = await observeMergeMethod({
+        mergeCommitSha,
+        expectedHeadSha: historical.expectedHeadSha,
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+      });
+      const mergeMethod = resolveReconciledMergeMethod({
+        declared: reconcile.declaredMergeMethod,
+        observed,
+        configured: historical.mergeMethod,
+      });
+      const reconstruction = buildMethodReconciliation({
+        issueNumber,
+        repository: cfg.repo,
+        prNumber: historical.pr.number,
+        acceptedSha: historical.acceptedSha,
+        mergeCommitSha,
+        configuredMergeMethod: historical.mergeMethod,
+        observedMergeMethod: mergeMethod,
+        reason: reconcile.reason,
+        operator: reconcile.operator,
+        clientCreatedAt: normalizeGitHubInstant(historical.pr.mergedAt),
+        intentOrigin: 'retroactively-reconstructed',
+      });
+      const priorReconstruction = matchingReconstruction(initial.comments, reconstruction);
+      if (live !== null) {
+        if (priorReconstruction === null)
+          throw deliverError('historical-reconstruction-provenance');
+        const expected = buildIntentFromPreflight({
+          preflight: { ...historical, mergeMethod },
+          cfg,
+          intentId: live.record.intentId,
+          supersedesIntentId: null,
+          provider: 'external',
+          sessionId: live.record.sessionId,
+          clientCreatedAt: live.record.clientCreatedAt,
+          commitTitle: live.record.commitTitle,
+          commitMessage: live.record.commitMessage,
+        });
+        if (canonicalRecordJson(expected) !== canonicalRecordJson(live.record)) {
+          throw deliverError('intent-divergence');
+        }
+        return verifyAndFinalize({
+          deps,
+          issueNumber,
+          repository: cfg.repo,
+          context,
+          liveIntent: live,
+          matchingReceipt: initial.projection.matchingReceipt,
+          pullRequest: historical.pr,
+          recovery: true,
+          mode: 'historical-reconstruction',
+          acceptedSha: historical.acceptedSha,
+          localHeadSha: historical.observedLocalHeadSha,
+          testReceiptSha,
+          acceptedReviewSha,
+        });
+      }
+      const verified = await verifyExternalDeliveredPullRequest({
+        intentInput: buildExternalIntentInput({
+          preflight: historical,
+          cfg,
+          intentId: createIntentId(),
+          sessionId: sessionId(),
+          clientCreatedAt: historical.pr.mergedAt,
+          mergeMethodOverride: mergeMethod,
+        }),
+        pullRequest: historical.pr,
+        acceptedSha: historical.acceptedSha,
+        localHeadSha: historical.observedLocalHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+        isAncestor: requiredDependency(deps, 'isAncestor'),
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+        attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      });
+      // #1574 — establish provider/Git proof before the first ledger write.
+      if (priorReconstruction === null) {
+        await requiredDependency(
+          deps,
+          'createIssueComment'
+        )({
+          issueNumber,
+          repository: cfg.repo,
+          body: renderMethodReconciliationComment(reconstruction),
+        });
+      }
+      const liveIntent = await appendIntent({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        intent: verified.intent,
+      });
+      return verifyAndFinalize({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        liveIntent,
+        matchingReceipt: null,
+        pullRequest: historical.pr,
+        recovery: true,
+        mode: 'historical-reconstruction',
+        acceptedSha: historical.acceptedSha,
+        localHeadSha: historical.observedLocalHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        verified,
+      });
+    }
     const historical = validateHistoricalRecoveryPreflight({
       ...preflightInput,
       intent: live?.record ?? null,
@@ -738,58 +987,35 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const preflight = mergedPullRequest
     ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
     : validateDeliveryPreflight({ ...preflightInput, checks });
-  const manualCodeReviewEnabled = await (
-    deps.resolvePullRequestReviewGate ?? (async () => false)
-  )();
-  if (manualCodeReviewEnabled === true) {
-    const reviewerLogin = await requiredDependency(
-      deps,
-      'resolveManualCodeReviewer'
-    )({
-      configuredReviewer: cfg.manualCodeReviewer,
-    });
-    const reviewEvidence = await requiredDependency(
-      deps,
-      'fetchManualCodeReviewEvidence'
-    )({
-      repository: cfg.repo,
-      prNumber: selectedPullRequest.number,
-      expectedHeadSha: authority.acceptedSha,
-    });
-    const decision = evaluateManualCodeReview({
-      gateEnabled: true,
-      expectedHeadSha: authority.acceptedSha,
-      reviewerLogin,
-      pullRequest: reviewEvidence,
-    });
-    if (decision.status === 'refused') {
-      throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
-    }
-    if (decision.status !== 'authorized') {
-      if (mergedPullRequest) {
-        throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
-      }
-      let reviewRequested = false;
-      if (decision.status === 'request-review') {
-        await requiredDependency(
-          deps,
-          'requestPullRequestReview'
-        )({
-          repository: cfg.repo,
-          prNumber: selectedPullRequest.number,
-          reviewerLogin,
-        });
-        reviewRequested = true;
-      }
-      return {
-        status: 'manual-review-required',
-        reason: decision.reason,
+  const decision = await checkManualCodeReview({
+    deps,
+    cfg,
+    prNumber: selectedPullRequest.number,
+    expectedHeadSha: authority.acceptedSha,
+    merged: mergedPullRequest,
+  });
+  if (decision.status !== 'authorized') {
+    const reviewerLogin = decision.reviewerLogin;
+    let reviewRequested = false;
+    if (decision.status === 'request-review') {
+      await requiredDependency(
+        deps,
+        'requestPullRequestReview'
+      )({
+        repository: cfg.repo,
         prNumber: selectedPullRequest.number,
         reviewerLogin,
-        expectedHeadSha: authority.acceptedSha,
-        reviewRequested,
-      };
+      });
+      reviewRequested = true;
     }
+    return {
+      status: 'manual-review-required',
+      reason: decision.reason,
+      prNumber: selectedPullRequest.number,
+      reviewerLogin,
+      expectedHeadSha: authority.acceptedSha,
+      reviewRequested,
+    };
   }
   if (mergedPullRequest) {
     let liveIntent = live;
@@ -816,6 +1042,48 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     }
     if (liveIntent === null) {
       recovery = true;
+      // #1562 — merge-method reconciliation. The configured method is the only
+      // intent this path can otherwise produce, so a pull request merged by a
+      // different method strands the issue. When the operator opts in, observe
+      // the real topology, refuse unless their declaration agrees with it, and
+      // restate the intent to the observed method. `verifyLiveDelivery`'s
+      // equality check is untouched — it now compares against a reconciled
+      // intent instead of an unreachable one.
+      let reconciledMergeMethod = null;
+      if (reconcile !== null) {
+        const observed = await observeMergeMethod({
+          mergeCommitSha: selectedPullRequest.mergeCommitSha,
+          expectedHeadSha: preflight.expectedHeadSha,
+          inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+        });
+        reconciledMergeMethod = resolveReconciledMergeMethod({
+          declared: reconcile.declaredMergeMethod,
+          observed,
+          configured: preflight.mergeMethod,
+        });
+        methodReconciliation = buildMethodReconciliation({
+          issueNumber,
+          repository: cfg.repo,
+          prNumber: selectedPullRequest.number,
+          acceptedSha: authority.acceptedSha,
+          mergeCommitSha: selectedPullRequest.mergeCommitSha,
+          configuredMergeMethod: preflight.mergeMethod,
+          observedMergeMethod: reconciledMergeMethod,
+          reason: reconcile.reason,
+          operator: reconcile.operator,
+          clientCreatedAt: normalizeGitHubInstant(selectedPullRequest.mergedAt),
+        });
+        // Append the divergence BEFORE the intent, so the authorization for the
+        // restatement is on the ledger even if verification later refuses.
+        await requiredDependency(
+          deps,
+          'createIssueComment'
+        )({
+          issueNumber,
+          repository: cfg.repo,
+          body: renderMethodReconciliationComment(methodReconciliation),
+        });
+      }
       const verified = await verifyExternalDeliveredPullRequest({
         intentInput: buildExternalIntentInput({
           preflight,
@@ -823,6 +1091,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           intentId: createIntentId(),
           sessionId: sessionId(),
           clientCreatedAt: selectedPullRequest.mergedAt,
+          mergeMethodOverride: reconciledMergeMethod,
         }),
         pullRequest: selectedPullRequest,
         acceptedSha: authority.acceptedSha,
@@ -1487,10 +1756,22 @@ export async function verbDeliver(ctx, injected = {}) {
     return;
   }
   const state = (injected.loadTrackerState ?? loadState)(ctx.statePath);
+  let reconcile = null;
+  try {
+    const parsed = parseReconcileArgs(ctx.rest);
+    // #1562 — the operator identity on the record is the authenticated GitHub
+    // login, never anything the flags can assert.
+    reconcile = parsed === null ? null : { ...parsed, operator: ctx.cfg?.assignee ?? '' };
+  } catch (error) {
+    writeOutput(`deliver: ${error.message}`);
+    setExitCode(2);
+    return;
+  }
   const result = await runDeliver({
     issueNumber,
     cfg: ctx.cfg,
     state,
+    reconcile,
     deps: injected.deliverDeps ?? createDefaultDeliverDeps(ctx),
   });
   if (result.status === 'action-required') {

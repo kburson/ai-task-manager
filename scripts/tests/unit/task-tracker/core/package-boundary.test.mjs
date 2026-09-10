@@ -113,7 +113,11 @@ function repoRoot() {
 // #1500 adds the reviewed v2 enrollment, runtime-capability and command adapters.
 // #1512 intentionally ships the manual PR-review policy module and shared rule.
 // #1226 intentionally ships the cloud Test performance-baseline runtime module.
-const ENTRY_CEILING = 777;
+// #1562 ships one runtime module, the merge-method reconciliation record used by
+// the delivery recovery lane. Exactly one packed entry on top of the 777 surface
+// this branch merged from trunk; raise by one so any further package-surface
+// growth still requires an explicit review.
+const ENTRY_CEILING = 778;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

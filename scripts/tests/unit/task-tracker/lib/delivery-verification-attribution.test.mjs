@@ -17,6 +17,9 @@ const MERGED_AT = '2026-08-23T06:01:54.000Z';
 const ATTRIBUTION_TOKENS = ['#1380', '#1392', '#939'];
 const COMMIT_TITLE = '[#1392] Governed PR delivery';
 const COMMIT_MESSAGE = `PR #1391\nSource: ${HEAD}\n\n` + 'Attribution: [#1392] [#1380] [#939]';
+const DEFAULT_MERGE_HEAD_REF = 'claude/aad-yml-config-exploration-6d0cf6';
+const DEFAULT_MERGE_TITLE = `Merge pull request #1556 from kburson/` + DEFAULT_MERGE_HEAD_REF;
+const DEFAULT_MERGE_BODY = '[#680] docs(spike): aitm.yml pipeline engine design recommendation';
 
 function intent(commitMessage = COMMIT_MESSAGE) {
   return buildDeliveryIntent({
@@ -93,6 +96,36 @@ function liveInput(commitMessage = COMMIT_MESSAGE) {
   };
 }
 
+function defaultMergeRecoveryInput({
+  commitTitle = DEFAULT_MERGE_TITLE,
+  commitMessage = DEFAULT_MERGE_BODY,
+  parents = ['c'.repeat(40), HEAD],
+  intentOverrides = {},
+} = {}) {
+  const input = liveInput(commitMessage);
+  delete input.intentCreatedAt;
+  delete input.recovery;
+  input.pullRequest = {
+    ...input.pullRequest,
+    number: 1556,
+    headRefName: DEFAULT_MERGE_HEAD_REF,
+    mergeMethod: 'merge',
+  };
+  input.inspectMergeCommit = async () => ({ parents, commitTitle, commitMessage });
+  return {
+    input,
+    intentInput: {
+      ...externalIntentInput(),
+      issueNumber: 680,
+      prNumber: 1556,
+      headRef: DEFAULT_MERGE_HEAD_REF,
+      mergeMethod: 'merge',
+      attributionTokens: ['#680'],
+      ...intentOverrides,
+    },
+  };
+}
+
 test('verifies multi-issue squash attribution from exact inspected commit bytes', async () => {
   const verified = await verifyDeliveredPullRequest({
     ...liveInput(),
@@ -115,6 +148,115 @@ test('external recovery accepts one canonical inspected attribution line', async
 
   assert.equal(verified.intent.provider, 'external');
   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
+});
+
+test('external recovery accepts exact GitHub default merge attribution for the accepted head', async () => {
+  const { input, intentInput } = defaultMergeRecoveryInput();
+
+  const verified = await verifyExternalDeliveredPullRequest({ ...input, intentInput });
+
+  assert.equal(verified.receiptInput.mergeMethod, 'merge');
+  assert.equal(verified.intent.commitMessage, DEFAULT_MERGE_BODY);
+});
+
+test('external recovery refuses inexact or non-merge default merge attribution evidence', async () => {
+  const cases = [
+    {
+      name: 'wrong pull request number',
+      commitTitle: DEFAULT_MERGE_TITLE.replace('#1556', '#1557'),
+      error: /delivery-verification:attribution/,
+    },
+    {
+      name: 'wrong repository owner',
+      commitTitle: DEFAULT_MERGE_TITLE.replace('from kburson/', 'from another-owner/'),
+      error: /delivery-verification:attribution/,
+    },
+    {
+      name: 'wrong head ref',
+      commitTitle: DEFAULT_MERGE_TITLE.replace(DEFAULT_MERGE_HEAD_REF, 'another-branch'),
+      error: /delivery-verification:attribution/,
+    },
+    {
+      name: 'missing authorized token',
+      intentOverrides: { attributionTokens: ['#680', '#939'] },
+      error: /delivery-verification:attribution/,
+    },
+    {
+      name: 'extra unauthorized token',
+      commitMessage: `${DEFAULT_MERGE_BODY}\nRelated: [#939]`,
+      error: /delivery-verification:attribution/,
+    },
+    {
+      name: 'malformed canonical trailer claim',
+      commitMessage: `${DEFAULT_MERGE_BODY}\n Attribution: [#680]`,
+      error: /delivery-verification:attribution/,
+    },
+    {
+      name: 'non-merge topology',
+      parents: ['c'.repeat(40)],
+      error: /delivery-verification:merge-method/,
+    },
+  ];
+
+  for (const { name, error, ...overrides } of cases) {
+    const { input, intentInput } = defaultMergeRecoveryInput(overrides);
+    await assert.rejects(
+      () => verifyExternalDeliveredPullRequest({ ...input, intentInput }),
+      error,
+      name
+    );
+  }
+});
+
+test('external recovery verifies an advanced observed local head against accepted authority', async () => {
+  const input = liveInput();
+  delete input.intentCreatedAt;
+  delete input.recovery;
+  input.localHeadSha = 'd'.repeat(40);
+
+  const verified = await verifyExternalDeliveredPullRequest({
+    ...input,
+    intentInput: externalIntentInput(),
+  });
+
+  assert.equal(input.localHeadSha, 'd'.repeat(40));
+  assert.equal(verified.recovery, true);
+  assert.equal(verified.intent.expectedHeadSha, HEAD);
+  assert.equal(verified.receiptInput.expectedHeadSha, HEAD);
+});
+
+test('external recovery keeps its exact input schema and authority equality checks', async () => {
+  const input = liveInput();
+  delete input.intentCreatedAt;
+  delete input.recovery;
+  input.localHeadSha = 'd'.repeat(40);
+  input.intentInput = externalIntentInput();
+
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...input, recovery: true }),
+    /delivery-verification:input-keys/
+  );
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...input, testReceiptSha: input.localHeadSha }),
+    /delivery-verification:authority-sha-mismatch/
+  );
+  await assert.rejects(
+    () =>
+      verifyExternalDeliveredPullRequest({
+        ...input,
+        intentInput: { ...input.intentInput, mergeMethod: 'merge' },
+      }),
+    /delivery-verification:merge-method$/
+  );
+  await assert.rejects(
+    () =>
+      verifyDeliveredPullRequest({
+        ...liveInput(),
+        localHeadSha: input.localHeadSha,
+        intent: intent(),
+      }),
+    /delivery-verification:authority-sha-mismatch/
+  );
 });
 
 test('external recovery rejects noncanonical inspected attribution lines', async () => {
