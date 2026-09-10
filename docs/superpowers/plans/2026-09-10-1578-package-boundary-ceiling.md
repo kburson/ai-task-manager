@@ -358,6 +358,9 @@ printf '%s\n' "$accepted_plan_commit"
 Use `apply_patch` to create `.scratch/gh/1578-plan-commit-operation.json` with schema `aitm.issue-body-operation/v1`, kind `replace-exact`, the current full `- **Plan-commit**: ...` line as `expected`, and the printed accepted amendment SHA as `replacement`. Put the literal 40-character SHA in the JSON; do not embed a shell expression. Then run:
 
 ```bash
+plan_path='docs/superpowers/plans/2026-09-10-1578-package-boundary-ceiling.md'
+accepted_plan_commit="$(git log -1 --format=%H -- "$plan_path")"
+test "${#accepted_plan_commit}" -eq 40
 npx aitm issue-body 1578 --operation-file .scratch/gh/1578-plan-commit-operation.json
 gh issue view 1578 --repo kburson/ai-task-manager --json body --jq .body | rg -F -- "- **Plan-commit**: $accepted_plan_commit"
 ```
