@@ -12,8 +12,7 @@
 
 - Governing design: `docs/superpowers/specs/2026-09-10-1578-package-boundary-ceiling-design.md` accepted at `4e96a7a8ff39444d69580a3ee2f331572966d8ab`.
 - Modify no tracked implementation file except `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`.
-- Do not change `package.json`, `package-lock.json`, package allowlists, exclusions, production code, or existing package-boundary assertions.
-- Add only `scripts/task-tracker/lib/peer-review-adapter.mjs` to the required runtime-entry list.
+- Do not change `package.json`, `package-lock.json`, package allowlists, exclusions, production code, or any existing package-boundary assertion except to extend the required runtime-entry list with `scripts/task-tracker/lib/peer-review-adapter.mjs`.
 - Keep the working-tree pack measurement exact at 779; add no contingency headroom and do not filter through `git ls-files`.
 - Run exact-count checks with no untracked package-eligible files or concurrent repository writers.
 - Do not integrate or cherry-pick #1578 independently of #1546's adapter commit `311cef526`.
@@ -77,12 +76,14 @@ const replacements = Object.freeze([
       '3. Extend the ceiling history with a concise note that #1546 ships one peer-review adapter on top of the 778-entry synchronized surface.',
       '4. Change only `ENTRY_CEILING` from 778 to 779. Do not add contingency headroom.',
       '5. Re-run the focused package-boundary file and require all six cases to pass. Inspect the diff to prove that every allowlist, exclusion, exact introduction-document inventory, README-link check, and required runtime-entry assertion is byte-for-byte unchanged.',
+      '6. Run the governed Develop iteration verifier, commit only the guard file under #1578, finalize Develop at exact SHA, then use the normal sandbox Test and independent review gates.',
     ].join('\n'),
     replacement: [
       '3. Extend the ceiling history with a concise note that #1546 ships one peer-review adapter on top of the 778-entry synchronized surface.',
       '4. Add `scripts/task-tracker/lib/peer-review-adapter.mjs` to the required runtime-entry list without removing or weakening any existing entry.',
       '5. Change only `ENTRY_CEILING` from 778 to 779. Do not add contingency headroom.',
       '6. Re-run the focused package-boundary file and require all six cases to pass. Inspect the diff to prove that every allowlist, exclusion, exact introduction-document inventory, README-link check, and existing required runtime-entry assertion is preserved while the adapter requirement is added.',
+      '7. Run the governed Develop iteration verifier, commit only the guard file under #1578, finalize Develop at exact SHA, then use the normal sandbox Test and independent review gates.',
     ].join('\n'),
   },
   {
@@ -94,22 +95,29 @@ const replacements = Object.freeze([
   },
 ]);
 
-function replaceExactlyOnce(body, { label, expected, replacement }) {
-  const matches = body.split(expected).length - 1;
-  if (matches !== 1) throw new Error(`1578-align:${label}: expected one match, found ${matches}`);
-  return body.replace(expected, replacement);
+function replaceOrConfirm(body, { label, expected, replacement }) {
+  const expectedMatches = body.split(expected).length - 1;
+  const replacementMatches = body.split(replacement).length - 1;
+  if (expectedMatches === 1 && replacementMatches === 0) {
+    return body.replace(expected, replacement);
+  }
+  if (expectedMatches === 0 && replacementMatches === 1) return body;
+  throw new Error(
+    `1578-align:${label}: expected old=1,new=0 or old=0,new=1; ` +
+      `found old=${expectedMatches},new=${replacementMatches}`
+  );
 }
 
 const result = await mutateIssueBody({
   issueNumber: 1578,
   repo: 'kburson/ai-task-manager',
-  mutate: (base) => replacements.reduce(replaceExactlyOnce, base),
+  mutate: (base) => replacements.reduce(replaceOrConfirm, base),
 });
 
 console.log(`1578-align: ${result.status} version=${result.version}`);
 ```
 
-Expected: the temporary script contains five exact replacements and delegates the write to `mutateIssueBody`; it contains no complete issue-body snapshot.
+Expected: the temporary script contains five exact, idempotent transformations and delegates the write to `mutateIssueBody`; it contains no complete issue-body snapshot.
 
 - [ ] **Step 3: Apply the alignment and verify authoritative read-back**
 
@@ -117,20 +125,22 @@ Run:
 
 ```bash
 node .scratch/gh/1578-align-body.mjs
+node .scratch/gh/1578-align-body.mjs
 gh issue view 1578 --repo kburson/ai-task-manager --json body --jq .body
 ```
 
-Expected: the script reports `updated` with a new integer body version. Scope and Fix Direction name the required adapter, the deep-dive sequence has six steps including the adapter assertion, and the second acceptance criterion preserves existing entries while requiring the adapter. Every AITM marker and unrelated body byte remains intact.
+Expected: the first run reports `ok` with a new integer body version; the idempotent second run reports `no-op`. Scope and Fix Direction name the required adapter, the deep-dive sequence has seven steps including the adapter assertion, and the second acceptance criterion preserves existing entries while requiring the adapter. Every AITM marker and unrelated body byte remains intact.
 
 - [ ] **Step 4: Delete the temporary alignment script**
 
 Use `apply_patch` to delete `.scratch/gh/1578-align-body.mjs`, then run:
 
 ```bash
+test ! -e .scratch/gh/1578-align-body.mjs
 git status --short
 ```
 
-Expected: the temporary script is absent and Git reports no change from the issue-body alignment.
+Expected: the explicit absence check exits 0 and Git reports no tracked change from the issue-body alignment.
 
 - [ ] **Step 5: Record human Plan approval and enter Develop**
 
@@ -228,7 +238,61 @@ node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
 
 Expected: exit 0; all six tests pass, including the exact count and required runtime-entry cases.
 
-- [ ] **Step 5: Prove the diff and packed surface are exact**
+- [ ] **Step 5: Falsify adapter presence and prove the required-entry assertion bites**
+
+Run this trap-protected probe from the repository root:
+
+```bash
+set -e
+adapter_path='scripts/task-tracker/lib/peer-review-adapter.mjs'
+probe_path='.scratch/gh/1578-peer-review-adapter.falsification.mjs'
+output_path='.scratch/gh/1578-required-entry-falsification.txt'
+
+test ! -e "$probe_path"
+mv -- "$adapter_path" "$probe_path"
+restore_adapter() {
+  if test -e "$probe_path"; then
+    mv -- "$probe_path" "$adapter_path"
+  fi
+}
+trap restore_adapter EXIT INT TERM
+
+set +e
+node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs >"$output_path" 2>&1
+probe_rc=$?
+set -e
+
+test "$probe_rc" -ne 0
+rg -F '✔ package-boundary: total entry count stays under the ceiling' "$output_path"
+rg -F '✖ package-boundary: runtime entry points are still shipped' "$output_path"
+rg -F \
+  'required runtime file missing from package: scripts/task-tracker/lib/peer-review-adapter.mjs' \
+  "$output_path"
+
+node - <<'NODE'
+const { execFileSync } = require('node:child_process');
+const manifest = JSON.parse(
+  execFileSync('npm', ['pack', '--dry-run', '--json'], { encoding: 'utf8' })
+)[0];
+if (manifest.files.length !== 778) {
+  throw new Error(`expected 778 entries without adapter, found ${manifest.files.length}`);
+}
+console.log('package-boundary falsification: count passes at 778 without adapter');
+NODE
+
+restore_adapter
+trap - EXIT INT TERM
+test -f "$adapter_path"
+test ! -e "$probe_path"
+git diff --quiet -- "$adapter_path"
+rm -f -- "$output_path"
+test ! -e "$output_path"
+git status --short
+```
+
+Expected: the focused command exits nonzero only because the required-entry case names the missing adapter; the count case passes at 778 under the new 779 ceiling. The trap restores the adapter even on an early failure. Final checks prove the tracked adapter is byte-identical, both scratch probe files are absent, and `git status --short` names only the intentional package-boundary test modification.
+
+- [ ] **Step 6: Prove the diff and packed surface are exact**
 
 Run:
 
@@ -252,7 +316,7 @@ NODE
 
 Expected: whitespace check passes; `git diff --name-only` prints only the package-boundary test; the diff contains exactly the four ratified edits; the manifest check reports 779 entries and adapter presence.
 
-- [ ] **Step 6: Run governed Develop iteration verification**
+- [ ] **Step 7: Run governed Develop iteration verification**
 
 Run:
 
@@ -262,7 +326,7 @@ node scripts/task-tracker/verify-develop.mjs --mode iteration
 
 Expected: exit 0 with no package-boundary failure.
 
-- [ ] **Step 7: Commit the implementation boundary**
+- [ ] **Step 8: Commit the implementation boundary**
 
 Run:
 
@@ -275,7 +339,7 @@ git commit -m "[#1578] test: account for peer-review adapter package entry"
 
 Expected: the cached path check names only `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`; the attributed commit succeeds without amending or rewriting #1546 or #1577 history.
 
-- [ ] **Step 8: Run clean exact-SHA Develop finalization**
+- [ ] **Step 9: Run clean exact-SHA Develop finalization**
 
 Run:
 
