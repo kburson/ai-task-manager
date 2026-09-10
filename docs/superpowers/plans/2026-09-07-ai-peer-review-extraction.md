@@ -1916,7 +1916,7 @@ git commit -m "feat: install and diagnose peer review"
   source, package, tag, archive, checksum, and provenance identifiers.
 - Consumes: all Phase 1 tasks and the signed relicensing declaration from Task 1.
 
-- [ ] **Step 1: Write RED package-content and installed-CLI tests**
+- [x] **Step 1: Write RED package-content and installed-CLI tests**
 
 Run `npm pack --json`, inspect the tarball allowlist, install it into a temporary
 non-Node host repository, and assert:
@@ -1940,7 +1940,7 @@ Generated and recovery commands may use only `npx ai-peer-review`; any
 confirmed local installation. Add a failing fixture for an unqualified
 occurrence.
 
-- [ ] **Step 2: Add the Phase 1 CI matrix**
+- [x] **Step 2: Add the Phase 1 CI matrix**
 
 Run Node 22 on current Ubuntu, macOS, and Windows. Add Ubuntu compatibility jobs
 for `lts/*` and `current` Node so supported later runtimes, including odd-current
@@ -1951,7 +1951,7 @@ start/join, one revision triad, acceptance finalization, and no-commit
 acceptance. Use fake provider/authority adapters and temporary Git repositories;
 keep live-provider jobs optional and non-required.
 
-- [ ] **Step 3: Prove port parity and remove the AITM-shaped working tree**
+- [x] **Step 3: Prove port parity and remove the AITM-shaped working tree**
 
 Inventory every extracted legacy test by behavior in
 `test/integration/ported-behavior-parity.test.mjs`. Require a passing standalone
@@ -1964,7 +1964,7 @@ copies from the new repository. Their history remains reachable through
 `filtered_history_tip`, while the ratified design remains at `docs/design/` and
 publishable `HEAD` uses only the narrow standalone layout.
 
-- [ ] **Step 4: Finalize the read-only public API and release verifier**
+- [x] **Step 4: Finalize the read-only public API and release verifier**
 
 Export only stable, read-only package entry points from `src/public-api.mjs`:
 
@@ -1984,7 +1984,7 @@ checksums match, and Zenodo/Software Heritage identifiers are recorded. Store
 the bootstrap commit, release commit, public URLs, checksums, and archive IDs in
 `provenance/release-manifest.json`.
 
-- [ ] **Step 5: Run the complete Phase 1 gate**
+- [x] **Step 5: Run the complete Phase 1 gate**
 
 ```bash
 npm run format:check
@@ -2000,7 +2000,7 @@ Expected: all commands exit 0, and no Phase 1 test starts an MCP server or depen
 on resident liveness. The working tree contains the reviewed release-candidate
 changes and parity-gated legacy deletions that Step 6 will commit.
 
-- [ ] **Step 6: Commit the release candidate**
+- [x] **Step 6: Commit the release candidate**
 
 ```bash
 git add README.md .github/workflows/ci.yml .github/workflows/release.yml package.json \
@@ -2019,7 +2019,7 @@ git status --short
 Expected: the commit and all post-commit checks exit 0, the release-candidate
 tree contains no retained legacy paths, and the working tree is clean.
 
-- [ ] **Step 7: Pause for the human publication gate, then publish**
+- [x] **Step 7: Pause for the human publication gate, then publish**
 
 Present the exact release commit, signed relicensing declaration, full CI URLs,
 tarball contents/hash, npm owner/provenance configuration, public repository
