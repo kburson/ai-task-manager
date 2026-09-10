@@ -53,6 +53,7 @@ import {
 import {
   verifyDeliveredPullRequest,
   verifyExternalDeliveredPullRequest,
+  observeMergeMethod,
 } from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
 import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
@@ -64,6 +65,11 @@ import {
   sameNoCommitDeliveryAuthority,
 } from '../lib/no-commit-delivery-record.mjs';
 import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
+import {
+  buildMethodReconciliation,
+  renderMethodReconciliationComment,
+  resolveReconciledMergeMethod,
+} from '../lib/delivery-method-reconciliation.mjs';
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -89,6 +95,55 @@ function issueTarget(rest = []) {
     if (match) return Number(match[1]);
   }
   return null;
+}
+
+// @story #1562 — argument surface for the merge-method reconciliation lane.
+//
+// Both parts are mandatory together: the flag without a reason leaves the ledger
+// unable to say WHY a divergence was accepted, and a reason without the flag
+// would be silently discarded. Repeats refuse rather than resolving to one, so a
+// mistyped invocation never quietly reconciles to something the operator did not
+// intend.
+const RECONCILE_MERGE_METHODS = new Set(['merge', 'squash', 'rebase']);
+const RECONCILE_PLACEHOLDER_RE = /^(?:tbd|todo|placeholder|n\/a|none|\.\.\.)$/i;
+const RECONCILE_MIN_REASON = 8;
+
+function singleFlagValue(rest, flag, category) {
+  const values = [];
+  for (let i = 0; i < rest.length; i += 1) {
+    const token = String(rest[i]);
+    if (token === flag) {
+      const next = rest[i + 1];
+      if (next === undefined || String(next).startsWith('--')) throw deliverError(category);
+      values.push(String(next));
+      i += 1;
+      continue;
+    }
+    if (token.startsWith(`${flag}=`)) values.push(token.slice(flag.length + 1));
+  }
+  if (values.length > 1) throw deliverError(category);
+  return values.length === 1 ? values[0] : null;
+}
+
+export function parseReconcileArgs(rest = []) {
+  const declaredMergeMethod = singleFlagValue(
+    rest,
+    '--reconcile-merge-method',
+    'reconcile-merge-method'
+  );
+  const reason = singleFlagValue(rest, '--reason', 'reason');
+  if (declaredMergeMethod === null) {
+    if (reason !== null) throw deliverError('reason');
+    return null;
+  }
+  if (!RECONCILE_MERGE_METHODS.has(declaredMergeMethod)) {
+    throw deliverError('reconcile-merge-method');
+  }
+  const trimmed = (reason ?? '').trim();
+  if (trimmed.length < RECONCILE_MIN_REASON || RECONCILE_PLACEHOLDER_RE.test(trimmed)) {
+    throw deliverError('reconcile-reason');
+  }
+  return { declaredMergeMethod, reason: trimmed };
 }
 
 function baseRefFrom(cfg) {
@@ -269,7 +324,14 @@ function buildIntentFromPreflight({
   });
 }
 
-function buildExternalIntentInput({ preflight, cfg, intentId, sessionId, clientCreatedAt }) {
+function buildExternalIntentInput({
+  preflight,
+  cfg,
+  intentId,
+  sessionId,
+  clientCreatedAt,
+  mergeMethodOverride = null,
+}) {
   return {
     intentId,
     supersedesIntentId: null,
@@ -279,7 +341,10 @@ function buildExternalIntentInput({ preflight, cfg, intentId, sessionId, clientC
     baseRef: preflight.pr.baseRefName,
     headRef: preflight.pr.headRefName,
     expectedHeadSha: preflight.expectedHeadSha,
-    mergeMethod: preflight.mergeMethod,
+    // #1562 — the reconciliation lane restates the intent to the OBSERVED method
+    // after proving observation agrees with the operator's declaration. Absent
+    // the lane this is the configured method exactly as before.
+    mergeMethod: mergeMethodOverride ?? preflight.mergeMethod,
     attributionTokens: preflight.commitText.attributionTokens,
     provider: 'external',
     sessionId,
@@ -551,7 +616,10 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   };
 }
 
-export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
+export async function runDeliver({ issueNumber, cfg, state, reconcile = null, deps = {} } = {}) {
+  // #1562 — carries the reconciliation record from the recovery path out to the
+  // caller so it can be appended to the issue ledger beside the receipt.
+  let methodReconciliation = null;
   if (!Number.isSafeInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
     throw deliverError('issue-number');
   }
@@ -816,6 +884,48 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     }
     if (liveIntent === null) {
       recovery = true;
+      // #1562 — merge-method reconciliation. The configured method is the only
+      // intent this path can otherwise produce, so a pull request merged by a
+      // different method strands the issue. When the operator opts in, observe
+      // the real topology, refuse unless their declaration agrees with it, and
+      // restate the intent to the observed method. `verifyLiveDelivery`'s
+      // equality check is untouched — it now compares against a reconciled
+      // intent instead of an unreachable one.
+      let reconciledMergeMethod = null;
+      if (reconcile !== null) {
+        const observed = await observeMergeMethod({
+          mergeCommitSha: selectedPullRequest.mergeCommitSha,
+          expectedHeadSha: preflight.expectedHeadSha,
+          inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+        });
+        reconciledMergeMethod = resolveReconciledMergeMethod({
+          declared: reconcile.declaredMergeMethod,
+          observed,
+          configured: preflight.mergeMethod,
+        });
+        methodReconciliation = buildMethodReconciliation({
+          issueNumber,
+          repository: cfg.repo,
+          prNumber: selectedPullRequest.number,
+          acceptedSha: authority.acceptedSha,
+          mergeCommitSha: selectedPullRequest.mergeCommitSha,
+          configuredMergeMethod: preflight.mergeMethod,
+          observedMergeMethod: reconciledMergeMethod,
+          reason: reconcile.reason,
+          operator: reconcile.operator,
+          clientCreatedAt: normalizeGitHubInstant(selectedPullRequest.mergedAt),
+        });
+        // Append the divergence BEFORE the intent, so the authorization for the
+        // restatement is on the ledger even if verification later refuses.
+        await requiredDependency(
+          deps,
+          'createIssueComment'
+        )({
+          issueNumber,
+          repository: cfg.repo,
+          body: renderMethodReconciliationComment(methodReconciliation),
+        });
+      }
       const verified = await verifyExternalDeliveredPullRequest({
         intentInput: buildExternalIntentInput({
           preflight,
@@ -823,6 +933,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           intentId: createIntentId(),
           sessionId: sessionId(),
           clientCreatedAt: selectedPullRequest.mergedAt,
+          mergeMethodOverride: reconciledMergeMethod,
         }),
         pullRequest: selectedPullRequest,
         acceptedSha: authority.acceptedSha,
@@ -1487,10 +1598,22 @@ export async function verbDeliver(ctx, injected = {}) {
     return;
   }
   const state = (injected.loadTrackerState ?? loadState)(ctx.statePath);
+  let reconcile = null;
+  try {
+    const parsed = parseReconcileArgs(ctx.rest);
+    // #1562 — the operator identity on the record is the authenticated GitHub
+    // login, never anything the flags can assert.
+    reconcile = parsed === null ? null : { ...parsed, operator: ctx.cfg?.assignee ?? '' };
+  } catch (error) {
+    writeOutput(`deliver: ${error.message}`);
+    setExitCode(2);
+    return;
+  }
   const result = await runDeliver({
     issueNumber,
     cfg: ctx.cfg,
     state,
+    reconcile,
     deps: injected.deliverDeps ?? createDefaultDeliverDeps(ctx),
   });
   if (result.status === 'action-required') {
