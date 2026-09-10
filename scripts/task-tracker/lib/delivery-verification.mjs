@@ -386,6 +386,27 @@ function provesDefaultSquashBodyAttribution({ intent, inspection }) {
   return true;
 }
 
+function provesDefaultMergeBodyAttribution({ intent, inspection }) {
+  const repositoryOwner = intent.repository.split('/')[0];
+  const expectedTitle =
+    `Merge pull request #${intent.prNumber} from ` + `${repositoryOwner}/${intent.headRef}`;
+  if (inspection.commitTitle !== expectedTitle) return false;
+  const leading = ISSUE_PREFIX_RE.exec(inspection.commitMessage || '');
+  if (leading === null || leading[1] !== String(intent.issueNumber)) return false;
+  const observed = new Set(
+    [...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE)].map(
+      (match) => `#${match[1]}`
+    )
+  );
+  const expected = new Set(intent.attributionTokens);
+  expected.add(`#${intent.issueNumber}`);
+  if (observed.size !== expected.size) return false;
+  for (const token of expected) {
+    if (!observed.has(token)) return false;
+  }
+  return true;
+}
+
 function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSquash, options = {}) {
   const topLevelToken = `#${intent.issueNumber}`;
   const messageTokens = [
@@ -414,6 +435,14 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
     options.provenMultiSourceSquash === true &&
     intent.provider === 'external' &&
     provesDefaultSquashBodyAttribution({ intent, inspection })
+  ) {
+    return;
+  }
+  if (
+    !claimsCanonicalAttribution &&
+    options.provenMerge === true &&
+    intent.provider === 'external' &&
+    provesDefaultMergeBodyAttribution({ intent, inspection })
   ) {
     return;
   }
@@ -532,6 +561,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
       });
   assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash, {
     provenMultiSourceSquash,
+    provenMerge: observedMergeMethod === 'merge',
   });
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {

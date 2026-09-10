@@ -93,6 +93,29 @@ The receipt remains `aitm.delivery-receipt/v1`. The intent remains
 `aitm.delivery-intent/v1` with provider `external`; the v2 reconciliation record
 is what distinguishes its retroactive origin.
 
+### Default merge-commit attribution amendment
+
+The live #680 acceptance run exposed one missing proof after the reconstruction
+path reached the unchanged verifier: GitHub's default merge-commit bytes do not
+carry the canonical `Attribution:` trailer. The verifier already has a narrow
+semantic fallback for GitHub's default squash body, but no corresponding merge
+fallback, so a valid two-parent merge refused with
+`delivery-verification:attribution`.
+
+External recovery may therefore accept GitHub's default merge-commit attribution
+only after topology has already classified the commit as `merge`. The inspected
+commit title must exactly equal
+`Merge pull request #<pr> from <repository-owner>/<head-ref>`. The inspected body
+must lead with the top-level `[#<issue>]` token, make no canonical
+`Attribution:` claim, and contain exactly the same set of bracket attribution
+tokens as the reconstructed intent. A mismatched PR number, owner, head ref,
+missing token, extra token, malformed trailer, non-default title, or non-merge
+topology still refuses.
+
+This amendment consumes only immutable inspected merge bytes and the already
+validated intent authority. It does not use source-subject inference as final
+proof and does not synthesize a trailer.
+
 ## Failure and Recovery Semantics
 
 All failed proof paths mutate nothing. An unmerged pull request, stale accepted
@@ -121,6 +144,10 @@ Focused tests cover:
   unattributable or mismatched, or the merge is unreachable from trunk;
 - focused RED/GREEN proof that external recovery accepts an advanced observed
   local HEAD without adding `recovery` to the exact public input schema;
+- focused RED/GREEN proof that a topology-proven GitHub default merge commit
+  with exact PR/head identity and exact bracket-token attribution is accepted;
+- refusal for wrong default-merge title identity, missing/extra attribution
+  tokens, a claimed malformed trailer, or non-merge topology;
 - unchanged success for ordinary historical recovery with a prior intent;
 - unchanged merge-method equality regression coverage in
   `delivery-verification.mjs`.
@@ -133,9 +160,11 @@ provider/Git proof target.
 
 This change does not weaken `delivery-verification.mjs` merge-method equality,
 add a generic close bypass, accept an operator-supplied intent or SHA, rewrite
-historical records, or implement #1573's help-text work. The only verifier
-change carries its already-selected internal external-recovery mode into the
-authority-SHA check; it does not expand the public input schema.
+historical records, or implement #1573's help-text work. Verifier changes carry
+its already-selected internal external-recovery mode into the authority-SHA
+check and recognize one exact topology-bound GitHub default merge-body shape;
+they do not expand the public input schema or accept generic subject-only
+attribution.
 
 ## Dependency Map
 

@@ -16,6 +16,10 @@
 - No issue comment is written until merged status, accepted-head identity, topology, and trunk reachability all pass.
 - The lane requires both `--reconcile-merge-method` and a substantive `--reason`.
 - #1573 help registration and unrelated refactors remain out of scope.
+- GitHub default merge-commit attribution is accepted only for external
+  recovery after topology proves `merge`, with exact PR/head title identity and
+  exact bracket-token equality; generic source-subject attribution remains
+  insufficient.
 
 ---
 
@@ -188,6 +192,61 @@ node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs \
 ```
 
 Expected: all pass and the unchanged equality regression remains green.
+
+- [ ] **Step 4a: Reproduce and fix the live #680 attribution refusal**
+
+Add a focused external-verification test using #680-shaped GitHub default merge
+bytes: an exact `Merge pull request #<pr> from <owner>/<head-ref>` title, a body
+leading with the top-level issue token, a two-parent merge whose second parent
+is the accepted head, and an exact reconstructed attribution-token set. Verify
+RED on `delivery-verification:attribution`, then add the smallest semantic proof
+beside the existing default-squash proof. Add refusals for wrong PR/title
+identity, missing or extra bracket tokens, malformed canonical trailers, and
+non-merge topology. Do not accept generic source subjects or synthesize commit
+bytes.
+
+Use the existing `liveInput()` and `externalIntentInput()` fixtures with these
+exact authority changes:
+
+```js
+const defaultMergeTitle =
+  'Merge pull request #1556 from kburson/claude/aad-yml-config-exploration-6d0cf6';
+const defaultMergeBody = '[#680] docs(spike): aitm.yml pipeline engine design recommendation';
+const input = liveInput(defaultMergeBody);
+delete input.intentCreatedAt;
+delete input.recovery;
+input.pullRequest = {
+  ...input.pullRequest,
+  number: 1556,
+  headRefName: 'claude/aad-yml-config-exploration-6d0cf6',
+  mergeMethod: 'merge',
+};
+input.inspectMergeCommit = async () => ({
+  parents: ['c'.repeat(40), HEAD],
+  commitTitle: defaultMergeTitle,
+  commitMessage: defaultMergeBody,
+});
+const intentInput = {
+  ...externalIntentInput(),
+  issueNumber: 680,
+  prNumber: 1556,
+  headRef: 'claude/aad-yml-config-exploration-6d0cf6',
+  mergeMethod: 'merge',
+  attributionTokens: ['#680'],
+};
+
+const verified = await verifyExternalDeliveredPullRequest({ ...input, intentInput });
+assert.equal(verified.receiptInput.mergeMethod, 'merge');
+```
+
+Run:
+
+```bash
+node --test scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
+```
+
+Expected RED: `delivery-verification:attribution`. After the minimal verifier
+change, expect the success case and all table-driven refusal cases to pass.
 
 - [ ] **Step 5: Run iteration verification and commit**
 
