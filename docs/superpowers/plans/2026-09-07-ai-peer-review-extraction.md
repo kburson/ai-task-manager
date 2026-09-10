@@ -1443,7 +1443,11 @@ git commit -m "feat: start and resume standalone reviews"
 Run reviewer submit through both library and CLI. Permit only the generated
 reviewer response plus protocol scratch delivery. Refuse artifact edits, any
 index delta, unexpected tracked/untracked protocol-owned paths, branch/HEAD
-change, commits, amended history, worktree switch, and push attempts. Assert
+change, commits, amended history, worktree switch, and observable local/remote
+ref changes caused by successful pushes. Assert the reviewer repository adapter
+exposes no mutation or push capability. A no-op, failed, or arbitrary-URL push
+attempt has no post-hoc repository state and therefore remains a host/provider
+command-guard responsibility rather than a detectable core invariant. Assert
 revisions-requested moves to author revision and accepted moves to
 acceptance-pending without committing.
 

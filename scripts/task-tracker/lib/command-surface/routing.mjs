@@ -232,6 +232,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       verb: 'unblock',
       dispatch: 'verbs/unblock.mjs',
     },
+    {
+      verb: 'migrate-dependencies',
+      dispatch: 'verbs/migrate-dependencies.mjs',
+    },
 
     // --- Meta / reporting / maintenance --------------------------------------
     {

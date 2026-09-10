@@ -21,7 +21,6 @@ import { fileURLToPath } from 'node:url';
 import { runReconcile } from '../../../../task-tracker/verbs/reconcile.mjs';
 import { runUnblock } from '../../../../task-tracker/verbs/unblock.mjs';
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
-import { addBlockedBy, parseBlockedBy } from '../../../../task-tracker/lib/blocked-marker.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const VERBS_DIR = path.resolve(__dir, '../../../task-tracker/verbs');
@@ -82,42 +81,51 @@ test('AC5: entanglement clears via unblock alone (no board/state-file edit)', as
   // #701 (blocked) ── blocked-by ──▶ #702 (the stuck issue whose body cannot be rewritten).
   // While #702 is open, #701 cannot exit. The non-manual escape: `unblock`
   // drops the stale ref purely in #701's body, and the exit guard then passes.
-  let body701 = addBlockedBy('<!-- aitm-last-known-state: test -->\n\n## Body\n', 702);
-  assert.deepEqual(parseBlockedBy(body701), [702]);
+  const body701 = '<!-- aitm-last-known-state: test -->\n\n## Body\n';
+  let blockedBy = [702];
 
   // Before: guard refuses #701's exit because #702 is open.
   const before = await blockedByGuard.run({
     issueNumber: 701,
     repo: 'o/r',
+    cfg,
     body: body701,
+    readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop',
+    reconcileDisposition: async () => ({ status: 'projected' }),
   });
   assert.equal(before.ok, false, 'entangled: #701 cannot exit while #702 open');
 
-  // Recovery: unblock #701, purely via body mutation (DI — no board, no file).
+  // Recovery: unblock #701 through the native graph (DI — no body, board, or file edit).
   const r = await runUnblock({
     target: 701,
     refs: null,
     cfg,
     deps: {
-      mutateIssueBody: async ({ mutate }) => {
-        body701 = mutate(body701);
-        return { status: 'ok' };
+      readNativeDependencies: async () => ({ blockedBy, blocking: [] }),
+      convergeBlockedBySet: async ({ operation, refs }) => {
+        const existing = blockedBy;
+        assert.equal(operation, 'clear');
+        assert.deepEqual(refs, []);
+        blockedBy = [];
+        return { status: 'updated', existing, desired: blockedBy, added: [], removed: existing };
       },
-      runLabel: async () => {},
+      reconcileDependencyDisposition: async () => ({ status: 'cleared' }),
       postComment: async () => {},
-      writeFieldValue: async () => {},
     },
   });
   assert.equal(r.status, 'removed');
 
-  // After: the marker is gone and the guard now permits the exit.
-  assert.deepEqual(parseBlockedBy(body701), []);
+  // After: the native edge is gone and the guard now permits the exit.
+  assert.deepEqual(blockedBy, []);
   const after = await blockedByGuard.run({
     issueNumber: 701,
     repo: 'o/r',
+    cfg,
     body: body701,
+    readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop',
+    reconcileDisposition: async () => ({ status: 'cleared' }),
   });
   assert.equal(after.ok, true, 'after unblock, #701 may exit — entanglement broken non-manually');
 });

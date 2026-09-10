@@ -18,8 +18,7 @@ import {
   REVIEWED_INCIDENT_ISSUES,
 } from './lib/delivery-incident-records.mjs';
 import { createProductionRuntime } from './verbs/incident-ledger.mjs';
-import { parseBlockedByStrict } from './lib/blocked-marker.mjs';
-import { formatBlockedByValue } from './lib/blocked-by-field.mjs';
+import { readNativeDependencies } from './lib/native-dependencies.mjs';
 import { parseSupersededByStrict } from './lib/superseded-marker.mjs';
 
 export function parseVerificationArgs(args = []) {
@@ -148,6 +147,7 @@ export async function productionVerification(parsed, deps = {}) {
   const projectDir = deps.projectDir || getProjectDir();
   const cfg = deps.cfg || loadConfig();
   const readProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
+  const readDependencies = deps.readNativeDependencies || readNativeDependencies;
   const ctx = {
     cfg,
     projectDir,
@@ -311,20 +311,8 @@ export async function productionVerification(parsed, deps = {}) {
       [1388, 1389],
     ];
     for (const [issueNumber, blocker] of blockerChain) {
-      const [issue, values] = await Promise.all([
-        runtime.liveObservationDeps.fetchIssue(issueNumber),
-        readProjectValues({
-          cfg,
-          fieldDefs: [{ key: 'blockedBy', type: 'text' }],
-          issueNumber,
-        }),
-      ]);
-      const labels = (issue.labels || []).map((label) => label.name);
-      if (
-        JSON.stringify(parseBlockedByStrict(issue.body || '')) !== JSON.stringify([blocker]) ||
-        values.blockedBy !== formatBlockedByValue([blocker]) ||
-        !labels.includes('BLOCKED')
-      ) {
+      const graph = await readDependencies({ issueNumber, repo: cfg.repo });
+      if (JSON.stringify(graph?.blockedBy) !== JSON.stringify([blocker])) {
         return false;
       }
     }

@@ -1,4 +1,4 @@
-// @story #1343
+// @story #1343 #1557
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -15,11 +15,13 @@ async function freshRegistry() {
 function openBlockerContext() {
   return {
     issueNumber: 1335,
-    body: '<!-- aitm-blocked-by refs="#1334" -->',
+    cfg: { repo: 'owner/repo', projectId: 'project-id' },
+    readDependencies: async () => ({ blockedBy: [1334], blocking: [] }),
     fetchBlockerState: async (issueNumber) => {
       assert.equal(issueNumber, 1334);
       return 'ready-for-plan';
     },
+    reconcileDisposition: async () => ({ status: 'projected' }),
   };
 }
 

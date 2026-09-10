@@ -595,8 +595,9 @@ Within a wave, child flow is further constrained:
   queue. At most one child may occupy Plan, Develop, Test, or Review for an epic
   at a time. A blocked active child still consumes that budget; local
   dependencies create no parallel exception. No env override exists.
-- **Dependency representation** — a parked child carries the `BLOCKED` label
-  plus an `aitm-blocked-by: #N[, #M]` body marker.
+- **Dependency representation** — GitHub native dependencies are the sole live
+  graph. AITM projects any unfinished or unreadable dependency to Disposition
+  `BLOCKED`; it clears that Disposition when every dependency is Done.
 - **Dependency-aware JIT selection** — the next child pulled Ready for Planning → Plan
   is selected by dependency readiness and rank. Refine and Backlog are never
   eligible. A child is admitted only after every blocker reaches an accepted
@@ -708,6 +709,11 @@ This diff-decides relief lives at the **DoD/VC layer** only. The Agent Review "N
 
 ## Blocking-defect isolation dance
 
+Use `npx aitm block <A> --by <B,C>` to add unique GitHub native dependencies as
+a set union. Repeating it is idempotent. Use `npx aitm unblock <A> --by <B>` to
+subtract selected edges, or omit `--by` to remove all edges. Do not recreate the
+legacy label, text field, or body marker.
+
 When work on a story `#A` is interrupted to fix a blocking defect `#B`, the
 defect fix must be isolated so the two issues merge and close independently.
 Committing both onto one worktree branch entangles their histories: because git
@@ -726,13 +732,16 @@ the defect's commits off the story's ancestry.
 1. If the rung is newly discovered, create it first with `npx aitm create-issue --shape defect`, then annotate its parent with `npx aitm block <parent> --by <defect>`.
 2. On its trunk-rooted worktree, fix the rung.
 3. Test it in isolation.
-4. Merge it to trunk.
-5. Close it.
-6. Rebase the next rung up's worktree onto the now-updated trunk.
+4. Merge it to its governed delivery target.
+5. Move its AITM Status to Done and close it through the governed path.
+6. Rebase the next rung up's worktree onto the now-updated delivery target.
 7. Repeat until the original story is finished, merged, and closed.
 
-Because each rung reaches trunk before the rung above rebases onto trunk, the
-upper rung always sits cleanly on top — no entanglement, no cherry-picks.
+For a solo story, the delivery target is trunk. For an epic child, the delivery
+target is the epic's feature branch: reaching AITM Done after merge to that
+feature branch is sufficient to unblock downstream children before the epic PR
+lands on trunk. This keeps child delivery ordered without pretending every
+child must reach trunk independently.
 
 "Merge to trunk" means whatever the project's integration path is: a direct local
 merge, or (under the PR-based flow) push the rung's branch → CI → PR → merge to
@@ -745,6 +754,29 @@ local trunk **before** the rung above rebases.
 messages, not by SHA-reachability, and the `close` gate scopes to the trunk ref. A
 post-rebase SHA change therefore does not fail any gate — stale SHAs recorded in
 proof markers are cosmetic, not close-blocking. No SHA-remapping step is required.
+
+AITM gates lifecycle admission, not Git commits: GitHub's Dependencies entry is
+informational to Git itself, so it does not prevent edits or commits. The shared
+guard reads every native dependency and requires AITM Status Done before each
+forward lifecycle exit. `block` and `unblock` reconcile eagerly; Done reconciles
+all native dependents; bind, pull-next, and lifecycle transitions repair the
+projection lazily. A dependency added directly in the GitHub UI is therefore
+repaired on the next AITM touch. There is no webhook in this design, so the
+Disposition may be eventually consistent between touches. Terminal
+dispositions such as Delivered, Incorporated, and Replaced are never
+overwritten by dependency projection.
+
+For the one-time legacy migration, preview first and then apply explicitly:
+
+```bash
+npx aitm migrate-dependencies --dry-run
+npx aitm migrate-dependencies --apply
+```
+
+Only strict markers on open issues are imported. Closed carriers remain
+historical. Label-only, field-only, malformed, or otherwise ambiguous open
+records are reported for human classification. Existing legacy field and label
+definitions are retained but unused; new installs do not provision them.
 
 ```mermaid
 flowchart TD

@@ -425,13 +425,28 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   block: contract(
     ['The blocked issue and every --by issue must exist; at least one blocker is required.'],
-    ['Adds blocker relationships, blocked label and board metadata, and the body marker.'],
-    ['Prints the canonical blocker set after mutation.']
+    ['Upserts unique GitHub native blocked-by relationships and reconciles Disposition.'],
+    ['Prints added and remaining native blockers.']
   ),
   unblock: contract(
-    ['The target issue must exist; optional --by values must identify current blockers.'],
-    ['Removes selected blockers or clears the full blocked relationship and metadata.'],
-    ['Prints removed and remaining blockers.']
+    ['The target issue must exist; optional --by values are positive issue numbers.'],
+    ['Idempotently removes selected native blockers or clears the full native blocked-by set.'],
+    ['Prints removed and remaining native blockers and reconciles Disposition.']
+  ),
+  'migrate-dependencies': contract(
+    [
+      'Exactly one of --dry-run or --apply is required.',
+      'Only strict legacy markers on open issues are eligible; closed history is immutable and ambiguous carriers are refused.',
+    ],
+    [
+      'Imports the marker set into GitHub native dependencies, verifies readback, reconciles Disposition, then clears the legacy field, label, and marker in interruption-safe order.',
+    ],
+    ['Prints one JSON result per inspected issue and a migration summary.'],
+    [
+      exit(1, 'provider failure or partial migration'),
+      exit(2, 'invalid or missing mode flag'),
+      exit(3, 'ambiguous or malformed open carriers were reported during apply'),
+    ]
   ),
   supersede: contract(
     ['Both issue numbers must exist, --by is required, and the dead issue must pass preflight.'],
@@ -664,6 +679,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   kind: Object.freeze(['new', 'board']),
   block: Object.freeze(['unblock', 'board']),
   unblock: Object.freeze(['block', 'board']),
+  'migrate-dependencies': Object.freeze(['block', 'unblock', 'board']),
   supersede: Object.freeze(['block', 'close']),
   auto: Object.freeze(['plan-approve', 'approve', 'close']),
   'ac-stamp': Object.freeze(['ensureChecked', 'evidence-markers']),
@@ -783,6 +799,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   unblock: Object.freeze([
     positional('[#N]', 'Optional blocked issue number; defaults to the active task.'),
   ]),
+  'migrate-dependencies': Object.freeze([]),
   supersede: Object.freeze([positional('<dead#>', 'Issue number being superseded.')]),
   auto: Object.freeze([
     positional('<both|plan|review|off|reset>', 'Full-Auto gate mode to apply.'),

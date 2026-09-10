@@ -14,6 +14,8 @@ function ready(number, rank) {
     closeReason: null,
     rank,
     blockedBy: [],
+    dependencyStates: new Map(),
+    dependencyReadiness: 'ready',
     hasCurrentRefinement: true,
   };
 }

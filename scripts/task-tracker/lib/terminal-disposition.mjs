@@ -14,6 +14,10 @@ export const TERMINAL_DISPOSITIONS = Object.freeze([
   'Incorporated',
 ]);
 
+export function isTerminalDisposition(value) {
+  return TERMINAL_DISPOSITIONS.includes(value);
+}
+
 function assertTerminalConfig(cfg, issueNumber) {
   if (!cfg?.repo || !cfg.projectId) {
     throw new Error(`terminal disposition for #${issueNumber} requires cfg.repo and cfg.projectId`);
@@ -37,7 +41,7 @@ async function resolveItem({ cfg, issueNumber, deps }) {
 
 export async function writeTerminalDisposition({ cfg, issueNumber, disposition, deps = {} } = {}) {
   assertTerminalConfig(cfg, issueNumber);
-  if (!TERMINAL_DISPOSITIONS.includes(disposition)) {
+  if (!isTerminalDisposition(disposition)) {
     throw new Error(
       `terminal disposition for #${issueNumber} must be one of ${TERMINAL_DISPOSITIONS.join(', ')}`
     );
@@ -92,7 +96,25 @@ export async function writeTerminalStatusDone({ cfg, issueNumber, deps = {} } = 
   if (!written) {
     throw new Error(`terminal status write for #${issueNumber} did not resolve Done`);
   }
-  return { issueNumber, status: 'Done', itemId };
+  let dependentReconciliation = [];
+  try {
+    const unpark =
+      deps.unparkDependents || (await import('./unpark-dependents.mjs')).unparkDependents;
+    dependentReconciliation = await unpark({
+      doneIssueNumber: issueNumber,
+      cfg,
+      deps: deps.dependencyReconciliation,
+    });
+  } catch (error) {
+    dependentReconciliation = [{ issue: null, error: error.message }];
+  }
+  const warn = deps.warn || ((message) => process.stderr.write(`${message}\n`));
+  for (const result of dependentReconciliation) {
+    if (!result?.error) continue;
+    const dependent = Number.isSafeInteger(result.issue) ? ` -> #${result.issue}` : '';
+    warn(`[unpark] #${issueNumber}${dependent}: ${result.error}`);
+  }
+  return { issueNumber, status: 'Done', itemId, dependentReconciliation };
 }
 
 export async function readTerminalDisposition({ cfg, issueNumber, deps = {} } = {}) {

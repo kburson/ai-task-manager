@@ -78,6 +78,13 @@ function makeDeps({ body, live, liveAfter, spawnCode = 0, moveCode = 0 } = {}) {
         calls.moves.push({ issueNumber, target });
         return moveCode;
       },
+      observeDependencyReadiness: async () => ({
+        blockedBy: [],
+        states: new Map(),
+        status: 'ready',
+        unfinished: [],
+      }),
+      reconcileDependencyDisposition: async () => ({ status: 'idempotent' }),
       epicChildren: { fetchSiblings: async () => [] },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
       commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),

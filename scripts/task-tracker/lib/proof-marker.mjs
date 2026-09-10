@@ -306,13 +306,13 @@ export function upsertProofMarker(line, props = {}) {
   return `${src.replace(/\s+$/, '')} ${marker}`;
 }
 
-// #932 — strip execution-PROOF run-props (`ts`/`sha`/`evidence`/`exit`) from a
+// #932 — strip execution-PROOF run-props and their provenance from a
 // line's consolidated `aitm-verified` marker while preserving the DECLARATION
 // components (`cmd`, `vc-list`, `key`). Used by demote to invalidate stale
 // evidence for a superseded commit without losing what the forward re-drive
 // needs to know what to run again. A no-op on a line with no marker, or a
 // marker that already carries no run-props.
-const RUN_PROOF_KEYS = ['ts', 'sha', 'evidence', 'exit'];
+const RUN_PROOF_KEYS = ['ts', 'sha', 'evidence', 'exit', 'worktree', 'branch', 'bound-issue'];
 export function stripExecutionProof(line) {
   const src = String(line == null ? '' : line);
   const match = src.match(/<!--\s*aitm-verified\s+([\s\S]*?)\s*-->/);

@@ -63,6 +63,23 @@ function legacySnapshot({ blockers = [], serializedBlockedBy } = {}) {
   return `${body.trimEnd()}\n<!-- aitm-refinement-snapshot schema="1" digest="${digest}" provenance="${provenance}" priority="P1" size="M" estimate="8" rank="4" blocked-by="${serializedBlockedBy ?? blockedBy ?? ''}" ts="${TS}" -->\n`;
 }
 
+function schema2Snapshot({ blockers = [], serializedBlockedBy } = {}) {
+  const blockedBy = blockers.length ? blockers.map((blocker) => `#${blocker}`).join(',') : null;
+  const body = refinedBody({ blockers });
+  const provenance = sha256(JSON.stringify(RATIONALE));
+  const digest = sha256(
+    JSON.stringify({
+      scope: 'Implement the governed R4P boundary.',
+      acceptanceCriteria: '- [ ] Snapshot is current.\n- [ ] Plan cancellation is recoverable.',
+      fields: { priority: 'P1', size: 'M', estimate: 8, rank: 4, blockedBy },
+      dependencies: `blockedBy=${JSON.stringify(blockedBy)}`,
+      labels: blockers.length ? ['blocked', 'enhancement'] : ['enhancement'],
+      provenance,
+    })
+  );
+  return `${body.trimEnd()}\n<!-- aitm-refinement-snapshot schema="2" digest="${digest}" provenance="${provenance}" priority="P1" size="M" estimate="8" rank="4" blocked-by="${serializedBlockedBy ?? blockedBy ?? ''}" ts="${TS}" -->\n`;
+}
+
 test('schema-1 unblocked snapshots retain their original dependency digest semantics', () => {
   const verified = verifyRefinementSnapshot(legacySnapshot(), { labels: ['enhancement'] });
   assert.equal(verified.ok, true, verified.reason);
@@ -91,13 +108,9 @@ test('schema-1 blocker comparison preserves semantically equivalent legacy spaci
   assert.equal(verified.ok, true, verified.reason);
 });
 
-test('schema-2 snapshots use only the protected blocker marker as dependency authority', () => {
-  const stamped = stampRefinementSnapshot(refinedBody({ blockers: [1212] }), {
-    labels: ['BLOCKED', 'enhancement'],
-    ts: TS,
-  });
-  assert.match(stamped, /aitm-refinement-snapshot schema="2"/);
-  const proseOnlyChange = stamped.replace('**Depends On**: #1212', '**Depends On**: #9999');
+test('schema-2 snapshots retain protected blocker marker dependency semantics', () => {
+  const historical = schema2Snapshot({ blockers: [1212] });
+  const proseOnlyChange = historical.replace('**Depends On**: #1212', '**Depends On**: #9999');
   assert.equal(
     verifyRefinementSnapshot(proseOnlyChange, { labels: ['BLOCKED', 'enhancement'] }).ok,
     true
@@ -105,22 +118,18 @@ test('schema-2 snapshots use only the protected blocker marker as dependency aut
 });
 
 test('schema-2 snapshot blocker property must match the live protected marker', () => {
-  const stamped = stampRefinementSnapshot(refinedBody({ blockers: [1212] }), {
-    labels: ['BLOCKED', 'enhancement'],
-    ts: TS,
-  });
-  const tampered = stamped.replace('blocked-by="#1212"', 'blocked-by="#99"');
+  const tampered = schema2Snapshot({ blockers: [1212] }).replace(
+    'blocked-by="#1212"',
+    'blocked-by="#99"'
+  );
   assert.equal(
     verifyRefinementSnapshot(tampered, { labels: ['BLOCKED', 'enhancement'] }).ok,
     false
   );
 });
 
-test('refinement snapshots reject malformed and duplicate protected blocker markers', () => {
-  const stamped = stampRefinementSnapshot(refinedBody({ blockers: [1212] }), {
-    labels: ['BLOCKED', 'enhancement'],
-    ts: TS,
-  });
+test('historical refinement snapshots reject malformed and duplicate protected blocker markers', () => {
+  const stamped = schema2Snapshot({ blockers: [1212] });
   const malformed = stamped.replace('refs="#1212"', 'refs="#1212,garbage"');
   const duplicate = stamped.replace(
     '<!-- aitm-blocked-by refs="#1212" -->',
@@ -131,5 +140,35 @@ test('refinement snapshots reject malformed and duplicate protected blocker mark
     const verified = verifyRefinementSnapshot(body, { labels: ['BLOCKED', 'enhancement'] });
     assert.equal(verified.ok, false);
     assert.match(verified.reason, /blocked marker/i);
+  }
+});
+
+test('new snapshots use schema 3 and exclude dependency carriers', () => {
+  const stamped = stampRefinementSnapshot(refinedBody(), {
+    labels: ['enhancement'],
+    ts: TS,
+  });
+  assert.match(stamped, /aitm-refinement-snapshot schema="3"/);
+  assert.doesNotMatch(stamped, /blocked-by=/);
+  const verified = verifyRefinementSnapshot(stamped, { labels: ['enhancement'] });
+  assert.equal(verified.ok, true, verified.reason);
+  assert.equal(Object.hasOwn(verified.snapshot.fields, 'blockedBy'), false);
+});
+
+test('native dependency observations do not participate in schema-3 verification', () => {
+  const stamped = stampRefinementSnapshot(refinedBody(), {
+    labels: ['enhancement'],
+    ts: TS,
+  });
+  for (const dependencyObservation of [
+    { blockedBy: [], states: new Map() },
+    { blockedBy: [1212], states: new Map([[1212, 'develop']]) },
+    { blockedBy: [1212], states: new Map([[1212, 'done']]) },
+  ]) {
+    const verified = verifyRefinementSnapshot(stamped, {
+      labels: ['enhancement'],
+      dependencyObservation,
+    });
+    assert.equal(verified.ok, true, verified.reason);
   }
 });

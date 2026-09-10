@@ -19,7 +19,10 @@ import {
   DEMOTE_TARGET,
   LEGAL_FROM,
 } from '../../../../task-tracker/verbs/demote.mjs';
-import { invalidateEvidence } from '../../../../task-tracker/lib/evidence-invalidation.mjs';
+import {
+  invalidateEvidence,
+  repairInvalidatedEvidenceProvenance,
+} from '../../../../task-tracker/lib/evidence-invalidation.mjs';
 import { upsertProofMarker } from '../../../../task-tracker/lib/proof-marker.mjs';
 import { findLostMarkers } from '../../../../task-tracker/lib/body-invariants.mjs';
 
@@ -153,13 +156,13 @@ function fixtureBody() {
     '',
     '## Acceptance Criteria',
     '',
-    '- [x] Demote invalidates stale evidence <!-- aitm-verified vc-list="vc:1" cmd="`node --test x`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" key="abc12345" -->',
+    '- [x] Demote invalidates stale evidence <!-- aitm-verified vc-list="vc:1" cmd="`node --test x`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" key="abc12345" worktree="/repo/.worktrees/935" branch="codex/defect-935" bound-issue="935" -->',
     '- [ ] A not-yet-verified AC <!-- aitm-verified cmd="`node --test y`" -->',
     '',
     '### Functional (verified at Test)',
     '',
-    '- [x] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" --> <!-- dod:functional:tests -->',
-    '- [x] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" --> <!-- dod:functional:lint -->',
+    '- [x] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" worktree="/repo/.worktrees/935" branch="codex/defect-935" bound-issue="935" --> <!-- dod:functional:tests -->',
+    '- [x] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" sha="abc1234" ts="2026-07-20T00:00:00.000Z" exit="0" worktree="/repo/.worktrees/935" branch="codex/defect-935" bound-issue="935" --> <!-- dod:functional:lint -->',
     '- [x] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->',
     '- [x] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
     '',
@@ -207,6 +210,7 @@ test('#932 demote-strips-VC-evidence: uncheck + drop run-props, keep declaration
   assert.doesNotMatch(next, /aitm-verified[^>]*sha="abc1234"/);
   assert.doesNotMatch(next, /aitm-verified[^>]*ts="2026-07-20T00:00:00\.000Z"/);
   assert.doesNotMatch(next, /aitm-verified[^>]*exit="0"/);
+  assert.doesNotMatch(next, /aitm-verified[^>]*(?:worktree|branch|bound-issue)=/);
 
   assert.equal(invalidated.length, 3);
   assert.ok(invalidated.some((l) => l.includes('Demote invalidates stale evidence')));
@@ -286,6 +290,44 @@ test('#932 demote-with-nothing-to-strip: a body with only declarations is a safe
   assert.equal(next, body);
   assert.deepEqual(invalidated, []);
   assert.deepEqual(findLostMarkers(body, next), []);
+});
+
+test('#1557 compatibility repair accepts only the exact valid stranded provenance tuple', () => {
+  const valid =
+    '- [ ] valid <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->';
+  const validVcList =
+    '- [ ] valid vc-list <!-- aitm-verified vc-list="vc:1" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->';
+  const unchanged = [
+    '- [x] checked <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] proof <!-- aitm-verified cmd="`npm test`" sha="abc1234" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] partial <!-- aitm-verified cmd="`npm test`" branch="HEAD" -->',
+    '- [ ] invalid issue <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="not-an-issue" -->',
+    '- [ ] mismatched issue <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="936" -->',
+    '- [ ] exit residue <!-- aitm-verified cmd="`npm test`" exit="1" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] malformed cmd <!-- aitm-verified cmd="`npm test` returned green" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] malformed vc-list <!-- aitm-verified vc-list="not-a-citation" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] dangling vc-list <!-- aitm-verified vc-list="vc:99" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] missing declaration <!-- aitm-verified worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] unknown key <!-- aitm-verified cmd="`npm test`" mystery="value" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] multiple markers <!-- aitm-verified cmd="`npm test`" --><!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935" -->',
+    '- [ ] malformed <!-- aitm-verified cmd="`npm test`" worktree="/repo/.scratch/old" branch="HEAD" bound-issue="935 -->',
+  ];
+  const body = [
+    valid,
+    validVcList,
+    ...unchanged,
+    '',
+    '## Verification Commands',
+    '',
+    '- [ ] `npm test` <!-- id=1 -->',
+  ].join('\n');
+
+  const result = repairInvalidatedEvidenceProvenance(body, { boundIssue: 935 });
+
+  assert.match(result.body, /- \[ \] valid <!-- aitm-verified cmd="`npm test`" -->/);
+  assert.match(result.body, /- \[ \] valid vc-list <!-- aitm-verified vc-list="vc:1" -->/);
+  for (const line of unchanged) assert.ok(result.body.includes(line), `must preserve: ${line}`);
+  assert.equal(result.repaired.length, 2);
 });
 
 test('#932 runDemote wires invalidateEvidence into the state-recording mutate and reports it', async () => {

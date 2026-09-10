@@ -60,6 +60,13 @@ function makeApprovedBody({ withApproved = true, withDod = true } = {}) {
 // `attributingCommits` (default: an attributed [#N] commit exists on trunk).
 function makeCloseGatesDeps({ dirty = [], attributedOnTrunk = true } = {}) {
   return {
+    observeDependencyReadiness: async () => ({
+      blockedBy: [],
+      states: new Map(),
+      status: 'ready',
+      unfinished: [],
+    }),
+    reconcileDependencyDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     // #877 — review exit now runs reviewExitEpicChildrenDoneGuard. These
     // fixtures are leaf issues, so stub the children fetch to empty; without
     // the stub the gate would reach the live GraphQL client.
@@ -257,6 +264,7 @@ test('runGuards(review,test): rollback bypasses review-exit-done guards', async 
     toState: 'test',
     body: makeApprovedBody({ withApproved: false, withDod: false }),
     cfg: CFG,
+    deps: makeCloseGatesDeps(),
     fetchBlockerState: async () => null,
   });
   assert.equal(r.ok, true, JSON.stringify(r.refusals));

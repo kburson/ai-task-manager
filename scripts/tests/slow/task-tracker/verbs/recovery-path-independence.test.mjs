@@ -30,7 +30,6 @@ import path from 'node:path';
 import { runDemote } from '../../../../task-tracker/verbs/demote.mjs';
 import { runUnblock } from '../../../../task-tracker/verbs/unblock.mjs';
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
-import { addBlockedBy, parseBlockedBy } from '../../../../task-tracker/lib/blocked-marker.mjs';
 import {
   fleetPath,
   orchestratorLockPath,
@@ -104,60 +103,75 @@ test('AC4: runDemote succeeds on a marker-heavy body (write path is not fragile)
   assert.ok(calls.writes.length >= 1);
 });
 
-test('AC4: runUnblock clears a stale blocker on a marker-heavy body (non-manual escape)', async () => {
-  const base = addBlockedBy(markerHeavyBody('test'), 999);
-  assert.deepEqual(parseBlockedBy(base), [999], 'fixture must carry the blocker');
-
-  let remote = base;
-  const labelCalls = [];
+test('AC4: runUnblock clears a native blocker without rewriting a marker-heavy body', async () => {
+  const remote = markerHeavyBody('test');
+  let blockedBy = [999];
   const comments = [];
   const r = await runUnblock({
     target: 501,
     refs: null, // drop ALL
     cfg,
     deps: {
-      assertBound: () => {},
-      mutateIssueBody: async ({ mutate }) => {
-        const next = mutate(remote);
-        if (next !== remote) remote = next;
-        return { status: 'ok' };
+      readNativeDependencies: async () => ({ blockedBy, blocking: [] }),
+      convergeBlockedBySet: async ({ operation, refs }) => {
+        const existing = blockedBy;
+        assert.equal(operation, 'clear');
+        assert.deepEqual(refs, []);
+        blockedBy = [];
+        return { status: 'updated', existing, desired: blockedBy, added: [], removed: existing };
       },
-      runLabel: async ({ args }) => labelCalls.push(args),
+      reconcileDependencyDisposition: async () => ({ status: 'cleared' }),
       postComment: async ({ body }) => comments.push(body),
-      writeFieldValue: async () => {},
     },
   });
   assert.equal(r.status, 'removed');
   assert.equal(r.cleared, true);
   assert.deepEqual(r.removed, [999]);
-  assert.deepEqual(parseBlockedBy(remote), [], 'blocker marker must be gone from the body');
-  assert.ok(
-    labelCalls.some((a) => a.includes('--remove-label')),
-    'BLOCKED label must be dropped when fully cleared'
-  );
+  assert.deepEqual(blockedBy, []);
+  assert.equal(remote, markerHeavyBody('test'), 'issue body must remain byte-for-byte unchanged');
+  assert.equal(comments.length, 1);
 });
 
 test('AC4: backward demote exit guard fires while a blocker is open (confirmed contract)', async () => {
-  const body = addBlockedBy(markerHeavyBody('test'), 600);
+  const body = markerHeavyBody('test');
+  let blockedBy = [600];
   // Open blocker → guard refuses the exit (the demote cannot proceed until
   // `unblock` clears the ref; demote gets NO special exemption).
   const refused = await blockedByGuard.run({
     issueNumber: 501,
     repo: 'o/r',
+    cfg,
     body,
+    readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'develop', // open
+    reconcileDisposition: async () => ({ status: 'projected' }),
   });
   assert.equal(refused.ok, false, 'open blocker must refuse the test exit slot');
   assert.match(refused.reason, /blockers are open: #600/);
 
   // Once the blocker is done, the same exit slot is permitted.
-  const allowed = await blockedByGuard.run({
+  const allowedWhenDone = await blockedByGuard.run({
     issueNumber: 501,
     repo: 'o/r',
+    cfg,
     body,
+    readDependencies: async () => ({ blockedBy }),
     fetchBlockerState: async () => 'done',
+    reconcileDisposition: async () => ({ status: 'cleared' }),
   });
-  assert.equal(allowed.ok, true, 'done blocker must permit the exit');
+  assert.equal(allowedWhenDone.ok, true, 'done blocker must permit the exit');
+
+  blockedBy = [];
+  const allowedWhenRemoved = await blockedByGuard.run({
+    issueNumber: 501,
+    repo: 'o/r',
+    cfg,
+    body,
+    readDependencies: async () => ({ blockedBy }),
+    fetchBlockerState: async () => 'develop',
+    reconcileDisposition: async () => ({ status: 'cleared' }),
+  });
+  assert.equal(allowedWhenRemoved.ok, true, 'removed blocker must permit the exit');
 });
 
 // ---------------------------------------------------------------------------

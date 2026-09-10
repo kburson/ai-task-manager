@@ -96,7 +96,7 @@ export async function refreshKanbanStateCache(ctx) {
   }
 }
 
-// #249 — Auto-unpark dependents. When the move lands at `done`, release any
+// #249/#1557 — Reconcile dependent Dispositions after a move lands at `done`.
 // sibling whose `aitm-blocked-by` marker references this issue: strip the ref
 // (and, on a full clear, drop the BLOCKED label) via child (b)'s marker API.
 // Best-effort — failures are surfaced, never block the committed board move.
@@ -106,15 +106,19 @@ export async function unparkDoneDependents(ctx) {
   const deps = ctx.deps || {};
   try {
     const { unparkDependents } = await importOr(deps.unparkMod, '../unpark-dependents.mjs');
-    const released = await unparkDependents({ doneIssueNumber: Number(issueArg), cfg });
-    const cleared = released.filter((r) => r.cleared);
-    const errored = released.filter((r) => r.error);
-    if (cleared.length) {
-      const summary = cleared.map((r) => `#${r.issue}(${r.cleared})`).join(', ');
-      process.stderr.write(`[unpark] #${issueArg}: released ${summary}\n`);
+    const results = await unparkDependents({ doneIssueNumber: Number(issueArg), cfg });
+    const reconciled = results.filter((result) => result.reconciled);
+    const errored = results.filter((result) => result.error);
+    if (reconciled.length) {
+      const summary = reconciled
+        .map((result) => `#${result.issue}(${result.reconciled})`)
+        .join(', ');
+      process.stderr.write(`[unpark] #${issueArg}: reconciled ${summary}\n`);
     }
     for (const r of errored) {
-      process.stderr.write(`[unpark] #${issueArg}: ${r.issue ?? '?'} failed: ${r.error}\n`);
+      process.stderr.write(
+        `[unpark] #${issueArg}: partial reconciliation for ${r.issue ?? '?'}: ${r.error}\n`
+      );
     }
   } catch (err) {
     // surface, do not block — board move is committed

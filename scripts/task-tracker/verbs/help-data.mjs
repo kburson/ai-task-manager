@@ -579,19 +579,29 @@ export const VERB_REFERENCE = {
   },
   block: {
     topic: 'board',
-    summary: 'Mark #N blocked by one or more other issues (label + board field + body marker).',
+    summary: 'Upsert unique GitHub native dependencies and reconcile Disposition BLOCKED.',
     usage: '/task block [#N] --by <M>[,<P>...]',
     flags: [{ flag: '--by <M>[,<P>...]', desc: 'blocking issue number(s)' }],
     examples: ['/task block 667 --by 700'],
   },
   unblock: {
     topic: 'board',
-    summary: 'Clear a block (all blockers, or specific ones with --by).',
+    summary: 'Idempotently remove native dependencies and reconcile Disposition.',
     usage: '/task unblock [#N] [--by <M>[,<P>...]]',
     flags: [
       { flag: '--by <M>[,<P>...]', desc: 'specific blocker(s) to clear', default: 'all blockers' },
     ],
     examples: ['/task unblock 667', '/task unblock 667 --by 700'],
+  },
+  'migrate-dependencies': {
+    topic: 'meta',
+    summary: 'Preview or apply the one-time legacy-carrier to native-dependency migration.',
+    usage: '/task migrate-dependencies <--dry-run|--apply>',
+    flags: [
+      { flag: '--dry-run', desc: 'report intended native and cleanup actions without mutation' },
+      { flag: '--apply', desc: 'apply interruption-safe native import and legacy cleanup' },
+    ],
+    examples: ['/task migrate-dependencies --dry-run', '/task migrate-dependencies --apply'],
   },
   supersede: {
     topic: 'board',

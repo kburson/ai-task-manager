@@ -607,15 +607,21 @@ test('#1382 and #1383 project one approved ledger but produce distinct terminal 
 
 test('amendment gates keep Phase B ledger authority after #1381 Done and block chain or #939 drift', async () => {
   const blockerOpen = await blockedByGuard.run({
-    body: '<!-- aitm-blocked-by refs="#1381" -->',
+    issueNumber: 1382,
+    cfg: { repo: 'owner/repo', projectId: 'P' },
+    readDependencies: async () => ({ blockedBy: [1381], blocking: [] }),
     fetchBlockerState: async () => 'review',
+    reconcileDisposition: async () => ({ status: 'projected' }),
   });
   assert.equal(blockerOpen.ok, false);
   assert.match(blockerOpen.reason, /#1381 \(review\)/);
   assert.deepEqual(
     await blockedByGuard.run({
-      body: '<!-- aitm-blocked-by refs="#1381" -->',
+      issueNumber: 1382,
+      cfg: { repo: 'owner/repo', projectId: 'P' },
+      readDependencies: async () => ({ blockedBy: [1381], blocking: [] }),
       fetchBlockerState: async () => 'done',
+      reconcileDisposition: async () => ({ status: 'cleared' }),
     }),
     { ok: true }
   );
