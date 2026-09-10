@@ -29,7 +29,7 @@ test('parses one exact canonical reconciliation marker and validates all record 
       `prefix ${body}`,
       `${body}\n${body}`,
       body.replace(' -->', ''),
-      body.replace('{', '{ '),
+      body.replaceAll('{', '{ '),
       body.replace('"acceptedSha":', '"unknown":'),
       body.replace(repository, 'invalid-repository'),
       body.replace('2026-09-09T04:00:00.000Z', 'invalid-date'),
