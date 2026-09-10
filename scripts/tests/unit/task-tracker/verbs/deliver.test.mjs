@@ -572,6 +572,140 @@ test('advanced local head explicitly reconstructs a missing intent after proving
   ]);
 });
 
+for (const prefixLength of [1, 2, 3]) {
+  test(`historical reconstruction retries a persisted ${prefixLength}-record prefix without duplicates`, async () => {
+    const original = historicalReconstructionHarness();
+    const delivered = await deliver(original, { reconcile: historicalReconcile });
+    const comments = original.data.comments.slice(0, prefixLength);
+    const harness = historicalReconstructionHarness({ comments });
+    harness.deps.createIntentId = () => {
+      assert.equal(prefixLength, 1, 'a persisted intent must retain its identity');
+      return INTENT_IDS[1];
+    };
+
+    const result = await deliver(harness, { reconcile: historicalReconcile });
+
+    assert.equal(result.status, prefixLength === 3 ? 'already-delivered' : 'delivered');
+    assert.equal(result.mode, 'historical-reconstruction');
+    assert.equal(result.recovery, true);
+    assert.equal(harness.calls.fetchOriginTrunk, 1);
+    assert.equal(harness.calls.isAncestor, 1);
+    assert.equal(harness.calls.createIssueComment, 3 - prefixLength);
+    assert.equal(harness.data.comments.length, 3);
+    assert.deepEqual(harness.data.comments.slice(0, prefixLength), comments);
+    if (prefixLength > 1) assert.deepEqual(result.intent, delivered.intent);
+    if (prefixLength === 3) assert.deepEqual(result.receipt, delivered.receipt);
+  });
+}
+
+test('historical reconstruction recovers a lost reconciliation POST response without duplicate records', async () => {
+  const harness = historicalReconstructionHarness({ losePostResponse: true });
+  await assert.rejects(
+    () => deliver(harness, { reconcile: historicalReconcile }),
+    /transport response lost/
+  );
+  assert.equal(harness.data.comments.length, 1);
+  const result = await deliver(harness, { reconcile: historicalReconcile });
+  assert.equal(result.status, 'delivered');
+  assert.equal(harness.calls.createIssueComment, 3);
+  assert.equal(harness.data.comments.length, 3);
+});
+
+test('historical reconstruction retries require explicit authority and fresh provider/Git proof', async (t) => {
+  const original = historicalReconstructionHarness();
+  await deliver(original, { reconcile: historicalReconcile });
+  for (const prefixLength of [1, 2, 3]) {
+    for (const [label, options, reconcile, error] of [
+      ['missing flag', {}, null, /delivery-preflight:historical-intent/],
+      [
+        'changed reason',
+        {},
+        { ...historicalReconcile, reason: 'A different reason to reconstruct.' },
+        /deliver:historical-reconstruction-provenance/,
+      ],
+      [
+        'placeholder reason',
+        {},
+        { ...historicalReconcile, reason: 'TBD' },
+        /delivery-method-reconciliation:reason/,
+      ],
+      [
+        'changed declaration',
+        {},
+        { ...historicalReconcile, declaredMergeMethod: 'squash' },
+        /delivery-method-reconciliation:declared-not-observed/,
+      ],
+      [
+        'unreachable merge',
+        { mergeReachable: false },
+        historicalReconcile,
+        /delivery-verification:trunk-reachability/,
+      ],
+      [
+        'changed topology',
+        { historyMergeMethod: 'unknown' },
+        historicalReconcile,
+        /delivery-verification:merge-method-unattributable/,
+      ],
+      [
+        'changed live bytes',
+        { historyCommitMessage: 'Changed commit bytes' },
+        historicalReconcile,
+        /delivery-verification:(?:attribution|merge-commit-bytes)/,
+      ],
+    ]) {
+      await t.test(`${prefixLength} records: ${label}`, async () => {
+        const comments = original.data.comments.slice(0, prefixLength);
+        const harness = historicalReconstructionHarness({ comments, ...options });
+        await assert.rejects(() => deliver(harness, { reconcile }), error);
+        assert.equal(harness.calls.createIssueComment, 0);
+        assert.deepEqual(harness.data.comments, comments);
+      });
+    }
+  }
+});
+
+test('historical reconstruction refuses missing, malformed, or mismatched v2 retry provenance', async (t) => {
+  const original = historicalReconstructionHarness();
+  await deliver(original, { reconcile: historicalReconcile });
+  const valid = JSON.parse(original.data.comments[0].body.match(/^<!-- \S+ (.+) -->/)[1]);
+  for (const [label, override] of [
+    ['missing', null],
+    ['malformed', 'broken JSON'],
+    ['v1 only', { schema: 'aitm.delivery-method-reconciliation/v1', intentOrigin: undefined }],
+    ['wrong origin', { intentOrigin: 'delivery-time' }],
+    ['wrong issue', { issueNumber: 940 }],
+    ['wrong repository', { repository: 'kburson/other' }],
+    ['wrong PR', { prNumber: 1401 }],
+    ['wrong accepted SHA', { acceptedSha: NEXT_HEAD }],
+    ['wrong merge SHA', { mergeCommitSha: NEXT_HEAD }],
+    ['wrong configured method', { configuredMergeMethod: 'rebase' }],
+    ['wrong observed method', { observedMergeMethod: 'rebase' }],
+    ['wrong reason', { reason: 'A different reconstruction explanation.' }],
+    ['false divergence', { divergent: false }],
+  ]) {
+    await t.test(label, async () => {
+      const comments = structuredClone(original.data.comments.slice(0, 2));
+      if (override === null) comments.shift();
+      else {
+        const record = { ...valid, ...override };
+        const json =
+          typeof override === 'string'
+            ? override
+            : JSON.stringify(record, Object.keys(record).sort());
+        comments[0].body = `<!-- aitm-delivery-method-reconciliation ${json} -->`;
+      }
+      const harness = historicalReconstructionHarness({ comments });
+      await assert.rejects(
+        () => deliver(harness, { reconcile: historicalReconcile }),
+        /(?:deliver:historical-reconstruction-provenance|delivery-method-reconciliation:)/
+      );
+      assert.equal(harness.calls.createIssueComment, 0);
+      assert.deepEqual(harness.data.comments, comments);
+    });
+  }
+});
+
 for (const [label, options, reconcile, error] of [
   [
     'unmerged PR',

@@ -118,7 +118,9 @@ export function buildMethodReconciliation({
   if (intentOrigin !== undefined && !retroactivelyReconstructed) fail('intent-origin');
 
   return Object.freeze({
-    schema: retroactivelyReconstructed ? METHOD_RECONCILIATION_V2_SCHEMA : METHOD_RECONCILIATION_SCHEMA,
+    schema: retroactivelyReconstructed
+      ? METHOD_RECONCILIATION_V2_SCHEMA
+      : METHOD_RECONCILIATION_SCHEMA,
     ...(retroactivelyReconstructed ? { intentOrigin: RETROACTIVE_INTENT_ORIGIN } : {}),
     issueNumber: requirePositiveInteger(issueNumber, 'issue-number'),
     repository,
@@ -188,6 +190,38 @@ export function resolveReconciledMergeMethod({ declared, observed, configured } 
 export const METHOD_RECONCILIATION_MARKER = 'aitm-delivery-method-reconciliation';
 
 const MAX_RECORD_JSON_BYTES = 256 * 1024;
+
+export function parseMethodReconciliationComment(comment) {
+  const body = comment?.body;
+  if (typeof body !== 'string') fail('comment-body');
+  const markers = [...body.matchAll(/<!--\s*aitm-delivery-method-reconciliation\b/g)];
+  if (markers.length === 0) return null;
+  if (markers.length !== 1 || markers[0].index !== 0) fail('malformed-marker');
+  const match = body.match(/^<!-- aitm-delivery-method-reconciliation ([^\r\n]+) -->/);
+  if (match === null) fail('malformed-marker');
+  if (Buffer.byteLength(match[1], 'utf8') > MAX_RECORD_JSON_BYTES) fail('record-too-large');
+  let record;
+  try {
+    record = JSON.parse(match[1]);
+  } catch {
+    fail('malformed-marker');
+  }
+  validateMethodReconciliation(record);
+  // The builder also validates repository/timestamp fields and normalizes text.
+  // Exact canonical bytes reject duplicate keys and noncanonical payloads.
+  const validated = buildMethodReconciliation(record);
+  const timestamp = Date.parse(validated.clientCreatedAt);
+  if (
+    !Number.isFinite(timestamp) ||
+    new Date(timestamp).toISOString() !== validated.clientCreatedAt
+  ) {
+    fail('client-created-at');
+  }
+  if (JSON.stringify(validated, Object.keys(validated).sort()) !== match[1]) {
+    fail('noncanonical-record');
+  }
+  return validated;
+}
 
 // Rendered as a hidden canonical record plus visible prose, matching the
 // intent/receipt comment shape in `delivery-records.mjs`. The visible half

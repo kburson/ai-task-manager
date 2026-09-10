@@ -1,6 +1,7 @@
 // @story #1562
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
+import * as reconciliation from '../../../../task-tracker/lib/delivery-method-reconciliation.mjs';
 
 import {
   METHOD_RECONCILIATION_SCHEMA,
@@ -15,6 +16,30 @@ const issueNumber = 1562;
 const prNumber = 1556;
 const acceptedSha = 'a'.repeat(40);
 const mergeCommitSha = 'b'.repeat(40);
+
+test('parses one exact canonical reconciliation marker and validates all record fields', () => {
+  assert.equal(typeof reconciliation.parseMethodReconciliationComment, 'function');
+  const parse = reconciliation.parseMethodReconciliationComment;
+  for (const intentOrigin of [undefined, 'retroactively-reconstructed']) {
+    const record = buildMethodReconciliation(input({ intentOrigin }));
+    const body = renderMethodReconciliationComment(record);
+    assert.deepEqual(parse({ body }), record);
+    assert.equal(Object.isFrozen(parse({ body })), true);
+    for (const malformed of [
+      `prefix ${body}`,
+      `${body}\n${body}`,
+      body.replace(' -->', ''),
+      body.replace('{', '{ '),
+      body.replace('"acceptedSha":', '"unknown":'),
+      body.replace(repository, 'invalid-repository'),
+      body.replace('2026-09-09T04:00:00.000Z', 'invalid-date'),
+      body.replace('2026-09-09T04:00:00.000Z', '2026-99-09T04:00:00.000Z'),
+    ]) {
+      assert.throws(() => parse({ body: malformed }), /delivery-method-reconciliation:/);
+    }
+  }
+  assert.equal(parse({ body: 'An ordinary issue comment.' }), null);
+});
 
 function input(overrides = {}) {
   return {
@@ -58,9 +83,7 @@ test('builds a reconciliation record carrying both methods and the reason', () =
 });
 
 test('builds a frozen v2 reconstruction record with the exact retroactive origin', () => {
-  const record = buildMethodReconciliation(
-    input({ intentOrigin: 'retroactively-reconstructed' })
-  );
+  const record = buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }));
   assert.equal(record.schema, 'aitm.delivery-method-reconciliation/v2');
   assert.equal(record.intentOrigin, 'retroactively-reconstructed');
   assert.deepEqual(Object.keys(record).sort(), [
@@ -82,9 +105,7 @@ test('builds a frozen v2 reconstruction record with the exact retroactive origin
 });
 
 test('validates a v2 reconstruction record and refuses a tampered origin', () => {
-  const record = buildMethodReconciliation(
-    input({ intentOrigin: 'retroactively-reconstructed' })
-  );
+  const record = buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }));
   assert.equal(validateMethodReconciliation(record).ok, true);
   assert.throws(
     () => validateMethodReconciliation({ ...record, intentOrigin: 'delivery-time' }),

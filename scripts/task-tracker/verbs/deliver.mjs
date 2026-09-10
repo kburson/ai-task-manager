@@ -68,6 +68,8 @@ import {
 import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
 import {
   buildMethodReconciliation,
+  METHOD_RECONCILIATION_V2_SCHEMA,
+  parseMethodReconciliationComment,
   renderMethodReconciliationComment,
   resolveReconciledMergeMethod,
 } from '../lib/delivery-method-reconciliation.mjs';
@@ -293,6 +295,28 @@ function authorizedIntentBytes(intent) {
   return canonicalRecordJson(
     Object.fromEntries(AUTHORIZED_INTENT_KEYS.map((key) => [key, intent[key]]))
   );
+}
+
+function matchingReconstruction(comments, expected) {
+  const records = comments
+    .map(parseMethodReconciliationComment)
+    .filter((record) => record?.schema === METHOD_RECONCILIATION_V2_SCHEMA);
+  if (records.length === 0) return null;
+  const keys = [
+    'issueNumber',
+    'repository',
+    'prNumber',
+    'acceptedSha',
+    'mergeCommitSha',
+    'configuredMergeMethod',
+    'observedMergeMethod',
+    'reason',
+    'intentOrigin',
+  ];
+  if (records.length !== 1 || keys.some((key) => records[0][key] !== expected[key])) {
+    throw deliverError('historical-reconstruction-provenance');
+  }
+  return records[0];
 }
 
 function buildIntentFromPreflight({
@@ -778,7 +802,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     commitSubjects,
   };
   if (authority.headRelation === 'advanced') {
-    if (live === null && reconcile !== null) {
+    if (reconcile !== null && (live === null || live.record.provider === 'external')) {
       const historical = validateHistoricalReconstructionPreflight(preflightInput);
       const mergeCommitSha =
         typeof historical.pr.mergeCommitSha === 'string'
@@ -807,6 +831,40 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         clientCreatedAt: normalizeGitHubInstant(historical.pr.mergedAt),
         intentOrigin: 'retroactively-reconstructed',
       });
+      const priorReconstruction = matchingReconstruction(initial.comments, reconstruction);
+      if (live !== null) {
+        if (priorReconstruction === null)
+          throw deliverError('historical-reconstruction-provenance');
+        const expected = buildIntentFromPreflight({
+          preflight: { ...historical, mergeMethod },
+          cfg,
+          intentId: live.record.intentId,
+          supersedesIntentId: null,
+          provider: 'external',
+          sessionId: live.record.sessionId,
+          clientCreatedAt: live.record.clientCreatedAt,
+          commitTitle: live.record.commitTitle,
+          commitMessage: live.record.commitMessage,
+        });
+        if (canonicalRecordJson(expected) !== canonicalRecordJson(live.record)) {
+          throw deliverError('intent-divergence');
+        }
+        return verifyAndFinalize({
+          deps,
+          issueNumber,
+          repository: cfg.repo,
+          context,
+          liveIntent: live,
+          matchingReceipt: initial.projection.matchingReceipt,
+          pullRequest: historical.pr,
+          recovery: true,
+          mode: 'historical-reconstruction',
+          acceptedSha: historical.acceptedSha,
+          localHeadSha: historical.observedLocalHeadSha,
+          testReceiptSha,
+          acceptedReviewSha,
+        });
+      }
       const verified = await verifyExternalDeliveredPullRequest({
         intentInput: buildExternalIntentInput({
           preflight: historical,
@@ -827,14 +885,16 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         attributingCommits: requiredDependency(deps, 'attributingCommits'),
       });
       // #1574 — establish provider/Git proof before the first ledger write.
-      await requiredDependency(
-        deps,
-        'createIssueComment'
-      )({
-        issueNumber,
-        repository: cfg.repo,
-        body: renderMethodReconciliationComment(reconstruction),
-      });
+      if (priorReconstruction === null) {
+        await requiredDependency(
+          deps,
+          'createIssueComment'
+        )({
+          issueNumber,
+          repository: cfg.repo,
+          body: renderMethodReconciliationComment(reconstruction),
+        });
+      }
       const liveIntent = await appendIntent({
         deps,
         issueNumber,
