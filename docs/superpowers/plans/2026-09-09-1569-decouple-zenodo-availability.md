@@ -257,11 +257,11 @@ Add `zenodoHealth(url)`. Fetch with `redirect: 'follow'` and a finite timeout. R
 Change `observeReleaseDelta()` to run:
 
 ```text
-git rev-list --reverse <releaseCommit>..<head>
-git diff-tree --first-parent --no-commit-id --name-only -z --no-renames --diff-filter=ACDMRTUXB -r <sha> --
+git rev-list --reverse --first-parent <releaseCommit>..<head>
+git diff-tree -m --first-parent --no-commit-id --name-only -z --no-renames --diff-filter=ACDMRTUXB -r <sha> --
 ```
 
-for each returned SHA and produce `{ ancestor, commits: [{ sha, paths }] }`. Continue using `parseGitChangedPaths()` so NUL termination, UTF-8, and whitespace bytes remain fail-closed.
+for each returned SHA and produce `{ ancestor, commits: [{ sha, paths }] }`. First-parent traversal keeps the proof aligned with the public trunk while the pinned merge SHA binds its second parent. Continue using `parseGitChangedPaths()` so NUL termination, UTF-8, and whitespace bytes remain fail-closed.
 
 Extend `observeReleaseManifestBlobs()` to read `provenance/release-manifest.json` from `EVIDENCE_COMMIT`, `HEAD`, and the index. Return `{ evidence, head, index }`. `verifyRelease()` must require all three buffers and the working bytes to be identical.
 

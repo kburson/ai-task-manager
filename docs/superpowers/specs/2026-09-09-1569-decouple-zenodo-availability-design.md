@@ -104,7 +104,7 @@ Implementation still lands as exactly one new commit. During the approved implem
 2. public README merge commit `7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0`, changing only `README.md` relative to its first parent;
 3. the #1569 correction at `HEAD`, changing exactly `scripts/verify-release.mjs` and `test/unit/verify-release.test.mjs`.
 
-No fourth descendant is accepted. The observer must return ordered commit identities and per-commit paths relative to each commit's first parent rather than only an aggregate count/path set. The manifest bytes at the evidence commit, current `HEAD`, index, and working tree must remain identical. A negative regression will prove that an unexpected commit, reordered history, substituted evidence or README commit, manifest change, or unrelated path still fails.
+No fourth first-parent descendant is accepted. The observer must traverse the public trunk's first-parent chain and return ordered commit identities and per-commit paths relative to each commit's first parent rather than only an aggregate count/path set. The pinned merge SHA binds its complete parent set while its first-parent delta proves the public tree effect. The manifest bytes at the evidence commit, current `HEAD`, index, and working tree must remain identical. A negative regression will prove that an unexpected commit, reordered history, substituted evidence or README commit, manifest change, or unrelated path still fails.
 
 ## Error Handling
 
