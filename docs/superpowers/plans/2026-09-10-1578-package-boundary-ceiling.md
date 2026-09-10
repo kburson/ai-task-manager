@@ -4,7 +4,7 @@
 
 **Goal:** Make the package-boundary guard accept the reviewed 779-entry branch surface while explicitly requiring #1546's shipped peer-review adapter.
 
-**Architecture:** Preserve the existing six-case `npm pack --dry-run --json` guard and change only its attribution, ceiling history, required-entry list, and exact ceiling. Govern live issue authority through `npx aitm issue-body` operation files under `.tmp/gh`, satisfy every Plan-exit prerequisite before Develop, and require a full-repository lint baseline before implementation.
+**Architecture:** Preserve the existing six-case `npm pack --dry-run --json` guard and change only its attribution, ceiling history, required-entry list, and exact ceiling. Govern live issue authority through `npx aitm issue-body` operation files under `.scratch/gh`, satisfy every Plan-exit prerequisite before Develop, and require a full-repository lint baseline before implementation.
 
 **Tech Stack:** Node.js 25, ECMAScript modules, built-in `node:test`, npm pack manifests, AITM governed issue-body and verification workflows.
 
@@ -17,25 +17,27 @@
 - Run exact-count checks with no untracked package-eligible files or concurrent repository writers.
 - Do not integrate or cherry-pick #1578 independently of #1546's adapter commit `311cef526`.
 - Task 15/#1546 owns any later remeasurement required by legacy-runtime removal.
-- Use `npx aitm issue-body` with `aitm.issue-body-operation/v1` files under `.tmp/gh` for live issue-body changes; do not create a one-off direct `mutateIssueBody` caller.
+- Use `npx aitm issue-body` with `aitm.issue-body-operation/v1` files under `.scratch/gh` for live issue-body changes; do not create a one-off direct `mutateIssueBody` caller.
 - Before Plan approval, publish the adaptive estimate forecast and populate flat `Plan Metadata` with the governing spec, implementation plan, and accepted plan commit.
 - Do not dispatch implementation until full repository lint and formatting pass. If unrelated tracked content fails, hydrate a blocking defect, add the native dependency, and stop.
 
 ## File Structure
 
 - Governed record: GitHub issue #1578 — align Scope, Fix Direction, deep-dive steps, and the second acceptance criterion with the ratified required-entry decision.
-- Temporary: `.tmp/gh/1578-*.json` — canonical issue-body operation files; delete after verified read-back.
-- Temporary: `.tmp/plan/1578-estimation.json` — adaptive Plan-estimation evidence; retain only as ignored execution evidence.
+- Temporary: `.scratch/gh/1578-*.json` — canonical issue-body operation files; delete after verified read-back.
+- Temporary: `.scratch/plan/1578-estimation.json` — adaptive Plan-estimation evidence; retain only as ignored execution evidence.
+- Temporary: `.scratch/test/1578-*` — falsification probe and captured output; delete after restoration and verification.
 - Modify: `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` — record #1578, require the adapter, and raise the exact ceiling.
 - Test: `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` — existing six-case regression; no new test file.
 
 ## Reopened Execution State
 
 - The original plan was accepted at `a6e23fbb78068bf8181c4e13f5560534fcee6a42`; review was terminal before execution.
-- The live issue was aligned successfully at body version 16, but the one-off `.scratch/gh` mechanism used by the original plan conflicts with current AITM issue-record policy. Defect #1579 tracks the systemic prevention work; do not replay that mechanism.
+- The live issue was aligned successfully at body version 16, but the one-off `.scratch/gh` script bypassed the governed `aitm issue-body` verb. Repository guidance also conflicts over `.scratch/gh` versus `.tmp/gh`; defect #1579 owns reconciling that convention. Do not replay the direct-library mechanism.
 - Execution supplied the missing adaptive forecast and flat Plan Metadata, recorded Plan approval, and moved #1578 to Develop.
 - Task 1 produced commit `c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`; focused RED/GREEN, the mandatory adapter-removal falsification, Develop iteration verification, and task-scoped review all passed.
-- Develop finalization then exposed pre-existing MD038 in immutable reviewer collateral. #1578 is blocked by backlog defect #1580 until that repository-wide lint failure is resolved.
+- Develop finalization exposed pre-existing MD038 in immutable round-2 reviewer collateral; the reopened round-4 response added two MD018 findings and another MD038. #1578 is blocked by backlog defect #1580 until all four immediate failures are resolved without changing reviewer bytes.
+- Backlog defect #1581 owns the durable reviewer-collateral lint policy exposed by #1580; #1580 remains the one-off unblock for this execution.
 - This revision governs recovery from the current state. Completed RED/GREEN work must not be replayed or recommitted.
 
 ---
@@ -52,85 +54,13 @@ Run:
 gh issue view 1578 --repo kburson/ai-task-manager --json body --jq .body
 ```
 
-Expected: Scope and Fix Direction name the required adapter, the deep-dive sequence has seven steps including the adapter assertion, and the second acceptance criterion preserves existing entries while requiring the adapter. If any field is stale, use one exact `npx aitm issue-body` operation per change from `.tmp/gh`; do not use the historical direct-library script below.
+Expected: Scope and Fix Direction name the required adapter, the deep-dive sequence has seven steps including the adapter assertion, and the second acceptance criterion preserves existing entries while requiring the adapter. If any field is stale, use one exact `npx aitm issue-body` operation per change from `.scratch/gh`; do not use a direct-library script.
 
 - [x] **Step 2: Preserve the historical alignment record without replaying it**
 
-The first execution used the following script before the current issue-record conflict was detected. This block is audit evidence only. **Do not create or execute it.** Defect #1579 owns replacement of this pattern with canonical `npx aitm issue-body` operations.
+The superseded direct-library writer remains available at accepted-plan commit `a6e23fbb78068bf8181c4e13f5560534fcee6a42` and in the round-1/round-2 review history. Do not reproduce or execute it from this live plan.
 
-```js
-import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
-
-const replacements = Object.freeze([
-  {
-    label: 'scope',
-    expected:
-      "Update only the package-boundary test's story attribution, explanatory ceiling history, and numeric entry ceiling. Record that #1546 intentionally adds the shipped `scripts/task-tracker/lib/peer-review-adapter.mjs` entry, whose measured branch package surface is 779 entries. Preserve every package allowlist, exclusion, exact introduction-document inventory, and required runtime-entry assertion.",
-    replacement:
-      "Update only the package-boundary test's story attribution, explanatory ceiling history, required runtime-entry list, and numeric entry ceiling. Record that #1546 intentionally adds the shipped `scripts/task-tracker/lib/peer-review-adapter.mjs` entry, whose measured branch package surface is 779 entries. Preserve every package allowlist, exclusion, exact introduction-document inventory, and existing required runtime entry while adding the adapter requirement.",
-  },
-  {
-    label: 'fix-direction',
-    expected:
-      "Add the new defect's story tag to the package-boundary test, append a concise ceiling-history note naming #1546's one shipped adapter, and raise `ENTRY_CEILING` from 778 to 779. Re-run the focused package-boundary file and the normal governed verification lanes. Do not change `package.json`, package contents, allowlists, exclusions, or runtime code.",
-    replacement:
-      "Add the new defect's story tag to the package-boundary test, append a concise ceiling-history note naming #1546's one shipped adapter, require `scripts/task-tracker/lib/peer-review-adapter.mjs`, and raise `ENTRY_CEILING` from 778 to 779. Re-run the focused package-boundary file and the normal governed verification lanes. Do not change `package.json`, package contents, allowlists, exclusions, or runtime code.",
-  },
-  {
-    label: 'deep-dive-file',
-    expected:
-      '- `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` — add #1578 to the existing story attribution, document the single intentional packed entry introduced by #1546, and raise the exact ceiling from 778 to 779.',
-    replacement:
-      '- `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` — add #1578 to the existing story attribution, document the single intentional packed entry introduced by #1546, require the peer-review adapter, and raise the exact ceiling from 778 to 779.',
-  },
-  {
-    label: 'deep-dive-steps',
-    expected: [
-      '3. Extend the ceiling history with a concise note that #1546 ships one peer-review adapter on top of the 778-entry synchronized surface.',
-      '4. Change only `ENTRY_CEILING` from 778 to 779. Do not add contingency headroom.',
-      '5. Re-run the focused package-boundary file and require all six cases to pass. Inspect the diff to prove that every allowlist, exclusion, exact introduction-document inventory, README-link check, and required runtime-entry assertion is byte-for-byte unchanged.',
-      '6. Run the governed Develop iteration verifier, commit only the guard file under #1578, finalize Develop at exact SHA, then use the normal sandbox Test and independent review gates.',
-    ].join('\n'),
-    replacement: [
-      '3. Extend the ceiling history with a concise note that #1546 ships one peer-review adapter on top of the 778-entry synchronized surface.',
-      '4. Add `scripts/task-tracker/lib/peer-review-adapter.mjs` to the required runtime-entry list without removing or weakening any existing entry.',
-      '5. Change only `ENTRY_CEILING` from 778 to 779. Do not add contingency headroom.',
-      '6. Re-run the focused package-boundary file and require all six cases to pass. Inspect the diff to prove that every allowlist, exclusion, exact introduction-document inventory, README-link check, and existing required runtime-entry assertion is preserved while the adapter requirement is added.',
-      '7. Run the governed Develop iteration verifier, commit only the guard file under #1578, finalize Develop at exact SHA, then use the normal sandbox Test and independent review gates.',
-    ].join('\n'),
-  },
-  {
-    label: 'acceptance-criterion',
-    expected:
-      '- [ ] Existing test-file, excluded-directory, introduction-document, README-link, and required-runtime-entry guards remain unchanged and green. <!-- aitm-verified vc-list="vc:1" -->',
-    replacement:
-      '- [ ] Existing test-file, excluded-directory, introduction-document, README-link, and required-runtime-entry guards remain green; existing required entries are preserved and the peer-review adapter is explicitly required. <!-- aitm-verified vc-list="vc:1" -->',
-  },
-]);
-
-function replaceOrConfirm(body, { label, expected, replacement }) {
-  const expectedMatches = body.split(expected).length - 1;
-  const replacementMatches = body.split(replacement).length - 1;
-  if (expectedMatches === 1 && replacementMatches === 0) {
-    return body.replace(expected, replacement);
-  }
-  if (expectedMatches === 0 && replacementMatches === 1) return body;
-  throw new Error(
-    `1578-align:${label}: expected old=1,new=0 or old=0,new=1; ` +
-      `found old=${expectedMatches},new=${replacementMatches}`
-  );
-}
-
-const result = await mutateIssueBody({
-  issueNumber: 1578,
-  repo: 'kburson/ai-task-manager',
-  mutate: (base) => replacements.reduce(replaceOrConfirm, base),
-});
-
-console.log(`1578-align: ${result.status} version=${result.version}`);
-```
-
-Expected: no `.scratch/gh/1578-align-body.mjs` file exists. Any future issue-body change is expressed as an `aitm.issue-body-operation/v1` file under `.tmp/gh` and executed with `npx aitm issue-body 1578 --operation-file .tmp/gh/1578-body-operation.json`.
+Expected: no `.scratch/gh/1578-align-body.mjs` file exists. Any future issue-body change is expressed as an `aitm.issue-body-operation/v1` file under `.scratch/gh` and executed with `npx aitm issue-body 1578 --operation-file .scratch/gh/1578-body-operation.json`.
 
 - [x] **Step 3: Verify the completed alignment; do not rerun the historical writer**
 
@@ -146,7 +76,7 @@ Expected: the aligned Scope, Fix Direction, seven-step deep dive, and second acc
 
 ```bash
 test ! -e .scratch/gh/1578-align-body.mjs
-test -z "$(find .tmp/gh -maxdepth 1 -name '1578-*.json' -print 2>/dev/null)"
+test -z "$(find .scratch/gh -maxdepth 1 -name '1578-*.json' -print 2>/dev/null)"
 git status --short
 ```
 
@@ -154,7 +84,7 @@ Expected: both absence checks exit 0 and Git reports no tracked change from issu
 
 - [x] **Step 5: Satisfy every Plan-exit prerequisite before entering Develop**
 
-Before approval, create `.tmp/plan/1578-estimation.json` with the exact evidence below:
+Before approval, create `.scratch/plan/1578-estimation.json` with the exact evidence below:
 
 ```json
 {
@@ -184,7 +114,7 @@ Before approval, create `.tmp/plan/1578-estimation.json` with the exact evidence
 }
 ```
 
-Populate flat Plan Metadata through a canonical `.tmp/gh` operation with these exact values:
+Populate flat Plan Metadata through a canonical `.scratch/gh` operation with these exact values:
 
 ```markdown
 - **Governing-spec**: docs/superpowers/specs/2026-09-10-1578-package-boundary-ceiling-design.md
@@ -192,7 +122,7 @@ Populate flat Plan Metadata through a canonical `.tmp/gh` operation with these e
 - **Plan-commit**: a6e23fbb78068bf8181c4e13f5560534fcee6a42
 ```
 
-The executed operation file was `.tmp/gh/1578-plan-metadata-operation.json`:
+The executed operation file was `.scratch/gh/1578-plan-metadata-operation.json`:
 
 ```json
 {
@@ -206,9 +136,9 @@ The executed operation file was `.tmp/gh/1578-plan-metadata-operation.json`:
 Run the canonical body operation, delete its file with `apply_patch`, then run the adaptive forecast, human approval, and one-step promotion. Do not use `move-state.mjs` directly.
 
 ```bash
-npx aitm issue-body 1578 --operation-file .tmp/gh/1578-plan-metadata-operation.json
-test ! -e .tmp/gh/1578-plan-metadata-operation.json
-npx aitm plan-estimate 1578 --evidence-file .tmp/plan/1578-estimation.json
+npx aitm issue-body 1578 --operation-file .scratch/gh/1578-plan-metadata-operation.json
+test ! -e .scratch/gh/1578-plan-metadata-operation.json
+npx aitm plan-estimate 1578 --evidence-file .scratch/plan/1578-estimation.json
 npx aitm plan-approve 1578
 npx aitm promote 1578
 npx aitm status 1578
@@ -226,7 +156,7 @@ npx aitm block 1578 --by 1580
 gh issue view 1580 --repo kburson/ai-task-manager --json number,projectItems,state,url
 ```
 
-Expected for this recovery: lint reproduces only MD038 at line 81 of the immutable round-2 reviewer response; #1580 exists in Backlog; and #1578 has a native blocked-by edge to #1580. No implementation resumes until #1580 is Done. For any fresh execution, the Global Constraints require both `npm run lint` and `npm run format:check` to pass before Task 1; do not narrow either check to the planned file.
+Expected for this recovery: lint reports MD038 at round-2 line 81, MD018 at round-4 lines 100 and 232, and MD038 at round-4 line 259; #1580 exists in Backlog with all four immediate failures in scope; and #1578 has a native blocked-by edge to #1580. Backlog defect #1581 separately owns the durable reviewer-collateral lint policy. No implementation resumes until #1580 is Done. For any fresh execution, the Global Constraints require both `npm run lint` and `npm run format:check` to pass before Task 1; do not narrow either check to the planned file.
 
 ---
 
@@ -319,8 +249,9 @@ Run this trap-protected probe from the repository root:
 ```bash
 set -e
 adapter_path='scripts/task-tracker/lib/peer-review-adapter.mjs'
-probe_path='.tmp/gh/1578-peer-review-adapter.falsification.mjs'
-output_path='.tmp/gh/1578-required-entry-falsification.txt'
+mkdir -p .scratch/test
+probe_path='.scratch/test/1578-peer-review-adapter.falsification.mjs'
+output_path='.scratch/test/1578-required-entry-falsification.txt'
 
 test ! -e "$probe_path"
 mv -- "$adapter_path" "$probe_path"
@@ -413,19 +344,48 @@ git commit -m "[#1578] test: account for peer-review adapter package entry"
 
 Expected: the cached path check names only `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`; the attributed commit succeeds without amending or rewriting #1546 or #1577 history.
 
-- [ ] **Step 9: Resolve the native blocker and run clean descendant-SHA Develop finalization**
+- [ ] **Step 9: Refresh the accepted Plan-commit authority before implementation resumes**
+
+After this reopened review reaches agreement, identify the commit that contains the accepted amended plan:
+
+```bash
+plan_path='docs/superpowers/plans/2026-09-10-1578-package-boundary-ceiling.md'
+accepted_plan_commit="$(git log -1 --format=%H -- "$plan_path")"
+test "${#accepted_plan_commit}" -eq 40
+printf '%s\n' "$accepted_plan_commit"
+```
+
+Use `apply_patch` to create `.scratch/gh/1578-plan-commit-operation.json` with schema `aitm.issue-body-operation/v1`, kind `replace-exact`, the current full `- **Plan-commit**: ...` line as `expected`, and the printed accepted amendment SHA as `replacement`. Put the literal 40-character SHA in the JSON; do not embed a shell expression. Then run:
+
+```bash
+npx aitm issue-body 1578 --operation-file .scratch/gh/1578-plan-commit-operation.json
+gh issue view 1578 --repo kburson/ai-task-manager --json body --jq .body | rg -F -- "- **Plan-commit**: $accepted_plan_commit"
+```
+
+Delete the operation file with `apply_patch`, prove it is absent, and confirm the worktree has no tracked change from the authority update.
+
+```bash
+test ! -e .scratch/gh/1578-plan-commit-operation.json
+git status --short
+```
+
+Expected: live Plan Metadata names the commit containing the newly accepted plan text, and no operation file remains.
+
+- [ ] **Step 10: Resolve the native blocker and run clean descendant-SHA Develop finalization**
 
 Run:
 
 ```bash
 test "$(gh issue view 1580 --repo kburson/ai-task-manager --json projectItems --jq '.projectItems[] | select(.title == "aitm backlog") | .status.name')" = Done
-npx aitm start 1578 --role agent
+npx aitm start 1578
 git status --short
 git merge-base --is-ancestor c7a4fe5a38d5a97809068cd1a6f183ed6d91e553 HEAD
 git diff-tree --no-commit-id --name-only -r c7a4fe5a38d5a97809068cd1a6f183ed6d91e553
 node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
+npx aitm commit-trace 1578
+gh issue view 1578 --repo kburson/ai-task-manager --json comments --jq '[.comments[].body | select(test("^### 🔗 Commits"))] | last'
 node scripts/task-tracker/verify-develop.mjs --mode final --issue 1578
 git log --oneline --decorate -3
 ```
 
-Expected: #1580 is Done and #1578's BLOCKED disposition has cleared; the worktree is clean; the #1578 implementation commit remains an ancestor and names only `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`; the focused guard passes 6/6; and finalization exits 0 at the current clean descendant SHA. Report `CODE_COMPLETE` with both the final verified SHA and implementation commit `c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`, plus the preserved RED/GREEN and falsification evidence. The orchestrator owns promotion, Test, independent review, delivery, and close.
+Expected: #1580 is Done and #1578's BLOCKED disposition has cleared; the worktree is clean; the #1578 implementation commit remains an ancestor and names only `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`; the focused guard passes 6/6; and the `### 🔗 Commits` trail includes `c7a4fe5a38d5a97809068cd1a6f183ed6d91e553` plus every later `[#1578]` plan-review commit. A `[#1580]` remediation commit may be the current descendant HEAD; `commit-trace` must leave no reachable `[#1578]` commit unrecorded. Finalization exits 0 at that clean descendant SHA. Report `CODE_COMPLETE` with both the final verified SHA and implementation commit `c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`, plus the preserved RED/GREEN and falsification evidence. The orchestrator owns promotion, Test, independent review, delivery, and close.
