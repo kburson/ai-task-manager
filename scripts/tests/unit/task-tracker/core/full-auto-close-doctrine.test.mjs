@@ -262,13 +262,27 @@ test('reconstructs intent authority only from an advanced merged historical deli
   assert.equal(Object.isFrozen(result.commitText), true);
 });
 
+test('historical reconstruction rejects an extra intent property at its exact-key boundary', () => {
+  assert.throws(
+    () =>
+      validateHistoricalReconstructionPreflight({
+        ...historicalReconstructionPreflight(),
+        intent: null,
+      }),
+    /delivery-preflight:input/
+  );
+});
+
 test('historical reconstruction refuses authority that is not an advanced, clean merged delivery', () => {
   const cases = [
     ['head-relation', (value) => (value.localHeadSha = HEAD)],
-    ['pull-request-not-merged', (value) => {
-      value.pullRequests[0].state = 'OPEN';
-      value.pullRequests[0].merged = false;
-    }],
+    [
+      'pull-request-not-merged',
+      (value) => {
+        value.pullRequests[0].state = 'OPEN';
+        value.pullRequests[0].merged = false;
+      },
+    ],
     ['head-mismatch', (value) => (value.testReceiptSha = OTHER_HEAD)],
     ['dirty-overlap', (value) => value.dirtyPaths.push('tracked.mjs')],
     ['child-lineage', (value) => (value.lineage.parentIssueNumber = 938)],

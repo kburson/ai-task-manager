@@ -572,6 +572,73 @@ test('advanced local head explicitly reconstructs a missing intent after proving
   ]);
 });
 
+test('historical reconstruction and every retry enforce manual approval of the accepted historical SHA', async (t) => {
+  const original = historicalReconstructionHarness();
+  await deliver(original, { reconcile: historicalReconcile });
+  for (const prefixLength of [0, 1, 2, 3]) {
+    for (const [label, approvedSha] of [
+      ['missing', null],
+      ['stale local-head', NEXT_HEAD],
+      ['exact accepted-head', HEAD],
+    ]) {
+      await t.test(`${prefixLength} records: ${label} approval`, async () => {
+        const comments = original.data.comments.slice(0, prefixLength);
+        const harness = historicalReconstructionHarness({
+          comments,
+          manualCodeReview: true,
+          reviews:
+            approvedSha === null
+              ? []
+              : [
+                  {
+                    authorLogin: 'kburson',
+                    authorIsBot: false,
+                    state: 'APPROVED',
+                    commitOid: approvedSha,
+                    submittedAt: SERVER_NOW,
+                  },
+                ],
+        });
+        const observedHeads = [];
+        const fetchReview = harness.deps.fetchManualCodeReviewEvidence;
+        harness.deps.fetchManualCodeReviewEvidence = async (input) => {
+          observedHeads.push(input.expectedHeadSha);
+          assert.equal(harness.calls.createIssueComment, 0);
+          return fetchReview(input);
+        };
+        if (approvedSha === HEAD) {
+          const result = await deliver(harness, { reconcile: historicalReconcile });
+          assert.equal(result.status, prefixLength === 3 ? 'already-delivered' : 'delivered');
+          assert.equal(result.mode, 'historical-reconstruction');
+          assert.equal(harness.calls.createIssueComment, 3 - prefixLength);
+        } else {
+          await assert.rejects(
+            () => deliver(harness, { reconcile: historicalReconcile }),
+            /delivery-preflight:manual-code-review-approval-missing/
+          );
+          assert.equal(harness.calls.createIssueComment, 0);
+          assert.deepEqual(harness.data.comments, comments);
+        }
+        assert.deepEqual(observedHeads, [HEAD]);
+        assert.equal(harness.calls.requestPullRequestReview, 0);
+        assert.equal(harness.calls.fetchRequiredChecks, 0);
+      });
+    }
+  }
+});
+
+test('ordinary prior-intent historical recovery retains its existing manual-review behavior', async () => {
+  const harness = makeHarness();
+  await advancePendingDelivery(harness);
+  harness.data.manualCodeReview = true;
+  harness.deps.fetchManualCodeReviewEvidence = () => {
+    assert.fail('ordinary historical recovery must retain its existing path');
+  };
+  const result = await deliver(harness);
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.mode, 'historical-recovery');
+});
+
 for (const prefixLength of [1, 2, 3]) {
   test(`historical reconstruction retries a persisted ${prefixLength}-record prefix without duplicates`, async () => {
     const original = historicalReconstructionHarness();

@@ -526,6 +526,38 @@ function requiredDependency(deps, name) {
   return dependency;
 }
 
+async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, merged }) {
+  const enabled = await (deps.resolvePullRequestReviewGate ?? (async () => false))();
+  if (enabled !== true) return { status: 'authorized' };
+  const reviewerLogin = await requiredDependency(
+    deps,
+    'resolveManualCodeReviewer'
+  )({
+    configuredReviewer: cfg.manualCodeReviewer,
+  });
+  const reviewEvidence = await requiredDependency(
+    deps,
+    'fetchManualCodeReviewEvidence'
+  )({
+    repository: cfg.repo,
+    prNumber,
+    expectedHeadSha,
+  });
+  const decision = evaluateManualCodeReview({
+    gateEnabled: true,
+    expectedHeadSha,
+    reviewerLogin,
+    pullRequest: reviewEvidence,
+  });
+  if (decision.status === 'refused') {
+    throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
+  }
+  if (merged && decision.status !== 'authorized') {
+    throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
+  }
+  return decision;
+}
+
 async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   const deliverable = parseDeliverablePosted(issue.body);
   if (!deliverable) throw new TypeError('delivery-preflight:no-commit-deliverable');
@@ -804,6 +836,13 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   if (authority.headRelation === 'advanced') {
     if (reconcile !== null && (live === null || live.record.provider === 'external')) {
       const historical = validateHistoricalReconstructionPreflight(preflightInput);
+      await checkManualCodeReview({
+        deps,
+        cfg,
+        prNumber: historical.pr.number,
+        expectedHeadSha: authority.acceptedSha,
+        merged: true,
+      });
       const mergeCommitSha =
         typeof historical.pr.mergeCommitSha === 'string'
           ? historical.pr.mergeCommitSha
@@ -948,58 +987,35 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   const preflight = mergedPullRequest
     ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
     : validateDeliveryPreflight({ ...preflightInput, checks });
-  const manualCodeReviewEnabled = await (
-    deps.resolvePullRequestReviewGate ?? (async () => false)
-  )();
-  if (manualCodeReviewEnabled === true) {
-    const reviewerLogin = await requiredDependency(
-      deps,
-      'resolveManualCodeReviewer'
-    )({
-      configuredReviewer: cfg.manualCodeReviewer,
-    });
-    const reviewEvidence = await requiredDependency(
-      deps,
-      'fetchManualCodeReviewEvidence'
-    )({
-      repository: cfg.repo,
-      prNumber: selectedPullRequest.number,
-      expectedHeadSha: authority.acceptedSha,
-    });
-    const decision = evaluateManualCodeReview({
-      gateEnabled: true,
-      expectedHeadSha: authority.acceptedSha,
-      reviewerLogin,
-      pullRequest: reviewEvidence,
-    });
-    if (decision.status === 'refused') {
-      throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
-    }
-    if (decision.status !== 'authorized') {
-      if (mergedPullRequest) {
-        throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
-      }
-      let reviewRequested = false;
-      if (decision.status === 'request-review') {
-        await requiredDependency(
-          deps,
-          'requestPullRequestReview'
-        )({
-          repository: cfg.repo,
-          prNumber: selectedPullRequest.number,
-          reviewerLogin,
-        });
-        reviewRequested = true;
-      }
-      return {
-        status: 'manual-review-required',
-        reason: decision.reason,
+  const decision = await checkManualCodeReview({
+    deps,
+    cfg,
+    prNumber: selectedPullRequest.number,
+    expectedHeadSha: authority.acceptedSha,
+    merged: mergedPullRequest,
+  });
+  if (decision.status !== 'authorized') {
+    const reviewerLogin = decision.reviewerLogin;
+    let reviewRequested = false;
+    if (decision.status === 'request-review') {
+      await requiredDependency(
+        deps,
+        'requestPullRequestReview'
+      )({
+        repository: cfg.repo,
         prNumber: selectedPullRequest.number,
         reviewerLogin,
-        expectedHeadSha: authority.acceptedSha,
-        reviewRequested,
-      };
+      });
+      reviewRequested = true;
     }
+    return {
+      status: 'manual-review-required',
+      reason: decision.reason,
+      prNumber: selectedPullRequest.number,
+      reviewerLogin,
+      expectedHeadSha: authority.acceptedSha,
+      reviewRequested,
+    };
   }
   if (mergedPullRequest) {
     let liveIntent = live;
