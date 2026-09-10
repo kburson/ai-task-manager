@@ -204,21 +204,6 @@ const INCIDENT_AUTHORITY_TYPES = new Set([
   'delivery-incident-incorporated',
 ]);
 
-// #1562 - a pull request merged with a method the configuration does not
-// declare can never satisfy `delivery-verification`, and `--force` does not
-// reach this gate: `refuseDeliveryGate` catches the error and refuses without
-// consulting the flag. Name the reconciliation lane in the refusal itself so
-// it is discoverable from the message rather than only from the source.
-export function buildDeliveryGateRefusal(closeTarget, reason) {
-  return (
-    `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${reason}. ` +
-    'Run `/task deliver` until a verified exact-head receipt exists, then retry. ' +
-    'If the pull request was merged with a method this project does not declare ' +
-    '(`delivery-verification:merge-method`), reconcile it with ' +
-    '`/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason \"<why>\"`.'
-  );
-}
-
 function closeAuditMarker(recordId) {
   return `<!-- aitm-incorporated-close-audit record-id="${recordId}" -->`;
 }
@@ -3766,4 +3751,24 @@ export async function tickLifecycleOnClose({ cfg, issueNum, pexec, deps = {} }) 
   const message = `lifecycle-tick best-effort failed: ${lastErr.message}`;
   process.stderr.write(`⚠ ${message}\n`);
   return { ok: false, message };
+}
+
+// #1562 - deliberately at the END of this file. `scripts/tests/fixtures/
+// state-engine-policy-baseline.mjs` characterizes timing-emitter call sites
+// by hardcoded line number, so inserting anything above them shifts every
+// entry and turns an unrelated change into fixture churn. Appending keeps the
+// diff honest. Function declarations hoist, so the call site above is fine.
+// #1562 - a pull request merged with a method the configuration does not
+// declare can never satisfy `delivery-verification`, and `--force` does not
+// reach this gate: `refuseDeliveryGate` catches the error and refuses without
+// consulting the flag. Name the reconciliation lane in the refusal itself so
+// it is discoverable from the message rather than only from the source.
+export function buildDeliveryGateRefusal(closeTarget, reason) {
+  return (
+    `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${reason}. ` +
+    'Run `/task deliver` until a verified exact-head receipt exists, then retry. ' +
+    'If the pull request was merged with a method this project does not declare ' +
+    '(`delivery-verification:merge-method`), reconcile it with ' +
+    '`/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason \"<why>\"`.'
+  );
 }
