@@ -506,6 +506,127 @@ test('advanced local head refuses historical recovery without a prior intent', a
   assert.equal(harness.data.comments.length, 0);
 });
 
+function historicalReconstructionHarness(options = {}) {
+  return makeHarness({
+    prState: 'MERGED',
+    prHead: HEAD,
+    head: NEXT_HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    prMergeMethod: null,
+    historyMergeMethod: 'merge',
+    ...options,
+  });
+}
+
+const historicalReconcile = {
+  declaredMergeMethod: 'merge',
+  reason: 'The historical PR was merged manually before delivery intent existed.',
+  operator: 'kburson',
+};
+
+test('advanced local head explicitly reconstructs a missing intent after proving historical delivery', async () => {
+  const harness = historicalReconstructionHarness();
+  const append = harness.deps.createIssueComment;
+  harness.deps.createIssueComment = async (input) => {
+    // Both the preliminary observation and independent verification must finish
+    // before even the reconciliation record may be posted.
+    assert.equal(harness.calls.fetchOriginTrunk, 1);
+    assert.equal(harness.calls.isAncestor, 1);
+    assert.equal(harness.calls.inspectMergeCommit, 2);
+    return append(input);
+  };
+
+  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
+  assert.equal(harness.calls.createIssueComment, 0);
+
+  const result = await deliver(harness, { reconcile: historicalReconcile });
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.mode, 'historical-reconstruction');
+  assert.equal(result.recovery, true);
+  assert.equal(result.action, null);
+  assert.equal(result.intent.provider, 'external');
+  assert.equal(result.intent.expectedHeadSha, HEAD);
+  assert.equal(result.receipt.expectedHeadSha, HEAD);
+  assert.equal(result.receipt.mergeCommitSha, MERGE_HEAD);
+  assert.equal(result.receipt.mergeMethod, 'merge');
+  assert.equal(result.receipt.provider, 'external');
+  assert.equal(harness.data.head, NEXT_HEAD);
+  assert.equal(harness.calls.fetchRequiredChecks, 0);
+  assert.equal(harness.calls.createIssueComment, 3);
+  assert.deepEqual(
+    harness.data.comments.map(({ body }) => body.match(/^<!-- (\S+) /)[1]),
+    ['aitm-delivery-method-reconciliation', 'aitm-delivery-intent', 'aitm-delivery-receipt']
+  );
+  const reconciliation = JSON.parse(harness.data.comments[0].body.match(/^<!-- \S+ (.+) -->/)[1]);
+  assert.equal(reconciliation.schema, 'aitm.delivery-method-reconciliation/v2');
+  assert.equal(reconciliation.intentOrigin, 'retroactively-reconstructed');
+  assert.equal(reconciliation.acceptedSha, HEAD);
+  assert.equal(reconciliation.mergeCommitSha, MERGE_HEAD);
+  assert.deepEqual(harness.calls.events.slice(-4), [
+    'intent:post',
+    'comments:read',
+    'receipt:post',
+    'comments:read',
+  ]);
+});
+
+for (const [label, options, reconcile, error] of [
+  [
+    'unmerged PR',
+    { prState: 'OPEN' },
+    historicalReconcile,
+    /delivery-preflight:pull-request-not-merged/,
+  ],
+  [
+    'unreachable merge',
+    { mergeReachable: false },
+    historicalReconcile,
+    /delivery-verification:trunk-reachability/,
+  ],
+  [
+    'unattributable topology',
+    { historyMergeMethod: 'unknown' },
+    historicalReconcile,
+    /delivery-verification:merge-method-unattributable/,
+  ],
+  [
+    'declared method mismatch',
+    {},
+    { ...historicalReconcile, declaredMergeMethod: 'squash' },
+    /delivery-method-reconciliation:declared-not-observed/,
+  ],
+  ['missing flag', {}, null, /delivery-preflight:historical-intent/],
+  [
+    'failed trunk fetch',
+    { fetchFailure: true },
+    historicalReconcile,
+    /delivery-verification:fetch-origin-trunk/,
+  ],
+  [
+    'provider method mismatch',
+    { prMergeMethod: 'squash' },
+    historicalReconcile,
+    /delivery-verification:merge-method$/,
+  ],
+  [
+    'invalid attribution',
+    { historyCommitMessage: 'Missing required attribution' },
+    historicalReconcile,
+    /delivery-verification:attribution/,
+  ],
+]) {
+  test(`historical reconstruction refuses ${label} without any ledger writes`, async () => {
+    const harness = historicalReconstructionHarness(options);
+
+    await assert.rejects(() => deliver(harness, { reconcile }), error);
+
+    assert.equal(harness.calls.createIssueComment, 0);
+    assert.equal(harness.data.comments.length, 0);
+  });
+}
+
 test('advanced local head refuses an external recovery intent', async () => {
   const externalIntent = buildDeliveryIntent({
     intentId: INTENT_IDS[0],

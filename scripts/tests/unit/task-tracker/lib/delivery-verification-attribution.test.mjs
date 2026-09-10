@@ -117,6 +117,57 @@ test('external recovery accepts one canonical inspected attribution line', async
   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
 });
 
+test('external recovery verifies an advanced observed local head against accepted authority', async () => {
+  const input = liveInput();
+  delete input.intentCreatedAt;
+  delete input.recovery;
+  input.localHeadSha = 'd'.repeat(40);
+
+  const verified = await verifyExternalDeliveredPullRequest({
+    ...input,
+    intentInput: externalIntentInput(),
+  });
+
+  assert.equal(input.localHeadSha, 'd'.repeat(40));
+  assert.equal(verified.recovery, true);
+  assert.equal(verified.intent.expectedHeadSha, HEAD);
+  assert.equal(verified.receiptInput.expectedHeadSha, HEAD);
+});
+
+test('external recovery keeps its exact input schema and authority equality checks', async () => {
+  const input = liveInput();
+  delete input.intentCreatedAt;
+  delete input.recovery;
+  input.localHeadSha = 'd'.repeat(40);
+  input.intentInput = externalIntentInput();
+
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...input, recovery: true }),
+    /delivery-verification:input-keys/
+  );
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...input, testReceiptSha: input.localHeadSha }),
+    /delivery-verification:authority-sha-mismatch/
+  );
+  await assert.rejects(
+    () =>
+      verifyExternalDeliveredPullRequest({
+        ...input,
+        intentInput: { ...input.intentInput, mergeMethod: 'merge' },
+      }),
+    /delivery-verification:merge-method$/
+  );
+  await assert.rejects(
+    () =>
+      verifyDeliveredPullRequest({
+        ...liveInput(),
+        localHeadSha: input.localHeadSha,
+        intent: intent(),
+      }),
+    /delivery-verification:authority-sha-mismatch/
+  );
+});
+
 test('external recovery rejects noncanonical inspected attribution lines', async () => {
   const invalidMessages = [
     `PR #1391\nSource: ${HEAD}`,

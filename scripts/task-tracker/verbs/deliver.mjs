@@ -39,6 +39,7 @@ import {
 } from '../lib/delivery-records.mjs';
 import {
   validateDeliveryPreflight,
+  validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
@@ -777,6 +778,87 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     commitSubjects,
   };
   if (authority.headRelation === 'advanced') {
+    if (live === null && reconcile !== null) {
+      const historical = validateHistoricalReconstructionPreflight(preflightInput);
+      const mergeCommitSha =
+        typeof historical.pr.mergeCommitSha === 'string'
+          ? historical.pr.mergeCommitSha
+          : historical.pr.mergeCommit?.oid;
+      const observed = await observeMergeMethod({
+        mergeCommitSha,
+        expectedHeadSha: historical.expectedHeadSha,
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+      });
+      const mergeMethod = resolveReconciledMergeMethod({
+        declared: reconcile.declaredMergeMethod,
+        observed,
+        configured: historical.mergeMethod,
+      });
+      const reconstruction = buildMethodReconciliation({
+        issueNumber,
+        repository: cfg.repo,
+        prNumber: historical.pr.number,
+        acceptedSha: historical.acceptedSha,
+        mergeCommitSha,
+        configuredMergeMethod: historical.mergeMethod,
+        observedMergeMethod: mergeMethod,
+        reason: reconcile.reason,
+        operator: reconcile.operator,
+        clientCreatedAt: normalizeGitHubInstant(historical.pr.mergedAt),
+        intentOrigin: 'retroactively-reconstructed',
+      });
+      const verified = await verifyExternalDeliveredPullRequest({
+        intentInput: buildExternalIntentInput({
+          preflight: historical,
+          cfg,
+          intentId: createIntentId(),
+          sessionId: sessionId(),
+          clientCreatedAt: historical.pr.mergedAt,
+          mergeMethodOverride: mergeMethod,
+        }),
+        pullRequest: historical.pr,
+        acceptedSha: historical.acceptedSha,
+        localHeadSha: historical.observedLocalHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+        isAncestor: requiredDependency(deps, 'isAncestor'),
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+        attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      });
+      // #1574 — establish provider/Git proof before the first ledger write.
+      await requiredDependency(
+        deps,
+        'createIssueComment'
+      )({
+        issueNumber,
+        repository: cfg.repo,
+        body: renderMethodReconciliationComment(reconstruction),
+      });
+      const liveIntent = await appendIntent({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        intent: verified.intent,
+      });
+      return verifyAndFinalize({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        liveIntent,
+        matchingReceipt: null,
+        pullRequest: historical.pr,
+        recovery: true,
+        mode: 'historical-reconstruction',
+        acceptedSha: historical.acceptedSha,
+        localHeadSha: historical.observedLocalHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        verified,
+      });
+    }
     const historical = validateHistoricalRecoveryPreflight({
       ...preflightInput,
       intent: live?.record ?? null,

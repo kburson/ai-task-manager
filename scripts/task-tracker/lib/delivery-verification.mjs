@@ -110,7 +110,7 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function assertAuthorityShas(input, intent) {
+function assertAuthorityShas(input, intent, recovery) {
   const authorities = [
     input.pullRequest?.headRefOid,
     intent?.expectedHeadSha,
@@ -125,7 +125,7 @@ function assertAuthorityShas(input, intent) {
   if (typeof input.localHeadSha !== 'string' || !SHA_RE.test(input.localHeadSha)) {
     throw verificationError('authority-sha');
   }
-  if (input.localHeadSha !== input.acceptedSha && input.recovery !== true) {
+  if (input.localHeadSha !== input.acceptedSha && recovery !== true) {
     throw verificationError('authority-sha-mismatch');
   }
 }
@@ -432,7 +432,7 @@ function assertVerificationFunctions(input) {
 }
 
 async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
-  assertAuthorityShas(input, intent);
+  assertAuthorityShas(input, intent, recovery);
   const { pullRequest } = input;
   const merged = assertMergedPullRequest(pullRequest, intent);
   if (intent.provider !== 'external') {
