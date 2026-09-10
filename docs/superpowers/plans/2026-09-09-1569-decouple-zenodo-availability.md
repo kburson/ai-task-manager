@@ -6,7 +6,7 @@
 
 **Goal:** Make the published `v0.1.0` release verifier require durable DataCite DOI authority while treating only transient Zenodo landing-page failures as warnings.
 
-**Architecture:** Keep the immutable release manifest and signed release untouched. Add pure authority-validation and health-classification seams inside `scripts/verify-release.mjs`, inject deterministic observers in unit tests, and replace the aggregate post-release delta with an exact ordered two-commit proof: immutable evidence commit followed by one verifier/test correction commit.
+**Architecture:** Keep the immutable release manifest and signed release untouched. Add pure authority-validation and health-classification seams inside `scripts/verify-release.mjs`, inject deterministic observers in unit tests, and replace the aggregate post-release delta with an exact ordered three-commit proof: immutable evidence commit, the already-public pinned README merge, then one verifier/test correction commit.
 
 **Tech Stack:** Node.js 22, ECMAScript modules, built-in `fetch`, `AbortSignal.timeout`, `node:test`, Git plumbing commands, DataCite REST API.
 
@@ -14,6 +14,7 @@
 
 - Do not modify `provenance/release-manifest.json` or its `ai-peer-review.release/v1` schema.
 - Do not rewrite the signed `v0.1.0` tag, release commit `1c86f21a8aacca77dc7ebdc8299606fabfaa7e50`, evidence commit `5b06e29a54ddac959f6b3d8c90c3fea8737d2766`, GitHub release, npm package, Zenodo deposit, Software Heritage archive, or existing public history.
+- Preserve the independently published README merge commit `7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0`; require it as the exact second post-release commit and require its first-parent delta to contain only `README.md`.
 - Land exactly one new standalone-repository commit, changing only `scripts/verify-release.mjs` and `test/unit/verify-release.test.mjs`.
 - DataCite authority unavailability or mismatch remains a hard failure.
 - Zenodo timeout, transport failure, or HTTP 5xx becomes a warning only after authority passes; HTTP 4xx and unexpected observations remain hard failures.
@@ -41,6 +42,7 @@ In `test/unit/verify-release.test.mjs`, remove the dynamic `git rev-parse HEAD` 
 ```js
 const releaseCommit = '1c86f21a8aacca77dc7ebdc8299606fabfaa7e50';
 const evidenceCommit = '5b06e29a54ddac959f6b3d8c90c3fea8737d2766';
+const readmeCommit = '7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0';
 const correctionCommit = 'c'.repeat(40);
 ```
 
@@ -53,6 +55,10 @@ Update the default observer fixture so `head()` returns `correctionCommit` and `
     {
       sha: evidenceCommit,
       paths: ['provenance/release-manifest.json'],
+    },
+    {
+      sha: readmeCommit,
+      paths: ['README.md'],
     },
     {
       sha: correctionCommit,
@@ -168,6 +174,7 @@ const invalidDeltas = [
     ancestor: true,
     commits: [
       { sha: evidenceCommit, paths: ['provenance/release-manifest.json'] },
+      { sha: readmeCommit, paths: ['README.md'] },
       { sha: correctionCommit, paths: ['scripts/verify-release.mjs', 'src/public-api.mjs'] },
     ],
   },
@@ -175,11 +182,12 @@ const invalidDeltas = [
     ancestor: true,
     commits: [
       { sha: evidenceCommit, paths: ['provenance/release-manifest.json'] },
+      { sha: readmeCommit, paths: ['README.md'] },
       {
         sha: correctionCommit,
         paths: ['scripts/verify-release.mjs', 'test/unit/verify-release.test.mjs'],
       },
-      { sha: 'f'.repeat(40), paths: ['README.md'] },
+      { sha: 'f'.repeat(40), paths: ['CHANGELOG.md'] },
     ],
   },
 ];
@@ -203,6 +211,7 @@ In `scripts/verify-release.mjs`, add:
 
 ```js
 const EVIDENCE_COMMIT = '5b06e29a54ddac959f6b3d8c90c3fea8737d2766';
+const README_COMMIT = '7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0';
 const CORRECTION_PATHS = ['scripts/verify-release.mjs', 'test/unit/verify-release.test.mjs'];
 const ZENODO_DOI = /^10\.5281\/zenodo\.(\d+)$/i;
 ```
@@ -249,14 +258,14 @@ Change `observeReleaseDelta()` to run:
 
 ```text
 git rev-list --reverse <releaseCommit>..<head>
-git diff-tree --no-commit-id --name-only -z --no-renames --diff-filter=ACDMRTUXB -r <sha> --
+git diff-tree --first-parent --no-commit-id --name-only -z --no-renames --diff-filter=ACDMRTUXB -r <sha> --
 ```
 
 for each returned SHA and produce `{ ancestor, commits: [{ sha, paths }] }`. Continue using `parseGitChangedPaths()` so NUL termination, UTF-8, and whitespace bytes remain fail-closed.
 
 Extend `observeReleaseManifestBlobs()` to read `provenance/release-manifest.json` from `EVIDENCE_COMMIT`, `HEAD`, and the index. Return `{ evidence, head, index }`. `verifyRelease()` must require all three buffers and the working bytes to be identical.
 
-In `verifyRelease()`, require exactly two commits, exact first SHA `EVIDENCE_COMMIT`, first paths exactly `['provenance/release-manifest.json']`, second SHA equal to observed `head`, and second paths equal to sorted `CORRECTION_PATHS`. Any mismatch fails with `post-release history`.
+In `verifyRelease()`, require exactly three commits: exact first SHA `EVIDENCE_COMMIT` with only `provenance/release-manifest.json`; exact second SHA `README_COMMIT` with only `README.md`; and third SHA equal to observed `head` with exactly sorted `CORRECTION_PATHS`. Any mismatch fails with `post-release history`.
 
 - [ ] **Step 10: Orchestrate authority, health, and warning output**
 
@@ -302,7 +311,7 @@ git add scripts/verify-release.mjs test/unit/verify-release.test.mjs
 git commit -m "fix: separate archive authority from availability [#1569]"
 ```
 
-Expected: one commit whose parent is `5b06e29a54ddac959f6b3d8c90c3fea8737d2766` and whose changed paths are exactly the two staged files.
+Expected: one commit whose parent is `7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0` and whose changed paths are exactly the two staged files.
 
 ---
 
@@ -330,7 +339,7 @@ git diff-tree --no-commit-id --name-only -r HEAD
 git diff 5b06e29a54ddac959f6b3d8c90c3fea8737d2766..HEAD -- provenance/release-manifest.json
 ```
 
-Expected: two post-release commits in order; evidence commit changes only the manifest; `HEAD` changes only the verifier and focused test; the manifest diff from evidence commit to `HEAD` is empty.
+Expected: three post-release commits in order; evidence commit changes only the manifest; the pinned README merge changes only `README.md` relative to its first parent; `HEAD` changes only the verifier and focused test; the manifest diff from evidence commit to `HEAD` is empty.
 
 - [ ] **Step 2: Run the full standalone verification lanes**
 

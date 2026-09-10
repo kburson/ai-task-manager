@@ -98,12 +98,13 @@ The change must not modify:
 - the GitHub release, npm package, Zenodo deposit/DOI, or Software Heritage archive;
 - any existing public Git history.
 
-Implementation lands as exactly one new descendant of the existing evidence commit. The release-delta verifier will require this fixed two-commit sequence after the signed release commit:
+Implementation still lands as exactly one new commit. During the approved implementation window, public `origin/trunk` independently advanced with the pre-existing README merge commit `7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0`. Preserving that public history is mandatory, so the release-delta verifier will require this fixed three-commit sequence after the signed release commit:
 
 1. evidence commit `5b06e29a54ddac959f6b3d8c90c3fea8737d2766`, changing only `provenance/release-manifest.json`;
-2. the #1569 correction at `HEAD`, changing exactly `scripts/verify-release.mjs` and `test/unit/verify-release.test.mjs`.
+2. public README merge commit `7990fffe336deeb7ee55d53e34bb0a6eb9b89ae0`, changing only `README.md` relative to its first parent;
+3. the #1569 correction at `HEAD`, changing exactly `scripts/verify-release.mjs` and `test/unit/verify-release.test.mjs`.
 
-No third descendant is accepted. The observer must return ordered commit identities and per-commit paths rather than only an aggregate count/path set. The manifest bytes at the evidence commit, index, and working tree must remain identical. A negative regression will prove that an unexpected commit, reordered history, substituted evidence commit, manifest change, or unrelated path still fails.
+No fourth descendant is accepted. The observer must return ordered commit identities and per-commit paths relative to each commit's first parent rather than only an aggregate count/path set. The manifest bytes at the evidence commit, current `HEAD`, index, and working tree must remain identical. A negative regression will prove that an unexpected commit, reordered history, substituted evidence or README commit, manifest change, or unrelated path still fails.
 
 ## Error Handling
 
@@ -123,7 +124,7 @@ DataCite service unavailability remains a hard failure. This release did not pre
 - Zenodo HTTP 4xx and malformed-health-observation failures;
 - unchanged Software Heritage hard failure;
 - unchanged signed-tag, GitHub/npm checksum, provenance, repository, manifest-byte, and unrelated-post-release-path failures;
-- exact ordered release delta: signed release, immutable evidence commit, one verifier correction, and no further descendant;
+- exact ordered release delta: signed release, immutable evidence commit, pinned README merge, one verifier correction, and no further descendant;
 - no live provider dependency.
 
 The governed verification commands are the focused unit test, formatting, lint, full tests, integration tests, whitespace check, clean-status check, and commit-trail check recorded on issue #1569.
