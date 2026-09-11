@@ -454,7 +454,8 @@ test('CLI rejects conflicting modes and unknown arguments', (t) => {
   assert.notEqual(conflicting.status, 0);
   assert.match(conflicting.stderr, /choose exactly one mode/);
   assert.notEqual(unknown.status, 0);
-  assert.match(unknown.stderr, /unknown argument --unknown/);
+  assert.match(unknown.stderr, /unknown flag --unknown/);
+  assert.match(unknown.stderr, /Usage:/);
 });
 
 assert.equal(typeof verifyLegacyIndexReconciliation, 'function');

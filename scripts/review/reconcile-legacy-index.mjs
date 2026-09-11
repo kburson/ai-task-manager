@@ -9,6 +9,10 @@ import {
   reconcileLegacyIndex,
   verifyLegacyIndexReconciliation,
 } from './lib/reconciliation.mjs';
+import { emitSelfDoc, wantsHelp } from '../lib/self-doc.mjs';
+
+const USAGE =
+  'Usage: node scripts/review/reconcile-legacy-index.mjs [--apply|--verify] [--project-dir <path>] [--index-file <path> --journal-file <path>]';
 
 function parseArgs(argv) {
   const options = { mode: 'inspect' };
@@ -38,7 +42,7 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
-    throw new Error(`co-review-index-reconciliation: unknown argument ${argument}`);
+    throw new Error(`co-review-index-reconciliation: unknown flag ${argument}`);
   }
   if (Boolean(options.indexFile) !== Boolean(options.journalFile)) {
     throw new Error(
@@ -87,10 +91,14 @@ export function main(argv = process.argv.slice(2)) {
 const isEntrypoint =
   process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (isEntrypoint) {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('reconcile-legacy-index');
+    process.exit(0);
+  }
   try {
     process.stdout.write(`${JSON.stringify(main(), null, 2)}\n`);
   } catch (error) {
-    process.stderr.write(`${error.message}\n`);
+    process.stderr.write(`${error.message}\n${USAGE}\n`);
     process.exitCode = 1;
   }
 }
