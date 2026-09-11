@@ -392,3 +392,31 @@ git log --oneline --decorate -3
 ```
 
 Expected: #1580 is Done and #1578's BLOCKED disposition has cleared; the worktree is clean; the #1578 implementation commit remains an ancestor and names only `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`; the focused guard passes 6/6; and the `### 🔗 Commits` trail includes `c7a4fe5a38d5a97809068cd1a6f183ed6d91e553` plus every later `[#1578]` plan-review commit. A `[#1580]` remediation commit may be the current descendant HEAD; `commit-trace` must leave no reachable `[#1578]` commit unrecorded. Finalization exits 0 at that clean descendant SHA. Report `CODE_COMPLETE` with both the final verified SHA and implementation commit `c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`, plus the preserved RED/GREEN and falsification evidence. The orchestrator owns promotion, Test, independent review, delivery, and close.
+
+## Delivery Recovery Amendment — 2026-09-11
+
+The #1578 implementation remains commit
+`c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`. It was included in shared
+PR #1582 at head `369934e676c88727033cc012bd23eddba2453f47`, which GitHub
+squash-merged as `fd2b0830d9c214aac087de4c29efbd13f4c85b0d`.
+
+Issue #1583 and PR #1584 delivered the bounded recovery for secondary issue
+tokens in GitHub-default multi-source squash messages. PR #1585 then carried
+the #1580 recovery amendment at head
+`1cc84346676f69f3c2ae8646eececf264c0d7aac` and landed as
+`efca9bc903512cbd186d0ca57b9e6440c0f6a600`. Its canonical attribution
+trailer is intentionally byte-ordered for #1580, so it does not authorize a
+receipt for #1578 even though it contains the #1578 token.
+
+The preserved `codex/ai-peer-review-design` branch incorporated that landed
+commit with the normal, non-rewriting merge
+`c1e81b2a83f31df4ec916801d47bb27700781a2f`. The merge tree
+`955099e131010895e05e6b76976cf89f2a542079` exactly equals the
+`efca9bc903512cbd186d0ca57b9e6440c0f6a600` trunk tree. No rebase, reset,
+force-push, substitute branch, issue-lineage change, or fabricated delivery
+record was used.
+
+The next PR for #1578 carries only this audit amendment relative to current
+trunk. It does not replace or reinterpret the original implementation; it
+provides a real, target-specific accepted head and canonical delivery boundary
+for the already-reviewed change.
