@@ -60,7 +60,7 @@ export function mostRecentIssueWorktreeLocation(body) {
 // no location history. This reader is intentionally stricter than the legacy
 // history reader: a marker-like record is authority, so a malformed one must
 // not silently degrade to the synthesized canonical epic branch.
-export function resolveCurrentIssueWorktreeBranch(body) {
+export function resolveCurrentIssueWorktreeLocation(body) {
   const records = [];
   for (const line of String(body || '').split('\n')) {
     if (!ISSUE_WORKTREE_LOCATION_MARKER_RE.test(line)) continue;
@@ -86,7 +86,11 @@ export function resolveCurrentIssueWorktreeBranch(body) {
       throw new Error('issue-worktree-location: ambiguous current worktree authority record');
     }
   }
-  return current.worktreeBranch;
+  return current;
+}
+
+export function resolveCurrentIssueWorktreeBranch(body) {
+  return resolveCurrentIssueWorktreeLocation(body)?.worktreeBranch ?? null;
 }
 
 export function sameIssueWorktreeLocation(left, right) {
