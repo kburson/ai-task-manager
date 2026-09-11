@@ -409,7 +409,7 @@ test('CLI inspect prints deterministic counts without mutation', (t) => {
 
 test('CLI apply prints the operation and before and after summaries', (t) => {
   const files = fixture(t, { sandbox: testResidue() });
-  const result = runCli(files, '--apply');
+  const result = runCli(files, '--apply', '--yes');
 
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -424,6 +424,16 @@ test('CLI apply prints the operation and before and after summaries', (t) => {
   assert.match(output.after, /^sha256:/);
 });
 
+test('CLI apply refuses non-interactive mutation without blast-radius approval', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  const result = runCli(files, '--apply');
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--yes was not passed/);
+  assert.ok(JSON.parse(readFileSync(files.indexFile, 'utf8')).sandbox);
+  assert.equal(existsSync(files.journalFile), false);
+});
+
 test('CLI verify refuses any remaining active row', (t) => {
   const files = fixture(t, { unresolved: row('unresolved') });
   const result = runCli(files, '--verify');
@@ -435,7 +445,7 @@ test('CLI verify refuses any remaining active row', (t) => {
 test('CLI verify validates the applied journal and reaches production consumer checks', (t) => {
   const files = fixture(t, { sandbox: testResidue() });
   addProductionConsumers(files.projectDir);
-  assert.equal(runCli(files, '--apply').status, 0);
+  assert.equal(runCli(files, '--apply', '--yes').status, 0);
   const result = runCli(files, '--verify');
 
   assert.equal(result.status, 0, result.stderr);

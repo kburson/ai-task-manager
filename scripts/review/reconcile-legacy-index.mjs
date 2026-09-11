@@ -10,9 +10,10 @@ import {
   verifyLegacyIndexReconciliation,
 } from './lib/reconciliation.mjs';
 import { emitSelfDoc, wantsHelp } from '../lib/self-doc.mjs';
+import { confirmBlastRadius } from '../task-tracker/lib/blast-radius-guard.mjs';
 
 const USAGE =
-  'Usage: node scripts/review/reconcile-legacy-index.mjs [--apply|--verify] [--project-dir <path>] [--index-file <path> --journal-file <path>]';
+  'Usage: node scripts/review/reconcile-legacy-index.mjs [--apply|--verify] [--yes] [--project-dir <path>] [--index-file <path> --journal-file <path>]';
 
 function parseArgs(argv) {
   const options = { mode: 'inspect' };
@@ -25,6 +26,10 @@ function parseArgs(argv) {
       }
       selectedMode = true;
       options.mode = argument.slice(2);
+      continue;
+    }
+    if (argument === '--yes') {
+      options.yes = true;
       continue;
     }
     if (['--project-dir', '--index-file', '--journal-file'].includes(argument)) {
@@ -67,9 +72,24 @@ function inspect(options) {
   };
 }
 
-export function main(argv = process.argv.slice(2)) {
+export async function main(argv = process.argv.slice(2), deps = {}) {
   const options = parseArgs(argv);
   if (options.mode === 'apply') {
+    const preview = inventoryLegacyIndex(options);
+    if (preview.counts.remove > 0) {
+      const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+      const decision = await confirm({
+        targets: [`${preview.counts.remove} removable active row(s) in ${preview.indexFile}`],
+        targetLabel: 'legacy index reconciliation',
+        threshold: 0,
+        yes: options.yes,
+        log: deps.guardLog || ((message) => process.stderr.write(message)),
+        warn: deps.guardWarn || ((message) => process.stderr.write(message)),
+      });
+      if (!decision.proceed) {
+        throw new Error('co-review-index-reconciliation: blast-radius confirmation refused');
+      }
+    }
     const result = reconcileLegacyIndex(options);
     return {
       mode: 'apply',
@@ -96,7 +116,7 @@ if (isEntrypoint) {
     process.exit(0);
   }
   try {
-    process.stdout.write(`${JSON.stringify(main(), null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(await main(), null, 2)}\n`);
   } catch (error) {
     process.stderr.write(`${error.message}\n${USAGE}\n`);
     process.exitCode = 1;

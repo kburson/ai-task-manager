@@ -895,10 +895,11 @@ const DIRECT_SELF_DOC = Object.freeze({
     classification: 'live-maintenance-or-migration',
     synopsis: 'Inspect, reconcile, or verify the authoritative legacy co-review index.',
     usage:
-      'reconcile-legacy-index [--apply|--verify] [--project-dir <path>] [--index-file <path> --journal-file <path>]',
+      'reconcile-legacy-index [--apply|--verify] [--yes] [--project-dir <path>] [--index-file <path> --journal-file <path>]',
     arguments: [
       argument('--apply', 'Remove only active rows proven stale and append the audit journal.'),
       argument('--verify', 'Verify zero active rows, journal integrity, and archive preservation.'),
+      argument('--yes', 'Approve a non-interactive apply after the bounded blast-radius preview.'),
       argument('--project-dir <path>', 'Override the repository root.'),
       argument('--index-file <path>', 'Override the legacy index; requires --journal-file.'),
       argument(
