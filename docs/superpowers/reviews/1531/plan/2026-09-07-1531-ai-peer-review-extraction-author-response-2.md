@@ -1,7 +1,7 @@
 # Author Response 2 — AI Peer Review Extraction Implementation Plan
 
 - **Reviewer response:**
-  `docs/superpowers/reviews/ai-peer-review-extraction/plan/2026-09-07-ai-peer-review-extraction-reviewer-response-2.md`
+  `docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-2.md`
 - **Prior plan commit:** `f7183cdf8c6e897d05b54fe878dd5d7be9b14e8a`
 - **Revised plan commit:** `cc7633776ae10c2294239899aa3dbb049297d926`
 - **Disposition:** all execution defects resolved; two factual subclaims declined

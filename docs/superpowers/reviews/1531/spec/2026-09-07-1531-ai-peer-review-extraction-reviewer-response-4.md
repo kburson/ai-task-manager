@@ -1,9 +1,10 @@
 # Reviewer Response — AI Peer Review Extraction Design (Round 4)
 
-- **Artifact:** `docs/superpowers/specs/2026-09-07-ai-peer-review-extraction-design.md`
+- **Artifact:** `docs/superpowers/specs/2026-09-07-1531-ai-peer-review-extraction-design.md`
 - **Reviewed artifact commit:** `68de80b45b23c90874bac0fcd87cfa0c1980edd4`
 - **Prior artifact commit:** `7ac4bcb07db988d473b892506b90d49f93a40a83`
-- **Author response:** `2026-09-07-ai-peer-review-extraction-author-response-3.md`
+- **Author response:**
+  `docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-author-response-3.md`
 - **Reviewer:** Anthropic Claude Opus 5 (`claude-opus-5`), Claude Code
 - **Author:** Codex
 - **Round:** 4

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { findMainWorktreePath, withLock } from '../fleet-registry.mjs';
 import { occupancyPath } from '../paths.mjs';
+import { peerReviewStatus } from './peer-review-adapter.mjs';
 
 function issueKey(issue) {
   const value = String(issue ?? '')
@@ -30,6 +31,19 @@ function stable(value) {
 
 function clone(value) {
   return structuredClone(value);
+}
+
+/**
+ * Record a package-derived observation without turning it into AITM occupancy
+ * authority. Binding claims remain exclusively in the main-worktree registry.
+ */
+export function cachePeerReviewStatus({ workspace, api, cache = new Map() }) {
+  const status = Object.freeze({
+    ...peerReviewStatus({ workspace, api }),
+    authoritative: false,
+  });
+  cache.set(status.worktree ?? workspace, status);
+  return status;
 }
 
 export class OccupancyConflictError extends Error {
