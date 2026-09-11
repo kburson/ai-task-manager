@@ -86,41 +86,13 @@ test('another session cannot claim the held issue and diagnostics name the holde
   );
 });
 
-test('another session cannot share a worktree without a co-review exception', () => {
+test('another session cannot share a physical worktree', () => {
   const { claim } = fixture();
   claim();
   assert.throws(
     () => claim({ issue: 1326, sid: 'grok-b', provider: 'grok' }),
-    (error) => error.code === 'occupancy-worktree-held'
-  );
-});
-
-test('an active co-review predicate permits different providers on different issues', () => {
-  const { file, claim } = fixture();
-  claim();
-  const second = claim(
-    { issue: 1326, sid: 'grok-b', provider: 'grok' },
-    { coReviewAllowsWorktree: ({ worktreePath }) => worktreePath === '/repo/wt-a' }
-  );
-  assert.equal(second.status, 'claimed');
-  assert.deepEqual(Object.keys(readOccupancy(file)).sort(), ['1325', '1326']);
-});
-
-test('co-review sharing receives every other occupant and caps the worktree at two sessions', () => {
-  const { claim } = fixture();
-  claim();
-  const allowsPairOnly = ({ occupants }) => occupants.length === 1;
-  claim(
-    { issue: 1326, sid: 'grok-b', provider: 'grok' },
-    { coReviewAllowsWorktree: allowsPairOnly }
-  );
-  assert.throws(
-    () =>
-      claim(
-        { issue: 1327, sid: 'codex-c', provider: 'codex' },
-        { coReviewAllowsWorktree: allowsPairOnly }
-      ),
-    (error) => error.code === 'occupancy-worktree-held'
+    (error) =>
+      error.code === 'occupancy-worktree-held' && /use an isolated worktree/.test(error.message)
   );
 });
 

@@ -38,9 +38,7 @@ test('no unit-lane test touches a live system', () => {
   const offenders = [];
   for (const file of laneManifest().unit) {
     if (file === SELF || file === CLASSIFIER) continue;
-    // Transitive through test fixtures, not just the file's own source: the
-    // co-review suites spawn nothing themselves and inherit it all from
-    // `co-review-fixture.mjs`.
+    // Classify transitive test support too, not just the entrypoint's source.
     const signals = classifyTransitiveSystemReach(file, deps);
     if (signals.length > 0) offenders.push(`${file} [${signals.join(', ')}]`);
   }
@@ -105,7 +103,7 @@ test('merely mentioning git in prose or data is not a spawn', () => {
 });
 
 test('the closure follows the test tree but stops at product code', () => {
-  assert.equal(isTestTreeModule('scripts/tests/fixtures/co-review-fixture.mjs'), true);
+  assert.equal(isTestTreeModule('scripts/tests/fixtures/maintenance-apply-scripts.mjs'), true);
   assert.equal(isTestTreeModule('scripts/tests/lib/stub-gh.mjs'), true);
   // Imported test entrypoints execute their suites and therefore carry reach.
   assert.equal(isTestTreeModule('scripts/tests/unit/meta/unit-lane-purity.test.mjs'), true);

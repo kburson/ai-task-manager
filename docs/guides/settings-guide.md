@@ -321,7 +321,7 @@ result only after exact verification.
 An **approved incident ledger** is governed separately from delivery policy.
 Record mode produces an immutable **ledger ID** and **canonical digest** from
 fresh observations. Approval requires an authenticated human to approve those
-exact values; co-review is not approval, and Full-Auto cannot approve a new
+exact values; artifact peer review is not approval, and Full-Auto cannot approve a new
 ledger ID or digest. Every Incorporated row must carry a concrete carrier pull
 request, head, merge, on-trunk result, and non-delivery explanation. The exact
 human ledger approval authorizes the fresh Incorporated terminal disposition and

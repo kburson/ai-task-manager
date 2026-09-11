@@ -113,8 +113,6 @@ export function claimOccupancy(input, options = {}) {
   if (!provider) throw new TypeError('occupancy: provider is required');
   if (!rawWorktreePath) throw new TypeError('occupancy: worktreePath is required');
   const worktreePath = path.resolve(rawWorktreePath);
-  const coReviewAllowsWorktree = options.coReviewAllowsWorktree || (() => false);
-
   return withLock(file, () => {
     const before = readOccupancy(file);
     const held = before[issue];
@@ -130,17 +128,9 @@ export function claimOccupancy(input, options = {}) {
       (row) => path.resolve(row.worktreePath) === worktreePath && row.sid !== sid
     );
     const worktreeHolder = worktreeHolders[0];
-    if (
-      worktreeHolder &&
-      !coReviewAllowsWorktree({
-        worktreePath,
-        existing: clone(worktreeHolder),
-        occupants: clone(worktreeHolders),
-        requested: { issue: Number(issue), sid, provider, worktreePath },
-      })
-    ) {
+    if (worktreeHolder) {
       throw new OccupancyConflictError(
-        `occupancy: worktree is held (${holderDiagnostic(worktreeHolder)}); use an isolated worktree or an active co-review`,
+        `occupancy: worktree is held (${holderDiagnostic(worktreeHolder)}); use an isolated worktree`,
         'occupancy-worktree-held',
         worktreeHolder
       );

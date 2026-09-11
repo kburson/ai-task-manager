@@ -41,7 +41,6 @@ const FILE = {
   queue: 'task-tracker-queue.json',
   fleet: 'task-fleet.json',
   occupancy: 'occupancy.json',
-  coReviewIndex: 'co-review-index.json',
   orchestratorLock: 'orchestrator.lock',
   pickupDirective: 'pickup-directive.md',
   dod: 'definition-of-done.md',
@@ -257,10 +256,6 @@ export function closedBindingsPath(mainWorktreePath) {
 
 export function occupancyPath(mainWorktreePath) {
   return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.occupancy);
-}
-
-export function coReviewIndexPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.coReviewIndex);
 }
 
 // orchestrator.lock — the single-orchestrator lock, anchored to the main worktree.

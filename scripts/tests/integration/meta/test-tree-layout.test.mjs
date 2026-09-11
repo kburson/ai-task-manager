@@ -117,12 +117,14 @@ const laneRootPrefix = (lane) => `scripts/tests/${lane}/`;
 const underLaneRoot = (rel, lane) => rel.startsWith(laneRootPrefix(lane));
 
 // A lane subdir S (e.g. "gh/lib") is a valid subsystem mirror iff it is the
-// core/meta bucket, or a real source directory exists at scripts/<S> or
-// scripts/task-tracker/<S> (the two package roots whose layouts are mirrored).
+// core/meta bucket, the external-package review integration bucket, or a real
+// source directory exists at scripts/<S> or scripts/task-tracker/<S> (the two
+// package roots whose layouts are mirrored).
 function isValidSubsystem(sub) {
   if (
     sub === 'core' ||
     sub === 'meta' ||
+    sub === 'review' ||
     sub === 'fixtures' ||
     sub === 'task-tracker/core' ||
     sub === 'task-tracker/characterization'
@@ -196,7 +198,7 @@ test('AC1: no *.test.mjs file remains directly in a lane root', () => {
   }
 });
 
-test('AC2: every lane subdirectory mirrors a real source subsystem (or is core/meta)', () => {
+test('AC2: every lane subdirectory has an explicit subsystem or integration owner', () => {
   for (const lane of LANES) {
     for (const rel of manifest[lane]) {
       if (!underLaneRoot(rel, lane)) continue; // co-located test, not part of this reorg

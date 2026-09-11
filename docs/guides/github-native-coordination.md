@@ -44,13 +44,12 @@ the worktree from the epic head with `cut-child-worktree.mjs`; do not base it on
 trunk. Follow the normal `/task` state verbs. Record storage changes where
 authority lives, not which lifecycle gates are required.
 
-## Local occupancy and co-review
+## Local occupancy and artifact peer review
 
 AITM enforces that one issue is occupied by one session, and one editing
 provider uses a worktree, through a main-worktree-anchored occupancy store. A
-second session cannot bind the same issue. A different provider cannot bind another issue in the same worktree
-unless a live, integrity-valid co-review protocol explicitly permits that
-worktree. Use separate seeded worktrees for ordinary parallel work.
+second session cannot bind the same issue or another issue in the same physical
+worktree. Use separate seeded worktrees for all parallel work.
 
 `/task pause` retains the occupancy claim so another session cannot take over
 while the owner is temporarily away. A successful `/task stop` or `/task close`
@@ -61,23 +60,13 @@ an abandoned claim, an operator may release only that issue:
 npx aitm occupancy --release #N
 ```
 
-Co-review reviewers remain unbound: they do not run `/task start #N` and begin
-their turn without an unrelated bound task. One canonical physical worktree and
-its shared ignored runtime contain both persistent roles. The protocol binds the
-exact canonical `HEAD`, clean tracked state, authoritative artifact commit,
-immutable review and response paths, Git blob, and digest as SHA-bound evidence.
-Each handoff revalidates those facts under the protocol mutex; peer evidence is
-read directly from the structured runtime status rather than copied through a
-human relay.
-
-A co-review claim records actor and turn provenance; it does not create a
-capability sandbox. Both roles use normal repository inspection, test, build,
-and Bash capabilities under the installed ordinary guards. Reviewer role
-separation is cooperative and enforceable through immutable evidence and
-handoff validation: reviewers never edit or commit the authoritative artifact
-or prior evidence, and create only a new immutable review file under the shared
-ignored runtime with a direct file-writing tool such as Edit, Write, or
-`apply_patch`.
+Artifact review uses the installed `peer-review` package through its public CLI
+or documented public API. A peer-review participant does not bind an AITM task;
+each participant uses a separate seeded worktree. The package binds review
+evidence to the exact SHA and immutable artifact commit, and its own protocol
+controls role separation, handoffs, and evidence publication. AITM may cache
+read-only package status for observation, but that cache is non-authoritative
+and cannot grant task or worktree occupancy.
 
 Starting, routing, or continuing a session, including an automated handoff, is
 operational routing only. It does not create human semantic approval or an
