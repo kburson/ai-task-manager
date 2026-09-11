@@ -53,7 +53,7 @@ server package because its published bundle eagerly loads vulnerable code.
   `@modelcontextprotocol/server@2.0.0` and `@modelcontextprotocol/sdk@1.30.0`.
 - Produces: an exact dependency decision and reproducible production audit.
 
-- [ ] **Step 1: Create and verify the isolated worktree**
+- [x] **Step 1: Create and verify the isolated worktree**
 
 ```bash
 git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review fetch origin
@@ -64,7 +64,7 @@ git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review worktree add \
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait ci
 ```
 
-- [ ] **Step 2: Run the Phase 1 baseline**
+- [x] **Step 2: Run the Phase 1 baseline**
 
 ```bash
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait test
@@ -75,7 +75,7 @@ npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-
 
 Expected: every existing lane exits 0 before Phase 2 changes.
 
-- [ ] **Step 3: Write the dependency audit before installation**
+- [x] **Step 3: Write the dependency audit before installation**
 
 The record must include exact version, integrity, license, Node floor, direct and
 transitive packages, bundled packages, `npm audit --omit=dev`, production
@@ -90,7 +90,7 @@ Reject handwritten MCP framing and re-evaluate server-only v2 after an upstream
 patched release.
 ```
 
-- [ ] **Step 4: Obtain independent audit review, then install exactly**
+- [x] **Step 4: Obtain independent audit review, then install exactly**
 
 ```bash
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait \
@@ -115,7 +115,7 @@ known vulnerabilities.
 - Produces: executable race, cursor, cancellation, restart, and tool-contract
   requirements.
 
-- [ ] **Step 1: Write the wait contract tests**
+- [x] **Step 1: Write the wait contract tests**
 
 Use an injected delivery source with this contract:
 
@@ -135,7 +135,7 @@ timeout/abort, reconnect, server restart, manual fallback, and one delivery per
 participant cursor. Count reads, subscriptions, timer callbacks, and
 model/session callbacks so an idle wait proves no polling and zero model turns.
 
-- [ ] **Step 2: Write the MCP tool tests**
+- [x] **Step 2: Write the MCP tool tests**
 
 The desired tool input and result are:
 
@@ -160,7 +160,7 @@ The desired tool input and result are:
 The server must map abort, timeout, unavailable transport, and authority conflict
 to compact structured tool errors without acknowledging a delivery.
 
-- [ ] **Step 3: Run and capture the expected RED failure**
+- [x] **Step 3: Run and capture the expected RED failure**
 
 ```bash
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:mcp
@@ -183,7 +183,7 @@ Expected: fail because `src/mcp/wait.mjs` and `src/mcp/server.mjs` do not exist.
 - Produces: `waitForHandoff(input) -> Promise<Delivery>` and a registered
   `live-wait` adapter.
 
-- [ ] **Step 1: Implement check-before-subscribe**
+- [x] **Step 1: Implement check-before-subscribe**
 
 ```js
 export async function waitForHandoff({
@@ -210,7 +210,7 @@ export async function waitForHandoff({
 Validate identifiers, participant, cursor, signal, and timeout before allocating
 watchers. Freeze successful delivery values.
 
-- [ ] **Step 2: Implement event-plus-receipt authority reads**
+- [x] **Step 2: Implement event-plus-receipt authority reads**
 
 For each `delivery-written` event after the cursor and addressed to the requested
 participant, verify `deliveries/<delivery_id>.json` matches the event's delivery
@@ -218,14 +218,14 @@ ID, recipient, and digest byte-for-byte under canonical parsing. Return the firs
 matching event with its event sequence. A missing receipt remains pending; a
 conflicting or malformed receipt fails closed.
 
-- [ ] **Step 3: Implement one-shot filesystem waiting**
+- [x] **Step 3: Implement one-shot filesystem waiting**
 
 Watch the delivery directory, re-read immediately after watcher installation,
 and re-read after every notification. Coalesce same-cursor callers, tolerate
 duplicate/coalesced events, close the watcher/timer on every terminal path, and
 never use `setInterval`.
 
-- [ ] **Step 4: Register the capability and run GREEN**
+- [x] **Step 4: Register the capability and run GREEN**
 
 ```bash
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:mcp
@@ -249,7 +249,7 @@ Expected: all wait tests pass with no leaked watcher or timer handles.
   `wait_for_handoff(review_id, participant) -> Delivery` and a runnable local
   server connection.
 
-- [ ] **Step 1: Register the MCP tool through an injectable server factory**
+- [x] **Step 1: Register the MCP tool through an injectable server factory**
 
 ```js
 export function createHandoffMcpServer({
@@ -280,7 +280,7 @@ root owns `.scratch/peer-review/<review-id>`; an MCP caller never supplies an
 arbitrary workspace path. Tests inject a fake server so they verify this
 package's tool contract rather than SDK internals.
 
-- [ ] **Step 2: Run focused and complete standalone verification**
+- [x] **Step 2: Run focused and complete standalone verification**
 
 ```bash
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:mcp
@@ -295,7 +295,7 @@ npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-
 git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait diff --check
 ```
 
-- [ ] **Step 3: Commit standalone implementation and governed evidence**
+- [x] **Step 3: Commit standalone implementation and governed evidence**
 
 ```bash
 git add docs/dependency-audit-mcp.md package.json package-lock.json \
@@ -308,3 +308,35 @@ git commit -m "feat: add token-free MCP handoff waits"
 Append the exact standalone base, implementation commit/tree, dependency
 integrity, RED/GREEN commands, and verification results to this governed plan,
 then commit the AITM evidence as `[#1547] docs: record MCP wait delivery`.
+
+## Delivery Evidence
+
+- Standalone repository: `kburson/ai-peer-review`
+- Exact base: `f7c535909b6cf5c695459d8537fd61ead0122582`
+- Reviewed branch head: `930a6e16db5d77af6a93e2dc4359670693f3f4f0`
+- Reviewed tree: `ee5113163188ac5b657b7804900d09fc3f281800`
+- Pull request: `https://github.com/kburson/ai-peer-review/pull/2`
+- Squash merge: `4624084eb078d4d992dfed19e2eda328b86b3e28`
+- SDK: exact `@modelcontextprotocol/sdk@1.30.0`, MIT, integrity
+  `sha512-xKd8OIzlqNzcqcNumGAa6g+PW2kjD5vrpcKOnfldAUPP3j7lnqMPwlTXQm8gF+UwH72z0lqaRbjr9hqGz0eITA==`
+- Schema dependency: exact `zod@4.6.2`, MIT, integrity
+  `sha512-lh5RCAGFa1Cm2hjtNwLQhSs/AsqdWnTQaBER9fEwN/88pSh7KOtJavtBx/0VlkN/uFd61SwYmljLMDAsHlvzBQ==`
+- Production audit: zero known vulnerabilities. The known two high findings
+  remain confined to the pre-existing development-only Markdown toolchain.
+- RED evidence: the first focused run failed on the missing MCP/live-wait
+  modules. Later RED regressions reproduced shared-signal cancellation, cached
+  workspace replacement, undeclared direct Zod, and Node timer overflow before
+  their bounded fixes.
+- Final exact-head local verification: MCP 30, unit 137, golden 10, integration
+  116, packaging 4, and smoke 1 passed; lint, format, production audit, pack dry
+  run, and `git diff --check` exited zero. An official SDK in-memory client also
+  negotiated, listed, and invoked `wait_for_handoff` successfully.
+- Final package dry run: 152,306 packed bytes, 658,362 unpacked bytes, 63 files,
+  SHA-1 `779720ef52c3da0ae2071153628e3f2e4c26f32a`, integrity
+  `sha512-8+AMWtOUtmlGe0sdtDrn6BeNXQ/GAnknZ26kngrTxSD5q2bfC7k/IGL013s+GMymWihRDnwPETNDfvBMshXWJA==`.
+- Independent review: the initial exact-diff review found two Important and two
+  Minor issues; all were fixed with RED coverage. Final exact-head re-review was
+  APPROVED with no remaining findings.
+- Hosted CI: runs `34577267653` and `34577272880` passed Ubuntu Node 22,
+  macOS Node 22, Windows Node 22, Ubuntu LTS/current Node, and the Phase 1
+  boundary. The opt-in live-provider jobs were correctly skipped.
