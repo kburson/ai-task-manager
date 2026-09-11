@@ -20,7 +20,7 @@ server package only at the stdio wire boundary.
 ## Global Constraints
 
 - Implement in the standalone `ai-peer-review` worktree at
-  `/Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait`.
+  `/Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait`.
 - Base the worktree on exact `origin/trunk`
   `f7c535909b6cf5c695459d8537fd61ead0122582`.
 - Treat `events.jsonl` as authority and delivery receipts as verified immutable
@@ -54,19 +54,19 @@ server package only at the stdio wire boundary.
 ```bash
 git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review fetch origin
 git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review worktree add \
-  /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait \
+  /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait \
   -b codex/1547-mcp-wait \
   f7c535909b6cf5c695459d8537fd61ead0122582
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait ci
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait ci
 ```
 
 - [ ] **Step 2: Run the Phase 1 baseline**
 
 ```bash
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait test
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:integration
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:packaging
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:smoke
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait test
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:integration
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:packaging
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:smoke
 ```
 
 Expected: every existing lane exits 0 before Phase 2 changes.
@@ -86,9 +86,9 @@ Reject the legacy @modelcontextprotocol/sdk monolith and handwritten MCP framing
 - [ ] **Step 4: Obtain independent audit review, then install exactly**
 
 ```bash
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait \
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait \
   install --save-exact @modelcontextprotocol/server@2.0.0
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait \
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait \
   audit --omit=dev
 ```
 
@@ -157,7 +157,7 @@ to compact structured tool errors without acknowledging a delivery.
 - [ ] **Step 3: Run and capture the expected RED failure**
 
 ```bash
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:mcp
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:mcp
 ```
 
 Expected: fail because `src/mcp/wait.mjs` and `src/mcp/server.mjs` do not exist.
@@ -222,7 +222,7 @@ never use `setInterval`.
 - [ ] **Step 4: Register the capability and run GREEN**
 
 ```bash
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:mcp
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:mcp
 ```
 
 Expected: all wait tests pass with no leaked watcher or timer handles.
@@ -269,16 +269,16 @@ tool contract rather than SDK internals.
 - [ ] **Step 2: Run focused and complete standalone verification**
 
 ```bash
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:mcp
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait test
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:integration
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:packaging
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run test:smoke
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run lint
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait run format:check
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait audit --omit=dev
-npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait pack --dry-run
-git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review/.worktrees/1547-mcp-wait diff --check
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:mcp
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait test
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:integration
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:packaging
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run test:smoke
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run lint
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait run format:check
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait audit --omit=dev
+npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait pack --dry-run
+git -C /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait diff --check
 ```
 
 - [ ] **Step 3: Commit standalone implementation and governed evidence**
