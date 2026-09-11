@@ -1,4 +1,4 @@
-// @story #1546
+// @story #1546 #1549
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -76,9 +76,9 @@ test('AITM consumes the exact published package without adding a peer-review wra
   const rootPackage = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
   const entrypoints = readFileSync(entrypointsPath, 'utf8');
 
-  assert.equal(rootPackage.dependencies['ai-peer-review'], '0.1.0');
+  assert.equal(rootPackage.dependencies['ai-peer-review'], '0.2.0');
   assert.equal(packageJson.name, 'ai-peer-review');
-  assert.equal(packageJson.version, '0.1.0');
+  assert.equal(packageJson.version, '0.2.0');
   assert.equal(packageJson.exports, './src/public-api.mjs');
   assert.equal(packageJson.bin['peer-review'], './bin/peer-review.mjs');
   assert.deepEqual(AITM_PEER_REVIEW_CONFIG, {
