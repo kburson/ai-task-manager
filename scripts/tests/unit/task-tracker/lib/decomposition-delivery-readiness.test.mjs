@@ -1,6 +1,7 @@
 // @story #1287
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   describePreSplitReadiness,
@@ -141,7 +142,18 @@ test('malformed durable branch authority refuses without canonical fallback', as
   );
 
   assert.equal(result.status, 'refused');
-  assert.ok(result.blockers.some((item) => /branch-authority:.*malformed/.test(item)));
+  assert.ok(
+    result.blockers.some((item) => item.startsWith('branch-authority: ') && /malformed/.test(item))
+  );
+});
+
+test('#1486: decomposition branch readiness delegates authority to the shared adapter', () => {
+  const source = readFileSync(
+    new URL('../../../../task-tracker/lib/decomposition-delivery-readiness.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(source, /graph-node-authority\.mjs/);
+  assert.doesNotMatch(source, /resolveCurrentIssueWorktree(?:Location|Branch)\s*\(/);
 });
 
 test('unreadable WBS evidence refuses and evaluator performs no mutations', async () => {

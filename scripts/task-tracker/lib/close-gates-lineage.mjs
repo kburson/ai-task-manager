@@ -37,7 +37,7 @@ import { resolveEpicLineage } from './resolve-epic-lineage.mjs';
 import { parseBranchName } from './branch-name.mjs';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
-import { resolveCurrentIssueWorktreeBranch } from './issue-worktree-location.mjs';
+import { buildGraphNodeAuthority } from './graph-node-authority.mjs';
 import {
   epicTrailLogArgs,
   parseEpicTrailLog,
@@ -304,27 +304,16 @@ async function epicDerivedTrailGate({ epicNumber, epicHead, projectDir, graph, e
 // the common no-commits close path.
 export function closeGraphNodeFromQuery(data) {
   const node = data?.data?.repository?.issue ?? {};
-  const parent = node.parent?.number ?? null;
-  let parentAuthoritativeBranch;
-  let parentAuthorityError;
-  if (parent != null) {
-    try {
-      parentAuthoritativeBranch =
-        resolveCurrentIssueWorktreeBranch(node.parent?.body || '') || undefined;
-    } catch (error) {
-      parentAuthorityError = error.message;
-    }
-  }
-  return {
-    parent,
-    children: (node.subIssues?.nodes ?? []).map((child) => ({
+  return buildGraphNodeAuthority({
+    parent: node.parent?.number ?? null,
+    children: node.subIssues?.nodes ?? [],
+    parentBody: node.parent?.body,
+    mapChild: (child) => ({
       number: Number(child.number),
       title: child.title || '',
       closeReason: child.stateReason || null,
-    })),
-    ...(parentAuthoritativeBranch ? { parentAuthoritativeBranch } : {}),
-    ...(parentAuthorityError ? { parentAuthorityError } : {}),
-  };
+    }),
+  });
 }
 
 function defaultGraphFactory({ cfg, projectDir }) {

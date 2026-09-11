@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578
+// @story #551 #1279 #1497 #1501 #1578 #1486
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -118,7 +118,9 @@ function repoRoot() {
 // #1591 shipped the bounded legacy-index reconciliation CLI and its lock-safe
 // implementation module. #1592 removes those files with the rest of the legacy
 // review runtime; the measured post-decommission package surface is 768 entries.
-const ENTRY_CEILING = 768;
+// #1486 ships one shared graph-node authority adapter that replaces five
+// duplicated mapping boundaries. The measured surface grows by exactly one.
+const ENTRY_CEILING = 769;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -209,6 +211,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
     'scripts/task-tracker/lib/peer-review-adapter.mjs',
+    'scripts/task-tracker/lib/graph-node-authority.mjs',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',

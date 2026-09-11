@@ -389,6 +389,13 @@ test('#1485: a node outside the prefetched set fails closed rather than being fa
   assert.throws(() => graph(905), /not prefetched/);
 });
 
+test('#1486: merge-back delegates authority and parent fetching to the shared adapter', () => {
+  const source = readFileSync(path.join(__dir, '../../../task-tracker/merge-back.mjs'), 'utf8');
+  assert.match(source, /graph-node-authority\.mjs/);
+  assert.doesNotMatch(source, /query\(\$owner/);
+  assert.doesNotMatch(source, /resolveCurrentIssueWorktree(?:Location|Branch)\s*\(/);
+});
+
 const customGraph = (n) =>
   n === 910
     ? { ...GRAPH[910], parentAuthoritativeBranch: 'cloud-test-automation' }
