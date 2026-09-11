@@ -24,6 +24,7 @@
 
 - Modify: `scripts/tests/unit/task-tracker/verbs/help.test.mjs`
 - Modify: `scripts/task-tracker/verbs/help-data.mjs`
+- Modify: `scripts/task-tracker/lib/command-surface/catalog.mjs`
 
 **Interfaces:**
 
@@ -59,8 +60,8 @@
 
 - [ ] **Step 3: Add the minimal help metadata**
 
-  Add this structure to `VERB_REFERENCE.deliver` and extend its summary/effects
-  contract without editing delivery execution code:
+  Add this structure to `VERB_REFERENCE.deliver` without editing delivery
+  execution code:
 
   ```js
   flags: [
@@ -75,9 +76,10 @@
   ],
   ```
 
-  Amend the normalized deliver effects to say that the declared method must
-  agree with observed merge topology and that squash-direction reconciliation
-  is unsupported.
+  Amend only the declarative `VERB_CONTRACTS.deliver.effects` entry in
+  `scripts/task-tracker/lib/command-surface/catalog.mjs` to say that the lane is
+  the already-merged external recovery, the declared method must agree with
+  observed merge topology, and squash-direction reconciliation is unsupported.
 
 - [ ] **Step 4: Run the focused test and rendered-help probe**
 
@@ -111,6 +113,7 @@
   git add docs/superpowers/specs/2026-09-11-1573-merge-method-reconciliation-help-design.md \
     docs/superpowers/plans/2026-09-11-1573-merge-method-reconciliation-help.md \
     scripts/tests/unit/task-tracker/verbs/help.test.mjs \
-    scripts/task-tracker/verbs/help-data.mjs
+    scripts/task-tracker/verbs/help-data.mjs \
+    scripts/task-tracker/lib/command-surface/catalog.mjs
   git commit -m "docs(deliver): expose merge reconciliation help [#1573]"
   ```

@@ -10,8 +10,10 @@ ships; it does not change delivery, verification, or receipt semantics.
 
 Extend the `deliver` record in
 `scripts/task-tracker/verbs/help-data.mjs`, the repository's canonical source
-for verb help metadata. Add the two existing arguments and expand the
-documented effects with the recovery lane's precise constraints.
+for verb flags, and the corresponding normalized effect contract in
+`scripts/task-tracker/lib/command-surface/catalog.mjs`. Add the two existing
+arguments and expand the documented effects with the recovery lane's precise
+constraints.
 
 This is preferable to a separate guide because operators explicitly reach for
 verb help at the point of need. It is also preferable to generating help from
@@ -37,10 +39,10 @@ The effects text will state all of the following:
 
 ## Boundaries
 
-Only the centralized help metadata and its focused regression test change.
-The runtime argument parser, delivery verifier, merge-topology logic, intent
-and receipt writers, lifecycle state machine, and exit-code behavior remain
-unchanged.
+Only the two centralized help-metadata sources and their focused regression
+test change. The runtime argument parser, delivery verifier, merge-topology
+logic, intent and receipt writers, lifecycle state machine, and exit-code
+behavior remain unchanged.
 
 ## Verification
 
@@ -55,5 +57,6 @@ remain the regression boundary.
 
 The main risk is help text that overstates the recovery lane. Exact assertions
 pin the preconditions and limitation. The production diff is constrained to
-`help-data.mjs`, which prevents this documentation issue from silently changing
+`help-data.mjs` and the declarative `VERB_CONTRACTS.deliver` record in
+`catalog.mjs`, which prevents this documentation issue from silently changing
 delivery behavior.
