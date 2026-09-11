@@ -43,13 +43,16 @@
     {
       "sources": [
         "scripts/task-tracker/lib/peer-review-adapter.mjs",
-        "scripts/task-tracker/lib/occupancy.mjs"
+        "scripts/task-tracker/lib/occupancy.mjs",
+        "scripts/review/lib/reconciliation.mjs",
+        "scripts/review/reconcile-legacy-index.mjs"
       ],
       "tests": [
         "scripts/tests/integration/review/peer-review-package-parity.test.mjs",
-        "scripts/tests/integration/review/peer-review-migration-guard.test.mjs"
+        "scripts/tests/integration/review/peer-review-migration-guard.test.mjs",
+        "scripts/tests/integration/review/co-review-index-reconciliation.test.mjs"
       ],
-      "reason": "published peer-review boundary, advisory occupancy cache, and guarded legacy migration"
+      "reason": "published peer-review boundary, advisory occupancy cache, and guarded legacy migration and reconciliation"
     },
     {
       "sources": [

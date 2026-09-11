@@ -64,6 +64,20 @@ test('terminal rows still refuse removal while production consumers remain', asy
   assert.equal(sha256(archive), beforeArchive);
 });
 
+test('a reconciled empty active set reaches the production consumer guard', async (t) => {
+  const { assertLegacyReviewMigrationSafe } = await import(adapterPath);
+  const fixture = createLegacyFixture(t, {});
+
+  assert.throws(
+    () => assertLegacyReviewMigrationSafe({ projectDir: repoRoot, indexFile: fixture.indexFile }),
+    (error) => {
+      assert.match(error.message, /legacy runtime still has production consumers/);
+      assert.doesNotMatch(error.message, /active legacy review/);
+      return true;
+    }
+  );
+});
+
 test('AITM caches package status only as a non-authoritative occupancy observation', async () => {
   const { cachePeerReviewStatus } = await import(occupancyPath);
   const cache = new Map();
@@ -99,5 +113,23 @@ test('test-impact authority selects both migration tests for adapter changes', (
     'scripts/tests/integration/review/peer-review-migration-guard.test.mjs',
   ]) {
     assert.ok(selected.tests.includes(expected), expected);
+  }
+});
+
+test('test-impact authority selects reconciliation and migration tests for reconciliation sources', () => {
+  for (const changedPath of [
+    'scripts/review/lib/reconciliation.mjs',
+    'scripts/review/reconcile-legacy-index.mjs',
+  ]) {
+    const selected = selectAffectedTests({
+      projectDir: repoRoot,
+      changedPaths: [changedPath],
+    });
+    for (const expected of [
+      'scripts/tests/integration/review/co-review-index-reconciliation.test.mjs',
+      'scripts/tests/integration/review/peer-review-migration-guard.test.mjs',
+    ]) {
+      assert.ok(selected.tests.includes(expected), `${changedPath} -> ${expected}`);
+    }
   }
 });

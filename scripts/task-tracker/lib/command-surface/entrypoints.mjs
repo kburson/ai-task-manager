@@ -82,6 +82,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/migrate/rename-on-deck-to-assigned.mjs',
       'scripts/migrate/start-time-field.mjs',
       'scripts/reports/heal-backlog-attribution.mjs',
+      'scripts/review/reconcile-legacy-index.mjs',
       'scripts/task-tracker/backfill-plan-metadata.mjs',
       'scripts/task-tracker/backfill-disposition.mjs',
       'scripts/task-tracker/backfill-timing-logs.mjs',

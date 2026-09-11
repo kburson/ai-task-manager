@@ -22,4 +22,5 @@ export const APPLY_SCRIPTS = [
   'scripts/maintenance/migrate-non-demonstrable-tag-position.mjs',
   'scripts/maintenance/repair-child-outcome-records.mjs',
   'scripts/reports/heal-backlog-attribution.mjs',
+  'scripts/review/reconcile-legacy-index.mjs',
 ];

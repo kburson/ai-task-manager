@@ -120,7 +120,10 @@ function repoRoot() {
 // #1578 accounts for #1546's shipped peer-review adapter. The synchronized
 // branch surface was 778 before that one required runtime entry; raise by one
 // and retain no contingency headroom.
-const ENTRY_CEILING = 779;
+// #1591 ships the bounded legacy-index reconciliation CLI and its lock-safe
+// implementation module. Raise by exactly those two reviewed runtime entries;
+// #1592 remeasures the package after legacy review-runtime decommission.
+const ENTRY_CEILING = 781;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -208,6 +211,8 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'bin/cli.mjs',
     'bin/aitm.mjs',
     'scripts/review/co-review.mjs',
+    'scripts/review/reconcile-legacy-index.mjs',
+    'scripts/review/lib/reconciliation.mjs',
     'scripts/review/lib/repository-boundary.mjs',
     'scripts/review/lib/start.mjs',
     'scripts/reports/generate-value-report.mjs',
