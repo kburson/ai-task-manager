@@ -1,4 +1,4 @@
-// @story #952
+// @story #952 #1595
 // A pre-#864 body's `tests` DoD verifier may still declare the retired single
 // `npm run test:all` command. `runVerbTest` must auto-migrate it to the
 // two-lane split (`npm test` + `npm run test:slow`) via `migrateTestsLaneSplit`
@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import path from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { migrateTestsLaneSplit } from '../../../../task-tracker/lib/tests-lane-split.mjs';
 
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 
@@ -19,6 +20,9 @@ const cfg = { repo: 'o/r' };
 const LEGACY_BODY = [
   '## Scope',
   'stuff',
+  '',
+  '## Acceptance Criteria',
+  '- [ ] Legacy aggregate remains cited with lint <!-- aitm-verified exit="0" sha="old1234" key="proof-key" vc-list="vc:1 vc:2" -->',
   '',
   '## Verification Commands',
   '- [ ] `npm run test:all` <!-- id=1 -->',
@@ -95,6 +99,15 @@ test('#952: pre-#864 body — sandbox never sees npm run test:all, both lanes ru
     );
     assert.ok(migrationWrite, 'expected a body write with the migrated two-lane DoD line');
     assert.match(migrationWrite, /aitm-vc-tombstone id=1 cmd="npm run test:all"/);
+    assert.match(
+      migrationWrite,
+      /aitm-verified exit="0" sha="old1234" key="proof-key" vc-list="vc:3 vc:4 vc:2"/
+    );
+    assert.doesNotMatch(migrationWrite, /vc-list="[^"]*vc:1/);
+
+    const second = migrateTestsLaneSplit(migrationWrite);
+    assert.equal(second.changed, false);
+    assert.equal(second.body, migrationWrite);
   });
 });
 

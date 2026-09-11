@@ -31,6 +31,30 @@ const TESTS_KEY_RE = /<!--\s*dod:functional:tests\s*-->/i;
 // An already-stamped line carries execution props (`exit=`); such a line stamped
 // successfully and must not be rewritten (rewriting would orphan its evidence).
 const STAMPED_RE = /\bexit=/;
+const VERIFIED_MARKER_RE = /<!--\s*aitm-verified\s+[\s\S]*?-->/g;
+const VC_LIST_ATTR_RE = /\bvc-list="([^"]*)"/;
+
+function replaceRetiredVcCitations(body, retiredId, replacementIds) {
+  const retired = `vc:${retiredId}`;
+  const replacements = replacementIds.map((id) => `vc:${id}`);
+  return String(body).replace(VERIFIED_MARKER_RE, (marker) => {
+    const match = VC_LIST_ATTR_RE.exec(marker);
+    if (!match) return marker;
+    const tokens = match[1].trim().split(/\s+/).filter(Boolean);
+    if (!tokens.includes(retired)) return marker;
+
+    const rewritten = [];
+    const seen = new Set();
+    for (const token of tokens) {
+      for (const candidate of token === retired ? replacements : [token]) {
+        if (seen.has(candidate)) continue;
+        seen.add(candidate);
+        rewritten.push(candidate);
+      }
+    }
+    return marker.replace(VC_LIST_ATTR_RE, `vc-list="${rewritten.join(' ')}"`);
+  });
+}
 
 // Rewrite the Functional-DoD `tests` line from the single `test:all` declaration
 // to the two-lane form. Only an UNSTAMPED legacy line is rewritten. Returns the
@@ -66,7 +90,14 @@ function migrateVcMirror(body) {
     // Id-safe path: tombstone the retired id, append both lanes with fresh ids.
     const tombstoned = deleteVcById(src, target.id);
     const appended = appendVcCommands(tombstoned, LANE_COMMANDS);
-    return { body: appended, changed: appended !== src };
+    const laneIds = LANE_COMMANDS.map(
+      (command) => parseVerificationCommands(appended).find((it) => it.command === command)?.id
+    );
+    if (!laneIds.every(Number.isInteger)) {
+      throw new Error('tests-lane-split: replacement lane commands must carry stable IDs');
+    }
+    const rewritten = replaceRetiredVcCitations(appended, target.id, laneIds);
+    return { body: rewritten, changed: rewritten !== src };
   }
 
   // Legacy id-less path: rewrite the entry in place (holds its ordinal position),
