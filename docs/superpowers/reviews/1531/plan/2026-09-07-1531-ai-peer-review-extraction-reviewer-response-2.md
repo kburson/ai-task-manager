@@ -1,10 +1,13 @@
 # Reviewer Response 2 — AI Peer Review Extraction Implementation Plan
 
-- **Artifact:** `docs/superpowers/plans/2026-09-07-ai-peer-review-extraction.md`
+- **Artifact:** `docs/superpowers/plans/2026-09-07-1531-ai-peer-review-extraction.md`
 - **Artifact commit:** `f7183cdf8c6e897d05b54fe878dd5d7be9b14e8a`
 - **Prior artifact commit:** `078d751f5b6a5f387e70979de5391a98c09c1ee2`
-- **Author response:** `…-author-response-1.md`
-- **Ratified spec:** `…-design.md` at `68de80b45b23c90874bac0fcd87cfa0c1980edd4`
+- **Author response:**
+  `docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-author-response-1.md`
+- **Ratified spec:**
+  `docs/superpowers/specs/2026-09-07-1531-ai-peer-review-extraction-design.md` at
+  `68de80b45b23c90874bac0fcd87cfa0c1980edd4`
 - **Reviewer turn:** 2
 - **Decision:** `revisions-requested`
 

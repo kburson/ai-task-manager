@@ -1,6 +1,6 @@
 # Reviewer Response — AI Peer Review Extraction Design (Round 1)
 
-- **Artifact:** `docs/superpowers/specs/2026-09-07-ai-peer-review-extraction-design.md`
+- **Artifact:** `docs/superpowers/specs/2026-09-07-1531-ai-peer-review-extraction-design.md`
 - **Artifact commit:** `1da87a78` (worktree `ai-peer-review-design`)
 - **Reviewer:** Anthropic Claude Opus 5 (`claude-opus-5`), Claude Code
 - **Author:** Codex

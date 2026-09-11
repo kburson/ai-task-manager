@@ -24,7 +24,7 @@ signatures, npm trusted publishing, GitHub Actions, and the official MCP SDK onl
 if the Phase 2 dependency gate approves it.
 
 **Ratified specification:**
-`docs/superpowers/specs/2026-09-07-ai-peer-review-extraction-design.md` at
+`docs/superpowers/specs/2026-09-07-1531-ai-peer-review-extraction-design.md` at
 `68de80b45b23c90874bac0fcd87cfa0c1980edd4`.
 
 ## Global Constraints
@@ -2455,7 +2455,7 @@ Run the placeholder scan below and resolve every match as either literal test
 data or a plan defect:
 
 ```bash
-rg -n 'T''BD|TO''DO|implement lat''er|appropriate error hand''ling|handle edge cas''es|similar to Ta''sk' docs/superpowers/plans/2026-09-07-ai-peer-review-extraction.md
+rg -n 'T''BD|TO''DO|implement lat''er|appropriate error hand''ling|handle edge cas''es|similar to Ta''sk' docs/superpowers/plans/2026-09-07-1531-ai-peer-review-extraction.md
 ```
 
 Expected: no matches. Recheck every interface/function name across tasks, verify
