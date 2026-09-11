@@ -1,29 +1,12 @@
 // @story #1579
 
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 
 import {
   validateGovernedLinkedPlan,
   validateGovernedPlanContent,
 } from '../../../../task-tracker/lib/governed-plan-policy.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
-
-const sandboxes = [];
-after(() => {
-  for (const dir of sandboxes) rmSync(dir, { recursive: true, force: true });
-});
-
-function sandboxWithPlan(content, relative = 'docs/plan.md') {
-  const projectDir = mkdtempProjectIsolated('governed-plan-policy-');
-  sandboxes.push(projectDir);
-  const absolute = path.join(projectDir, relative);
-  mkdirSync(path.dirname(absolute), { recursive: true });
-  writeFileSync(absolute, content);
-  return { projectDir, relative };
-}
 
 function linkedBody(relative) {
   return `## Plan Metadata\n\n- **Implementation-plan**: ${relative}\n`;
@@ -83,21 +66,31 @@ test('validates only the active linked plan and leaves no-plan issues compatible
   const noPlan = validateGovernedLinkedPlan({ body: '## Plan Metadata\n', projectDir: '.' });
   assert.deepEqual(noPlan, { ok: true, status: 'not-applicable', violations: [] });
 
-  const { projectDir, relative } = sandboxWithPlan(
-    '# Plan\n\nRun: `npx aitm issue-body #42 --operation-file .scratch/gh/42-op.json`\n'
-  );
-  const valid = validateGovernedLinkedPlan({ body: linkedBody(relative), projectDir });
+  const relative = 'docs/plan.md';
+  const valid = validateGovernedLinkedPlan({
+    body: linkedBody(relative),
+    projectDir: '/repo',
+    deps: {
+      resolvePlanPath: () => ({ path: '/repo/docs/plan.md' }),
+      readFile: () =>
+        '# Plan\n\nRun: `npx aitm issue-body #42 --operation-file .scratch/gh/42-op.json`\n',
+    },
+  });
   assert.equal(valid.ok, true);
   assert.equal(valid.status, 'valid');
   assert.equal(valid.planPath, relative);
 });
 
 test('fails closed when linked Plan Metadata does not resolve to a readable file', () => {
-  const projectDir = mkdtempProjectIsolated('governed-plan-policy-missing-');
-  sandboxes.push(projectDir);
   const result = validateGovernedLinkedPlan({
     body: linkedBody('docs/missing.md'),
-    projectDir,
+    projectDir: '/repo',
+    deps: {
+      resolvePlanPath: () => ({
+        path: null,
+        diagnostic: 'linked plan path is not a readable file',
+      }),
+    },
   });
   assert.equal(result.ok, false);
   assert.equal(result.status, 'invalid');
