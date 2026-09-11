@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #1490
+// @story #1490 #1583
 //
 // Verb-level regression for external recovery of a multi-commit pull request that
 // was squash-merged outside the governed provider action and therefore carries
@@ -31,6 +31,13 @@ const DEFAULT_BODY = [
   '',
   '* [#939] test: cover the delivery intent verb',
 ].join('\n');
+
+const SECONDARY_SUBJECTS = [
+  '[#1531] Complete peer-review integration readiness',
+  '[#939] repair shared-carrier delivery recovery',
+];
+const SECONDARY_TITLE = '[#1531] Complete peer-review integration readiness (#1582)';
+const SECONDARY_BODY = SECONDARY_SUBJECTS.map((subject) => `* ${subject}`).join('\n\n');
 
 function harnessOptions(overrides = {}) {
   return {
@@ -75,6 +82,55 @@ test('#1490: external default-squash recovery writes one intent and one receipt'
   assert.equal(result.action, null);
   // The squash-parent ancestry question was actually asked.
   assert.ok(harness.calls.squashParentAncestry >= 1);
+});
+
+test('#1583: secondary external recovery writes exactly one intent and one receipt', async () => {
+  const harness = makeHarness(
+    harnessOptions({
+      commitSubjects: SECONDARY_SUBJECTS,
+      prCommitSubjects: SECONDARY_SUBJECTS,
+      prSourceCommits: [
+        { oid: SOURCE_1, messageHeadline: SECONDARY_SUBJECTS[0] },
+        { oid: HEAD, messageHeadline: SECONDARY_SUBJECTS[1] },
+      ],
+      historyCommitTitle: SECONDARY_TITLE,
+      historyCommitMessage: SECONDARY_BODY,
+    })
+  );
+
+  const result = await deliver(harness);
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.mode, 'current-head');
+  assert.equal(result.intent.issueNumber, 939);
+  assert.equal(result.intent.provider, 'external');
+  assert.equal(harness.calls.createIssueComment, 2);
+  assert.deepEqual(
+    harness.calls.events.filter((event) => event !== 'comments:read'),
+    ['intent:post', 'receipt:post']
+  );
+});
+
+test('#1583: unauthorized carrier title writes zero records', async () => {
+  const harness = makeHarness(
+    harnessOptions({
+      commitSubjects: SECONDARY_SUBJECTS,
+      prCommitSubjects: SECONDARY_SUBJECTS,
+      prSourceCommits: [
+        { oid: SOURCE_1, messageHeadline: SECONDARY_SUBJECTS[0] },
+        { oid: HEAD, messageHeadline: SECONDARY_SUBJECTS[1] },
+      ],
+      historyCommitTitle: '[#4242] unauthorized carrier title (#1582)',
+      historyCommitMessage: SECONDARY_BODY,
+    })
+  );
+
+  await assert.rejects(deliver(harness), /delivery-verification:attribution/);
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.deepEqual(
+    harness.calls.events.filter((event) => event !== 'comments:read'),
+    []
+  );
 });
 
 test('#1490: a refused external default-squash recovery writes zero records', async () => {
