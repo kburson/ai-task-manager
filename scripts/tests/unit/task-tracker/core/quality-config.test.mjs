@@ -12,6 +12,7 @@ const IMMUTABLE_REVIEW_ARCHIVE =
   'docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md';
 const IMMUTABLE_REVIEW_SHA256 = 'dd6b5bd49b1f8f01aacb9ce0cc278b758c598b64a2d2bb74afd45d9925a19a86';
 const IMMUTABLE_REVIEW_DIRECTORY = 'docs/superpowers/reviews/';
+const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
 
 const requiredFiles = [
   '.prettierrc.json',
@@ -77,8 +78,8 @@ const prettierIgnore = readFileSync(path.join(repoRoot, '.prettierignore'), 'utf
   .split(/\r?\n/)
   .filter(Boolean);
 assert.ok(
-  markdownlintConfig.ignores.includes(IMMUTABLE_REVIEW_ARCHIVE),
-  'markdownlint must preserve the exact immutable #1381 reviewer archive'
+  !markdownlintConfig.ignores.includes(IMMUTABLE_REVIEW_ARCHIVE),
+  'markdownlint must not require an exact immutable #1381 reviewer exception'
 );
 assert.ok(
   prettierIgnore.includes(IMMUTABLE_REVIEW_DIRECTORY),
@@ -87,6 +88,13 @@ assert.ok(
 assert.ok(
   !markdownlintConfig.ignores.includes('docs/superpowers/reviews/**'),
   'markdownlint must not exempt the governed review archive broadly'
+);
+assert.deepEqual(
+  markdownlintConfig.ignores.filter(
+    (entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')
+  ),
+  [REVIEWER_IGNORE_GLOB],
+  'markdownlint must use one canonical reviewer-role glob, never exact reviewer files'
 );
 assert.ok(
   !prettierIgnore.includes('docs/superpowers/reviews/**'),
