@@ -38,7 +38,7 @@ two paths. Keep durable directory-level reviewer-collateral policy in #1581.
 - Produces: two exact immutable-review exclusions and a regression test that
   checks file hashes, configuration membership, and focused lint execution.
 
-- [ ] **Step 1: Write the failing regression test**
+- [x] **Step 1: Write the failing regression test**
 
 Create a `node:test` case with the two repository-relative reviewer paths and
 their current SHA-256 values:
@@ -60,7 +60,7 @@ The test must parse `.markdownlint-cli2.jsonc`, assert both exact paths are in
 `ignores`, verify each current file hash, and run `markdownlint-cli2 --no-globs`
 against both literal paths.
 
-- [ ] **Step 2: Verify the regression test fails for the missing exclusions**
+- [x] **Step 2: Verify the regression test fails for the missing exclusions**
 
 Run:
 
@@ -70,13 +70,13 @@ node --test scripts/tests/integration/maintenance/markdownlint-review-artifact-p
 
 Expected: FAIL because neither #1578 path is present in `ignores`.
 
-- [ ] **Step 3: Add the two exact-file exclusions**
+- [x] **Step 3: Add the two exact-file exclusions**
 
 Append both repository-relative paths to `.markdownlint-cli2.jsonc` beside the
 existing immutable-review exclusions. Do not add a directory glob or change the
 review files.
 
-- [ ] **Step 4: Verify the focused regression and Markdown lint pass**
+- [x] **Step 4: Verify the focused regression and Markdown lint pass**
 
 Run:
 
@@ -88,7 +88,7 @@ npm run lint:md
 Expected: the regression reports one passing test and markdownlint reports zero
 issues across all governed Markdown files.
 
-- [ ] **Step 5: Verify repository quality**
+- [x] **Step 5: Verify repository quality**
 
 Run:
 
