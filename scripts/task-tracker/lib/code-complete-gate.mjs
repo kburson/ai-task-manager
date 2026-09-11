@@ -17,8 +17,10 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseAcceptanceCriteria } from './acceptance-criteria.mjs';
 import { resolveContractSource } from './github-records/contract-source.mjs';
-import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
+import { extractVerifiedCommands, resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
+import { isRestrictedVerifierCommand } from './verifier-state-gate.mjs';
 import {
   isNoCommitKind,
   hasDeliverableMarker,
@@ -40,6 +42,21 @@ const COMMITS_MARKER_RE = /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&qu
 const TRAIL_HEADING_RE = /^###\s+🔗\s+Commits\s*$/m;
 
 export { parseAcceptanceCriteria };
+
+// #1599 — an AC whose verifier set includes a command that policy forbids in
+// Develop cannot honestly be checked before the Develop→Test boundary. This
+// predicate identifies only that resolvable declaration shape. It grants no
+// evidence and changes no checkbox; the Test resident action still has to run
+// every cited command and auto-tick the AC from green exact-SHA results.
+export function isTestStageDeferredAc(declaration, vcItems = []) {
+  let commands = [];
+  try {
+    commands = extractVerifiedCommands(declaration, vcItems);
+  } catch {
+    return false;
+  }
+  return commands.length > 0 && commands.some(isRestrictedVerifierCommand);
+}
 
 export function parseCommitShas(commentBody) {
   const src = String(commentBody || '');
@@ -258,6 +275,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   // to be waived. Code-kind issues (the default) are unaffected: the branch
   // below only diverges when `audit` is true.
   const audit = isNoCommitKind(body);
+  const vcItems = parseVerificationCommands(body);
 
   const resolve = deps.resolveContractSource || resolveContractSource;
   let acs = null;
@@ -289,6 +307,9 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
     for (const ac of acs) {
       const shortLabel = stripProofMarkers(ac.label);
       if (!ac.checked) {
+        if (!audit && isTestStageDeferredAc(ac.label, vcItems)) {
+          continue;
+        }
         blockers.push(`code-complete-ac-unticked: ${shortLabel}`);
       } else if (!ac.verifiedBy || ac.verifiedBy === 'TBD') {
         // Non-demonstrable opt-out (#532): an AC honestly marked
