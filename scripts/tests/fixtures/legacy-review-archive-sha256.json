@@ -1,0 +1,554 @@
+{
+  "schema": "aitm.legacy-review-archive-digests/v1",
+  "sourceCommit": "0988881f5796d19c270e4121a851143bb5046a6f",
+  "files": [
+    {
+      "path": "docs/superpowers/reviews/1117/2026-08-15-stateless-state-cursor-architecture-acceptance-r21-claude.md",
+      "sha256": "e5c0041c740a5f26d199fec1f1c0fdbec7f4dbbb0274efed427ec248dcbae53c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1117/2026-08-15-stateless-state-cursor-architecture-owner-response-r20-codex.md",
+      "sha256": "68a45b23213fd8bf40d210f01e20d565cfd0b4ed19d2934949a015d1cb4b3a35"
+    },
+    {
+      "path": "docs/superpowers/reviews/1117/README.md",
+      "sha256": "9ea06307e41d8c6fef6a4eff97fb65d89ba9b27a059c881cd692b5979e810ed7"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/README.md",
+      "sha256": "d72962e5cfe9f7b3524ce2ff9579e464e0aff3a7ffef2007b34fdeb94dacd0d2"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/2026-09-04-1219-continuous-agent-delivery-amendment-r7-owner-codex-response.md",
+      "sha256": "88ba1c729a12fd916a9e7fd6b2e9451fd6970c3e9ce8a341f742c19350534304"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/2026-09-04-1219-continuous-agent-delivery-amendment-r7-reviewer-claude-review.md",
+      "sha256": "b40fa593c51a4a065adddff54f01353eb201b4c1b0a7749c8aa7f7e1b1496283"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/README.md",
+      "sha256": "77f3fa324943d2a65b2eae3524a9c36320e05fd431c431fc5fbec00d3d9e3806"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/author-handoff.md",
+      "sha256": "7f9ef1b579a445bda81a412a646c957b6fed13006b012f4dab0634b62cdfed3c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/events.jsonl",
+      "sha256": "1d69adf63fb4d9a4da7e30d5c1965b3a058deb6c37607b67ef1a911c2fbe54f7"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/reviewer-handoff.md",
+      "sha256": "d0d56fdabd41bb3ede03c4de50958d7836f57921851ca7ac73b52bd7461c4596"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/round-1-author-response.md",
+      "sha256": "c334bfc1643c622365a308f25abf43e4c980a9d8d7da3713a83e89bb5af4eb22"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/round-2-reviewer-review.md",
+      "sha256": "643c06bb32c16efd37a130730249919a9cb21b8c643b9388393f6f1bf702f8cb"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/round-3-author-response.md",
+      "sha256": "a263ca18a944f1662c8a297e50deaefce9ba77005518595a60715d3b5fefc6c4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/round-4-reviewer-review.md",
+      "sha256": "60b22ef24562d55d4b44c2bf3e652d0179c9f3b3a01824be317dc60f96bc7437"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/start-manifest.json",
+      "sha256": "67f1425b4ec7099bec941860d0a9f5c44cf07f27281af4fbf0983c2981b1ab0e"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-claude/state.json",
+      "sha256": "29edd4b0ef7bce42a86159a19a13e71b0864219571606952b257be5270683a19"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/author-handoff.md",
+      "sha256": "0d01518d903b8a13dc1944584d834c4e043f155acb49a11fa883280b08cb5f95"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/author-invitation-to-reviewer-claude.md",
+      "sha256": "758080001835cc1cbfa3ec08f9cbf82de53ed27c6cd2ca5f1eee0edec01d8cb0"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/author-startup-codex.md",
+      "sha256": "c4ea55920935618265681339b6e4f92e4b59ace391755eb5adaffd7b651273aa"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/events.jsonl",
+      "sha256": "7062223700659ccdbe8fc7f0bf27737825903032cc39af481938d608ef57755a"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/reviewer-handoff.md",
+      "sha256": "3e2b626d5cbb86cbdcbac746b501272eb22597a5b87dfdb9815aab7b1a2e5504"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/round-1-author-response.md",
+      "sha256": "3fe6b7587e9318ee61095b5b26d67e1800d49431be79b8ae43048b3529b0ffbc"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/round-2-reviewer-review.md",
+      "sha256": "7dd05a82673750e26c403a4a0d8adae39ce79edfff61d5738f303d261dd9eb12"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/round-3-author-response.md",
+      "sha256": "a3b8b9a74237b65bbbda2395f3638f5f8c76f68b5b9018c95fe2e4b1be66662b"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/round-4-reviewer-review.md",
+      "sha256": "545f5199056b6defadb4c3cd09843293ed87a4bb47d8e7ac14784ee7880f5edd"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/round-5-author-response.md",
+      "sha256": "88ba1c729a12fd916a9e7fd6b2e9451fd6970c3e9ce8a341f742c19350534304"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/round-6-reviewer-review.md",
+      "sha256": "b40fa593c51a4a065adddff54f01353eb201b4c1b0a7749c8aa7f7e1b1496283"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/start-manifest.json",
+      "sha256": "18fec545ea8efd75237a62dc183985b0e41d776b0f2b37f8c9f96fdbebc9b322"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/1219-continuous-agent-delivery-plan-only-restart/state.json",
+      "sha256": "6bc54df534fae7af9210b90bc886a17c10e9428265ce1d6f14d5c70ad1e8001c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/author-handoff.md",
+      "sha256": "4b0c8e42a95df9e452c9f896feb2798c5703ff3dbe9c4f7381a07a280b1fc8c3"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/author-invitation-to-reviewer-claude.md",
+      "sha256": "bcad36aca3fea9d06f4ce371ff81be2279528fb437fde3f5c3eccfc3905190d4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/author-startup-codex.md",
+      "sha256": "500b18ce5bf0874dc675416ecd2ed767fd42bfc2dd53865da0cf8697a3d20a22"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/events.jsonl",
+      "sha256": "fa1c7e4b4c3e8b37a1297e3f7c21d73fce08844560d3e986588334ccd91e825c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/reviewer-handoff.md",
+      "sha256": "f60a928131188a56404cfe7e770f3915b0c21f12d65f59f4461fa449bbf49630"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/round-1-author-response.md",
+      "sha256": "b38e0d917607013f58774efb4575bd0f9a327ad7196d33f977390cd3a3106fd4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/start-manifest.json",
+      "sha256": "11277e56a55cf3312b5b5d0e4735b83d2caa4924fc8d707627897b064ee04002"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/plan/protocol-runs/_abandoned-1219-plan-order-failure-dfcfb42d/state.json",
+      "sha256": "3729db7327f01a3aaa34b16e61ec9fc23a82a7ef96969a9257fad9952d0d171f"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/2026-09-04-1219-continuous-agent-delivery-amendment-design-r5-owner-codex-response.md",
+      "sha256": "ba617b9528ed643d015b17664d57429cb24a7891faf5c415cc18b6f89b291621"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/2026-09-04-1219-continuous-agent-delivery-amendment-design-r5-reviewer-claude-review.md",
+      "sha256": "9d8f957dc39fb9c2a2a1a2e7d80cdca0d750b0eaedeb23bb719452e1bd197f53"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/README.md",
+      "sha256": "2542dda38adca38b200413b474eebbccf75cb113b07aa1a41d41e42d40a23d4f"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/legacy-commits/26a5d5b5-cloud-test-stage-design.patch",
+      "sha256": "8a40d074aee377085a8091ea98a1e3c7b8630cdf314488d727cd67f1aebe68ef"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/author-handoff.md",
+      "sha256": "d5fec333b7f10afd45176085c15f972845817dde17ed3ab6df1a4a06402e04e2"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/events.jsonl",
+      "sha256": "05dea1cc3dfbcfeed5bdde3c4cc1b30b4c67ed98d2cb604010f2e291062ace9b"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/reviewer-handoff.md",
+      "sha256": "c93fc24a281723185f56ad932f9904702cbac1d0089a995ab6447c80d6228933"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/round-1-author-response.md",
+      "sha256": "0715958642fbb7598fb0ca2f30c1e38766e7a04c657f946bc3b405741796eb28"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/round-2-reviewer-review.md",
+      "sha256": "25692039a84df6ca4480da59ac2de7531f910fe7841e5e57b7707bc8982e1f07"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/round-3-author-response.md",
+      "sha256": "33d5cf80b3ea5424b910b3b73a7569774daa0deab8ddc89774d64caa8ddc91fa"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/round-4-reviewer-review.md",
+      "sha256": "703e59bf879614dbbf3d842faa5a82a2e1207ae22d8d86a312b85d952541400b"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/start-manifest.json",
+      "sha256": "67c1dfc48692e9c170e8ce79cd6428b7b6a78e7b0800a339752eeff1d14d8c48"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-claude/state.json",
+      "sha256": "bf13c581f989b33404cae52c386add0d8ade0b0621cb5f63aa03b9d0ee902d36"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/author-handoff.md",
+      "sha256": "ffc2ca906c842bbe9de5c99af812e516873df66ca65cad675085752ae758b183"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/author-invitation-to-reviewer.md",
+      "sha256": "b3e0fbd6cfbb656681a61f8b3f564b2b202b7883890f8842d79a4fa9eabdf8ed"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/events.jsonl",
+      "sha256": "a7415d85b718bb9ad16ec2276b762a569472399dd0f7d2180efbfa0066f9d0df"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/reviewer-handoff.md",
+      "sha256": "d5a27c79da4121a8326942096054cb51422bfbe3557a2dadaa39e5ef7c354d98"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/round-2-reviewer-review.md",
+      "sha256": "c7c4c2fa0dee1b1313713865a9651cd4777c922c878d250c1541c6590f2f8ad7"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/round-3-owner-response.md",
+      "sha256": "ba617b9528ed643d015b17664d57429cb24a7891faf5c415cc18b6f89b291621"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/round-4-reviewer-review.md",
+      "sha256": "9d8f957dc39fb9c2a2a1a2e7d80cdca0d750b0eaedeb23bb719452e1bd197f53"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/start-manifest.json",
+      "sha256": "aaebe778110227eaa5bcf134a7adc6ac6b0d34857178c1cedfb6088c38a4ded5"
+    },
+    {
+      "path": "docs/superpowers/reviews/1219/spec/protocol-runs/1219-continuous-agent-delivery-spec-only-restart/state.json",
+      "sha256": "28ec116b00b1f72f8be595b7ab17596b100c46cd9dafcb85b62eb88cb297dedf"
+    },
+    {
+      "path": "docs/superpowers/reviews/1262/plan/2026-08-14-git-native-polyglot-tia-r7-owner-codex-response.md",
+      "sha256": "9917ddd59465a41d171163ff46b27967cd4d805e53c926add26f75509d255cca"
+    },
+    {
+      "path": "docs/superpowers/reviews/1262/plan/2026-08-14-git-native-polyglot-tia-r7-reviewer-claude-review.md",
+      "sha256": "2ff736c61fdf530fc7977a7d7a2c72f6a434c7285aa4889b1473279d9e255580"
+    },
+    {
+      "path": "docs/superpowers/reviews/1262/plan/README.md",
+      "sha256": "573eaf524d845e3f127b17e1d9be739e751a1a185ec950b0ec2e54cef5a8b12c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1262/spec/2026-08-14-repository-native-polyglot-tia-and-build-health-design-r5-owner-codex-response.md",
+      "sha256": "f1d02b98fdb6904f9469e528f641e79d9c3907783ee8cd0ba510db7378d15424"
+    },
+    {
+      "path": "docs/superpowers/reviews/1262/spec/2026-08-14-repository-native-polyglot-tia-and-build-health-design-r5-reviewer-claude-review.md",
+      "sha256": "d7e504ca793dca3f957d54776c881d69bbd2fefadcb8c9d643d5d24abc7fb74b"
+    },
+    {
+      "path": "docs/superpowers/reviews/1262/spec/README.md",
+      "sha256": "77a6712dc68a35208bd27fa7eb5f90d3b3e6e7f2570b4852a8934a6c0a5da380"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/delivery/2026-08-21-repository-verification-evidence.md",
+      "sha256": "58d7bc9ef5c93b676f8073388ed6d0bbaaff7c2d8a2acc187ed179ea6c726915"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/plan/2026-08-19-test-corpus-membership-registry-r5-owner-codex-response.md",
+      "sha256": "6471857493e5c0439f94ca49af3150fe32a49f69c5fa9d35fe467034c2ef5dad"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/plan/2026-08-19-test-corpus-membership-registry-r5-reviewer-grok-review.md",
+      "sha256": "aad41d33094ad5ed7302959e69d22d2d6f1dcceb78ab43f1484b1888a877ceb4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/plan/README.md",
+      "sha256": "a06ed2674dd2eaa92aea041a500afae42bfbfca0a25adf2e0953249bb9e057d8"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/spec/2026-08-19-test-corpus-membership-registry-design-r7-owner-codex-response.md",
+      "sha256": "6cfccb804f18dd8206f9c303daa19622095b6eb37e9bd0bb8451f746b120c4a7"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/spec/2026-08-19-test-corpus-membership-registry-design-r7-reviewer-grok-review.md",
+      "sha256": "93db6886510f935f314e0ccc64e49fae3ac336bfafb3c0581836b47bec07d2e3"
+    },
+    {
+      "path": "docs/superpowers/reviews/1263/spec/README.md",
+      "sha256": "53fe732cf741070396996e60822ccd574ae3ad688202e63db0d8d5189a587233"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/README.md",
+      "sha256": "db06c7743025cc34094a9c4d54c3134d329c4fc62dcdaefaf9b925e765f2e3b8"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/plan/2026-08-15-co-review-finalization-and-turn-budget-control-acceptance-r6-reviewer.md",
+      "sha256": "3394f3fc63e20a856d2407d0c4126a67d5e8b80d1b9d25d7bc69d6386154ee07"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/plan/2026-08-15-co-review-finalization-and-turn-budget-control-owner-response-r5-codex.md",
+      "sha256": "06ea81c41cd4a132fa86c632b6a6edd016c0cfcc799d1d36a66ee10601485e69"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/plan/README.md",
+      "sha256": "e65008205e17cf3f128eb80b45f178c9292cbc4bfc288e6693a37b7a2e70b7f2"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/spec/2026-08-15-co-review-finalization-and-turn-budget-control-acceptance-r6-claude.md",
+      "sha256": "307b70c75a8d8d2072cd6b676c1d5714b86ab43de5cb7c88333da2c3aea65399"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/spec/2026-08-15-co-review-finalization-and-turn-budget-control-owner-response-r5-codex.md",
+      "sha256": "75fe18036b06479e5a681103dd08d37fdfeff7ff037c7baa9604a7724a7f3ece"
+    },
+    {
+      "path": "docs/superpowers/reviews/1268/spec/README.md",
+      "sha256": "23ca3cd5076b62c2c9dff90a320dedf7900bfbb5aa567b05053bd93e0a2ed26d"
+    },
+    {
+      "path": "docs/superpowers/reviews/1321/plan/2026-08-18-grok-provider-adapter-r5-owner-codex-response.md",
+      "sha256": "8274da10339b8bd9da708b84a621e0e44b95892f106ab7e9e71cd15d2a89a5ea"
+    },
+    {
+      "path": "docs/superpowers/reviews/1321/plan/2026-08-18-grok-provider-adapter-r5-reviewer-grok-review.md",
+      "sha256": "d55f63d602b3e9350fdf7b23f1a12ff01dd3a027bd0221ecd4a31b6b9a6aab71"
+    },
+    {
+      "path": "docs/superpowers/reviews/1321/plan/README.md",
+      "sha256": "808769dd8f15ae6e27a69cbe69a29b613fb262173da7b7c83ba2645435aa659e"
+    },
+    {
+      "path": "docs/superpowers/reviews/1321/spec/2026-08-18-grok-provider-adapter-design-r13-owner-grok-response.md",
+      "sha256": "48cebafedcb66d3bbfbc598188673d0ff709f625f4ec1ca94f8e4ae987831e1c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1321/spec/2026-08-18-grok-provider-adapter-design-r13-reviewer-codex-review.md",
+      "sha256": "7c5abcda1b7fbbb33a7d43c02de26cca5f5dce424c5c0b8f6bfc101c711aade4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1321/spec/README.md",
+      "sha256": "566081e06294e2407a8e9c8dafc3e7eaecb37f9f1cd788c86ecf91b585fe4874"
+    },
+    {
+      "path": "docs/superpowers/reviews/1374/spec/2026-08-21-1374-co-review-archive-collision-recovery-design-r5-owner-codex-response.md",
+      "sha256": "b345f83dfa9bcd158acd1bf361b8accc1d1305caaaeb9f5096da8d51aa247bfc"
+    },
+    {
+      "path": "docs/superpowers/reviews/1374/spec/2026-08-21-1374-co-review-archive-collision-recovery-design-r5-reviewer-claude-review.md",
+      "sha256": "37b4e8f1053c3a93c9616e8633e755d321465f6fa121eb13e1a57b3cc6c77952"
+    },
+    {
+      "path": "docs/superpowers/reviews/1374/spec/README.md",
+      "sha256": "ce097d61da14db360617a2a6de6a1a23a49f047cbdefca9446923624b6c858ce"
+    },
+    {
+      "path": "docs/superpowers/reviews/1380/delivery/2026-08-22-1380-inherited-provider-delivery-contract-review.md",
+      "sha256": "1263621801b977b2ea762e1400ea6b6623d437b839033dd14e8f1fe0c15b0d3e"
+    },
+    {
+      "path": "docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-owner-codex-response.md",
+      "sha256": "0f3068a2172f4c9e8fc0f650d286916112edeabd86dc60d24aa9f7661fc4d36a"
+    },
+    {
+      "path": "docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md",
+      "sha256": "dd6b5bd49b1f8f01aacb9ce0cc278b758c598b64a2d2bb74afd45d9925a19a86"
+    },
+    {
+      "path": "docs/superpowers/reviews/1381/plan/README.md",
+      "sha256": "839bd33e1565fd166844d6f75a5a64ec5cbdc6e516e917eab27077a3a2b454d4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1381/spec/2026-08-23-1381-governed-delivery-convergence-design-r3-owner-codex-response.md",
+      "sha256": "a0e4aa015c6f062f44fc5de057c5aa2d5daae9868bb4872954bf921f2332d799"
+    },
+    {
+      "path": "docs/superpowers/reviews/1381/spec/2026-08-23-1381-governed-delivery-convergence-design-r3-reviewer-claude-review.md",
+      "sha256": "d99b852fe43dfcb72dbf865e9ba94e571c7d386f11815810e6ac97aa49f4ab31"
+    },
+    {
+      "path": "docs/superpowers/reviews/1381/spec/README.md",
+      "sha256": "869a36b35c142d121abd391866c950604caa74d20be3b6fb689e40c9447fba27"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-author-response-1.md",
+      "sha256": "627a6e384e3f59838b6ac50b710b3d03068505359d3ffe270987f37191582bd5"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-author-response-2.md",
+      "sha256": "1790c4c3f3d00c39344e60784f1ae5b3104c7170d2fa928a98aaa89b784bcbd7"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-author-response-3.md",
+      "sha256": "559fb4fded652f4dbb9d289323d854e0cfbf81f9241aa0633a0e535109936ea7"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-author-response-4.md",
+      "sha256": "6a59e2da2bdeb1c936c32b5b5fa236256da1f7434da66b1d384f28be32d12d0e"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-1.md",
+      "sha256": "43334a997487a693136034a809028be0b73e9d0a892e020f9bd95bc769583599"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-2.md",
+      "sha256": "e95bfd0aac31a7988bacba03236d534ea1bb29610b30cb99fa82e4d229c89764"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-3.md",
+      "sha256": "b72927c6fc93d4814e28df571fb321ff7867c5684b4fdd26e3281c92dcf03cae"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/plan/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-4.md",
+      "sha256": "e01015dd90bb0ac3fd621bcd215ca440ade32bda6ac0306558ca238cee0b7e22"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-author-response-1.md",
+      "sha256": "a45d4ff2cd1b28230ad3b180d48648fd14478a82cc9b851b03b7019101c9e68c"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-author-response-2.md",
+      "sha256": "d7cadeccfa8c0025f564254ee9eb146bb491ae9444ad489350ffe0ce24c16861"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-author-response-3.md",
+      "sha256": "e9fc63758e14c362adbac116640266d418fa1a592fb7b8c809109e907508e0ca"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-author-response-4.md",
+      "sha256": "a1f5a3e32be2b3be33cc35bad302acb091e72460d5aee52586a90b71998ae7c1"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-1.md",
+      "sha256": "9758006a57740d979b838a0013043b0484a9a80889828ce1f8286d23d2e9e12d"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-2.md",
+      "sha256": "b584152f247b86ed150535893c5f391a6c741053a323034937fd481d74b3f41d"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-3.md",
+      "sha256": "4f93972869e002eb0964d3d4e68824012849e756a4063fc96016eb2d77076c05"
+    },
+    {
+      "path": "docs/superpowers/reviews/1531/spec/2026-09-07-1531-ai-peer-review-extraction-reviewer-response-4.md",
+      "sha256": "419f19fcfa194d54d30b9eb289c11d6e88afdd6abdd885b82c156eab5dd8fd29"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r1-author-codex-response.md",
+      "sha256": "c8f567a26ed61ea27b8dcd6498c039f3bdf79a2ee7c0bf7b289f87c4fc8af295"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r1-reviewer-claude-review.md",
+      "sha256": "de294b9be93910918047adcc6b3d5d8e4565785248b34a4d248e9a9a7a1fa120"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r2-author-codex-response.md",
+      "sha256": "f524e799499ae07a569e1dc341227d101766ea18dd6884a08b40fecaee54f8dd"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r2-reviewer-claude-review.md",
+      "sha256": "b0cffbbadf279230590bfa9295aed21c44ca8e8474d5714b6375710bbdeb0416"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r3-author-codex-response.md",
+      "sha256": "2a56994c89a224defa807961a5dab06e8786ac720dbc3400e354d2cd77ddb70a"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r3-reviewer-claude-review.md",
+      "sha256": "b577ebda81563e07394a9a21a250b8c81d8022b83d69adff9c91f5eb1bdeddc0"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r4-author-codex-reopen-handoff.md",
+      "sha256": "b3e4aa3e75601c14c1cdb56f045bd16545ea54af1b09a159aa3f12591c81da06"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r4-author-codex-response.md",
+      "sha256": "9d6d5a2676b9b185fde07fc0f905647bb4dcf128762d2f640494308e870d44d6"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r4-reviewer-claude-review.md",
+      "sha256": "ea86a94e36f9bf907921278cd43f691f84f90fe3dba975fa43a893c8d098ff1d"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r5-author-codex-response.md",
+      "sha256": "fdeeb5103ed9a22a6827148e7709495465d2bedf67be55cd914b803aa6b988c4"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r5-reviewer-claude-review.md",
+      "sha256": "31fee1a9f1b480ac4ccd4501fd9474fad854eb4ca449a5ce99cc37dd1332a4ce"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r6-author-codex-response.md",
+      "sha256": "9f2680fe304eef41c602c791a94f37a4ad5a9b4027211cc4367c623d8300bfd5"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r6-reviewer-claude-review.md",
+      "sha256": "a7580ca5b8cad474642e655fb47561ffdfd123d31ffdb09d04b452535ec3af2e"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/spec/2026-09-10-1578-package-boundary-ceiling-design-r1-author-codex-response.md",
+      "sha256": "6e5c18525eaffd8beab35110586625e19c26dda1d7db5a3c222781f15d114826"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/spec/2026-09-10-1578-package-boundary-ceiling-design-r1-reviewer-claude-review.md",
+      "sha256": "22fcf093e78b9773addb8b92173d5c3210f2a9649935a6f755575ce75c07da7b"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/spec/2026-09-10-1578-package-boundary-ceiling-design-r2-author-codex-response.md",
+      "sha256": "c828f8dc15527cc2b1fee17506929bcd4d5eee5ed9e6480094d2587aadc2ec56"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/spec/2026-09-10-1578-package-boundary-ceiling-design-r2-reviewer-claude-review.md",
+      "sha256": "312126758f234bafd0fa8ad988f983ec0bad6ed395c2c3a1504f2503c26a7317"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/spec/2026-09-10-1578-package-boundary-ceiling-design-r3-author-codex-response.md",
+      "sha256": "c0eeddf91456bf6260d15ce2a886861d5484bec66a1bf7c8353befdda590e342"
+    },
+    {
+      "path": "docs/superpowers/reviews/1578/spec/2026-09-10-1578-package-boundary-ceiling-design-r3-reviewer-claude-review.md",
+      "sha256": "95851642330de5e15e573c7256f419960e1bcdc4c5bbaf3ebe44eef4f62959dd"
+    },
+    {
+      "path": "docs/superpowers/reviews/939/plan/2026-08-22-939-governed-pr-delivery-r5-owner-codex-response.md",
+      "sha256": "79c1da596142b65ddfdba44bfa3cdd5df2244bd2526ef9eb667e412e94eb16d5"
+    },
+    {
+      "path": "docs/superpowers/reviews/939/plan/2026-08-22-939-governed-pr-delivery-r5-reviewer-claude-review.md",
+      "sha256": "3543ed7997a462264378a9ae2aaa1c222a1c56beff89d282a222d83e7fb808d3"
+    },
+    {
+      "path": "docs/superpowers/reviews/939/plan/README.md",
+      "sha256": "7a00ebd3da4d74d4a8a10bb6dd0a24abc160f8a18c2a6bd3691056ad85f76569"
+    },
+    {
+      "path": "docs/superpowers/reviews/939/spec/2026-08-21-939-governed-pr-delivery-design-r3-owner-codex-response.md",
+      "sha256": "a2fb52feedc9a6471949ce250825609fb026d8223e539a17a408bb4925d23107"
+    },
+    {
+      "path": "docs/superpowers/reviews/939/spec/2026-08-21-939-governed-pr-delivery-design-r3-reviewer-claude-review.md",
+      "sha256": "ae5a9703cb4b20518a4fc89a27ae9ac401cb75bb51989303e3bf6d36dbfd5d31"
+    },
+    {
+      "path": "docs/superpowers/reviews/939/spec/README.md",
+      "sha256": "f6770a8731ea7ad219262f41e575b974f3356c554387df95dc3d4b369b98bb80"
+    },
+    {
+      "path": "docs/superpowers/reviews/README.md",
+      "sha256": "9290d1840c8c8cffce67a3dce90efc90398986b1dc180d86d6e2021e2dac4489"
+    }
+  ]
+}
