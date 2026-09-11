@@ -33,6 +33,8 @@ const TESTS_KEY_RE = /<!--\s*dod:functional:tests\s*-->/i;
 const STAMPED_RE = /\bexit=/;
 const VERIFIED_MARKER_RE = /<!--\s*aitm-verified\s+[\s\S]*?-->/g;
 const VC_LIST_ATTR_RE = /\bvc-list="([^"]*)"/;
+const AGGREGATE_TOMBSTONE_RE =
+  /<!--\s*aitm-vc-tombstone\s+id=(\d+)\s+cmd="npm run test:all"\s*-->/gi;
 
 function replaceRetiredVcCitations(body, retiredId, replacementIds) {
   const retired = `vc:${retiredId}`;
@@ -54,6 +56,30 @@ function replaceRetiredVcCitations(body, retiredId, replacementIds) {
     }
     return marker.replace(VC_LIST_ATTR_RE, `vc-list="${rewritten.join(' ')}"`);
   });
+}
+
+function recoverTombstonedVcCitations(body) {
+  const src = String(body);
+  const tombstones = [...src.matchAll(AGGREGATE_TOMBSTONE_RE)];
+  if (tombstones.length === 0) return { body: src, changed: false };
+  if (tombstones.length !== 1) {
+    throw new Error('tests-lane-split: aggregate verifier tombstone must be unique');
+  }
+
+  const liveCommands = parseVerificationCommands(src);
+  const laneEntries = LANE_COMMANDS.map((command) =>
+    liveCommands.filter((entry) => entry.command === command)
+  );
+  if (laneEntries.some((entries) => entries.length !== 1 || !Number.isInteger(entries[0]?.id))) {
+    throw new Error('tests-lane-split: replacement lane commands must carry unique stable IDs');
+  }
+  const laneIds = laneEntries.map(([entry]) => entry.id);
+  if (new Set(laneIds).size !== laneIds.length) {
+    throw new Error('tests-lane-split: replacement lane command IDs must be distinct');
+  }
+
+  const rewritten = replaceRetiredVcCitations(src, Number(tombstones[0][1]), laneIds);
+  return { body: rewritten, changed: rewritten !== src };
 }
 
 // Rewrite the Functional-DoD `tests` line from the single `test:all` declaration
@@ -84,7 +110,7 @@ function migrateTestsDodLine(body) {
 function migrateVcMirror(body) {
   const src = String(body);
   const target = parseVerificationCommands(src).find((it) => it.command === 'npm run test:all');
-  if (!target) return { body: src, changed: false };
+  if (!target) return recoverTombstonedVcCitations(src);
 
   if (Number.isInteger(target.id)) {
     // Id-safe path: tombstone the retired id, append both lanes with fresh ids.

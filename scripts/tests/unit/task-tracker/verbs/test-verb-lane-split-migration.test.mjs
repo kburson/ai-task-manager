@@ -1,4 +1,4 @@
-// @story #952 #1595
+// @story #952 #1595 #1597
 // A pre-#864 body's `tests` DoD verifier may still declare the retired single
 // `npm run test:all` command. `runVerbTest` must auto-migrate it to the
 // two-lane split (`npm test` + `npm run test:slow`) via `migrateTestsLaneSplit`
@@ -179,4 +179,64 @@ test('#952: already-migrated body — idempotent, no extra migration write', asy
       'idempotent: no write should reintroduce or reference the retired script'
     );
   });
+});
+
+test('#1597: pre-existing aggregate tombstone retargets dangling citations', () => {
+  const partiallyMigrated = [
+    '## Scope',
+    'stuff',
+    '',
+    '## Acceptance Criteria',
+    '- [ ] Complete exact-SHA lanes <!-- aitm-verified exit="0" sha="old1234" key="proof-key" vc-list="vc:3 vc:4 vc:5" -->',
+    '',
+    '## Verification Commands',
+    '<!-- aitm-vc-tombstone id=3 cmd="npm run test:all" -->',
+    '- [ ] `npm run lint` <!-- id=4 -->',
+    '- [ ] `npm run format:check` <!-- id=5 -->',
+    '- [ ] `npm test` <!-- id=6 -->',
+    '- [ ] `npm run test:slow` <!-- id=7 -->',
+    '',
+    '## Definition of Done',
+    '',
+    '### Functional (verified at Test)',
+    '',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests -->',
+    '',
+  ].join('\n');
+  const verificationBlock = partiallyMigrated.match(
+    /## Verification Commands[\s\S]*?(?=\n## Definition of Done)/
+  )[0];
+
+  const first = migrateTestsLaneSplit(partiallyMigrated);
+
+  assert.equal(first.changed, true);
+  assert.match(
+    first.body,
+    /aitm-verified exit="0" sha="old1234" key="proof-key" vc-list="vc:6 vc:7 vc:4 vc:5"/
+  );
+  assert.doesNotMatch(first.body, /vc-list="[^"]*vc:3/);
+  assert.equal(
+    first.body.match(/## Verification Commands[\s\S]*?(?=\n## Definition of Done)/)[0],
+    verificationBlock
+  );
+
+  const second = migrateTestsLaneSplit(first.body);
+  assert.equal(second.changed, false);
+  assert.equal(second.body, first.body);
+
+  const duplicateTombstone = partiallyMigrated.replace(
+    '<!-- aitm-vc-tombstone id=3 cmd="npm run test:all" -->',
+    '<!-- aitm-vc-tombstone id=3 cmd="npm run test:all" -->\n<!-- aitm-vc-tombstone id=8 cmd="npm run test:all" -->'
+  );
+  assert.throws(
+    () => migrateTestsLaneSplit(duplicateTombstone),
+    /aggregate verifier tombstone must be unique/
+  );
+  assert.throws(
+    () =>
+      migrateTestsLaneSplit(
+        partiallyMigrated.replace('- [ ] `npm run test:slow` <!-- id=7 -->\n', '')
+      ),
+    /replacement lane commands must carry unique stable IDs/
+  );
 });
