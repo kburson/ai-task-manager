@@ -31,7 +31,7 @@ import path from 'node:path';
 import { SCRATCH_REL_PREFIX } from './paths.mjs';
 import { currentBranch } from './fleet-registry.mjs';
 import { parseBranchName } from './lib/branch-name.mjs';
-import { resolveCurrentIssueWorktreeBranch } from './lib/issue-worktree-location.mjs';
+import { buildGraphNodeAuthority } from './lib/graph-node-authority.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { resolveTrunkRefSync } from './lib/trunk-ref.mjs';
 import { evaluateEpicBase } from './lib/epic-base-guard.mjs';
@@ -187,12 +187,12 @@ function realGraph(projectDir) {
       { cwd: projectDir, encoding: 'utf8', timeout: 5000 }
     );
     const node = JSON.parse(out)?.data?.repository?.issue ?? {};
-    const result = {
+    const result = buildGraphNodeAuthority({
       parent: node.parent?.number ?? null,
-      children: (node.subIssues?.nodes ?? []).map((c) => Number(c.number)),
-      authoritativeBranch: resolveCurrentIssueWorktreeBranch(node.body),
-      parentAuthoritativeBranch: resolveCurrentIssueWorktreeBranch(node.parent?.body),
-    };
+      children: node.subIssues?.nodes ?? [],
+      ownBody: node.body,
+      parentBody: node.parent?.body,
+    });
     cache.set(issue, result);
     return result;
   };

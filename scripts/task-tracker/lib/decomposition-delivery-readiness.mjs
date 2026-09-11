@@ -5,7 +5,7 @@
 import { linkedPlanReference, selectDecompositionPlanSection } from './decomposition-policy.mjs';
 import { parseWbsChildClaim, reconcileWbsCoverage } from './decomposition-wbs-coverage.mjs';
 import { isAcceptedTerminalChild } from './epic-children-gate.mjs';
-import { resolveCurrentIssueWorktreeBranch } from './issue-worktree-location.mjs';
+import { buildGraphNodeAuthority } from './graph-node-authority.mjs';
 import { parseIssueKind } from './issue-kind.mjs';
 import { resolveEpicLineage } from './resolve-epic-lineage.mjs';
 
@@ -116,18 +116,19 @@ function evaluatePlanning({ children, tasks, acceptedPlanPath }) {
 
 function evaluateBranch({ issueNumber, epicBody, children }) {
   try {
-    const authoritativeBranch = resolveCurrentIssueWorktreeBranch(epicBody || '');
     const representative = Number(children[0]?.number);
     if (!Number.isSafeInteger(representative) || representative <= 0) {
       throw new Error('materialized WBS has no child identity for branch resolution');
     }
+    const node = buildGraphNodeAuthority({
+      parent: Number(issueNumber),
+      children: [],
+      parentBody: epicBody || '',
+    });
+    if (node.parentAuthorityError) throw new Error(node.parentAuthorityError);
     const lineage = resolveEpicLineage(representative, {
       deps: {
-        graph: () => ({
-          parent: Number(issueNumber),
-          children: [],
-          ...(authoritativeBranch ? { parentAuthoritativeBranch: authoritativeBranch } : {}),
-        }),
+        graph: () => node,
       },
     });
     if (!lineage.epicBranch) throw new Error('child epic branch is unavailable');

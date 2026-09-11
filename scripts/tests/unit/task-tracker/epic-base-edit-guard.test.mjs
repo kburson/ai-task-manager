@@ -6,6 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   decideEpicBaseEdit,
@@ -155,4 +156,13 @@ test('#1284: unresolved custom authority blocks guard evaluation before Git', ()
     null
   );
   assert.deepEqual(calls, []);
+});
+
+test('#1486: the synchronous hook delegates authority mapping to the shared adapter', () => {
+  const source = readFileSync(
+    new URL('../../../task-tracker/epic-base-edit-guard.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(source, /graph-node-authority\.mjs/);
+  assert.doesNotMatch(source, /resolveCurrentIssueWorktree(?:Location|Branch)\s*\(/);
 });

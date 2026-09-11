@@ -4,6 +4,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   closeGraphNodeFromQuery,
@@ -107,6 +108,29 @@ test('close graph adapter carries malformed parent authority as a fail-closed er
     () => resolveDoneTargetBranch({ issueNumber: 913, deps: { graph: () => node } }),
     /parent.*authority|malformed worktree authority record/i
   );
+});
+
+test('#1486: close graph adapter delegates authority and preserves rich child records', () => {
+  const result = closeGraphNodeFromQuery({
+    data: {
+      repository: {
+        issue: {
+          parent: null,
+          subIssues: {
+            nodes: [{ number: '910', title: 'Child', stateReason: 'COMPLETED' }],
+          },
+        },
+      },
+    },
+  });
+  assert.deepEqual(result.children, [{ number: 910, title: 'Child', closeReason: 'COMPLETED' }]);
+
+  const source = readFileSync(
+    new URL('../../../../task-tracker/lib/close-gates-lineage.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(source, /graph-node-authority\.mjs/);
+  assert.doesNotMatch(source, /resolveCurrentIssueWorktree(?:Location|Branch)\s*\(/);
 });
 
 test('resolveDoneTargetBranch: standalone story degenerates to trunk (no regression)', () => {
