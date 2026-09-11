@@ -20,6 +20,7 @@ import {
   withLock as systemWithLock,
 } from '../../task-tracker/fleet-registry.mjs';
 import { coReviewIndexPath } from '../../task-tracker/paths.mjs';
+import { assertLegacyReviewMigrationSafe } from '../../task-tracker/lib/peer-review-adapter.mjs';
 import { readProtocolIndex } from './index.mjs';
 import { statusProtocol as systemStatusProtocol } from './protocol.mjs';
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
@@ -528,6 +529,66 @@ export function reconcileLegacyIndex(input = {}) {
   });
 }
 
-export function verifyLegacyIndexReconciliation() {
-  throw new Error('co-review-index-reconciliation: verify not implemented');
+export function verifyLegacyIndexReconciliation(input = {}) {
+  const inventory = inventoryLegacyIndex(input);
+  const active = inventory.rows
+    .filter(({ lifecycle }) => lifecycle === 'active')
+    .map(({ protocolId }) => protocolId);
+  if (active.length > 0) {
+    throw new Error(
+      `co-review-index-reconciliation: active legacy rows remain: ${active.join(', ')}`
+    );
+  }
+  const records = readJournal(inventory.journalFile);
+  const applied = [...records].reverse().find(({ recordType }) => recordType === 'applied');
+  if (!applied) {
+    throw new Error('co-review-index-reconciliation: no applied journal record');
+  }
+  const prepared = records.find(
+    (record) => record.recordType === 'prepared' && record.operationId === applied.operationId
+  );
+  if (!prepared || sha256(canonicalJson(prepared.model)) !== prepared.operationId) {
+    throw new Error(
+      `co-review-index-reconciliation: invalid prepared operation ${applied.operationId}`
+    );
+  }
+  if (
+    inventory.indexSha256 !== prepared.model.afterIndexSha256 ||
+    applied.afterIndexSha256 !== prepared.model.afterIndexSha256
+  ) {
+    throw new Error(
+      `co-review-index-reconciliation: applied index digest conflict ${applied.operationId}`
+    );
+  }
+  if (
+    !same(inventory.archiveSnapshot, prepared.model.archiveSnapshot) ||
+    !same(inventory.archiveSnapshot, applied.archiveSnapshot)
+  ) {
+    throw new Error(
+      `co-review-index-reconciliation: applied archive snapshot conflict ${applied.operationId}`
+    );
+  }
+  let migrationGuard;
+  try {
+    assertLegacyReviewMigrationSafe({
+      projectDir: inventory.projectDir,
+      indexFile: inventory.indexFile,
+    });
+    migrationGuard = 'removable';
+  } catch (error) {
+    if (
+      !/^peer-review-migration: legacy runtime still has production consumers:/.test(error.message)
+    ) {
+      throw error;
+    }
+    migrationGuard = 'production-consumers';
+  }
+  return {
+    status: 'verified',
+    operationId: applied.operationId,
+    indexSha256: inventory.indexSha256,
+    active: 0,
+    archiveFiles: inventory.archiveSnapshot.length,
+    migrationGuard,
+  };
 }

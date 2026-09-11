@@ -1,8 +1,10 @@
 // @story #1591
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 import {
@@ -10,6 +12,9 @@ import {
   reconcileLegacyIndex,
   verifyLegacyIndexReconciliation,
 } from '../../../review/lib/reconciliation.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const cliPath = path.join(repoRoot, 'scripts/review/reconcile-legacy-index.mjs');
 
 function row(protocolId, overrides = {}) {
   return {
@@ -35,6 +40,7 @@ function fixture(t, rows) {
   const journalFile = path.join(projectDir, '.tmp/aitm/fleet/co-review-index-reconciliation.jsonl');
   mkdirSync(path.dirname(indexFile), { recursive: true });
   writeFileSync(indexFile, `${JSON.stringify(rows, null, 2)}\n`);
+  execFileSync('git', ['init', '--quiet'], { cwd: projectDir });
   return { projectDir, indexFile, journalFile };
 }
 
@@ -75,6 +81,36 @@ function journal(file) {
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line));
+}
+
+function addProductionConsumers(projectDir) {
+  const consumers = [
+    ['scripts/task-tracker/lib/occupancy-lifecycle.mjs', '../../review/lib/index.mjs'],
+    ['scripts/task-tracker/lib/command-surface/entrypoints.mjs', 'scripts/review/co-review.mjs'],
+    ['scripts/lib/self-doc.mjs', 'scripts/review/co-review.mjs'],
+  ];
+  for (const [relative, marker] of consumers) {
+    const file = path.join(projectDir, relative);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, `// ${marker}\n`);
+  }
+}
+
+function runCli(files, ...args) {
+  return spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      '--project-dir',
+      files.projectDir,
+      '--index-file',
+      files.indexFile,
+      '--journal-file',
+      files.journalFile,
+      ...args,
+    ],
+    { cwd: repoRoot, encoding: 'utf8' }
+  );
 }
 
 test('inventory accounts for every row in deterministic protocol order', (t) => {
@@ -353,6 +389,68 @@ test('unexpected index drift during recovery fails closed', (t) => {
     /recovery index digest conflict/
   );
   assert.equal(journal(files.journalFile).length, 1);
+});
+
+test('CLI inspect prints deterministic counts without mutation', (t) => {
+  const files = fixture(t, {
+    sandbox: testResidue(),
+    terminal: row('terminal', { lifecycle: 'accepted' }),
+  });
+  const result = runCli(files);
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.mode, 'inspect');
+  assert.equal(output.counts.total, 2);
+  assert.equal(output.counts.remove, 1);
+  assert.equal(existsSync(files.journalFile), false);
+  assert.ok(JSON.parse(readFileSync(files.indexFile, 'utf8')).sandbox);
+});
+
+test('CLI apply prints the operation and before and after summaries', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  const result = runCli(files, '--apply');
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.mode, 'apply');
+  assert.equal(output.status, 'applied');
+  assert.deepEqual(output.removed, ['sandbox']);
+  assert.match(output.before, /^sha256:/);
+  assert.match(output.after, /^sha256:/);
+});
+
+test('CLI verify refuses any remaining active row', (t) => {
+  const files = fixture(t, { unresolved: row('unresolved') });
+  const result = runCli(files, '--verify');
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /active legacy rows remain: unresolved/);
+});
+
+test('CLI verify validates the applied journal and reaches production consumer checks', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  addProductionConsumers(files.projectDir);
+  assert.equal(runCli(files, '--apply').status, 0);
+  const result = runCli(files, '--verify');
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.mode, 'verify');
+  assert.equal(output.active, 0);
+  assert.equal(output.migrationGuard, 'production-consumers');
+  assert.match(output.operationId, /^sha256:/);
+});
+
+test('CLI rejects conflicting modes and unknown arguments', (t) => {
+  const files = fixture(t, {});
+  const conflicting = runCli(files, '--apply', '--verify');
+  const unknown = runCli(files, '--unknown');
+
+  assert.notEqual(conflicting.status, 0);
+  assert.match(conflicting.stderr, /choose exactly one mode/);
+  assert.notEqual(unknown.status, 0);
+  assert.match(unknown.stderr, /unknown argument --unknown/);
 });
 
 assert.equal(typeof verifyLegacyIndexReconciliation, 'function');
