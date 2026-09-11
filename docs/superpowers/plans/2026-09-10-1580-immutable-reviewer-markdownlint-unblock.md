@@ -103,7 +103,7 @@ git diff --check
 Expected: every command exits 0 and the two reviewer-file SHA-256 values remain
 unchanged.
 
-- [ ] **Step 6: Commit the defect fix**
+- [x] **Step 6: Commit the defect fix**
 
 Stage only the plan, configuration, and regression test, then commit with:
 
