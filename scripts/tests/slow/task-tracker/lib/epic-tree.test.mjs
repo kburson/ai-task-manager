@@ -263,3 +263,49 @@ test('#1485: merge-back delivers a child into its parent epic recorded custom br
   // The epic remains a clean linear descendant of trunk.
   assert.doesNotThrow(() => git(['merge-base', '--is-ancestor', 'trunk', customEpic]));
 });
+
+test('#1601: merge-back delivers a recorded custom child branch into a custom epic', () => {
+  const repo = mkdtempProjectIsolated('epic-tree-custom-child-merge-back-', 'test');
+  const git = gitFor(repo);
+  const customEpic = 'cloud-test-automation';
+  const customChild = 'codex/custom-child';
+  const childWorktree = siblingPath(repo, 'custom-child-1601');
+  const customGraph = (n) =>
+    n === 910
+      ? {
+          ...GRAPH[910],
+          authoritativeBranch: customChild,
+          authoritativeWorktree: childWorktree,
+          parentAuthoritativeBranch: customEpic,
+        }
+      : (GRAPH[n] ?? { parent: null, children: [] });
+
+  git(['checkout', '-q', '-b', customEpic, 'trunk']);
+  commitInWorktree(repo, 'epic.txt', 'custom epic head\n');
+  const cut = cutChildWorktree({
+    issue: 910,
+    path: childWorktree,
+    deps: { graph: customGraph, git, trunk: 'trunk' },
+  });
+  assert.equal(cut.branch, customChild);
+  commitInWorktree(childWorktree, 'child.txt', 'custom child\n');
+
+  const childGit = gitFor(childWorktree);
+  const result = mergeBack({
+    child: 910,
+    path: childWorktree,
+    deps: {
+      graph: customGraph,
+      git,
+      worktreeGit: childGit,
+      currentWorktreeBranch: () => childGit(['branch', '--show-current']),
+      runTests: () => true,
+      trunk: 'trunk',
+    },
+  });
+
+  assert.deepEqual(result, { merged: true, epic: customEpic, child: customChild });
+  assert.ok(git(['show', `${customEpic}:child.txt`]).includes('custom child'));
+  assert.equal(git(['branch', '--list', customChild]), '');
+  assert.ok(!existsSync(childWorktree), 'custom child worktree removed after successful merge');
+});
