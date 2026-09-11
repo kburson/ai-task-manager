@@ -1,56 +1,96 @@
 #!/usr/bin/env node
-// @story #1580
+// @story #1580 #1581
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const MARKDOWNLINT = path.join(
   REPO_ROOT,
   'node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs'
 );
-const REVIEW_FILES = [
-  {
-    path: 'docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r2-reviewer-claude-review.md',
-    sha256: 'b0cffbbadf279230590bfa9295aed21c44ca8e8474d5714b6375710bbdeb0416',
-  },
-  {
-    path: 'docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r4-reviewer-claude-review.md',
-    sha256: 'ea86a94e36f9bf907921278cd43f691f84f90fe3dba975fa43a893c8d098ff1d',
-  },
+const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
+const DISPLACED_REVIEW_PATHS = [
+  'docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md',
+  'docs/superpowers/reviews/1219/plan/2026-09-04-1219-continuous-agent-delivery-amendment-r7-reviewer-claude-review.md',
+  'docs/superpowers/reviews/1219/spec/2026-09-04-1219-continuous-agent-delivery-amendment-design-r5-reviewer-claude-review.md',
+  'docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r2-reviewer-claude-review.md',
+  'docs/superpowers/reviews/1578/plan/2026-09-10-1578-package-boundary-ceiling-r4-reviewer-claude-review.md',
 ];
 
-test('Markdownlint excludes the byte-preserved #1578 reviewer responses exactly', () => {
+function runMarkdownlint(cwd, relativePath) {
+  const result = spawnSync(process.execPath, [MARKDOWNLINT, '--no-globs', `:${relativePath}`], {
+    cwd,
+    encoding: 'utf8',
+  });
+  return { status: result.status, output: `${result.stdout || ''}\n${result.stderr || ''}` };
+}
+
+test('Markdownlint replaces every exact reviewer exception with one role-based policy', () => {
   const config = JSON.parse(readFileSync(path.join(REPO_ROOT, '.markdownlint-cli2.jsonc')));
+  const digestFixture = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, 'scripts/tests/fixtures/legacy-review-archive-sha256.json'))
+  );
+  const digestByPath = new Map(digestFixture.files.map((entry) => [entry.path, entry.sha256]));
+  const workflow = readFileSync(path.join(REPO_ROOT, 'docs/guides/workflow.md'), 'utf8');
 
   assert.ok(
     !config.ignores.includes('docs/superpowers/reviews/**'),
     'the governed review archive must not be ignored broadly'
   );
+  assert.deepEqual(
+    config.ignores.filter((entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')),
+    [REVIEWER_IGNORE_GLOB]
+  );
+  assert.match(workflow, new RegExp(REVIEWER_IGNORE_GLOB.replaceAll('*', '\\*')));
+  assert.match(workflow, /owner responses[\s\S]*remain author-controlled/);
 
-  for (const review of REVIEW_FILES) {
-    assert.ok(
-      config.ignores.includes(review.path),
-      `markdownlint must ignore exact immutable reviewer artifact: ${review.path}`
-    );
-    const bytes = readFileSync(path.join(REPO_ROOT, review.path));
+  for (const reviewPath of DISPLACED_REVIEW_PATHS) {
+    const expectedHash = digestByPath.get(reviewPath);
+    assert.ok(expectedHash, `legacy digest fixture must include ${reviewPath}`);
+    const bytes = readFileSync(path.join(REPO_ROOT, reviewPath));
     assert.equal(
       createHash('sha256').update(bytes).digest('hex'),
-      review.sha256,
-      `immutable reviewer artifact changed: ${review.path}`
+      expectedHash,
+      `immutable reviewer artifact changed: ${reviewPath}`
     );
   }
+});
 
-  const lint = spawnSync(
-    process.execPath,
-    [MARKDOWNLINT, '--no-globs', ...REVIEW_FILES.map((review) => `:${review.path}`)],
-    { cwd: REPO_ROOT, encoding: 'utf8' }
-  );
-  assert.equal(lint.status, 0, `${lint.stdout || ''}\n${lint.stderr || ''}`);
+test('Markdownlint ignores reviewer bytes but still reports an equivalent owner response', () => {
+  const fixture = mkdtempProjectIsolated('markdownlint-reviewer-policy-');
+  try {
+    writeFileSync(path.join(fixture, '.gitignore'), '');
+    copyFileSync(
+      path.join(REPO_ROOT, '.markdownlint-cli2.jsonc'),
+      path.join(fixture, '.markdownlint-cli2.jsonc')
+    );
+
+    const archive = path.join(fixture, 'docs/superpowers/reviews/999/plan');
+    mkdirSync(archive, { recursive: true });
+    const reviewerPath = 'docs/superpowers/reviews/999/plan/example-r1-reviewer-claude-review.md';
+    const ownerPath = 'docs/superpowers/reviews/999/plan/example-r1-owner-codex-response.md';
+    const invalidMarkdown = '# Evidence\n\nQuoted token: ` spaced`\n';
+    writeFileSync(path.join(fixture, reviewerPath), invalidMarkdown);
+    writeFileSync(path.join(fixture, ownerPath), invalidMarkdown);
+
+    const reviewer = runMarkdownlint(fixture, reviewerPath);
+    assert.equal(reviewer.status, 0, reviewer.output);
+    assert.match(reviewer.output, /Summary: 0 issues in 0 files/);
+
+    const owner = runMarkdownlint(fixture, ownerPath);
+    assert.equal(owner.status, 1, owner.output);
+    assert.match(owner.output, new RegExp(ownerPath));
+    assert.match(owner.output, /MD038/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
 });
