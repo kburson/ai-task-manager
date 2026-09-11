@@ -15,7 +15,10 @@
 
 import { execFileSync } from 'node:child_process';
 
-import { resolveCurrentIssueWorktreeBranch } from './lib/issue-worktree-location.mjs';
+import {
+  buildGraphNodeAuthority,
+  fetchParentIssueBody,
+} from './lib/graph-node-authority.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
@@ -42,28 +45,18 @@ export function cutChildWorktree({ issue, path, deps } = {}) {
 
 // ---- CLI wiring (real git + real gh sub-issue graph) --------------------------
 
-async function realGraphNode(issue, cfg) {
-  const { fetchParentIssue } = await import('./lib/fetch-parent-issue.mjs');
-  const { fetchEpicChildren } = await import('./lib/epic-children-gate.mjs');
+export async function realGraphNode(issue, cfg, deps = {}) {
+  const fetchParentIssue =
+    deps.fetchParentIssue || (await import('./lib/fetch-parent-issue.mjs')).fetchParentIssue;
+  const fetchEpicChildren =
+    deps.fetchEpicChildren || (await import('./lib/epic-children-gate.mjs')).fetchEpicChildren;
+  const fetchParentBody = deps.fetchParentIssueBody || fetchParentIssueBody;
   const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo });
   const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue });
-  let parentAuthoritativeBranch = null;
-  if (parent != null) {
-    const { gql, splitRepo } = await import('../gh/lib/github-projects.mjs');
-    const { owner, repoName } = splitRepo(cfg.repo);
-    const data = await gql(
-      `query($owner: String!, $repo: String!, $issue: Int!) {
-        repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
-      }`,
-      { owner, repo: repoName, issue: Number(parent) }
-    );
-    parentAuthoritativeBranch = resolveCurrentIssueWorktreeBranch(data?.repository?.issue?.body);
-  }
-  return {
-    parent,
-    children: (children || []).map((c) => Number(c.number)),
-    parentAuthoritativeBranch,
-  };
+  const parentBody = await fetchParentBody({ parentIssue: parent, cfg, deps });
+  const node = buildGraphNodeAuthority({ parent, children, parentBody });
+  if (node.parentAuthorityError) throw new Error(node.parentAuthorityError);
+  return node;
 }
 
 function realGit(projectDir) {

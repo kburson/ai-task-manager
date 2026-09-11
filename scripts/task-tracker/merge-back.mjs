@@ -19,8 +19,11 @@
 import { execFileSync } from 'node:child_process';
 import { resolve as resolvePath } from 'node:path';
 
+import {
+  buildGraphNodeAuthority,
+  fetchParentIssueBody,
+} from './lib/graph-node-authority.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
-import { resolveCurrentIssueWorktreeLocation } from './lib/issue-worktree-location.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
@@ -150,37 +153,10 @@ export function buildMergeBackGraphNode({
   ownBody,
   parentBody,
 } = {}) {
-  const normalizedParent = parent == null ? null : Number(parent);
-  if (normalizedParent != null && (!Number.isInteger(normalizedParent) || normalizedParent <= 0)) {
-    throw new Error('merge-back: parent issue must be a positive integer');
-  }
-  const normalizedChildren = (children || []).map((child) => Number(child.number ?? child));
-  if (normalizedChildren.some((child) => !Number.isInteger(child) || child <= 0)) {
-    throw new Error('merge-back: child issues must be positive integers');
-  }
-  const node = { parent: normalizedParent, children: normalizedChildren };
   try {
-    const current = resolveCurrentIssueWorktreeLocation(ownBody);
-    if (current) {
-      node.authoritativeBranch = current.worktreeBranch;
-      node.authoritativeWorktree = current.worktreePath;
-    }
+    return buildGraphNodeAuthority({ parent, children, ownBody, parentBody });
   } catch (error) {
-    node.authorityError = error.message;
-    return node;
-  }
-  if (normalizedParent == null) return node;
-  if (typeof parentBody !== 'string') {
-    throw new Error(`merge-back: parent #${normalizedParent} body unavailable`);
-  }
-  try {
-    const branch = resolveCurrentIssueWorktreeLocation(parentBody)?.worktreeBranch ?? null;
-    return { ...node, ...(branch ? { parentAuthoritativeBranch: branch } : {}) };
-  } catch (error) {
-    return {
-      ...node,
-      parentAuthorityError: error.message,
-    };
+    throw new Error(error.message.replace(/^graph-node-authority:/, 'merge-back:'));
   }
 }
 
@@ -208,28 +184,15 @@ export async function loadMergeBackGraph({ child, cfg, deps = {} } = {}) {
 
 // ---- CLI wiring (real git + real gh graph + real test runner) -----------------
 
-async function fetchIssueBody(issue, cfg) {
-  const { gql, splitRepo } = await import('../gh/lib/github-projects.mjs');
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
-    }`,
-    { owner, repo: repoName, issue: Number(issue) }
-  );
-  const body = data?.repository?.issue?.body;
-  if (typeof body !== 'string') {
-    throw new Error(`merge-back: issue #${issue} body unavailable`);
-  }
-  return body;
-}
-
 export async function realGraphNode(issue, cfg, deps = {}) {
   const fetchParent =
     deps.fetchParentIssue || (await import('./lib/fetch-parent-issue.mjs')).fetchParentIssue;
   const fetchChildren =
     deps.fetchEpicChildren || (await import('./lib/epic-children-gate.mjs')).fetchEpicChildren;
-  const fetchBody = deps.fetchIssueBody || fetchIssueBody;
+  const fetchBody =
+    deps.fetchIssueBody ||
+    ((targetIssue, targetCfg) =>
+      fetchParentIssueBody({ parentIssue: targetIssue, cfg: targetCfg, deps }));
   const parent = await fetchParent({ issueNumber: issue, repo: cfg.repo });
   const children = await fetchChildren({ cfg, parentEpicNumber: issue });
   const ownBody = await fetchBody(issue, cfg);

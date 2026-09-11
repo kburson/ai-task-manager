@@ -6,8 +6,16 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { cutChildWorktree } from '../../../task-tracker/cut-child-worktree.mjs';
+import {
+  cutChildWorktree,
+  realGraphNode,
+} from '../../../task-tracker/cut-child-worktree.mjs';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const GRAPH = {
   905: { parent: null, children: [910] }, // root epic
@@ -102,4 +110,49 @@ test('#1284: invalid parent branch authority makes zero mutating Git calls', () 
     /malformed current/i
   );
   assert.deepEqual(calls, []);
+});
+
+test('#1486: production graph loading delegates authority to the shared adapter', () => {
+  const source = readFileSync(
+    path.join(__dir, '../../../task-tracker/cut-child-worktree.mjs'),
+    'utf8'
+  );
+  assert.match(source, /graph-node-authority\.mjs/);
+  assert.doesNotMatch(source, /query\(\$owner/);
+  assert.doesNotMatch(source, /resolveCurrentIssueWorktree(?:Location|Branch)\s*\(/);
+});
+
+test('#1486: production graph loading maps injected parent authority and fallback', async () => {
+  const baseDeps = {
+    fetchParentIssue: async () => 905,
+    fetchEpicChildren: async () => [{ number: 910 }],
+  };
+  const custom = await realGraphNode(910, { repo: 'owner/repo' }, {
+    ...baseDeps,
+    fetchParentIssueBody: async () =>
+      '<!-- aitm-worktree-location worktree="/wt/905" branch="cloud-test-automation" sid="test" ts="2026-09-11T00:00:00Z" -->',
+  });
+  assert.deepEqual(custom, {
+    parent: 905,
+    children: [910],
+    parentAuthoritativeBranch: 'cloud-test-automation',
+  });
+
+  const fallback = await realGraphNode(910, { repo: 'owner/repo' }, {
+    ...baseDeps,
+    fetchParentIssueBody: async () => '## Legacy parent',
+  });
+  assert.deepEqual(fallback, { parent: 905, children: [910] });
+});
+
+test('#1486: production graph loading propagates parent authority parse failures', async () => {
+  await assert.rejects(
+    realGraphNode(910, { repo: 'owner/repo' }, {
+      fetchParentIssue: async () => 905,
+      fetchEpicChildren: async () => [],
+      fetchParentIssueBody: async () =>
+        '<!-- aitm-worktree-location worktree="/wt/905" branch="cloud-test-automation" -->',
+    }),
+    /malformed/
+  );
 });
