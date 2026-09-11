@@ -281,7 +281,7 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     [
       'For an open current-head pull request, appends or reconciles one exact-head delivery intent and emits a sanctioned provider action.',
-      'For an already-merged current-head pull request, external recovery appends the exact external intent and receipt with no provider action.',
+      'For an already-merged current-head pull request, external recovery appends the exact external intent and receipt with no provider action; merge-method reconciliation additionally requires a substantive reason, the declared method to agree with observed merge topology, and refuses squash-direction reconciliation as unsupported.',
       'For an advanced local head, historical receipt recovery requires the prior accepted-SHA intent and appends its exact receipt with no provider action.',
       'Delivery performs no lifecycle transition.',
     ],

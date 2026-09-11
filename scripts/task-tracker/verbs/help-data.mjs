@@ -360,12 +360,26 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
-    usage: '/task deliver #N',
+    usage: '/task deliver #N [--reconcile-merge-method <merge|squash|rebase> --reason <text>]',
+    flags: [
+      {
+        flag: '--reconcile-merge-method <merge|squash|rebase>',
+        desc: 'declare the observed method for an already-merged external recovery; squash-direction reconciliation is unsupported',
+      },
+      {
+        flag: '--reason <text>',
+        desc: 'substantive explanation required with --reconcile-merge-method',
+      },
+    ],
     exitCodes: [
       { code: 20, meaning: 'provider action required' },
       { code: 21, meaning: 'manual code review required after CI; approve the exact PR head' },
     ],
-    examples: ['/task deliver 939', 'npx aitm deliver #N'],
+    examples: [
+      '/task deliver 939',
+      'npx aitm deliver #N',
+      '/task deliver 939 --reconcile-merge-method merge --reason "provider used merge"',
+    ],
   },
   evidence: {
     topic: 'evidence',

@@ -26,6 +26,21 @@ test('deliver help and catalog describe current-head and historical recovery mod
   assert.match(VERB_CONTRACTS.deliver.output.join(' '), /AITM_DELIVERY_RESULT/);
 });
 
+test('#1573: deliver help exposes merge-method reconciliation without overstating it', () => {
+  const flags = VERB_REFERENCE.deliver.flags ?? [];
+  const reconcile = flags.find(({ flag }) => flag.startsWith('--reconcile-merge-method'));
+  const reason = flags.find(({ flag }) => flag === '--reason <text>');
+  const effects = VERB_CONTRACTS.deliver.effects.join(' ');
+
+  assert.ok(reconcile, 'the merge-method reconciliation flag is documented');
+  assert.match(reconcile.flag, /<merge\|squash\|rebase>/);
+  assert.match(reconcile.desc, /already-merged external recovery/i);
+  assert.ok(reason, 'the reconciliation reason flag is documented');
+  assert.match(reason.desc, /required.*--reconcile-merge-method/i);
+  assert.match(effects, /declared method.*observed merge topology/i);
+  assert.match(effects, /squash-direction reconciliation.*unsupported/i);
+});
+
 test('close help distinguishes Incorporated owner assertion from duplicate and incident-epic use', () => {
   assert.match(VERB_REFERENCE.close.usage, /incorporated/);
   const asFlag = VERB_REFERENCE.close.flags.find(({ flag }) => flag.startsWith('--as'));
