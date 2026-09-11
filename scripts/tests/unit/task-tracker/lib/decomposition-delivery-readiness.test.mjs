@@ -143,9 +143,7 @@ test('malformed durable branch authority refuses without canonical fallback', as
 
   assert.equal(result.status, 'refused');
   assert.ok(
-    result.blockers.some(
-      (item) => item.startsWith('branch-authority: ') && /malformed/.test(item)
-    )
+    result.blockers.some((item) => item.startsWith('branch-authority: ') && /malformed/.test(item))
   );
 });
 

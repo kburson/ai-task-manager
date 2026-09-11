@@ -15,10 +15,7 @@
 
 import { execFileSync } from 'node:child_process';
 
-import {
-  buildGraphNodeAuthority,
-  fetchParentIssueBody,
-} from './lib/graph-node-authority.mjs';
+import { buildGraphNodeAuthority, fetchParentIssueBody } from './lib/graph-node-authority.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 

@@ -1,5 +1,6 @@
 // @story #1486
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const moduleUrl = new URL('../../../../task-tracker/lib/graph-node-authority.mjs', import.meta.url);
@@ -12,7 +13,11 @@ async function loadContract() {
   return contract;
 }
 
-function marker({ path = '/work/epic', branch = 'codex/custom-epic', ts = '2026-09-11T00:00:00Z' } = {}) {
+function marker({
+  path = '/work/epic',
+  branch = 'codex/custom-epic',
+  ts = '2026-09-11T00:00:00Z',
+} = {}) {
   return `<!-- aitm-worktree-location worktree="${path}" branch="${branch}" sid="test" ts="${ts}" -->`;
 }
 
@@ -23,7 +28,11 @@ test('shared graph-node authority contract exists', async () => {
 test('maps parent custom authority and preserves marker-free fallback', async () => {
   const { buildGraphNodeAuthority } = await loadContract();
   assert.deepEqual(
-    buildGraphNodeAuthority({ parent: '1485', children: [{ number: '1486' }], parentBody: marker() }),
+    buildGraphNodeAuthority({
+      parent: '1485',
+      children: [{ number: '1486' }],
+      parentBody: marker(),
+    }),
     { parent: 1485, children: [1486], parentAuthoritativeBranch: 'codex/custom-epic' }
   );
   assert.deepEqual(buildGraphNodeAuthority({ parent: 1485, children: [], parentBody: '## Epic' }), {
@@ -89,7 +98,10 @@ test('supports rich child mapping while validating default identities', async ()
     }).children,
     [{ number: 1486, title: 'Child', closeReason: 'COMPLETED' }]
   );
-  assert.throws(() => buildGraphNodeAuthority({ parent: 0 }), /parent issue must be a positive integer/);
+  assert.throws(
+    () => buildGraphNodeAuthority({ parent: 0 }),
+    /parent issue must be a positive integer/
+  );
   assert.throws(() => buildGraphNodeAuthority({ children: [{ number: 'nope' }] }), /child issue/);
   assert.throws(() => buildGraphNodeAuthority({ children: null }), /children must be an array/);
   assert.throws(() => buildGraphNodeAuthority({ mapChild: null }), /mapChild must be a function/);
@@ -143,4 +155,24 @@ test('null parents do not fetch and unavailable fetched bodies fail closed', asy
     fetchParentIssueBody({ parentIssue: 1485, cfg: { repo: 'owner/repo' }, deps }),
     /graph-node-authority: parent #1485 body unavailable/
   );
+});
+
+test('all five production consumers share the authority boundary', () => {
+  const consumers = [
+    '../../../../task-tracker/cut-child-worktree.mjs',
+    '../../../../task-tracker/merge-back.mjs',
+    '../../../../task-tracker/epic-base-edit-guard.mjs',
+    '../../../../task-tracker/lib/close-gates-lineage.mjs',
+    '../../../../task-tracker/lib/decomposition-delivery-readiness.mjs',
+  ];
+  for (const relative of consumers) {
+    const source = readFileSync(new URL(relative, import.meta.url), 'utf8');
+    assert.match(source, /graph-node-authority\.mjs/, relative);
+    assert.doesNotMatch(source, /resolveCurrentIssueWorktree(?:Location|Branch)\s*\(/, relative);
+  }
+
+  for (const relative of consumers.slice(0, 2)) {
+    const source = readFileSync(new URL(relative, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /query\(\$owner/, relative);
+  }
 });
