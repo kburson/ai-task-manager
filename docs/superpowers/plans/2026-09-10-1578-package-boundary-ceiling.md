@@ -396,7 +396,7 @@ Expected: #1580 is Done and #1578's BLOCKED disposition has cleared; the worktre
 ## Delivery Recovery Amendment — 2026-09-11
 
 The #1578 implementation remains commit
-`c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`. It was included in shared PR
+`c7a4fe5a38d5a97809068cd1a6f183ed6d91e553`. It was included in shared
 PR #1582 at head `369934e676c88727033cc012bd23eddba2453f47`, which GitHub
 squash-merged as `fd2b0830d9c214aac087de4c29efbd13f4c85b0d`.
 
@@ -406,7 +406,7 @@ the #1580 recovery amendment at head
 `1cc84346676f69f3c2ae8646eececf264c0d7aac` and landed as
 `efca9bc903512cbd186d0ca57b9e6440c0f6a600`. Its canonical attribution
 trailer is intentionally byte-ordered for #1580, so it does not authorize a
-Issue #1578 receipt even though it contains the #1578 token.
+receipt for #1578 even though it contains the #1578 token.
 
 The preserved `codex/ai-peer-review-design` branch incorporated that landed
 commit with the normal, non-rewriting merge
