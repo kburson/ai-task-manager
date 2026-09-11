@@ -42,10 +42,6 @@ test('npm pack excludes the test corpus while retaining required runtime files a
     'package/scripts/task-tracker/hooks/grok-wire.mjs',
     'package/scripts/task-tracker/lib/occupancy.mjs',
     'package/scripts/task-tracker/lib/apply-patch-targets.mjs',
-    'package/scripts/review/lib/index.mjs',
-    'package/scripts/review/lib/provider-session.mjs',
-    'package/scripts/review/lib/runtime-root.mjs',
-    'package/scripts/review/lib/repository-boundary.mjs',
     'package/skill/adapters/grok/SKILL.md',
     'package/docs/guides/grok-provider.md',
   ]) {

@@ -46,7 +46,6 @@ function claimForBind(ctx, issue) {
   return claim(
     { projectDir: ctx.projectDir, issue, now: ctx.nowIso },
     {
-      coReviewAllowsWorktree: ctx.coReviewAllowsWorktree,
       claimOccupancy: ctx.claimOccupancy,
     }
   );

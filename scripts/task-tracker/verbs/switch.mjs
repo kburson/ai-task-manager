@@ -49,7 +49,6 @@ export async function verbSwitch(ctx, target) {
   const claim = (ctx.claimBindingOccupancy ?? claimBindingOccupancy)(
     { projectDir, issue: target, now: nowIso },
     {
-      coReviewAllowsWorktree: ctx.coReviewAllowsWorktree,
       claimOccupancy: ctx.claimOccupancy,
     }
   );

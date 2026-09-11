@@ -80,16 +80,11 @@ function repoRoot() {
 // package surface therefore grows by exactly four entries.
 // #871 intentionally ships one runtime lib — the base-aware cleanup planner
 // (scripts/task-tracker/lib/cleanup-base-aware.mjs) — growing the surface by one.
-// #1266 intentionally ships the co-review entrypoint, recovery help, and protocol
-// authority, growing the measured package surface by exactly three entries.
 // #1279 intentionally ships the WBS coverage reconciler used by the Plan-exit
 // guard, growing the measured package surface by exactly one entry.
-// #1268 adds three required co-review runtime modules to the shipped package.
 // #1208 adds one pure scheduling seam for the bounded subprocess phase.
 // #1295 adds the temporary capture guide, control CLI, process shim, and capture
 // authority module. The four files are required for installed-package parity.
-// #1292 adds the shipped co-review repository boundary used by the runtime.
-// #1269 adds the guided co-review startup and handoff publication module.
 // #1317 adds one shared proof resolver so Test exit and close validate the same
 // current docs-only lane-skip receipt before waiving suite-derived checkboxes.
 // #1324 adds the Grok guide, adapter, skill, wire bridge, hook-idempotency
@@ -120,10 +115,10 @@ function repoRoot() {
 // #1578 accounts for #1546's shipped peer-review adapter. The synchronized
 // branch surface was 778 before that one required runtime entry; raise by one
 // and retain no contingency headroom.
-// #1591 ships the bounded legacy-index reconciliation CLI and its lock-safe
-// implementation module. Raise by exactly those two reviewed runtime entries;
-// #1592 remeasures the package after legacy review-runtime decommission.
-const ENTRY_CEILING = 781;
+// #1591 shipped the bounded legacy-index reconciliation CLI and its lock-safe
+// implementation module. #1592 removes those files with the rest of the legacy
+// review runtime; the measured post-decommission package surface is 768 entries.
+const ENTRY_CEILING = 768;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -210,11 +205,6 @@ test('package-boundary: runtime entry points are still shipped', () => {
   for (const required of [
     'bin/cli.mjs',
     'bin/aitm.mjs',
-    'scripts/review/co-review.mjs',
-    'scripts/review/reconcile-legacy-index.mjs',
-    'scripts/review/lib/reconciliation.mjs',
-    'scripts/review/lib/repository-boundary.mjs',
-    'scripts/review/lib/start.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',

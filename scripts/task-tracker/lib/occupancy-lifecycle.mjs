@@ -8,7 +8,6 @@ import {
   rollbackOccupancyClaim,
   touchOccupancy,
 } from './occupancy.mjs';
-import { allowsCoReviewOccupancy } from '../../review/lib/index.mjs';
 
 function identity({ projectDir, issue, now }) {
   return {
@@ -32,10 +31,7 @@ function generationIdentity(input) {
 
 export function claimBindingOccupancy(input, deps = {}) {
   const claim = deps.claimOccupancy || claimOccupancy;
-  return claim(generationIdentity(input), {
-    coReviewAllowsWorktree:
-      deps.coReviewAllowsWorktree || ((occupancy) => allowsCoReviewOccupancy(occupancy)),
-  });
+  return claim(generationIdentity(input));
 }
 
 export function rollbackBindingOccupancy(claim, deps = {}) {
@@ -54,10 +50,7 @@ export function heartbeatBindingOccupancy(input, deps = {}) {
 
 export function touchBindingOccupancy(input, deps = {}) {
   const touch = deps.touchOccupancy || touchOccupancy;
-  return touch(generationIdentity(input), {
-    coReviewAllowsWorktree:
-      deps.coReviewAllowsWorktree || ((occupancy) => allowsCoReviewOccupancy(occupancy)),
-  });
+  return touch(generationIdentity(input));
 }
 
 export function releaseBindingOccupancy(input, deps = {}) {

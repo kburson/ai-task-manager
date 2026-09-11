@@ -422,7 +422,7 @@ export const VERB_REFERENCE = {
       { flag: '--record <path>', desc: 'validate live observations and append one ledger' },
       {
         flag: '--approve <ledger-id>',
-        desc: 'authenticate the GitHub user and explicitly approve one ledger; co-review is not approval',
+        desc: 'authenticate the GitHub user and explicitly approve one ledger; artifact peer review is not approval',
       },
       { flag: '--digest <sha256:digest>', desc: 'exact canonical digest required by --approve' },
     ],

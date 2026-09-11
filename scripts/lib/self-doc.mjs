@@ -117,15 +117,6 @@ const ROUTABLE_SELF_DOC = {
     audience: 'AI/operator immediately before incident closure or after every approved outcome.',
     usage: 'aitm verify-delivery-incident-reconciliation --issue 1381 [--phase pre-close|terminal]',
   },
-  'co-review': {
-    group: 'Workflow',
-    path: 'scripts/review/co-review.mjs',
-    synopsis:
-      'Coordinate immutable owner/reviewer rounds through acceptance and deterministic evidence publication.',
-    audience: 'Artifact owner, external reviewer, or authenticated human authority.',
-    usage:
-      'aitm co-review <start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize> [--low-level] [--dir <path>] [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--issue <N> --artifact-kind <spec|plan>] [--max-turns <N>] [--wait-cycles <N>] [--wait-interval <seconds>] [--import-review <file>] [--review-of <sha>] [--archive-dir <path>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--file <path>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--good-enough] [--json]',
-  },
   'value-report': {
     group: 'Reports',
     path: 'scripts/reports/generate-value-report.mjs',
@@ -326,49 +317,6 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
       '--phase pre-close|terminal',
       'Pre-mutation topology check or terminal outcome proof; terminal is the default.'
     ),
-  ],
-  'co-review': [
-    argument(
-      'start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize',
-      'Protocol subcommand in lifecycle order.'
-    ),
-    argument(
-      '--low-level',
-      'Required compatibility opt-in for direct init; ordinary startup uses start.'
-    ),
-    argument('--dir <path>', 'Caller-selected or guided-start-derived Git-ignored directory.'),
-    argument(
-      '--artifact <path>',
-      'Authoritative tracked artifact; start, init, and owner handoff.'
-    ),
-    argument('--owner <identity>', 'Configured artifact-owner identity; start and init.'),
-    argument('--reviewer <identity>', 'Configured external-reviewer identity; start and init.'),
-    argument('--issue <N>', 'Guided-start host issue; paired with --artifact-kind.'),
-    argument(
-      '--artifact-kind <spec|plan>',
-      'Guided-start host artifact kind; paired with --issue.'
-    ),
-    argument('--max-turns <N>', 'Initial or authenticated absolute reviewer-response maximum.'),
-    argument('--wait-cycles <N>', 'Guided-start observed waits per episode; default 15.'),
-    argument('--wait-interval <seconds>', 'Guided-start seconds per wait from 1 through 60.'),
-    argument('--import-review <file>', 'Existing immutable review; init with --review-of.'),
-    argument('--review-of <sha>', 'Exact owner commit reviewed by import or reviewer handoff.'),
-    argument('--archive-dir <path>', 'Tracked repository destination for terminal evidence.'),
-    argument('--actor <identity>', 'Configured identity claiming, waiting, or handing off.'),
-    argument('--timeout <seconds>', 'Bounded wait timeout from 0 through 60; default 55.'),
-    argument('--response <file>', 'Immutable owner response file.'),
-    argument('--commit <sha>', 'Exact commit containing the owner artifact revision.'),
-    argument('--answers <review>', 'Preceding immutable review answered by the owner.'),
-    argument('--review <file>', 'Immutable reviewer output file.'),
-    argument('--decision accepted|changes-requested', 'Explicit reviewer decision.'),
-    argument('--summary <file>', 'Optional only on the final changes-requested review.'),
-    argument('--message <text>', 'Human-readable handoff message.'),
-    argument('--file <path>', 'Immutable supplement registered during intervention.'),
-    argument('--additional-turns <N>', 'Legacy positive reviewer turns added after interception.'),
-    argument('--approved-by <identity>', 'Deprecated and ignored; authenticated gh login is used.'),
-    argument('--focus <file>', 'Optional immutable human refocus instructions.'),
-    argument('--good-enough', 'Authenticated human terminal acceptance during intervention.'),
-    argument('--json', 'Machine-readable status or finalization output.'),
   ],
   'value-report': [
     argument('--project-id <id>', 'GitHub Project id override.'),
@@ -584,36 +532,6 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       'npx aitm verify-delivery-incident-reconciliation --issue 1381',
     ],
     relatedCommands: ['incident-ledger', 'close'],
-  }),
-  'co-review': routableContract({
-    preconditions: [
-      'Normal commands run in the authoritative Git worktree; help is safe before repository discovery.',
-      'Start is the canonical fresh-session path; direct init requires explicit --low-level compatibility intent.',
-      'Human budget, supplement, continuation, and good-enough commands require authenticated gh identity.',
-    ],
-    effects: [
-      'Mutations update local protocol state under its mutex; terminal publication runs outside that mutex.',
-      'Guided start delegates initialization, optionally derives docs/superpowers/reviews/<issue>/<spec|plan>/ from paired explicit host context, then atomically publishes hashed author and reviewer handoffs inside the ignored runtime directory; it never launches agents.',
-      'Evidence archives preserve exact bytes and are never staged or committed by co-review.',
-    ],
-    output: [
-      'Prints recovery help, validated protocol state, immutable hashes, budget arithmetic, archive results, and the exact next action.',
-    ],
-    exitCodes: [
-      exitCode(0, 'help or requested protocol command completed'),
-      exitCode(1, 'runtime, Git, integrity, lock, role, or protocol transition refused'),
-      exitCode(2, 'subcommand or option usage is invalid'),
-      exitCode(3, 'bounded wait timed out without mutating protocol state'),
-      exitCode(4, 'acceptance is durable while archive publication remains pending'),
-    ],
-    examples: [
-      'npx aitm co-review --help',
-      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent',
-      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --issue 1272 --artifact-kind spec',
-      'npx aitm co-review status --dir .scratch/1117-review',
-      'npx aitm co-review finalize --dir .scratch/1117-review --archive-dir docs/reviews/1117',
-    ],
-    relatedCommands: ['status', 'verify-develop'],
   }),
   'value-report': routableContract({
     output: ['Writes the HTML report and, unless --html is set, attempts PDF generation.'],
@@ -888,33 +806,6 @@ const DIRECT_SELF_DOC = Object.freeze({
     effects: ['Reads environment and worktree state without modifying either.'],
     output: ['Reports every contract violation or confirms the local worktree is ready.'],
     relatedCommands: ['ensure-self-link', 'npm ci', 'npm run link:self'],
-  }),
-  'reconcile-legacy-index': directDoc('reconcile-legacy-index', {
-    group: 'Maintenance',
-    path: 'scripts/review/reconcile-legacy-index.mjs',
-    classification: 'live-maintenance-or-migration',
-    synopsis: 'Inspect, reconcile, or verify the authoritative legacy co-review index.',
-    usage:
-      'reconcile-legacy-index [--apply|--verify] [--yes] [--project-dir <path>] [--index-file <path> --journal-file <path>]',
-    arguments: [
-      argument('--apply', 'Remove only active rows proven stale and append the audit journal.'),
-      argument('--verify', 'Verify zero active rows, journal integrity, and archive preservation.'),
-      argument('--yes', 'Approve a non-interactive apply after the bounded blast-radius preview.'),
-      argument('--project-dir <path>', 'Override the repository root.'),
-      argument('--index-file <path>', 'Override the legacy index; requires --journal-file.'),
-      argument(
-        '--journal-file <path>',
-        'Override the reconciliation journal; requires --index-file.'
-      ),
-    ],
-    preconditions: [
-      'Run from the governed repository with exclusive access to the legacy review index.',
-    ],
-    effects: [
-      'Inspect and verify are read-only; apply writes a lock-scoped index projection and append-only journal.',
-    ],
-    output: ['Prints deterministic JSON inventory, apply-summary, or verification evidence.'],
-    relatedCommands: ['co-review', 'peer-review-migration'],
   }),
   'heal-stage-rollups': directDoc('heal-stage-rollups', {
     group: 'Maintenance',

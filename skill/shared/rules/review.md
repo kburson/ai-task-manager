@@ -26,14 +26,12 @@ Stop. Do not run `/task close`. Do not infer human approval from passing tests o
 
 `/task review` governs an AITM issue's Test-to-Review transition. Specification
 and plan peer review is a separate package workflow: invoke the installed
-`peer-review` CLI directly and use its generated commands. Do not add or use an
-`npx aitm peer-review` wrapper.
+`peer-review` CLI directly and use its generated commands. AITM exposes no
+peer-review compatibility subcommand.
 
-The legacy `npx aitm co-review` runtime remains available only while the
-main-worktree legacy index contains an active row. Migration must read that
-index and fail closed before removing or disabling `scripts/review/**`. New
-reviews use `peer-review`; accepted and abandoned legacy archives remain
-byte-immutable and are never upgraded.
+`peer-review` is the sole supported artifact-review command. AITM does not
+expose a compatibility wrapper or own review protocol schemas. Historical
+legacy archives remain byte-immutable and are not upgraded.
 
 ## Pre-review verification (mandatory, in order)
 
