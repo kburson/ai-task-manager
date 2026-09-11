@@ -11,11 +11,12 @@ cursor.
 **Architecture:** Keep race handling in an SDK-independent `waitForHandoff`
 function over a delivery-reader interface. Implement the reader with
 check-before-subscribe filesystem notifications that always re-read
-`events.jsonl` and the matching immutable receipt. Use the official MCP v2
-server package only at the stdio wire boundary.
+`events.jsonl` and the matching immutable receipt. Use exact-pinned official MCP
+SDK v1 only at the stdio wire boundary; the dependency gate rejected the v2
+server package because its published bundle eagerly loads vulnerable code.
 
 **Tech Stack:** Node.js 22 ESM, `node:test`, `fs.watch`,
-`@modelcontextprotocol/server@2.0.0`, Zod 4 through the SDK dependency graph.
+`@modelcontextprotocol/sdk@1.30.0`, Zod 4 through the SDK dependency graph.
 
 ## Global Constraints
 
@@ -32,6 +33,9 @@ server package only at the stdio wire boundary.
   setup, or the Phase 2 release; those are owned by #1548.
 - Do not add the MCP runtime dependency until the dependency audit is independently
   reviewed.
+- Do not install `@modelcontextprotocol/server@2.0.0`; its source maps prove the
+  stdio path eagerly loads bundled vulnerable `fast-uri@3.1.0`, which npm audit
+  and overrides cannot govern.
 
 ---
 
@@ -45,8 +49,8 @@ server package only at the stdio wire boundary.
 
 **Interfaces:**
 
-- Consumes: npm metadata and lock-only graph for
-  `@modelcontextprotocol/server@2.0.0`.
+- Consumes: npm metadata, bundle inventory, and isolated lockfile graphs for
+  `@modelcontextprotocol/server@2.0.0` and `@modelcontextprotocol/sdk@1.30.0`.
 - Produces: an exact dependency decision and reproducible production audit.
 
 - [ ] **Step 1: Create and verify the isolated worktree**
@@ -74,20 +78,23 @@ Expected: every existing lane exits 0 before Phase 2 changes.
 - [ ] **Step 3: Write the dependency audit before installation**
 
 The record must include exact version, integrity, license, Node floor, direct and
-transitive packages, `npm audit --omit=dev`, production installed-size and packed
-tarball deltas, alternatives, and this conclusion:
+transitive packages, bundled packages, `npm audit --omit=dev`, production
+installed-size and packed-tarball deltas, alternatives, and this conclusion:
 
 ```text
-Approve @modelcontextprotocol/server@2.0.0 only for the MCP stdio boundary.
-Keep wait, delivery authority, and filesystem watching independent of the SDK.
-Reject the legacy @modelcontextprotocol/sdk monolith and handwritten MCP framing.
+Reject @modelcontextprotocol/server@2.0.0 because its eager stdio path bundles
+vulnerable fast-uri@3.1.0 outside package-manager audit and override control.
+Approve exact-pinned @modelcontextprotocol/sdk@1.30.0 only for MCP stdio while
+keeping wait, delivery authority, and filesystem watching SDK-independent.
+Reject handwritten MCP framing and re-evaluate server-only v2 after an upstream
+patched release.
 ```
 
 - [ ] **Step 4: Obtain independent audit review, then install exactly**
 
 ```bash
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait \
-  install --save-exact @modelcontextprotocol/server@2.0.0
+  install --save-exact @modelcontextprotocol/sdk@1.30.0
 npm --prefix /Users/kpburson/projects/Vibe-Coding/ai-peer-review-worktrees/1547-mcp-wait \
   audit --omit=dev
 ```
@@ -237,7 +244,7 @@ Expected: all wait tests pass with no leaked watcher or timer handles.
 
 **Interfaces:**
 
-- Consumes: `waitForHandoff` and `@modelcontextprotocol/server` stdio APIs.
+- Consumes: `waitForHandoff` and `@modelcontextprotocol/sdk` stdio APIs.
 - Produces: MCP tool
   `wait_for_handoff(review_id, participant) -> Delivery` and a runnable local
   server connection.
@@ -267,11 +274,11 @@ export function createHandoffMcpServer({
 }
 ```
 
-Production wiring imports `McpServer` and dual-era `serveStdio` from the official
-server-only package. The configured repository root owns
-`.scratch/peer-review/<review-id>`; an MCP caller never supplies an arbitrary
-workspace path. Tests inject a fake server so they verify this package's tool
-contract rather than SDK internals.
+Production wiring imports `McpServer` and `StdioServerTransport` from the
+exact-pinned official SDK and connects them directly. The configured repository
+root owns `.scratch/peer-review/<review-id>`; an MCP caller never supplies an
+arbitrary workspace path. Tests inject a fake server so they verify this
+package's tool contract rather than SDK internals.
 
 - [ ] **Step 2: Run focused and complete standalone verification**
 
