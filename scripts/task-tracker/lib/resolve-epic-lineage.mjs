@@ -66,9 +66,24 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
     throw new Error('resolve-epic-lineage: authoritative branch must be a non-empty string');
   }
   const branch = node.authoritativeBranch || canonicalBranch;
+  if (
+    node.authoritativeWorktree != null &&
+    (typeof node.authoritativeWorktree !== 'string' || !node.authoritativeWorktree)
+  ) {
+    throw new Error('resolve-epic-lineage: authoritative worktree must be a non-empty string');
+  }
+  const worktreePath = node.authoritativeWorktree || null;
+  const worktreeAuthority = worktreePath ? { worktreePath } : {};
 
   if (role === 'story') {
-    return { role, branch, epicBranch: null, parentBranch: trunk, parentIssue };
+    return {
+      role,
+      branch,
+      ...worktreeAuthority,
+      epicBranch: null,
+      parentBranch: trunk,
+      parentIssue,
+    };
   }
 
   let parentEpicBranch = null;
@@ -93,6 +108,7 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
     return {
       role,
       branch,
+      ...worktreeAuthority,
       epicBranch: branch,
       parentBranch: parentEpicBranch || trunk,
       parentIssue,
@@ -103,6 +119,7 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
   return {
     role,
     branch,
+    ...worktreeAuthority,
     epicBranch: parentEpicBranch,
     parentBranch: parentEpicBranch,
     parentIssue,

@@ -15,6 +15,7 @@ import {
   buildMergeBackGraphNode,
   loadMergeBackGraph,
   mergeBack,
+  realGraphNode,
 } from '../../../task-tracker/merge-back.mjs';
 import { resolveEpicLineage } from '../../../task-tracker/lib/resolve-epic-lineage.mjs';
 import { serializeIssueWorktreeLocationMarker } from '../../../task-tracker/lib/issue-worktree-location.mjs';
@@ -187,6 +188,70 @@ test('#1485: graph mapping preserves a valid parent custom branch', () => {
   });
 });
 
+test('#1601: graph mapping preserves the current issue custom branch and worktree', () => {
+  const ownBody = parentBodyWith([
+    {
+      worktreePath: '/wt/custom-child',
+      worktreeBranch: 'codex/custom-child',
+      sessionId: 'session-1601',
+      ts: '2026-09-11T00:00:00Z',
+    },
+  ]);
+  assert.deepEqual(
+    buildMergeBackGraphNode({
+      parent: 905,
+      children: [],
+      ownBody,
+      parentBody: '## Parent issue\n',
+    }),
+    {
+      parent: 905,
+      children: [],
+      authoritativeBranch: 'codex/custom-child',
+      authoritativeWorktree: '/wt/custom-child',
+    }
+  );
+});
+
+test('#1601: malformed and ambiguous current issue authority map to authorityError', () => {
+  const cases = [
+    {
+      name: 'malformed',
+      ownBody: '<!-- aitm-worktree-location worktree="/wt/custom-child" -->',
+      expected: /malformed/i,
+    },
+    {
+      name: 'ambiguous',
+      ownBody: parentBodyWith([
+        {
+          worktreePath: '/wt/custom-child',
+          worktreeBranch: 'codex/custom-child',
+          sessionId: 's1',
+          ts: '2026-09-11T00:00:00Z',
+        },
+        {
+          worktreePath: '/wt/other-child',
+          worktreeBranch: 'codex/other-child',
+          sessionId: 's2',
+          ts: '2026-09-11T00:00:00Z',
+        },
+      ]),
+      expected: /ambiguous/i,
+    },
+  ];
+  for (const scenario of cases) {
+    const node = buildMergeBackGraphNode({
+      parent: 905,
+      children: [],
+      ownBody: scenario.ownBody,
+      parentBody: '## Parent issue\n',
+    });
+    assert.equal('authoritativeBranch' in node, false, scenario.name);
+    assert.equal('authoritativeWorktree' in node, false, scenario.name);
+    assert.match(node.authorityError, scenario.expected, scenario.name);
+  }
+});
+
 test('#1485: a parent body with no authority marker preserves canonical fallback', () => {
   const node = buildMergeBackGraphNode({
     parent: 905,
@@ -273,6 +338,47 @@ test('#1485: graph loader prefetches child and immediate epic by issue number', 
   assert.throws(() => graph(999), /not prefetched/);
 });
 
+test('#1601: production graph loading reads own and parent worktree authority separately', async () => {
+  const loadedBodies = [];
+  const ownBody = parentBodyWith([
+    {
+      worktreePath: '/wt/custom-child',
+      worktreeBranch: 'codex/custom-child',
+      sessionId: 'child-session',
+      ts: '2026-09-11T00:00:00Z',
+    },
+  ]);
+  const parentBody = parentBodyWith([
+    {
+      worktreePath: '/wt/custom-epic',
+      worktreeBranch: 'cloud-test-automation',
+      sessionId: 'epic-session',
+      ts: '2026-09-11T00:00:00Z',
+    },
+  ]);
+  const node = await realGraphNode(
+    910,
+    { repo: 'owner/repo' },
+    {
+      fetchParentIssue: async () => 905,
+      fetchEpicChildren: async () => [],
+      fetchIssueBody: async (issue) => {
+        loadedBodies.push(issue);
+        return issue === 910 ? ownBody : parentBody;
+      },
+    }
+  );
+
+  assert.deepEqual(loadedBodies, [910, 905]);
+  assert.deepEqual(node, {
+    parent: 905,
+    children: [],
+    authoritativeBranch: 'codex/custom-child',
+    authoritativeWorktree: '/wt/custom-child',
+    parentAuthoritativeBranch: 'cloud-test-automation',
+  });
+});
+
 test('#1485: a node outside the prefetched set fails closed rather than being fabricated', async () => {
   const graph = await loadMergeBackGraph({
     child: 42,
@@ -287,6 +393,82 @@ const customGraph = (n) =>
   n === 910
     ? { ...GRAPH[910], parentAuthoritativeBranch: 'cloud-test-automation' }
     : (GRAPH[n] ?? { parent: null, children: [] });
+
+const customChildGraph = (n) =>
+  n === 910
+    ? {
+        ...GRAPH[910],
+        authoritativeBranch: 'codex/custom-child',
+        authoritativeWorktree: '/wt/custom-child',
+        parentAuthoritativeBranch: 'cloud-test-automation',
+      }
+    : (GRAPH[n] ?? { parent: null, children: [] });
+
+test('#1601: a recorded custom child branch drives rebase, merge, and cleanup', () => {
+  const git = makeGit();
+  const wtGit = makeGit();
+  const result = mergeBack({
+    child: 910,
+    path: '/wt/custom-child',
+    deps: {
+      graph: customChildGraph,
+      git,
+      worktreeGit: wtGit,
+      currentWorktreeBranch: () => 'codex/custom-child',
+      runTests: () => true,
+    },
+  });
+
+  assert.equal(result.child, 'codex/custom-child');
+  assert.deepEqual(wtGit.calls[0], ['rebase', 'cloud-test-automation', 'codex/custom-child']);
+  const calls = git.calls.map((args) => args.join(' '));
+  assert.ok(calls.includes('merge --ff-only codex/custom-child'));
+  assert.ok(calls.includes('worktree remove /wt/custom-child'));
+  assert.ok(calls.includes('branch -d codex/custom-child'));
+});
+
+test('#1601: recorded child path and checked-out branch mismatches refuse before mutation', () => {
+  for (const scenario of [
+    {
+      name: 'path mismatch',
+      path: '/wt/wrong-child',
+      currentWorktreeBranch: () => 'codex/custom-child',
+      expected: /worktree path/i,
+    },
+    {
+      name: 'branch mismatch',
+      path: '/wt/custom-child',
+      currentWorktreeBranch: () => 'codex/wrong-child',
+      expected: /checked-out branch/i,
+    },
+  ]) {
+    const git = makeGit();
+    const wtGit = makeGit();
+    let ranTests = false;
+    assert.throws(
+      () =>
+        mergeBack({
+          child: 910,
+          path: scenario.path,
+          deps: {
+            graph: customChildGraph,
+            git,
+            worktreeGit: wtGit,
+            currentWorktreeBranch: scenario.currentWorktreeBranch,
+            runTests: () => {
+              ranTests = true;
+              return true;
+            },
+          },
+        }),
+      scenario.expected,
+      scenario.name
+    );
+    assert.deepEqual(git.calls, [], scenario.name);
+    assert.deepEqual(wtGit.calls, [], scenario.name);
+    assert.equal(ranTests, false, scenario.name);
+  }
+});
 
 test('#1485: a recorded custom epic branch drives rebase, checkout, and fast-forward', () => {
   const git = makeGit();

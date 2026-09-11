@@ -17,9 +17,10 @@
 // (git + graph + test-runner); the CLI wires the real ones.
 
 import { execFileSync } from 'node:child_process';
+import { resolve as resolvePath } from 'node:path';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
-import { resolveCurrentIssueWorktreeBranch } from './lib/issue-worktree-location.mjs';
+import { resolveCurrentIssueWorktreeLocation } from './lib/issue-worktree-location.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
@@ -63,6 +64,27 @@ export function mergeBack({ child, path, deps } = {}) {
     );
   }
   const childBranch = childLineage.branch;
+
+  // #1601 — a durable child worktree record is branch authority, not a hint.
+  // Validate the operator-supplied path and its checked-out branch before any
+  // mutating Git command. Legacy issues without a record retain the canonical
+  // branch synthesized by resolveEpicLineage.
+  if (
+    childLineage.worktreePath &&
+    (!path || resolvePath(path) !== resolvePath(childLineage.worktreePath))
+  ) {
+    throw new Error(
+      `merge-back: supplied worktree path ${JSON.stringify(path || '')} does not match recorded child worktree path ${JSON.stringify(childLineage.worktreePath)}`
+    );
+  }
+  if (path && typeof deps.currentWorktreeBranch === 'function') {
+    const currentBranch = deps.currentWorktreeBranch();
+    if (currentBranch !== childBranch) {
+      throw new Error(
+        `merge-back: checked-out branch ${JSON.stringify(currentBranch)} does not match recorded child branch ${JSON.stringify(childBranch)}`
+      );
+    }
+  }
 
   // Resolve the epic's own parent (the child's grandparent) to know what the epic
   // should sync onto: trunk for a root epic, the outer epic for a nested one.
@@ -109,23 +131,25 @@ export function mergeBack({ child, path, deps } = {}) {
 // ---- #1485: graph-node mapping and prefetch boundaries -----------------------
 
 // Pure mapping boundary: turn one issue's raw graph evidence (numeric parent,
-// child list, and the PARENT issue's body) into the synchronous node shape
-// `resolveEpicLineage` consumes.
+// child list, the issue's own body, and the PARENT issue's body) into the
+// synchronous node shape `resolveEpicLineage` consumes.
 //
 // Contract notes:
-//   - Emits at most one authority outcome. A valid current worktree-location
-//     marker yields `parentAuthoritativeBranch`; a parse failure yields
-//     `parentAuthorityError`; a parent body with no marker at all yields
-//     NEITHER field, which is what preserves canonical `feature/epic/<N>`
-//     fallback downstream. This mapper never invents a branch name.
-//   - It populates only the PARENT's authority. The node's own
-//     `authoritativeBranch` is deliberately left unset: merge-back only ever
-//     asks where a child should land, never what the child's own recorded ref
-//     is. A future caller needing that must add it explicitly rather than
-//     assume this mapper supplied it.
+//   - The issue's own valid marker yields `authoritativeBranch` and
+//     `authoritativeWorktree`; a parse failure yields `authorityError`.
+//   - The parent's valid marker independently yields
+//     `parentAuthoritativeBranch`; a parse failure yields
+//     `parentAuthorityError`. A body with no marker yields no corresponding
+//     authority fields, preserving canonical branch fallback downstream.
+//     This mapper never invents a branch name.
 //   - A non-null parent with no supplied body is a caller error, not a missing
 //     marker — it throws rather than silently degrading to canonical fallback.
-export function buildMergeBackGraphNode({ parent = null, children = [], parentBody } = {}) {
+export function buildMergeBackGraphNode({
+  parent = null,
+  children = [],
+  ownBody,
+  parentBody,
+} = {}) {
   const normalizedParent = parent == null ? null : Number(parent);
   if (normalizedParent != null && (!Number.isInteger(normalizedParent) || normalizedParent <= 0)) {
     throw new Error('merge-back: parent issue must be a positive integer');
@@ -134,21 +158,27 @@ export function buildMergeBackGraphNode({ parent = null, children = [], parentBo
   if (normalizedChildren.some((child) => !Number.isInteger(child) || child <= 0)) {
     throw new Error('merge-back: child issues must be positive integers');
   }
-  if (normalizedParent == null) return { parent: null, children: normalizedChildren };
+  const node = { parent: normalizedParent, children: normalizedChildren };
+  try {
+    const current = resolveCurrentIssueWorktreeLocation(ownBody);
+    if (current) {
+      node.authoritativeBranch = current.worktreeBranch;
+      node.authoritativeWorktree = current.worktreePath;
+    }
+  } catch (error) {
+    node.authorityError = error.message;
+    return node;
+  }
+  if (normalizedParent == null) return node;
   if (typeof parentBody !== 'string') {
     throw new Error(`merge-back: parent #${normalizedParent} body unavailable`);
   }
   try {
-    const branch = resolveCurrentIssueWorktreeBranch(parentBody);
-    return {
-      parent: normalizedParent,
-      children: normalizedChildren,
-      ...(branch ? { parentAuthoritativeBranch: branch } : {}),
-    };
+    const branch = resolveCurrentIssueWorktreeLocation(parentBody)?.worktreeBranch ?? null;
+    return { ...node, ...(branch ? { parentAuthoritativeBranch: branch } : {}) };
   } catch (error) {
     return {
-      parent: normalizedParent,
-      children: normalizedChildren,
+      ...node,
       parentAuthorityError: error.message,
     };
   }
@@ -189,12 +219,12 @@ async function fetchIssueBody(issue, cfg) {
   );
   const body = data?.repository?.issue?.body;
   if (typeof body !== 'string') {
-    throw new Error(`merge-back: parent #${issue} body unavailable`);
+    throw new Error(`merge-back: issue #${issue} body unavailable`);
   }
   return body;
 }
 
-async function realGraphNode(issue, cfg, deps = {}) {
+export async function realGraphNode(issue, cfg, deps = {}) {
   const fetchParent =
     deps.fetchParentIssue || (await import('./lib/fetch-parent-issue.mjs')).fetchParentIssue;
   const fetchChildren =
@@ -202,8 +232,9 @@ async function realGraphNode(issue, cfg, deps = {}) {
   const fetchBody = deps.fetchIssueBody || fetchIssueBody;
   const parent = await fetchParent({ issueNumber: issue, repo: cfg.repo });
   const children = await fetchChildren({ cfg, parentEpicNumber: issue });
+  const ownBody = await fetchBody(issue, cfg);
   const parentBody = parent == null ? undefined : await fetchBody(parent, cfg);
-  return buildMergeBackGraphNode({ parent, children, parentBody });
+  return buildMergeBackGraphNode({ parent, children, ownBody, parentBody });
 }
 
 function realGit(projectDir) {
@@ -253,13 +284,15 @@ async function main(argv) {
     }
     return true;
   };
+  const childGit = wtPath ? realGit(wtPath) : realGit(projectDir);
   const { epic, child: childBranch } = mergeBack({
     child,
     path: wtPath,
     deps: {
       graph,
       git: realGit(projectDir),
-      worktreeGit: wtPath ? realGit(wtPath) : realGit(projectDir),
+      worktreeGit: childGit,
+      currentWorktreeBranch: wtPath ? () => childGit(['branch', '--show-current']) : undefined,
       trunk,
       runTests,
     },
