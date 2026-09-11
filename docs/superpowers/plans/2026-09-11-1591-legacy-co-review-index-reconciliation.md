@@ -97,10 +97,7 @@ tracked archive file as sorted `{path, sha256}` records.
 Evaluate live runtime evidence before stale patterns. Require all test signals:
 
 ```js
-const TEST_IDENTITIES = new Set([
-  'author-agent\0reviewer-agent',
-  'owner-agent\0reviewer-agent',
-]);
+const TEST_IDENTITIES = new Set(['author-agent\0reviewer-agent', 'owner-agent\0reviewer-agent']);
 
 const testPath =
   normalized.includes('/.tmp/test/') ||
@@ -113,7 +110,7 @@ paths missing, and a recognized test path for `remove-test-residue`. Require
 exact probe identities, missing paths, and a contained `.tmp/inspect/*/runtime`
 path for `remove-inspection-probe`. Require a valid archive for the exact
 artifact path and missing paths for `remove-superseded-attempt`. Everything
-else active becomes `retain-live` or `retain-unresolved`; terminal lifecycles
+else active becomes `retain-live` or `retain-unresolved`; terminal lifecycle states
 become `retain-terminal`.
 
 - [ ] **Step 5: Run the focused test and verify GREEN**
