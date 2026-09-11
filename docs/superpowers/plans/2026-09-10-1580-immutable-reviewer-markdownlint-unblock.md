@@ -110,3 +110,27 @@ Stage only the plan, configuration, and regression test, then commit with:
 ```bash
 git commit -m "fix: unblock immutable reviewer Markdown lint [#1580]"
 ```
+
+## Delivery Recovery Amendment — 2026-09-11
+
+The implementation above was included in shared carrier PR #1582 at accepted
+head `369934e676c88727033cc012bd23eddba2453f47`. GitHub squash-merged that pull
+request to trunk as `fd2b0830d9c214aac087de4c29efbd13f4c85b0d`, with every
+required hosted check green. AITM initially refused #1580's external receipt
+because the GitHub-default multi-source squash title led with `[#1531]`, even
+though `[#1580]` was present in the complete, exact source-derived token set.
+
+Defect #1583 repaired that fail-closed recovery boundary and was independently
+delivered by PR #1584 as trunk commit
+`561c922319b5bb4c935f6274b30ac3b94fa17783`. The existing governed
+`codex/ai-peer-review-design` branch was then synchronized by ordinary merge
+commit `e02a9a166c6399d716bd4a97415ce3b48a8de443`; its merge tree
+`f676b9d8447567b447b243c93b4b8f17531af949` is byte-identical to current trunk.
+No rebase, reset, force-push, branch substitution, reviewer-byte edit, or issue
+lineage change occurred.
+
+Because PR #1582's head is immutable, this amendment is the real tracked delta
+for a new #1580 delivery receipt. It records the recovery provenance without
+claiming that the original lint exclusions landed anywhere other than PR #1582.
+The final Test and Review evidence must bind to the amended branch head, and the
+new pull request must carry only this audit amendment relative to trunk.
