@@ -181,7 +181,7 @@ test('#952: already-migrated body — idempotent, no extra migration write', asy
   });
 });
 
-test('#1597: pre-existing aggregate tombstone retargets dangling citations', () => {
+test('#1597: pre-existing aggregate tombstone rewrites dangling citations', () => {
   const partiallyMigrated = [
     '## Scope',
     'stuff',
