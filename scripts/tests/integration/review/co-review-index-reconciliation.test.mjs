@@ -415,7 +415,11 @@ test('CLI apply prints the operation and before and after summaries', (t) => {
   const output = JSON.parse(result.stdout);
   assert.equal(output.mode, 'apply');
   assert.equal(output.status, 'applied');
-  assert.deepEqual(output.removed, ['sandbox']);
+  assert.equal(output.removedCount, 1);
+  assert.equal(output.blockerCount, 0);
+  assert.equal(output.archiveFiles, 0);
+  assert.equal('removed' in output, false);
+  assert.equal('archiveSnapshot' in output, false);
   assert.match(output.before, /^sha256:/);
   assert.match(output.after, /^sha256:/);
 });

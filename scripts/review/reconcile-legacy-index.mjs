@@ -66,7 +66,17 @@ function inspect(options) {
 export function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (options.mode === 'apply') {
-    return { mode: 'apply', ...reconcileLegacyIndex(options) };
+    const result = reconcileLegacyIndex(options);
+    return {
+      mode: 'apply',
+      status: result.status,
+      operationId: result.operationId,
+      before: result.before,
+      after: result.after,
+      removedCount: result.removed.length,
+      blockerCount: result.blockers.length,
+      archiveFiles: result.archiveSnapshot.length,
+    };
   }
   if (options.mode === 'verify') {
     return { mode: 'verify', ...verifyLegacyIndexReconciliation(options) };
