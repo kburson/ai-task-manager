@@ -1,7 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { statusReview as installedStatusReview } from 'ai-peer-review';
+import {
+  createNativePushTransport as installedCreateNativePushTransport,
+  negotiateAutomaticRequired as installedNegotiateAutomaticRequired,
+  residentHealth as installedResidentHealth,
+  statusReview as installedStatusReview,
+  validateAutomaticParticipant as installedValidateAutomaticParticipant,
+  validateResidentLease as installedValidateResidentLease,
+} from 'ai-peer-review';
 
 import { findMainWorktreePath } from '../fleet-registry.mjs';
 import { coReviewIndexPath } from '../paths.mjs';
@@ -12,7 +19,14 @@ export const AITM_PEER_REVIEW_CONFIG = Object.freeze({
   allowNoCommit: false,
 });
 
-export const installedPeerReviewApi = Object.freeze({ statusReview: installedStatusReview });
+export const installedPeerReviewApi = Object.freeze({
+  createNativePushTransport: installedCreateNativePushTransport,
+  negotiateAutomaticRequired: installedNegotiateAutomaticRequired,
+  residentHealth: installedResidentHealth,
+  statusReview: installedStatusReview,
+  validateAutomaticParticipant: installedValidateAutomaticParticipant,
+  validateResidentLease: installedValidateResidentLease,
+});
 
 const LEGACY_REVIEW_CONSUMERS = Object.freeze([
   Object.freeze({
