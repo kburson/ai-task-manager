@@ -33,6 +33,14 @@ peer-review compatibility subcommand.
 expose a compatibility wrapper or own review protocol schemas. Historical
 legacy archives remain byte-immutable and are not upgraded.
 
+For an AITM issue with a linked implementation plan, `npx aitm plan-approve`
+validates the current linked plan before it can stamp approval authority.
+Authors and artifact reviewers must reject direct GitHub issue-body replacement,
+executable calls to the internal body mutator, one-off GitHub mutator scripts,
+and disposable operator files under `.tmp/`. The accepted live body-write form
+is `npx aitm issue-body #N --operation-file .scratch/gh/N-body-operation.json`;
+machine-local AITM runtime state and generated output remain under `.tmp/`.
+
 ## Pre-review verification (mandatory, in order)
 
 Review does **not** own verifier execution. `/task test` already ran the declared commands and wrote an exact-SHA receipt. Invoking `dod-stamp` or `ac-stamp` in Review may only reuse a validated matching receipt; if reuse is unavailable, the stamp must refuse without spawning. `/task review --probe` for a named finding is the sole Review-stage execution path.

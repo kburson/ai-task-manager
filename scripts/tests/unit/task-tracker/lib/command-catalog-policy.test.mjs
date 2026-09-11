@@ -52,7 +52,7 @@ test('Story Origin creation contract is consistent across help and sanctioned ru
   ]) {
     const body = readFileSync(file, 'utf8');
     assert.match(body, /story-origin\.md/);
-    assert.match(body, /--story-origin-file \.\/\.tmp\/plan\/story-origin\.md/);
+    assert.match(body, /--story-origin-file \.\/\.scratch\/plan\/story-origin\.md/);
     assert.match(body, /Plan Metadata.*optional/i);
   }
 });

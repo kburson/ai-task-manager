@@ -232,6 +232,7 @@ export const VERB_CONTRACTS = Object.freeze({
       exit(3, 'issue is not in Plan'),
       ...PREFLIGHT_TARGET_EXITS,
       exit(12, 'plan evidence preflight failed'),
+      exit(14, 'linked plan violates governed issue-record or scratch policy'),
     ]
   ),
   'plan-estimate': contract(

@@ -12,7 +12,7 @@ worktree. Full-Auto is noninteractive but does not bypass those guards.
 ## Issue body
 
 ```bash
-npx aitm issue-body #N --operation-file .tmp/gh/N-body-operation.json
+npx aitm issue-body #N --operation-file .scratch/gh/N-body-operation.json
 ```
 
 The JSON file uses schema `aitm.issue-body-operation/v1` and one of these
@@ -49,7 +49,7 @@ invariant override.
 ## Owned comment
 
 ```bash
-npx aitm comment #N --key plan.audit-v1 --body-file .tmp/gh/N-audit.md
+npx aitm comment #N --key plan.audit-v1 --body-file .scratch/gh/N-audit.md
 ```
 
 The key must match `[a-z0-9][a-z0-9._:-]{0,127}` and remain stable for that
@@ -59,7 +59,8 @@ issue comments, then creates, updates, or no-ops exactly one matching comment.
 Duplicate markers, pagination or correlation ambiguity, transport ambiguity
 that cannot be reconciled, and failed exact read-back are refusals.
 
-Keep operation and body files in the project-local `.tmp/gh/` scratch bucket
-unless the content is an intentional committed artifact. Never use these
-commands to fabricate verification evidence or to bypass a dedicated lifecycle
-verb.
+Keep disposable operation and body files in the project-local `.scratch/gh/`
+bucket unless the content is an intentional committed artifact. `.tmp/` is for
+machine-local runtime state and generated output, not operator-authored command
+inputs. Never use these commands to fabricate verification evidence or to
+bypass a dedicated lifecycle verb.

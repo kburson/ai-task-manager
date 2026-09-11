@@ -30,4 +30,4 @@ Grok-specific host facts:
 
 ## Creating issues
 
-Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. Non-stub shapes require the `./.tmp/plan/user-story.md` fragment alongside Scope, Acceptance Criteria, and Story Origin. Bind each Acceptance Criterion to an `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification Commands`; the complete contract lives in `rules/create-issue.md` and loads JIT on `/task new`.
+Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. Non-stub shapes require the `./.scratch/plan/user-story.md` fragment alongside Scope, Acceptance Criteria, and Story Origin. Bind each Acceptance Criterion to an `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification Commands`; the complete contract lives in `rules/create-issue.md` and loads JIT on `/task new`.

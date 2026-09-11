@@ -69,10 +69,10 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 npx aitm create-issue \
   --shape solo \
   --title "Feature: ..." \
-  --user-story-file ./.tmp/gh/user-story.md \
-  --scope-file ./.tmp/gh/scope.md \
-  --ac-file ./.tmp/gh/acs.md \
-  --story-origin-file ./.tmp/gh/story-origin.md \
+  --user-story-file ./.scratch/gh/user-story.md \
+  --scope-file ./.scratch/gh/scope.md \
+  --ac-file ./.scratch/gh/acs.md \
+  --story-origin-file ./.scratch/gh/story-origin.md \
   --label needs-triage
 ```
 
@@ -244,7 +244,7 @@ packet using `aitm.plan-estimation-input/v1` and converge it with:
 
 ```bash
 npx aitm config estimationRubricIssue 1091
-npx aitm plan-estimate 1091 --evidence-file .tmp/plan/1091-estimation.json
+npx aitm plan-estimate 1091 --evidence-file .scratch/plan/1091-estimation.json
 ```
 
 The configured rubric issue must be a governed issue dedicated to immutable
@@ -1175,11 +1175,11 @@ Log planning and design sessions against a dedicated planning issue, not the imp
 npx aitm create-issue \
   --shape solo \
   --title "Planning: <epic title>" \
-  --user-story-file ./.tmp/gh/planning-user-story.md \
-  --scope-file ./.tmp/gh/planning-scope.md \
-  --ac-file ./.tmp/gh/planning-acs.md \
-  --story-origin-file ./.tmp/gh/planning-origin.md \
-  --plan-metadata-file ./.tmp/gh/planning-meta.md \
+  --user-story-file ./.scratch/gh/planning-user-story.md \
+  --scope-file ./.scratch/gh/planning-scope.md \
+  --ac-file ./.scratch/gh/planning-acs.md \
+  --story-origin-file ./.scratch/gh/planning-origin.md \
+  --plan-metadata-file ./.scratch/gh/planning-meta.md \
   --label planning
 ```
 

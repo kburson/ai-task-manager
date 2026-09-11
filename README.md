@@ -608,7 +608,7 @@ Internal, `init`-managed settings (board/field IDs) are not meant for manual edi
 | `Bash(gh api graphql*)`          | Project field mutations, sub-issue linking    |
 | `Bash(gh label create*)`         | Label setup                                   |
 | `Bash(gh project item-edit*)`    | Size, Estimate, Priority fields               |
-| `Bash(cat > ./.tmp/gh/*)`        | Issue body temp files (project-local scratch) |
+| `Bash(cat > ./.scratch/gh/*)`    | Issue body temp files (project-local scratch) |
 | `Bash(node */task-tracker.mjs*)` | All `/task` verbs                             |
 | `Bash(*/move-state.mjs*)`        | Kanban state transitions                      |
 | `Bash(*/set-priority.mjs*)`      | Priority setting                              |

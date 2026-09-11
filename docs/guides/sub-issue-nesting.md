@@ -59,7 +59,7 @@ table. The per-level recursion is the design.
 ## How to construct a nested sub-epic
 
 1. Draft User Story, Scope, Acceptance Criteria, Story Origin, and optional
-   Plan Metadata files in `./.tmp/gh/` per the standard
+   Plan Metadata files in `./.scratch/gh/` per the standard
    `create-issue.mjs --shape epic` workflow.
 2. Create with `--parent <root-epic-#>`. The wrapper tethers to the project
    board and writes the `addSubIssue` link in one transaction.
@@ -70,7 +70,7 @@ table. The per-level recursion is the design.
    allows.
 
 The session that created `#340` under `#259` exercised this end-to-end; see
-`./.tmp/inspect/attach-sub-epic-340.mjs` for the canonical re-parent script
+`./.scratch/inspect/attach-sub-epic-340.mjs` for the canonical re-parent script
 shape (detach-then-attach is required because `addSubIssue` rejects a child
 that already has a parent).
 

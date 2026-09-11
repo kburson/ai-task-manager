@@ -13,9 +13,9 @@ aitm-skill-loaded:rules/create-issue:1.2.0
 
 `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` is the only sanctioned path. **Never call `gh issue create` directly.** The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, then runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders atomically.
 
-Required content fragments (default `./.tmp/plan/`): `user-story.md`, `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), and `story-origin.md` with create-time provenance. `user-story.md` contains exactly three non-empty, heading-free Connextra lines beginning `As a`, `I want to`, and `So that`; template placeholders are refused. Plan Metadata in `plan-meta.md` is optional until planning produces substantive output. For sub-issues, also pass `--parent <EPIC_N>`.
+Required content fragments (default `./.scratch/plan/`): `user-story.md`, `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), and `story-origin.md` with create-time provenance. `user-story.md` contains exactly three non-empty, heading-free Connextra lines beginning `As a`, `I want to`, and `So that`; template placeholders are refused. Plan Metadata in `plan-meta.md` is optional until planning produces substantive output. For sub-issues, also pass `--parent <EPIC_N>`.
 
-Every non-stub shaped call passes `--user-story-file ./.tmp/plan/user-story.md`, `--scope-file ./.tmp/plan/scope.md`, `--ac-file ./.tmp/plan/acs.md`, and `--story-origin-file ./.tmp/plan/story-origin.md`; append `--plan-metadata-file ./.tmp/plan/plan-meta.md` only when planning output already exists.
+Every non-stub shaped call passes `--user-story-file ./.scratch/plan/user-story.md`, `--scope-file ./.scratch/plan/scope.md`, `--ac-file ./.scratch/plan/acs.md`, and `--story-origin-file ./.scratch/plan/story-origin.md`; append `--plan-metadata-file ./.scratch/plan/plan-meta.md` only when planning output already exists.
 
 ## Defect intent routes to the defect shape
 

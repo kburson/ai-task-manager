@@ -158,6 +158,33 @@ async function captureVerbStdout(issueNumber, deps) {
   assert.equal(calls.writes.length, 0);
 }
 
+// #1579: linked-plan policy refusal happens before approval or audit writes.
+{
+  const { deps, calls } = makeDeps({
+    env: { TT_FULL_AUTO: '1' },
+    deps: {
+      validateGovernedPlan: async () => ({
+        ok: false,
+        status: 'invalid',
+        planPath: 'docs/unsafe-plan.md',
+        violations: [
+          {
+            rule: 'governed-plan-raw-issue-body-write',
+            line: 7,
+            excerpt: 'unsafe body replacement',
+          },
+        ],
+      }),
+    },
+  });
+  const r = await runPlanApprove({ issueNumber: 1579, cfg, projectDir: root, deps });
+  assert.equal(r.status, 'governed-plan-policy');
+  assert.match(r.message, /governed-plan-raw-issue-body-write/);
+  assert.match(r.message, /docs\/unsafe-plan\.md:7/);
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.comments.length, 0);
+}
+
 // Adaptive approval repairs an incomplete marker and freezes the ready ID from
 // the fresh mutation base, not the stale diagnostic read.
 {

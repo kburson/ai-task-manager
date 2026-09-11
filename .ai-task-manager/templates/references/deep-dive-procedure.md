@@ -7,8 +7,9 @@ code" in `.ai-task-manager/templates/pickup-directive.md`.
 
 ## Step 3 — Append the deep dive to the issue body
 
-> ⚠️ **Never use `gh issue edit --body "..."`** — it replaces the entire body.
-> Always use `--body-file`.
+> **Never use raw `gh issue edit` body flags.** Route the analysis through the
+> governed `comment` and `mirror-deep-dive` verbs so the fresh-base body writer
+> preserves lifecycle markers and verifies read-back.
 
 > 📐 **Placement is mandatory.** Append the `## Deep-Dive Analysis (YYYY-MM-DD)`
 > section AFTER the `## Pickup Directive` heading block (after its trailing
@@ -19,22 +20,26 @@ code" in `.ai-task-manager/templates/pickup-directive.md`.
 > refuses test/review/done moves when the Deep-Dive heading is present in
 > any other position.
 
-Run this command and save its output to `./.tmp/gh/<this-issue-#>-body.md` via your agent's
-file-editing tool — do not use a `>` shell redirect:
-
-```
-gh issue view <this-issue-#> --json body --jq .body
-```
-
-Append the `## Deep-Dive Analysis (YYYY-MM-DD)` section after the Pickup
-Directive block and before any `<!-- ai-task-manager:fields:start -->`
-marker. Then post the updated body:
+Write only the narrative analysis to
+`./.scratch/gh/<this-issue-#>-deep-dive.md` with your agent's file-editing tool.
+Then create or update its stable owned comment:
 
 ```bash
-gh issue edit <this-issue-#> --body-file ./.tmp/gh/<this-issue-#>-body.md
+npx aitm comment <this-issue-#> \
+  --key deep-dive.analysis-v1 \
+  --body-file .scratch/gh/<this-issue-#>-deep-dive.md
 ```
 
-Then flip the checkpoint: `/task ensureChecked "Deep dive complete"`.
+Resolve that owned comment's URL with a read-only GitHub query, then let the
+dedicated mirror verb place the section and its markers canonically:
+
+```bash
+npx aitm mirror-deep-dive \
+  --from-comment <owned-comment-id-or-url> \
+  <this-issue-#>
+```
+
+Then flip the checkpoint: `npx aitm ensureChecked "Deep dive complete"`.
 
 The deep-dive section must include:
 

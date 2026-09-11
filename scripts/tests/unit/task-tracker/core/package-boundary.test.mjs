@@ -120,7 +120,9 @@ function repoRoot() {
 // review runtime; the measured post-decommission package surface is 768 entries.
 // #1486 ships one shared graph-node authority adapter that replaces five
 // duplicated mapping boundaries. The measured surface grows by exactly one.
-const ENTRY_CEILING = 769;
+// #1579 ships one linked-plan policy validator used by Plan approval. The
+// measured surface grows by exactly that maintained runtime entry.
+const ENTRY_CEILING = 770;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -212,6 +214,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
     'scripts/task-tracker/lib/peer-review-adapter.mjs',
     'scripts/task-tracker/lib/graph-node-authority.mjs',
+    'scripts/task-tracker/lib/governed-plan-policy.mjs',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',

@@ -18,10 +18,10 @@ Full-Auto does not leave a newly discovered local defect untracked. Before apply
 
 ```bash
 npx aitm create-issue --shape defect \
-  --user-story-file ./.tmp/plan/user-story.md \
-  --scope-file ./.tmp/plan/scope.md \
-  --ac-file ./.tmp/plan/acs.md \
-  --story-origin-file ./.tmp/plan/story-origin.md \
+  --user-story-file ./.scratch/plan/user-story.md \
+  --scope-file ./.scratch/plan/scope.md \
+  --ac-file ./.scratch/plan/acs.md \
+  --story-origin-file ./.scratch/plan/story-origin.md \
   <optional-defect-fragment-flags>
 npx aitm block <A> --by <B>
 ```
