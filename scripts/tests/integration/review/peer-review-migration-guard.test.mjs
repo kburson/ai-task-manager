@@ -1,13 +1,12 @@
 // @story #1546
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 import { selectAffectedTests } from '../../../task-tracker/lib/test-impact-selector.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -19,9 +18,8 @@ function sha256(file) {
 }
 
 function createLegacyFixture(t, rows) {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-legacy-review-'));
+  const root = mkdtempProjectIsolated('aitm-legacy-review-');
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  execFileSync('git', ['init', '-b', 'trunk'], { cwd: root, stdio: 'ignore' });
   const indexFile = path.join(root, '.tmp/aitm/fleet/co-review-index.json');
   mkdirSync(path.dirname(indexFile), { recursive: true });
   writeFileSync(indexFile, `${JSON.stringify(rows, null, 2)}\n`);

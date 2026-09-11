@@ -3,17 +3,17 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   realpathSync,
   readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const adapterPath = path.join(repoRoot, 'scripts/task-tracker/lib/peer-review-adapter.mjs');
@@ -30,15 +30,14 @@ function git(root, ...args) {
 }
 
 function createHostFixture(t) {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-peer-review-host-'));
+  const root = mkdtempProjectIsolated('aitm-peer-review-host-');
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  git(root, 'init', '-b', 'trunk');
   git(root, 'config', 'user.email', 'tests@example.invalid');
   git(root, 'config', 'user.name', 'AITM Tests');
   mkdirSync(path.join(root, 'docs'), { recursive: true });
   writeFileSync(path.join(root, 'docs/spec.md'), '# Package boundary fixture\n');
   writeFileSync(path.join(root, '.git/info/exclude'), '.scratch/peer-review/\n');
-  git(root, 'add', 'docs/spec.md');
+  git(root, 'add', '-f', 'docs/spec.md');
   git(root, 'commit', '-m', 'fixture');
   return realpathSync(root);
 }
