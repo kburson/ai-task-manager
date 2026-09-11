@@ -86,11 +86,14 @@ export function sha256(value) {
 }
 ```
 
-Discover tracked archive `README.md` files using repository-boundary Git calls,
-validate each directory with `inspectForeignArchive`, require a different
-protocol ID, verify the manifest's accepted commit is reachable, and compare
-the committed artifact blob and SHA-256 with the manifest. Snapshot every
-tracked archive file as sorted `{path, sha256}` records.
+Discover tracked archive `README.md` files using repository-boundary Git calls.
+Require each manifest protocol ID to name an already-terminal index row for the
+exact artifact, verify the manifest's exact accepted commit object resolves,
+and compare the committed artifact blob and SHA-256 with the manifest. Do not
+require `HEAD` ancestry because governed squash delivery changes ancestry while
+preserving the tracked terminal archive. Do not repair or claim validity for
+pre-existing review-file digest drift; snapshot every tracked archive file as
+sorted `{path, sha256}` records and require that snapshot to remain unchanged.
 
 - [ ] **Step 4: Implement the row classifier**
 

@@ -89,9 +89,9 @@ The classifier uses these dispositions:
   are exactly `owner-probe` and `reviewer-probe`, and the runtime is inside a
   recognized `.tmp/inspect/*/runtime` directory;
 - `remove-superseded-attempt`: lifecycle is active, paths are absent, and a
-  tracked accepted archive for the exact artifact path passes archive file-set
-  and digest validation, names a different protocol ID, and points to a
-  reachable commit whose blob and SHA-256 match the manifest;
+  tracked accepted archive manifest for the exact artifact path names a
+  different protocol ID whose index row is already terminal, then points to an
+  exact accepted commit object whose blob and SHA-256 match the manifest;
 - `retain-unresolved`: any other active or malformed evidence combination.
 
 No single path, identity, or artifact signal is sufficient. Live runtime
@@ -100,12 +100,17 @@ evidence always wins over stale-pattern evidence.
 ### Archive evidence
 
 The reconciler enumerates tracked `docs/superpowers/reviews/*/*/README.md`
-manifests. It validates each archive with the legacy archive inspector, then
-verifies the accepted commit is reachable from `HEAD`, reads the artifact at
-that commit, and compares both its Git blob and SHA-256 to the manifest.
+manifests. It requires the manifest protocol ID to name an already-terminal
+index row for the exact artifact, verifies the exact accepted commit object
+still resolves, reads the artifact at that commit, and compares both its Git
+blob and SHA-256 to the manifest. The commit need not be an ancestor of `HEAD`:
+governed squash delivery deliberately changes ancestry while the tracked
+archive remains terminal authority. Historical archive evidence bytes are
+snapshotted and preserved rather than silently repaired; their pre-existing
+internal digest status does not get rewritten or represented as newly valid.
 Archives are indexed by exact `artifact.sourcePath`. Ambiguous multiple valid
-archives are deterministic only when one is latest by accepted timestamp and
-all candidates are individually valid; otherwise the row remains unresolved.
+terminal records are deterministic only when one is latest by accepted
+timestamp; otherwise the row remains unresolved.
 
 Before apply, the reconciler hashes every tracked file beneath
 `docs/superpowers/reviews`. It repeats the snapshot after the index rewrite and
