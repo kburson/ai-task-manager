@@ -136,8 +136,7 @@ The desired tool input and result are:
 {
   review_id: 'review-123',
   participant: 'author',
-  after_sequence: 8,
-  workspace: '/absolute/ignored/review/workspace'
+  after_sequence: 8
 }
 
 {
@@ -246,14 +245,20 @@ Expected: all wait tests pass with no leaked watcher or timer handles.
 - [ ] **Step 1: Register the MCP tool through an injectable server factory**
 
 ```js
-export function createHandoffMcpServer({ createServer, wait = waitForHandoff, deliveries }) {
-  const server = createServer({ name: 'ai-peer-review', version: '0.2.0' });
+export function createHandoffMcpServer({
+  createServer,
+  repositoryRoot,
+  version,
+  wait = waitForHandoff,
+  createDeliveries,
+}) {
+  const server = createServer({ name: 'ai-peer-review', version });
   server.registerTool('wait_for_handoff', toolDefinition, async (input, context) => {
     const delivery = await wait({
       reviewId: input.review_id,
       participant: input.participant,
       afterSequence: input.after_sequence ?? 0,
-      deliveries: deliveries(input.workspace),
+      deliveries: createDeliveries({ repositoryRoot, reviewId: input.review_id }),
       signal: context.signal,
     });
     return toToolResult(delivery);
@@ -262,9 +267,11 @@ export function createHandoffMcpServer({ createServer, wait = waitForHandoff, de
 }
 ```
 
-Production wiring imports `McpServer` and `StdioServerTransport` from the official
-server-only package; tests inject a fake server so they verify this package's
-tool contract rather than SDK internals.
+Production wiring imports `McpServer` and dual-era `serveStdio` from the official
+server-only package. The configured repository root owns
+`.scratch/peer-review/<review-id>`; an MCP caller never supplies an arbitrary
+workspace path. Tests inject a fake server so they verify this package's tool
+contract rather than SDK internals.
 
 - [ ] **Step 2: Run focused and complete standalone verification**
 
