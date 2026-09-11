@@ -1,51 +1,105 @@
 // @story #1546
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { selectAffectedTests } from '../../../task-tracker/lib/test-impact-selector.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const adapterPath = path.join(repoRoot, 'scripts/task-tracker/lib/peer-review-adapter.mjs');
 const occupancyPath = path.join(repoRoot, 'scripts/task-tracker/lib/occupancy.mjs');
 
-test('migration guard is available before legacy runtime removal is considered', () => {
-  assert.ok(existsSync(adapterPath), 'migration guard must be provided by the package adapter');
-});
+function sha256(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
 
-test('AITM caches package review status as a non-authoritative occupancy observation', () => {
-  const occupancy = readFileSync(occupancyPath, 'utf8');
-  assert.match(occupancy, /cachePeerReviewStatus/);
-});
+function createLegacyFixture(t, rows) {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-legacy-review-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  execFileSync('git', ['init', '-b', 'trunk'], { cwd: root, stdio: 'ignore' });
+  const indexFile = path.join(root, '.tmp/aitm/fleet/co-review-index.json');
+  mkdirSync(path.dirname(indexFile), { recursive: true });
+  writeFileSync(indexFile, `${JSON.stringify(rows, null, 2)}\n`);
+  return { root, indexFile };
+}
 
-test('active legacy review refuses removal while package status cache remains advisory', async () => {
+test('migration guard reads the main-worktree legacy index and refuses active rows', async (t) => {
   const { assertLegacyReviewMigrationSafe } = await import(adapterPath);
-  const { cachePeerReviewStatus } = await import(occupancyPath);
+  const rows = {
+    'legacy-active': {
+      protocolId: 'legacy-active',
+      lifecycle: 'active',
+      dir: '/legacy/review',
+    },
+  };
+  const fixture = createLegacyFixture(t, rows);
+
   assert.throws(
-    () =>
-      assertLegacyReviewMigrationSafe({
-        legacyRows: [{ protocolId: 'legacy-1', lifecycle: 'active' }],
-      }),
-    /active legacy review legacy-1/
+    () => assertLegacyReviewMigrationSafe({ projectDir: fixture.root }),
+    /active legacy review legacy-active/
   );
+});
+
+test('terminal legacy rows authorize an exact removal plan without rewriting archives', async (t) => {
+  const { legacyReviewRemovalPlan } = await import(adapterPath);
+  const rows = {
+    accepted: { protocolId: 'accepted', lifecycle: 'accepted', dir: '/legacy/accepted' },
+    abandoned: { protocolId: 'abandoned', lifecycle: 'abandoned', dir: '/legacy/abandoned' },
+  };
+  const fixture = createLegacyFixture(t, rows);
+  const archive = path.join(fixture.root, 'docs/reviews/accepted.md');
+  mkdirSync(path.dirname(archive), { recursive: true });
+  writeFileSync(archive, '# Immutable accepted archive\n');
+  const beforeIndex = sha256(fixture.indexFile);
+  const beforeArchive = sha256(archive);
+
+  const plan = legacyReviewRemovalPlan({ projectDir: fixture.root });
+
+  assert.deepEqual(plan.paths, ['scripts/review']);
+  assert.equal(plan.terminalRows, 2);
+  assert.equal(sha256(fixture.indexFile), beforeIndex);
+  assert.equal(sha256(archive), beforeArchive);
+});
+
+test('AITM caches package status only as a non-authoritative occupancy observation', async () => {
+  const { cachePeerReviewStatus } = await import(occupancyPath);
   const cache = new Map();
   const observation = cachePeerReviewStatus({
-    workspace: '/worktree',
+    workspace: '/worktree/.scratch/peer-review/review-1546',
     cache,
     api: {
       statusReview: () => ({
         review_id: 'review-1546',
         state: 'author-revision',
-        worktree: '/worktree',
+        paths: { workspace: '/worktree/.scratch/peer-review/review-1546' },
       }),
     },
   });
+
   assert.deepEqual(observation, {
     reviewId: 'review-1546',
     state: 'author-revision',
-    worktree: '/worktree',
+    worktree: '/worktree/.scratch/peer-review/review-1546',
     authoritative: false,
   });
-  assert.equal(cache.get('/worktree'), observation);
+  assert.equal(cache.get(observation.worktree), observation);
   assert.ok(Object.isFrozen(observation));
+});
+
+test('test-impact authority selects both migration tests for adapter changes', () => {
+  const selected = selectAffectedTests({
+    projectDir: repoRoot,
+    changedPaths: ['scripts/task-tracker/lib/peer-review-adapter.mjs'],
+  });
+  for (const expected of [
+    'scripts/tests/integration/review/peer-review-package-parity.test.mjs',
+    'scripts/tests/integration/review/peer-review-migration-guard.test.mjs',
+  ]) {
+    assert.ok(selected.tests.includes(expected), expected);
+  }
 });

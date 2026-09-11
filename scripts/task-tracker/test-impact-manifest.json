@@ -42,6 +42,17 @@
     },
     {
       "sources": [
+        "scripts/task-tracker/lib/peer-review-adapter.mjs",
+        "scripts/task-tracker/lib/occupancy.mjs"
+      ],
+      "tests": [
+        "scripts/tests/integration/review/peer-review-package-parity.test.mjs",
+        "scripts/tests/integration/review/peer-review-migration-guard.test.mjs"
+      ],
+      "reason": "published peer-review boundary, advisory occupancy cache, and guarded legacy migration"
+    },
+    {
+      "sources": [
         "scripts/task-tracker/lib/decomposition-policy.mjs",
         "scripts/task-tracker/verbs/decompose-check.mjs"
       ],

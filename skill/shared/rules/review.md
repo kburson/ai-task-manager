@@ -22,6 +22,19 @@ For an enrolled v2 issue, Review enters through the common protected-marker sele
 
 Stop. Do not run `/task close`. Do not infer human approval from passing tests or checked boxes.
 
+## Artifact peer-review boundary
+
+`/task review` governs an AITM issue's Test-to-Review transition. Specification
+and plan peer review is a separate package workflow: invoke the installed
+`peer-review` CLI directly and use its generated commands. Do not add or use an
+`npx aitm peer-review` wrapper.
+
+The legacy `npx aitm co-review` runtime remains available only while the
+main-worktree legacy index contains an active row. Migration must read that
+index and fail closed before removing or disabling `scripts/review/**`. New
+reviews use `peer-review`; accepted and abandoned legacy archives remain
+byte-immutable and are never upgraded.
+
 ## Pre-review verification (mandatory, in order)
 
 Review does **not** own verifier execution. `/task test` already ran the declared commands and wrote an exact-SHA receipt. Invoking `dod-stamp` or `ac-stamp` in Review may only reuse a validated matching receipt; if reuse is unavailable, the stamp must refuse without spawning. `/task review --probe` for a named finding is the sole Review-stage execution path.
