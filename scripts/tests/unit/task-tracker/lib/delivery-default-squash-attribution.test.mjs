@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #1490
+// @story #1490 #1583
 //
 // #1490 (completing acceptance scope) — attribution for an externally merged,
 // multi-commit squash that carries GitHub's DEFAULT squash body.
@@ -159,6 +159,47 @@ test('#1490: a multi-token default body carrying every expected token recovers',
     })
   );
   assert.equal(verified.receiptInput.mergeMethod, 'squash');
+});
+
+test('#1583: an authorized secondary target recovers when another authorized token leads', async () => {
+  const verified = await verifyExternalDeliveredPullRequest(
+    input({
+      issueNumber: 1380,
+      attributionTokens: ['#1380', '#1488'],
+      title: PR1489_TITLE,
+      body: `${PR1489_BODY}\n\n* [#1380] chore: companion change`,
+    })
+  );
+  assert.equal(verified.receiptInput.mergeMethod, 'squash');
+  assert.equal(verified.receiptInput.issueNumber, 1380);
+});
+
+test('#1583: an absent target is rejected before external recovery', async () => {
+  await assert.rejects(
+    verifyExternalDeliveredPullRequest(
+      input({
+        issueNumber: 1380,
+        attributionTokens: ['#1488'],
+        title: PR1489_TITLE,
+        body: `${PR1489_BODY}\n\n* [#1380] chore: untrusted companion claim`,
+      })
+    ),
+    /delivery-records:issue-attribution/
+  );
+});
+
+test('#1583: an unauthorized title-leading token is refused', async () => {
+  await assert.rejects(
+    verifyExternalDeliveredPullRequest(
+      input({
+        issueNumber: 1380,
+        attributionTokens: ['#1380', '#1488'],
+        title: '[#4242] unauthorized carrier title (#1489)',
+        body: `${PR1489_BODY}\n\n* [#1380] chore: companion change`,
+      })
+    ),
+    /delivery-verification:attribution/
+  );
 });
 
 test('#1490: a missing expected secondary token is refused', async () => {

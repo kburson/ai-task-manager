@@ -1,4 +1,4 @@
-// @story #939
+// @story #939 #1583
 // Independent live verification for governed pull-request delivery.
 
 import { createHash } from 'node:crypto';
@@ -357,12 +357,11 @@ function provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleS
 // canonical attribution claim at all; a body that does claim one is judged solely
 // by the canonical rule.
 //
-// This proof does NOT accept "the title leads with the top-level token" on its own,
-// which would be safe only for a singleton token set and would silently weaken
-// multi-issue delivery. It requires the merge title to lead with the exact
-// top-level token AND the token SET observed across the complete inspected title
-// and body to equal `intent.attributionTokens` exactly. Repeated occurrences are
-// fine; a missing authorized token or an extra unauthorized one refuses.
+// This proof does NOT accept "the title leads with an issue token" on its own.
+// Both the current target and the title-leading token must belong to the complete
+// authorized set, and the token SET observed across the inspected title and body
+// must equal `intent.attributionTokens` exactly. Repeated occurrences are fine; a
+// missing authorized token or an extra unauthorized one refuses.
 //
 // Tokens are read with the repository's shared attribution primitives
 // (`commit-attribution-format.mjs`) rather than a private regex, so this stays
@@ -371,14 +370,16 @@ function provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleS
 // therefore correctly ignored.
 function provesDefaultSquashBodyAttribution({ intent, inspection }) {
   const leading = ISSUE_PREFIX_RE.exec(inspection.commitTitle || '');
-  if (leading === null || leading[1] !== String(intent.issueNumber)) return false;
+  if (leading === null) return false;
+  const expected = new Set(intent.attributionTokens);
+  const targetToken = `#${intent.issueNumber}`;
+  const leadingToken = `#${leading[1]}`;
+  if (!expected.has(targetToken) || !expected.has(leadingToken)) return false;
   const observed = new Set(
     [...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE)].map(
       (match) => `#${match[1]}`
     )
   );
-  const expected = new Set(intent.attributionTokens);
-  expected.add(`#${intent.issueNumber}`);
   if (observed.size !== expected.size) return false;
   for (const token of expected) {
     if (!observed.has(token)) return false;
