@@ -39,6 +39,10 @@ import {
 } from '../lib/epic-orchestration-plan.mjs';
 import { defaultResolveTrunkSha } from '../lib/plan-approved-guard.mjs';
 import { parseEntryMarkers } from '../lib/stage-entry-grammar.mjs';
+import {
+  formatGovernedPlanPolicyRefusal,
+  validateGovernedLinkedPlan,
+} from '../lib/governed-plan-policy.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -105,6 +109,21 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const validateGovernedPlan = deps.validateGovernedPlan || validateGovernedLinkedPlan;
+  const governedPlan = await validateGovernedPlan({
+    body,
+    projectDir: projectDir || getProjectDir(),
+    deps: deps.governedPlanPolicy,
+  });
+  if (!governedPlan.ok) {
+    return {
+      status: 'governed-plan-policy',
+      message:
+        `#${issueNumber} linked plan violates governed plan policy — refusing to approve.\n` +
+        formatGovernedPlanPolicyRefusal(governedPlan),
+      violations: governedPlan.violations,
+    };
+  }
   const requiresTrunkProvenance = hasEntry(body, 'ready-for-plan');
   const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
   const epicChildren = await fetchChildren({
@@ -390,6 +409,9 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     case 'forecast-missing':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(13);
+    case 'governed-plan-policy':
+      process.stderr.write(`⛔ ${result.message}\n`);
+      process.exit(14);
     default:
       process.stderr.write(`plan-approve: unknown result: ${result.status}\n`);
       process.exit(1);

@@ -53,7 +53,7 @@ restate their prose here. Each rule file carries an `<!-- aitm-rule-id: … -->`
 anchor so a reviewer can name the single authoritative source:
 
 - **Creating issues** (`issue-create`) → `rules/create-issue.md`.
-  The shape menu (`stub|epic|sub-issue|solo|defect`), the required `./.tmp/plan/`
+  The shape menu (`stub|epic|sub-issue|solo|defect`), the required `./.scratch/plan/`
   fragments (including `user-story.md` for non-stub shapes), the deterministic
   refusal contracts, binding each Acceptance Criterion to an
   `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification

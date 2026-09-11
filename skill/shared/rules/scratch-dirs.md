@@ -12,8 +12,10 @@ aitm-skill-loaded:rules/scratch-dirs:1.0.0
 
 ## The rule
 
-Never write to the system `/tmp/` (or `os.tmpdir()`). All scratch space lives
-under `<projectRoot>/.tmp/<purpose>/` — a gitignored, repo-local tree.
+Never write to the system `/tmp/` (or `os.tmpdir()`). Disposable working
+material lives under `<projectRoot>/.scratch/<purpose>/` — a gitignored,
+repo-local tree. Machine-local AITM runtime state and generated outputs use
+`<projectRoot>/.tmp/`; they are not operator scratch.
 
 Reasons:
 
@@ -21,17 +23,17 @@ Reasons:
   refuses writes there (`bash-guard-tmp-contract`).
 - `/tmp/claude-…` directories get reaped between sessions, losing scratch.
 - Multiple parallel agents collide on `/tmp/foo.tmp` style names; project-local
-  `.tmp/` survives the worktree boundary.
+  `.scratch/` survives the worktree boundary.
 - Scratch co-located with the repo is reviewable after the fact.
 
 ## Canonical buckets
 
 ```text
-.tmp/test/      → test sandboxes (every node:test mkdtemp goes here)
-.tmp/gh/        → GitHub issue body drafts / preflight artifacts
-.tmp/plan/      → scope.md, ac.md, plan-meta, deep-dive scratch
-.tmp/heal/      → heal-* and migrate-* scripts' transient state
-.tmp/inspect/   → ad-hoc analysis scripts, one-off greps, debug spikes
+.scratch/test/      → disposable test sandboxes
+.scratch/gh/        → GitHub operation files, body drafts, and preflight inputs
+.scratch/plan/      → scope.md, ac.md, plan metadata, deep-dive working files
+.scratch/heal/      → heal and migration working material
+.scratch/inspect/   → ad hoc analysis scripts, one-off greps, debug spikes
 ```
 
 Use a custom slug (`[a-z0-9][a-z0-9-]{0,31}`) only if none of the canonical
@@ -49,7 +51,7 @@ import {
   mkdtempOutsideRepo,
 } from '<rel>/scripts/task-tracker/lib/scratch-dir.mjs';
 
-// Simple scratch dir (creates `.tmp/<purpose>/` if missing, returns the path):
+// Simple scratch dir (creates `.scratch/<purpose>/` if missing, returns the path):
 const dir = projectScratchDir('gh');
 writeFileSync(path.join(dir, `issue-${n}-body.md`), body);
 
@@ -62,7 +64,8 @@ const sandbox = mkdtempProjectIsolated('my-test-');
 const nonRepo = mkdtempOutsideRepo('no-git-');
 ```
 
-For shell/bash scripts: prefer `mktemp -d "$REPO_ROOT/.tmp/<purpose>/XXXXXX"`.
+For shell/bash scripts: prefer
+`mktemp -d "$REPO_ROOT/.scratch/<purpose>/XXXXXX"`.
 
 ## Behavioral triggers
 

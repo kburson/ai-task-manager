@@ -290,7 +290,7 @@ describe('current-schema public authoring contract', () => {
       path.join(REPO_ROOT, 'skill/shared/rules/plan-mode-backlog.md'),
       'utf8'
     );
-    assert.match(planMode, /\.tmp\/plan\/user-story\.md/);
+    assert.match(planMode, /\.scratch\/plan\/user-story\.md/);
   });
 });
 

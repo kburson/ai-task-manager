@@ -15,18 +15,18 @@ Team-shared workflow preferences live in the git-tracked `.ai-task-manager/task-
 
 ## Keys
 
-| Key                              | Default     | Effect when enabled                                                                                                                           |
-| -------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `noPushToOrigin`                 | `false`     | Commit/merge to trunk locally only; never `git push`, never open PRs.                                                                         |
-| `mainThreadOnly`                 | `false`     | No feature branches, no worktrees; commit straight to trunk. Disables parallel dispatch.                                                      |
-| `driveSubIssuesToReview`         | `true`      | Drive sub-issues end-to-end through dispatch/review/merge to Review without per-step human check-ins.                                         |
-| `gateAssigneeMatch`              | `true`      | Enforce lifecycle-aware exclusive story ownership at governed bind/mutation and attributed-commit boundaries. Default on for everyone.        |
-| `pauseTimerOnBlockingQuestion`   | `true`      | `/task pause "pause for question"` before any blocking user prompt; `/task start "question answered"` on resume.                              |
-| `noConfirmAfterDeepDive`         | `true`      | After posting the deep-dive comment, proceed straight to implementation; do not ask "ready to proceed?".                                      |
-| `askGatesBeforeParallel`         | `true`      | Before parallel sub-agent dispatch, prompt user which human gates to disable; encode into prompts; restore after.                             |
-| `formatting.noEmojis`            | `true`      | Issue bodies, comments, and commit messages contain no emojis.                                                                                |
-| `formatting.currencyInBackticks` | `true`      | Currency amounts wrap in backticks (`` `$200` ``).                                                                                            |
-| `scratchDir`                     | `"./.tmp/"` | Canonical directory for transient files. Use subfolders by purpose: `gh/` (issue bodies), `plan/` (scope/acs/plan-meta), `heal/`, `inspect/`. |
+| Key                              | Default         | Effect when enabled                                                                                                                                                             |
+| -------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `noPushToOrigin`                 | `false`         | Commit/merge to trunk locally only; never `git push`, never open PRs.                                                                                                           |
+| `mainThreadOnly`                 | `false`         | No feature branches, no worktrees; commit straight to trunk. Disables parallel dispatch.                                                                                        |
+| `driveSubIssuesToReview`         | `true`          | Drive sub-issues end-to-end through dispatch/review/merge to Review without per-step human check-ins.                                                                           |
+| `gateAssigneeMatch`              | `true`          | Enforce lifecycle-aware exclusive story ownership at governed bind/mutation and attributed-commit boundaries. Default on for everyone.                                          |
+| `pauseTimerOnBlockingQuestion`   | `true`          | `/task pause "pause for question"` before any blocking user prompt; `/task start "question answered"` on resume.                                                                |
+| `noConfirmAfterDeepDive`         | `true`          | After posting the deep-dive comment, proceed straight to implementation; do not ask "ready to proceed?".                                                                        |
+| `askGatesBeforeParallel`         | `true`          | Before parallel sub-agent dispatch, prompt user which human gates to disable; encode into prompts; restore after.                                                               |
+| `formatting.noEmojis`            | `true`          | Issue bodies, comments, and commit messages contain no emojis.                                                                                                                  |
+| `formatting.currencyInBackticks` | `true`          | Currency amounts wrap in backticks (`` `$200` ``).                                                                                                                              |
+| `scratchDir`                     | `"./.scratch/"` | Canonical directory for disposable operator files. Use purpose subfolders such as `gh/`, `plan/`, `heal/`, and `inspect/`; keep machine runtime/generated output under `.tmp/`. |
 
 ## Decision points
 

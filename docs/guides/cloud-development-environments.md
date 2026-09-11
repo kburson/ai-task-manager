@@ -44,10 +44,10 @@ Create issues through AI Task Manager, not direct GitHub CLI issue creation:
 npx aitm create-issue \
   --shape solo \
   --title "Feature: ..." \
-  --user-story-file ./.tmp/gh/user-story.md \
-  --scope-file ./.tmp/gh/scope.md \
-  --ac-file ./.tmp/gh/acs.md \
-  --story-origin-file ./.tmp/gh/story-origin.md
+  --user-story-file ./.scratch/gh/user-story.md \
+  --scope-file ./.scratch/gh/scope.md \
+  --ac-file ./.scratch/gh/acs.md \
+  --story-origin-file ./.scratch/gh/story-origin.md
 ```
 
 Bind existing work inside the cloud environment before editing:
