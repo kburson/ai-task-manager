@@ -1,4 +1,5 @@
 // @story #1599
+// @story #1603
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -7,7 +8,13 @@ import { gateCodeComplete } from '../../../../task-tracker/lib/code-complete-gat
 
 const cfg = { repo: 'o/r' };
 
-function bodyFor({ citation = 'vc:1 vc:2 vc:3 vc:4', includeSlow = true } = {}) {
+function bodyFor({
+  citation = 'vc:1 vc:2 vc:3 vc:4',
+  includeSlow = true,
+  kind = null,
+  reconciled = false,
+  deliverable = false,
+} = {}) {
   return [
     '## Acceptance Criteria',
     '',
@@ -22,6 +29,15 @@ function bodyFor({ citation = 'vc:1 vc:2 vc:3 vc:4', includeSlow = true } = {}) 
     '',
     '## Definition of Done',
     '',
+    '## AITM Progress Markers',
+    '',
+    ...(kind ? [`<!-- aitm-issue-kind kind="${kind}" -->`] : []),
+    ...(reconciled ? ['<!-- aitm-epic-ac-reconciled ts="2026-09-11T00:00:00.000Z" -->'] : []),
+    ...(deliverable
+      ? [
+          '<!-- aitm-deliverable-posted url="https://example.com/deliverable" ts="2026-09-11T00:00:00.000Z" -->',
+        ]
+      : []),
   ].join('\n');
 }
 
@@ -43,6 +59,79 @@ test('Develop exit defers an unchecked AC that contains a Test-restricted verifi
 
   assert.equal(result.ok, true, JSON.stringify(result.blockers));
   assert.deepEqual(result.blockers, []);
+});
+
+test('Develop exit defers a reconciled epic AC that contains a Test-restricted verifier', async () => {
+  const result = await gateCodeComplete({
+    cfg,
+    issueNumber: 1603,
+    body: bodyFor({ kind: 'epic', reconciled: true, deliverable: true }),
+    deps: gateDeps(),
+  });
+
+  assert.equal(result.ok, true, JSON.stringify(result.blockers));
+  assert.deepEqual(result.blockers, []);
+});
+
+test('Develop exit keeps an ordinary unchecked epic AC blocking', async () => {
+  const result = await gateCodeComplete({
+    cfg,
+    issueNumber: 1603,
+    body: bodyFor({
+      citation: 'vc:3',
+      includeSlow: false,
+      kind: 'epic',
+      reconciled: true,
+      deliverable: true,
+    }),
+    deps: gateDeps(),
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((blocker) => blocker.includes('code-complete-ac-unticked')));
+});
+
+test('Develop exit does not defer Test-restricted ACs for other no-commit kinds', async () => {
+  for (const kind of ['audit', 'research', 'spike']) {
+    const result = await gateCodeComplete({
+      cfg,
+      issueNumber: 1603,
+      body: bodyFor({ kind, deliverable: true }),
+      deps: gateDeps(),
+    });
+
+    assert.equal(result.ok, false, kind);
+    assert.ok(
+      result.blockers.some((blocker) => blocker.includes('code-complete-ac-unticked')),
+      kind
+    );
+  }
+});
+
+test('epic Test-stage deferral preserves reconciliation and deliverable blockers', async () => {
+  const missingDeliverable = await gateCodeComplete({
+    cfg,
+    issueNumber: 1603,
+    body: bodyFor({ kind: 'epic', reconciled: true }),
+    deps: gateDeps(),
+  });
+  assert.ok(
+    missingDeliverable.blockers.some((blocker) =>
+      blocker.includes('code-complete-deliverable-missing')
+    )
+  );
+
+  const missingReconciliation = await gateCodeComplete({
+    cfg,
+    issueNumber: 1603,
+    body: bodyFor({ kind: 'epic', deliverable: true }),
+    deps: gateDeps(),
+  });
+  assert.ok(
+    missingReconciliation.blockers.some((blocker) =>
+      blocker.includes('code-complete-epic-unreconciled')
+    )
+  );
 });
 
 test('Develop exit keeps an ordinary unchecked targeted AC blocking', async () => {

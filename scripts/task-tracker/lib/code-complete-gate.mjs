@@ -275,6 +275,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   // to be waived. Code-kind issues (the default) are unaffected: the branch
   // below only diverges when `audit` is true.
   const audit = isNoCommitKind(body);
+  const testStageDeferralEligible = !audit || parseIssueKind(body) === 'epic';
   const vcItems = parseVerificationCommands(body);
 
   const resolve = deps.resolveContractSource || resolveContractSource;
@@ -307,7 +308,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
     for (const ac of acs) {
       const shortLabel = stripProofMarkers(ac.label);
       if (!ac.checked) {
-        if (!audit && isTestStageDeferredAc(ac.label, vcItems)) {
+        if (testStageDeferralEligible && isTestStageDeferredAc(ac.label, vcItems)) {
           continue;
         }
         blockers.push(`code-complete-ac-unticked: ${shortLabel}`);
