@@ -2,7 +2,7 @@
 
 ## Problem
 
-#1599 lets a code issue leave Develop with an unchecked acceptance criterion only when the criterion resolves to a command that policy restricts to Test. #1592 demonstrates the same deadlock for a code-bearing epic, but `gateCodeComplete` excludes every epic because `isNoCommitKind` groups `epic` with `audit`, `research`, and `spike`.
+Issue #1599 lets a code issue leave Develop with an unchecked acceptance criterion only when the criterion resolves to a command that policy restricts to Test. #1592 demonstrates the same deadlock for a code-bearing epic, but `gateCodeComplete` excludes every epic because `isNoCommitKind` groups `epic` with `audit`, `research`, and `spike`.
 
 The other #1592 refusals are correct. An epic must still record AC reconciliation and a deliverable before Test. This design changes only the acceptance-criterion deferral.
 
@@ -19,7 +19,7 @@ Deferral is not evidence. It changes no checkbox or marker. The Test resident ac
 
 ## Dependency provenance
 
-#1599 is Done on #1592's parent branch but is not yet on trunk. The #1603 branch will cherry-pick #1599's exact plan and implementation commits before adding the epic extension. This preserves the original `[#1599]` attribution and lets #1603 deliver the prerequisite plus its correction to trunk without importing unrelated #1592 removal work.
+Issue #1599 is Done on #1592's parent branch but is not yet on trunk. The #1603 branch will cherry-pick #1599's exact plan and implementation commits before adding the epic extension. This preserves the original `[#1599]` attribution and lets #1603 deliver the prerequisite plus its correction to trunk without importing unrelated #1592 removal work.
 
 When #1603 is delivered, merging current trunk into #1592 will make the policy files content-equivalent. #1592's own commits and worktree remain intact; no rebase, reset, or force-push is needed.
 
