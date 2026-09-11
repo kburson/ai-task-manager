@@ -14,6 +14,21 @@ export const AITM_PEER_REVIEW_CONFIG = Object.freeze({
 
 export const installedPeerReviewApi = Object.freeze({ statusReview: installedStatusReview });
 
+const LEGACY_REVIEW_CONSUMERS = Object.freeze([
+  Object.freeze({
+    file: 'scripts/task-tracker/lib/occupancy-lifecycle.mjs',
+    marker: '../../review/lib/index.mjs',
+  }),
+  Object.freeze({
+    file: 'scripts/task-tracker/lib/command-surface/entrypoints.mjs',
+    marker: 'scripts/review/co-review.mjs',
+  }),
+  Object.freeze({
+    file: 'scripts/lib/self-doc.mjs',
+    marker: 'scripts/review/co-review.mjs',
+  }),
+]);
+
 function positiveIssue(issue) {
   const value = Number(issue);
   if (!Number.isSafeInteger(value) || value <= 0) {
@@ -109,18 +124,20 @@ export function assertLegacyReviewMigrationSafe(input = {}) {
       `peer-review-migration: active legacy review ${String(active.protocolId ?? '')}`
     );
   }
+  const projectDir = path.resolve(input.projectDir || process.cwd());
+  const consumers = LEGACY_REVIEW_CONSUMERS.filter(({ file, marker }) => {
+    const absolute = path.join(projectDir, file);
+    return existsSync(absolute) && readFileSync(absolute, 'utf8').includes(marker);
+  }).map(({ file }) => file);
+  if (consumers.length) {
+    throw new Error(
+      `peer-review-migration: legacy runtime still has production consumers: ${consumers.join(', ')}`
+    );
+  }
   return Object.freeze({
     removable: true,
     indexFile: observed.file,
     terminalRows: observed.rows.filter((row) => ['accepted', 'abandoned'].includes(row?.lifecycle))
       .length,
-  });
-}
-
-export function legacyReviewRemovalPlan(input = {}) {
-  const guard = assertLegacyReviewMigrationSafe(input);
-  return Object.freeze({
-    ...guard,
-    paths: Object.freeze(['scripts/review']),
   });
 }

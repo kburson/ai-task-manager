@@ -43,8 +43,8 @@ test('migration guard reads the main-worktree legacy index and refuses active ro
   );
 });
 
-test('terminal legacy rows authorize an exact removal plan without rewriting archives', async (t) => {
-  const { legacyReviewRemovalPlan } = await import(adapterPath);
+test('terminal rows still refuse removal while production consumers remain', async (t) => {
+  const { assertLegacyReviewMigrationSafe } = await import(adapterPath);
   const rows = {
     accepted: { protocolId: 'accepted', lifecycle: 'accepted', dir: '/legacy/accepted' },
     abandoned: { protocolId: 'abandoned', lifecycle: 'abandoned', dir: '/legacy/abandoned' },
@@ -56,10 +56,10 @@ test('terminal legacy rows authorize an exact removal plan without rewriting arc
   const beforeIndex = sha256(fixture.indexFile);
   const beforeArchive = sha256(archive);
 
-  const plan = legacyReviewRemovalPlan({ projectDir: fixture.root });
-
-  assert.deepEqual(plan.paths, ['scripts/review']);
-  assert.equal(plan.terminalRows, 2);
+  assert.throws(
+    () => assertLegacyReviewMigrationSafe({ projectDir: repoRoot, indexFile: fixture.indexFile }),
+    /legacy runtime still has production consumers/
+  );
   assert.equal(sha256(fixture.indexFile), beforeIndex);
   assert.equal(sha256(archive), beforeArchive);
 });
