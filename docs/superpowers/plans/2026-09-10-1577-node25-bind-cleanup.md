@@ -158,3 +158,29 @@ node scripts/task-tracker/verify-develop.mjs --mode final --issue 1577
 Expected: `git status --short` prints nothing and finalization exits 0 for the
 new #1577 commit. Report `CODE_COMPLETE` with the commit SHA and test evidence;
 the orchestrator owns promotion, review, delivery, and close.
+
+## Delivery Recovery Amendment — 2026-09-11
+
+The #1577 implementation remains commit
+`23aa8ea9f766cd8494d86f208afd64375e404ddd`. It was included in shared
+PR #1582 at head `369934e676c88727033cc012bd23eddba2453f47`, which GitHub
+squash-merged as `fd2b0830d9c214aac087de4c29efbd13f4c85b0d`.
+
+Issue #1578's target-specific recovery was accepted at
+`c94f3b27aefe02d05dc2669bde0641edf2358b06` and delivered through
+PR #1586 as `2892ae710804e1e2b99522c2e94ce92d8c7370a8`. Its canonical
+attribution trailer is byte-ordered for #1578, so #1577 requires its own
+accepted head and canonical delivery boundary.
+
+The preserved `codex/ai-peer-review-design` branch incorporated that landed
+commit with the normal, non-rewriting merge
+`a01d78402d949b8d160d3c4c6475070f85cafcc6`. The merge tree
+`ec17c569d00de0f19048b426ab79d4b072ad1a6d` exactly equals the
+`2892ae710804e1e2b99522c2e94ce92d8c7370a8` trunk tree. No rebase, reset,
+force-push, substitute branch, issue-lineage change, or fabricated delivery
+record was used.
+
+The next PR for #1577 carries only this audit amendment relative to current
+trunk. It does not replace or reinterpret the original implementation; it
+provides a real, target-specific accepted head and canonical delivery boundary
+for the already-reviewed change.
