@@ -1,6 +1,6 @@
 // @story #1591
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -47,6 +47,34 @@ function inventory(t, rows, deps = {}) {
       deps: { archiveSnapshot: () => [], ...deps },
     }),
   };
+}
+
+function testResidue(protocolId = 'sandbox') {
+  return row(protocolId, {
+    dir: `/repo/.scratch/test/aitm-co-review-${protocolId}/.scratch/review`,
+    worktree: `/repo/.scratch/test/aitm-co-review-${protocolId}`,
+    owner: 'author-agent',
+    reviewer: 'reviewer-agent',
+    artifact: 'docs/artifact.md',
+  });
+}
+
+function reconciliationDeps(overrides = {}) {
+  return {
+    archiveEvidence: () => [],
+    archiveSnapshot: () => [
+      { path: 'docs/superpowers/reviews/accepted/README.md', sha256: `sha256:${'a'.repeat(64)}` },
+    ],
+    ...overrides,
+  };
+}
+
+function journal(file) {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
 }
 
 test('inventory accounts for every row in deterministic protocol order', (t) => {
@@ -189,6 +217,142 @@ test('invalid or mismatched archive evidence remains unresolved', (t) => {
   assert.equal(result.rows[0].disposition, 'retain-unresolved');
 });
 
-// Task 2 and Task 3 imports are exercised in later TDD slices.
-assert.equal(typeof reconcileLegacyIndex, 'function');
+test('apply removes only proven stale active projections and preserves all other rows', (t) => {
+  const terminal = row('terminal', { lifecycle: 'accepted' });
+  const unresolved = row('unresolved');
+  const files = fixture(t, { sandbox: testResidue(), terminal, unresolved });
+  const result = reconcileLegacyIndex({ ...files, deps: reconciliationDeps() });
+  const remaining = JSON.parse(readFileSync(files.indexFile, 'utf8'));
+
+  assert.equal(result.status, 'applied');
+  assert.deepEqual(result.removed, ['sandbox']);
+  assert.deepEqual(result.blockers, ['unresolved']);
+  assert.deepEqual(remaining, { terminal, unresolved });
+});
+
+test('apply records every removed row and its evidence before changing the index', (t) => {
+  const files = fixture(t, { one: testResidue('one'), two: testResidue('two') });
+  reconcileLegacyIndex({ ...files, deps: reconciliationDeps() });
+  const records = journal(files.journalFile);
+
+  assert.equal(records.length, 2);
+  assert.equal(records[0].recordType, 'prepared');
+  assert.deepEqual(
+    records[0].model.removed.map(({ protocolId }) => protocolId),
+    ['one', 'two']
+  );
+  assert.equal(records[0].model.removed[0].row.lifecycle, 'active');
+  assert.equal(records[0].model.removed[0].evidence.pathPattern, 'isolated-test');
+  assert.equal(records[1].recordType, 'applied');
+  assert.equal(records[1].operationId, records[0].operationId);
+});
+
+test('archive paths and hashes are identical before and after apply', (t) => {
+  const snapshot = [
+    { path: 'docs/superpowers/reviews/42/spec/README.md', sha256: `sha256:${'b'.repeat(64)}` },
+    { path: 'docs/superpowers/reviews/42/spec/review.md', sha256: `sha256:${'c'.repeat(64)}` },
+  ];
+  const files = fixture(t, { sandbox: testResidue() });
+  const result = reconcileLegacyIndex({
+    ...files,
+    deps: reconciliationDeps({ archiveSnapshot: () => structuredClone(snapshot) }),
+  });
+
+  assert.deepEqual(result.archiveSnapshot, snapshot);
+  assert.deepEqual(journal(files.journalFile)[0].model.archiveSnapshot, snapshot);
+  assert.deepEqual(journal(files.journalFile)[1].archiveSnapshot, snapshot);
+});
+
+test('lock contention changes neither index nor journal', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  const before = readFileSync(files.indexFile, 'utf8');
+
+  assert.throws(
+    () =>
+      reconcileLegacyIndex({
+        ...files,
+        deps: reconciliationDeps({
+          withLock: () => {
+            throw new Error('fleet-registry: lock timeout');
+          },
+        }),
+      }),
+    /lock timeout/
+  );
+  assert.equal(readFileSync(files.indexFile, 'utf8'), before);
+  assert.equal(existsSync(files.journalFile), false);
+});
+
+test('retry after prepared journal interruption completes the original operation', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  const interrupted = reconciliationDeps({
+    afterPrepared: () => {
+      throw new Error('simulated prepared interruption');
+    },
+  });
+
+  assert.throws(
+    () => reconcileLegacyIndex({ ...files, deps: interrupted }),
+    /prepared interruption/
+  );
+  assert.equal(journal(files.journalFile).length, 1);
+  assert.ok(JSON.parse(readFileSync(files.indexFile, 'utf8')).sandbox);
+
+  const result = reconcileLegacyIndex({ ...files, deps: reconciliationDeps() });
+  assert.equal(result.status, 'recovered');
+  assert.equal(journal(files.journalFile).length, 2);
+  assert.equal(JSON.parse(readFileSync(files.indexFile, 'utf8')).sandbox, undefined);
+});
+
+test('retry after index rename records the missing applied line', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  const interrupted = reconciliationDeps({
+    afterIndexWrite: () => {
+      throw new Error('simulated post-rename interruption');
+    },
+  });
+
+  assert.throws(() => reconcileLegacyIndex({ ...files, deps: interrupted }), /post-rename/);
+  assert.equal(journal(files.journalFile).length, 1);
+  assert.equal(JSON.parse(readFileSync(files.indexFile, 'utf8')).sandbox, undefined);
+
+  const result = reconcileLegacyIndex({ ...files, deps: reconciliationDeps() });
+  assert.equal(result.status, 'recovered');
+  assert.equal(journal(files.journalFile).length, 2);
+});
+
+test('completed replay is idempotent and does not duplicate journal records', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  const first = reconcileLegacyIndex({ ...files, deps: reconciliationDeps() });
+  const second = reconcileLegacyIndex({ ...files, deps: reconciliationDeps() });
+
+  assert.equal(first.status, 'applied');
+  assert.equal(second.status, 'unchanged');
+  assert.equal(second.operationId, first.operationId);
+  assert.equal(journal(files.journalFile).length, 2);
+});
+
+test('unexpected index drift during recovery fails closed', (t) => {
+  const files = fixture(t, { sandbox: testResidue() });
+  assert.throws(
+    () =>
+      reconcileLegacyIndex({
+        ...files,
+        deps: reconciliationDeps({
+          afterPrepared: () => {
+            throw new Error('simulated prepared interruption');
+          },
+        }),
+      }),
+    /prepared interruption/
+  );
+  writeFileSync(files.indexFile, `${JSON.stringify({ other: row('other') }, null, 2)}\n`);
+
+  assert.throws(
+    () => reconcileLegacyIndex({ ...files, deps: reconciliationDeps() }),
+    /recovery index digest conflict/
+  );
+  assert.equal(journal(files.journalFile).length, 1);
+});
+
 assert.equal(typeof verifyLegacyIndexReconciliation, 'function');

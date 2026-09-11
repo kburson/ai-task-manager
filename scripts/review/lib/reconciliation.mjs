@@ -2,10 +2,23 @@
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync as systemExistsSync, readFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  closeSync,
+  existsSync as systemExistsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
-import { findMainWorktreePath } from '../../task-tracker/fleet-registry.mjs';
+import {
+  findMainWorktreePath,
+  withLock as systemWithLock,
+} from '../../task-tracker/fleet-registry.mjs';
 import { coReviewIndexPath } from '../../task-tracker/paths.mjs';
 import { readProtocolIndex } from './index.mjs';
 import { statusProtocol as systemStatusProtocol } from './protocol.mjs';
@@ -265,12 +278,7 @@ function countsFor(rows) {
 }
 
 export function inventoryLegacyIndex(input = {}) {
-  const projectDir = path.resolve(input.projectDir || process.cwd());
-  const mainWorktree = findMainWorktreePath(projectDir);
-  const indexFile = path.resolve(input.indexFile || coReviewIndexPath(mainWorktree));
-  const journalFile = path.resolve(
-    input.journalFile || path.join(path.dirname(indexFile), 'co-review-index-reconciliation.jsonl')
-  );
+  const { projectDir, indexFile, journalFile } = resolveLocations(input);
   const existsSync = input.deps?.existsSync || systemExistsSync;
   const statusProtocol = input.deps?.statusProtocol || systemStatusProtocol;
   const indexBytes = readFileSync(indexFile);
@@ -291,8 +299,233 @@ export function inventoryLegacyIndex(input = {}) {
   };
 }
 
-export function reconcileLegacyIndex() {
-  throw new Error('co-review-index-reconciliation: apply not implemented');
+function resolveLocations(input = {}) {
+  const projectDir = path.resolve(input.projectDir || process.cwd());
+  const mainWorktree = findMainWorktreePath(projectDir);
+  const indexFile = path.resolve(input.indexFile || coReviewIndexPath(mainWorktree));
+  const journalFile = path.resolve(
+    input.journalFile || path.join(path.dirname(indexFile), 'co-review-index-reconciliation.jsonl')
+  );
+  return { projectDir, indexFile, journalFile };
+}
+
+function readJournal(journalFile) {
+  if (!systemExistsSync(journalFile)) return [];
+  const records = readFileSync(journalFile, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line, index) => {
+      let record;
+      try {
+        record = JSON.parse(line);
+      } catch (error) {
+        throw new Error(
+          `co-review-index-reconciliation: malformed journal line ${index + 1}: ${error.message}`
+        );
+      }
+      if (
+        record?.schema !== RECONCILIATION_SCHEMA ||
+        !['prepared', 'applied'].includes(record.recordType) ||
+        !/^sha256:[a-f0-9]{64}$/.test(String(record.operationId || ''))
+      ) {
+        throw new Error(`co-review-index-reconciliation: invalid journal line ${index + 1}`);
+      }
+      return record;
+    });
+  const phases = new Set();
+  for (const record of records) {
+    const key = `${record.operationId}\0${record.recordType}`;
+    if (phases.has(key)) {
+      throw new Error(
+        `co-review-index-reconciliation: duplicate ${record.recordType} record ${record.operationId}`
+      );
+    }
+    phases.add(key);
+  }
+  return records;
+}
+
+function syncFile(file) {
+  const descriptor = openSync(file, 'r');
+  try {
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+function appendJournal(journalFile, record) {
+  mkdirSync(path.dirname(journalFile), { recursive: true });
+  appendFileSync(journalFile, `${JSON.stringify(record)}\n`, 'utf8');
+  syncFile(journalFile);
+}
+
+function writeIndexAtomic(indexFile, bytes) {
+  mkdirSync(path.dirname(indexFile), { recursive: true });
+  const temporary = `${indexFile}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(temporary, bytes, { encoding: 'utf8', flag: 'wx' });
+  syncFile(temporary);
+  renameSync(temporary, indexFile);
+}
+
+function same(left, right) {
+  return canonicalJson(left) === canonicalJson(right);
+}
+
+function resultFor(record, status) {
+  const model = record.model;
+  return {
+    status,
+    operationId: record.operationId,
+    before: model.beforeIndexSha256,
+    after: model.afterIndexSha256,
+    removed: model.removed.map(({ protocolId }) => protocolId),
+    blockers: model.blockers.map(({ protocolId }) => protocolId),
+    archiveSnapshot: structuredClone(model.archiveSnapshot),
+  };
+}
+
+function appliedRecord(prepared, recordedAt, archiveAfter) {
+  return {
+    schema: RECONCILIATION_SCHEMA,
+    recordType: 'applied',
+    operationId: prepared.operationId,
+    recordedAt,
+    beforeIndexSha256: prepared.model.beforeIndexSha256,
+    afterIndexSha256: prepared.model.afterIndexSha256,
+    archiveSnapshot: archiveAfter,
+  };
+}
+
+function recoverPrepared({ prepared, currentDigest, indexFile, journalFile, projectDir, deps }) {
+  const archiveSnapshotFn = deps.archiveSnapshot || archiveSnapshot;
+  const archiveBeforeRecovery = archiveSnapshotFn(projectDir);
+  if (!same(archiveBeforeRecovery, prepared.model.archiveSnapshot)) {
+    throw new Error(
+      `co-review-index-reconciliation: recovery archive snapshot conflict ${prepared.operationId}`
+    );
+  }
+  if (currentDigest === prepared.model.beforeIndexSha256) {
+    const indexed = readProtocolIndex(indexFile);
+    for (const { protocolId } of prepared.model.removed) delete indexed[protocolId];
+    const afterBytes = `${JSON.stringify(indexed, null, 2)}\n`;
+    if (sha256(afterBytes) !== prepared.model.afterIndexSha256) {
+      throw new Error(
+        `co-review-index-reconciliation: recovery model digest conflict ${prepared.operationId}`
+      );
+    }
+    writeIndexAtomic(indexFile, afterBytes);
+    deps.afterIndexWrite?.(prepared.model);
+  } else if (currentDigest !== prepared.model.afterIndexSha256) {
+    throw new Error(
+      `co-review-index-reconciliation: recovery index digest conflict ${prepared.operationId}`
+    );
+  }
+  const archiveAfter = archiveSnapshotFn(projectDir);
+  if (!same(archiveAfter, prepared.model.archiveSnapshot)) {
+    throw new Error(
+      `co-review-index-reconciliation: archive changed during recovery ${prepared.operationId}`
+    );
+  }
+  appendJournal(journalFile, appliedRecord(prepared, new Date().toISOString(), archiveAfter));
+  return resultFor(prepared, 'recovered');
+}
+
+export function reconcileLegacyIndex(input = {}) {
+  const { projectDir, indexFile, journalFile } = resolveLocations(input);
+  const deps = input.deps || {};
+  const withLock = deps.withLock || systemWithLock;
+  return withLock(indexFile, () => {
+    const records = readJournal(journalFile);
+    const appliedIds = new Set(
+      records
+        .filter(({ recordType }) => recordType === 'applied')
+        .map(({ operationId }) => operationId)
+    );
+    const pending = records.filter(
+      ({ recordType, operationId }) => recordType === 'prepared' && !appliedIds.has(operationId)
+    );
+    if (pending.length > 1) {
+      throw new Error('co-review-index-reconciliation: multiple pending operations');
+    }
+    const currentDigest = sha256(readFileSync(indexFile));
+    if (pending.length === 1) {
+      return recoverPrepared({
+        prepared: pending[0],
+        currentDigest,
+        indexFile,
+        journalFile,
+        projectDir,
+        deps,
+      });
+    }
+
+    const inventory = inventoryLegacyIndex({ ...input, projectDir, indexFile, journalFile, deps });
+    const removable = inventory.rows.filter(({ disposition }) => disposition.startsWith('remove-'));
+    if (removable.length === 0) {
+      const matching = [...records]
+        .reverse()
+        .find(
+          (record) =>
+            record.recordType === 'prepared' &&
+            appliedIds.has(record.operationId) &&
+            record.model.afterIndexSha256 === inventory.indexSha256 &&
+            same(record.model.archiveSnapshot, inventory.archiveSnapshot)
+        );
+      return matching
+        ? resultFor(matching, 'unchanged')
+        : {
+            status: 'unchanged',
+            operationId: null,
+            before: inventory.indexSha256,
+            after: inventory.indexSha256,
+            removed: [],
+            blockers: inventory.rows
+              .filter(({ disposition }) => disposition === 'retain-unresolved')
+              .map(({ protocolId }) => protocolId),
+            archiveSnapshot: inventory.archiveSnapshot,
+          };
+    }
+
+    const indexed = readProtocolIndex(indexFile);
+    for (const { protocolId } of removable) delete indexed[protocolId];
+    const afterBytes = `${JSON.stringify(indexed, null, 2)}\n`;
+    const model = {
+      schema: RECONCILIATION_SCHEMA,
+      beforeIndexSha256: inventory.indexSha256,
+      afterIndexSha256: sha256(afterBytes),
+      removed: removable.map(({ protocolId, sourceCategory, evidence, row }) => ({
+        protocolId,
+        sourceCategory,
+        evidence,
+        row,
+      })),
+      blockers: inventory.rows
+        .filter(({ disposition }) => disposition === 'retain-unresolved')
+        .map(({ protocolId, reason }) => ({ protocolId, reason })),
+      archiveSnapshot: inventory.archiveSnapshot,
+    };
+    const operationId = sha256(canonicalJson(model));
+    const prepared = {
+      schema: RECONCILIATION_SCHEMA,
+      recordType: 'prepared',
+      operationId,
+      recordedAt: new Date().toISOString(),
+      model,
+    };
+    appendJournal(journalFile, prepared);
+    deps.afterPrepared?.(model);
+    writeIndexAtomic(indexFile, afterBytes);
+    deps.afterIndexWrite?.(model);
+    const archiveAfter = (deps.archiveSnapshot || archiveSnapshot)(projectDir);
+    if (!same(archiveAfter, inventory.archiveSnapshot)) {
+      throw new Error(
+        `co-review-index-reconciliation: archive changed during apply ${operationId}`
+      );
+    }
+    appendJournal(journalFile, appliedRecord(prepared, new Date().toISOString(), archiveAfter));
+    return resultFor(prepared, 'applied');
+  });
 }
 
 export function verifyLegacyIndexReconciliation() {
