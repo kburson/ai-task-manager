@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #93
+// @story #93 #1219
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -13,6 +13,10 @@ const IMMUTABLE_REVIEW_ARCHIVE =
 const IMMUTABLE_REVIEW_SHA256 = 'dd6b5bd49b1f8f01aacb9ce0cc278b758c598b64a2d2bb74afd45d9925a19a86';
 const IMMUTABLE_REVIEW_DIRECTORY = 'docs/superpowers/reviews/';
 const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
+const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
+  'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
+  'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
+];
 
 const requiredFiles = [
   '.prettierrc.json',
@@ -93,9 +97,22 @@ assert.deepEqual(
   markdownlintConfig.ignores.filter(
     (entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')
   ),
-  [REVIEWER_IGNORE_GLOB],
-  'markdownlint must use one canonical reviewer-role glob, never exact reviewer files'
+  [REVIEWER_IGNORE_GLOB, PEER_REVIEW_RESPONSE_IGNORE_GLOBS[1]],
+  'markdownlint must use canonical role and sealed-response globs, never exact reviewer files'
 );
+assert.deepEqual(
+  markdownlintConfig.ignores.filter(
+    (entry) => entry.includes('/reviews/') && entry.includes('-response-')
+  ),
+  PEER_REVIEW_RESPONSE_IGNORE_GLOBS,
+  'markdownlint must exempt only the canonical sealed-response filename grammar'
+);
+for (const responseGlob of PEER_REVIEW_RESPONSE_IGNORE_GLOBS) {
+  assert.ok(
+    cspell.ignorePaths.includes(responseGlob),
+    `cspell must preserve sealed response bytes matching ${responseGlob}`
+  );
+}
 assert.ok(
   !prettierIgnore.includes('docs/superpowers/reviews/**'),
   'Prettier must use the canonical review-directory ignore instead of a redundant glob'
