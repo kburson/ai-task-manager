@@ -1253,11 +1253,16 @@ Config files (all at repo root):
 Ignored paths in every tool include `node_modules/`, `.tmp/`, `.worktrees/`, `.claude/worktrees/`, `reports/`, `coverage/`, `docs/postmortems/`.
 
 Markdownlint also excludes canonical immutable reviewer evidence matching
-`docs/superpowers/reviews/**/*-reviewer-*-review.md`. This role-based boundary
-preserves externally authored bytes without a growing per-file exception list;
-their recorded hashes protect fidelity. It is not a directory-wide exemption:
-owner responses, archive README and manifest files, copied normative artifacts,
-specifications, and plans remain author-controlled and subject to Markdown lint.
+`docs/superpowers/reviews/**/*-reviewer-*-review.md` and terminal
+`ai-peer-review` response envelopes matching
+`docs/superpowers/reviews/**/*-review-*-author-response-*.md` or
+`docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md`. These boundaries
+preserve externally authored bytes and protocol-sealed response digests without a
+growing per-file exception list. The sealed-response boundary applies to both
+Markdownlint and CSpell. This is not a directory-wide exemption: legacy owner
+responses, archive README and manifest files, copied normative artifacts,
+specifications, and plans remain author-controlled and subject to Markdown lint
+and spell checking.
 
 When CSpell flags a legitimate token (project jargon, library name, person name), add it to `cspell-dictionary.txt` — keep the file sorted (`sort -u -o cspell-dictionary.txt cspell-dictionary.txt`). Don't disable spell-check inline.
 
