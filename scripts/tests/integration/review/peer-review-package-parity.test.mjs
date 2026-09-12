@@ -176,7 +176,6 @@ test('author-owned peer-review finalization remains package-governed', async (t)
     peerReviewStartArgs({ artifact: 'docs/spec.md', issue: 1516, kind: 'spec' })
   );
   const { workspace, destination } = reviewCoordinates(root, started, 1516);
-  const manifest = path.join(destination, 'review-manifest.md');
 
   runPeerReview(root, ['join', path.join(destination, 'reviewer-invitation.md')], 'reviewer');
   const reviewerResponse = responseFile(destination, 'reviewer-response-1.md');
@@ -194,7 +193,10 @@ test('author-owned peer-review finalization remains package-governed', async (t)
   assert.equal(pending.next_action.action, 'finalize-acceptance');
   assert.match(pending.next_action.command, /peer-review finalize/);
   assert.equal(git(root, 'rev-parse', 'HEAD'), acceptedHead);
-  assert.equal(existsSync(manifest), false);
+  assert.equal(
+    readdirSync(destination).some((entry) => entry.endsWith('review-manifest.md')),
+    false
+  );
 
   for (const session of ['reviewer', 'foreign-author']) {
     assert.throws(
@@ -202,13 +204,20 @@ test('author-owned peer-review finalization remains package-governed', async (t)
       /APR_IDENTITY_CONFLICT/
     );
     assert.equal(git(root, 'rev-parse', 'HEAD'), acceptedHead);
-    assert.equal(existsSync(manifest), false);
+    assert.equal(
+      readdirSync(destination).some((entry) => entry.endsWith('review-manifest.md')),
+      false
+    );
   }
   assert.throws(() => runPeerReview(root, ['finalize', workspace], null), /APR_IDENTITY_REQUIRED/);
   assert.equal(git(root, 'rev-parse', 'HEAD'), acceptedHead);
-  assert.equal(existsSync(manifest), false);
+  assert.equal(
+    readdirSync(destination).some((entry) => entry.endsWith('review-manifest.md')),
+    false
+  );
 
   const finalized = runPeerReview(root, ['finalize', workspace], 'author');
+  const manifest = responseFile(destination, 'review-manifest.md');
   const finalCommit = git(root, 'rev-parse', 'HEAD');
   assert.match(finalized, /: accepted/);
   assert.ok(existsSync(manifest));
