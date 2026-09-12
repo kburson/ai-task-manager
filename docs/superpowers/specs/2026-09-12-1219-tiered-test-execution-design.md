@@ -208,6 +208,16 @@ weaken its own acceptance. Record old and proposed policy digests. Where a mode
 transition changes required coverage, prove the stronger transition coverage
 and both sides' relevant wiring before activating the new policy.
 
+The governed coordinator enforces that rule outside candidate execution. It
+loads the active policy and managed workflow semantics from the protected base,
+then reads the candidate workflow as data and compares its managed-section
+digest. A candidate that changes that section is a policy-transition proposal:
+it must satisfy the previously active policy and cannot use its proposed jobs,
+dependencies, or check names as authority for its own delivery. The proposed
+policy becomes eligible only after it lands on the protected default branch and
+passes transition activation. Candidate-produced checks remain diagnostic input;
+their names or green conclusions never replace this coordinator decision.
+
 ### 5.2 Full PR to tiered
 
 The reviewed change installs fast PR coverage, required health validation,
@@ -318,6 +328,14 @@ operator diagnosis precedes replacement. Never rely on clone-local lock files
 to enforce a host-shared limit. Queue cancellation, execution cancellation, and
 resource starvation are visible outcomes.
 
+The admission record lives in the platform's user-scoped runtime/state directory,
+outside every checkout, under an AITM-owned namespace keyed by stable repository
+identity (remote host plus repository owner/name), not by a clone path. All
+clones and worktrees of that repository therefore contend on one record, while
+unrelated repositories do not. The record is runtime coordination only, never
+repository evidence or a portable lock, and its owner/process and child-liveness
+checks govern stale recovery.
+
 Fixture reuse is opt-in through reviewed family policy. A family can share
 immutable repository seeds and expensive setup within one invocation. Each case
 gets fresh mutable state or a verified reset. Family identity includes candidate,
@@ -401,11 +419,18 @@ delivery intents, receipts, and post-action readback.
 
 ### 8.1 Schedule and skip decision
 
-Tiered cadence supports fixed UTC slots from every six hours through once a
-week, including every eight hours as the default. Store the effective schedule,
-policy version, next due slot, and bounded dispatch/completion allowances. Do not
-derive a weekly schedule from an invalid day-of-month step expression. Generated
-workflow triggers and the coordinator's slot calculations must agree.
+Tiered cadence is one enumerated value: `every-6h`, `every-8h` (default),
+`every-12h`, `daily`, or `weekly`. The six-, eight-, and twelve-hour slots are
+anchored at 00:00 UTC and occur on exact top-of-hour divisions of the UTC day.
+Daily configuration selects one UTC hour. Weekly configuration selects one ISO
+weekday and one UTC hour.
+Minute is zero for the initial contract. Configuration stores the cadence,
+anchor/day/hour, policy version, next due slot, and bounded
+dispatch/completion allowances; it rejects every other interval or incomplete
+anchor instead of rounding or approximating it. Generated workflow triggers and
+the coordinator's slot calculations must produce the same slot identities. In
+particular, weekly uses day-of-week semantics and never an invalid day-of-month
+step expression.
 
 At each due slot, the trusted coordinator resolves the current default-branch
 head and reads the latest accepted complete result:
@@ -482,15 +507,34 @@ GitHub scheduled workflows can be delayed or dropped and run from the default
 branch. Readers therefore calculate expiry themselves; scheduler reliability
 cannot be the sole fail-closed mechanism. [GitHub schedule semantics](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
+An operator may manually dispatch the same protected coordinator to publish a
+trusted schedule observation without forcing complete execution. This operation
+may clear only a deadline-only UNKNOWN when the last compatible complete result
+was GREEN, the current default-branch head is still its exact tested SHA, the
+policy/environment identity is unchanged, and no failure, changed-trunk due
+obligation, or other incident intervened. It records the missed slot and the
+manual observation provenance before advancing the deadline. It cannot clear
+RED, any other UNKNOWN cause, or a due obligation for changed trunk; those paths
+still require the incident-specific reconciliation or complete recovery run.
+
 ## 9. Durable health, CI admission, and trust
 
 ### 9.1 Minimal repository-native persistence
 
-Tiered mode uses a protected same-repository orphan branch, `aitm/tia-data`, for
-compact canonical health and lease records. It has no merge base with application
-history and is never merged into trunk. A persistent project-health issue points
-to the exact accepted data-branch commit. The issue is an operational projection;
-its text or label cannot independently grant authority.
+Tiered mode uses a configurable protected same-repository orphan data branch,
+defaulting to `aitm/tia-data`, for compact canonical health and lease records.
+It has no merge base with application history and is never merged into trunk. A
+persistent project-health issue points to the exact accepted data-branch commit.
+The issue is an operational projection; its text or label cannot independently
+grant authority.
+
+The data-branch ruleset blocks deletion and non-fast-forward updates. It permits
+only the named trusted publisher workflow identity to perform validated
+fast-forward writes; ordinary users, candidates, and test jobs cannot push.
+Publisher code, expected-old-head compare-and-swap, path/schema validation, and
+narrow token permissions remain mandatory even for that bypass actor. Creating
+or changing this ruleset is the separately reviewed external operation described
+in section 12.
 
 The initial data plane needs only versioned configuration identity, explicit
 initialization, complete-run records, schedule observations, current health,
@@ -567,10 +611,13 @@ start workflows; recovery dispatch is explicit.
 ### 9.4 CI wiring and the enforcement boundary
 
 In tiered mode, `ci.yml` contains a lightweight health-validation job that reads
-the pinned durable state and verifies the table above. Expensive ordinary PR
-jobs start only after admission. The required final gate explicitly requires
-health validation success and all mode-required verification. A skipped health
-job is never accepted as success by the final gate.
+the pinned durable state and can fail early before expensive ordinary PR jobs.
+The head-authored job is an optimization and diagnostic, not a trusted
+enforcement boundary. Its success is necessary platform evidence but never
+sufficient for governed delivery. The required final gate explicitly requires
+health validation success and all mode-required verification, and a skipped
+health job is never accepted as success, but the out-of-candidate coordinator
+decision below remains authoritative even when those checks are green.
 
 Configuration validation checks semantic workflow wiring, referenced trusted
 workflow identity, mode/coverage agreement, permissions, and the live default
@@ -581,14 +628,22 @@ project's ruleset to require a PR and passing verification; applying an external
 ruleset change requires the separately approved exact ruleset delta.
 
 An earlier native green check is a result at CI time, not a continuously expiring
-GitHub merge permit. AITM rereads health at every governed mutating preflight and
-immediately before its delivery action, binding acceptance to the observed
-health epoch/deadline. If health changes before the action is issued, revalidate
-or refuse. This design does not claim an atomic transaction between a health
-update and GitHub's merge API, or an instantaneous server-side expiry of an old
-green check. Direct UI/API merges retain the platform's check-time behavior;
-this feature does not introduce a new merge identity, App, or permission system
-to eliminate that limitation.
+GitHub merge permit. AITM rereads health and protected-base policy at every
+governed mutating preflight and immediately before its delivery action, verifies
+the candidate managed-workflow digest against that base, and binds acceptance to
+the observed health epoch/deadline. If health or protected policy changes before
+the action is issued, revalidate or refuse. This coordinator runs outside the
+candidate job and is the enforcement boundary a head rewrite cannot replace.
+Tiered mode therefore requires authenticated authority reachability for every
+governed mutation; an offline or unreadable health/policy read fails closed and
+no cached green authorizes mutation. Read-only diagnosis and status remain
+available offline.
+
+This design does not claim an atomic transaction between a health update and
+GitHub's merge API, or an instantaneous server-side expiry of an old green
+check. Direct UI/API merges retain the platform's check-time behavior; this
+feature does not introduce a new merge identity, App, or permission system to
+eliminate that limitation.
 
 ## 10. Blocking and governed repair
 
@@ -599,13 +654,31 @@ Read-only diagnosis, status/history, stopping or pausing work, complete recovery
 health reconciliation, and the active repair path remain available. This does
 not claim to prevent arbitrary editor or shell actions outside AITM.
 
-One expiring repair lease authorizes an incident. It records repository,
-incident/health epoch, failed run and SHA, holder, issue, literal branch,
-permitted base, unique nonce, acquisition, expiry, and heartbeat. Claim, renewal,
-binding, release, and reclamation are serialized typed operations. The duration
-and renewal policy are finite configuration; renewal accommodates a full run
-that lasts longer than an individual lease interval. An expired holder loses
-authority. A label alone, a copied nonce, or a stale branch does not admit repair.
+One expiring repair lease authorizes an incident. Every lease records repository,
+incident class and health epoch, holder, issue, literal branch, permitted base,
+unique nonce, acquisition, expiry, and heartbeat. Class-specific evidence is:
+
+- A `test-failure` incident requires the failed native run and tested source SHA.
+  It authorizes source repair or an explicitly reasoned recovery run and clears
+  only after an accepted complete result on repaired/current trunk is bound to
+  that incident.
+- An `authority-infrastructure` incident records the failing operation or
+  observation, diagnostic code, expected authority head, and observed source
+  SHA when available; failed run and SHA are nullable. It authorizes only
+  authority reconciliation, publisher repair, or a complete recovery run when
+  coverage is indeterminate. It clears when authority is repaired and a trusted
+  observation establishes an unambiguous state; if coverage is unknown, that
+  observation must be an accepted complete result.
+- A `deadline-only` scheduler-miss incident records the missed slot and prior
+  GREEN baseline; failed run and SHA are null. It authorizes the manual trusted
+  schedule observation in section 8.3 and clears only under that operation's
+  unchanged-head conditions.
+
+Claim, renewal, binding, release, and reclamation are serialized typed
+operations. The duration and renewal policy are finite configuration; renewal
+accommodates a full run that lasts longer than an individual lease interval. An
+expired holder loses authority. A label alone, a copied nonce, or a stale branch
+does not admit repair.
 
 The holder creates or reuses a defect through sanctioned AITM mechanisms, binds
 the authorized repair branch/worktree, and fixes the failure. Complete validation
@@ -614,12 +687,13 @@ The PR still follows existing review, ownership, required checks, and delivery
 rules. The lease grants only the health exception, not permission to bypass
 other gates.
 
-After repair delivery, request an immediate complete run on repaired trunk.
-Health remains RED until that new complete result passes and is accepted for the
-incident. A passing repair PR, merge, label removal, or issue closure does not
-clear it. Infrastructure/evidence incidents may authorize a reasoned recovery
-run without a source change; ordinary same-SHA retry luck cannot silently erase
-a failure. A stale pre-repair success finishing late cannot clear the incident.
+After test-failure repair delivery, request an immediate complete run on repaired
+trunk. Health remains RED until that new complete result passes and is accepted
+for the incident. A passing repair PR, merge, label removal, or issue closure
+does not clear it. Authority/infrastructure incidents follow their narrower
+reconciliation or recovery rule above and remain UNKNOWN until their trusted
+clearing observation. Ordinary same-SHA retry luck cannot silently erase a
+failure. A stale pre-repair success finishing late cannot clear the incident.
 
 GREEN publication clears the resolved lease. Ordinary candidates must incorporate
 repaired trunk and obtain fresh candidate verification before delivery; a
@@ -666,26 +740,27 @@ of ten merges per hour.
 
 These are design acceptance conditions, not an implementation task sequence.
 
-| Area                  | Required observable proof                                                                                                                                                 |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Small-project mode    | New full-pr setup runs quality and all configured tests on each PR, requires the final gate, and installs no scheduled-health service.                                    |
-| Change correctness    | Committed-only changes, staged/unstaged edits, untracked paths, unusual path bytes, renames, deletions, and target-base changes produce the correct explained floor.      |
-| Conservative fallback | Unknown impact, unsupported graph edges, malformed mappings, stale graph/history, and unreadable base cannot produce false empty verification.                            |
-| Coverage deferral     | Direct and escalated overflow preserve all mandatory work; Test cannot accept until the exact-head remainder passes. Assertion failures cannot be deferred away.          |
-| Performance finding   | Predicted/observed overrun records actionable suite/budget evidence; remote success closes coverage without silently closing that finding.                                |
-| Resource admission    | Simultaneous invocations in different clones/worktrees respect the shared limit; queue time is separate; killed owners do not leave overlapping children.                 |
-| Fixture isolation     | Certified reuse reduces repeated setup; mutable leakage, reset failure, orphan children, and cross-invocation sharing fail; unsupported families remain isolated.         |
-| Remote handoff        | Push/PR ambiguity, duplicate requests, coordinator restart, head replacement, and stale epochs recover idempotently or refuse without a second PR/local full sandbox.     |
-| Native acceptance     | Missing, skipped, neutral, failed, cancelled, timed-out, forged, wrong-head, wrong-workflow, and incomplete-inventory evidence cannot pass the final gate.                |
-| Complete execution    | Every configured lane executes, all Slow files run sequentially, and cleanup/budget outcomes are included before a complete verdict.                                      |
-| Schedule              | Six-hour, eight-hour, daily, and weekly policies produce correct slots; unchanged successful trunk skips; changed trunk runs; manual/repair forcing works.                |
-| Freshness             | Unchanged checks advance the next deadline without fabricating a run; missing slots, overdue jobs, queue overlap, and weekly cadence obey the same deadline rules.        |
-| Health persistence    | Missing/corrupt records, mismatched issue pointers, stale publishers, conflicting attempts, and partial writes fail closed and recover without inventing GREEN.           |
-| Bootstrap             | Explicit never-run admits only within its bootstrap conditions; deleted or unreadable state cannot reproduce that exception.                                              |
-| Repair                | Forged labels and stale leases refuse; concurrent claims yield one holder; passing repair PR/merge does not clear RED; successful post-repair trunk proof does.           |
-| Mode transitions      | Full-pr to tiered installs and verifies the whole contract; tiered to full-pr establishes full coverage first and cannot discard an active RED incident.                  |
-| Compatibility         | Installed local receipts and current issue protocols retain their meanings; candidate code cannot evaluate or replace trusted authority.                                  |
-| Protection            | Configuration validation demonstrates the live required final gate, explicit health dependency in tiered mode, and no silent acceptance of missing inspection permission. |
+| Area                  | Required observable proof                                                                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Small-project mode    | New full-pr setup runs quality and all configured tests on each PR, requires the final gate, and installs no scheduled-health service.                                                                                                                      |
+| Change correctness    | Committed-only changes, staged/unstaged edits, untracked paths, unusual path bytes, renames, deletions, and target-base changes produce the correct explained floor.                                                                                        |
+| Conservative fallback | Unknown impact, unsupported graph edges, malformed mappings, stale graph/history, and unreadable base cannot produce false empty verification.                                                                                                              |
+| Coverage deferral     | Direct and escalated overflow preserve all mandatory work; Test cannot accept until the exact-head remainder passes. Assertion failures cannot be deferred away.                                                                                            |
+| Performance finding   | Predicted/observed overrun records actionable suite/budget evidence; remote success closes coverage without silently closing that finding.                                                                                                                  |
+| Resource admission    | Simultaneous invocations in different clones/worktrees resolve one user-scoped repository-identity record, respect the shared limit, separate queue time, and leave no overlapping children after killed owners.                                            |
+| Fixture isolation     | Certified reuse reduces repeated setup; mutable leakage, reset failure, orphan children, and cross-invocation sharing fail; unsupported families remain isolated.                                                                                           |
+| Remote handoff        | Push/PR ambiguity, duplicate requests, coordinator restart, head replacement, and stale epochs recover idempotently or refuse without a second PR/local full sandbox.                                                                                       |
+| Native acceptance     | Missing, skipped, neutral, failed, cancelled, timed-out, forged, wrong-head, wrong-workflow, and incomplete-inventory evidence cannot pass the final gate.                                                                                                  |
+| Complete execution    | Every configured lane executes, all Slow files run sequentially, and cleanup/budget outcomes are included before a complete verdict.                                                                                                                        |
+| Schedule              | Only six-hour, eight-hour, twelve-hour, daily, and weekly policies validate; their UTC anchors produce matching workflow/coordinator slots; unchanged successful trunk skips; changed trunk runs; manual/repair forcing works.                              |
+| Freshness             | Unchanged checks advance the next deadline without fabricating a run; missing slots, overdue jobs, queue overlap, and weekly cadence obey the same deadline rules.                                                                                          |
+| Health persistence    | Missing/corrupt records, mismatched issue pointers, stale publishers, conflicting attempts, and partial writes fail closed and recover without inventing GREEN.                                                                                             |
+| Bootstrap             | Explicit never-run admits only within its bootstrap conditions; deleted or unreadable state cannot reproduce that exception.                                                                                                                                |
+| Repair                | Failure, authority/infrastructure, and deadline-only incidents enforce their class-specific nullable fields, remediation, and clearing observations; forged labels and stale leases refuse; concurrent claims yield one holder.                             |
+| Mode transitions      | Full-pr to tiered installs and verifies the whole contract; tiered to full-pr establishes full coverage first and cannot discard an active RED incident.                                                                                                    |
+| Compatibility         | Installed local receipts and current issue protocols retain their meanings; candidate code cannot evaluate or replace trusted authority.                                                                                                                    |
+| Health admission      | Unreadable authority, offline mutation, a health change between preflight and delivery, and publisher/projection partial state fail closed; idempotent reconciliation cannot invent GREEN.                                                                  |
+| Protection            | Configuration validation demonstrates the live required final gate and health dependency; a candidate that rewrites the managed health/final-gate jobs still cannot obtain governed delivery, and missing inspection permission is never silently accepted. |
 
 Activation requires a protected pilot showing these properties and usable
 diagnostics, with bounded runtime appropriate to the selected mode. No fixed
@@ -756,11 +831,15 @@ runtime/enrollment/migration program.
 
 Complete validation is expensive by design. Tiered mode accepts an explicit
 between-run risk window, configurable up to weekly; full-pr pays the full suite
-cost on each candidate and is simpler to operate. A fresh ancestor GREEN is not
-proof that later trunk commits received full coverage. Unknown dependencies
-increase remote work rather than reduce the safety floor. Fixture reuse reduces
-setup only where isolation can be demonstrated. Finite health deadlines can
-block ordinary work during CI outages, with a bounded recovery route.
+cost on each candidate and is simpler to operate. At this repository's audited
+1,055-file inventory, including 52 sequential Slow files, that complete run may
+be on the order of an hour; `full-pr` is operationally simplest but is most
+appropriate to teams and suites willing to pay that cost per PR. A fresh
+ancestor GREEN is not proof that later trunk commits received full coverage.
+Unknown dependencies increase remote work rather than reduce the safety floor.
+Fixture reuse reduces setup only where isolation can be demonstrated. Finite
+health deadlines can block ordinary work during CI outages, with the bounded
+manual observation or incident-recovery route defined above.
 
 The approved outcome is this specification and its governed documentation commit.
 Implementation, an implementation plan, issue rewrites/closures, dependency
