@@ -37,9 +37,9 @@ function lease({
 test('AITM pins the exact verified Phase 2 package and exposes only its public API', async () => {
   const { installedPeerReviewApi } = await import(adapterPath);
 
-  assert.equal(rootPackage.dependencies['ai-peer-review'], '0.2.1');
+  assert.equal(rootPackage.dependencies['ai-peer-review'], '0.2.2');
   assert.equal(packageJson.name, 'ai-peer-review');
-  assert.equal(packageJson.version, '0.2.1');
+  assert.equal(packageJson.version, '0.2.2');
   assert.equal(packageJson.exports, './src/public-api.mjs');
   assert.equal(Object.isFrozen(installedPeerReviewApi), true);
   assert.deepEqual(Object.keys(installedPeerReviewApi).sort(), [

@@ -105,7 +105,7 @@
     "puppeteer": "^24.42.0"
   },
   "dependencies": {
-    "ai-peer-review": "0.2.1",
+    "ai-peer-review": "0.2.2",
     "espree": "^10.4.0"
   }
 }
