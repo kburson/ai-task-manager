@@ -79,7 +79,7 @@ function replaceSection(file, heading, content) {
 }
 
 test('released package finalization CLI returns terminal success exactly once', async (t) => {
-  assert.equal(packageJson.version, '0.2.1');
+  assert.equal(packageJson.version, '0.2.2');
   const { peerReviewStartArgs } = await import(adapterPath);
   const { statusReview } = await import('ai-peer-review');
   const root = createHostFixture(t);
