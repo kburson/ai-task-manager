@@ -30,10 +30,21 @@ const GRAPH = {
 };
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
 
-function makeGit({ grandparentIsAncestor = true, rebaseChildFails = false } = {}) {
+function makeGit({
+  grandparentIsAncestor = true,
+  rebaseChildFails = false,
+  childUpstream = '',
+} = {}) {
   const calls = [];
   const git = (args) => {
     calls.push(args);
+    if (
+      args[0] === 'for-each-ref' &&
+      args[1] === '--format=%(upstream)' &&
+      args[2] === 'refs/heads/feature/child/910'
+    ) {
+      return childUpstream;
+    }
     if (args[0] === 'merge-base' && args.includes('--is-ancestor')) {
       if (!grandparentIsAncestor) {
         const e = new Error('trunk moved ahead');
@@ -71,7 +82,26 @@ test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', () =
   assert.ok(kinds.includes('rebase feature/epic/905 feature/child/910'));
   assert.ok(kinds.includes('merge --ff-only feature/child/910'));
   assert.ok(kinds.includes('worktree remove /wt/910'));
+  assert.ok(!kinds.includes('branch --unset-upstream feature/child/910'));
   assert.ok(kinds.some((k) => k.startsWith('branch -d feature/child/910')));
+});
+
+test('#1611: cleanup detaches a configured upstream before safe child deletion', () => {
+  const git = makeGit({
+    childUpstream: 'refs/remotes/origin/feature/child/910',
+  });
+  mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } });
+
+  const calls = git.calls.map((args) => args.join(' '));
+  const removed = calls.indexOf('worktree remove /wt/910');
+  const probed = calls.indexOf('for-each-ref --format=%(upstream) refs/heads/feature/child/910');
+  const detached = calls.indexOf('branch --unset-upstream feature/child/910');
+  const deleted = calls.indexOf('branch -d feature/child/910');
+
+  assert.ok(removed < probed);
+  assert.ok(probed < detached);
+  assert.ok(detached < deleted);
+  assert.ok(!calls.some((call) => call.startsWith('branch -D ')));
 });
 
 test('nested epic follows the same recursive merge-back path into its immediate epic parent', () => {

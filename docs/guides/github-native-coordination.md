@@ -68,6 +68,18 @@ controls role separation, handoffs, and evidence publication. AITM may cache
 read-only package status for observation, but that cache is non-authoritative
 and cannot grant task or worktree occupancy.
 
+Reviewer acceptance enters `acceptance-pending`, releases the peer-review
+claim, and ends the reviewer's mutation authority. The reviewer stops at that
+boundary; acceptance does not publish the terminal manifest or commit. The
+registered author runs `peer-review status <workspace> --next` and follows the
+exact `peer-review finalize` command it returns. Only that author-owned command
+may publish the accepted terminal evidence, and an identical retry must remain
+idempotent.
+
+The authenticated human `--good-enough` path is a distinct authority grant. It
+still routes terminal publication through the registered author and never
+turns reviewer acceptance into ordinary archive-publication authority.
+
 Starting, routing, or continuing a session, including an automated handoff, is
 operational routing only. It does not create human semantic approval or an
 approval marker; the explicit authenticated human approval workflow remains the
