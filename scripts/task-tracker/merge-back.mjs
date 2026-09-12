@@ -34,6 +34,11 @@ function isAncestor(git, ancestorRef, descendantRef) {
   }
 }
 
+function hasConfiguredUpstream(git, branch) {
+  const upstream = git(['for-each-ref', '--format=%(upstream)', `refs/heads/${branch}`]);
+  return Boolean(String(upstream || '').trim());
+}
+
 export function mergeBack({ child, path, deps } = {}) {
   if (child == null) throw new Error('merge-back: child issue is required');
   if (!deps || typeof deps.git !== 'function') {
@@ -123,6 +128,9 @@ export function mergeBack({ child, path, deps } = {}) {
 
   // 5. Cleanup on success.
   if (path) git(['worktree', 'remove', path]);
+  if (hasConfiguredUpstream(git, childBranch)) {
+    git(['branch', '--unset-upstream', childBranch]);
+  }
   git(['branch', '-d', childBranch]);
 
   return { merged: true, epic: epicBranch, child: childBranch };
