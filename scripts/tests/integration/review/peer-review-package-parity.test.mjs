@@ -1,7 +1,15 @@
-// @story #1546 #1549
+// @story #1516 #1546 #1549
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -28,23 +36,36 @@ function createHostFixture(t) {
   git(root, 'config', 'user.email', 'tests@example.invalid');
   git(root, 'config', 'user.name', 'AITM Tests');
   mkdirSync(path.join(root, 'docs'), { recursive: true });
+  writeFileSync(path.join(root, '.gitignore'), '.scratch/peer-review/\n');
   writeFileSync(path.join(root, 'docs/spec.md'), '# Package boundary fixture\n');
   writeFileSync(path.join(root, '.git/info/exclude'), '.scratch/peer-review/\n');
-  git(root, 'add', '-f', 'docs/spec.md');
+  git(root, 'add', '-f', '.gitignore', 'docs/spec.md');
   git(root, 'commit', '-m', 'fixture');
   return realpathSync(root);
+}
+
+function peerReviewEnv(session) {
+  const env = { ...process.env };
+  for (const key of [
+    'CLAUDE_CODE_SESSION_ID',
+    'CLAUDE_SESSION_ID',
+    'CODEX_SESSION_ID',
+    'CODEX_THREAD_ID',
+    'GROK_SESSION_ID',
+  ]) {
+    delete env[key];
+  }
+  if (session !== null) env.CODEX_THREAD_ID = `aitm-package-parity-${session}`;
+  env.CODEX_MODEL_ID = 'gpt-test';
+  env.CODEX_MODEL_DISPLAY = 'GPT Test';
+  return env;
 }
 
 function runPeerReview(root, args, session = 'author') {
   return execFileSync(process.execPath, [peerReviewCli, ...args], {
     cwd: root,
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      CODEX_THREAD_ID: `aitm-package-parity-${session}`,
-      CODEX_MODEL_ID: 'gpt-test',
-      CODEX_MODEL_DISPLAY: 'GPT Test',
-    },
+    env: peerReviewEnv(session),
   });
 }
 
@@ -61,13 +82,13 @@ function replaceSection(file, heading, content) {
   writeFileSync(file, source.replace(pattern, `$1${content}`));
 }
 
-function reviewCoordinates(root, started) {
+function reviewCoordinates(root, started, issue = 1546) {
   const reviewId = started.match(/^Review (review-[a-f0-9]+):/m)?.[1];
   assert.ok(reviewId, 'start output must identify the review workspace');
   return {
     reviewId,
     workspace: path.join(root, '.scratch/peer-review', reviewId),
-    destination: path.join(root, 'docs/superpowers/reviews/1546/spec'),
+    destination: path.join(root, `docs/superpowers/reviews/${issue}/spec`),
   };
 }
 
@@ -145,6 +166,73 @@ test('installed CLI preserves AITM settings through revision and acceptance', as
   replaceSection(reviewerTwo, 'Decision', 'accepted');
   runPeerReview(root, ['submit', workspace, '--decision', 'accepted'], 'reviewer');
   assert.equal(peerReviewStatus({ workspace }).state, 'acceptance-pending');
+});
+
+test('author-owned peer-review finalization remains package-governed', async (t) => {
+  const { installedPeerReviewApi, peerReviewStartArgs } = await import(adapterPath);
+  const root = createHostFixture(t);
+  const started = runPeerReview(
+    root,
+    peerReviewStartArgs({ artifact: 'docs/spec.md', issue: 1516, kind: 'spec' })
+  );
+  const { workspace, destination } = reviewCoordinates(root, started, 1516);
+  const manifest = path.join(destination, 'review-manifest.md');
+
+  runPeerReview(root, ['join', path.join(destination, 'reviewer-invitation.md')], 'reviewer');
+  const reviewerResponse = responseFile(destination, 'reviewer-response-1.md');
+  replaceSection(reviewerResponse, 'Summary', 'Accepted as written.');
+  replaceSection(reviewerResponse, 'Findings', 'None.');
+  replaceSection(reviewerResponse, 'Required changes', 'None.');
+  replaceSection(reviewerResponse, 'Optional suggestions', 'None.');
+  replaceSection(reviewerResponse, 'Decision', 'accepted');
+
+  const acceptedHead = git(root, 'rev-parse', 'HEAD');
+  runPeerReview(root, ['submit', workspace, '--decision', 'accepted'], 'reviewer');
+  const pending = installedPeerReviewApi.statusReview(workspace);
+  assert.equal(pending.state, 'acceptance-pending');
+  assert.equal(pending.claim.role, 'author');
+  assert.equal(pending.next_action.action, 'finalize-acceptance');
+  assert.match(pending.next_action.command, /peer-review finalize/);
+  assert.equal(git(root, 'rev-parse', 'HEAD'), acceptedHead);
+  assert.equal(existsSync(manifest), false);
+
+  for (const session of ['reviewer', 'foreign-author']) {
+    assert.throws(
+      () => runPeerReview(root, ['finalize', workspace], session),
+      /APR_IDENTITY_CONFLICT/
+    );
+    assert.equal(git(root, 'rev-parse', 'HEAD'), acceptedHead);
+    assert.equal(existsSync(manifest), false);
+  }
+  assert.throws(() => runPeerReview(root, ['finalize', workspace], null), /APR_IDENTITY_REQUIRED/);
+  assert.equal(git(root, 'rev-parse', 'HEAD'), acceptedHead);
+  assert.equal(existsSync(manifest), false);
+
+  const finalized = runPeerReview(root, ['finalize', workspace], 'author');
+  const finalCommit = git(root, 'rev-parse', 'HEAD');
+  assert.match(finalized, /: accepted/);
+  assert.ok(existsSync(manifest));
+  assert.notEqual(finalCommit, acceptedHead);
+  assert.deepEqual(
+    git(root, 'diff-tree', '--no-commit-id', '--name-only', '-r', finalCommit).split('\n').sort(),
+    [
+      path.relative(root, reviewerResponse).split(path.sep).join('/'),
+      path.relative(root, manifest).split(path.sep).join('/'),
+    ].sort()
+  );
+
+  const terminalEvents = readFileSync(path.join(workspace, 'events.jsonl'));
+  const retried = runPeerReview(root, ['finalize', workspace], 'author');
+  assert.match(retried, /: accepted/);
+  assert.equal(git(root, 'rev-parse', 'HEAD'), finalCommit);
+  assert.deepEqual(readFileSync(path.join(workspace, 'events.jsonl')), terminalEvents);
+
+  const guide = readFileSync(
+    path.join(repoRoot, 'docs/guides/github-native-coordination.md'),
+    'utf8'
+  );
+  assert.match(guide, /acceptance-pending/);
+  assert.match(guide, /peer-review status <workspace> --next/);
 });
 
 test('installed package preserves the legacy turn-budget intervention', async (t) => {
