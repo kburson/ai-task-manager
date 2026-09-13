@@ -147,7 +147,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 if ! command -v node &>/dev/null; then
-  err "Node.js not found. Install Node.js 18+ from: https://nodejs.org"
+  err "Node.js not found. Install Node.js 24+ from: https://nodejs.org"
   exit 1
 fi
 

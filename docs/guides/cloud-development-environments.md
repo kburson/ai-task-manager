@@ -1,6 +1,6 @@
 # Cloud Development Environments
 
-This repository supports cloud agent development through checked-in setup scripts that Codex, Claude, Codespaces, or another hosted worker can run after cloning the repo. The supported runtime minimum is Node.js 22. For cloud development environments, prefer Node 25 so spawned agents run against the same modern runtime used by active maintainers.
+This repository supports cloud agent development through checked-in setup scripts that Codex, Claude, Codespaces, or another hosted worker can run after cloning the repo. The supported runtime minimum is Node.js 24 LTS. For cloud development environments, prefer Node 26 so spawned agents run against the same modern runtime used by active maintainers.
 
 The first pass is intentionally scripts-first. Configure the cloud provider UI to call the repository entrypoints rather than encoding tool installation steps in one provider-specific place.
 
@@ -18,7 +18,7 @@ Use this script when a cached environment is reused:
 scripts/dev-env/maintenance-cloud.sh
 ```
 
-`setup-cloud.sh` verifies `git`, `gh`, `jq`, `node`, and `npm`; enforces Node.js 22 or newer; reports whether Node 25 is active; runs `npm ci` from `package-lock.json`; and attempts to install Puppeteer Chrome for report-generation workflows.
+`setup-cloud.sh` verifies `git`, `gh`, `jq`, `node`, and `npm`; enforces Node.js 24 or newer; reports whether Node 26 is active; runs `npm ci` from `package-lock.json`; and attempts to install Puppeteer Chrome for report-generation workflows.
 
 `maintenance-cloud.sh` refreshes origin metadata, ensures the environment has a usable `origin/trunk` and local trunk reference when possible, checks whether the clone is shallow, and reruns `npm ci` so dependency state follows the lockfile.
 

@@ -28,7 +28,7 @@ the dogfood link inside the new worktree.
 Install these once on the local machine:
 
 - Git
-- Node.js 22 or newer; Node.js 25 is preferred
+- Node.js 24 or newer; Node.js 26 is preferred
 - npm
 - GitHub CLI (`gh`)
 - `jq`
@@ -54,7 +54,7 @@ and pull-request operations require authentication and network access.
 5. Create a local environment named:
 
    ```text
-   AITM Dogfood — Node 25
+   AITM Dogfood — Node 26
    ```
 
 6. In the shared/default setup-script field, enter:
@@ -122,7 +122,7 @@ for tracked work.
 2. Below the composer, select **Worktree**.
 3. Select `trunk` as the starting branch unless the task explicitly requires a
    different base.
-4. Select **AITM Dogfood — Node 25** as the local environment.
+4. Select **AITM Dogfood — Node 26** as the local environment.
 5. Submit the task prompt.
 6. Wait for the setup entrypoint to complete. Successful output ends with:
 

@@ -28,13 +28,13 @@ require_cmd jq
 
 node_version="$(node -v)"
 node_major="$(version_major "$node_version")"
-if [ "$node_major" -lt 22 ]; then
-  printf '[cloud-setup] ERROR: Node 22 / Node.js 22+ is required; found %s\n' "$node_version" >&2
+if [ "$node_major" -lt 24 ]; then
+  printf '[cloud-setup] ERROR: Node 24 / Node.js 24+ is required; found %s\n' "$node_version" >&2
   exit 1
 fi
 
-if [ "$node_major" -lt 25 ]; then
-  warn "Node 25 is preferred for cloud development; continuing with supported runtime $node_version"
+if [ "$node_major" -lt 26 ]; then
+  warn "Node 26 is preferred for cloud development; continuing with supported runtime $node_version"
 else
   log "Node runtime: $node_version"
 fi
