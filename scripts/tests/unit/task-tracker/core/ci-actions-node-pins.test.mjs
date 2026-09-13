@@ -9,8 +9,8 @@
 // Coverage:
 //   - No actions/checkout@v4 or actions/setup-node@v4 pin remains under
 //     .github/workflows/; every use of those two actions is @v5.
-//   - package.json engines.node is exactly ">=22".
-//   - Every setup-node node-version in ci.yml is 22.
+//   - package.json and the root lockfile engines.node are exactly ">=24".
+//   - Every setup-node node-version in ci.yml is 24.
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -53,16 +53,18 @@ test('every actions/checkout and actions/setup-node use is pinned to @v5', () =>
   assert.deepEqual(bad, [], `non-@v5 checkout/setup-node pins found:\n${bad.join('\n')}`);
 });
 
-test('package.json engines.node is ">=22"', () => {
+test('package metadata requires Node.js 24 or newer', () => {
   const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
-  assert.equal(pkg.engines?.node, '>=22');
+  const lock = JSON.parse(readFileSync(join(REPO_ROOT, 'package-lock.json'), 'utf8'));
+  assert.equal(pkg.engines?.node, '>=24');
+  assert.equal(lock.packages?.['']?.engines?.node, '>=24');
 });
 
-test('ci.yml setup-node node-version is 22 for every occurrence', () => {
+test('ci.yml setup-node node-version is 24 for every occurrence', () => {
   const text = readFileSync(join(WORKFLOW_DIR, 'ci.yml'), 'utf8');
   const versions = [...text.matchAll(/node-version:\s*(\S+)/g)].map((m) => m[1]);
   assert.ok(versions.length > 0, 'expected at least one node-version in ci.yml');
   for (const v of versions) {
-    assert.equal(v, '22', `expected node-version 22, got ${v}`);
+    assert.equal(v, '24', `expected node-version 24, got ${v}`);
   }
 });

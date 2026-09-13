@@ -20,7 +20,9 @@ test('npm pack --dry-run resolves the scoped @kburson/ai-task-manager name', () 
   });
   assert.equal(res.status, 0, `npm pack --dry-run failed: ${res.stderr}`);
   const parsed = JSON.parse(res.stdout);
-  const entry = Array.isArray(parsed) ? parsed[0] : parsed;
+  const entry = Array.isArray(parsed)
+    ? parsed[0]
+    : (parsed['@kburson/ai-task-manager'] ?? Object.values(parsed)[0]);
   assert.equal(
     entry.name,
     '@kburson/ai-task-manager',

@@ -25,6 +25,7 @@ const VERIFIER_URL = new URL('../../../dev-env/verify-local-worktree.mjs', impor
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../..');
 const SETUP_SCRIPT = path.join(REPO_ROOT, 'scripts/dev-env/setup-local-worktree.sh');
+const CLOUD_SETUP_SCRIPT = path.join(REPO_ROOT, 'scripts/dev-env/setup-cloud.sh');
 const OPERATOR_GUIDE = path.join(REPO_ROOT, 'docs/guides/codex-local-worktree-environment.md');
 
 let verifierModule = null;
@@ -57,7 +58,7 @@ function inspect(projectDir, overrides = {}) {
   );
   return verifierModule.inspectLocalWorktreeEnvironment({
     projectDir,
-    nodeVersion: '25.6.0',
+    nodeVersion: '26.0.0',
     commandExists: () => true,
     ...overrides,
   });
@@ -79,27 +80,40 @@ test('prints package-lifecycle self-documentation for --help', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /verify-local-worktree/);
   assert.match(result.stdout, /Usage:/);
-  assert.match(result.stdout, /Node\.js 22/);
+  assert.match(result.stdout, /Node\.js 24/);
 });
 
-test('accepts a complete Node 25 dogfood worktree', () => {
+test('accepts a complete Node 26 dogfood worktree without warnings', () => {
   const projectDir = makeProject();
   try {
     const result = inspect(projectDir);
     assert.equal(result.ok, true);
     assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.warnings, []);
     assert.equal(result.details.selfLinkTarget, projectDir);
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }
 });
 
-test('rejects Node versions below 22', () => {
+test('accepts Node 24 with a Node 26 preference warning', () => {
   const projectDir = makeProject();
   try {
-    const result = inspect(projectDir, { nodeVersion: '21.7.3' });
+    const result = inspect(projectDir, { nodeVersion: '24.0.0' });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.errors, []);
+    assert.ok(result.warnings.some((message) => message.includes('Node.js 26 is preferred')));
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('rejects Node versions below 24', () => {
+  const projectDir = makeProject();
+  try {
+    const result = inspect(projectDir, { nodeVersion: '23.11.1' });
     assert.equal(result.ok, false);
-    assert.ok(result.errors.some((message) => message.includes('Node.js 22 or newer')));
+    assert.ok(result.errors.some((message) => message.includes('Node.js 24 or newer')));
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }
@@ -155,6 +169,10 @@ test('setup script installs, repairs, and verifies without binding task work', (
   const source = readFileSync(SETUP_SCRIPT, 'utf8');
   assert.match(source, /^#!\/usr\/bin\/env bash/);
   assert.ok(statSync(SETUP_SCRIPT).mode & 0o111, 'setup-local-worktree.sh must be executable');
+  assert.match(source, /node_major.*-lt 24/);
+  assert.match(source, /Node\.js 24 or newer/);
+  assert.match(source, /node_major.*-lt 26/);
+  assert.match(source, /Node\.js 26 is preferred/);
 
   const installIndex = source.indexOf('npm ci');
   const linkIndex = source.indexOf('npm run link:self');
@@ -165,6 +183,14 @@ test('setup script installs, repairs, and verifies without binding task work', (
 
   assert.doesNotMatch(source, /npx aitm (?:start|resume)/);
   assert.doesNotMatch(source, /npm (?:run )?test/);
+});
+
+test('cloud setup enforces Node 24 and prefers Node 26', () => {
+  const source = readFileSync(CLOUD_SETUP_SCRIPT, 'utf8');
+  assert.match(source, /node_major.*-lt 24/);
+  assert.match(source, /Node 24 \/ Node\.js 24\+/);
+  assert.match(source, /node_major.*-lt 26/);
+  assert.match(source, /Node 26 is preferred/);
 });
 
 test('operator guide is standalone for navigating Codex environment settings', () => {

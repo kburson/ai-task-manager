@@ -27,11 +27,11 @@ node_major="${node_version%%.*}"
 case "$node_major" in
   '' | *[!0-9]*) fail "unable to parse Node.js version: $node_version" ;;
 esac
-if [ "$node_major" -lt 22 ]; then
-  fail "Node.js 22 or newer is required; found $node_version"
+if [ "$node_major" -lt 24 ]; then
+  fail "Node.js 24 or newer is required; found $node_version"
 fi
-if [ "$node_major" -lt 25 ]; then
-  warn "Node.js 25 is preferred for active development; found $node_version"
+if [ "$node_major" -lt 26 ]; then
+  warn "Node.js 26 is preferred for active development; found $node_version"
 else
   log "Node.js $node_version"
 fi

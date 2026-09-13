@@ -43,10 +43,10 @@ export function inspectLocalWorktreeEnvironment({
   const major = nodeMajor(nodeVersion);
   if (major === null) {
     errors.push(`Unable to parse Node.js version: ${nodeVersion}`);
-  } else if (major < 22) {
-    errors.push(`Node.js 22 or newer is required; found ${nodeVersion}`);
-  } else if (major < 25) {
-    warnings.push(`Node.js 25 is preferred for active development; found ${nodeVersion}`);
+  } else if (major < 24) {
+    errors.push(`Node.js 24 or newer is required; found ${nodeVersion}`);
+  } else if (major < 26) {
+    warnings.push(`Node.js 26 is preferred for active development; found ${nodeVersion}`);
   }
 
   for (const command of REQUIRED_COMMANDS) {

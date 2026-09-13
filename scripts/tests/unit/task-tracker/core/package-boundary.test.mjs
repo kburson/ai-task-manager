@@ -124,14 +124,20 @@ function repoRoot() {
 // measured surface grows by exactly that maintained runtime entry.
 const ENTRY_CEILING = 770;
 
+let packedFileCache = null;
 function packedFiles() {
+  if (packedFileCache) return packedFileCache;
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
     cwd: repoRoot(),
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   });
   const parsed = JSON.parse(out);
-  return parsed[0].files.map((f) => f.path);
+  const entry = Array.isArray(parsed)
+    ? parsed[0]
+    : (parsed['@kburson/ai-task-manager'] ?? Object.values(parsed)[0]);
+  packedFileCache = entry.files.map((f) => f.path);
+  return packedFileCache;
 }
 
 test('package-boundary: no test files are packed', () => {

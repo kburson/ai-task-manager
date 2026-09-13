@@ -33,7 +33,10 @@ test('npm pack tarball contains the seed index + durable facts, no archive', () 
     env: { ...process.env, npm_config_loglevel: 'silent' },
   });
   const report = JSON.parse(raw);
-  const entries = (report[0]?.files ?? []).map((f) => f.path);
+  const entry = Array.isArray(report)
+    ? report[0]
+    : (report['@kburson/ai-task-manager'] ?? Object.values(report)[0]);
+  const entries = (entry?.files ?? []).map((f) => f.path);
 
   assert.ok(
     entries.includes('docs/ai-memory/MEMORY.md'),

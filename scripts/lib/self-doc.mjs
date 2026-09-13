@@ -801,7 +801,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     usage: 'verify-local-worktree',
     arguments: [],
     preconditions: [
-      'Run from an AITM source checkout with Node.js 22 or newer after dependencies and the self-link are installed.',
+      'Run from an AITM source checkout with Node.js 24 or newer after dependencies and the self-link are installed.',
     ],
     effects: ['Reads environment and worktree state without modifying either.'],
     output: ['Reports every contract violation or confirms the local worktree is ready.'],
