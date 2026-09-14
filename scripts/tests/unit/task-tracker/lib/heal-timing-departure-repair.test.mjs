@@ -1,5 +1,5 @@
 // @story #1107
-// @story #1187
+// @story #1187 #1619
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -284,6 +284,146 @@ assert.throws(
     /no preceding Timing Log row/i,
     'selecting the start row explicitly still refuses — it was never repairable'
   );
+}
+
+// #1619 — recover one standalone same-second `resumed` row written between a
+// demotion audit and the corresponding Develop entry.
+{
+  const standalone = [
+    '⏱ Timing Log',
+    '',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |',
+    '|---|---|---|---|---|---|---|---|',
+    '| 2026-09-14 08:00:00 -05:00 | demoted:develop |  |  | 0 | 100 | review rework | 200 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-09-14 08:00:00 -05:00 | resumed |  |  | 0 | 100 | redundant bind | 200 | <!-- row-sec: a=0 i=0 -->',
+    '| 2026-09-14 08:00:00 -05:00 | develop:started |  |  | 0 | 100 | develop rework | 200 | <!-- row-sec: a=0 i=0 -->',
+    '',
+  ].join('\n');
+  const context = (body) => ({
+    comments: [{ body }],
+    markers: { enteredStages: [{ stage: 'develop' }] },
+    body: '',
+  });
+
+  const before = validateTimingSequence(context(standalone));
+  assert.equal(before.pass, false);
+  assert.ok(before.failures.some((failure) => /doubled step/.test(failure)));
+
+  assert.equal(
+    typeof repairModule.recoverRedundantSameSecondReengagement,
+    'function',
+    'the standalone same-second reengagement transform is exported'
+  );
+  const recovered = repairModule.recoverRedundantSameSecondReengagement(standalone, {
+    rowIndex: 1,
+  });
+  assert.doesNotMatch(recovered, /\| resumed \|/);
+  assert.match(recovered, /\| demoted:develop \|/);
+  assert.match(recovered, /\| develop:started \|/);
+  assert.deepEqual(validateTimingSequence(context(recovered)), { pass: true, failures: [] });
+
+  const nearMisses = [
+    standalone.replace(
+      'redundant bind | 200 | <!-- row-sec: a=0',
+      'redundant bind | 200 | <!-- row-sec: a=1'
+    ),
+    standalone.replace('| resumed |  |  | 0 | 100 |', '| resumed |  |  | 1 | 100 |'),
+    standalone.replace('| resumed |  |  | 0 | 100 |', '| resumed |  |  | 0 | 101 |'),
+    standalone.replace('08:00:00 -05:00 | resumed', '08:00:01 -05:00 | resumed'),
+    standalone.replace(
+      '| 2026-09-14 08:00:00 -05:00 | resumed',
+      'note between rows\n| 2026-09-14 08:00:00 -05:00 | resumed'
+    ),
+    standalone.replace('demoted:develop', 'review:failed'),
+    standalone.replace('develop:started', 'test:started'),
+  ];
+  for (const malformed of nearMisses) {
+    assert.throws(
+      () =>
+        repairModule.recoverRedundantSameSecondReengagement(malformed, {
+          rowIndex: 1,
+        }),
+      /same-second reengagement|zero-duration|changed|adjacent|demoted:develop|develop:started/i
+    );
+  }
+
+  function recoveryDeps({ readbackMismatch = false } = {}) {
+    let currentBody = standalone;
+    const updates = [];
+    let reads = 0;
+    return {
+      updates,
+      reads: () => reads,
+      findTimingComment: async () => {
+        reads += 1;
+        return { id: 'IC_1619', body: currentBody };
+      },
+      updateTimingComment: async (id, repo, nextBody) => {
+        updates.push({ id, repo, body: nextBody });
+        currentBody = readbackMismatch ? `${nextBody}\nreadback drift` : nextBody;
+      },
+    };
+  }
+
+  const dryDeps = recoveryDeps();
+  const dry = await runHealDeparture({
+    issueNumber: 1619,
+    repo: 'kburson/ai-task-manager',
+    rowIndex: 1,
+    recoverRedundantSameSecondReengagement: true,
+    deps: dryDeps,
+  });
+  assert.equal(dry.status, 'dry-run');
+  assert.equal(dry.recoveredRows, 1);
+  assert.equal(dryDeps.updates.length, 0);
+
+  const applyDeps = recoveryDeps();
+  const applied = await runHealDeparture({
+    issueNumber: 1619,
+    repo: 'kburson/ai-task-manager',
+    apply: true,
+    rowIndex: 1,
+    recoverRedundantSameSecondReengagement: true,
+    deps: applyDeps,
+  });
+  assert.equal(applied.status, 'recovered');
+  assert.equal(applied.recoveredRows, 1);
+  assert.equal(applyDeps.updates.length, 1);
+  assert.equal(applyDeps.reads(), 2, 'apply reads back the written comment exactly once');
+
+  const mismatchDeps = recoveryDeps({ readbackMismatch: true });
+  await assert.rejects(
+    () =>
+      runHealDeparture({
+        issueNumber: 1619,
+        repo: 'kburson/ai-task-manager',
+        apply: true,
+        rowIndex: 1,
+        recoverRedundantSameSecondReengagement: true,
+        deps: mismatchDeps,
+      }),
+    /read-back/i
+  );
+  assert.equal(mismatchDeps.updates.length, 1, 'read-back refusal never retries the mutation');
+
+  const developRow =
+    '| 2026-09-14 08:00:00 -05:00 | develop:started |  |  | 0 | 100 | develop rework | 200 | <!-- row-sec: a=0 i=0 -->';
+  const reviewRow =
+    '| 2026-09-14 08:00:01 -05:00 | review:started |  |  | 0 | 100 | skipped Test | 200 | <!-- row-sec: a=0 i=0 -->';
+  const stillInvalid = standalone.replace(developRow, `${developRow}\n${reviewRow}`);
+  const invalidDeps = fakeDeps(stillInvalid);
+  await assert.rejects(
+    () =>
+      runHealDeparture({
+        issueNumber: 1619,
+        repo: 'kburson/ai-task-manager',
+        rowIndex: 1,
+        recoverRedundantSameSecondReengagement: true,
+        deps: invalidDeps,
+      }),
+    /timing-log-sequence/i
+  );
+  assert.equal(invalidDeps.updates.length, 0);
 }
 
 console.log('heal-timing-departure-repair.test.mjs: all passed');

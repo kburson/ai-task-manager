@@ -9,6 +9,7 @@ import {
   findTimingLogBody,
   extractSentinelStageResets,
 } from '../../../../../../task-tracker/lib/agent-review/validators/timing-log-sequence.mjs';
+import { shouldSuppressActiveBindEvent } from '../../../../../../task-tracker/lib/bind-event.mjs';
 
 // Build a ⏱ Timing Log comment body from `[ts, event, desc?]` rows, mirroring
 // the live table shape. Returns a review-context object.
@@ -115,6 +116,51 @@ test('passes a full healed v2 log including the review→develop rework path', (
   );
   assert.equal(res.pass, true, JSON.stringify(res.failures));
   assert.deepEqual(res.failures, []);
+});
+
+test('#1619: suppresses only an exact same-second resumed bind after demotion', () => {
+  const tail = logCtx(
+    [
+      ['2026-09-14 07:59:59 -05:00', 'review:failed'],
+      ['2026-09-14 08:00:00 -05:00', 'demoted:develop'],
+    ],
+    entered('review', 'develop')
+  ).comments[0].body;
+  const exact = {
+    timingBody: tail,
+    readStatus: 'ok',
+    paused: true,
+    nowTs: '2026-09-14T13:00:00.500Z',
+    proposedEvent: 'resumed',
+  };
+
+  assert.equal(shouldSuppressActiveBindEvent(exact), true);
+  assert.equal(
+    shouldSuppressActiveBindEvent({ ...exact, nowTs: '2026-09-14T13:00:01.000Z' }),
+    false
+  );
+  assert.equal(shouldSuppressActiveBindEvent({ ...exact, proposedEvent: 'start' }), false);
+  assert.equal(shouldSuppressActiveBindEvent({ ...exact, readStatus: 'error' }), false);
+  assert.equal(
+    shouldSuppressActiveBindEvent({
+      ...exact,
+      timingBody: logCtx([
+        ['2026-09-14 07:59:59 -05:00', 'review:failed'],
+        ['2026-09-14 08:00:00 -05:00', 'develop:started'],
+      ]).comments[0].body,
+    }),
+    false
+  );
+  assert.equal(
+    shouldSuppressActiveBindEvent({
+      ...exact,
+      timingBody: logCtx([
+        ['2026-09-14 07:59:59 -05:00', 'demoted:develop'],
+        ['2026-09-14 08:00:00 -05:00', 'pause:other'],
+      ]).comments[0].body,
+    }),
+    false
+  );
 });
 
 test('#1211: historical timing rows still require the canonicalized R4P entry marker', () => {

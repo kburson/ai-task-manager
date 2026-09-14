@@ -204,14 +204,22 @@ export function shouldSuppressActiveBindEvent({
   readStatus = null,
   paused = false,
   nowTs = null,
+  proposedEvent = null,
 } = {}) {
-  if (readStatus === 'error' || paused) return false;
+  if (readStatus === 'error') return false;
   if (!timingCommentHasRows(timingBody)) return false;
   if (lastOpenInterruption(timingBody)) return false;
   const last = lastDataRow(timingBody);
   const lastMs = timingTimestampToMs(last?.ts);
   const nowMs = timingTimestampToMs(nowTs);
   if (!Number.isFinite(lastMs) || !Number.isFinite(nowMs)) return false;
+  if (paused) {
+    return (
+      proposedEvent === 'resumed' &&
+      last.event === 'demoted:develop' &&
+      Math.floor(lastMs / 1000) === Math.floor(nowMs / 1000)
+    );
+  }
   const ageSec = (nowMs - lastMs) / 1000;
   return ageSec >= 0 && ageSec <= SUSPICIOUS_GAP_SEC;
 }
