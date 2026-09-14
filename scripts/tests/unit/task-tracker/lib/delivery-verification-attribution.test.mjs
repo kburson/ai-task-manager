@@ -220,6 +220,7 @@ test('verifies multi-issue squash attribution from exact inspected commit bytes'
 
   assert.equal(verified.receiptInput.mergeCommitSha, MERGE_HEAD);
   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
 });
 
 test('external recovery accepts one canonical inspected attribution line', async () => {
@@ -234,6 +235,7 @@ test('external recovery accepts one canonical inspected attribution line', async
 
   assert.equal(verified.intent.provider, 'external');
   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
 });
 
 test('external recovery accepts exact GitHub default merge attribution for the accepted head', async () => {
@@ -243,6 +245,9 @@ test('external recovery accepts exact GitHub default merge attribution for the a
 
   assert.equal(verified.receiptInput.mergeMethod, 'merge');
   assert.equal(verified.intent.commitMessage, DEFAULT_MERGE_BODY);
+  assert.deepEqual(verified.receiptInput.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+  ]);
 });
 
 test('external recovery refuses inexact or non-merge default merge attribution evidence', async () => {

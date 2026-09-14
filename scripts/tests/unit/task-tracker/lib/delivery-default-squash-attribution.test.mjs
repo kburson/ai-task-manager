@@ -136,6 +136,9 @@ test('#1490: PR #1489 real default-squash body recovers without a trailer', asyn
   );
   assert.equal(verified.receiptInput.mergeMethod, 'squash');
   assert.equal(verified.receiptInput.mergeCommitSha, MERGE_SHA);
+  assert.deepEqual(verified.receiptInput.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+  ]);
 });
 
 test('#1490: PR #1487 real default-squash body recovers without a trailer', async () => {
@@ -148,6 +151,9 @@ test('#1490: PR #1487 real default-squash body recovers without a trailer', asyn
     })
   );
   assert.equal(verified.receiptInput.mergeMethod, 'squash');
+  assert.deepEqual(verified.receiptInput.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+  ]);
 });
 
 test('#1490: a multi-token default body carrying every expected token recovers', async () => {
@@ -159,6 +165,9 @@ test('#1490: a multi-token default body carrying every expected token recovers',
     })
   );
   assert.equal(verified.receiptInput.mergeMethod, 'squash');
+  assert.deepEqual(verified.receiptInput.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+  ]);
 });
 
 test('#1583: an authorized secondary target recovers when another authorized token leads', async () => {
@@ -172,6 +181,9 @@ test('#1583: an authorized secondary target recovers when another authorized tok
   );
   assert.equal(verified.receiptInput.mergeMethod, 'squash');
   assert.equal(verified.receiptInput.issueNumber, 1380);
+  assert.deepEqual(verified.receiptInput.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+  ]);
 });
 
 test('#1583: an absent target is rejected before external recovery', async () => {
@@ -283,4 +295,5 @@ test('#1490: a canonical trailer on external recovery still succeeds', async () 
     input({ title: PR1489_TITLE, body: `${PR1489_BODY}\n\nAttribution: [#1488]` })
   );
   assert.equal(verified.receiptInput.mergeMethod, 'squash');
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
 });

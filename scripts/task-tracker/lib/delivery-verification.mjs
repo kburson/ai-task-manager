@@ -417,8 +417,10 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   const expectedLine = `Attribution: ${messageTokens.map((token) => `[${token}]`).join(' ')}`;
   const lines = inspection.commitMessage.split('\n');
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
-  if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return;
-  if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) return;
+  if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return [];
+  if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) {
+    return ['missing-merge-attribution-trailer'];
+  }
   // #1490 — the default-body proof applies ONLY when the body makes no canonical
   // attribution claim at all. A malformed, duplicated, reordered, or nonterminal
   // trailer is a body that DOES claim canonical attribution and must be judged by
@@ -437,7 +439,7 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
     intent.provider === 'external' &&
     provesDefaultSquashBodyAttribution({ intent, inspection })
   ) {
-    return;
+    return ['missing-merge-attribution-trailer'];
   }
   if (
     !claimsCanonicalAttribution &&
@@ -445,7 +447,7 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
     intent.provider === 'external' &&
     provesDefaultMergeBodyAttribution({ intent, inspection })
   ) {
-    return;
+    return ['missing-merge-attribution-trailer'];
   }
   throw verificationError('attribution');
 }
@@ -560,10 +562,15 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         commitTitle: inspection.commitTitle,
         commitMessage: inspection.commitMessage,
       });
-  assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash, {
+  const metadataWarnings = assertMergeCommitAttribution(
+    inspection,
+    verifiedIntent,
+    provenSingleSourceSquash,
+    {
     provenMultiSourceSquash,
     provenMerge: observedMergeMethod === 'merge',
-  });
+    }
+  );
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');
@@ -583,6 +590,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
       provider: verifiedIntent.provider,
       sessionId: verifiedIntent.sessionId,
       verifiedAt: merged.mergedAt,
+      ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
     },
     recovery,
     branchDisposition: pullRequest.headRefDeleted ? 'deleted' : 'retained',

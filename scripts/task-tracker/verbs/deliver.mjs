@@ -455,6 +455,7 @@ async function verifyAndFinalize({
   testReceiptSha,
   acceptedReviewSha,
   verified,
+  metadataWarnings = [],
 }) {
   const verification =
     verified ??
@@ -472,7 +473,14 @@ async function verifyAndFinalize({
       inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
       attributingCommits: requiredDependency(deps, 'attributingCommits'),
     }));
-  const receipt = buildDeliveryReceipt(verification.receiptInput);
+  const combinedWarnings = combinedMetadataWarnings(
+    metadataWarnings,
+    verification.receiptInput.metadataWarnings ?? []
+  );
+  const receipt = buildDeliveryReceipt({
+    ...verification.receiptInput,
+    ...(combinedWarnings.length > 0 ? { metadataWarnings: combinedWarnings } : {}),
+  });
   if (matchingReceipt !== null) {
     if (canonicalRecordJson(matchingReceipt.record) !== canonicalRecordJson(receipt)) {
       throw deliverError('receipt-divergence');
@@ -518,6 +526,10 @@ async function verifyAndFinalize({
     recovery,
     branchDisposition: verification.branchDisposition,
   };
+}
+
+function combinedMetadataWarnings(...lists) {
+  return [...new Set(lists.flat().filter(Boolean))].sort();
 }
 
 function requiredDependency(deps, name) {
@@ -902,6 +914,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
           localHeadSha: historical.observedLocalHeadSha,
           testReceiptSha,
           acceptedReviewSha,
+          metadataWarnings: historical.metadataWarnings ?? [],
         });
       }
       const verified = await verifyExternalDeliveredPullRequest({
@@ -956,6 +969,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         testReceiptSha,
         acceptedReviewSha,
         verified,
+        metadataWarnings: historical.metadataWarnings ?? [],
       });
     }
     const historical = validateHistoricalRecoveryPreflight({
@@ -1126,6 +1140,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         testReceiptSha,
         acceptedReviewSha,
         verified,
+        metadataWarnings: preflight.metadataWarnings ?? [],
       });
     }
     return verifyAndFinalize({
@@ -1142,6 +1157,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       localHeadSha,
       testReceiptSha,
       acceptedReviewSha,
+      metadataWarnings: preflight.metadataWarnings ?? [],
     });
   }
   if (initial.projection.matchingReceipt !== null) {

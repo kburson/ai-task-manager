@@ -5,7 +5,8 @@ import { createRecordId } from './github-records/record-envelope.mjs';
 import { MAX_DELIVERY_COMMIT_MESSAGE_BYTES } from './delivery-attribution.mjs';
 
 const INTENT_SCHEMA = 'aitm.delivery-intent/v1';
-const RECEIPT_SCHEMA = 'aitm.delivery-receipt/v1';
+const RECEIPT_SCHEMA_V1 = 'aitm.delivery-receipt/v1';
+const RECEIPT_SCHEMA_V2 = 'aitm.delivery-receipt/v2';
 const INTENT_MARKER = 'aitm-delivery-intent';
 const RECEIPT_MARKER = 'aitm-delivery-receipt';
 const HIDDEN_MARKER_RE = /^<!--\s*aitm-delivery-(?:intent|receipt)(?=\s)/gm;
@@ -22,6 +23,10 @@ const MAX_FIELD_BYTES = 1024;
 const MAX_TITLE_BYTES = 256;
 const MAX_RECORDS = 4096;
 const MAX_ATTRIBUTION_TOKENS = 256;
+const METADATA_WARNING_CODES = new Set([
+  'missing-merge-attribution-trailer',
+  'missing-source-attribution',
+]);
 
 /** Maximum UTF-8 bytes retained for the durable `owner/repository` identity. */
 export const MAX_DELIVERY_REPOSITORY_BYTES = 256;
@@ -50,7 +55,7 @@ const INTENT_KEYS = [
 const INTENT_INPUT_KEYS = INTENT_KEYS.filter(
   (key) => !['schema', 'state', 'commitTitleSha256', 'commitMessageSha256'].includes(key)
 );
-const RECEIPT_KEYS = [
+const RECEIPT_KEYS_V1 = [
   'baseRef',
   'expectedHeadSha',
   'intentId',
@@ -65,7 +70,11 @@ const RECEIPT_KEYS = [
   'verifiedAt',
   'verifiedTrunkRef',
 ];
-const RECEIPT_INPUT_KEYS = RECEIPT_KEYS.filter((key) => !['schema', 'result'].includes(key));
+const RECEIPT_KEYS_V2 = [...RECEIPT_KEYS_V1, 'metadataWarnings'];
+const RECEIPT_INPUT_KEYS_V1 = RECEIPT_KEYS_V1.filter(
+  (key) => !['schema', 'result'].includes(key)
+);
+const RECEIPT_INPUT_KEYS_V2 = [...RECEIPT_INPUT_KEYS_V1, 'metadataWarnings'];
 const PARSED_RECORD_KEYS = ['createdAt', 'id', 'record'];
 const CONTEXT_KEYS = ['issueNumber', 'prNumber', 'repository'];
 const AUTHORIZED_INTENT_KEYS = [
@@ -196,6 +205,21 @@ function assertAttributionTokens(tokens, issueNumber) {
   if (!tokens.includes(`#${issueNumber}`)) throw deliveryError('issue-attribution');
 }
 
+function assertMetadataWarnings(warnings) {
+  if (
+    !Array.isArray(warnings) ||
+    warnings.length === 0 ||
+    warnings.some((warning) => typeof warning !== 'string' || !METADATA_WARNING_CODES.has(warning)) ||
+    new Set(warnings).size !== warnings.length
+  ) {
+    throw deliveryError('metadata-warnings');
+  }
+  const sorted = [...warnings].sort();
+  if (warnings.some((warning, index) => warning !== sorted[index])) {
+    throw deliveryError('metadata-warnings');
+  }
+}
+
 function validateIntent(intent) {
   if (!MERGE_METHODS.includes(intent?.mergeMethod)) throw deliveryError('merge-method');
   canonicalRecordJson(intent);
@@ -247,8 +271,15 @@ function validateIntent(intent) {
 function validateReceipt(receipt) {
   if (!MERGE_METHODS.includes(receipt?.mergeMethod)) throw deliveryError('merge-method');
   canonicalRecordJson(receipt);
-  if (!hasExactlyKeys(receipt, RECEIPT_KEYS)) throw deliveryError('receipt-keys');
-  if (receipt.schema !== RECEIPT_SCHEMA) throw deliveryError('receipt-schema');
+  const expectedKeys =
+    receipt?.schema === RECEIPT_SCHEMA_V1
+      ? RECEIPT_KEYS_V1
+      : receipt?.schema === RECEIPT_SCHEMA_V2
+        ? RECEIPT_KEYS_V2
+        : null;
+  if (expectedKeys === null) throw deliveryError('receipt-schema');
+  if (!hasExactlyKeys(receipt, expectedKeys)) throw deliveryError('receipt-keys');
+  if (receipt.schema === RECEIPT_SCHEMA_V2) assertMetadataWarnings(receipt.metadataWarnings);
   if (receipt.result !== 'delivered') throw deliveryError('receipt-result');
   assertRecordId(receipt.intentId, 'intent-id');
   assertPositiveInteger(receipt.issueNumber, 'issue-number');
@@ -299,9 +330,12 @@ export function buildDeliveryIntent(input = {}) {
 }
 
 export function buildDeliveryReceipt(input = {}) {
-  if (!hasExactlyKeys(input, RECEIPT_INPUT_KEYS)) throw deliveryError('receipt-input-keys');
+  const warningBearing = Object.hasOwn(input, 'metadataWarnings');
+  if (!hasExactlyKeys(input, warningBearing ? RECEIPT_INPUT_KEYS_V2 : RECEIPT_INPUT_KEYS_V1)) {
+    throw deliveryError('receipt-input-keys');
+  }
   const receipt = {
-    schema: RECEIPT_SCHEMA,
+    schema: warningBearing ? RECEIPT_SCHEMA_V2 : RECEIPT_SCHEMA_V1,
     intentId: input.intentId,
     issueNumber: input.issueNumber,
     prNumber: input.prNumber,
@@ -314,6 +348,13 @@ export function buildDeliveryReceipt(input = {}) {
     sessionId: input.sessionId,
     verifiedAt: input.verifiedAt,
     result: 'delivered',
+    ...(warningBearing
+      ? {
+          metadataWarnings: Array.isArray(input.metadataWarnings)
+            ? [...input.metadataWarnings]
+            : input.metadataWarnings,
+        }
+      : {}),
   };
   validateReceipt(receipt);
   return deepFreeze(receipt);
@@ -346,10 +387,14 @@ export function renderDeliveryIntentComment(intent) {
 
 export function renderDeliveryReceiptComment(receipt) {
   validateReceipt(receipt);
+  const warningMarkdown =
+    receipt.schema === RECEIPT_SCHEMA_V2
+      ? `\nMetadata warnings: ${receipt.metadataWarnings.map((warning) => `\`${warning}\``).join(', ')}.`
+      : '';
   return renderComment(
     RECEIPT_MARKER,
     receipt,
-    `Delivery verified for PR #${receipt.prNumber} as \`${receipt.mergeCommitSha}\` on \`${receipt.verifiedTrunkRef}\`.`
+    `Delivery verified for PR #${receipt.prNumber} as \`${receipt.mergeCommitSha}\` on \`${receipt.verifiedTrunkRef}\`.${warningMarkdown}`
   );
 }
 
@@ -428,7 +473,9 @@ function validateParsedRecord(parsed) {
   assertBoundedString(parsed.id, MAX_FIELD_BYTES, 'comment-id');
   if (!isCanonicalInstant(parsed.createdAt)) throw deliveryError('comment-created-at');
   if (parsed.record?.schema === INTENT_SCHEMA) return validateIntent(parsed.record);
-  if (parsed.record?.schema === RECEIPT_SCHEMA) return validateReceipt(parsed.record);
+  if ([RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2].includes(parsed.record?.schema)) {
+    return validateReceipt(parsed.record);
+  }
   throw deliveryError('project-record');
 }
 
@@ -542,7 +589,9 @@ export function projectDeliveryRecords(records) {
     return deepFreeze(structuredClone(parsed));
   });
   const intents = copies.filter(({ record }) => record.schema === INTENT_SCHEMA);
-  const receipts = copies.filter(({ record }) => record.schema === RECEIPT_SCHEMA);
+  const receipts = copies.filter(({ record }) =>
+    [RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2].includes(record.schema)
+  );
   const graph = validateIntentGraph(intents);
   const receiptsByIntentId = validateReceipts(receipts, graph.byId);
   validateReceiptOrder(copies);
