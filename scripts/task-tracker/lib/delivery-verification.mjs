@@ -62,11 +62,43 @@ const EVIDENCE_INPUT_KEYS = [
   'sourceSha',
 ];
 
-function verificationError(category, cause) {
-  return new TypeError(
-    `delivery-verification:${category}`,
-    cause === undefined ? undefined : { cause }
-  );
+const VERIFICATION_DIAGNOSTICS = Object.freeze({
+  'authority-sha-mismatch': {
+    predicate: 'accepted-head-authority',
+    recoveryAction:
+      'restore agreement on the accepted head across the pull request, Test receipt, and Review receipt',
+  },
+  'expected-head-sha': {
+    predicate: 'pull-request-expected-head',
+    recoveryAction: 'restore the pull request to the accepted head and rerun Test and Review',
+  },
+  'trunk-reachability': {
+    predicate: 'merge-commit-reachable-from-trunk',
+    recoveryAction: 'fetch origin/trunk and verify the merge commit is reachable before retrying delivery',
+  },
+});
+
+export class DeliveryVerificationError extends TypeError {
+  constructor(category, cause, details = {}) {
+    const diagnostic = {
+      predicate: category,
+      recoveryAction: 'correct the failed predicate through the governed workflow and retry delivery',
+      ...(VERIFICATION_DIAGNOSTICS[category] ?? {}),
+      ...details,
+    };
+    super(
+      `delivery-verification:${category} predicate=${diagnostic.predicate} recovery=${JSON.stringify(diagnostic.recoveryAction)}`,
+      cause === undefined ? undefined : { cause }
+    );
+    this.name = 'DeliveryVerificationError';
+    this.category = category;
+    this.predicate = diagnostic.predicate;
+    this.recoveryAction = diagnostic.recoveryAction;
+  }
+}
+
+function verificationError(category, cause, details) {
+  return new DeliveryVerificationError(category, cause, details);
 }
 
 function evidenceError(category) {
@@ -449,7 +481,11 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   ) {
     return ['missing-merge-attribution-trailer'];
   }
-  throw verificationError('attribution');
+  throw verificationError('attribution', undefined, {
+    predicate: 'merge-message-attribution-conflict',
+    recoveryAction:
+      'use a governed non-delivery disposition or create a new corrective delivery; immutable conflicting bytes cannot be warning-recovered',
+  });
 }
 
 function assertVerificationFunctions(input) {

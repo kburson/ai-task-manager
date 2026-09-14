@@ -24,16 +24,60 @@ const SHA_RE = /^[0-9a-f]{40}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MERGE_METHODS = ['merge', 'squash', 'rebase'];
 
+const PREFLIGHT_DIAGNOSTICS = Object.freeze({
+  'head-mismatch': {
+    predicate: 'accepted-head-authority',
+    recoveryAction:
+      'restore agreement on the accepted head across the branch, pull request, Test receipt, and Review receipt',
+  },
+  'required-check-head-mismatch': {
+    predicate: 'required-hosted-check-head',
+    recoveryAction: 'rerun the required hosted check on the accepted head and retry delivery',
+  },
+  'required-check-not-green': {
+    predicate: 'required-hosted-check-green',
+    recoveryAction: 'rerun the required hosted check on the accepted head and retry delivery',
+  },
+});
+
 export class DeliveryPreflightError extends TypeError {
-  constructor(category, cause) {
-    super(`delivery-preflight:${category}`, cause === undefined ? undefined : { cause });
+  constructor(category, cause, details = {}) {
+    const diagnostic = {
+      predicate: category,
+      recoveryAction: 'correct the failed predicate through the governed workflow and retry delivery',
+      ...(PREFLIGHT_DIAGNOSTICS[category] ?? {}),
+      ...details,
+    };
+    super(
+      `delivery-preflight:${category} predicate=${diagnostic.predicate} recovery=${JSON.stringify(diagnostic.recoveryAction)}`,
+      cause === undefined ? undefined : { cause }
+    );
     this.name = 'DeliveryPreflightError';
     this.category = category;
+    this.predicate = diagnostic.predicate;
+    this.recoveryAction = diagnostic.recoveryAction;
   }
 }
 
-function fail(category, cause) {
-  throw new DeliveryPreflightError(category, cause);
+function fail(category, cause, details) {
+  throw new DeliveryPreflightError(category, cause, details);
+}
+
+function sourceAttributionDiagnostic(commitSubjects) {
+  const conflict = Array.isArray(commitSubjects)
+    ? commitSubjects.some((subject) => typeof subject !== 'string' || subject.includes('[#'))
+    : false;
+  return conflict
+    ? {
+        predicate: 'source-attribution-conflict',
+        recoveryAction:
+          'use a governed non-delivery disposition or create a new corrective delivery; immutable conflicting bytes cannot be warning-recovered',
+      }
+    : {
+        predicate: 'source-attribution-missing',
+        recoveryAction:
+          'add canonical source attribution before merge or use the bounded already-merged external recovery path',
+      };
 }
 
 function isPlainObject(value) {
@@ -224,7 +268,7 @@ function validatePreflight(input, { merged = false } = {}) {
       commitSubjects: input.commitSubjects,
     });
   } catch (error) {
-    fail('attribution', error);
+    fail('attribution', error, sourceAttributionDiagnostic(input.commitSubjects));
   }
   const { metadataWarnings = [], ...commitText } = builtCommitText;
 
@@ -300,7 +344,7 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
       commitSubjects: input.commitSubjects,
     });
   } catch (error) {
-    fail('attribution', error);
+    fail('attribution', error, sourceAttributionDiagnostic(input.commitSubjects));
   }
   const expectedIntent = {
     issueNumber: input.issue.number,
@@ -385,7 +429,7 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
       commitSubjects: input.commitSubjects,
     });
   } catch (error) {
-    fail('attribution', error);
+    fail('attribution', error, sourceAttributionDiagnostic(input.commitSubjects));
   }
   const { metadataWarnings = [], ...commitText } = builtCommitText;
 

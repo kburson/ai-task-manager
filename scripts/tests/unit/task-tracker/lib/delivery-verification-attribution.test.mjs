@@ -107,6 +107,34 @@ test('#1619: merged recovery refuses partial, malformed, duplicate, or conflicti
   }
 });
 
+test('#1619: preflight failures expose the failed predicate and a supported recovery action', () => {
+  const sourceConflict = recoveryPreflightInput({
+    commitSubjects: ['[#999] conflicting source'],
+  });
+  assert.throws(
+    () => validateMergedDeliveryPreflight(sourceConflict),
+    (error) => {
+      assert.equal(error.category, 'attribution');
+      assert.equal(error.predicate, 'source-attribution-conflict');
+      assert.match(error.recoveryAction, /governed non-delivery|corrective delivery/);
+      assert.match(error.message, /^delivery-preflight:attribution predicate=/);
+      return true;
+    }
+  );
+
+  const failedCheck = recoveryPreflightInput({ commitSubjects: ['[#1619] valid source'] });
+  failedCheck.checks.required[0].conclusion = 'FAILURE';
+  assert.throws(
+    () => validateMergedDeliveryPreflight(failedCheck),
+    (error) => {
+      assert.equal(error.category, 'required-check-not-green');
+      assert.equal(error.predicate, 'required-hosted-check-green');
+      assert.match(error.recoveryAction, /rerun|required hosted check/i);
+      return true;
+    }
+  );
+});
+
 function intent(commitMessage = COMMIT_MESSAGE) {
   return buildDeliveryIntent({
     intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
@@ -337,7 +365,7 @@ test('external recovery keeps its exact input schema and authority equality chec
         ...input,
         intentInput: { ...input.intentInput, mergeMethod: 'merge' },
       }),
-    /delivery-verification:merge-method$/
+    /delivery-verification:merge-method\b/
   );
   await assert.rejects(
     () =>
@@ -372,4 +400,53 @@ test('external recovery rejects noncanonical inspected attribution lines', async
       /delivery-verification:attribution/
     );
   }
+});
+
+test('#1619: verification failures expose distinct immutable-evidence predicates', async () => {
+  const { input: conflictInput, intentInput: conflictIntent } = defaultMergeRecoveryInput({
+    commitTitle: DEFAULT_MERGE_TITLE.replace('#1556', '#1557'),
+  });
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...conflictInput, intentInput: conflictIntent }),
+    (error) => {
+      assert.equal(error.name, 'DeliveryVerificationError');
+      assert.equal(error.category, 'attribution');
+      assert.equal(error.predicate, 'merge-message-attribution-conflict');
+      assert.match(error.recoveryAction, /governed non-delivery|corrective delivery/);
+      assert.match(error.message, /^delivery-verification:attribution predicate=/);
+      return true;
+    }
+  );
+
+  const wrongHead = liveInput();
+  delete wrongHead.intentCreatedAt;
+  delete wrongHead.recovery;
+  wrongHead.pullRequest.headRefOid = 'd'.repeat(40);
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...wrongHead, intentInput: externalIntentInput() }),
+    (error) => {
+      assert.equal(error.category, 'authority-sha-mismatch');
+      assert.equal(error.predicate, 'accepted-head-authority');
+      assert.match(error.recoveryAction, /accepted head/i);
+      return true;
+    }
+  );
+
+  const unreachable = liveInput();
+  delete unreachable.intentCreatedAt;
+  delete unreachable.recovery;
+  unreachable.isAncestor = async () => false;
+  await assert.rejects(
+    () =>
+      verifyExternalDeliveredPullRequest({
+        ...unreachable,
+        intentInput: externalIntentInput(),
+      }),
+    (error) => {
+      assert.equal(error.category, 'trunk-reachability');
+      assert.equal(error.predicate, 'merge-commit-reachable-from-trunk');
+      assert.match(error.recoveryAction, /fetch|trunk/i);
+      return true;
+    }
+  );
 });

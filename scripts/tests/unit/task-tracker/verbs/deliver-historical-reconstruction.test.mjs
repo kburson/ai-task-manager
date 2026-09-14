@@ -339,7 +339,7 @@ for (const [label, options, reconcile, error] of [
     'provider method mismatch',
     { prMergeMethod: 'squash' },
     historicalReconcile,
-    /delivery-verification:merge-method$/,
+    /delivery-verification:merge-method\b/,
   ],
   [
     'invalid attribution',
