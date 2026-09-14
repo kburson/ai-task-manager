@@ -342,6 +342,7 @@ sidechain
 Sidechain
 signingkey
 Skank
+smol
 spawnable
 speccing
 splitcmd

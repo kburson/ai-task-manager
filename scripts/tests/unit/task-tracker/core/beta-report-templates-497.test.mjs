@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
+import { load as loadYaml } from 'js-yaml';
 
 // Resolve the repo root from this test file's location (…/scripts/task-tracker/
 // tests/unit/ → four levels up), so the suite is cwd-independent.
@@ -26,7 +26,7 @@ function readText(rel) {
   return readFileSync(path.join(ghDir, rel), 'utf8');
 }
 function readYaml(rel) {
-  return yaml.load(readText(rel));
+  return loadYaml(readText(rel));
 }
 
 describe('#497 beta-report issue-form templates', () => {
