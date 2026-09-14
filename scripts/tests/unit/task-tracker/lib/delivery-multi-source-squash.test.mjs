@@ -220,7 +220,7 @@ test('#1490: an ordinary two-parent merge is classified as a merge, never a squa
         },
       })
     ),
-    /merge-method$/
+    /delivery-verification:merge-method\b/
   );
 });
 
