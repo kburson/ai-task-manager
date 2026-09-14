@@ -27,17 +27,20 @@ test('published metadata requires Node.js 24 or newer', () => {
 test('active CI proves the Node 24 floor and a later supported runtime', () => {
   const workflow = readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
   const nodeVersions = [
-    ...workflow.matchAll(/^\s+(?:-\s+)?(?:node-version|node):\s*['"]?([^'"\s#]+)/gm),
-  ].map(([, version]) => version);
+    ...workflow.matchAll(/^\s+(?:-\s+)?(?:node-version|node):\s*([^#]+?)\s*$/gm),
+  ].map(([, version]) => version.replace(/^['"]|['"]$/g, ''));
 
   assert.ok(nodeVersions.includes('24'), 'CI must exercise the minimum Node 24 runtime');
   assert.ok(
     nodeVersions.some((version) => version === '26' || version === 'current'),
     'CI must retain a later/current Node runtime lane'
   );
-  const unsupported = nodeVersions.filter(
-    (version) => /^\d+$/.test(version) && Number(version) < 24
-  );
+  const symbolic = new Set(['current', '${{ matrix.node }}']);
+  const unsupported = nodeVersions.filter((version) => {
+    if (symbolic.has(version)) return false;
+    const selector = /^(\d+)(?:\.(?:\d+|x))*$/.exec(version);
+    return selector === null || Number(selector[1]) < 24;
+  });
   assert.deepEqual(unsupported, [], `active CI contains pre-Node-24 runtimes: ${unsupported}`);
 });
 
