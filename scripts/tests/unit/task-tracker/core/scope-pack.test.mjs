@@ -1,9 +1,11 @@
-// @story #768
+// @story #768 #1615
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+
+import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 
 // #768 — prove `npm pack --dry-run` produces the scoped tarball. This is the
 // closest local, network-free proxy for "npm publish --dry-run reports the
@@ -19,10 +21,9 @@ test('npm pack --dry-run resolves the scoped @kburson/ai-task-manager name', () 
     encoding: 'utf8',
   });
   assert.equal(res.status, 0, `npm pack --dry-run failed: ${res.stderr}`);
-  const parsed = JSON.parse(res.stdout);
-  const entry = Array.isArray(parsed)
-    ? parsed[0]
-    : (parsed['@kburson/ai-task-manager'] ?? Object.values(parsed)[0]);
+  const entry = parseNpmPackReport(res.stdout, {
+    expectedPackageName: '@kburson/ai-task-manager',
+  });
   assert.equal(
     entry.name,
     '@kburson/ai-task-manager',

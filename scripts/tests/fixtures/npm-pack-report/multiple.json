@@ -1,0 +1,12 @@
+[
+  {
+    "name": "@kburson/ai-task-manager",
+    "filename": "kburson-ai-task-manager-1.0.0.tgz",
+    "files": [{ "path": "package.json" }]
+  },
+  {
+    "name": "other-package",
+    "filename": "other-package-1.0.0.tgz",
+    "files": [{ "path": "package.json" }]
+  }
+]

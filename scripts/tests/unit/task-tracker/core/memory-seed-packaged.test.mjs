@@ -1,10 +1,12 @@
-// @story #728
+// @story #728 #1615
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+
+import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 
 // Resolve the repo root from this test file's location so the check is
 // path-independent (dev tree or isolated worktree).
@@ -32,11 +34,10 @@ test('npm pack tarball contains the seed index + durable facts, no archive', () 
     encoding: 'utf8',
     env: { ...process.env, npm_config_loglevel: 'silent' },
   });
-  const report = JSON.parse(raw);
-  const entry = Array.isArray(report)
-    ? report[0]
-    : (report['@kburson/ai-task-manager'] ?? Object.values(report)[0]);
-  const entries = (entry?.files ?? []).map((f) => f.path);
+  const report = parseNpmPackReport(raw, {
+    expectedPackageName: '@kburson/ai-task-manager',
+  });
+  const entries = report.files.map((f) => f.path);
 
   assert.ok(
     entries.includes('docs/ai-memory/MEMORY.md'),

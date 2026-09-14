@@ -1,4 +1,4 @@
-// @story #925
+// @story #925 #1615
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..', '..', '..');
@@ -19,17 +20,16 @@ test('packed consumer can select and execute effect-scoped move tails', () => {
   mkdirSync(consumerDir, { recursive: true });
 
   try {
-    const rawPackReport = JSON.parse(
-      execFileSync('npm', ['pack', '--json', '--pack-destination', packDir], {
-        cwd: ROOT,
-        encoding: 'utf8',
-        env: { ...process.env, npm_config_loglevel: 'silent' },
-      })
-    );
-    const packReport = Array.isArray(rawPackReport)
-      ? rawPackReport[0]
-      : Object.values(rawPackReport)[0];
-    const packedFiles = new Set((packReport?.files ?? []).map((file) => file.path));
+    const rawPackReport = execFileSync('npm', ['pack', '--json', '--pack-destination', packDir], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: { ...process.env, npm_config_loglevel: 'silent' },
+    });
+    const packReport = parseNpmPackReport(rawPackReport, {
+      expectedPackageName: '@kburson/ai-task-manager',
+      requireFilename: true,
+    });
+    const packedFiles = new Set(packReport.files.map((file) => file.path));
     for (const required of [
       'bin/aitm.mjs',
       'skill/adapters/codex/SKILL.md',

@@ -1,0 +1,7 @@
+{
+  "other-package": {
+    "name": "other-package",
+    "filename": "other-package-1.0.0.tgz",
+    "files": [{ "path": "package.json" }]
+  }
+}

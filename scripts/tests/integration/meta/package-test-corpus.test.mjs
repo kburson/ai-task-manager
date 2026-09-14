@@ -1,10 +1,12 @@
-// @story #868
+// @story #868 #1615
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { parseNpmPackReport } from '../../helpers/npm-pack-report.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
@@ -15,10 +17,10 @@ function npmPackFiles() {
     maxBuffer: 64 * 1024 * 1024,
   });
   assert.equal(result.status, 0, result.stderr);
-  const rawPackages = JSON.parse(result.stdout);
-  const packages = Array.isArray(rawPackages) ? rawPackages : Object.values(rawPackages);
-  assert.equal(packages.length, 1, 'npm pack describes exactly one package');
-  return packages[0].files.map(({ path: relPath }) => `package/${relPath}`);
+  const report = parseNpmPackReport(result.stdout, {
+    expectedPackageName: '@kburson/ai-task-manager',
+  });
+  return report.files.map(({ path: relPath }) => `package/${relPath}`);
 }
 
 test('package files explicitly exclude the canonical test support root', () => {
