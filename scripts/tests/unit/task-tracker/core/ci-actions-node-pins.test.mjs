@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #717
+// @story #717 #1615
 // #717 — invariant tests that guard the CI action-pin + Node-version
 // modernization. These assert the repository-level configuration that the
 // issue's acceptance criteria demand, scanning the whole workflow glob and
@@ -10,7 +10,8 @@
 //   - No actions/checkout@v4 or actions/setup-node@v4 pin remains under
 //     .github/workflows/; every use of those two actions is @v5.
 //   - package.json and the root lockfile engines.node are exactly ">=24".
-//   - Every setup-node node-version in ci.yml is 24.
+//   - Every setup-node node-version in ci.yml is either the Node 24 floor or
+//     the npm compatibility matrix whose members are checked by #1615.
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -60,11 +61,14 @@ test('package metadata requires Node.js 24 or newer', () => {
   assert.equal(lock.packages?.['']?.engines?.node, '>=24');
 });
 
-test('ci.yml setup-node node-version is 24 for every occurrence', () => {
+test('ci.yml setup-node uses the Node 24 floor or governed compatibility matrix', () => {
   const text = readFileSync(join(WORKFLOW_DIR, 'ci.yml'), 'utf8');
-  const versions = [...text.matchAll(/node-version:\s*(\S+)/g)].map((m) => m[1]);
+  const versions = [...text.matchAll(/node-version:\s*(.+?)\s*$/gm)].map((m) => m[1]);
   assert.ok(versions.length > 0, 'expected at least one node-version in ci.yml');
   for (const v of versions) {
-    assert.equal(v, '24', `expected node-version 24, got ${v}`);
+    assert.ok(
+      v === '24' || v === '${{ matrix.node }}',
+      `expected Node 24 or the governed compatibility matrix, got ${v}`
+    );
   }
 });

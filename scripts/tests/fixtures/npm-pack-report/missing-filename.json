@@ -1,0 +1,6 @@
+{
+  "@kburson/ai-task-manager": {
+    "name": "@kburson/ai-task-manager",
+    "files": [{ "path": "package.json" }]
+  }
+}

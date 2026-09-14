@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -11,6 +11,8 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
+
+import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 
 // Walk up from this file to the repo root (the dir holding package.json).
 function repoRoot() {
@@ -133,10 +135,9 @@ function packedFiles() {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   });
-  const parsed = JSON.parse(out);
-  const entry = Array.isArray(parsed)
-    ? parsed[0]
-    : (parsed['@kburson/ai-task-manager'] ?? Object.values(parsed)[0]);
+  const entry = parseNpmPackReport(out, {
+    expectedPackageName: '@kburson/ai-task-manager',
+  });
   packedFileCache = entry.files.map((f) => f.path);
   return packedFileCache;
 }
