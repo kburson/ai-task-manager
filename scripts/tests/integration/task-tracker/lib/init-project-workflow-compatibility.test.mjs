@@ -1,3 +1,4 @@
+// @story #1618
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -219,14 +220,20 @@ test('disabled incompatible workflows do not block initialization', () => {
 test('workflow query failure refuses because compatibility could not be verified', () => {
   const run = createHarness({ mode: 'query-failure' });
   assert.notEqual(run.result.status, 0);
-  assert.match(`${run.result.stderr}\n${run.result.stdout}`, /compatibility could not be verified/i);
+  assert.match(
+    `${run.result.stderr}\n${run.result.stdout}`,
+    /compatibility could not be verified/i
+  );
   assertNoPostSelectionMutations(run);
 });
 
 test('an incomplete pagination cursor refuses before mutation', () => {
   const run = createHarness({ mode: 'empty-cursor' });
   assert.notEqual(run.result.status, 0);
-  assert.match(`${run.result.stderr}\n${run.result.stdout}`, /compatibility could not be verified/i);
+  assert.match(
+    `${run.result.stderr}\n${run.result.stdout}`,
+    /compatibility could not be verified/i
+  );
   assertNoPostSelectionMutations(run);
 });
 

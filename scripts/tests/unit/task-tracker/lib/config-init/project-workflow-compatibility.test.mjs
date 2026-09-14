@@ -1,3 +1,4 @@
+// @story #1618
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -22,11 +23,10 @@ test('reports enabled incompatible workflows case-insensitively while preserving
     [3, 5]
   );
   assert.equal(result.incompatible[0].name, ' Auto-close issue ');
-  assert.deepEqual([...INCOMPATIBLE_PROJECT_WORKFLOW_NAMES], [
-    'auto-close issue',
-    'pull request linked to issue',
-    'pull request merged',
-  ]);
+  assert.deepEqual(
+    [...INCOMPATIBLE_PROJECT_WORKFLOW_NAMES],
+    ['auto-close issue', 'pull request linked to issue', 'pull request merged']
+  );
 });
 
 test('returns a deterministic inventory and collapses exact duplicate workflow pages', () => {

@@ -135,7 +135,7 @@ Assert the process reaches `Fetching project fields` and the call log orders all
 
 - [ ] **Step 2: Add refusal cases and confirm RED**
 
-Add subtests for:
+Add test cases for:
 
 ```text
 enabled Auto-close issue -> exit non-zero, exact name + disable/rerun guidance
@@ -234,7 +234,7 @@ node --test \
   scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs
 ```
 
-Expected: identify only mocks that reject or misroute the new read-only workflow query.
+Expected: identify only mocks that reject or incorrectly route the new read-only workflow query.
 
 - [ ] **Step 2: Update affected mocks narrowly**
 

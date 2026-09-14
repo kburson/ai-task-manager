@@ -10,7 +10,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,7 +36,6 @@ import {
 } from '../../../../../task-tracker/lib/config-init/parsers.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/../..';
-const CONFIG_INIT_CLI = path.resolve(__dirname, '../../../task-tracker/config-init.mjs');
 
 // ── config authoring / merge ──────────────────────────────────────────────
 
@@ -298,37 +296,6 @@ test('mergeProjectLists dedups by id (linked OR) and sorts linked-first then num
     merged.slice(1).map((p) => p.id),
     ['b', 'c']
   );
-});
-
-// ── project workflow compatibility CLI adapter ─────────────────────────────
-
-function runConfigInit(subcommand, env = {}) {
-  return spawnSync(process.execPath, [CONFIG_INIT_CLI, subcommand], {
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-}
-
-test('inspect-workflows emits parseable classified JSON for a complete inventory', () => {
-  const result = runConfigInit('inspect-workflows', {
-    PROJECT_WORKFLOWS_RAW: JSON.stringify({
-      complete: true,
-      workflows: [{ name: 'Auto-close issue', number: 3, enabled: true }],
-    }),
-  });
-
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout).incompatible, [
-    { name: 'Auto-close issue', number: 3, enabled: true },
-  ]);
-});
-
-test('inspect-workflows fails closed for malformed or incomplete input', () => {
-  for (const raw of ['{', JSON.stringify({ complete: false, workflows: [] })]) {
-    const result = runConfigInit('inspect-workflows', { PROJECT_WORKFLOWS_RAW: raw });
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /compatibility could not be verified/i);
-  }
 });
 
 // ── extraction guard: the bash shim must delegate, not re-implement ──────────
