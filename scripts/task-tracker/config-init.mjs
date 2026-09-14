@@ -8,6 +8,7 @@
 
 import { preflightConfig, writeConfig } from './lib/config-init/config-authoring.mjs';
 import { writeIssueTemplates } from './lib/config-init/issue-templates.mjs';
+import { inspectProjectWorkflows } from './lib/config-init/project-workflow-compatibility.mjs';
 import {
   projectNumberFromInput,
   canonColor,
@@ -83,10 +84,22 @@ function main(argv) {
       process.stdout.write(JSON.stringify(mergeProjectLists(linked, owner)) + '\n');
       return 0;
     }
+    case 'inspect-workflows': {
+      try {
+        const input = JSON.parse(process.env.PROJECT_WORKFLOWS_RAW || 'null');
+        process.stdout.write(JSON.stringify(inspectProjectWorkflows(input)) + '\n');
+        return 0;
+      } catch (error) {
+        process.stderr.write(
+          `GitHub Project workflow compatibility could not be verified: ${error?.message || error}\n`
+        );
+        return 1;
+      }
+    }
     default:
       process.stderr.write(
         `config-init: unknown subcommand '${sub ?? ''}'\n` +
-          'usage: config-init <preflight-config|write-config|write-templates|parse-project-input|canon-color|normalize-projects>\n'
+          'usage: config-init <preflight-config|write-config|write-templates|parse-project-input|canon-color|normalize-projects|inspect-workflows>\n'
       );
       return 1;
   }
