@@ -74,7 +74,8 @@ const VERIFICATION_DIAGNOSTICS = Object.freeze({
   },
   'trunk-reachability': {
     predicate: 'merge-commit-reachable-from-trunk',
-    recoveryAction: 'fetch origin/trunk and verify the merge commit is reachable before retrying delivery',
+    recoveryAction:
+      'fetch origin/trunk and verify the merge commit is reachable before retrying delivery',
   },
 });
 
@@ -82,7 +83,8 @@ export class DeliveryVerificationError extends TypeError {
   constructor(category, cause, details = {}) {
     const diagnostic = {
       predicate: category,
-      recoveryAction: 'correct the failed predicate through the governed workflow and retry delivery',
+      recoveryAction:
+        'correct the failed predicate through the governed workflow and retry delivery',
       ...(VERIFICATION_DIAGNOSTICS[category] ?? {}),
       ...details,
     };
@@ -603,8 +605,8 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
     verifiedIntent,
     provenSingleSourceSquash,
     {
-    provenMultiSourceSquash,
-    provenMerge: observedMergeMethod === 'merge',
+      provenMultiSourceSquash,
+      provenMerge: observedMergeMethod === 'merge',
     }
   );
 

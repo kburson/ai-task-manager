@@ -71,9 +71,7 @@ const RECEIPT_KEYS_V1 = [
   'verifiedTrunkRef',
 ];
 const RECEIPT_KEYS_V2 = [...RECEIPT_KEYS_V1, 'metadataWarnings'];
-const RECEIPT_INPUT_KEYS_V1 = RECEIPT_KEYS_V1.filter(
-  (key) => !['schema', 'result'].includes(key)
-);
+const RECEIPT_INPUT_KEYS_V1 = RECEIPT_KEYS_V1.filter((key) => !['schema', 'result'].includes(key));
 const RECEIPT_INPUT_KEYS_V2 = [...RECEIPT_INPUT_KEYS_V1, 'metadataWarnings'];
 const PARSED_RECORD_KEYS = ['createdAt', 'id', 'record'];
 const CONTEXT_KEYS = ['issueNumber', 'prNumber', 'repository'];
@@ -209,7 +207,9 @@ function assertMetadataWarnings(warnings) {
   if (
     !Array.isArray(warnings) ||
     warnings.length === 0 ||
-    warnings.some((warning) => typeof warning !== 'string' || !METADATA_WARNING_CODES.has(warning)) ||
+    warnings.some(
+      (warning) => typeof warning !== 'string' || !METADATA_WARNING_CODES.has(warning)
+    ) ||
     new Set(warnings).size !== warnings.length
   ) {
     throw deliveryError('metadata-warnings');

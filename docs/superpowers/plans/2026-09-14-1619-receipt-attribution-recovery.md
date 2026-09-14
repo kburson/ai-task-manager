@@ -49,7 +49,7 @@ Add table cases for these subjects and require `delivery-preflight:attribution`:
   ['[#1619 malformed'],
   ['[#1619] target', 'unattributed partial subject'],
   ['[#1619] target [#1619] duplicate'],
-]
+];
 ```
 
 - [ ] **Step 2: Run the focused tests and confirm RED**
@@ -137,9 +137,7 @@ git commit -m "[#1619] Classify missing recovery attribution"
 For canonical trailer success, assert `metadataWarnings` is absent. For the topology-proven external default squash/merge fallbacks, assert:
 
 ```js
-assert.deepEqual(verified.receiptInput.metadataWarnings, [
-  'missing-merge-attribution-trailer',
-]);
+assert.deepEqual(verified.receiptInput.metadataWarnings, ['missing-merge-attribution-trailer']);
 ```
 
 Retain all existing malformed/duplicate/nonterminal/extra-token rejection cases.
@@ -341,7 +339,7 @@ Expected: missing predicate, transform, flag, and read-back behavior fail.
 In `shouldSuppressActiveBindEvent`, preserve the existing unpaused active-bind suppression. For paused state, return true only when the proposed event is `resumed`, the last parsed event is `demoted:develop`, no interruption is open, and:
 
 ```js
-Math.floor(lastMs / 1000) === Math.floor(nowMs / 1000)
+Math.floor(lastMs / 1000) === Math.floor(nowMs / 1000);
 ```
 
 Pass `bindEvent` as `proposedEvent` from `resume.mjs`.

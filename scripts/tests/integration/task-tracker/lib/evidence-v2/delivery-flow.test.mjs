@@ -401,8 +401,18 @@ test('#1619: public v1 merged recovery writes one warning receipt and retries id
       { oid: 'a'.repeat(40), messageHeadline: 'legacy verification' },
     ],
     prSourceEvidence: [
-      { oid: '1'.repeat(40), message: 'legacy delivery', parents: ['2'.repeat(40)], tree: '8'.repeat(40) },
-      { oid: 'a'.repeat(40), message: 'legacy verification', parents: ['1'.repeat(40)], tree: '7'.repeat(40) },
+      {
+        oid: '1'.repeat(40),
+        message: 'legacy delivery',
+        parents: ['2'.repeat(40)],
+        tree: '8'.repeat(40),
+      },
+      {
+        oid: 'a'.repeat(40),
+        message: 'legacy verification',
+        parents: ['1'.repeat(40)],
+        tree: '7'.repeat(40),
+      },
     ],
   });
 

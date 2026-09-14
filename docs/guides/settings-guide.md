@@ -303,6 +303,25 @@ the resulting commit cannot preserve the immutable accepted-SHA proof.
 `operatorAuthorized: true`; it does not inherit provider-action authorization or
 manufacture a delivery receipt.
 
+Recovery distinguishes **safety authority** from **audit convention**. Exact
+accepted head and pull request, green hosted checks where applicable, merge
+method and topology, trunk reachability, tree equality, lifecycle state,
+approval, and readback remain mandatory safety authority. `[#N]` source subjects
+and the merge attribution trailer are audit convention only. If either is wholly
+absent on an otherwise proven external merge, the warning-bearing v2 receipt
+records `missing-source-attribution` or
+`missing-merge-attribution-trailer`. Any present malformed, partial, extra, or
+conflicting attribution remains fatal; warnings never grant authorization or
+weaken another delivery predicate.
+
+The matching timing repair is also exact and dry-run-first. Inspect with
+`node scripts/task-tracker/heal-timing-departure.mjs N
+--recover-redundant-same-second-reengagement --row-index K --check-only`, then
+repeat with `--apply --yes` only if the proposed deletion is correct. It accepts
+only a physically adjacent, same-second `demoted:develop` / `resumed` /
+`develop:started` triple with zero time, no delta, and unchanged cursors; all
+near misses fail closed and the applied log is read back and revalidated.
+
 **Trunk re-sync.** `close` reads `origin/trunk` (never local `trunk`) when it runs
 inside a linked worktree, so the merged `[#N]` commit is seen without desyncing
 the main worktree. Set `trunkRef` here to override the ref used for the

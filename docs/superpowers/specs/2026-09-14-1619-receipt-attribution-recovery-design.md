@@ -53,10 +53,7 @@ A recovery that crosses an audit-convention exception emits `aitm.delivery-recei
 
 ```json
 {
-  "metadataWarnings": [
-    "missing-source-attribution",
-    "missing-merge-attribution-trailer"
-  ]
+  "metadataWarnings": ["missing-source-attribution", "missing-merge-attribution-trailer"]
 }
 ```
 

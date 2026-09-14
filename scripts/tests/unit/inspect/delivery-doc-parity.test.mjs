@@ -199,3 +199,31 @@ test('#1381: settings guide documents provider-action and incident-ledger author
     /resolved\.mergeMethod === 'rebase'[\s\S]{0,80}merge-method-unverifiable/
   );
 });
+
+test('#1619: operator guides distinguish safety authority from recoverable audit convention', () => {
+  for (const [name, guide] of Object.entries({ workflow, architecture, settings })) {
+    assert.match(guide, /safety authority/i, `${name} must name safety authority`);
+    assert.match(guide, /audit\s+convention/i, `${name} must name audit convention`);
+    assert.match(guide, /missing-source-attribution/, `${name} must name the source warning`);
+    assert.match(
+      guide,
+      /missing-merge-attribution-trailer/,
+      `${name} must name the merge-trailer warning`
+    );
+    assert.match(
+      guide,
+      /present[\s\S]{0,120}(?:malformed|partial|extra|conflicting)[\s\S]{0,120}fatal/i,
+      `${name} must keep present invalid attribution fatal`
+    );
+    assert.match(
+      guide,
+      /--recover-redundant-same-second-reengagement/,
+      `${name} must document the exact timing healer`
+    );
+    assert.match(
+      guide,
+      /dry[- ]run[- ]first|check-only[\s\S]{0,120}--apply --yes/i,
+      `${name} must document dry-run-first timing recovery`
+    );
+  }
+});

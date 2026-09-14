@@ -165,10 +165,7 @@ test('#1619: warning-bearing receipts use exact v2 bytes while warning-free rece
   const v1 = buildDeliveryReceipt(receiptInput());
   const v2 = buildDeliveryReceipt(
     receiptInput({
-      metadataWarnings: [
-        'missing-merge-attribution-trailer',
-        'missing-source-attribution',
-      ],
+      metadataWarnings: ['missing-merge-attribution-trailer', 'missing-source-attribution'],
     })
   );
 
@@ -188,7 +185,10 @@ test('#1619: warning-bearing receipts use exact v2 bytes while warning-free rece
   );
   assert.equal(parsedV1.record.schema, 'aitm.delivery-receipt/v1');
   assert.equal(parsedV2.record.schema, 'aitm.delivery-receipt/v2');
-  assert.equal(projectDeliveryRecords([parsedIntent(), parsedV2]).matchingReceipt.id, 'IC_receipt_v2');
+  assert.equal(
+    projectDeliveryRecords([parsedIntent(), parsedV2]).matchingReceipt.id,
+    'IC_receipt_v2'
+  );
 
   const visible = renderDeliveryReceiptComment(v2);
   assert.match(visible, /missing-merge-attribution-trailer/);

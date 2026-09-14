@@ -26,7 +26,10 @@ const DEFAULT_MERGE_HEAD_REF = 'claude/aad-yml-config-exploration-6d0cf6';
 const DEFAULT_MERGE_TITLE = `Merge pull request #1556 from kburson/` + DEFAULT_MERGE_HEAD_REF;
 const DEFAULT_MERGE_BODY = '[#680] docs(spike): aitm.yml pipeline engine design recommendation';
 
-function recoveryPreflightInput({ commitSubjects = ['legacy source subject'], merged = true } = {}) {
+function recoveryPreflightInput({
+  commitSubjects = ['legacy source subject'],
+  merged = true,
+} = {}) {
   return {
     issue: {
       number: 1619,
@@ -59,9 +62,7 @@ function recoveryPreflightInput({ commitSubjects = ['legacy source subject'], me
     acceptedReviewSha: HEAD,
     checks: {
       readable: true,
-      required: [
-        { name: 'ci', headSha: HEAD, status: 'COMPLETED', conclusion: 'SUCCESS' },
-      ],
+      required: [{ name: 'ci', headSha: HEAD, status: 'COMPLETED', conclusion: 'SUCCESS' }],
     },
     dirtyPaths: [],
     config: {
@@ -273,9 +274,7 @@ test('external recovery accepts exact GitHub default merge attribution for the a
 
   assert.equal(verified.receiptInput.mergeMethod, 'merge');
   assert.equal(verified.intent.commitMessage, DEFAULT_MERGE_BODY);
-  assert.deepEqual(verified.receiptInput.metadataWarnings, [
-    'missing-merge-attribution-trailer',
-  ]);
+  assert.deepEqual(verified.receiptInput.metadataWarnings, ['missing-merge-attribution-trailer']);
 });
 
 test('external recovery refuses inexact or non-merge default merge attribution evidence', async () => {

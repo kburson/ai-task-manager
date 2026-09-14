@@ -44,7 +44,8 @@ export class DeliveryPreflightError extends TypeError {
   constructor(category, cause, details = {}) {
     const diagnostic = {
       predicate: category,
-      recoveryAction: 'correct the failed predicate through the governed workflow and retry delivery',
+      recoveryAction:
+        'correct the failed predicate through the governed workflow and retry delivery',
       ...(PREFLIGHT_DIAGNOSTICS[category] ?? {}),
       ...details,
     };
