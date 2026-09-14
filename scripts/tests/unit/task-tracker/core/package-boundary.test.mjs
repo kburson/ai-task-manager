@@ -122,7 +122,8 @@ function repoRoot() {
 // duplicated mapping boundaries. The measured surface grows by exactly one.
 // #1579 ships one linked-plan policy validator used by Plan approval. The
 // measured surface grows by exactly that maintained runtime entry.
-const ENTRY_CEILING = 770;
+// #1618 ships one Project workflow compatibility policy used by init.
+const ENTRY_CEILING = 771;
 
 let packedFileCache = null;
 function packedFiles() {

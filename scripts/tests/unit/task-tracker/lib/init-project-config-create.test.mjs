@@ -69,6 +69,10 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     echo '{"data":{"linkProjectV2ToRepository":{"repository":{"nameWithOwner":"kburson/new-repo"}}}}'
     exit 0
   fi
+  if [[ "$args" == *"workflows(first: 100"* ]]; then
+    echo '{"data":{"node":{"workflows":{"nodes":[{"name":"Auto-close issue","number":3,"enabled":false},{"name":"Pull request merged","number":2,"enabled":false}],"pageInfo":{"hasNextPage":false,"endCursor":"2"}}}}}'
+    exit 0
+  fi
   if [[ "$args" == *"createProjectV2Field"* ]]; then
     echo "F_CREATED"
     exit 0
