@@ -453,6 +453,7 @@ usepackage
 Verif
 Vijayvergiya
 virality
+waivable
 watchpoints
 Willison
 Willison's
