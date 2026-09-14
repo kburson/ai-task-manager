@@ -61,6 +61,21 @@ test('rejects zero or multiple reports', () => {
     () => parseNpmPackReport(fixture('multiple.json'), OPTIONS),
     /Expected exactly one npm pack report, received 2/
   );
+  assert.throws(
+    () => parseNpmPackReport('{}', OPTIONS),
+    /Expected exactly one npm pack report, received 0/
+  );
+  assert.throws(
+    () =>
+      parseNpmPackReport(
+        JSON.stringify({
+          [EXPECTED_PACKAGE]: { name: EXPECTED_PACKAGE, files: [] },
+          'other-package': { name: 'other-package', files: [] },
+        }),
+        OPTIONS
+      ),
+    /Expected exactly one npm pack report, received 2/
+  );
 });
 
 test('rejects an unexpected npm 12 package key or inner report identity', () => {
@@ -105,10 +120,14 @@ test('all pack consumers import the shared normalizer', () => {
   ]) {
     const source = readFileSync(path.join(ROOT, relativePath), 'utf8');
     assert.match(source, /import \{ parseNpmPackReport \}/, `${relativePath} must import helper`);
-    assert.doesNotMatch(
-      source,
-      /Object\.values\([^\n]+pack/i,
-      `${relativePath} keeps local fallback`
-    );
+    assert.match(source, /parseNpmPackReport\(/, `${relativePath} must call helper`);
+    for (const legacyPattern of [
+      /Array\.isArray\(/,
+      /Object\.values\(/,
+      /JSON\.parse\(\s*(?:out|raw|res\.stdout|result\.stdout|execFileSync)/,
+      /\b(?:parsed|report|packages|rawPackages|rawPackReport)\s*\[\s*0\s*\]/,
+    ]) {
+      assert.doesNotMatch(source, legacyPattern, `${relativePath} keeps local pack normalization`);
+    }
   }
 });

@@ -35,7 +35,10 @@ test('active CI proves the Node 24 floor and a later supported runtime', () => {
     nodeVersions.some((version) => version === '26' || version === 'current'),
     'CI must retain a later/current Node runtime lane'
   );
-  assert.ok(!nodeVersions.includes('22'), 'active CI must not pin Node 22');
+  const unsupported = nodeVersions.filter(
+    (version) => /^\d+$/.test(version) && Number(version) < 24
+  );
+  assert.deepEqual(unsupported, [], `active CI contains pre-Node-24 runtimes: ${unsupported}`);
 });
 
 test('hosted compatibility runs every pack consumer under npm 11 and npm 12', () => {
