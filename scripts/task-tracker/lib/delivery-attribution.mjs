@@ -80,7 +80,7 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-export function buildDeliveryCommitText(input = {}) {
+function validateInput(input) {
   if (!hasExactlyKeys(input, INPUT_KEYS)) throw attributionError('input-keys');
   assertPositiveInteger(input.issueNumber, 'issue-number');
   assertPositiveInteger(input.prNumber, 'pr-number');
@@ -90,14 +90,10 @@ export function buildDeliveryCommitText(input = {}) {
   if (!Array.isArray(input.commitSubjects) || input.commitSubjects.length === 0) {
     throw attributionError('missing-source-subjects');
   }
+}
 
-  const tokenSet = new Set();
-  for (const subject of input.commitSubjects) {
-    for (const token of tokensFromSubject(subject)) tokenSet.add(token);
-  }
+function buildCommitTextFromTokens(input, attributionTokens) {
   const topLevelToken = `#${input.issueNumber}`;
-  if (!tokenSet.has(topLevelToken)) throw attributionError('missing-top-level-token');
-  const attributionTokens = [...tokenSet].sort();
   const messageTokens = [
     topLevelToken,
     ...attributionTokens.filter((token) => token !== topLevelToken),
@@ -113,11 +109,40 @@ export function buildDeliveryCommitText(input = {}) {
     throw attributionError('commit-message-too-large');
   }
 
-  return deepFreeze({
+  return {
     attributionTokens,
     commitTitle,
     commitMessage,
     commitTitleSha256: sha256(commitTitle),
     commitMessageSha256: sha256(commitMessage),
-  });
+  };
+}
+
+export function buildDeliveryCommitText(input = {}) {
+  validateInput(input);
+  const tokenSet = new Set();
+  for (const subject of input.commitSubjects) {
+    for (const token of tokensFromSubject(subject)) tokenSet.add(token);
+  }
+  const topLevelToken = `#${input.issueNumber}`;
+  if (!tokenSet.has(topLevelToken)) throw attributionError('missing-top-level-token');
+  const attributionTokens = [...tokenSet].sort();
+  return deepFreeze(buildCommitTextFromTokens(input, attributionTokens));
+}
+
+export function buildExternalRecoveryCommitText(input = {}) {
+  try {
+    return deepFreeze({ ...buildDeliveryCommitText(input), metadataWarnings: [] });
+  } catch (canonicalError) {
+    validateInput(input);
+    const whollyUnattributed = input.commitSubjects.every((subject) => {
+      assertSourceSubject(subject);
+      return !subject.includes('[#');
+    });
+    if (!whollyUnattributed) throw canonicalError;
+    return deepFreeze({
+      ...buildCommitTextFromTokens(input, [`#${input.issueNumber}`]),
+      metadataWarnings: ['missing-source-attribution'],
+    });
+  }
 }

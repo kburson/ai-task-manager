@@ -7,6 +7,11 @@ import { test } from 'node:test';
 
 import { buildDeliveryIntent } from '../../../../task-tracker/lib/delivery-records.mjs';
 import {
+  DeliveryPreflightError,
+  validateDeliveryPreflight,
+  validateMergedDeliveryPreflight,
+} from '../../../../task-tracker/lib/delivery-preflight.mjs';
+import {
   verifyDeliveredPullRequest,
   verifyExternalDeliveredPullRequest,
 } from '../../../../task-tracker/lib/delivery-verification.mjs';
@@ -20,6 +25,87 @@ const COMMIT_MESSAGE = `PR #1391\nSource: ${HEAD}\n\n` + 'Attribution: [#1392] [
 const DEFAULT_MERGE_HEAD_REF = 'claude/aad-yml-config-exploration-6d0cf6';
 const DEFAULT_MERGE_TITLE = `Merge pull request #1556 from kburson/` + DEFAULT_MERGE_HEAD_REF;
 const DEFAULT_MERGE_BODY = '[#680] docs(spike): aitm.yml pipeline engine design recommendation';
+
+function recoveryPreflightInput({ commitSubjects = ['legacy source subject'], merged = true } = {}) {
+  return {
+    issue: {
+      number: 1619,
+      state: 'OPEN',
+      projectState: 'Review',
+      assignees: ['kburson'],
+      agentReviewPassed: true,
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+    },
+    binding: {
+      issueNumber: 1619,
+      branch: 'codex/1619-receipt-attribution-recovery',
+      timerState: 'running',
+    },
+    lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+    pullRequests: [
+      {
+        number: 1620,
+        state: merged ? 'MERGED' : 'OPEN',
+        merged,
+        isDraft: false,
+        baseRefName: 'trunk',
+        headRefName: 'codex/1619-receipt-attribution-recovery',
+        headRefOid: HEAD,
+        mergeable: 'MERGEABLE',
+      },
+    ],
+    localHeadSha: HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    checks: {
+      readable: true,
+      required: [
+        { name: 'ci', headSha: HEAD, status: 'COMPLETED', conclusion: 'SUCCESS' },
+      ],
+    },
+    dirtyPaths: [],
+    config: {
+      repo: 'kburson/ai-task-manager',
+      assignee: 'kburson',
+      trunkRef: 'origin/trunk',
+      repositoryMergeMethods: ['merge', 'squash'],
+      fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+    },
+    commitSubjects,
+  };
+}
+
+test('#1619: merged recovery accepts wholly absent source attribution with a warning', () => {
+  const recovered = validateMergedDeliveryPreflight(recoveryPreflightInput());
+
+  assert.deepEqual(recovered.metadataWarnings, ['missing-source-attribution']);
+  assert.deepEqual(recovered.commitText.attributionTokens, ['#1619']);
+  assert.equal(recovered.commitText.commitTitle, '[#1619] Governed PR delivery');
+  assert.match(recovered.commitText.commitMessage, /Attribution: \[#1619\]$/);
+
+  assert.throws(
+    () => validateDeliveryPreflight(recoveryPreflightInput({ merged: false })),
+    (error) => error instanceof DeliveryPreflightError && error.category === 'attribution'
+  );
+});
+
+test('#1619: merged recovery refuses partial, malformed, duplicate, or conflicting attribution', () => {
+  const cases = [
+    ['legacy source', '[#999] conflicting source'],
+    ['[#999] conflicting source'],
+    ['[#1619 malformed'],
+    ['[#1619] target', 'unattributed partial subject'],
+    ['[#1619] target [#1619] duplicate'],
+  ];
+
+  for (const commitSubjects of cases) {
+    assert.throws(
+      () => validateMergedDeliveryPreflight(recoveryPreflightInput({ commitSubjects })),
+      (error) => error instanceof DeliveryPreflightError && error.category === 'attribution',
+      commitSubjects.join(' | ')
+    );
+  }
+});
 
 function intent(commitMessage = COMMIT_MESSAGE) {
   return buildDeliveryIntent({

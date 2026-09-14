@@ -1,4 +1,7 @@
-import { buildDeliveryCommitText } from './delivery-attribution.mjs';
+import {
+  buildDeliveryCommitText,
+  buildExternalRecoveryCommitText,
+} from './delivery-attribution.mjs';
 import { DeliveryAuthorityError, resolveAcceptedDeliveryAuthority } from './delivery-authority.mjs';
 import { resolveMergeMechanism } from './full-auto-merge.mjs';
 
@@ -211,9 +214,10 @@ function validatePreflight(input, { merged = false } = {}) {
   validateChecks(input.checks, input.localHeadSha);
   const resolved = validateConfiguration(input.config);
 
-  let commitText;
+  let builtCommitText;
   try {
-    commitText = buildDeliveryCommitText({
+    const builder = merged ? buildExternalRecoveryCommitText : buildDeliveryCommitText;
+    builtCommitText = builder({
       issueNumber: input.issue.number,
       prNumber: pr.number,
       expectedHeadSha: input.localHeadSha,
@@ -222,6 +226,7 @@ function validatePreflight(input, { merged = false } = {}) {
   } catch (error) {
     fail('attribution', error);
   }
+  const { metadataWarnings = [], ...commitText } = builtCommitText;
 
   const issue = { ...input.issue, assignees: [...input.issue.assignees] };
   return deepFreeze({
@@ -230,6 +235,7 @@ function validatePreflight(input, { merged = false } = {}) {
     expectedHeadSha: input.localHeadSha,
     mergeMethod: resolved.mergeMethod,
     commitText,
+    ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
   });
 }
 
@@ -370,9 +376,9 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
   if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 0) fail('dirty-overlap');
   const resolved = validateConfiguration(input.config);
 
-  let commitText;
+  let builtCommitText;
   try {
-    commitText = buildDeliveryCommitText({
+    builtCommitText = buildExternalRecoveryCommitText({
       issueNumber: input.issue.number,
       prNumber: pr.number,
       expectedHeadSha: authority.acceptedSha,
@@ -381,6 +387,7 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
   } catch (error) {
     fail('attribution', error);
   }
+  const { metadataWarnings = [], ...commitText } = builtCommitText;
 
   return deepFreeze({
     issue: { ...input.issue, assignees: [...input.issue.assignees] },
@@ -391,5 +398,6 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
     headRelation: authority.headRelation,
     mergeMethod: resolved.mergeMethod,
     commitText,
+    ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
   });
 }
