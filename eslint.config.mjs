@@ -29,6 +29,8 @@ export default [
       'no-console': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-fallthrough': 'off',
+      'no-useless-assignment': 'off',
+      'preserve-caught-error': 'off',
       'no-useless-escape': 'off',
     },
   },

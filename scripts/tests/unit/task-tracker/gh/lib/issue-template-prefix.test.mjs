@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import yaml from 'js-yaml';
+import { load as loadYaml } from 'js-yaml';
 
 import { KIND_PREFIXES } from '../../../../../gh/lib/kind-prefix.mjs';
 
@@ -12,7 +12,7 @@ const here = dirname(fileURLToPath(import.meta.url)) + '/../..';
 const templateDir = resolve(here, '../../../../.github/ISSUE_TEMPLATE');
 
 function load(name) {
-  return yaml.load(readFileSync(resolve(templateDir, name), 'utf8'));
+  return loadYaml(readFileSync(resolve(templateDir, name), 'utf8'));
 }
 
 const CASES = [

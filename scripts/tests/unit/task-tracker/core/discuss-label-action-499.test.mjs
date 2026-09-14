@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
+import { load as loadYaml } from 'js-yaml';
 
 // Resolve the repo root from this test file's location (…/scripts/task-tracker/
 // tests/unit/ → four levels up), so the suite is cwd-independent.
@@ -23,7 +23,7 @@ const repoRoot = path.resolve(here, '../../../..');
 const wfPath = path.join(repoRoot, '.github', 'workflows', 'label-discuss.yml');
 
 const wfText = readFileSync(wfPath, 'utf8');
-const wf = yaml.load(wfText);
+const wf = loadYaml(wfText);
 // `on:` parses to the boolean key true in YAML 1.1; tolerate either spelling.
 const on = wf.on || wf[true];
 const script = wf.jobs.label.steps.find((s) => s.uses && s.uses.startsWith('actions/github-script'))
