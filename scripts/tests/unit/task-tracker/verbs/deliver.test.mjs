@@ -670,7 +670,7 @@ test('external recovery rejects a provider method observation that mismatches co
     prMergeMethod: 'rebase',
   });
 
-  await assert.rejects(() => deliver(harness), /delivery-verification:merge-method$/);
+  await assert.rejects(() => deliver(harness), /delivery-verification:merge-method\b/);
 
   assert.equal(harness.calls.createIssueComment, 0);
   assert.equal(harness.data.comments.length, 0);

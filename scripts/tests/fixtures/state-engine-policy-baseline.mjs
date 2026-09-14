@@ -389,7 +389,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 511, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 512, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

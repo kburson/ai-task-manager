@@ -7,6 +7,11 @@ import { test } from 'node:test';
 
 import { buildDeliveryIntent } from '../../../../task-tracker/lib/delivery-records.mjs';
 import {
+  DeliveryPreflightError,
+  validateDeliveryPreflight,
+  validateMergedDeliveryPreflight,
+} from '../../../../task-tracker/lib/delivery-preflight.mjs';
+import {
   verifyDeliveredPullRequest,
   verifyExternalDeliveredPullRequest,
 } from '../../../../task-tracker/lib/delivery-verification.mjs';
@@ -20,6 +25,116 @@ const COMMIT_MESSAGE = `PR #1391\nSource: ${HEAD}\n\n` + 'Attribution: [#1392] [
 const DEFAULT_MERGE_HEAD_REF = 'claude/aad-yml-config-exploration-6d0cf6';
 const DEFAULT_MERGE_TITLE = `Merge pull request #1556 from kburson/` + DEFAULT_MERGE_HEAD_REF;
 const DEFAULT_MERGE_BODY = '[#680] docs(spike): aitm.yml pipeline engine design recommendation';
+
+function recoveryPreflightInput({
+  commitSubjects = ['legacy source subject'],
+  merged = true,
+} = {}) {
+  return {
+    issue: {
+      number: 1619,
+      state: 'OPEN',
+      projectState: 'Review',
+      assignees: ['kburson'],
+      agentReviewPassed: true,
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+    },
+    binding: {
+      issueNumber: 1619,
+      branch: 'codex/1619-receipt-attribution-recovery',
+      timerState: 'running',
+    },
+    lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+    pullRequests: [
+      {
+        number: 1620,
+        state: merged ? 'MERGED' : 'OPEN',
+        merged,
+        isDraft: false,
+        baseRefName: 'trunk',
+        headRefName: 'codex/1619-receipt-attribution-recovery',
+        headRefOid: HEAD,
+        mergeable: 'MERGEABLE',
+      },
+    ],
+    localHeadSha: HEAD,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    checks: {
+      readable: true,
+      required: [{ name: 'ci', headSha: HEAD, status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    },
+    dirtyPaths: [],
+    config: {
+      repo: 'kburson/ai-task-manager',
+      assignee: 'kburson',
+      trunkRef: 'origin/trunk',
+      repositoryMergeMethods: ['merge', 'squash'],
+      fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+    },
+    commitSubjects,
+  };
+}
+
+test('#1619: merged recovery accepts wholly absent source attribution with a warning', () => {
+  const recovered = validateMergedDeliveryPreflight(recoveryPreflightInput());
+
+  assert.deepEqual(recovered.metadataWarnings, ['missing-source-attribution']);
+  assert.deepEqual(recovered.commitText.attributionTokens, ['#1619']);
+  assert.equal(recovered.commitText.commitTitle, '[#1619] Governed PR delivery');
+  assert.match(recovered.commitText.commitMessage, /Attribution: \[#1619\]$/);
+
+  assert.throws(
+    () => validateDeliveryPreflight(recoveryPreflightInput({ merged: false })),
+    (error) => error instanceof DeliveryPreflightError && error.category === 'attribution'
+  );
+});
+
+test('#1619: merged recovery refuses partial, malformed, duplicate, or conflicting attribution', () => {
+  const cases = [
+    ['legacy source', '[#999] conflicting source'],
+    ['[#999] conflicting source'],
+    ['[#1619 malformed'],
+    ['[#1619] target', 'unattributed partial subject'],
+    ['[#1619] target [#1619] duplicate'],
+  ];
+
+  for (const commitSubjects of cases) {
+    assert.throws(
+      () => validateMergedDeliveryPreflight(recoveryPreflightInput({ commitSubjects })),
+      (error) => error instanceof DeliveryPreflightError && error.category === 'attribution',
+      commitSubjects.join(' | ')
+    );
+  }
+});
+
+test('#1619: preflight failures expose the failed predicate and a supported recovery action', () => {
+  const sourceConflict = recoveryPreflightInput({
+    commitSubjects: ['[#999] conflicting source'],
+  });
+  assert.throws(
+    () => validateMergedDeliveryPreflight(sourceConflict),
+    (error) => {
+      assert.equal(error.category, 'attribution');
+      assert.equal(error.predicate, 'source-attribution-conflict');
+      assert.match(error.recoveryAction, /governed non-delivery|corrective delivery/);
+      assert.match(error.message, /^delivery-preflight:attribution predicate=/);
+      return true;
+    }
+  );
+
+  const failedCheck = recoveryPreflightInput({ commitSubjects: ['[#1619] valid source'] });
+  failedCheck.checks.required[0].conclusion = 'FAILURE';
+  assert.throws(
+    () => validateMergedDeliveryPreflight(failedCheck),
+    (error) => {
+      assert.equal(error.category, 'required-check-not-green');
+      assert.equal(error.predicate, 'required-hosted-check-green');
+      assert.match(error.recoveryAction, /rerun|required hosted check/i);
+      return true;
+    }
+  );
+});
 
 function intent(commitMessage = COMMIT_MESSAGE) {
   return buildDeliveryIntent({
@@ -134,6 +249,7 @@ test('verifies multi-issue squash attribution from exact inspected commit bytes'
 
   assert.equal(verified.receiptInput.mergeCommitSha, MERGE_HEAD);
   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
 });
 
 test('external recovery accepts one canonical inspected attribution line', async () => {
@@ -148,6 +264,7 @@ test('external recovery accepts one canonical inspected attribution line', async
 
   assert.equal(verified.intent.provider, 'external');
   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
 });
 
 test('external recovery accepts exact GitHub default merge attribution for the accepted head', async () => {
@@ -157,6 +274,7 @@ test('external recovery accepts exact GitHub default merge attribution for the a
 
   assert.equal(verified.receiptInput.mergeMethod, 'merge');
   assert.equal(verified.intent.commitMessage, DEFAULT_MERGE_BODY);
+  assert.deepEqual(verified.receiptInput.metadataWarnings, ['missing-merge-attribution-trailer']);
 });
 
 test('external recovery refuses inexact or non-merge default merge attribution evidence', async () => {
@@ -246,7 +364,7 @@ test('external recovery keeps its exact input schema and authority equality chec
         ...input,
         intentInput: { ...input.intentInput, mergeMethod: 'merge' },
       }),
-    /delivery-verification:merge-method$/
+    /delivery-verification:merge-method\b/
   );
   await assert.rejects(
     () =>
@@ -281,4 +399,53 @@ test('external recovery rejects noncanonical inspected attribution lines', async
       /delivery-verification:attribution/
     );
   }
+});
+
+test('#1619: verification failures expose distinct immutable-evidence predicates', async () => {
+  const { input: conflictInput, intentInput: conflictIntent } = defaultMergeRecoveryInput({
+    commitTitle: DEFAULT_MERGE_TITLE.replace('#1556', '#1557'),
+  });
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...conflictInput, intentInput: conflictIntent }),
+    (error) => {
+      assert.equal(error.name, 'DeliveryVerificationError');
+      assert.equal(error.category, 'attribution');
+      assert.equal(error.predicate, 'merge-message-attribution-conflict');
+      assert.match(error.recoveryAction, /governed non-delivery|corrective delivery/);
+      assert.match(error.message, /^delivery-verification:attribution predicate=/);
+      return true;
+    }
+  );
+
+  const wrongHead = liveInput();
+  delete wrongHead.intentCreatedAt;
+  delete wrongHead.recovery;
+  wrongHead.pullRequest.headRefOid = 'd'.repeat(40);
+  await assert.rejects(
+    () => verifyExternalDeliveredPullRequest({ ...wrongHead, intentInput: externalIntentInput() }),
+    (error) => {
+      assert.equal(error.category, 'authority-sha-mismatch');
+      assert.equal(error.predicate, 'accepted-head-authority');
+      assert.match(error.recoveryAction, /accepted head/i);
+      return true;
+    }
+  );
+
+  const unreachable = liveInput();
+  delete unreachable.intentCreatedAt;
+  delete unreachable.recovery;
+  unreachable.isAncestor = async () => false;
+  await assert.rejects(
+    () =>
+      verifyExternalDeliveredPullRequest({
+        ...unreachable,
+        intentInput: externalIntentInput(),
+      }),
+    (error) => {
+      assert.equal(error.category, 'trunk-reachability');
+      assert.equal(error.predicate, 'merge-commit-reachable-from-trunk');
+      assert.match(error.recoveryAction, /fetch|trunk/i);
+      return true;
+    }
+  );
 });

@@ -12,8 +12,14 @@ import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.
 import {
   findUnpairedReengagements,
   recoverRedundantSameSecondPair as recoverSameSecondPair,
+  recoverRedundantSameSecondReengagement as recoverSameSecondReengagement,
   repairMissingDeparture,
 } from './lib/heal-timing-departure.mjs';
+import {
+  extractDataRows,
+  stageOf,
+  validate as validateTimingSequence,
+} from './lib/agent-review/validators/timing-log-sequence.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -32,6 +38,7 @@ export async function runHealDeparture({
   description,
   ts,
   recoverRedundantSameSecondPair = false,
+  recoverRedundantSameSecondReengagement = false,
   deps = {},
 } = {}) {
   if (issueNumber == null) throw new Error('runHealDeparture: issueNumber is required');
@@ -41,6 +48,33 @@ export async function runHealDeparture({
   const comment = await findTimingComment(String(issueNumber), repo);
   if (!comment) {
     return { status: 'no-comment', candidatesBefore: 0, candidatesAfter: 0, commentId: null };
+  }
+
+  if (recoverRedundantSameSecondPair && recoverRedundantSameSecondReengagement) {
+    throw new Error('runHealDeparture: recovery modes are mutually exclusive');
+  }
+
+  if (recoverRedundantSameSecondReengagement) {
+    const candidatesBefore = findUnpairedReengagements(comment.body).length;
+    const healed = recoverSameSecondReengagement(comment.body, { rowIndex });
+    assertCanonicalTimingSequence(healed);
+    const candidatesAfter = findUnpairedReengagements(healed).length;
+    const result = {
+      candidatesBefore,
+      candidatesAfter,
+      commentId: comment.id,
+      recoveredRows: 1,
+    };
+    if (!apply) return { status: 'dry-run', ...result };
+    await updateTimingComment(comment.id, repo, healed);
+    const readback = await findTimingComment(String(issueNumber), repo);
+    if (readback?.id !== comment.id || readback?.body !== healed) {
+      throw new Error(
+        'same-second reengagement recovery read-back did not match the proposed body'
+      );
+    }
+    assertCanonicalTimingSequence(readback.body);
+    return { status: 'recovered', ...result };
   }
 
   if (recoverRedundantSameSecondPair) {
@@ -75,6 +109,24 @@ export async function runHealDeparture({
   return { status: 'healed', ...result };
 }
 
+function assertCanonicalTimingSequence(body) {
+  const enteredStages = [
+    ...new Set(
+      extractDataRows(body)
+        .map((row) => stageOf(row.event))
+        .filter(Boolean)
+    ),
+  ].map((stage) => ({ stage }));
+  const result = validateTimingSequence({
+    comments: [{ body }],
+    markers: { enteredStages },
+    body: '',
+  });
+  if (!result.pass) {
+    throw new Error(`timing-log-sequence: ${result.failures.join('; ')}`);
+  }
+}
+
 export function parseArgs(argv) {
   const out = {
     issue: null,
@@ -86,6 +138,7 @@ export function parseArgs(argv) {
     description: undefined,
     ts: undefined,
     recoverRedundantSameSecondPair: false,
+    recoverRedundantSameSecondReengagement: false,
     insertionOptionProvided: false,
   };
   for (let index = 0; index < argv.length; index++) {
@@ -95,6 +148,8 @@ export function parseArgs(argv) {
     else if (arg === '--yes') out.yes = true;
     else if (arg === '--recover-redundant-same-second-pair')
       out.recoverRedundantSameSecondPair = true;
+    else if (arg === '--recover-redundant-same-second-reengagement')
+      out.recoverRedundantSameSecondReengagement = true;
     else if (arg === '--help' || arg === '-h') out.help = true;
     else if (arg === '--row-index') out.rowIndex = Number(argv[++index]);
     else if (arg === '--event') {
@@ -113,10 +168,11 @@ export function parseArgs(argv) {
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--yes]\n' +
+    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--recover-redundant-same-second-reengagement] [--yes]\n' +
       '  row indexes are zero-based Timing Log data-row indexes; dry-run is the default\n' +
       '  --at places the departure at that timestamp; it must fall strictly between the preceding row and the reengagement\n' +
-      '  --recover-redundant-same-second-pair removes one exact zero-duration malformed departure/reengagement pair and requires --row-index\n'
+      '  --recover-redundant-same-second-pair removes one exact zero-duration malformed departure/reengagement pair and requires --row-index\n' +
+      '  --recover-redundant-same-second-reengagement removes one exact standalone resumed row between same-second demoted:develop and develop:started rows and requires --row-index\n'
   );
 }
 
@@ -136,6 +192,7 @@ export async function main(argv, deps = {}) {
         '--check-only',
         '--yes',
         '--recover-redundant-same-second-pair',
+        '--recover-redundant-same-second-reengagement',
         '--help',
         '-h',
       ],
@@ -161,7 +218,18 @@ export async function main(argv, deps = {}) {
     err.write('heal-timing-departure: recovery requires --row-index\n');
     return exit(2);
   }
-  if (args.recoverRedundantSameSecondPair && args.insertionOptionProvided) {
+  if (args.recoverRedundantSameSecondReengagement && args.rowIndex === undefined) {
+    err.write('heal-timing-departure: recovery requires --row-index\n');
+    return exit(2);
+  }
+  if (args.recoverRedundantSameSecondPair && args.recoverRedundantSameSecondReengagement) {
+    err.write('heal-timing-departure: recovery modes are mutually exclusive\n');
+    return exit(2);
+  }
+  if (
+    (args.recoverRedundantSameSecondPair || args.recoverRedundantSameSecondReengagement) &&
+    args.insertionOptionProvided
+  ) {
     err.write(
       'heal-timing-departure: recovery cannot be combined with --at, --event, or --description\n'
     );
@@ -197,6 +265,7 @@ export async function main(argv, deps = {}) {
         description: args.description,
         ts: args.ts,
         recoverRedundantSameSecondPair: args.recoverRedundantSameSecondPair,
+        recoverRedundantSameSecondReengagement: args.recoverRedundantSameSecondReengagement,
       }),
     { timeoutMs: 10_000, retries: 2 }
   );

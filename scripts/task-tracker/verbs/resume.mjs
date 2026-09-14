@@ -504,6 +504,7 @@ export async function verbResume(ctx) {
         readStatus,
         paused: !!s.pausedAtTs,
         nowTs: ts,
+        proposedEvent: bindEvent,
       });
     if (!suppressBindEvent) {
       const row = buildRow({

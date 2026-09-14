@@ -234,3 +234,54 @@ export function recoverRedundantSameSecondPair(body, { rowIndex } = {}) {
   lines.splice(departure.lineIndex, 1);
   return lines.join('\n');
 }
+
+// #1619 — remove only the exact standalone reengagement emitted between a
+// same-second Review→Develop demotion audit and its Develop entry. This is not
+// a general row-deletion API: the neighboring event identities, physical
+// adjacency, timestamps, zero duration, and both cursor streams must all agree.
+export function recoverRedundantSameSecondReengagement(body, { rowIndex } = {}) {
+  if (typeof body !== 'string' || body.length === 0) {
+    throw new Error('no Timing Log body supplied');
+  }
+  if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+    throw new Error('same-second reengagement recovery requires a non-negative rowIndex');
+  }
+
+  const rows = timingRows(body);
+  const selected = rows[rowIndex];
+  if (!selected) throw new Error(`rowIndex ${rowIndex} does not identify a Timing Log row`);
+  if (selected.event !== 'resumed') {
+    throw new Error(`same-second reengagement recovery requires resumed (${selected.event})`);
+  }
+  const previous = rows[rowIndex - 1];
+  const next = rows[rowIndex + 1];
+  if (previous?.event !== 'demoted:develop') {
+    throw new Error('same-second reengagement recovery requires adjacent demoted:develop');
+  }
+  if (next?.event !== 'develop:started') {
+    throw new Error('same-second reengagement recovery requires adjacent develop:started');
+  }
+  if (previous.lineIndex + 1 !== selected.lineIndex || selected.lineIndex + 1 !== next.lineIndex) {
+    throw new Error('same-second reengagement recovery rows must be physically adjacent');
+  }
+
+  const seconds = [previous, selected, next].map((row) => {
+    const ms = timingTimestampToMs(row.ts);
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+  });
+  if (seconds.some((second) => second === null) || new Set(seconds).size !== 1) {
+    throw new Error('same-second reengagement recovery requires one exact whole second');
+  }
+  if (!isZeroDurationRow(selected)) {
+    throw new Error('same-second reengagement recovery refuses a non-zero-duration row');
+  }
+  for (const cursor of ['wordMarker', 'fullWordMarker']) {
+    if (selected[cursor] !== previous[cursor] || selected[cursor] !== next[cursor]) {
+      throw new Error(`same-second reengagement recovery refuses changed ${cursor} cursors`);
+    }
+  }
+
+  const lines = body.split('\n');
+  lines.splice(selected.lineIndex, 1);
+  return lines.join('\n');
+}

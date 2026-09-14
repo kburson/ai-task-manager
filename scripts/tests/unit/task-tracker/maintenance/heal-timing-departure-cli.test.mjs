@@ -1,4 +1,4 @@
-// @story #1187
+// @story #1187 #1619
 // The heal-timing-departure CLI must be able to express an operator-supplied
 // departure timestamp: --at parses, survives strict-argv, is documented in the
 // usage text, and reaches repairMissingDeparture as `ts`.
@@ -42,6 +42,13 @@ const fixture = readFileSync(
     false,
     'same-second recovery is opt-in'
   );
+  assert.equal(
+    parseArgs(['1619', '--recover-redundant-same-second-reengagement', '--row-index', '1'])
+      .recoverRedundantSameSecondReengagement,
+    true,
+    'standalone reengagement recovery parses explicitly'
+  );
+  assert.equal(parseArgs(['1099']).recoverRedundantSameSecondReengagement, false);
 }
 
 // The usage text advertises --at.
@@ -51,6 +58,7 @@ const fixture = readFileSync(
   assert.match(text, /--at TIMESTAMP/, 'usage lists --at');
   assert.match(text, /strictly between/i, 'usage states the interval rule');
   assert.match(text, /--recover-redundant-same-second-pair/, 'usage lists exact recovery mode');
+  assert.match(text, /--recover-redundant-same-second-reengagement/);
 }
 
 // The self-doc entry advertises --at too.
@@ -60,13 +68,15 @@ const fixture = readFileSync(
   assert.match(doc, /--at TIMESTAMP/, 'self-doc usage lists --at');
   assert.match(doc, /never clamped/i, 'self-doc records the fail-loud effect');
   assert.match(doc, /--recover-redundant-same-second-pair/, 'self-doc lists exact recovery mode');
+  assert.match(doc, /--recover-redundant-same-second-reengagement/);
 }
 
-function harness(body) {
+function harness(body, { readbackMismatch = false } = {}) {
   const out = [];
   const err = [];
   const exits = [];
   const updates = [];
+  let currentBody = body;
   return {
     updates,
     stdout: () => out.join(''),
@@ -84,13 +94,99 @@ function harness(body) {
         runHealDeparture({
           ...options,
           deps: {
-            findTimingComment: async () => ({ id: 'IC_1099', body }),
-            updateTimingComment: async (id, repo, nextBody) =>
-              updates.push({ id, repo, body: nextBody }),
+            findTimingComment: async () => ({ id: 'IC_1099', body: currentBody }),
+            updateTimingComment: async (id, repo, nextBody) => {
+              updates.push({ id, repo, body: nextBody });
+              currentBody = readbackMismatch ? `${nextBody}\nreadback drift` : nextBody;
+            },
           },
         }),
     },
   };
+}
+
+const malformedStandaloneReengagement = [
+  '⏱ Timing Log',
+  '',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |',
+  '|---|---|---|---|---|---|---|---|',
+  '| 2026-09-14 08:00:00 -05:00 | demoted:develop |  |  | 0 | 100 | review rework | 200 | <!-- row-sec: a=0 i=0 -->',
+  '| 2026-09-14 08:00:00 -05:00 | resumed |  |  | 0 | 100 | redundant bind | 200 | <!-- row-sec: a=0 i=0 -->',
+  '| 2026-09-14 08:00:00 -05:00 | develop:started |  |  | 0 | 100 | develop rework | 200 | <!-- row-sec: a=0 i=0 -->',
+  '',
+].join('\n');
+
+// Standalone recovery uses its own explicit mode, stays dry-run-first, and
+// verifies exact read-back after its single apply write.
+{
+  const h = harness(malformedStandaloneReengagement);
+  await main(['1619', '--recover-redundant-same-second-reengagement', '--row-index', '1'], h.deps);
+  assert.deepEqual(h.exits, []);
+  assert.equal(h.updates.length, 0);
+  assert.match(h.stdout(), /dry-run/);
+}
+
+{
+  const h = harness(malformedStandaloneReengagement);
+  await main(
+    [
+      '1619',
+      '--apply',
+      '--yes',
+      '--recover-redundant-same-second-reengagement',
+      '--row-index',
+      '1',
+    ],
+    h.deps
+  );
+  assert.deepEqual(h.exits, []);
+  assert.equal(h.updates.length, 1);
+  assert.doesNotMatch(h.updates[0].body, /\| resumed \|/);
+  assert.match(h.stdout(), /recovered/);
+}
+
+{
+  const h = harness(malformedStandaloneReengagement, { readbackMismatch: true });
+  await assert.rejects(
+    () =>
+      main(
+        [
+          '1619',
+          '--apply',
+          '--yes',
+          '--recover-redundant-same-second-reengagement',
+          '--row-index',
+          '1',
+        ],
+        h.deps
+      ),
+    /read-back/i
+  );
+  assert.equal(h.updates.length, 1);
+}
+
+for (const argv of [
+  ['1619', '--recover-redundant-same-second-reengagement'],
+  [
+    '1619',
+    '--recover-redundant-same-second-reengagement',
+    '--recover-redundant-same-second-pair',
+    '--row-index',
+    '1',
+  ],
+  [
+    '1619',
+    '--recover-redundant-same-second-reengagement',
+    '--row-index',
+    '1',
+    '--event',
+    'pause:other',
+  ],
+]) {
+  const h = harness(malformedStandaloneReengagement);
+  await main(argv, h.deps);
+  assert.deepEqual(h.exits, [2]);
+  assert.equal(h.updates.length, 0);
 }
 
 // --at reaches the repair and is written at exactly that timestamp.

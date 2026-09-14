@@ -86,7 +86,11 @@ function expectPreflightCategory(input, category) {
       error instanceof DeliveryPreflightError &&
       error.name === 'DeliveryPreflightError' &&
       error.category === category &&
-      error.message === `delivery-preflight:${category}`
+      error.message.startsWith(`delivery-preflight:${category} `) &&
+      typeof error.predicate === 'string' &&
+      error.predicate.length > 0 &&
+      typeof error.recoveryAction === 'string' &&
+      error.recoveryAction.length > 0
   );
 }
 

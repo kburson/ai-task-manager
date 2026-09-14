@@ -62,11 +62,45 @@ const EVIDENCE_INPUT_KEYS = [
   'sourceSha',
 ];
 
-function verificationError(category, cause) {
-  return new TypeError(
-    `delivery-verification:${category}`,
-    cause === undefined ? undefined : { cause }
-  );
+const VERIFICATION_DIAGNOSTICS = Object.freeze({
+  'authority-sha-mismatch': {
+    predicate: 'accepted-head-authority',
+    recoveryAction:
+      'restore agreement on the accepted head across the pull request, Test receipt, and Review receipt',
+  },
+  'expected-head-sha': {
+    predicate: 'pull-request-expected-head',
+    recoveryAction: 'restore the pull request to the accepted head and rerun Test and Review',
+  },
+  'trunk-reachability': {
+    predicate: 'merge-commit-reachable-from-trunk',
+    recoveryAction:
+      'fetch origin/trunk and verify the merge commit is reachable before retrying delivery',
+  },
+});
+
+export class DeliveryVerificationError extends TypeError {
+  constructor(category, cause, details = {}) {
+    const diagnostic = {
+      predicate: category,
+      recoveryAction:
+        'correct the failed predicate through the governed workflow and retry delivery',
+      ...(VERIFICATION_DIAGNOSTICS[category] ?? {}),
+      ...details,
+    };
+    super(
+      `delivery-verification:${category} predicate=${diagnostic.predicate} recovery=${JSON.stringify(diagnostic.recoveryAction)}`,
+      cause === undefined ? undefined : { cause }
+    );
+    this.name = 'DeliveryVerificationError';
+    this.category = category;
+    this.predicate = diagnostic.predicate;
+    this.recoveryAction = diagnostic.recoveryAction;
+  }
+}
+
+function verificationError(category, cause, details) {
+  return new DeliveryVerificationError(category, cause, details);
 }
 
 function evidenceError(category) {
@@ -417,8 +451,10 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   const expectedLine = `Attribution: ${messageTokens.map((token) => `[${token}]`).join(' ')}`;
   const lines = inspection.commitMessage.split('\n');
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
-  if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return;
-  if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) return;
+  if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return [];
+  if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) {
+    return ['missing-merge-attribution-trailer'];
+  }
   // #1490 — the default-body proof applies ONLY when the body makes no canonical
   // attribution claim at all. A malformed, duplicated, reordered, or nonterminal
   // trailer is a body that DOES claim canonical attribution and must be judged by
@@ -437,7 +473,7 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
     intent.provider === 'external' &&
     provesDefaultSquashBodyAttribution({ intent, inspection })
   ) {
-    return;
+    return ['missing-merge-attribution-trailer'];
   }
   if (
     !claimsCanonicalAttribution &&
@@ -445,9 +481,13 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
     intent.provider === 'external' &&
     provesDefaultMergeBodyAttribution({ intent, inspection })
   ) {
-    return;
+    return ['missing-merge-attribution-trailer'];
   }
-  throw verificationError('attribution');
+  throw verificationError('attribution', undefined, {
+    predicate: 'merge-message-attribution-conflict',
+    recoveryAction:
+      'use a governed non-delivery disposition or create a new corrective delivery; immutable conflicting bytes cannot be warning-recovered',
+  });
 }
 
 function assertVerificationFunctions(input) {
@@ -560,10 +600,15 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         commitTitle: inspection.commitTitle,
         commitMessage: inspection.commitMessage,
       });
-  assertMergeCommitAttribution(inspection, verifiedIntent, provenSingleSourceSquash, {
-    provenMultiSourceSquash,
-    provenMerge: observedMergeMethod === 'merge',
-  });
+  const metadataWarnings = assertMergeCommitAttribution(
+    inspection,
+    verifiedIntent,
+    provenSingleSourceSquash,
+    {
+      provenMultiSourceSquash,
+      provenMerge: observedMergeMethod === 'merge',
+    }
+  );
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');
@@ -583,6 +628,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
       provider: verifiedIntent.provider,
       sessionId: verifiedIntent.sessionId,
       verifiedAt: merged.mergedAt,
+      ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
     },
     recovery,
     branchDisposition: pullRequest.headRefDeleted ? 'deleted' : 'retained',

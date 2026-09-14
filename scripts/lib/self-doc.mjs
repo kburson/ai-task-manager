@@ -1244,7 +1244,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     classification: 'live-maintenance-or-migration',
     synopsis: 'Repair one missing Timing Log departure before an unpaired reengagement.',
     usage:
-      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--yes]',
+      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--recover-redundant-same-second-reengagement] [--yes]',
     arguments: [
       argument('<issue#>', 'Issue whose Timing Log is inspected.'),
       argument(APPLY_FLAG, 'Write the selected missing departure repair.'),
@@ -1260,6 +1260,10 @@ const DIRECT_SELF_DOC = Object.freeze({
         '--recover-redundant-same-second-pair',
         'Remove one exact zero-duration malformed departure and redundant same-second reengagement; requires --row-index and is mutually exclusive with insertion options.'
       ),
+      argument(
+        '--recover-redundant-same-second-reengagement',
+        'Remove one exact standalone zero-duration resumed row between same-second demoted:develop and develop:started rows; requires --row-index and is mutually exclusive with other recovery or insertion options.'
+      ),
       argument('--yes', 'Skip confirmation for apply.'),
     ],
     preconditions: ['Configured repository and timing-comment access are required.'],
@@ -1267,6 +1271,7 @@ const DIRECT_SELF_DOC = Object.freeze({
       'Dry-run by default; --apply inserts one departure row under the timing lock.',
       'An out-of-interval --at is rejected, never clamped; nothing is written.',
       'Same-second recovery removes exactly two proven zero-duration rows under the same lock.',
+      'Standalone same-second reengagement recovery removes exactly one proven zero-duration row, then validates and reads back the complete Timing Log.',
     ],
     output: ['Reports unpaired reengagement counts before and after the repair.'],
     relatedCommands: ['heal-timing-log', 'heal-timing-starts'],

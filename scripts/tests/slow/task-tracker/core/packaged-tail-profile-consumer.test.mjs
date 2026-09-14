@@ -19,14 +19,17 @@ test('packed consumer can select and execute effect-scoped move tails', () => {
   mkdirSync(consumerDir, { recursive: true });
 
   try {
-    const packReport = JSON.parse(
+    const rawPackReport = JSON.parse(
       execFileSync('npm', ['pack', '--json', '--pack-destination', packDir], {
         cwd: ROOT,
         encoding: 'utf8',
         env: { ...process.env, npm_config_loglevel: 'silent' },
       })
     );
-    const packedFiles = new Set((packReport[0]?.files ?? []).map((file) => file.path));
+    const packReport = Array.isArray(rawPackReport)
+      ? rawPackReport[0]
+      : Object.values(rawPackReport)[0];
+    const packedFiles = new Set((packReport?.files ?? []).map((file) => file.path));
     for (const required of [
       'bin/aitm.mjs',
       'skill/adapters/codex/SKILL.md',
@@ -36,7 +39,7 @@ test('packed consumer can select and execute effect-scoped move tails', () => {
       assert.ok(packedFiles.has(required), `required packed file missing: ${required}`);
     }
 
-    const tgz = join(packDir, packReport[0].filename);
+    const tgz = join(packDir, packReport.filename);
     writeFileSync(
       join(consumerDir, 'package.json'),
       JSON.stringify({ name: 'tail-profile-consumer', private: true, type: 'module' })

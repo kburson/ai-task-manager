@@ -161,6 +161,76 @@ test('builders produce exact versioned schemas, hashes, and deeply frozen values
   assertDeepFrozen(receipt);
 });
 
+test('#1619: warning-bearing receipts use exact v2 bytes while warning-free receipts stay v1', () => {
+  const v1 = buildDeliveryReceipt(receiptInput());
+  const v2 = buildDeliveryReceipt(
+    receiptInput({
+      metadataWarnings: ['missing-merge-attribution-trailer', 'missing-source-attribution'],
+    })
+  );
+
+  assert.equal(v1.schema, 'aitm.delivery-receipt/v1');
+  assert.equal(Object.hasOwn(v1, 'metadataWarnings'), false);
+  assert.equal(v2.schema, 'aitm.delivery-receipt/v2');
+  assert.deepEqual(v2.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+    'missing-source-attribution',
+  ]);
+  assert.deepEqual(Object.keys(v2).sort(), [...Object.keys(v1), 'metadataWarnings'].sort());
+
+  const parsedV1 = parsedReceipt({}, { id: 'IC_receipt_v1' });
+  const parsedV2 = parsedReceipt(
+    { metadataWarnings: ['missing-source-attribution'] },
+    { id: 'IC_receipt_v2' }
+  );
+  assert.equal(parsedV1.record.schema, 'aitm.delivery-receipt/v1');
+  assert.equal(parsedV2.record.schema, 'aitm.delivery-receipt/v2');
+  assert.equal(
+    projectDeliveryRecords([parsedIntent(), parsedV2]).matchingReceipt.id,
+    'IC_receipt_v2'
+  );
+
+  const visible = renderDeliveryReceiptComment(v2);
+  assert.match(visible, /missing-merge-attribution-trailer/);
+  assert.match(visible, /missing-source-attribution/);
+  assertDeepFrozen(v2);
+});
+
+test('#1619: receipt v2 refuses malformed warning data and divergent warning receipts', () => {
+  for (const metadataWarnings of [
+    [],
+    ['missing-source-attribution', 'missing-source-attribution'],
+    ['missing-source-attribution', 'missing-merge-attribution-trailer'],
+    ['unknown-warning'],
+    [42],
+  ]) {
+    assert.throws(
+      () => buildDeliveryReceipt(receiptInput({ metadataWarnings })),
+      /delivery-records:/
+    );
+  }
+  assert.throws(
+    () =>
+      buildDeliveryReceipt(
+        receiptInput({ metadataWarnings: ['missing-source-attribution'], metadataWarning: true })
+      ),
+    /delivery-records:receipt-input-keys/
+  );
+
+  const first = parsedReceipt(
+    { metadataWarnings: ['missing-merge-attribution-trailer'] },
+    { id: 'IC_warning_a', createdAt: '2026-08-22T00:06:00.000Z' }
+  );
+  const second = parsedReceipt(
+    { metadataWarnings: ['missing-source-attribution'] },
+    { id: 'IC_warning_b', createdAt: '2026-08-22T00:07:00.000Z' }
+  );
+  assert.throws(
+    () => projectDeliveryRecords([parsedIntent(), first, second]),
+    /delivery-records:receipt-conflict/
+  );
+});
+
 test('external recovery intent retains strict observed history bytes without provider correlation', () => {
   const commitTitle = 'Merge pull request #1400 from codex/939-full-auto-merge';
   const commitMessage = 'GitHub default merge message for the historical pull request.';

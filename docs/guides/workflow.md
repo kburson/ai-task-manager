@@ -444,6 +444,31 @@ accepted-head SHA, so a later pull request from the same branch cannot capture a
 earlier story. Mere **cumulative inclusion** of the accepted bytes somewhere in
 trunk is not a delivery receipt and is never converted into one.
 
+Delivery recovery separates **safety authority** from **audit convention**.
+Accepted-head identity, pull-request identity, required hosted checks, merge
+method and topology, trunk reachability, tree equality, lifecycle state,
+approval, and record readback remain mandatory safety authority. The `[#N]`
+source subjects and merge attribution trailer are audit convention: only when an
+otherwise proven external merge has that metadata wholly absent may AITM recover
+with an `aitm.delivery-receipt/v2` warning. Source absence records
+`missing-source-attribution`; an absent default merge or squash trailer records
+`missing-merge-attribution-trailer`. Any present malformed, partial, extra, or
+conflicting attribution remains fatal. Warning-bearing receipts preserve the
+exception as evidence; they do not authorize a merge or relax another predicate.
+
+For the narrowly redundant timing shape, use a dry-run-first repair:
+
+```bash
+node scripts/task-tracker/heal-timing-departure.mjs N \
+  --recover-redundant-same-second-reengagement --row-index K --check-only
+node scripts/task-tracker/heal-timing-departure.mjs N \
+  --recover-redundant-same-second-reengagement --row-index K --apply --yes
+```
+
+The healer removes only a physically adjacent, same-second
+`demoted:develop` / `resumed` / `develop:started` triple whose redundant row has
+zero time, no delta, and unchanged cursors. Every near miss fails closed.
+
 Close revalidates the receipt and approval provenance before any binding, body,
 timing, lifecycle, board, label, disposition, or issue-close mutation. Full-Auto
 approval is standing policy, so it is revalidated against the current project

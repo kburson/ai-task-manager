@@ -15,7 +15,8 @@ function npmPackFiles() {
     maxBuffer: 64 * 1024 * 1024,
   });
   assert.equal(result.status, 0, result.stderr);
-  const packages = JSON.parse(result.stdout);
+  const rawPackages = JSON.parse(result.stdout);
+  const packages = Array.isArray(rawPackages) ? rawPackages : Object.values(rawPackages);
   assert.equal(packages.length, 1, 'npm pack describes exactly one package');
   return packages[0].files.map(({ path: relPath }) => `package/${relPath}`);
 }

@@ -101,6 +101,25 @@ Provider adapters own **timestamp normalization** at their boundary. The core
 then applies **strict core parsing** to the normalized timestamp and rejects
 malformed or impossible evidence rather than repairing it implicitly.
 
+External delivery recovery keeps **safety authority** distinct from **audit
+convention**. Exact accepted head and pull request, hosted-check success, merge
+method and topology, trunk reachability, tree equality, lifecycle authority,
+approval, and record readback are safety predicates and never degrade to a
+warning. `[#N]` source subjects and the merge attribution trailer are audit
+convention. When either is wholly absent on an otherwise proven external merge,
+the v2 receipt records `missing-source-attribution` or
+`missing-merge-attribution-trailer`. Any present malformed, partial, extra, or
+conflicting attribution is fatal, and warning evidence cannot substitute for
+authorization or any other predicate.
+
+Timing repair follows the same exactness rule. The dry-run-first command
+`heal-timing-departure.mjs N --recover-redundant-same-second-reengagement
+--row-index K --check-only` recognizes only a physically adjacent, same-second
+`demoted:develop` / `resumed` / `develop:started` triple with zero time, no
+delta, and unchanged cursors. Mutation requires the identical command with
+`--apply --yes`, followed by whole-log validation and exact readback; near misses
+remain untouched.
+
 Incident convergence has a separate authority path: an immutable ledger ID and
 canonical digest must receive explicit human approval. The incident ledger is
 observation and authorization, never delivery evidence. Issue-local outcome

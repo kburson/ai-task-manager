@@ -1,4 +1,4 @@
-// @story #1498
+// @story #1498 #1619
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -17,6 +17,10 @@ import { renderProtocolMarker } from '../../../../../task-tracker/lib/evidence-v
 import { runDeliver } from '../../../../../task-tracker/verbs/deliver.mjs';
 import { resolveAcceptedDeliveryAuthority } from '../../../../../task-tracker/lib/delivery-authority.mjs';
 import { rawProjectConfig } from '../../../../../task-tracker/config.mjs';
+import {
+  deliver as deliverV1,
+  makeHarness,
+} from '../../../../unit/task-tracker/verbs/deliver-test-harness.mjs';
 
 function deliveryPolicy(f) {
   return {
@@ -380,4 +384,57 @@ test('public deliver dispatcher selects synthetic v2 and leaves unmarked bodies 
   } finally {
     f.sandbox.dispose();
   }
+});
+
+test('#1619: public v1 merged recovery writes one warning receipt and retries idempotently', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    omitPrMergeMethod: true,
+    historyMergeMethod: 'squash',
+    historyTree: '7'.repeat(40),
+    historyCommitTitle: '[#939] Legacy delivery (#1400)',
+    historyCommitMessage: '* [#939] Legacy delivery\n\n* [#939] Legacy verification',
+    commitSubjects: ['legacy delivery', 'legacy verification'],
+    prCommitSubjects: ['legacy delivery', 'legacy verification'],
+    prSourceCommits: [
+      { oid: '1'.repeat(40), messageHeadline: 'legacy delivery' },
+      { oid: 'a'.repeat(40), messageHeadline: 'legacy verification' },
+    ],
+    prSourceEvidence: [
+      {
+        oid: '1'.repeat(40),
+        message: 'legacy delivery',
+        parents: ['2'.repeat(40)],
+        tree: '8'.repeat(40),
+      },
+      {
+        oid: 'a'.repeat(40),
+        message: 'legacy verification',
+        parents: ['1'.repeat(40)],
+        tree: '7'.repeat(40),
+      },
+    ],
+  });
+
+  const delivered = await deliverV1(harness);
+  assert.equal(delivered.status, 'delivered');
+  assert.equal(delivered.action, null);
+  assert.equal(delivered.receipt.schema, 'aitm.delivery-receipt/v2');
+  assert.deepEqual(delivered.receipt.metadataWarnings, [
+    'missing-merge-attribution-trailer',
+    'missing-source-attribution',
+  ]);
+  assert.equal(harness.calls.createIssueComment, 2);
+
+  const retried = await deliverV1(harness);
+  assert.equal(retried.status, 'already-delivered');
+  assert.equal(harness.calls.createIssueComment, 2);
+
+  const conflicting = makeHarness({
+    prState: 'MERGED',
+    commitSubjects: ['[#999] conflicting source'],
+    prCommitSubjects: ['[#999] conflicting source'],
+  });
+  await assert.rejects(() => deliverV1(conflicting), /delivery-preflight:attribution/);
+  assert.equal(conflicting.calls.createIssueComment, 0);
 });
