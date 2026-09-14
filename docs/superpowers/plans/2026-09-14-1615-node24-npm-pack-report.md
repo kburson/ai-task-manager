@@ -16,6 +16,15 @@ matrix for the two npm majors.
 **Tech Stack:** Node.js ESM, `node:test`, npm CLI JSON output, GitHub Actions,
 JSON fixtures, Markdown.
 
+## Decomposition Waiver
+
+- **Rationale**: The parser contract, five migrations, and dual-npm CI evidence form one atomic compatibility boundary; landing any subset would preserve divergent or unproved normalization behavior.
+- **Expected-focused-duration**: 13.5 hours
+- **Milestone-checkpoint-plan**: Review the runtime-policy red/green cycle, then the parser red/green cycle, then all five migrated consumers, then the isolated AITM Test and Review receipts.
+- **Why-no-nested-children**: Child branches would need to duplicate or sequence the same helper and fixtures, increasing integration and evidence risk without producing independently releasable behavior.
+- **Approved-by**: kburson via Full-Auto authorization
+- **Approved-at**: 2026-09-14T17:18:18Z
+
 ---
 
 ### Task 1: Lock the runtime and hosted-matrix policy
