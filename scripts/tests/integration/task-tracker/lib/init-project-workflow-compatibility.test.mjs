@@ -97,6 +97,14 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
       echo '{"data":{"node":{"workflows":{"nodes":[],"pageInfo":{"hasNextPage":true,"endCursor":""}}}}}'
       exit 0
     fi
+    if [[ "${mode}" == "numeric-cursor" ]]; then
+      if [[ "$args" == *"cursor=7"* ]]; then
+        echo '{"data":{"node":{"workflows":{"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}'
+      else
+        echo '{"data":{"node":{"workflows":{"nodes":[],"pageInfo":{"hasNextPage":true,"endCursor":7}}}}}'
+      fi
+      exit 0
+    fi
     if [[ "$args" == *"cursor=CURSOR_1"* ]]; then
       echo '{"data":{"node":{"workflows":{"nodes":[{"name":"Item reopened","number":9,"enabled":true}],"pageInfo":{"hasNextPage":false,"endCursor":"CURSOR_2"}}}}}'
     else
@@ -229,6 +237,16 @@ test('workflow query failure refuses because compatibility could not be verified
 
 test('an incomplete pagination cursor refuses before mutation', () => {
   const run = createHarness({ mode: 'empty-cursor' });
+  assert.notEqual(run.result.status, 0);
+  assert.match(
+    `${run.result.stderr}\n${run.result.stdout}`,
+    /compatibility could not be verified/i
+  );
+  assertNoPostSelectionMutations(run);
+});
+
+test('a malformed pagination cursor refuses before mutation', () => {
+  const run = createHarness({ mode: 'numeric-cursor' });
   assert.notEqual(run.result.status, 0);
   assert.match(
     `${run.result.stderr}\n${run.result.stdout}`,

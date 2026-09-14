@@ -582,7 +582,14 @@ query($id: ID!, $cursor: String) {
     if ! printf '%s\n' "$response" | jq -e '
       (.data.node.workflows.nodes | type) == "array" and
       (.data.node.workflows.pageInfo | type) == "object" and
-      (.data.node.workflows.pageInfo.hasNextPage | type) == "boolean"
+      (.data.node.workflows.pageInfo.hasNextPage | type) == "boolean" and
+      (
+        .data.node.workflows.pageInfo.hasNextPage == false or
+        (
+          (.data.node.workflows.pageInfo.endCursor | type) == "string" and
+          (.data.node.workflows.pageInfo.endCursor | length) > 0
+        )
+      )
     ' >/dev/null 2>&1; then
       workflow_compatibility_failure
     fi
