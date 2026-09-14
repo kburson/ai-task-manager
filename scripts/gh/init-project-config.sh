@@ -95,13 +95,6 @@ if ! node "$CONFIG_INIT_CLI" preflight-config --file "$CONFIG_FILE"; then
   exit 1
 fi
 
-if [[ ! -f "$FIELD_DEFS_FILE" && -f "$PKG_ROOT/config/project-fields.default.json" ]]; then
-  cp "$PKG_ROOT/config/project-fields.default.json" "$FIELD_DEFS_FILE"
-fi
-if [[ ! -f "$FIELD_EVENTS_FILE" && -f "$PKG_ROOT/config/project-field-events.default.json" ]]; then
-  cp "$PKG_ROOT/config/project-field-events.default.json" "$FIELD_EVENTS_FILE"
-fi
-
 check_field_defs_drift() {
   local local_file="$1"
   local default_file="$2"
@@ -122,8 +115,6 @@ check_field_defs_drift() {
     info "Keeping existing $label. Re-run after manual reconciliation if needed."
   fi
 }
-
-check_field_defs_drift "$FIELD_DEFS_FILE" "$PKG_ROOT/config/project-fields.default.json" "project-fields.json"
 
 # ── banner ─────────────────────────────────────────────────────────────────
 
@@ -245,6 +236,8 @@ PROJECT_NODE_ID=""
 PROJECT_NUMBER=""
 PROJECT_TITLE=""
 EXISTING_PROJECT_LINK_PENDING="false"
+CREATED_PROJECT_PENDING="false"
+PROJECT_TEMPLATE=""
 
 link_project_to_repo() {
   local project_id="$1"
@@ -403,7 +396,7 @@ apply_project_template() {
   create_project_field_if_missing "Status" "SINGLE_SELECT" "$CANONICAL_STATUS_PALETTE"
 }
 
-create_and_link_project() {
+create_project() {
   local title="$1"
   local template="${2:-feature-release}"
   info "Creating project '$title'..."
@@ -420,8 +413,8 @@ create_and_link_project() {
   if [[ -z "$PROJECT_NODE_ID" ]]; then err "Could not resolve project node ID."; exit 1; fi
   ok "Project node ID: $PROJECT_NODE_ID"
 
-  link_project_to_repo "$PROJECT_NODE_ID"
-  apply_project_template "$template"
+  PROJECT_TEMPLATE="$template"
+  CREATED_PROJECT_PENDING="true"
   echo ""
 }
 
@@ -459,7 +452,7 @@ elif [[ "$PROJECT_COUNT" == "0" ]]; then
     [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
     PROJECT_TEMPLATE=""
     prompt_project_template
-    create_and_link_project "$PROJECT_TITLE" "$PROJECT_TEMPLATE"
+    create_project "$PROJECT_TITLE" "$PROJECT_TEMPLATE"
   fi
 else
   if [[ "$LINKED_PROJECT_COUNT" == "0" ]]; then
@@ -497,7 +490,7 @@ else
       [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
       PROJECT_TEMPLATE=""
       prompt_project_template
-      create_and_link_project "$PROJECT_TITLE" "$PROJECT_TEMPLATE"
+      create_project "$PROJECT_TITLE" "$PROJECT_TEMPLATE"
       break
     elif [[ "$PROJECT_NUMBER_INPUT" =~ ^[0-9]+$ && "$PROJECT_NUMBER_INPUT" -ge 1 && "$PROJECT_NUMBER_INPUT" -le "$PROJECT_COUNT_DISPLAY" ]]; then
       idx=$((PROJECT_NUMBER_INPUT - 1))
@@ -535,6 +528,116 @@ if [[ -z "$PROJECT_NODE_ID" ]]; then
 fi
 ok "Project node ID: $PROJECT_NODE_ID"
 echo ""
+
+workflow_compatibility_failure() {
+  err "GitHub Project workflow compatibility could not be verified."
+  err "No project fields, repository links, local config, or issue templates were changed."
+  exit 1
+}
+
+inspect_project_workflows() {
+  local workflows_json='[]'
+  local cursor=''
+  local seen_cursors='[]'
+  local page_count=0
+  local response page_nodes has_next end_cursor inventory inspection
+
+  info "Checking GitHub Project workflow compatibility..."
+  while true; do
+    page_count=$((page_count + 1))
+    if [[ "$page_count" -gt 100 ]]; then
+      workflow_compatibility_failure
+    fi
+
+    if [[ -n "$cursor" ]]; then
+      if ! response=$(gh api graphql -F id="$PROJECT_NODE_ID" -F cursor="$cursor" -f query='
+query($id: ID!, $cursor: String) {
+  node(id: $id) {
+    ... on ProjectV2 {
+      workflows(first: 100, after: $cursor) {
+        nodes { name number enabled }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}'); then
+        workflow_compatibility_failure
+      fi
+    else
+      if ! response=$(gh api graphql -F id="$PROJECT_NODE_ID" -f query='
+query($id: ID!, $cursor: String) {
+  node(id: $id) {
+    ... on ProjectV2 {
+      workflows(first: 100, after: $cursor) {
+        nodes { name number enabled }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}'); then
+        workflow_compatibility_failure
+      fi
+    fi
+
+    if ! printf '%s\n' "$response" | jq -e '
+      (.data.node.workflows.nodes | type) == "array" and
+      (.data.node.workflows.pageInfo | type) == "object" and
+      (.data.node.workflows.pageInfo.hasNextPage | type) == "boolean"
+    ' >/dev/null 2>&1; then
+      workflow_compatibility_failure
+    fi
+
+    page_nodes=$(printf '%s\n' "$response" | jq -c '.data.node.workflows.nodes')
+    workflows_json=$(jq -nc \
+      --argjson prior "$workflows_json" \
+      --argjson page "$page_nodes" \
+      '$prior + $page')
+    has_next=$(printf '%s\n' "$response" | jq -r '.data.node.workflows.pageInfo.hasNextPage')
+    if [[ "$has_next" != "true" ]]; then
+      break
+    fi
+
+    end_cursor=$(printf '%s\n' "$response" | jq -r '.data.node.workflows.pageInfo.endCursor // empty')
+    if [[ -z "$end_cursor" ]] || printf '%s\n' "$seen_cursors" | jq -e --arg cursor "$end_cursor" 'index($cursor) != null' >/dev/null; then
+      workflow_compatibility_failure
+    fi
+    seen_cursors=$(printf '%s\n' "$seen_cursors" | jq -c --arg cursor "$end_cursor" '. + [$cursor]')
+    cursor="$end_cursor"
+  done
+
+  inventory=$(jq -nc --argjson workflows "$workflows_json" '{workflows:$workflows,complete:true}')
+  if ! inspection=$(PROJECT_WORKFLOWS_RAW="$inventory" node "$CONFIG_INIT_CLI" inspect-workflows); then
+    workflow_compatibility_failure
+  fi
+
+  if [[ "$(printf '%s\n' "$inspection" | jq '.incompatible | length')" -gt 0 ]]; then
+    err "Project #$PROJECT_NUMBER${PROJECT_TITLE:+ ($PROJECT_TITLE)} has workflows incompatible with AITM-owned task state and closure:"
+    while IFS= read -r workflow_name; do
+      printf '    - %s\n' "$workflow_name" >&2
+    done < <(printf '%s\n' "$inspection" | jq -r '.incompatible[].name')
+    err "Disable these workflows in the selected project's Workflows settings, then rerun \`npx ai-task-manager init\`."
+    err "No project fields, repository links, local config, or issue templates were changed."
+    exit 1
+  fi
+  ok "GitHub Project workflows are compatible with AITM."
+}
+
+inspect_project_workflows
+
+# Seed or refresh local field definitions only after the selected project's
+# complete workflow inventory has passed compatibility inspection.
+if [[ ! -f "$FIELD_DEFS_FILE" && -f "$PKG_ROOT/config/project-fields.default.json" ]]; then
+  cp "$PKG_ROOT/config/project-fields.default.json" "$FIELD_DEFS_FILE"
+fi
+if [[ ! -f "$FIELD_EVENTS_FILE" && -f "$PKG_ROOT/config/project-field-events.default.json" ]]; then
+  cp "$PKG_ROOT/config/project-field-events.default.json" "$FIELD_EVENTS_FILE"
+fi
+check_field_defs_drift "$FIELD_DEFS_FILE" "$PKG_ROOT/config/project-fields.default.json" "project-fields.json"
+
+if [[ "$CREATED_PROJECT_PENDING" == "true" ]]; then
+  link_project_to_repo "$PROJECT_NODE_ID"
+  apply_project_template "$PROJECT_TEMPLATE"
+fi
 
 # ── step 3: kanban field discovery ────────────────────────────────────────
 
