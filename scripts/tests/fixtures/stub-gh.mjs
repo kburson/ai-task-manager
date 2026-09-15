@@ -177,7 +177,9 @@ export function installStubGh({
     child.stdout = Readable.from(result.stdout ? [result.stdout] : []);
     child.stderr = Readable.from(result.stderr ? [result.stderr] : []);
     // `gh()` writes the graphql payload to stdin and ends it; swallow both.
-    child.stdin = { write() {}, end() {} };
+    child.stdin = new EventEmitter();
+    child.stdin.write = () => {};
+    child.stdin.end = () => {};
     // Let the caller attach its own listeners before the streams drain.
     setImmediate(() => child.emit('close', result.code));
     return child;
