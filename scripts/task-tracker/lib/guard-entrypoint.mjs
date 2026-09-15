@@ -3,7 +3,7 @@
 // The guards are wired in `.claude/settings.json` as bare `node <path>` hook
 // commands. In an `isolation: "worktree"` worktree of this repo the gitignored
 // `node_modules/` tree (and its `ai-task-manager` self-symlink) is absent, so
-// `node node_modules/ai-task-manager/scripts/task-tracker/<guard>.mjs` fails to
+// `node node_modules/@kburson/ai-task-manager/scripts/task-tracker/<guard>.mjs` fails to
 // resolve the file *before any guard code runs*. Claude Code treats a crashed
 // PreToolUse hook as non-blocking, so every guard silently fails OPEN in the
 // single highest-risk context (parallel sub-agent fan-out).
@@ -15,10 +15,10 @@
 // runs before node opens any file and can therefore pick a path that exists.
 //
 // Path asymmetry (the crux): a downstream install has the package at
-// `node_modules/ai-task-manager/…` but no `scripts/task-tracker/`; a dogfood
+// `node_modules/@kburson/ai-task-manager/…` but no `scripts/task-tracker/`; a dogfood
 // worktree may lack `node_modules/` but always has the tracked source under
 // `scripts/task-tracker/`. No single static path covers both — only an inline
-// existence pick does. node_modules is tried FIRST so downstream behavior is
+// existence pick does. The scoped package is tried FIRST so downstream behavior is
 // byte-for-byte unchanged (AC3); the repo-relative candidate only ever exists
 // in this repo's own checkouts.
 
@@ -36,20 +36,28 @@ export const GUARD_NAMES = Object.freeze([
   'source-edit-gate',
 ]);
 
+export const INSTALLED_PACKAGE_ROOT = 'node_modules/@kburson/ai-task-manager';
+
+// #869 — general candidate builder for ANY repo-relative entrypoint (not just
+// the four guards). Same scoped-package-first / repo-relative-second ordering.
+export function entrypointCandidates(repoRelPath) {
+  if (!repoRelPath || typeof repoRelPath !== 'string') {
+    throw new TypeError('entrypointCandidates: repoRelPath must be a non-empty string');
+  }
+  return [`${INSTALLED_PACKAGE_ROOT}/${repoRelPath}`, repoRelPath];
+}
+
 // Ordered candidate paths (relative to the project root / cwd the hook runs in)
-// for a guard's real handler. node_modules FIRST (downstream + installed
+// for a guard's real handler. Scoped package FIRST (downstream + installed
 // dogfood), repo-relative SECOND (node_modules-less worktree of this repo).
 export function guardEntrypointCandidates(name) {
   if (!name || typeof name !== 'string') {
     throw new TypeError('guardEntrypointCandidates: name must be a non-empty string');
   }
-  return [
-    `node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`,
-    `scripts/task-tracker/${name}.mjs`,
-  ];
+  return entrypointCandidates(`scripts/task-tracker/${name}.mjs`);
 }
 
-// Resolve a guard's real handler to an absolute path via the node_modules →
+// Resolve a guard's real handler to an absolute path via the scoped package →
 // repo-relative fallback chain. Returns the first candidate whose absolute path
 // (against `cwd`) exists, or `null` when neither resolves (the fail-closed
 // signal). `exists` is injectable for tests.
@@ -79,18 +87,9 @@ export function guardBootstrapCommand(name) {
     `const c=${candidates};` +
     `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
     `if(!p){process.stderr.write('aitm ${name}: guard entrypoint unresolved ` +
-    `(node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
+    `(scoped package + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
     `import(pathToFileURL(p).href);`;
   return `node -e "${program}"`;
-}
-
-// #869 — general candidate builder for ANY repo-relative entrypoint (not just
-// the four guards). Same node_modules-first / repo-relative-second ordering.
-export function entrypointCandidates(repoRelPath) {
-  if (!repoRelPath || typeof repoRelPath !== 'string') {
-    throw new TypeError('entrypointCandidates: repoRelPath must be a non-empty string');
-  }
-  return [`node_modules/ai-task-manager/${repoRelPath}`, repoRelPath];
 }
 
 // #869 — bootstrap command for the lifecycle HOOKS. Unlike the guards (which run
@@ -111,14 +110,14 @@ export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
     `const c=${candidates};` +
     `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
     `if(!p){process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
-    `(node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}` +
+    `(scoped package + repo-relative both absent) — skipping\\n');process.exit(0);}` +
     `process.argv=[process.argv[0],p${argvTail ? ',' + argvTail : ''}];` +
     `import(pathToFileURL(p).href);`;
   return `node -e "${program}"`;
 }
 
 // #1324 — Grok's bridge is the security boundary for native hook envelopes.
-// Resolve it with the same node_modules-first / repo-relative fallback as the
+// Resolve it with the same scoped-package-first / repo-relative fallback as the
 // other hooks, but deny (exit 2) when neither candidate exists. The inline
 // bootstrap must own this failure because Node cannot import a missing bridge
 // and therefore the bridge's own deny path would never execute.
@@ -136,7 +135,7 @@ export function failClosedHookBootstrapCommand(repoRelPath, ...extraArgs) {
     `if(!p){const r=${JSON.stringify(reason)};` +
     `process.stdout.write(JSON.stringify({decision:'deny',reason:r}));` +
     `process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
-    `(node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
+    `(scoped package + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
     `const e=realpathSync(p);` +
     `process.argv=[process.argv[0],e${argvTail ? ',' + argvTail : ''}];` +
     `import(pathToFileURL(e).href);`;

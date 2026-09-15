@@ -1,4 +1,4 @@
-// @story #869
+// @story #869 #1631
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -9,18 +9,21 @@ import {
   hookBootstrapCommand,
 } from '../../../../task-tracker/lib/guard-entrypoint.mjs';
 
-test('entrypointCandidates: node_modules first, repo-relative second', () => {
+test('entrypointCandidates: scoped package first, repo-relative second', () => {
   assert.deepEqual(entrypointCandidates('scripts/task-tracker/hooks/memory-index.mjs'), [
-    'node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
+    'node_modules/@kburson/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
     'scripts/task-tracker/hooks/memory-index.mjs',
   ]);
 });
 
-test('hookBootstrapCommand embeds both candidates, node_modules first', () => {
+test('hookBootstrapCommand embeds both candidates, scoped package first', () => {
   const cmd = hookBootstrapCommand('scripts/task-tracker/hooks/on-stop.mjs');
-  const nm = cmd.indexOf('node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs');
+  const scoped = cmd.indexOf(
+    'node_modules/@kburson/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs'
+  );
   const repo = cmd.indexOf('"scripts/task-tracker/hooks/on-stop.mjs"');
-  assert.ok(nm !== -1 && repo !== -1 && nm < repo);
+  assert.ok(scoped !== -1 && repo !== -1 && scoped < repo);
+  assert.doesNotMatch(cmd, /node_modules\/ai-task-manager\//);
 });
 
 test('hookBootstrapCommand normalizes process.argv so isMain + argv[2] work', () => {
