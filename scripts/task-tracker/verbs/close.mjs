@@ -98,6 +98,17 @@ import {
   resolveReopenedCloseRecovery,
 } from '../lib/reopened-close-recovery.mjs';
 import {
+  authorizeFalseDeliveryCloseRestart,
+  classifyFalseDeliveryRecoveryProgress,
+  createFalseDeliveryCloseRecoveryRecord,
+  findFalseDeliveryRecoveryBackedReplacement,
+  oldFalseDeliveryTransactionFromRecord,
+  parseFalseDeliveryCloseRecoveryComment,
+  renderFalseDeliveryCloseRecoveryComment,
+  replaceFalseDeliveredCloseTransaction,
+  resolveFalseDeliveryCloseRecovery,
+} from '../lib/false-delivery-close-recovery.mjs';
+import {
   deriveClosedIssueIntegrity,
   readUnauthorizedCloseRecovery,
   runClosedIssueConvergence,
@@ -1055,6 +1066,14 @@ export function permitsReopenedOutcomeCorrection({
     recoveryRecord.newAcceptedSha === transaction.acceptedSha;
   if (direct) return true;
 
+  const falseDeliveryDirect =
+    recoveryRecord?.schema === 'aitm.false-delivery-close-recovery/v1' &&
+    transaction?.schema === 'aitm.delivered-close/v1' &&
+    recoveryRecord.issueNumber === transaction.issueNumber &&
+    recoveryRecord.replacementTransactionId === transaction.transactionId &&
+    recoveryRecord.acceptedSha === transaction.acceptedSha;
+  if (falseDeliveryDirect) return true;
+
   return (
     recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
     supersessionRecord?.schema === 'aitm.delivered-close-supersession/v1' &&
@@ -1102,6 +1121,445 @@ export async function resolvePreCloseCheckboxes({
     deps: proofDeps,
   });
   return scan(body, { docsOnlyLaneSkipProven });
+}
+
+export async function resolveFalseDeliveryActor({ cfg, pexec = closePexec } = {}) {
+  const configured = String(cfg?.assignee ?? '').replace(/^@/, '');
+  if (configured && configured !== 'me') return configured;
+  const { stdout } = await pexec('gh', ['api', 'user', '--jq', '.login'], {
+    timeout: GH_API_TIMEOUT_MS,
+  });
+  const actor = String(stdout || '').trim();
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(actor)) {
+    throw new Error('false-delivery-close-recovery:actor');
+  }
+  return actor;
+}
+
+export async function readFalseDeliveryAuditAuthority({
+  cfg,
+  pexec = closePexec,
+  dispositionReader,
+  auditIssueNumber,
+  recoveryIssueNumber,
+  issueNumber,
+  acceptedSha,
+  actor,
+} = {}) {
+  const { stdout: issueOut } = await pexec(
+    'gh',
+    ['issue', 'view', String(auditIssueNumber), '-R', cfg.repo, '--json', 'state,body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const issue = JSON.parse(String(issueOut || '{}'));
+  const deliverableMatches = [
+    ...String(issue.body || '').matchAll(
+      /<!--\s*aitm-deliverable-posted\s+[^>]*\burl="([^"]+)"[^>]*-->/g
+    ),
+  ];
+  if (deliverableMatches.length !== 1) {
+    throw new Error('false-delivery-close-recovery:audit-deliverable');
+  }
+  const deliverableUrl = deliverableMatches[0][1];
+  const expectedUrlPrefix = `https://github.com/${cfg.repo}/issues/${auditIssueNumber}#issuecomment-`;
+  if (!deliverableUrl.startsWith(expectedUrlPrefix)) {
+    throw new Error('false-delivery-close-recovery:audit-deliverable');
+  }
+  const commentId = deliverableUrl.slice(expectedUrlPrefix.length);
+  if (!/^\d+$/.test(commentId)) {
+    throw new Error('false-delivery-close-recovery:audit-deliverable');
+  }
+  const { stdout: commentOut } = await pexec(
+    'gh',
+    ['api', `repos/${cfg.repo}/issues/comments/${commentId}`],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const comment = JSON.parse(String(commentOut || '{}'));
+  if (
+    String(comment.id) !== commentId ||
+    comment.html_url !== deliverableUrl ||
+    comment.user?.login !== actor ||
+    !String(comment.body || '').includes('<!-- aitm-owned-comment key="audit.deliverable-v1" -->')
+  ) {
+    throw new Error('false-delivery-close-recovery:audit-deliverable');
+  }
+  const reportMatch = String(comment.body || '').match(
+    /committed at `([0-9a-f]{7,40})` in `(docs\/audits\/[A-Za-z0-9._/-]+\.md)`/
+  );
+  if (!reportMatch || reportMatch[2].split('/').includes('..')) {
+    throw new Error('false-delivery-close-recovery:audit-report');
+  }
+  const [, reportRef, reportPath] = reportMatch;
+  const { stdout: resolvedOut } = await pexec(
+    'git',
+    ['rev-parse', '--verify', `${reportRef}^{commit}`],
+    { cwd: cfg.projectDir, timeout: GIT_TIMEOUT_MS }
+  );
+  const reportCommit = String(resolvedOut || '').trim();
+  if (!/^[0-9a-f]{40}$/.test(reportCommit)) {
+    throw new Error('false-delivery-close-recovery:audit-report');
+  }
+  await pexec(
+    'git',
+    ['merge-base', '--is-ancestor', reportCommit, `origin/${cfg.trunkRef || 'trunk'}`],
+    { cwd: cfg.projectDir, timeout: GIT_TIMEOUT_MS }
+  );
+  const { stdout: reportOut } = await pexec('git', ['show', `${reportCommit}:${reportPath}`], {
+    cwd: cfg.projectDir,
+    timeout: GIT_TIMEOUT_MS,
+  });
+  const rows = String(reportOut || '')
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith('|'))
+    .map((line) =>
+      line
+        .slice(1, -1)
+        .split('|')
+        .map((cell) => cell.trim())
+    )
+    .filter((cells) => new RegExp(`^\\[#${issueNumber}\\]\\(`).test(cells[0] || ''));
+  if (rows.length !== 1 || rows[0].length < 11) {
+    throw new Error('false-delivery-close-recovery:audit-finding');
+  }
+  const rowAcceptedSha = rows[0][2].replaceAll('`', '');
+  const classification = rows[0][9].replaceAll('*', '');
+  const rowRecoveryIssue = Number(rows[0][10].match(/\[#(\d+)\]/)?.[1]);
+  if (
+    rowAcceptedSha !== acceptedSha ||
+    classification !== 'false-Done' ||
+    rowRecoveryIssue !== recoveryIssueNumber
+  ) {
+    throw new Error('false-delivery-close-recovery:audit-finding');
+  }
+  const disposition = await dispositionReader({ cfg, issueNumber: Number(auditIssueNumber) });
+  return {
+    issueNumber: Number(auditIssueNumber),
+    state: issue.state,
+    disposition,
+    deliverableUrl,
+    finding: {
+      issueNumber: Number(issueNumber),
+      acceptedSha: rowAcceptedSha,
+      classification,
+      recoveryIssueNumber: rowRecoveryIssue,
+    },
+  };
+}
+
+export async function readFalseDeliveryRecoveryAuthority({
+  cfg,
+  pexec = closePexec,
+  boardStateReader,
+  recoveryIssueNumber,
+  auditIssueNumber,
+  issueNumber,
+} = {}) {
+  const { stdout } = await pexec(
+    'gh',
+    [
+      'issue',
+      'view',
+      String(recoveryIssueNumber),
+      '-R',
+      cfg.repo,
+      '--json',
+      'state,body,assignees',
+    ],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const issue = JSON.parse(String(stdout || '{}'));
+  const markers = [
+    ...String(issue.body || '').matchAll(
+      /<!--\s*aitm-delivery-audit-recovery\s+audit="(\d+)"\s+issue="(\d+)"\s*-->/g
+    ),
+  ].filter(
+    (match) =>
+      Number(match[1]) === Number(auditIssueNumber) && Number(match[2]) === Number(issueNumber)
+  );
+  if (markers.length !== 1 || typeof boardStateReader !== 'function') {
+    throw new Error('false-delivery-close-recovery:recovery-authority');
+  }
+  return {
+    issueNumber: Number(recoveryIssueNumber),
+    state: issue.state,
+    boardState: await boardStateReader(String(recoveryIssueNumber)),
+    assignees: (issue.assignees || []).map(({ login }) => login),
+    marker: {
+      auditIssueNumber: Number(auditIssueNumber),
+      issueNumber: Number(issueNumber),
+    },
+  };
+}
+
+// #1635 — audit-backed same-SHA correction for a completed close whose
+// historical no-commit delivery premise was false. This stays separate from the
+// different-SHA reopened recovery below.
+export async function runFalseDeliveryCloseRecovery({
+  closeIssueNum,
+  auditIssueNumber,
+  recoveryIssueNumber,
+  convergeBody,
+  ensureDeliveryAuthorized,
+  resolvedDeliveryGateRef,
+  terminalReviewAuthority,
+  dispositionReader,
+  inspectDirty,
+  resolveWorkspaceForIssue,
+  projectDir,
+  cfg,
+  ctx,
+  mutateBody,
+  closeSnapshot,
+  boardState,
+  pexec = closePexec,
+  resolveBindingOwnership = resolveReopenedBindingOwnership,
+}) {
+  const issueNumber = Number(closeIssueNum);
+  const listTargetComments =
+    ctx.listFalseDeliveryTargetComments ??
+    (async () => {
+      const { stdout } = await closePexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '[]')).flat();
+    });
+  const listRecoveryComments = ctx.listFalseDeliveryRecoveryComments ?? listTargetComments;
+  const createRecoveryComment =
+    ctx.createFalseDeliveryRecoveryComment ??
+    (async (body) => {
+      const { stdout } = await closePexec(
+        'gh',
+        [
+          'api',
+          `repos/${cfg.repo}/issues/${issueNumber}/comments`,
+          '--method',
+          'POST',
+          '-f',
+          `body=${body}`,
+        ],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(String(stdout || '{}'));
+    });
+  const actor = ctx.falseDeliveryActor
+    ? String(ctx.falseDeliveryActor).replace(/^@/, '')
+    : await resolveFalseDeliveryActor({ cfg, pexec });
+  const readAudit =
+    ctx.readFalseDeliveryAudit ??
+    ((input) =>
+      readFalseDeliveryAuditAuthority({
+        ...input,
+        cfg: { ...cfg, projectDir },
+        pexec,
+        dispositionReader,
+        recoveryIssueNumber,
+        actor,
+      }));
+  const recoveryBoardStateReader =
+    ctx.readFalseDeliveryRecoveryBoardState ??
+    ctx.githubClient?.getIssueBoardState ??
+    ctx.getIssueBoardState;
+  const readRecovery =
+    ctx.readFalseDeliveryRecovery ??
+    ((input) =>
+      readFalseDeliveryRecoveryAuthority({
+        ...input,
+        cfg,
+        pexec,
+        boardStateReader: recoveryBoardStateReader,
+      }));
+
+  await ensureDeliveryAuthorized();
+  const gate = resolvedDeliveryGateRef();
+  const acceptedSha = gate?.gateInput?.acceptedSha;
+  const activeTransactions = readDeliveredCloseTransactions(convergeBody);
+  if (activeTransactions.length !== 1) {
+    throw new Error('false-delivery-close-recovery:ambiguous-body');
+  }
+  const activeTransaction = activeTransactions[0];
+  const recoveryComments = await listRecoveryComments();
+  const parsedRecovery = recoveryComments
+    .map((comment) =>
+      parseFalseDeliveryCloseRecoveryComment(comment, {
+        repository: cfg.repo,
+        issueNumber,
+      })
+    )
+    .filter(Boolean);
+  const backing = parsedRecovery.filter(
+    ({ record }) => record.replacementTransactionId === activeTransaction.transactionId
+  );
+  if (backing.length > 1) throw new Error('false-delivery-close-recovery:ambiguous-evidence');
+  if (
+    backing.length === 1 &&
+    activeTransaction.completedSteps.length === TERMINAL_CLOSE_STEPS.length
+  ) {
+    return {
+      body: convergeBody,
+      transaction: activeTransaction,
+      record: backing[0].record,
+    };
+  }
+  const oldTransaction = backing.length
+    ? oldFalseDeliveryTransactionFromRecord(backing[0].record)
+    : activeTransaction;
+
+  const rawTargetComments = await listTargetComments();
+  const normalizedComments = rawTargetComments.map((comment) => {
+    const createdAt = normalizeGitHubInstant(comment.created_at ?? comment.createdAt);
+    if (createdAt === null) throw new Error('false-delivery-close-recovery:comment-created-at');
+    return { id: String(comment.id), body: String(comment.body || ''), createdAt };
+  });
+  const noCommitRecords = projectNoCommitDeliveryRecords(
+    normalizedComments.map(parseNoCommitDeliveryComment).filter(Boolean)
+  );
+  if (!noCommitRecords.record) {
+    throw new Error('false-delivery-close-recovery:historical-no-commit');
+  }
+  const matchingPullRequests = (gate?.gateInput?.pullRequests ?? []).filter(
+    (pullRequest) => pullRequest?.headRefOid === acceptedSha
+  );
+  if (matchingPullRequests.length !== 1) {
+    throw new Error('false-delivery-close-recovery:current-evidence');
+  }
+  const pullRequest = matchingPullRequests[0];
+  const deliveryProjection = projectDeliveryRecords(
+    parsedDeliveryRecords(normalizedComments, {
+      repository: cfg.repo,
+      issueNumber,
+      prNumber: pullRequest.number,
+    })
+  );
+  const intent = deliveryProjection.liveIntent?.record ?? null;
+  const receipt = deliveryProjection.matchingReceipt?.record ?? null;
+  if (!intent || !receipt) throw new Error('false-delivery-close-recovery:current-evidence');
+
+  const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueNumber}`, projectDir });
+  const dirty = await inspectDirty({ cwd });
+  const authorization = authorizeFalseDeliveryCloseRestart({
+    repository: cfg.repo,
+    issueNumber,
+    auditIssueNumber,
+    recoveryIssueNumber,
+    actor,
+    currentReviewAuthority: terminalReviewAuthority(),
+    oldTransaction,
+    historicalNoCommit: noCommitRecords.record,
+    currentDelivery: {
+      pullRequest,
+      intent,
+      receipt,
+      testReceiptSha: gate?.testReceiptSha ?? null,
+      reviewApprovedSha: gate?.recoveryReviewApprovedSha ?? null,
+      verifiedDelivery: gate?.receipt?.verification?.receiptInput ?? null,
+    },
+    audit: await readAudit({
+      auditIssueNumber,
+      issueNumber,
+      acceptedSha,
+    }),
+    recovery: await readRecovery({
+      recoveryIssueNumber,
+      auditIssueNumber,
+      issueNumber,
+    }),
+    live: {
+      completedSteps: backing.length ? [...activeTransaction.completedSteps] : [],
+      boardState,
+      issueClosed: closeSnapshot.issueClosed,
+      stateReason: closeSnapshot.stateReason ?? null,
+      terminalDisposition: (await dispositionReader({ cfg, issueNumber })) || null,
+      dirty: dirty?.dirty ?? true,
+      bindingOwnership: resolveBindingOwnership({
+        projectDir,
+        issue: `#${issueNumber}`,
+        sessionId: (ctx.sessionId ?? currentSessionId)(),
+        recordedWorktreePath: cwd,
+      }),
+    },
+  });
+  const candidate =
+    backing[0]?.record ??
+    createFalseDeliveryCloseRecoveryRecord(authorization, {
+      now: (ctx.falseDeliveryNow ?? (() => new Date().toISOString()))(),
+      randomUUIDFn: ctx.randomUUIDFn ?? randomUUID,
+    });
+  let resolved = resolveFalseDeliveryCloseRecovery({
+    authorization,
+    comments: recoveryComments,
+    record: candidate,
+  });
+  if (resolved.status === 'absent') {
+    await createRecoveryComment(renderFalseDeliveryCloseRecoveryComment(candidate));
+    resolved = resolveFalseDeliveryCloseRecovery({
+      authorization,
+      comments: await listRecoveryComments(),
+      record: candidate,
+    });
+    if (resolved.status !== 'present') {
+      throw new Error('false-delivery-close-recovery:evidence-read-back');
+    }
+  }
+
+  const progress = classifyFalseDeliveryRecoveryProgress(
+    convergeBody,
+    authorization,
+    resolved.record
+  );
+  if (progress.phase === 'body-replaced') {
+    return { body: convergeBody, transaction: progress.transaction, record: resolved.record };
+  }
+  if (typeof mutateBody !== 'function') {
+    throw new Error('false-delivery-close-recovery:body-write');
+  }
+  const mutation = await mutateBody({
+    issueNumber,
+    repo: cfg.repo,
+    mutate: (base) =>
+      replaceFalseDeliveredCloseTransaction(base, authorization, resolved.record).body,
+  });
+  if (mutation?.status !== 'ok' || typeof mutation.body !== 'string') {
+    throw new Error('false-delivery-close-recovery:body-write');
+  }
+  const applied = classifyFalseDeliveryRecoveryProgress(
+    mutation.body,
+    authorization,
+    resolved.record
+  );
+  if (applied.phase !== 'body-replaced') {
+    throw new Error('false-delivery-close-recovery:mutation-readback');
+  }
+  return { body: mutation.body, transaction: applied.transaction, record: resolved.record };
+}
+
+export function parseFalseDeliveryCloseRecoveryArgs(rest = []) {
+  const enabled = rest.includes('--restart-false-delivery-transaction');
+  const valueAfter = (flag) => {
+    const index = rest.indexOf(flag);
+    if (index < 0) return null;
+    const value = Number(rest[index + 1]);
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  };
+  const auditIssueNumber = valueAfter('--audit-issue');
+  const recoveryIssueNumber = valueAfter('--recovery-issue');
+  const relatedFlagPresent = rest.includes('--audit-issue') || rest.includes('--recovery-issue');
+  const incompatible = [
+    '--force',
+    '--repair',
+    '--restart-stale-transaction',
+    '--restart-reopened-transaction',
+    '--as',
+    '--answer',
+  ].some((flag) => rest.includes(flag));
+  if (
+    (enabled && (!auditIssueNumber || !recoveryIssueNumber || incompatible)) ||
+    (!enabled && relatedFlagPresent)
+  ) {
+    throw new Error('false-delivery-close-recovery:incompatible-flags');
+  }
+  return { enabled, auditIssueNumber, recoveryIssueNumber };
 }
 
 // #1490 — durable, read-back-verified supersession of a COMPLETED delivered-close
@@ -1377,6 +1835,7 @@ export async function verbClose(ctx) {
   const { cfg, statePath, projectDir, SKIP_NETWORK, pexec, uncheckedPreCloseCheckboxes, nowIso } =
     projectConfig;
   const { rest } = ctx;
+  const falseDeliveryRestart = parseFalseDeliveryCloseRecoveryArgs(rest);
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
   let queueDrained = false;
   const drainQueueOnce = async () => {
@@ -1819,6 +2278,7 @@ export async function verbClose(ctx) {
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
   let reopenedCloseRecoveryRecord = null;
+  let falseDeliveryCloseRecoveryRecord = null;
   let deliveredCloseSupersessionRecord = null;
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
@@ -1866,6 +2326,45 @@ export async function verbClose(ctx) {
         failedStep,
         error: detail,
       };
+    };
+    const recoverFalseDeliveryIfRequested = async () => {
+      if (!falseDeliveryRestart.enabled) return null;
+      try {
+        const recovered = await runFalseDeliveryCloseRecovery({
+          closeIssueNum,
+          auditIssueNumber: falseDeliveryRestart.auditIssueNumber,
+          recoveryIssueNumber: falseDeliveryRestart.recoveryIssueNumber,
+          convergeBody,
+          ensureDeliveryAuthorized,
+          resolvedDeliveryGateRef: () => resolvedDeliveryGate,
+          terminalReviewAuthority,
+          dispositionReader,
+          inspectDirty,
+          resolveWorkspaceForIssue,
+          projectDir,
+          cfg,
+          ctx,
+          mutateBody,
+          closeSnapshot,
+          boardState,
+          pexec,
+          resolveBindingOwnership:
+            ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership,
+        });
+        convergeBody = recovered.body;
+        falseDeliveryCloseRecoveryRecord = recovered.record;
+        Object.assign(decisionInput, {
+          expectedAcceptedSha: recovered.transaction.acceptedSha,
+          closeTransactions: [recovered.transaction],
+        });
+        return null;
+      } catch (error) {
+        return failInspection(
+          'authorizeFalseDeliveryCloseRestart',
+          error,
+          `${closeTarget} could not recover its audited false-delivery transaction`
+        );
+      }
     };
 
     let decision;
@@ -1932,6 +2431,8 @@ export async function verbClose(ctx) {
             closeTransactions,
           });
         }
+        const falseDeliveryFailure = await recoverFalseDeliveryIfRequested();
+        if (falseDeliveryFailure) return falseDeliveryFailure;
         decision = decideCloseConvergence(decisionInput);
       } else {
         // Only completed, closed, not-Done issues require strict integrity.
@@ -2077,6 +2578,8 @@ export async function verbClose(ctx) {
             mutateBody,
             closeSnapshot,
             boardState,
+            resolveBindingOwnership:
+              ctx.resolveReopenedBindingOwnership ?? resolveReopenedBindingOwnership,
           });
           convergeBody = recovered.body;
           reopenedCloseRecoveryRecord = recovered.record;
@@ -2092,9 +2595,19 @@ export async function verbClose(ctx) {
           );
         }
       }
+      const falseDeliveryFailure = await recoverFalseDeliveryIfRequested();
+      if (falseDeliveryFailure) return falseDeliveryFailure;
       decision = decideCloseConvergence(decisionInput);
     } else {
       decision = decideCloseConvergence(decisionInput);
+    }
+
+    if (falseDeliveryRestart.enabled && falseDeliveryCloseRecoveryRecord === null) {
+      return failInspection(
+        'authorizeFalseDeliveryCloseRestart',
+        new Error('false-delivery-close-recovery:live-terminal-state'),
+        `${closeTarget} is not in the required OPEN/REOPENED Review recovery state`
+      );
     }
 
     if (restartStaleTransaction && decision.action !== 'resume-delivered-close') {
@@ -3251,7 +3764,7 @@ export async function verbClose(ctx) {
         body: closeBody,
         writer: estimationOutcomeWriter,
         supersedeExisting: permitsReopenedOutcomeCorrection({
-          recoveryRecord: reopenedCloseRecoveryRecord,
+          recoveryRecord: reopenedCloseRecoveryRecord ?? falseDeliveryCloseRecoveryRecord,
           supersessionRecord: deliveredCloseSupersessionRecord,
           transaction: deliveredCloseTransaction,
         }),
@@ -3517,8 +4030,11 @@ export async function verbClose(ctx) {
     let bindingAuthority = { authorized: bindingRelease?.status !== 'conflict', reason: null };
     if (bindingRelease?.status === 'conflict') {
       let replacement = null;
-      if (reopenedCloseRecoveryRecord) {
-        replacement = { status: 'found', record: reopenedCloseRecoveryRecord };
+      if (reopenedCloseRecoveryRecord || falseDeliveryCloseRecoveryRecord) {
+        replacement = {
+          status: 'found',
+          record: reopenedCloseRecoveryRecord ?? falseDeliveryCloseRecoveryRecord,
+        };
       } else if (!SKIP_NETWORK && closeIssueNum) {
         try {
           const liveBody = await (
@@ -3553,6 +4069,30 @@ export async function verbClose(ctx) {
             repository: cfg.repo,
             issueNumber: Number(closeIssueNum),
           });
+          if (replacement.status === 'none') {
+            replacement = findFalseDeliveryRecoveryBackedReplacement({
+              body: liveBody,
+              comments: await (
+                ctx.listFalseDeliveryRecoveryComments ??
+                ctx.listReopenedCloseRecoveryComments ??
+                (async () => {
+                  const { stdout } = await pexec(
+                    'gh',
+                    [
+                      'api',
+                      '--paginate',
+                      '--slurp',
+                      `repos/${cfg.repo}/issues/${closeIssueNum}/comments`,
+                    ],
+                    { timeout: GH_API_TIMEOUT_MS }
+                  );
+                  return JSON.parse(String(stdout || '[]')).flat();
+                })
+              )(),
+              repository: cfg.repo,
+              issueNumber: Number(closeIssueNum),
+            });
+          }
         } catch {
           replacement = null;
         }

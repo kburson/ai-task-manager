@@ -181,7 +181,7 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
   }
 }
 
-function validateAudit(audit, { auditIssueNumber, issueNumber, acceptedSha }) {
+function validateAudit(audit, { auditIssueNumber, recoveryIssueNumber, issueNumber, acceptedSha }) {
   if (
     !isObject(audit) ||
     audit.issueNumber !== auditIssueNumber ||
@@ -192,7 +192,8 @@ function validateAudit(audit, { auditIssueNumber, issueNumber, acceptedSha }) {
     !isObject(audit.finding) ||
     audit.finding.issueNumber !== issueNumber ||
     audit.finding.acceptedSha !== acceptedSha ||
-    audit.finding.classification !== 'false-Done'
+    audit.finding.classification !== 'false-Done' ||
+    audit.finding.recoveryIssueNumber !== recoveryIssueNumber
   ) {
     fail('audit-authority');
   }
@@ -203,6 +204,8 @@ function validateRecovery(recovery, { recoveryIssueNumber, auditIssueNumber, iss
     !isObject(recovery) ||
     recovery.issueNumber !== recoveryIssueNumber ||
     recovery.state !== 'OPEN' ||
+    typeof recovery.boardState !== 'string' ||
+    recovery.boardState === 'done' ||
     !Array.isArray(recovery.assignees) ||
     !recovery.assignees.includes(actor) ||
     !isObject(recovery.marker) ||
@@ -214,15 +217,25 @@ function validateRecovery(recovery, { recoveryIssueNumber, auditIssueNumber, iss
 }
 
 function validateLive(live) {
+  const completedSteps = live?.completedSteps ?? [];
+  const validPrefix =
+    Array.isArray(completedSteps) &&
+    completedSteps.length <= TERMINAL_CLOSE_STEPS.length &&
+    completedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index]);
+  const boardDone = completedSteps.includes('board');
+  const issueDone = completedSteps.includes('issue');
+  const bindingDone = completedSteps.includes('binding');
   if (
     !isObject(live) ||
-    live.boardState !== 'review' ||
-    live.issueClosed !== false ||
-    live.stateReason !== 'reopened' ||
+    !validPrefix ||
+    live.boardState !== (boardDone ? 'done' : 'review') ||
+    live.issueClosed !== issueDone ||
+    live.stateReason !== (issueDone ? 'completed' : 'reopened') ||
     live.terminalDisposition !== 'Delivered' ||
     live.dirty !== false ||
-    live.bindingOwnership?.authorized !== true ||
-    live.bindingOwnership?.disposition !== 'own-post-close-claim'
+    (!bindingDone &&
+      (live.bindingOwnership?.authorized !== true ||
+        live.bindingOwnership?.disposition !== 'own-post-close-claim'))
   ) {
     fail('live-terminal-state');
   }
@@ -298,7 +311,7 @@ export function authorizeFalseDeliveryCloseRestart(input = {}) {
     new Set([issueNumber, auditIssueNumber, recoveryIssueNumber]).size !== 3 ||
     typeof actor !== 'string' ||
     actor.trim().length === 0 ||
-    !REVIEW_AUTHORITIES.has(currentReviewAuthority)
+    currentReviewAuthority !== 'human-gate'
   ) {
     fail('input');
   }
@@ -315,6 +328,7 @@ export function authorizeFalseDeliveryCloseRestart(input = {}) {
   });
   validateAudit(audit, {
     auditIssueNumber,
+    recoveryIssueNumber,
     issueNumber,
     acceptedSha: oldTransaction.acceptedSha,
   });
@@ -359,7 +373,7 @@ export function validateFalseDeliveryCloseRecoveryRecord(record) {
     !SHA_RE.test(record.acceptedSha || '') ||
     !SHA_RE.test(record.mergeCommitSha || '') ||
     !REVIEW_AUTHORITIES.has(record.oldReviewAuthority) ||
-    !REVIEW_AUTHORITIES.has(record.currentReviewAuthority) ||
+    record.currentReviewAuthority !== 'human-gate' ||
     !completeTerminalSteps(record.completedSteps) ||
     typeof record.noCommitRecordId !== 'string' ||
     record.noCommitRecordId.length === 0 ||
@@ -485,6 +499,34 @@ export function oldFalseDeliveryTransactionFromRecord(recordInput) {
     reviewAuthority: record.oldReviewAuthority,
     completedSteps: [...record.completedSteps],
   });
+}
+
+export function findFalseDeliveryRecoveryBackedReplacement({
+  body,
+  comments,
+  repository,
+  issueNumber,
+} = {}) {
+  const transactions = readDeliveredCloseTransactions(typeof body === 'string' ? body : '');
+  if (transactions.length !== 1) {
+    return deepFreeze({ status: 'none', record: null, transaction: null });
+  }
+  const transaction = transactions[0];
+  const matches = (Array.isArray(comments) ? comments : [])
+    .map((comment) => parseFalseDeliveryCloseRecoveryComment(comment, { repository, issueNumber }))
+    .filter(Boolean)
+    .filter(
+      ({ record }) =>
+        record.replacementTransactionId === transaction.transactionId &&
+        record.acceptedSha === transaction.acceptedSha
+    );
+  if (matches.length > 1) {
+    return deepFreeze({ status: 'ambiguous', record: null, transaction });
+  }
+  if (matches.length === 0) {
+    return deepFreeze({ status: 'none', record: null, transaction });
+  }
+  return deepFreeze({ status: 'found', record: matches[0].record, transaction });
 }
 
 export function classifyFalseDeliveryRecoveryProgress(body, authorization, recordInput) {

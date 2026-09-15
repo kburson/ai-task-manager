@@ -17,6 +17,7 @@ import {
   authorizeFalseDeliveryCloseRestart,
   classifyFalseDeliveryRecoveryProgress,
   createFalseDeliveryCloseRecoveryRecord,
+  findFalseDeliveryRecoveryBackedReplacement,
   oldFalseDeliveryTransactionFromRecord,
   parseFalseDeliveryCloseRecoveryComment,
   renderFalseDeliveryCloseRecoveryComment,
@@ -146,11 +147,13 @@ function input(overrides = {}) {
         issueNumber: ISSUE,
         acceptedSha: ACCEPTED_SHA,
         classification: 'false-Done',
+        recoveryIssueNumber: RECOVERY_ISSUE,
       },
     },
     recovery: {
       issueNumber: RECOVERY_ISSUE,
       state: 'OPEN',
+      boardState: 'develop',
       assignees: ['kburson'],
       marker: { auditIssueNumber: AUDIT_ISSUE, issueNumber: ISSUE },
     },
@@ -205,6 +208,7 @@ test('refuses alternate recovery categories and contradictory authority', () => 
       /current-evidence/,
     ],
     [{ historicalNoCommit: null }, /historical-no-commit/],
+    [{ currentReviewAuthority: 'gate-bypassed' }, /input/],
     [
       {
         audit: {
@@ -343,5 +347,53 @@ test('refuses duplicate durable evidence and stale body replacement', () => {
         record
       ),
     FalseDeliveryCloseRecoveryError
+  );
+});
+
+test('finds a durable recovery-backed replacement at any valid saga prefix', () => {
+  const authorization = authorizeFalseDeliveryCloseRestart(input());
+  const record = createFalseDeliveryCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => REPLACEMENT_TRANSACTION_ID,
+  });
+  const comment = {
+    id: '900',
+    body: renderFalseDeliveryCloseRecoveryComment(record),
+    issue_url: `https://api.github.com/repos/${REPOSITORY}/issues/${ISSUE}`,
+  };
+  const replacement = replaceFalseDeliveredCloseTransaction(
+    bodyWith(oldTransaction()),
+    authorization,
+    record
+  ).transaction;
+  const body = bodyWith({ ...replacement, completedSteps: ['timing', 'estimation'] });
+
+  const found = findFalseDeliveryRecoveryBackedReplacement({
+    body,
+    comments: [comment],
+    repository: REPOSITORY,
+    issueNumber: ISSUE,
+  });
+  assert.equal(found.status, 'found');
+  assert.equal(found.record.recoveryId, record.recoveryId);
+  assert.deepEqual(found.transaction.completedSteps, ['timing', 'estimation']);
+
+  assert.equal(
+    findFalseDeliveryRecoveryBackedReplacement({
+      body,
+      comments: [],
+      repository: REPOSITORY,
+      issueNumber: ISSUE,
+    }).status,
+    'none'
+  );
+  assert.equal(
+    findFalseDeliveryRecoveryBackedReplacement({
+      body,
+      comments: [comment, { ...comment, id: '901' }],
+      repository: REPOSITORY,
+      issueNumber: ISSUE,
+    }).status,
+    'ambiguous'
   );
 });
