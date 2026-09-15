@@ -27,6 +27,7 @@ import {
   hasReviewApprovedMarker,
   parseReviewApprovedMarker,
   readPlanApprovedForecastRecordId,
+  stripFencedCodeBlocks,
 } from '../lib/markers.mjs';
 import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
@@ -1136,26 +1137,8 @@ export async function resolveFalseDeliveryActor({ cfg, pexec = closePexec } = {}
   return actor;
 }
 
-function stripMarkdownFencedBlocks(value) {
-  const kept = [];
-  let fenceChar = null;
-  for (const line of String(value || '').split(/\r?\n/)) {
-    const fence = line.match(/^[ \t]*(`{3,}|~{3,})/);
-    if (fenceChar === null && fence) {
-      fenceChar = fence[1][0];
-      continue;
-    }
-    if (fenceChar !== null) {
-      if (fence?.[1]?.[0] === fenceChar) fenceChar = null;
-      continue;
-    }
-    kept.push(line);
-  }
-  return kept.join('\n');
-}
-
 function strictCanonicalBodyClaims(body, markerName, category) {
-  const source = stripMarkdownFencedBlocks(body);
+  const source = stripFencedCodeBlocks(body);
   const claims = [...source.matchAll(new RegExp(`<!--\\s*${markerName}\\b[^>]*-->`, 'gi'))].map(
     (match) => match[0]
   );
@@ -1167,7 +1150,7 @@ function strictCanonicalBodyClaims(body, markerName, category) {
 }
 
 function strictProgressMarkerClaim(body, markerName, category) {
-  const source = stripMarkdownFencedBlocks(body);
+  const source = stripFencedCodeBlocks(body);
   const headings = [...source.matchAll(/^##[ \t]+AITM Progress Markers[ \t]*$/gm)];
   const claims = strictCanonicalBodyClaims(source, markerName, category);
   if (headings.length !== 1 || claims.length !== 1) {
@@ -1245,7 +1228,7 @@ export async function readFalseDeliveryAuditAuthority({
     { timeout: GH_API_TIMEOUT_MS }
   );
   const comment = JSON.parse(String(commentOut || '{}'));
-  const auditBody = stripMarkdownFencedBlocks(comment.body);
+  const auditBody = stripFencedCodeBlocks(comment.body);
   const ownedMarkerMatches = auditBody.match(
     /^<!-- aitm-owned-comment key="audit\.deliverable-v1" -->$/gm
   );

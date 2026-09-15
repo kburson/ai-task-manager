@@ -99,6 +99,8 @@ test('production authority readers verify the owned audit report and live recove
     ),
     `${validAuditBody}\nConflicting claim committed at \`deadbeef\` in \`docs/audits/other.md\`.`,
     ['```md', validAuditBody, '```'].join('\n'),
+    ['````md', '```', validAuditBody, '````'].join('\n'),
+    ['```md', '```js', validAuditBody, '```'].join('\n'),
   ]) {
     auditComment.body = invalidBody;
     await assert.rejects(
