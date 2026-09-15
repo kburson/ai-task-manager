@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #2
+// @story #2 #1630
 // cspell:ignore metachar
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -19,6 +19,7 @@ const opts = { projectDir: tmp };
 const accepts = [
   ['node x.mjs', ['node', 'x.mjs']],
   ['npm test', ['npm', 'test']],
+  ['npm pack --dry-run', ['npm', 'pack', '--dry-run']],
   ['pytest -k foo', ['pytest', '-k', 'foo']],
   ['bash scripts/check.sh', ['bash', 'scripts/check.sh']],
   ['./scripts/check.sh', ['./scripts/check.sh']],
@@ -180,6 +181,10 @@ const npmMutatorCases = [
   ['npm install foo', /'npm' rejects subcommand 'install'/],
   ['npm i', /'npm' rejects subcommand 'i'/],
   ['npm audit fix', /'npm audit' rejects 'fix'/],
+  ['npm pack', /'npm pack' rejects arguments; expected exactly '--dry-run'/],
+  ['npm pack --json', /'npm pack' rejects arguments; expected exactly '--dry-run'/],
+  ['npm pack --dry-run .', /'npm pack' rejects arguments; expected exactly '--dry-run'/],
+  ['npm pack . --dry-run', /'npm pack' rejects arguments; expected exactly '--dry-run'/],
   ['pnpm publish', /'pnpm' rejects subcommand 'publish'/],
 ];
 for (const [input, frag] of npmMutatorCases) {

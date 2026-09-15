@@ -48,12 +48,14 @@ export function isPolicyShapeVerificationRejection(reason) {
 // level"; an empty list `[]` means "nothing allowed at that level".
 const BIN_RULES = {
   // Package managers: only read/test/build script invocations. `publish`,
-  // `pack`, `install`, `audit fix`, etc. are explicitly excluded.
+  // writable `pack`, `install`, `audit fix`, etc. are explicitly excluded.
+  // The sole pack form is the read-only package inventory command.
   npm: {
-    allowedSubcommands: ['test', 'run', 'run-script', 'exec', 'ci', 'rebuild', 'audit'],
+    allowedSubcommands: ['test', 'run', 'run-script', 'exec', 'ci', 'rebuild', 'audit', 'pack'],
     // `npm audit` alone (or with flags like --audit-level) is read-only; a
     // non-flag second token is `npm audit fix`, which mutates the lockfile.
     allowedSecondTokens: { audit: [] },
+    exactTailTokens: { pack: ['--dry-run'] },
     forbiddenFlags: ['--prefix', '--cwd', '--registry', '--userconfig', '--globalconfig'],
   },
   pnpm: {
@@ -239,6 +241,23 @@ function validateBinRule(bin, argv) {
         ok: false,
         reason: `bin '${bin}' rejects subcommand '${sub.token}' (not in per-bin allowlist)`,
       };
+    }
+
+    // Some otherwise mutating subcommands have a single read-only form. Keep
+    // that form closed: missing, reordered, or additional arguments are
+    // rejected rather than broadening the executable surface.
+    if (rule.exactTailTokens && rule.exactTailTokens[sub.token] !== undefined) {
+      const expected = rule.exactTailTokens[sub.token];
+      const actual = argv.slice(sub.index + 1);
+      if (
+        actual.length !== expected.length ||
+        actual.some((token, index) => token !== expected[index])
+      ) {
+        return {
+          ok: false,
+          reason: `bin '${bin} ${sub.token}' rejects arguments; expected exactly '${expected.join(' ')}'`,
+        };
+      }
     }
 
     // Optional second-token check (e.g. `gh issue view` ok, `gh issue close` not).
