@@ -198,7 +198,7 @@ git commit -m "[#1635] feat: restart false delivery close transactions"
 
 - [ ] **Step 1: Add failing help/catalog assertions**
 
-Assert usage includes all three new flags, examples name #1624/#1633/#1635, preconditions state same-SHA plus audit/no-commit/PR evidence, and effects state audit-first immutable replacement.
+Assert usage includes all three new flags, examples name #1624/#1633/#1635, preconditions state the same-SHA or exact protected-base integration shape plus audit/no-commit/PR evidence, and effects state audit-first immutable replacement.
 
 - [ ] **Step 2: Run help tests and confirm RED**
 
