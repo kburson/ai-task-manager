@@ -6,6 +6,47 @@ Legacy remains the default. `npx aitm evidence inspect <N> --json` is read-only 
 
 The installed execution context pins separate tool, source, and authority roots plus provider and host identity. Every v2 mutation entry validates the common selector and complete resident capability inventory. `npx aitm reopen <N> --operation-id <uuid> --reason <text>` creates a new explicit cycle for a closed enrolled issue. A malformed marker or old incompatible writer refuses instead of falling back to v1.
 
+## Workflow exceptions and preflight
+
+AITM supports one finite workflow-policy model. Only a current, issue-scoped
+`aitm.workflow-exception/v1` record in GitHub can waive a catalogued planning,
+semantic-review, or approval requirement, or deny managed-provider execution.
+Full-Auto, labels, issue prose, and caller flags do not activate an exception.
+
+Inspect policy without mutation before an intended transition:
+
+```bash
+npx aitm workflow-preflight #57 --target done
+npx aitm workflow-preflight #57 --target review --json
+```
+
+Preflight is advisory and conditional. It does not start or pause a timer,
+change binding, write GitHub or repository state, persist a cache, or launch a
+provider. Every later affected boundary reloads the current records and
+revalidates repository, issue, scope identity, expiry, revision, authority, and
+live evidence.
+
+Create, inspect, revise, or revoke records only through the supported command:
+
+```bash
+npx aitm workflow-exception show #57 --json
+npx aitm workflow-exception record #57 --input-file .scratch/gh/57-workflow-exception.json
+npx aitm workflow-exception revise #57 --input-file .scratch/gh/57-workflow-exception.json
+npx aitm workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json
+```
+
+Mutation requests must carry a host-verified user-message authority source.
+Records are immutable revisions, retries are idempotent, and series results are
+reported per issue so partial or indeterminate outcomes are never described as
+aggregate success. Expired, revoked, stale-scope, wrong-target, malformed,
+unsupported, or ambiguous histories fail closed.
+
+Waived work is reported as `waived`, never `passed`. Tests, verification
+evidence, ownership, dependencies, binding, state contiguity, exact-SHA commit
+provenance, CI, safe delivery, and external protection remain mandatory. Review
+waivers do not grant completion approval. An active managed-provider denial
+wins over Full-Auto and retry requests.
+
 Full workflow rules for projects using `ai-task-manager`. These rules define how Claude Code, Codex, and human operators should manage issues, move Kanban states, and handle cleanup.
 
 ---

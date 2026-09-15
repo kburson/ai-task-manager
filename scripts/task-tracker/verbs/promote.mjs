@@ -46,6 +46,13 @@ import {
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
+import { loadSession } from '../lib/session-store.mjs';
+import { currentSessionId } from '../word-counter.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+  requirementIdsForGuardRefusals,
+} from '../lib/workflow-policy/enforcement.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -406,8 +413,28 @@ export async function runPromote({
     cfg,
     deps,
     projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
+    sessionPolicy:
+      deps.sessionPolicy ||
+      (deps.loadSession || loadSession)((deps.currentSessionId || currentSessionId)()),
   };
-  const guardResult = await runGuards(recorded, target, guardCtx);
+  const runGuardsFn = deps.runGuards || runGuards;
+  let guardResult = await runGuardsFn(recorded, target, guardCtx);
+  const policyRequirementIds = requirementIdsForGuardRefusals(guardResult.refusals);
+  if (policyRequirementIds.length > 0) {
+    const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+    guardCtx.workflowPolicy = await loadBoundary({
+      repository: cfg.repo,
+      issue: issueNumber,
+      body,
+      requirementIds: policyRequirementIds,
+      activity: `workflow-transition:${target}`,
+      state: recorded,
+      now: nowIso(),
+      runtime:
+        deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+    });
+    guardResult = await runGuardsFn(recorded, target, guardCtx);
+  }
   const mappedRefusals = (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
   const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
   if (verbRefusal) return verbRefusal;

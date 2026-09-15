@@ -131,6 +131,34 @@ test('actions-only resumes residents and never requests a boundary', async () =>
   );
 });
 
+test('a waived resident is terminal and distinct while forward progression continues', async () => {
+  const actionsOnly = harness({ initial: 'review', residentResults: [{ status: 'waived' }] });
+  assert.deepEqual(
+    await actionsOnly.cursor.execute({
+      issue: 1117,
+      cwd: '/worktree',
+      trigger: 'actions-only',
+    }),
+    { kind: 'resident-waived', state: 'review', result: { status: 'waived' } }
+  );
+
+  const forward = harness({
+    initial: 'test',
+    residentResults: [{ status: 'waived' }, { status: 'complete' }],
+  });
+  const moved = await forward.cursor.execute({
+    issue: 1117,
+    cwd: '/worktree',
+    trigger: 'advance-forward',
+    requestedTarget: 'review',
+  });
+  assert.equal(moved.kind, 'resident-result');
+  assert.equal(
+    forward.calls.some(({ name }) => name === 'requestLegacyBoundary:test->review'),
+    true
+  );
+});
+
 test('ordinary forward completes residents before requesting one boundary', async () => {
   const { cursor, calls } = harness({ initial: 'test' });
   const result = await cursor.execute({

@@ -1,4 +1,4 @@
-// @story #1117 #1458
+// @story #1117 #1458 #1629
 
 import {
   agentReviewIncompleteReason,
@@ -9,6 +9,10 @@ import {
 } from '../agent-review/review-gate.mjs';
 import { parseProofMarker } from '../proof-marker.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../workflow-policy/enforcement.mjs';
 
 function valueOf(record) {
   return record && typeof record === 'object' && 'value' in record ? record.value : record;
@@ -28,14 +32,56 @@ function isoNow(context) {
   return typeof value === 'string' ? new Date(value).toISOString() : new Date(value).toISOString();
 }
 
+const SEMANTIC_REVIEW_REQUIREMENT = 'review.semantic-resident';
+
+function currentEvent(snapshot) {
+  if (snapshot?.actionLedger?.status !== 'clean') return null;
+  return snapshot.actionLedger.events?.[0] ?? null;
+}
+
+async function loadSemanticReviewPolicy(context, snapshot) {
+  const capabilities = context?.review;
+  if (!capabilities?.repo) return null;
+  const issueNumber = Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue);
+  const body = String(valueOf(snapshot?.body) || '');
+  const loadBoundary = capabilities.loadWorkflowBoundary || loadWorkflowBoundary;
+  return loadBoundary({
+    repository: capabilities.repo,
+    issue: issueNumber,
+    body,
+    requirementIds: [SEMANTIC_REVIEW_REQUIREMENT],
+    activity: 'semantic-review:resident',
+    state: 'review',
+    now: isoNow(context),
+    runtime:
+      capabilities.workflowPolicyRuntime ||
+      createGithubWorkflowBoundaryRuntime({ repository: capabilities.repo }),
+  });
+}
+
+function waivedEvidence(policy) {
+  return {
+    authority: policy.decision(SEMANTIC_REVIEW_REQUIREMENT)?.authority,
+    requirementId: SEMANTIC_REVIEW_REQUIREMENT,
+  };
+}
+
 export const reviewAgentValidationAction = Object.freeze({
   id: 'review-agent-validation',
   serialization: 'issue-lock',
 
-  async verify(_context, snapshot) {
+  async verify(context, snapshot) {
     const body = String(valueOf(snapshot?.body) || '');
     const reason = agentReviewIncompleteReason(body);
-    if (reason) return { status: 'incomplete', reason };
+    if (reason) {
+      if (currentEvent(snapshot)?.phase === 'waived') {
+        const policy = await loadSemanticReviewPolicy(context, snapshot);
+        if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
+          return { status: 'waived', evidence: waivedEvidence(policy) };
+        }
+      }
+      return { status: 'incomplete', reason };
+    }
 
     const reviewVisits = parseEntryMarkers(body).filter(({ stage }) => stage === 'review');
     const currentVisit = reviewVisits.at(-1);
@@ -59,7 +105,25 @@ export const reviewAgentValidationAction = Object.freeze({
 
   async run(context, snapshot, { correlation } = {}) {
     const capabilities = context?.review;
-    if (!capabilities || typeof capabilities.onFailure !== 'function') {
+    if (!capabilities) {
+      return { status: 'paused', reason: 'review-capabilities-unavailable' };
+    }
+
+    const policy = await loadSemanticReviewPolicy(context, snapshot);
+    if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
+      const evidence = waivedEvidence(policy);
+      if (typeof capabilities.onWaived === 'function') {
+        await capabilities.onWaived({
+          issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
+          snapshot,
+          ts: isoNow(context),
+          correlation,
+          evidence,
+        });
+      }
+      return { status: 'waived', evidence };
+    }
+    if (typeof capabilities.onFailure !== 'function') {
       return { status: 'paused', reason: 'review-capabilities-unavailable' };
     }
 
@@ -74,13 +138,35 @@ export const reviewAgentValidationAction = Object.freeze({
         ? await capabilities.computeChangedPaths({ issueNumber, snapshot })
         : [];
     const gateFn = capabilities.runAgentReviewGate || runAgentReviewGate;
-    const gate = await gateFn({
+    const gateInput = {
       body,
       issueNumber,
       repo: capabilities.repo,
       comments,
       changedPaths,
-    });
+    };
+    let gate = await gateFn(gateInput);
+    const planningSectionFailure = (gate.failures || []).some(
+      (failure) =>
+        String(failure).startsWith('body-sections:') &&
+        /section '(?:Plan Metadata|Deep Dive)' is missing/.test(String(failure))
+    );
+    if (!gate.pass && planningSectionFailure) {
+      const loadBoundary = capabilities.loadWorkflowBoundary || loadWorkflowBoundary;
+      const workflowPolicy = await loadBoundary({
+        repository: capabilities.repo,
+        issue: issueNumber,
+        body,
+        requirementIds: ['planning.metadata', 'planning.deep-dive'],
+        activity: 'semantic-review:resident',
+        state: 'review',
+        now: isoNow(context),
+        runtime:
+          capabilities.workflowPolicyRuntime ||
+          createGithubWorkflowBoundaryRuntime({ repository: capabilities.repo }),
+      });
+      gate = await gateFn({ ...gateInput, workflowPolicy });
+    }
     const base = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : body;
     const ts = isoNow(context);
 

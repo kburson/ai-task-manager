@@ -1,4 +1,4 @@
-// @story #1010
+// @story #1010 #1629
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -56,6 +56,7 @@ const AUDIT_EVENTS = [
   'switch-end',
   'review:failed',
   'review:passed',
+  'review:waived',
   'test:failed',
   'rejected:develop',
   'discovery: idle-reconciled',
@@ -63,7 +64,7 @@ const AUDIT_EVENTS = [
 
 test('every exact event has one frozen canonical descriptor and classification', () => {
   const descriptors = exactTimingEventDescriptors();
-  assert.equal(descriptors.length, 37);
+  assert.equal(descriptors.length, 38);
   assert.equal(new Set(descriptors.map(({ event }) => event)).size, descriptors.length);
   assert.equal(Object.isFrozen(descriptors), true);
 

@@ -588,6 +588,16 @@ if (_isMain)
           await verbComment(ctx);
           break;
         }
+        case 'workflow-exception': {
+          const { verbWorkflowException } = await import('./verbs/workflow-exception.mjs');
+          await verbWorkflowException(ctx);
+          break;
+        }
+        case 'workflow-preflight': {
+          const { verbWorkflowPreflight } = await import('./verbs/workflow-preflight.mjs');
+          await verbWorkflowPreflight(ctx);
+          break;
+        }
         case 'adopt-github-records': {
           const { verbAdoptGithubRecords } = await import('./verbs/adopt-github-records.mjs');
           await verbAdoptGithubRecords(ctx);

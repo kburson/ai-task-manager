@@ -1,10 +1,11 @@
-// @story #1117 #1456
+// @story #1117 #1456 #1629
 
 import { fingerprint, canonicalJson } from './resident-action-ledger-codec.mjs';
 import { createActionCapabilityContext } from './repository-adapter.mjs';
+import { evaluateManagedProviderBoundary } from './workflow-policy/enforcement.mjs';
 
-export const VERIFY_STATUSES = Object.freeze(['complete', 'incomplete']);
-export const ACTION_OUTCOMES = Object.freeze(['complete', 'waiting', 'paused', 'failed']);
+export const VERIFY_STATUSES = Object.freeze(['complete', 'incomplete', 'waived']);
+export const ACTION_OUTCOMES = Object.freeze(['complete', 'waiting', 'paused', 'failed', 'waived']);
 
 const VERIFY_STATUS_SET = new Set(VERIFY_STATUSES);
 const ACTION_OUTCOME_SET = new Set(ACTION_OUTCOMES);
@@ -78,6 +79,25 @@ async function hydrate(repository, snapshot, actionId) {
   return repository.hydrateTask(invocationFrom(snapshot, actionId));
 }
 
+async function enforceManagedProvider(context, action, snapshot) {
+  if (!action.managedProviderActivity) return null;
+  const policy = context.workflowPolicy;
+  if (!policy?.repository) {
+    return { status: 'indeterminate', reason: 'managed-provider-policy-unavailable' };
+  }
+  const evaluate = policy.evaluateManagedProviderBoundary || evaluateManagedProviderBoundary;
+  return evaluate({
+    repository: policy.repository,
+    issue: valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue,
+    body: String(valueOf(snapshot?.body) || ''),
+    activity: action.managedProviderActivity,
+    state: valueOf(snapshot?.currentState),
+    now: new Date(context.now()).toISOString(),
+    runtime: policy.runtime,
+    loadBoundary: policy.loadBoundary,
+  });
+}
+
 export function createResidentActionRunner({ repository, actionContext = {} } = {}) {
   if (!repository) throw new TypeError('createResidentActionRunner: repository is required');
   const context = createActionCapabilityContext({ repository, actionContext });
@@ -128,6 +148,11 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
         });
       }
       return { status: 'complete' };
+    }
+    if (verification.status === 'waived') {
+      return event?.phase === 'waived'
+        ? { status: 'waived' }
+        : { status: 'paused', reason: 'waiver-evidence-not-durable' };
     }
 
     if (event?.phase === 'waiting') {
@@ -181,6 +206,16 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
         actionId: action.id,
         correlation: winningCorrelation,
       });
+      const providerBoundary = await enforceManagedProvider(context, action, beforeEffect);
+      if (providerBoundary && providerBoundary.status !== 'allowed') {
+        return {
+          status: 'paused',
+          reason:
+            providerBoundary.status === 'prohibited'
+              ? 'managed-provider-denied'
+              : 'managed-provider-policy-unavailable',
+        };
+      }
       const outcome = await action.run(context, beforeEffect, {
         trigger,
         correlation: winningCorrelation,
@@ -210,6 +245,15 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
           evidenceFingerprint: evidenceFingerprint(verification),
         });
         return { status: 'complete' };
+      }
+
+      if (outcome.status === 'waived') {
+        await append(snapshot, action, 'waived', {
+          correlation: winningCorrelation,
+          verifyStatus: 'waived',
+          evidenceFingerprint: evidenceFingerprint(outcome),
+        });
+        return { status: 'waived' };
       }
 
       if (outcome.status === 'waiting') {
@@ -271,11 +315,16 @@ export function createResidentActionRunner({ repository, actionContext = {} } = 
 
   return Object.freeze({
     async resume(actions, snapshot, options = {}) {
+      let waived = false;
       for (const action of Array.isArray(actions) ? actions : []) {
         const result = await resumeOne(action, snapshot, options);
+        if (result.status === 'waived') {
+          waived = true;
+          continue;
+        }
         if (result.status !== 'complete') return result;
       }
-      return { status: 'complete' };
+      return { status: waived ? 'waived' : 'complete' };
     },
   });
 }

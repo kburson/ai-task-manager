@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -125,7 +125,17 @@ function repoRoot() {
 // #1579 ships one linked-plan policy validator used by Plan approval. The
 // measured surface grows by exactly that maintained runtime entry.
 // #1618 ships one Project workflow compatibility policy used by init.
-const ENTRY_CEILING = 771;
+// #1625 ships the four pure workflow-policy core modules. The measured package
+// surface grows by exactly those four entries; no test or excluded path ships.
+// #1626 ships the exception record, authority resolver, immutable store, and
+// governed verb. These four runtime entries are the entire intentional growth.
+// #1627 ships the snapshot builder, aggregate evaluator, and read-only preflight
+// verb. Those three runtime files are this child's complete package growth.
+// #1628 ships one shared enforcement adapter used by mutation boundaries.
+// The measured package surface grows by exactly that maintained runtime entry.
+// #1630 ships the ratified workflow-exception design as the package's governing
+// specification. That one deliberate document is the complete surface growth.
+const ENTRY_CEILING = 784;
 
 let packedFileCache = null;
 function packedFiles() {

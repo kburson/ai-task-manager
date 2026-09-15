@@ -211,6 +211,14 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/comment.mjs',
     },
     {
+      verb: 'workflow-exception',
+      dispatch: 'verbs/workflow-exception.mjs',
+    },
+    {
+      verb: 'workflow-preflight',
+      dispatch: 'verbs/workflow-preflight.mjs',
+    },
+    {
       verb: 'adopt-github-records',
       dispatch: 'verbs/adopt-github-records.mjs',
     },

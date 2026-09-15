@@ -47,6 +47,7 @@ export function buildReviewContext({
   repo,
   comments = [],
   changedPaths = [],
+  workflowPolicy = null,
 } = {}) {
   const src = typeof body === 'string' ? body : '';
   const lastKnown = readLastKnownState(src);
@@ -56,6 +57,7 @@ export function buildReviewContext({
     repo,
     comments: Array.isArray(comments) ? comments : [],
     changedPaths: Array.isArray(changedPaths) ? changedPaths : [],
+    workflowPolicy,
     markers: {
       enteredStages: parseEnteredStages(src),
       lastKnownState: lastKnown.state,
@@ -77,9 +79,17 @@ export function runAgentReviewGate({
   repo,
   comments = [],
   changedPaths = [],
+  workflowPolicy = null,
   registry = defaultRegistry,
 } = {}) {
-  const context = buildReviewContext({ body, issueNumber, repo, comments, changedPaths });
+  const context = buildReviewContext({
+    body,
+    issueNumber,
+    repo,
+    comments,
+    changedPaths,
+    workflowPolicy,
+  });
   const { pass, failures, validatorsRun, normalizedBody } = registry.runAll(context);
   return { pass, failures, validatorsRun: validatorsRun || [], normalizedBody, context };
 }

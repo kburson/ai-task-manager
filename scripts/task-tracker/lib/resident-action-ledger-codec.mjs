@@ -1,4 +1,4 @@
-// @story #1117 #1453
+// @story #1117 #1453 #1629
 
 import { createHash } from 'node:crypto';
 
@@ -7,7 +7,7 @@ export const RESIDENT_ACTION_HEAD_SCHEMA = 'aitm.resident-action-head/v1';
 export const EVENT_COMMENT_BYTE_LIMIT = 4 * 1024;
 export const SPILL_HEAD_COMMENT_BYTE_LIMIT = 60 * 1024;
 
-const EVENT_PHASES = new Set(['intent', 'waiting', 'resolved', 'failed']);
+const EVENT_PHASES = new Set(['intent', 'waiting', 'resolved', 'failed', 'waived']);
 const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
 const SHA256_RE = /^sha256:[a-f0-9]{64}$/;
 const ACTION_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,95}$/;

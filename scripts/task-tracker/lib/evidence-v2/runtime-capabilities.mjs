@@ -1,4 +1,4 @@
-// @story #1500
+// @story #1500 #1630
 import { exact, fail, frozen, digestValue, hash, textValue, uuidValue } from './value.mjs';
 
 export const REQUIRED_EVIDENCE_ENTRIES = Object.freeze([
@@ -10,6 +10,13 @@ export const REQUIRED_EVIDENCE_ENTRIES = Object.freeze([
   'review',
   'test',
   'verify',
+]);
+
+export const REQUIRED_SCHEMA_VERSIONS = Object.freeze([
+  'aitm.evidence-record/v2',
+  'aitm.workflow-exception/v1',
+  'aitm.workflow-policy-evaluation/v1',
+  'aitm.workflow-preflight-report/v1',
 ]);
 
 function normalizedEntries(entries) {
@@ -27,7 +34,7 @@ export function buildRuntimeCapability({
   commandCatalogDigest,
   entries,
   protocolVersions = ['v1', 'v2'],
-  schemaVersions = ['aitm.evidence-record/v2'],
+  schemaVersions = REQUIRED_SCHEMA_VERSIONS,
   entryGuardVersion = '1',
 }) {
   uuidValue(authorityHostId, 'capability-authority-host');
@@ -70,11 +77,11 @@ export function validateRuntimeCapability(capability, { authorityHostId, residen
   if (rebuilt.capabilityDigest !== capability.capabilityDigest) fail('capability-digest');
   if (authorityHostId && capability.authorityHostId !== authorityHostId)
     fail('authority-host-mismatch');
-  if (
-    !capability.protocolVersions.includes('v2') ||
-    !capability.schemaVersions.includes('aitm.evidence-record/v2')
-  )
-    fail('capability-version');
+  if (!capability.protocolVersions.includes('v2')) fail('capability-version');
+  if (!capability.schemaVersions.includes('aitm.evidence-record/v2')) fail('capability-version');
+  if (REQUIRED_SCHEMA_VERSIONS.some((schema) => !capability.schemaVersions.includes(schema))) {
+    fail('capability-workflow-policy-version');
+  }
   const installed = new Set(capability.entries);
   for (const entry of REQUIRED_EVIDENCE_ENTRIES)
     if (!installed.has(entry)) fail('entry-inventory-incomplete');

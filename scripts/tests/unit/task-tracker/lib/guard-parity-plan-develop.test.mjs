@@ -21,7 +21,11 @@ import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { STATES } from '../../../../task-tracker/states/index.mjs';
 import '../../../../task-tracker/lib/guard-bootstrap.mjs';
 
-const CFG = { repo: 'owner/name', projectId: 'PVT' };
+const CFG = {
+  repo: 'owner/name',
+  projectId: 'PVT',
+  gateAnalysisToDevelopment: true,
+};
 
 async function runStateObjectGuards(from, to, ctx) {
   const refusals = [];

@@ -435,6 +435,7 @@ test('#1458 — resident pass prepares durable evidence before the pass callback
       now: () => Date.parse('2026-08-31T12:01:00.000Z'),
       review: {
         repo: 'o/r',
+        loadWorkflowBoundary: async () => ({ isWaived: () => false }),
         readComments: async () => [],
         computeChangedPaths: async () => [],
         runAgentReviewGate: async () => ({

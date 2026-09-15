@@ -520,6 +520,29 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the idempotent result and verified comment node id.'],
     PREFLIGHT_TARGET_EXITS
   ),
+  'workflow-exception': contract(
+    [
+      'Every issue is explicit; mutation modes require a closed request and a host-verified user-message authorization source.',
+    ],
+    [
+      'Appends immutable exception revisions or revocations through the canonical GitHub record store; show is read-only.',
+      'Series execution is per issue, idempotent, and reports partial or indeterminate results without claiming aggregate success.',
+    ],
+    ['Prints matching human or aitm.workflow-exception-result/v1 JSON output.'],
+    [exit(6, 'one or more explicit issue operations were blocked or indeterminate')]
+  ),
+  'workflow-preflight': contract(
+    ['One explicit issue and one explicit supported target state are required.'],
+    [
+      'Reads one coherent read-only policy snapshot without starting or pausing timers, changing binding, writing GitHub or repository state, persisting caches, or launching managed providers.',
+      'Aggregates current blockers, pending future evidence, external unknowns, waivers, prohibitions, provenance, and remediation without short-circuiting.',
+    ],
+    ['Prints matching human or aitm.workflow-preflight-report/v1 JSON output.'],
+    [
+      exit(6, 'one or more current policy blockers were discovered'),
+      exit(7, 'external state or a required read was indeterminate'),
+    ]
+  ),
   'adopt-github-records': contract(
     ['The issue must exist; mutation modes additionally require current coordinator authority.'],
     ['Audits legacy parity by default, or explicitly adopts, rolls back, or repairs one issue.'],
@@ -693,6 +716,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
   'issue-body': Object.freeze(['comment', 'evidence-markers']),
   comment: Object.freeze(['issue-body', 'commit-trace']),
+  'workflow-exception': Object.freeze(['comment', 'evidence', 'status']),
+  'workflow-preflight': Object.freeze(['workflow-exception', 'status', 'evidence']),
   'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
   'mirror-deep-dive': Object.freeze(['plan', 'save-plan']),
@@ -830,6 +855,11 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   comment: Object.freeze([
     positional('#N', 'Issue number whose marker-owned comment will be upserted.'),
   ]),
+  'workflow-exception': Object.freeze([
+    positional('<record|show|revise|revoke>', 'Exception lifecycle operation.'),
+    positional('#N [#M ...]', 'One or more explicit issue numbers.'),
+  ]),
+  'workflow-preflight': Object.freeze([positional('#N', 'One explicit issue number.')]),
   'adopt-github-records': Object.freeze([
     positional('<N>', 'Issue number to audit, adopt, roll back, or repair.'),
   ]),

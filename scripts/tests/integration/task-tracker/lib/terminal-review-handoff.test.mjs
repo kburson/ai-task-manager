@@ -1,4 +1,4 @@
-// @story #1097
+// @story #1097 #1629
 import { strict as assert } from 'node:assert';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -25,12 +25,21 @@ const { appendRow, buildInitialComment } =
 const { parseTimingRow } = await import('../../../../task-tracker/lib/timing-row-reader.mjs');
 const { DeliveryPreflightError, validateDeliveryPreflight } =
   await import('../../../../task-tracker/lib/delivery-preflight.mjs');
+const { isTerminalReviewHandoffOpen } =
+  await import('../../../../task-tracker/lib/terminal-review-handoff.mjs');
 
 const terminalTimingBody = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
   '|---|---|---|---|---|---|---|---|',
   '| 2026-08-04 07:21:43 -05:00 | review:passed |  |  |  | 101,167 | agent review passed | <!-- row-sec: a=0 i=0 -->',
 ].join('\n');
+
+test('review waiver opens the same approval handoff as a completed semantic review', () => {
+  assert.equal(
+    isTerminalReviewHandoffOpen(terminalTimingBody.replace('review:passed', 'review:waived')),
+    true
+  );
+});
 
 function captureLog(fn) {
   const lines = [];

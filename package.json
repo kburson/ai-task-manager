@@ -68,6 +68,7 @@
     "docs/QUICKSTART.md",
     "docs/DESIGN.md",
     "docs/guides/",
+    "docs/superpowers/specs/2026-09-14-1624-workflow-exceptions-design.md",
     "docs/introduction/",
     "docs/ai-memory/",
     "!docs/ai-memory/archive/**",

@@ -28,6 +28,13 @@ import { durableWordMarkers } from '../../state.mjs';
 import { getProjectDir } from '../../paths.mjs';
 import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
 import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
+import { loadSession } from '../session-store.mjs';
+import { currentSessionId } from '../../word-counter.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+  requirementIdsForGuardRefusals,
+} from '../workflow-policy/enforcement.mjs';
 
 // #968 — worktree-aware `deps.closeGates` for the review→done exit-slot.
 // Parity with `verbs/close.mjs`'s #908 fix: `review-exit-close-gates` calls
@@ -198,8 +205,36 @@ export async function runGuardExecution(ctx) {
       deps,
       projectDir,
       lifecycleEvidence,
+      sessionPolicy:
+        ctx.sessionPolicy ||
+        (ctx._loadSession || loadSession)((ctx._currentSessionId || currentSessionId)()),
     };
-    let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
+    const runGuardsFn = ctx._runGuards || runGuards;
+    let guardResult = await runGuardsFn(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
+
+    // #1628 — ordinary stories pay no exception-record read when the baseline
+    // guards pass. If (and only if) a waivable guard refuses, resolve the live
+    // scope-bound authority inside this mutation boundary and re-run the same
+    // complete guard pipeline. The locked body is authoritative; an unavailable,
+    // revoked, expired, ambiguous, or stale record exposes no waiver and the
+    // original refusal remains.
+    const policyRequirementIds = requirementIdsForGuardRefusals(guardResult.refusals);
+    if (policyRequirementIds.length > 0) {
+      const loadBoundary = ctx._loadWorkflowBoundary || loadWorkflowBoundary;
+      guardCtx.workflowPolicy = await loadBoundary({
+        repository: cfg.repo,
+        issue: Number(issueArg),
+        body: guardBody,
+        requirementIds: policyRequirementIds,
+        activity: `workflow-transition:${stateArg}`,
+        state: resolvedFromState,
+        now: new Date().toISOString(),
+        runtime:
+          ctx._workflowPolicyRuntime ||
+          createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+      });
+      guardResult = await runGuardsFn(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
+    }
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
     // without its verified Backlog marker. Only when contiguity objects on one

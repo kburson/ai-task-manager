@@ -37,6 +37,10 @@ import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 import { ownershipDecision } from './lib/ownership-policy.mjs';
 import { fetchAssignmentSnapshot } from './lib/assignment-snapshot.mjs';
 import { extractApplyPatchTargets } from './lib/apply-patch-targets.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from './lib/workflow-policy/enforcement.mjs';
 
 const pexec = promisify(execFile);
 
@@ -89,6 +93,7 @@ export function decideSourceEdit({
   hasCompleteMarker,
   assignees,
   currentUser,
+  workflowPolicy,
   policy = DEFAULT_POLICY,
 }) {
   if (!GATED_TOOLS.has(toolName)) {
@@ -207,6 +212,9 @@ export function decideSourceEdit({
 
   // State is develop. Require both deep-dive markers.
   if (!hasPostedMarker || !hasCompleteMarker) {
+    if (workflowPolicy?.isWaived?.('planning.deep-dive')) {
+      return { decision: 'allow', reason: 'state-and-deep-dive-waiver' };
+    }
     const missing = [
       !hasPostedMarker ? DEEP_DIVE_POSTED_MARKER : null,
       !hasCompleteMarker ? DEEP_DIVE_COMPLETE_MARKER : null,
@@ -335,10 +343,12 @@ export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
     // so there is no reliable cross-process invalidation signal. Refresh the
     // exact configured-project Status + assignees snapshot on every gated edit
     // while retaining the body/deep-dive metadata cache.
-    const cfg = loadConfig({
-      projectPath: configPath(projectDir),
-      userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
-    });
+    const cfg =
+      deps.cfg ||
+      loadConfig({
+        projectPath: configPath(projectDir),
+        userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
+      });
     const snapshot = await (deps.fetchSnapshot || fetchAssignmentSnapshot)({
       issueNumber: boundIssue.replace(/^#/, ''),
       cfg,
@@ -437,6 +447,50 @@ export async function runHook(payload, deps = {}) {
   }
 
   const policy = (deps.loadPolicy || loadPolicy)(projectDir);
+  let workflowPolicy = null;
+  if (
+    !choreModeActive &&
+    boundIssue &&
+    normalizeStateId(signals.state) === 'develop' &&
+    (!signals.hasPostedMarker || !signals.hasCompleteMarker)
+  ) {
+    const cfg =
+      deps.cfg ||
+      loadConfig({
+        projectPath: configPath(projectDir),
+        userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
+      });
+    const issue = Number(boundIssue.replace(/^#/, ''));
+    try {
+      const ghImpl =
+        deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout);
+      const bodyJson = await ghImpl([
+        'issue',
+        'view',
+        String(issue),
+        '-R',
+        cfg.repo,
+        '--json',
+        'body',
+      ]);
+      const body = JSON.parse(bodyJson).body || '';
+      const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+      workflowPolicy = await loadBoundary({
+        repository: cfg.repo,
+        issue,
+        body,
+        requirementIds: ['planning.deep-dive'],
+        activity: 'source-edit',
+        state: 'develop',
+        now: new Date().toISOString(),
+        runtime:
+          deps.workflowPolicyRuntime ||
+          createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+      });
+    } catch {
+      workflowPolicy = null;
+    }
+  }
   let allowedResult = { decision: 'allow', reason: 'all-mutation-targets-allowed' };
   for (const filePath of targets.length ? targets : ['']) {
     const result = decideSourceEdit({
@@ -450,6 +504,7 @@ export async function runHook(payload, deps = {}) {
       hasCompleteMarker: signals.hasCompleteMarker,
       assignees: signals.assignees,
       currentUser: signals.currentUser,
+      workflowPolicy,
       policy,
     });
     if (result.decision === 'block') return result;

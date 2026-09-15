@@ -1,4 +1,4 @@
-// @story #1117 #1453 #1456
+// @story #1117 #1453 #1456 #1629
 
 import { readResidentActionLedger } from './resident-action-ledger-read.mjs';
 import { readMoveCompleteState } from './move-state/sentinel.mjs';
@@ -72,6 +72,7 @@ export function createActionCapabilityContext({ repository, actionContext = {} }
     receipts: freezeAdapter(actionContext.receipts),
     instructions: freezeAdapter(actionContext.instructions),
     review: freezeAdapter(actionContext.review),
+    workflowPolicy: freezeAdapter(actionContext.workflowPolicy),
     develop: freezeAdapter(actionContext.develop),
     test: freezeAdapter(actionContext.test),
   };

@@ -23,6 +23,7 @@ export const planExitPlanMetadataGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     if (!ctx || typeof ctx.body !== 'string') return { ok: true };
+    if (ctx.workflowPolicy?.isWaived?.('planning.metadata')) return { ok: true };
     if (hasNestedMetadataHeading(ctx.body, PLAN_METADATA_HEADING)) {
       const blocker =
         'plan-develop-plan-metadata-not-flat: `## Plan Metadata` must contain no nested headings';

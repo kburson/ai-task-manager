@@ -1,3 +1,4 @@
+// @story #1629
 import { statSync } from 'node:fs';
 import path from 'node:path';
 import { pexec as reviewPexec } from '../../gh/lib/gh-client.mjs';
@@ -76,6 +77,12 @@ function defaultLifecycleGraphql({ query, variables }) {
 
 function lifecycleEvidenceReason(error) {
   return { code: String(error?.message || 'lifecycle-gate-source:unknown') };
+}
+
+export function reviewCompletionMessage(target, status) {
+  return status === 'waived'
+    ? `Review ${target}: semantic resident action waived; no success evidence was emitted.`
+    : `✓ ${target} moved to Review — all verification passed.`;
 }
 
 function isExactProjectFile(token, projectDir, { testFile = false } = {}) {
@@ -681,6 +688,33 @@ export async function emitReviewGatePassTimeline({
       wordMarker,
       fullWordMarker,
       description: `agent review passed — validators: ${validatorSummary}, result=pass`,
+    })
+  );
+}
+
+export async function emitReviewGateWaivedTimeline({
+  target,
+  ts,
+  delta,
+  wordMarker,
+  fullWordMarker,
+  evidence,
+  deps,
+}) {
+  const { safePostTiming, buildRow: buildRowFn = buildRow } = deps;
+  const requirementId = evidence?.requirementId || 'review.semantic-resident';
+  const authorityId = evidence?.authority?.recordId || 'unknown';
+  await safePostTiming(
+    target,
+    buildRowFn({
+      ts,
+      event: 'review:waived',
+      activeSec: delta.activeSec,
+      idleSec: delta.idleSec,
+      deltaWords: 0,
+      wordMarker,
+      fullWordMarker,
+      description: `semantic resident action waived — requirement ${requirementId}; authority record ${authorityId}; result=waived`,
     })
   );
 }
@@ -1490,6 +1524,17 @@ export async function verbReview(ctx) {
             deps: { safePostTiming, buildRow },
           });
         },
+        onWaived: async ({ ts, evidence }) => {
+          await emitReviewGateWaivedTimeline({
+            target,
+            ts,
+            delta: deriveStateMoveDelta(rawBody, ts),
+            wordMarker: s.lastWordMarker ?? 0,
+            fullWordMarker: stateFullWordMarker(s),
+            evidence,
+            deps: { safePostTiming, buildRow },
+          });
+        },
       },
     };
     let fallbackBody = scanBody;
@@ -1543,15 +1588,24 @@ export async function verbReview(ctx) {
     };
     const actions = {
       async resume(residents, snapshot) {
+        let waived = false;
         for (const action of residents) {
           const verified = await action.verify(reviewActionContext, snapshot);
           if (verified.status === 'complete') continue;
+          if (verified.status === 'waived') {
+            waived = true;
+            continue;
+          }
           const result = await action.run(reviewActionContext, snapshot, {
             correlation: { stateVisitId: snapshot.stateVisitId, actionId: action.id },
           });
+          if (result.status === 'waived') {
+            waived = true;
+            continue;
+          }
           if (result.status !== 'complete') return result;
         }
-        return { status: 'complete' };
+        return { status: waived ? 'waived' : 'complete' };
       },
     };
     const cursor = createStateCursor({ machine: STATE_MACHINE, repository, actions });
@@ -1613,7 +1667,7 @@ export async function verbReview(ctx) {
     // remains an exported pure helper for its own unit tests; it is no longer
     // called from the verb path.
     await runLogIssueTime(target);
-    console.log(`✓ ${target} moved to Review — all verification passed.`);
+    console.log(reviewCompletionMessage(target, reviewOutcome.status));
     const reviewSession =
       ctx.session ?? (ctx.loadSession || loadSession)((ctx.currentSessionId || currentSessionId)());
     if (

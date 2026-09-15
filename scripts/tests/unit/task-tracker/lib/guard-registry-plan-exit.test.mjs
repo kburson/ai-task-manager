@@ -17,6 +17,8 @@ import assert from 'node:assert/strict';
 import { planApprovedGuard } from '../../../../task-tracker/lib/plan-approved-guard.mjs';
 import { planEpicChildrenGuard } from '../../../../task-tracker/lib/plan-epic-children-guard.mjs';
 import { planExitVcPresenceGuard } from '../../../../task-tracker/lib/plan-exit-vc-presence-guard.mjs';
+import { planExitDeepDiveGuard } from '../../../../task-tracker/lib/plan-exit-deep-dive-guard.mjs';
+import { planExitPlanMetadataGuard } from '../../../../task-tracker/lib/plan-exit-plan-metadata-guard.mjs';
 import {
   planExitPlannedEstimateGuard,
   validateForecastProjection,
@@ -117,6 +119,83 @@ const PLANNED_ESTIMATE_OK_DEPS = {
 };
 
 const CFG = { repo: 'owner/name', projectId: 'PVT' };
+
+function policyWaiving(...ids) {
+  const waived = new Set(ids);
+  return { isWaived: (id) => waived.has(id) };
+}
+
+test('Plan guards accept only their explicitly waived requirements', async () => {
+  const pickupOnly = '## Pickup Directive — MANDATORY, DO NOT SKIP\n\n> Follow it.\n';
+  assert.deepEqual(
+    await planExitDeepDiveGuard.run({
+      toState: 'develop',
+      body: pickupOnly,
+      workflowPolicy: policyWaiving('planning.deep-dive'),
+    }),
+    { ok: true }
+  );
+  assert.deepEqual(
+    planExitPlanMetadataGuard.run({
+      toState: 'develop',
+      body: BARE_BODY,
+      workflowPolicy: policyWaiving('planning.metadata'),
+    }),
+    { ok: true }
+  );
+  assert.deepEqual(
+    await planApprovedGuard.run({
+      toState: 'develop',
+      body: BARE_BODY,
+      cfg: { gateAnalysisToDevelopment: true },
+      workflowPolicy: policyWaiving('approval.plan'),
+    }),
+    { ok: true }
+  );
+});
+
+test('deep-dive waiver retains the independent Pickup Directive gate', async () => {
+  const result = await planExitDeepDiveGuard.run({
+    toState: 'develop',
+    body: BARE_BODY,
+    workflowPolicy: policyWaiving('planning.deep-dive'),
+  });
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.blockers, [
+    'plan-develop-pickup-directive-missing: body must contain a top-level `## Pickup Directive — MANDATORY, DO NOT SKIP` heading (not inside a `<details>` block) before promoting to Develop',
+  ]);
+});
+
+test('Planned Estimate and forecast waivers remain independent', async () => {
+  const both = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    issueNumber: 1628,
+    body: '',
+    workflowPolicy: policyWaiving('planning.planned-estimate', 'planning.forecast'),
+  });
+  assert.deepEqual(both, { ok: true });
+
+  const estimateOnly = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    issueNumber: 1628,
+    body: '',
+    workflowPolicy: policyWaiving('planning.planned-estimate'),
+  });
+  assert.equal(estimateOnly.ok, false);
+  assert.deepEqual(estimateOnly.blockers, ['plan-forecast-freeze-missing']);
+
+  const forecastOnly = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    issueNumber: 1628,
+    body: '',
+    deps: PLANNED_ESTIMATE_OK_DEPS,
+    workflowPolicy: policyWaiving('planning.forecast'),
+  });
+  assert.deepEqual(forecastOnly, { ok: true });
+});
 
 test('adaptive Plan exit refuses when ready forecast drifted after approval freeze', async () => {
   const frozen = '01J00000000000000000000710';
@@ -384,7 +463,11 @@ test('planApprovedGuard: body with marker → ok', async () => {
 });
 
 test('planApprovedGuard: missing marker, toState=develop → refuse', async () => {
-  const r = await planApprovedGuard.run({ toState: 'develop', body: BARE_BODY });
+  const r = await planApprovedGuard.run({
+    toState: 'develop',
+    body: BARE_BODY,
+    cfg: { gateAnalysisToDevelopment: true },
+  });
   assert.equal(r.ok, false);
   assert.match(r.reason, /aitm-plan-approved/);
   assert.match(r.reason, /plan-approve/);
@@ -398,13 +481,42 @@ test('planApprovedGuard: missing marker, toState=refine (rollback) → ok', asyn
 
 test('planApprovedGuard: missing marker, toState absent → falls through (refuse)', async () => {
   // Ctx without toState is the legacy caller shape; we still enforce the marker.
-  const r = await planApprovedGuard.run({ body: BARE_BODY });
+  const r = await planApprovedGuard.run({
+    body: BARE_BODY,
+    cfg: { gateAnalysisToDevelopment: true },
+  });
   assert.equal(r.ok, false);
 });
 
 test('planApprovedGuard: empty/undefined body → refuse', async () => {
-  const r = await planApprovedGuard.run({ toState: 'develop' });
+  const r = await planApprovedGuard.run({
+    toState: 'develop',
+    cfg: { gateAnalysisToDevelopment: true },
+  });
   assert.equal(r.ok, false);
+});
+
+test('planApprovedGuard follows documented automatic/manual session precedence', async () => {
+  assert.deepEqual(await planApprovedGuard.run({ toState: 'develop', body: BARE_BODY, cfg: {} }), {
+    ok: true,
+  });
+  assert.deepEqual(
+    await planApprovedGuard.run({
+      toState: 'develop',
+      body: BARE_BODY,
+      cfg: { gateAnalysisToDevelopment: true },
+      sessionPolicy: { gates: { analysisToDevelopment: false } },
+    }),
+    { ok: true }
+  );
+  const manual = await planApprovedGuard.run({
+    toState: 'develop',
+    body: BARE_BODY,
+    cfg: { gateAnalysisToDevelopment: false },
+    sessionPolicy: { gates: { analysisToDevelopment: true } },
+  });
+  assert.equal(manual.ok, false);
+  assert.match(manual.reason, /aitm-plan-approved/);
 });
 
 // ── planEpicChildrenGuard ───────────────────────────────────────────────────
@@ -598,7 +710,7 @@ test('runGuards(plan,develop): missing plan-approved marker → refusal', async 
     fromState: 'plan',
     toState: 'develop',
     body: BARE_BODY,
-    cfg: CFG,
+    cfg: { ...CFG, gateAnalysisToDevelopment: true },
     deps: {
       epicChildren: { fetchSiblings: async () => [] },
       ...PLANNED_ESTIMATE_OK_DEPS,

@@ -92,6 +92,9 @@ function makeSandbox(body, { currentState = 'Analyze' } = {}) {
         kanbanOptionTest: 'OP_v',
         kanbanOptionReview: 'OP_r',
         kanbanOptionDone: 'OP_done',
+        // This suite exercises the manual Plan-approval gate. Full-Auto's
+        // project default intentionally disables that gate.
+        gateAnalysisToDevelopment: true,
       },
       null,
       2

@@ -1,3 +1,4 @@
+// @story #1629
 import { isTableTimingTimestamp, parseTimingRow } from './timing-row-reader.mjs';
 import { closesTerminalReviewHandoff } from './timing-events/index.mjs';
 
@@ -6,7 +7,7 @@ export function isTerminalReviewHandoffOpen(body) {
   for (const line of String(body ?? '').split('\n')) {
     const event = parseTimingRow(line)?.event;
     if (!event) continue;
-    if (event === 'review:passed') {
+    if (event === 'review:passed' || event === 'review:waived') {
       open = true;
     } else if (closesTerminalReviewHandoff(event)) {
       open = false;

@@ -22,7 +22,26 @@ test('adaptive evidence adds no gate or prompt: Full-Auto bypass and human appro
 
   const evidenceOnly =
     'body\n<!-- aitm-estimation-forecast-ready record-id="01J00000000000000000000999" -->\n';
-  assert.equal((await planApprovedGuard.run({ body: evidenceOnly, toState: 'develop' })).ok, false);
+  assert.equal(
+    (
+      await planApprovedGuard.run({
+        body: evidenceOnly,
+        toState: 'develop',
+        sessionPolicy: humanGated,
+      })
+    ).ok,
+    false
+  );
+  assert.equal(
+    (
+      await planApprovedGuard.run({
+        body: evidenceOnly,
+        toState: 'develop',
+        sessionPolicy: fullAuto,
+      })
+    ).ok,
+    true
+  );
   assert.equal(
     reviewExitReviewApprovedGuard.run({ body: evidenceOnly, toState: 'done' }).ok,
     false
@@ -32,6 +51,7 @@ test('adaptive evidence adds no gate or prompt: Full-Auto bypass and human appro
       await planApprovedGuard.run({
         body: `${evidenceOnly}\n<!-- aitm-plan-approved ts="2026-08-02T16:00:00Z" -->`,
         toState: 'develop',
+        sessionPolicy: humanGated,
       })
     ).ok,
     true
