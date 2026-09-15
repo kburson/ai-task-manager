@@ -96,6 +96,7 @@ test('production authority readers verify the owned audit report and live recove
       '> <!-- aitm-owned-comment key="audit.deliverable-v1" -->'
     ),
     `${validAuditBody}\nConflicting claim committed at \`deadbeef\` in \`docs/audits/other.md\`.`,
+    ['```md', validAuditBody, '```'].join('\n'),
   ]) {
     auditComment.body = invalidBody;
     await assert.rejects(
@@ -381,11 +382,34 @@ test('requires the fresh target body to remain epic with the recorded deliverabl
       deliverableUrl:
         'https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-9999999999',
     }),
+    bodyWith(transaction()).replace(
+      '<!-- aitm-issue-kind kind="epic" -->',
+      '<!-- aitm-issue-kind kind="epic" -->\n<!-- aitm-issue-kind kind="audit" -->'
+    ),
+    bodyWith(transaction()).replace(
+      '<!-- aitm-deliverable-posted url=',
+      '<!-- aitm-deliverable-posted url="https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-9999999999" ts="2026-09-15T06:13:54.000Z" -->\n<!-- aitm-deliverable-posted url='
+    ),
   ]) {
     const { args, calls } = harness({ args: { convergeBody } });
     await assert.rejects(runFalseDeliveryCloseRecovery(args), /historical-no-commit/);
     assert.deepEqual(calls.order, []);
   }
+});
+
+test('revalidates no-commit authority against the fresh versioned-mutation base', async () => {
+  const { args, calls } = harness();
+  const concurrentBody = bodyWith(transaction(), { issueKind: 'audit' });
+  args.mutateBody = async ({ mutate }) => {
+    calls.order.push('body');
+    const body = mutate(concurrentBody);
+    calls.mutations.push(body);
+    return { status: 'ok', body };
+  };
+  await assert.rejects(runFalseDeliveryCloseRecovery(args), /historical-no-commit/);
+  assert.deepEqual(calls.order, ['comment', 'body']);
+  assert.equal(calls.created.length, 1, 'durable evidence remains written before body mutation');
+  assert.deepEqual(calls.mutations, []);
 });
 
 test('reuses a durable correction record after interruption without a second comment', async () => {

@@ -1136,6 +1136,64 @@ export async function resolveFalseDeliveryActor({ cfg, pexec = closePexec } = {}
   return actor;
 }
 
+function stripMarkdownFencedBlocks(value) {
+  const kept = [];
+  let fenceChar = null;
+  for (const line of String(value || '').split(/\r?\n/)) {
+    const fence = line.match(/^[ \t]*(`{3,}|~{3,})/);
+    if (fenceChar === null && fence) {
+      fenceChar = fence[1][0];
+      continue;
+    }
+    if (fenceChar !== null) {
+      if (fence?.[1]?.[0] === fenceChar) fenceChar = null;
+      continue;
+    }
+    kept.push(line);
+  }
+  return kept.join('\n');
+}
+
+function falseDeliveryProgressMarkersSection(body) {
+  const lines = String(body || '').split(/\r?\n/);
+  const start = lines.findIndex((line) => /^##[ \t]+AITM Progress Markers[ \t]*$/.test(line));
+  if (start < 0) throw new Error('false-delivery-close-recovery:historical-no-commit');
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return stripMarkdownFencedBlocks(lines.slice(start + 1, end).join('\n'));
+}
+
+function assertFalseDeliveryTargetNoCommitAuthority(body, historicalNoCommit) {
+  const section = falseDeliveryProgressMarkersSection(body);
+  const kindClaims = [...section.matchAll(/<!--\s*aitm-issue-kind\b[^>]*-->/gi)];
+  const deliverableClaims = [...section.matchAll(/<!--\s*aitm-deliverable-posted\b[^>]*-->/gi)];
+  const isCanonicalLine = (claim) => section.split('\n').includes(claim[0]);
+  if (
+    kindClaims.length !== 1 ||
+    deliverableClaims.length !== 1 ||
+    !isCanonicalLine(kindClaims[0]) ||
+    !isCanonicalLine(deliverableClaims[0])
+  ) {
+    throw new Error('false-delivery-close-recovery:historical-no-commit');
+  }
+  const isolated = `## AITM Progress Markers\n\n${kindClaims[0][0]}\n${deliverableClaims[0][0]}\n`;
+  const issueKind = parseIssueKind(isolated);
+  const deliverable = parseDeliverablePosted(isolated);
+  const record = historicalNoCommit?.record;
+  if (
+    issueKind !== 'epic' ||
+    issueKind !== record?.issueKind ||
+    deliverable?.url !== record?.deliverableUrl
+  ) {
+    throw new Error('false-delivery-close-recovery:historical-no-commit');
+  }
+}
+
 export async function readFalseDeliveryAuditAuthority({
   cfg,
   pexec = closePexec,
@@ -1175,7 +1233,7 @@ export async function readFalseDeliveryAuditAuthority({
     { timeout: GH_API_TIMEOUT_MS }
   );
   const comment = JSON.parse(String(commentOut || '{}'));
-  const auditBody = String(comment.body || '');
+  const auditBody = stripMarkdownFencedBlocks(comment.body);
   const ownedMarkerMatches = auditBody.match(
     /^<!-- aitm-owned-comment key="audit\.deliverable-v1" -->$/gm
   );
@@ -1450,14 +1508,7 @@ export async function runFalseDeliveryCloseRecovery({
   if (!noCommitRecords.record) {
     throw new Error('false-delivery-close-recovery:historical-no-commit');
   }
-  const targetDeliverable = parseDeliverablePosted(convergeBody);
-  if (
-    parseIssueKind(convergeBody) !== noCommitRecords.record.record.issueKind ||
-    parseIssueKind(convergeBody) !== 'epic' ||
-    targetDeliverable?.url !== noCommitRecords.record.record.deliverableUrl
-  ) {
-    throw new Error('false-delivery-close-recovery:historical-no-commit');
-  }
+  assertFalseDeliveryTargetNoCommitAuthority(convergeBody, noCommitRecords.record);
   const matchingPullRequests = (gate?.gateInput?.pullRequests ?? []).filter(
     (pullRequest) => pullRequest?.headRefOid === acceptedSha
   );
@@ -1557,8 +1608,10 @@ export async function runFalseDeliveryCloseRecovery({
   const mutation = await mutateBody({
     issueNumber,
     repo: cfg.repo,
-    mutate: (base) =>
-      replaceFalseDeliveredCloseTransaction(base, authorization, resolved.record).body,
+    mutate: (base) => {
+      assertFalseDeliveryTargetNoCommitAuthority(base, noCommitRecords.record);
+      return replaceFalseDeliveredCloseTransaction(base, authorization, resolved.record).body;
+    },
   });
   if (mutation?.status !== 'ok' || typeof mutation.body !== 'string') {
     throw new Error('false-delivery-close-recovery:body-write');
