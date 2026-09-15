@@ -129,7 +129,9 @@ function repoRoot() {
 // surface grows by exactly those four entries; no test or excluded path ships.
 // #1626 ships the exception record, authority resolver, immutable store, and
 // governed verb. These four runtime entries are the entire intentional growth.
-const ENTRY_CEILING = 779;
+// #1627 ships the snapshot builder, aggregate evaluator, and read-only preflight
+// verb. Those three runtime files are this child's complete package growth.
+const ENTRY_CEILING = 782;
 
 let packedFileCache = null;
 function packedFiles() {

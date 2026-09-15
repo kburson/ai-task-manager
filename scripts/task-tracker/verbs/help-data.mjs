@@ -150,6 +150,27 @@ export const VERB_REFERENCE = {
       '/task workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json',
     ],
   },
+  'workflow-preflight': {
+    topic: 'evidence',
+    summary:
+      'Inspect effective workflow policy through an explicit target state without binding or mutation.',
+    usage: '/task workflow-preflight #N --target <state> [--json]',
+    flags: [
+      {
+        flag: '--target <state>',
+        desc: 'explicit lifecycle target from backlog through done',
+      },
+      { flag: '--json', desc: 'emit aitm.workflow-preflight-report/v1 JSON' },
+    ],
+    exitCodes: [
+      { code: 6, meaning: 'one or more current policy blockers were discovered' },
+      { code: 7, meaning: 'external state or a required read was indeterminate' },
+    ],
+    examples: [
+      '/task workflow-preflight #57 --target done',
+      '/task workflow-preflight #57 --target review --json',
+    ],
+  },
 
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {
