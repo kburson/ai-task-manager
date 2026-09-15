@@ -244,6 +244,11 @@ git commit -m "[#1635] docs: define false delivery recovery contract"
 - Consumes: completed implementation and docs.
 - Produces: exact tested #1635 SHA, governed PR, hosted checks, merge receipt, and trunk verification.
 
+**Merged-receipt amendment:** When GitHub's `messageHeadline` truncates a long source
+subject, delivery reconciliation derives the canonical first line from the already-fetched
+full commit `message`. A focused adapter test must prove the full `[#1635]` token survives;
+the truncated display field is never delivery authority.
+
 - [ ] **Step 1: Run complete local verification**
 
 Run:
