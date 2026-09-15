@@ -1084,15 +1084,19 @@ Historical records — the delivered-close transaction, the delivery receipt for
 accepted SHA — are true statements about what happened. Supersede them with new evidence;
 do not delete them.
 
-An audited false-delivery close is a separate same-SHA case. When a governed audit proves
-that a historical root-epic no-commit record never delivered to trunk, first land the
-exact accepted head through a governed merged trunk PR. Then reopen and restore the issue
+An audited false-delivery close is a separate human-only case. When a governed audit proves
+that a historical root-epic no-commit record never delivered to trunk, first land either
+that exact head or one protected-base integration head through a governed merged trunk PR.
+An integration head must be an exact two-parent merge with the historical accepted SHA as
+first parent and the incorporated trunk base as second parent; rebases, squashes, reversed
+parents, and unrelated heads refuse. Then reopen and restore the issue
 to Review through the sanctioned recovery boundary and use
 `/task close <N> --restart-false-delivery-transaction --audit-issue <A> --recovery-issue <R>`.
 The human-only mode requires the audit row, assigned recovery marker, old no-commit record,
-and exact-SHA Test, Review, intent, receipt, merged-PR, and trunk verification authority.
-It writes immutable correction evidence before replacing the terminal marker and is not
-a generic delivery backfill. See `rules/close.md` for the full retry and incompatibility
+and Test, Review, intent, receipt, merged-PR, and trunk verification authority at the
+delivery-head SHA. It writes immutable correction evidence naming both historical and
+delivered SHAs before replacing the terminal marker at the delivered SHA and is not a
+generic delivery backfill. See `rules/close.md` for the full retry and incompatibility
 contract.
 
 ---

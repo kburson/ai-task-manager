@@ -99,6 +99,7 @@ import {
   resolveReopenedCloseRecovery,
 } from '../lib/reopened-close-recovery.mjs';
 import {
+  FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA,
   authorizeFalseDeliveryCloseRestart,
   classifyFalseDeliveryRecoveryProgress,
   createFalseDeliveryCloseRecoveryRecord,
@@ -1068,11 +1069,11 @@ export function permitsReopenedOutcomeCorrection({
   if (direct) return true;
 
   const falseDeliveryDirect =
-    recoveryRecord?.schema === 'aitm.false-delivery-close-recovery/v1' &&
+    recoveryRecord?.schema === FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA &&
     transaction?.schema === 'aitm.delivered-close/v1' &&
     recoveryRecord.issueNumber === transaction.issueNumber &&
     recoveryRecord.replacementTransactionId === transaction.transactionId &&
-    recoveryRecord.acceptedSha === transaction.acceptedSha;
+    recoveryRecord.deliveryHeadSha === transaction.acceptedSha;
   if (falseDeliveryDirect) return true;
 
   return (
@@ -1357,9 +1358,46 @@ export async function readFalseDeliveryRecoveryAuthority({
   };
 }
 
-// #1635 — audit-backed same-SHA correction for a completed close whose
-// historical no-commit delivery premise was false. This stays separate from the
-// different-SHA reopened recovery below.
+export async function readFalseDeliverySourceIntegrationAuthority({
+  historicalAcceptedSha,
+  deliveryHeadSha,
+  cwd,
+  trunkRef,
+  pexec = closePexec,
+} = {}) {
+  if (deliveryHeadSha === historicalAcceptedSha) return null;
+  try {
+    const { stdout } = await pexec('git', ['rev-list', '--parents', '-n', '1', deliveryHeadSha], {
+      cwd,
+      timeout: GIT_TIMEOUT_MS,
+    });
+    const commitAndParents = String(stdout || '')
+      .trim()
+      .split(/\s+/);
+    if (
+      commitAndParents.length !== 3 ||
+      commitAndParents[0] !== deliveryHeadSha ||
+      commitAndParents[1] !== historicalAcceptedSha
+    ) {
+      throw new Error('topology');
+    }
+    await pexec(
+      'git',
+      ['merge-base', '--is-ancestor', commitAndParents[2], trunkRef || 'origin/trunk'],
+      { cwd, timeout: GIT_TIMEOUT_MS }
+    );
+    return {
+      deliveryHeadSha,
+      parentShas: commitAndParents.slice(1),
+    };
+  } catch {
+    throw new Error('false-delivery-close-recovery:current-evidence');
+  }
+}
+
+// #1635 — audit-backed correction for a completed close whose historical
+// no-commit delivery premise was false. A protected-base integration head is
+// admitted only through the independently inspected topology above.
 export async function runFalseDeliveryCloseRecovery({
   closeIssueNum,
   auditIssueNumber,
@@ -1440,6 +1478,7 @@ export async function runFalseDeliveryCloseRecovery({
   await ensureDeliveryAuthorized();
   const gate = resolvedDeliveryGateRef();
   const acceptedSha = gate?.gateInput?.acceptedSha;
+  const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueNumber}`, projectDir });
   const activeTransactions = readDeliveredCloseTransactions(convergeBody);
   if (activeTransactions.length !== 1) {
     throw new Error('false-delivery-close-recovery:ambiguous-body');
@@ -1472,22 +1511,29 @@ export async function runFalseDeliveryCloseRecovery({
     const receiptInput = gate?.receipt?.verification?.receiptInput;
     const transactionMatches =
       activeTransaction.issueNumber === record.issueNumber &&
-      activeTransaction.acceptedSha === record.acceptedSha &&
+      activeTransaction.acceptedSha === record.deliveryHeadSha &&
       activeTransaction.reviewAuthority === record.currentReviewAuthority &&
       activeTransaction.completedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index]);
     const currentAuthorityMatches =
-      acceptedSha === record.acceptedSha &&
-      gate?.testReceiptSha === record.acceptedSha &&
-      gate?.recoveryReviewApprovedSha === record.acceptedSha &&
+      acceptedSha === record.deliveryHeadSha &&
+      gate?.testReceiptSha === record.deliveryHeadSha &&
+      gate?.recoveryReviewApprovedSha === record.deliveryHeadSha &&
       terminalReviewAuthority() === record.currentReviewAuthority &&
       receiptInput?.intentId === record.intentId &&
       receiptInput?.issueNumber === record.issueNumber &&
       receiptInput?.prNumber === record.prNumber &&
-      receiptInput?.expectedHeadSha === record.acceptedSha &&
+      receiptInput?.expectedHeadSha === record.deliveryHeadSha &&
       receiptInput?.mergeCommitSha === record.mergeCommitSha;
     if (!transactionMatches || !currentAuthorityMatches) {
       throw new Error('false-delivery-close-recovery:completed-retry-authority');
     }
+    await readFalseDeliverySourceIntegrationAuthority({
+      historicalAcceptedSha: record.acceptedSha,
+      deliveryHeadSha: record.deliveryHeadSha,
+      cwd,
+      trunkRef: cfg.trunkRef,
+      pexec,
+    });
     return {
       body: convergeBody,
       transaction: activeTransaction,
@@ -1497,6 +1543,13 @@ export async function runFalseDeliveryCloseRecovery({
   const oldTransaction = backing.length
     ? oldFalseDeliveryTransactionFromRecord(backing[0].record)
     : activeTransaction;
+  const sourceIntegration = await readFalseDeliverySourceIntegrationAuthority({
+    historicalAcceptedSha: oldTransaction.acceptedSha,
+    deliveryHeadSha: acceptedSha,
+    cwd,
+    trunkRef: cfg.trunkRef,
+    pexec,
+  });
 
   const rawTargetComments = await listTargetComments();
   const normalizedComments = rawTargetComments.map((comment) => {
@@ -1529,7 +1582,6 @@ export async function runFalseDeliveryCloseRecovery({
   const receipt = deliveryProjection.matchingReceipt?.record ?? null;
   if (!intent || !receipt) throw new Error('false-delivery-close-recovery:current-evidence');
 
-  const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueNumber}`, projectDir });
   const dirty = await inspectDirty({ cwd });
   const authorization = authorizeFalseDeliveryCloseRestart({
     repository: cfg.repo,
@@ -1547,11 +1599,12 @@ export async function runFalseDeliveryCloseRecovery({
       testReceiptSha: gate?.testReceiptSha ?? null,
       reviewApprovedSha: gate?.recoveryReviewApprovedSha ?? null,
       verifiedDelivery: gate?.receipt?.verification?.receiptInput ?? null,
+      sourceIntegration,
     },
     audit: await readAudit({
       auditIssueNumber,
       issueNumber,
-      acceptedSha,
+      acceptedSha: oldTransaction.acceptedSha,
     }),
     recovery: await readRecovery({
       recoveryIssueNumber,

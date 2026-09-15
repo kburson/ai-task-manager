@@ -99,7 +99,7 @@ test('#1490: close help exposes the reopened completed-transaction recovery cont
   assert.match(effects, /without the flag.*terminal-state-conflict/i);
 });
 
-test('#1635: close help exposes the audited same-SHA false-delivery recovery contract', () => {
+test('#1635: close help exposes the audited protected-base false-delivery recovery contract', () => {
   const reference = VERB_REFERENCE.close;
   assert.match(reference.usage, /--restart-false-delivery-transaction/);
   assert.ok(reference.flags.some(({ flag }) => flag === '--audit-issue <N>'));
@@ -108,7 +108,7 @@ test('#1635: close help exposes the audited same-SHA false-delivery recovery con
     ({ flag }) => flag === '--restart-false-delivery-transaction'
   );
   assert.match(recovery.desc, /human-only/i);
-  assert.match(recovery.desc, /same-SHA/i);
+  assert.match(recovery.desc, /protected-base integration head/i);
   assert.match(recovery.desc, /no-commit/i);
   assert.ok(
     reference.examples.includes(
@@ -118,9 +118,10 @@ test('#1635: close help exposes the audited same-SHA false-delivery recovery con
 
   const preconditions = VERB_CONTRACTS.close.preconditions.join(' ');
   assert.match(preconditions, /audit.*false-Done/i);
-  assert.match(preconditions, /same accepted SHA.*Test.*Review.*merged trunk PR/i);
+  assert.match(preconditions, /historical accepted SHA.*first parent/i);
+  assert.match(preconditions, /delivery head.*Test.*Review.*merged trunk PR/i);
   const effects = VERB_CONTRACTS.close.effects.join(' ');
-  assert.match(effects, /immutable correction evidence.*before replacing/i);
+  assert.match(effects, /immutable correction evidence.*historical.*delivery.*before replacing/i);
   assert.match(effects, /not a generic delivery backfill/i);
 });
 

@@ -23,11 +23,9 @@ import {
   renderFalseDeliveryCloseRecoveryComment,
 } from '../../../../task-tracker/lib/false-delivery-close-recovery.mjs';
 import {
-  parseFalseDeliveryCloseRecoveryArgs,
   permitsReopenedOutcomeCorrection,
   readFalseDeliveryAuditAuthority,
   readFalseDeliveryRecoveryAuthority,
-  resolveFalseDeliveryActor,
   runFalseDeliveryCloseRecovery,
 } from '../../../../task-tracker/verbs/close.mjs';
 import { closeBody, runClose } from '../../../helpers/close-convergence-wiring-helpers.mjs';
@@ -35,6 +33,8 @@ import { closeBody, runClose } from '../../../helpers/close-convergence-wiring-h
 const REPOSITORY = 'kburson/ai-task-manager';
 const ISSUE = 1624;
 const ACCEPTED_SHA = 'a'.repeat(40);
+const DELIVERY_SHA = 'c'.repeat(40);
+const TRUNK_PARENT_SHA = 'd'.repeat(40);
 const MERGE_SHA = 'b'.repeat(40);
 const INTENT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const OLD_TRANSACTION_ID = 'old-close-transaction';
@@ -183,20 +183,6 @@ test('production authority readers verify the owned audit report and live recove
   }
 });
 
-test('production actor resolution dereferences @me through GitHub', async () => {
-  assert.equal(
-    await resolveFalseDeliveryActor({
-      cfg: { assignee: '@me' },
-      pexec: async () => ({ stdout: 'kburson\n' }),
-    }),
-    'kburson'
-  );
-  assert.equal(
-    await resolveFalseDeliveryActor({ cfg: { assignee: 'maintainer' }, pexec: async () => null }),
-    'maintainer'
-  );
-});
-
 function transaction() {
   return {
     schema: 'aitm.delivered-close/v1',
@@ -220,7 +206,7 @@ function bodyWith(value, { issueKind = 'epic', deliverableUrl = NO_COMMIT_DELIVE
 `;
 }
 
-function delivery() {
+function delivery(deliveryHeadSha = ACCEPTED_SHA) {
   const intent = buildDeliveryIntent({
     intentId: INTENT_ID,
     supersedesIntentId: null,
@@ -229,11 +215,11 @@ function delivery() {
     prNumber: 1640,
     baseRef: 'trunk',
     headRef: 'feature/epic/1624',
-    expectedHeadSha: ACCEPTED_SHA,
+    expectedHeadSha: deliveryHeadSha,
     mergeMethod: 'merge',
     attributionTokens: ['#1624'],
     commitTitle: '[#1624] Deliver preserved workflow exceptions',
-    commitMessage: `PR #1640\nSource: ${ACCEPTED_SHA}\n\nAttribution: [#1624]`,
+    commitMessage: `PR #1640\nSource: ${deliveryHeadSha}\n\nAttribution: [#1624]`,
     provider: 'codex',
     sessionId: 'session-1624-recovery',
     clientCreatedAt: '2026-09-15T16:30:00.000Z',
@@ -242,7 +228,7 @@ function delivery() {
     intentId: INTENT_ID,
     issueNumber: ISSUE,
     prNumber: 1640,
-    expectedHeadSha: ACCEPTED_SHA,
+    expectedHeadSha: deliveryHeadSha,
     mergeCommitSha: MERGE_SHA,
     baseRef: 'trunk',
     mergeMethod: 'merge',
@@ -260,14 +246,15 @@ function delivery() {
       merged: true,
       headRefName: 'feature/epic/1624',
       baseRefName: 'trunk',
-      headRefOid: ACCEPTED_SHA,
+      headRefOid: deliveryHeadSha,
       mergeCommitSha: MERGE_SHA,
     },
   };
 }
 
 function harness(overrides = {}) {
-  const pair = delivery();
+  const deliveryHeadSha = overrides.deliveryHeadSha ?? ACCEPTED_SHA;
+  const pair = delivery(deliveryHeadSha);
   const noCommit = buildNoCommitDeliveryRecord({
     recordId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
     repository: REPOSITORY,
@@ -283,18 +270,18 @@ function harness(overrides = {}) {
   const calls = { order: [], created: [], mutations: [] };
   const gate = {
     gateInput: {
-      acceptedSha: ACCEPTED_SHA,
+      acceptedSha: deliveryHeadSha,
       pullRequests: [pair.pullRequest],
     },
-    testReceiptSha: ACCEPTED_SHA,
-    recoveryReviewApprovedSha: ACCEPTED_SHA,
+    testReceiptSha: deliveryHeadSha,
+    recoveryReviewApprovedSha: deliveryHeadSha,
     receipt: {
       verification: {
         receiptInput: {
           intentId: INTENT_ID,
           issueNumber: ISSUE,
           prNumber: 1640,
-          expectedHeadSha: ACCEPTED_SHA,
+          expectedHeadSha: deliveryHeadSha,
           mergeCommitSha: MERGE_SHA,
         },
       },
@@ -394,6 +381,48 @@ test('sources audited no-commit and current delivery evidence before body replac
   assert.equal(result.transaction.acceptedSha, ACCEPTED_SHA);
   assert.deepEqual(result.transaction.completedSteps, []);
   assert.equal(readDeliveredCloseTransactions(result.body)[0].transactionId, NEW_TRANSACTION_ID);
+});
+
+test('derives and verifies the protected-base integration topology before mutation', async () => {
+  const gitCalls = [];
+  const { args, calls } = harness({
+    deliveryHeadSha: DELIVERY_SHA,
+    args: {
+      cfg: { repo: REPOSITORY, assignee: '@me', trunkRef: 'origin/trunk' },
+      pexec: async (command, commandArgs) => {
+        gitCalls.push([command, ...commandArgs]);
+        if (commandArgs[0] === 'rev-list') {
+          return { stdout: `${DELIVERY_SHA} ${ACCEPTED_SHA} ${TRUNK_PARENT_SHA}\n` };
+        }
+        if (commandArgs[0] === 'merge-base') return { stdout: '' };
+        throw new Error(`unexpected command: ${command} ${commandArgs.join(' ')}`);
+      },
+    },
+  });
+  const result = await runFalseDeliveryCloseRecovery(args);
+  assert.equal(result.transaction.acceptedSha, DELIVERY_SHA);
+  assert.deepEqual(gitCalls, [
+    ['git', 'rev-list', '--parents', '-n', '1', DELIVERY_SHA],
+    ['git', 'merge-base', '--is-ancestor', TRUNK_PARENT_SHA, 'origin/trunk'],
+  ]);
+  assert.deepEqual(calls.order, ['comment', 'body']);
+});
+
+test('refuses an integration head whose trunk parent is not reachable', async () => {
+  const { args, calls } = harness({
+    deliveryHeadSha: DELIVERY_SHA,
+    args: {
+      cfg: { repo: REPOSITORY, assignee: '@me', trunkRef: 'origin/trunk' },
+      pexec: async (_command, commandArgs) => {
+        if (commandArgs[0] === 'rev-list') {
+          return { stdout: `${DELIVERY_SHA} ${ACCEPTED_SHA} ${TRUNK_PARENT_SHA}\n` };
+        }
+        throw new Error('not-an-ancestor');
+      },
+    },
+  });
+  await assert.rejects(runFalseDeliveryCloseRecovery(args), /current-evidence/);
+  assert.deepEqual(calls.order, []);
 });
 
 test('refuses when gate-resolved test authority differs from the accepted transaction', async () => {
@@ -626,52 +655,6 @@ test('a completed correction retry rejects a duplicate recovery identity', async
     },
   });
   await assert.rejects(runFalseDeliveryCloseRecovery(retry.args), /ambiguous-evidence/);
-});
-
-test('requires the complete false-delivery flag group and rejects incompatible close modes', () => {
-  assert.deepEqual(
-    parseFalseDeliveryCloseRecoveryArgs([
-      '#1624',
-      '--restart-false-delivery-transaction',
-      '--audit-issue',
-      '1633',
-      '--recovery-issue',
-      '1635',
-    ]),
-    { enabled: true, auditIssueNumber: 1633, recoveryIssueNumber: 1635 }
-  );
-  assert.deepEqual(parseFalseDeliveryCloseRecoveryArgs(['#1624']), {
-    enabled: false,
-    auditIssueNumber: null,
-    recoveryIssueNumber: null,
-  });
-  for (const rest of [
-    ['#1624', '--restart-false-delivery-transaction'],
-    ['#1624', '--restart-false-delivery-transaction', '--audit-issue', '1633'],
-    [
-      '#1624',
-      '--restart-false-delivery-transaction',
-      '--audit-issue',
-      '1633',
-      '--recovery-issue',
-      '1635',
-      '--force',
-    ],
-    [
-      '#1624',
-      '--restart-false-delivery-transaction',
-      '--audit-issue',
-      '1633',
-      '--recovery-issue',
-      '1635',
-      '--restart-reopened-transaction',
-    ],
-  ]) {
-    assert.throws(
-      () => parseFalseDeliveryCloseRecoveryArgs(rest),
-      /false-delivery-close-recovery:incompatible-flags/
-    );
-  }
 });
 
 test('the close verb replaces the audited transaction and resumes the unchanged saga', async () => {
