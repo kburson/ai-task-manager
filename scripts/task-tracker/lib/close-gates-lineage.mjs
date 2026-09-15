@@ -15,10 +15,11 @@
 //                           the nearest surviving ancestor branch (through
 //                           trunk) when the immediate parent branch is already
 //                           gone (rebased away / deleted after merge-back).
-//   * epic                — asserts its DERIVED child-trail (#883) on the
-//                           epic's own branch while it survives, then on the
-//                           nearest surviving ancestor after merge-back removes
-//                           it. Reconciles with the #877 review→done
+//   * epic                — asserts its DERIVED child-trail (#883) on its
+//                           resolved parent target, regardless of whether its
+//                           own branch survives. A root epic targets trunk; a
+//                           nested epic targets the nearest surviving parent
+//                           epic branch. Reconciles with the #877 review→done
 //                           all-children-done gate, which owns the orthogonal
 //                           "are the children in state Done?" invariant.
 //
@@ -38,6 +39,7 @@ import { parseBranchName } from './branch-name.mjs';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 import { buildGraphNodeAuthority } from './graph-node-authority.mjs';
+import { parseIssueKind } from './issue-kind.mjs';
 import {
   epicTrailLogArgs,
   parseEpicTrailLog,
@@ -166,10 +168,10 @@ async function defaultEpicTrailLog({ epicHead, projectDir }) {
   return stdout;
 }
 
-// The lineage-aware done gate. Same trail skip-semantics as `commitsOnTrunkGate`:
-// no commit-trail comment → skip (nothing was ever committed); empty trail → skip.
-// Only when the trail claims ≥1 commit is the Axis-1 reachability asserted.
-export async function lineageDoneGate({ cfg, issueNumber, projectDir, deps = {} } = {}) {
+// The lineage-aware done gate. Leaf issues keep the trail skip semantics of
+// `commitsOnTrunkGate`; epics always evaluate their derived child trail because
+// they intentionally have no epic-owned commit trail.
+export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '', deps = {} } = {}) {
   if (!cfg) throw new Error('lineageDoneGate: cfg is required');
   if (!issueNumber) throw new Error('lineageDoneGate: issueNumber is required');
 
@@ -177,17 +179,23 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, deps = {} 
   const attributing = deps.attributingCommits || defaultAttributingCommits;
   const resolveTrunkRef = deps.resolveTrunkRef || defaultResolveTrunkRef;
 
-  // Trail presence/empty skip (identical semantics to the trunk gate it replaces).
+  // Leaf trail presence/empty skip matches the trunk gate it replaces. An epic
+  // intentionally has no own commit trail; its aggregate deliverable is the
+  // derived child trail, so skipping here would bypass the epic delivery proof.
+  const epicKind = parseIssueKind(body) === 'epic';
   let shas = [];
   try {
     const comments = await listComments({ cfg, issueNumber });
     const trail = findCommitTrailComment(comments);
-    if (!trail) return { ok: true, skipped: 'no-commits-marker' };
-    shas = parseCommitShas(trail.body);
+    if (!trail) {
+      if (!epicKind) return { ok: true, skipped: 'no-commits-marker' };
+    } else {
+      shas = parseCommitShas(trail.body);
+    }
   } catch (err) {
     return { ok: false, blocker: `close-lineage-comments-fetch-failed: ${err.message}` };
   }
-  if (shas.length === 0) return { ok: true, skipped: 'empty-commits-marker' };
+  if (shas.length === 0 && !epicKind) return { ok: true, skipped: 'empty-commits-marker' };
 
   // The trunk name is the walk-up terminal; explicit `deps.trunk` wins for tests.
   const trunk = deps.trunk || (await resolveTrunkRef({ cfg, projectDir })) || DEFAULT_TRUNK;
@@ -216,16 +224,18 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, deps = {} 
   const id = String(issueNumber).replace(/^#/, '');
 
   if (lineage.role === 'epic') {
-    let epicHead = lineage.branch;
-    if (!branchExists(epicHead)) {
-      try {
-        epicHead = resolveDoneTargetBranch({
-          issueNumber,
-          deps: { graph, branchExists, trunk },
-        });
-      } catch (err) {
-        return { ok: false, blocker: `close-lineage-target-unresolved: ${err.message}` };
-      }
+    let epicHead;
+    try {
+      // An epic's own branch is its delivery source, not evidence that the epic
+      // was delivered upward. Assert the derived child trail on the resolved
+      // parent target: trunk for a root epic, or the nearest surviving parent
+      // epic branch for a nested epic (#1632).
+      epicHead = resolveDoneTargetBranch({
+        issueNumber,
+        deps: { graph, branchExists, trunk },
+      });
+    } catch (err) {
+      return { ok: false, blocker: `close-lineage-target-unresolved: ${err.message}` };
     }
     return epicDerivedTrailGate({
       epicNumber: Number(id),

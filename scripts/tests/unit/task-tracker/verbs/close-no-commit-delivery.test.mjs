@@ -20,7 +20,7 @@ const URL = 'https://github.com/kburson/ai-task-manager/issues/1407#issuecomment
 const OTHER_URL = 'https://github.com/kburson/ai-task-manager/issues/1407#issuecomment-5469797877';
 const BODY = `## AITM Progress Markers
 
-<!-- aitm-issue-kind kind="epic" -->
+<!-- aitm-issue-kind kind="audit" -->
 <!-- aitm-deliverable-posted url="${URL}" ts="2026-08-30T15:49:04.000Z" -->`;
 
 function record(overrides = {}) {
@@ -28,7 +28,7 @@ function record(overrides = {}) {
     recordId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
     repository: 'kburson/ai-task-manager',
     issueNumber: 1407,
-    issueKind: 'epic',
+    issueKind: 'audit',
     deliverableUrl: URL,
     acceptedSha: HEAD,
     provider: 'codex',
@@ -65,7 +65,7 @@ function input(overrides = {}) {
   };
 }
 
-test('exact no-commit authorization permits close without PR verification', async () => {
+test('exact audit authorization permits close without PR verification', async () => {
   const gateInput = input();
   const receiptGate = requireDeliveryReceipt(gateInput);
   assert.equal(receiptGate.skipped, false);
@@ -147,18 +147,19 @@ test('no-commit close rejects wrong issue, kind, deliverable URL, or accepted SH
 });
 
 test('code-kind issue still requires the pull-request receipt path', () => {
-  const codeBody = BODY.replace('<!-- aitm-issue-kind kind="epic" -->\n', '');
+  const codeBody = BODY.replace('<!-- aitm-issue-kind kind="audit" -->\n', '');
   assert.throws(
     () => requireDeliveryReceipt(input({ body: codeBody, noCommitRecords: projection() })),
     /close-delivery-receipt:ambiguous-pr/
   );
 });
 
-test('epic with a pull request requires the pull-request receipt path', () => {
+test('root epic with a pull request requires the pull-request receipt path', () => {
   assert.throws(
     () =>
       requireDeliveryReceipt(
         input({
+          body: BODY.replace('kind="audit"', 'kind="epic"'),
           pullRequests: [
             {
               number: 1502,
@@ -177,7 +178,7 @@ test('epic with a pull request requires the pull-request receipt path', () => {
   );
 });
 
-test('close input loads no-commit authorization even when the branch has no pull request', async () => {
+test('close input loads audit authorization even when the branch has no pull request', async () => {
   const receiptData = (stage) =>
     Buffer.from(JSON.stringify({ stage, commitSha: HEAD })).toString('base64url');
   const issueBody = `${BODY}
@@ -186,7 +187,7 @@ test('close input loads no-commit authorization even when the branch has no pull
 <!-- aitm-verification-receipt stage="review" data="${receiptData('review')}" -->`;
   let commentReads = 0;
   const pexec = async (command, args) => {
-    if (command === 'git' && args[0] === 'branch') return { stdout: 'feature/epic/1407\n' };
+    if (command === 'git' && args[0] === 'branch') return { stdout: 'audit/1407\n' };
     if (command === 'git' && args[0] === 'rev-parse') return { stdout: `${OTHER_HEAD}\n` };
     if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
     if (command === 'gh' && args[0] === 'api') {

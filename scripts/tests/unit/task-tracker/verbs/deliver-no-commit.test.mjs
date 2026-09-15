@@ -10,7 +10,7 @@ const DELIVERABLE_URL =
   'https://github.com/kburson/ai-task-manager/issues/1407#issuecomment-5469679817';
 const BODY = `## AITM Progress Markers
 
-<!-- aitm-issue-kind kind="epic" -->
+<!-- aitm-issue-kind kind="audit" -->
 <!-- aitm-deliverable-posted url="${DELIVERABLE_URL}" ts="2026-08-30T15:49:04.000Z" -->`;
 
 function makeHarness(overrides = {}) {
@@ -97,7 +97,7 @@ function makeHarness(overrides = {}) {
   return { calls, comments, deps, issue };
 }
 
-test('reviewed no-commit issue records action-free delivery and reuses exact readback', async () => {
+test('reviewed audit records action-free delivery and reuses exact readback', async () => {
   const harness = makeHarness({ localHeadSha: ADVANCED_HEAD });
   const input = {
     issueNumber: 1407,
@@ -111,7 +111,7 @@ test('reviewed no-commit issue records action-free delivery and reuses exact rea
   assert.equal(delivered.mode, 'no-commit');
   assert.equal(delivered.action, null);
   assert.equal(delivered.receipt.issueNumber, 1407);
-  assert.equal(delivered.receipt.issueKind, 'epic');
+  assert.equal(delivered.receipt.issueKind, 'audit');
   assert.equal(delivered.receipt.deliverableUrl, DELIVERABLE_URL);
   assert.equal(delivered.receipt.acceptedSha, HEAD);
   assert.equal(harness.calls.pullRequestsListed, 1);
@@ -128,7 +128,25 @@ test('reviewed no-commit issue records action-free delivery and reuses exact rea
 
 test('code-kind issue never enters the no-commit delivery path', async () => {
   const harness = makeHarness({
-    issue: { body: BODY.replace('<!-- aitm-issue-kind kind="epic" -->\n', '') },
+    issue: { body: BODY.replace('<!-- aitm-issue-kind kind="audit" -->\n', '') },
+  });
+
+  await assert.rejects(
+    runDeliver({
+      issueNumber: 1407,
+      cfg: { repo: 'kburson/ai-task-manager', assignee: 'kburson', trunkRef: 'origin/trunk' },
+      state: { active: '#1407', entryStartTs: '2026-08-30T16:00:00.000Z' },
+      deps: harness.deps,
+    }),
+    /delivery-preflight:pull-request-count/
+  );
+  assert.equal(harness.calls.commentsCreated, 0);
+  assert.equal(harness.calls.pullRequestsListed, 1);
+});
+
+test('root epic without a PR cannot enter the no-commit delivery path', async () => {
+  const harness = makeHarness({
+    issue: { body: BODY.replace('kind="audit"', 'kind="epic"') },
   });
 
   await assert.rejects(
@@ -146,6 +164,7 @@ test('code-kind issue never enters the no-commit delivery path', async () => {
 
 test('epic with a pull request uses provider delivery instead of no-commit delivery', async () => {
   const harness = makeHarness({
+    issue: { body: BODY.replace('kind="audit"', 'kind="epic"') },
     deps: {
       async listPullRequests() {
         harness.calls.pullRequestsListed += 1;

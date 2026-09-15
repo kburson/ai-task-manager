@@ -99,6 +99,32 @@ test('#1490: close help exposes the reopened completed-transaction recovery cont
   assert.match(effects, /without the flag.*terminal-state-conflict/i);
 });
 
+test('#1635: close help exposes the audited protected-base false-delivery recovery contract', () => {
+  const reference = VERB_REFERENCE.close;
+  assert.match(reference.usage, /--restart-false-delivery-transaction/);
+  assert.ok(reference.flags.some(({ flag }) => flag === '--audit-issue <N>'));
+  assert.ok(reference.flags.some(({ flag }) => flag === '--recovery-issue <N>'));
+  const recovery = reference.flags.find(
+    ({ flag }) => flag === '--restart-false-delivery-transaction'
+  );
+  assert.match(recovery.desc, /human-only/i);
+  assert.match(recovery.desc, /protected-base integration head/i);
+  assert.match(recovery.desc, /no-commit/i);
+  assert.ok(
+    reference.examples.includes(
+      '/task close 1624 --restart-false-delivery-transaction --audit-issue 1633 --recovery-issue 1635'
+    )
+  );
+
+  const preconditions = VERB_CONTRACTS.close.preconditions.join(' ');
+  assert.match(preconditions, /audit.*false-Done/i);
+  assert.match(preconditions, /historical accepted SHA.*first parent/i);
+  assert.match(preconditions, /delivery head.*Test.*Review.*merged trunk PR/i);
+  const effects = VERB_CONTRACTS.close.effects.join(' ');
+  assert.match(effects, /immutable correction evidence.*historical.*delivery.*before replacing/i);
+  assert.match(effects, /not a generic delivery backfill/i);
+});
+
 test('incident-ledger help requires executable Incorporated carrier authority', () => {
   const preconditions = VERB_CONTRACTS['incident-ledger'].preconditions.join(' ');
   const effects = VERB_CONTRACTS['incident-ledger'].effects.join(' ');

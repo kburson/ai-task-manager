@@ -396,7 +396,9 @@ thing:
   reachable on its immediate parent branch (Axis 1) — walk the epic lineage up to
   the nearest surviving ancestor branch, ultimately `trunk`. This is a fact the
   board records; it is what lets a child finish against its epic's integration
-  branch long before the epic itself lands.
+  branch long before the epic itself lands. A root epic's immediate parent is
+  `trunk`: its own surviving epic branch is only the delivery source and can
+  never satisfy Done by itself.
 - **Axis 2 — delivered-to-customer (derived).** _Delivered_ is trunk reachability
   of the same `[#N]` token. It is **never persisted** — it is recomputed on demand
   every time a report needs it, so no stale delivered-flag can ever disagree with
@@ -426,6 +428,14 @@ thing:
   — the squash concatenates the child commits' messages into the squash-commit
   body, so every `[#N]` token is preserved and message-based attribution still
   resolves. That is why the PR-only path is attribution-safe.
+
+A root epic remains a no-commit coordination kind during Develop and Test, but
+that classification does not create a comment-only delivery lane. At Close its
+aggregate child history is commit-bearing delivery: `/task deliver` must produce
+an authoritative merged-PR receipt for trunk, and `/task close` must freshly
+verify both that receipt and the derived child trail on trunk. An
+`aitm-deliverable-posted` marker, Full-Auto approval, or a completed local close
+journal cannot substitute for the trunk PR (#1632).
 
 ### Full-Auto PR merge + local-trunk sync
 
@@ -1114,6 +1124,21 @@ costs you should expect, all observed on #1490:
 Historical records — the delivered-close transaction, the delivery receipt for the old
 accepted SHA — are true statements about what happened. Supersede them with new evidence;
 do not delete them.
+
+An audited false-delivery close is a separate human-only case. When a governed audit proves
+that a historical root-epic no-commit record never delivered to trunk, first land either
+that exact head or one protected-base integration head through a governed merged trunk PR.
+An integration head must be an exact two-parent merge with the historical accepted SHA as
+first parent and the incorporated trunk base as second parent; rebases, squashes, reversed
+parents, and unrelated heads refuse. Then reopen and restore the issue
+to Review through the sanctioned recovery boundary and use
+`/task close <N> --restart-false-delivery-transaction --audit-issue <A> --recovery-issue <R>`.
+The human-only mode requires the audit row, assigned recovery marker, old no-commit record,
+and Test, Review, intent, receipt, merged-PR, and trunk verification authority at the
+delivery-head SHA. It writes immutable correction evidence naming both historical and
+delivered SHAs before replacing the terminal marker at the delivered SHA and is not a
+generic delivery backfill. See `rules/close.md` for the full retry and incompatibility
+contract.
 
 ---
 

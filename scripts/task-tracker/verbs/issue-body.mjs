@@ -154,7 +154,10 @@ export function applyIssueBodyOperation(baseBody, operationInput, { checkVersion
     const matches = countOccurrences(base, operation.expected);
     if (matches === 0) fail('zero matches');
     if (matches > 1) fail('ambiguous matches', String(matches));
-    return preserveAitmMarkers(base, base.replace(operation.expected, operation.replacement));
+    return preserveAitmMarkers(
+      base,
+      base.replace(operation.expected, () => operation.replacement)
+    );
   }
   const span = sectionSpan(base, operation.heading);
   const current = base.slice(span.contentStart, span.contentEnd);

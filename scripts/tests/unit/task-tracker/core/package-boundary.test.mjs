@@ -215,9 +215,14 @@ test('package-boundary: shipped README has no dead docs/introduction link', () =
 
 test('package-boundary: total entry count stays under the ceiling', () => {
   const files = packedFiles();
+  // #1635 ships one false-delivery recovery authority. Keep its allowance
+  // separate so the preserved #1624 branch can apply its exact ceiling change
+  // without both histories editing the same base hunk.
+  const recoveryEntryAllowance = 1;
+  const effectiveCeiling = ENTRY_CEILING + recoveryEntryAllowance;
   assert.ok(
-    files.length <= ENTRY_CEILING,
-    `packed entry count ${files.length} exceeds ceiling ${ENTRY_CEILING}; ` +
+    files.length <= effectiveCeiling,
+    `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
       `the package surface grew — confirm intentional and raise the ceiling, or prune.`
   );
 });
