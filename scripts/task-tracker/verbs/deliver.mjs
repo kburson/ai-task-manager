@@ -1325,12 +1325,15 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         const commit = node?.commit;
         const parents = commit?.parents;
         const parentNodes = parents?.nodes;
+        const messageSubject =
+          typeof commit?.message === 'string' ? commit.message.split(/\r?\n/, 1)[0] : '';
         if (
           !SHA_RE.test(commit?.oid || '') ||
           typeof commit?.messageHeadline !== 'string' ||
           commit.messageHeadline.length === 0 ||
           typeof commit?.message !== 'string' ||
           commit.message.length === 0 ||
+          messageSubject.length === 0 ||
           !Number.isSafeInteger(parents?.totalCount) ||
           parents.totalCount < 0 ||
           parents.totalCount > 100 ||
@@ -1344,7 +1347,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
           throw deliverError('pull-request-commits');
         }
         seenCommitShas.add(commit.oid);
-        commits.push({ oid: commit.oid, messageHeadline: commit.messageHeadline });
+        commits.push({ oid: commit.oid, messageHeadline: messageSubject });
         evidence.push({
           oid: commit.oid,
           message: commit.message,
