@@ -4,7 +4,7 @@
 
 Audit #1633 found that #1624 and its children #1625-#1630 reached Done without their accepted implementation reaching `trunk`. The systemic root cause is fixed by #1632, which now requires root-epic trunk lineage before Done. Recovery #1635 must land the preserved #1624 history and repair #1624's terminal authority without rewriting either Git history or historical issue evidence.
 
-#1624 has a completed `aitm.delivered-close/v1` transaction and an `aitm.no-commit-delivery/v1` record at accepted SHA `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`. Those records truthfully describe what AITM authorized under the old policy, but they do not prove trunk delivery. The preserved `feature/epic/1624` branch is unpublished, has no pull request, and merges cleanly with current `origin/trunk` without rewriting its eight unique commits.
+Issue #1624 has a completed `aitm.delivered-close/v1` transaction and an `aitm.no-commit-delivery/v1` record at accepted SHA `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`. Those records truthfully describe what AITM authorized under the old policy, but they do not prove trunk delivery. The preserved `feature/epic/1624` branch is unpublished, has no pull request, and merges cleanly with current `origin/trunk` without rewriting its eight unique commits.
 
 ## Problem
 

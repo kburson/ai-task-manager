@@ -90,6 +90,39 @@ replaced, the completed original is reconstructed from that durable record, the 
 classified as already-replaced, and the ordinary eight-step saga resumes with no further
 comment or body write.
 
+## Audited false-delivery recovery (`--restart-false-delivery-transaction`, #1635)
+
+**Human-only, exceptional, and same-SHA.** This mode corrects one completed close whose
+historical root-epic `aitm.no-commit-delivery/v1` record was later proven by a governed
+audit not to have delivered the accepted history to trunk. It is not a generic delivery
+backfill and does not erase or edit the old close transaction or no-commit record.
+
+Use all three flags together:
+
+```bash
+/task close 1624 --restart-false-delivery-transaction \
+  --audit-issue 1633 --recovery-issue 1635
+```
+
+The command is mutually incompatible with `--force`, `--repair`,
+`--restart-stale-transaction`, `--restart-reopened-transaction`, `--as`, and `--answer`.
+Before the first mutation it requires:
+
+- exactly one completed eight-step close transaction and one historical root-epic
+  no-commit record at the same accepted SHA;
+- an OPEN/REOPENED target in Review with Delivered disposition, clean recorded worktree,
+  and an owned post-close binding;
+- a closed Delivered audit with an owned, trunk-committed report row classifying the
+  target `false-Done` and mapping it to the explicit recovery issue;
+- an open, assigned, non-Done recovery issue with the exact audit/target marker; and
+- human Review authority plus exact-SHA Test, merged trunk PR, delivery intent, delivery
+  receipt, and independently verified trunk evidence.
+
+Immutable correction evidence is posted and read back before the protected close marker
+is replaced with a zero-step transaction at the same accepted SHA. Retries reuse the
+record and replacement identity. Prefix-aware checks permit only the live state produced
+by completed saga steps; a fully completed retry is read-only.
+
 ## Dirty-Workspace Gate 2 (blocking at close)
 
 Inspects `git status --porcelain` in the issue's bound workspace (fleet-registered worktree path; falls back to project dir). Outcomes:

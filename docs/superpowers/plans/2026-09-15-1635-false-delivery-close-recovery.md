@@ -64,10 +64,8 @@ Expected: failure because the module does not exist.
 Use exact-key validation and constants:
 
 ```js
-export const FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA =
-  'aitm.false-delivery-close-recovery/v1';
-export const FALSE_DELIVERY_CLOSE_RECOVERY_REASON =
-  'historical-no-commit-false-delivery';
+export const FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA = 'aitm.false-delivery-close-recovery/v1';
+export const FALSE_DELIVERY_CLOSE_RECOVERY_REASON = 'historical-no-commit-false-delivery';
 ```
 
 Validate the complete old transaction, same accepted SHA across all current authority, the exact historical no-commit record, audit/recovery snapshots, and prefix-aware live state. Never accept asserted `verified: true` booleans.
