@@ -250,6 +250,36 @@ test('root epic no-commit record is false-Done while a genuine audit artifact is
   );
 });
 
+test('allowed local-only kinds fail closed on malformed or invalid no-commit evidence', async () => {
+  const acceptedSha = '3'.repeat(40);
+  const invalid = noCommitComment({ issueNumber: 22, kind: 'audit', acceptedSha });
+  invalid.body = invalid.body.replace('"repository":"o/r"', '"repository":"wrong/r"');
+  const result = await auditDoneDelivery({
+    issues: [
+      issue(21, {
+        kind: 'audit',
+        acceptedSha,
+        comments: [{ ...noCommitComment(), body: '<!-- aitm-no-commit-delivery {bad} -->' }],
+      }),
+      issue(22, { kind: 'audit', acceptedSha, comments: [invalid] }),
+    ],
+    since: SINCE,
+    snapshot: SNAPSHOT,
+    repository: 'o/r',
+    trunkRef: 'trunk',
+    trunkSha: TRUNK_SHA,
+    recoveries: new Map([
+      [21, 100],
+      [22, 100],
+    ]),
+    ports: ports(),
+  });
+  assert.deepEqual(
+    result.rows.map(({ classification }) => classification),
+    ['indeterminate', 'indeterminate']
+  );
+});
+
 test('missing accepted authority fails closed and report verification requires recovery coverage', async () => {
   const result = await auditDoneDelivery({
     issues: [issue(30, { acceptedSha: '' })],

@@ -331,8 +331,17 @@ async function classifyIssue(issue, context) {
       classification: 'explicitly-local-only',
     };
   }
+  const ambiguousLocalOnlyClaim =
+    ISSUE_RESIDENT_KINDS.has(kind) &&
+    (noCommitProjection.malformed || noCommitProjection.records.length > 0);
 
-  if (acceptedSha && acceptedExists && !receiptProjection.malformed && validReceipts.length === 0) {
+  if (
+    acceptedSha &&
+    acceptedExists &&
+    !receiptProjection.malformed &&
+    validReceipts.length === 0 &&
+    !ambiguousLocalOnlyClaim
+  ) {
     return {
       ...base,
       evidenceBasis:
