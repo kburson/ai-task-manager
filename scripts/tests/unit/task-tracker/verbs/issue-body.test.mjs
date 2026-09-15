@@ -72,6 +72,19 @@ test('exact replacement is evaluated against the fresh body and requires one mat
   assert.throws(() => applyIssueBodyOperation(`before before\n${VERSION}`, op), /ambiguous/);
 });
 
+test('exact replacement treats JavaScript replacement tokens as literal text', () => {
+  const op = parseIssueBodyOperation({
+    schema: 'aitm.issue-body-operation/v1',
+    kind: 'replace-exact',
+    expected: 'before',
+    replacement: "literal $& $` $' $$ text",
+  });
+  assert.equal(
+    applyIssueBodyOperation(`prefix before suffix\n${VERSION}`, op),
+    `prefix literal $& $\` $' $$ text suffix\n${VERSION}`
+  );
+});
+
 test('named section replacement obeys heading boundaries and explicit preconditions', () => {
   const body = `# Story\n\n## Scope\n\nold scope\n\n### Detail\n\nkept with scope\n\n## Plan Metadata\n\n- **Size**: M\n\n${VERSION}`;
   const op = parseIssueBodyOperation({

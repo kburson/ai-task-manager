@@ -57,7 +57,11 @@ import {
   observeMergeMethod,
 } from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
-import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
+import {
+  isIssueResidentDeliveryKind,
+  parseDeliverablePosted,
+  parseIssueKind,
+} from '../lib/issue-kind.mjs';
 import {
   buildNoCommitDeliveryRecord,
   parseNoCommitDeliveryComment,
@@ -737,7 +741,10 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   });
   if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
 
-  if (isNoCommitKind(issue.body) && pullRequestRefs.length === 0) {
+  // A root epic delivers aggregate child commits to trunk. Although it remains
+  // a no-commit kind for Develop/Test, provider delivery must not replace that
+  // branch delivery with an issue-comment-only receipt (#1632).
+  if (isIssueResidentDeliveryKind(issue.body) && pullRequestRefs.length === 0) {
     return deliverNoCommit({ deps, issue, issueNumber, cfg });
   }
 
@@ -1318,12 +1325,15 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         const commit = node?.commit;
         const parents = commit?.parents;
         const parentNodes = parents?.nodes;
+        const messageSubject =
+          typeof commit?.message === 'string' ? commit.message.split(/\r?\n/, 1)[0] : '';
         if (
           !SHA_RE.test(commit?.oid || '') ||
           typeof commit?.messageHeadline !== 'string' ||
           commit.messageHeadline.length === 0 ||
           typeof commit?.message !== 'string' ||
           commit.message.length === 0 ||
+          messageSubject.length === 0 ||
           !Number.isSafeInteger(parents?.totalCount) ||
           parents.totalCount < 0 ||
           parents.totalCount > 100 ||
@@ -1337,7 +1347,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
           throw deliverError('pull-request-commits');
         }
         seenCommitShas.add(commit.oid);
-        commits.push({ oid: commit.oid, messageHeadline: commit.messageHeadline });
+        commits.push({ oid: commit.oid, messageHeadline: messageSubject });
         evidence.push({
           oid: commit.oid,
           message: commit.message,

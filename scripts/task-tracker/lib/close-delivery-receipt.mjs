@@ -6,7 +6,11 @@
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { buildDeliveryReceipt } from './delivery-records.mjs';
 import { verifyDeliveredPullRequest } from './delivery-verification.mjs';
-import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from './issue-kind.mjs';
+import {
+  isIssueResidentDeliveryKind,
+  parseDeliverablePosted,
+  parseIssueKind,
+} from './issue-kind.mjs';
 import { validateRecord } from './evidence-v2/codec.mjs';
 
 export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
@@ -58,7 +62,15 @@ export function requireDeliveryReceipt({
     return frozenResult({ skipped: true, receipt: null });
   }
 
-  if (isNoCommitKind(body) && Array.isArray(pullRequests) && pullRequests.length === 0) {
+  // A root epic is coordination-only during Develop/Test, but its aggregate
+  // child history is commit-bearing delivery at the root boundary. It must use
+  // the same merged-PR receipt as other top-level branch work; a posted epic
+  // deliverable cannot prove that the epic branch reached trunk (#1632).
+  if (
+    isIssueResidentDeliveryKind(body) &&
+    Array.isArray(pullRequests) &&
+    pullRequests.length === 0
+  ) {
     const deliverable = parseDeliverablePosted(body);
     if (!deliverable) fail('no-commit-deliverable');
     if (typeof repository !== 'string' || repository.length === 0) fail('input');

@@ -96,10 +96,11 @@ export async function runClose({
   supersessionCommentReadError = null,
   supersessionCommentReadTransform = null,
   replacementTransactionId = 'replacement-close-transaction',
-  dirtyWorkspace = { dirty: false, total: 0, files: [] },
+  dirtyWorkspace = { dirty: false, total: 0, files: [], skipped: false },
   acceptedSha = 'a'.repeat(40),
   createEstimationOutcomeWriter = null,
   trackEstimationOutcomes = false,
+  contextOverrides = {},
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
   const statePath = join(dir, 'state.json');
@@ -425,6 +426,7 @@ export async function runClose({
             },
           }
         : {}),
+      ...contextOverrides,
     });
     return {
       result,
