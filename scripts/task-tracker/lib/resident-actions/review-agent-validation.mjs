@@ -9,6 +9,10 @@ import {
 } from '../agent-review/review-gate.mjs';
 import { parseProofMarker } from '../proof-marker.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../workflow-policy/enforcement.mjs';
 
 function valueOf(record) {
   return record && typeof record === 'object' && 'value' in record ? record.value : record;
@@ -74,13 +78,35 @@ export const reviewAgentValidationAction = Object.freeze({
         ? await capabilities.computeChangedPaths({ issueNumber, snapshot })
         : [];
     const gateFn = capabilities.runAgentReviewGate || runAgentReviewGate;
-    const gate = await gateFn({
+    const gateInput = {
       body,
       issueNumber,
       repo: capabilities.repo,
       comments,
       changedPaths,
-    });
+    };
+    let gate = await gateFn(gateInput);
+    const planningSectionFailure = (gate.failures || []).some(
+      (failure) =>
+        String(failure).startsWith('body-sections:') &&
+        /section '(?:Plan Metadata|Deep Dive)' is missing/.test(String(failure))
+    );
+    if (!gate.pass && planningSectionFailure) {
+      const loadBoundary = capabilities.loadWorkflowBoundary || loadWorkflowBoundary;
+      const workflowPolicy = await loadBoundary({
+        repository: capabilities.repo,
+        issue: issueNumber,
+        body,
+        requirementIds: ['planning.metadata', 'planning.deep-dive'],
+        activity: 'semantic-review:resident',
+        state: 'review',
+        now: isoNow(context),
+        runtime:
+          capabilities.workflowPolicyRuntime ||
+          createGithubWorkflowBoundaryRuntime({ repository: capabilities.repo }),
+      });
+      gate = await gateFn({ ...gateInput, workflowPolicy });
+    }
     const base = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : body;
     const ts = isoNow(context);
 

@@ -22,6 +22,7 @@ import { promisify } from 'node:util';
 
 import { hasPlanApprovedMarker, parsePlanApprovedMarker } from './markers.mjs';
 import { parseEntryMarkers } from './stage-entry-grammar.mjs';
+import { resolveGate } from './gate-resolve.mjs';
 
 const pexec = promisify(execFile);
 
@@ -39,6 +40,15 @@ export const planApprovedGuard = {
     // Scoped to plan → develop. Bounce-backs to other states (refine rollback,
     // backlog drop) must NOT require a fresh plan-approval marker.
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
+    if (ctx?.workflowPolicy?.isWaived?.('approval.plan')) return { ok: true };
+    if (
+      !resolveGate('analysisToDevelopment', {
+        session: ctx?.sessionPolicy,
+        projectConfig: ctx?.cfg || {},
+      })
+    ) {
+      return { ok: true };
+    }
     const body = ctx?.body ?? '';
     if (hasPlanApprovedMarker(body)) {
       if (!parseEntryMarkers(body).some((entry) => entry.state === 'ready-for-plan')) {

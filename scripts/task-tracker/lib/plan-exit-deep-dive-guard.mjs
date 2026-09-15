@@ -23,10 +23,16 @@ export const planExitDeepDiveGuard = {
     if (!ctx || typeof ctx.body !== 'string') return { ok: true };
     const result = planDeepDiveGate({ body: ctx.body });
     if (result.ok) return { ok: true };
+    const blockers = ctx.workflowPolicy?.isWaived?.('planning.deep-dive')
+      ? (result.blockers || []).filter((blocker) =>
+          String(blocker).startsWith('plan-develop-pickup-directive-missing:')
+        )
+      : result.blockers || [];
+    if (blockers.length === 0) return { ok: true };
     return {
       ok: false,
-      reason: (result.blockers || []).join('; ') || 'deep-dive-missing',
-      blockers: result.blockers || [],
+      reason: blockers.join('; ') || 'deep-dive-missing',
+      blockers,
     };
   },
 };

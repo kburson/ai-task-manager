@@ -131,7 +131,9 @@ function repoRoot() {
 // governed verb. These four runtime entries are the entire intentional growth.
 // #1627 ships the snapshot builder, aggregate evaluator, and read-only preflight
 // verb. Those three runtime files are this child's complete package growth.
-const ENTRY_CEILING = 782;
+// #1628 ships one shared enforcement adapter used by mutation boundaries.
+// The measured package surface grows by exactly that maintained runtime entry.
+const ENTRY_CEILING = 783;
 
 let packedFileCache = null;
 function packedFiles() {

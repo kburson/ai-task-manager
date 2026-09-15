@@ -151,6 +151,14 @@ export async function buildWorkflowPreflightSnapshot({
     ...(issueSnapshot.evidence || {}),
     ...(repositorySnapshot?.evidence || {}),
   };
+  if (
+    baselineRequirementIds.includes('approval.plan') &&
+    sessionPolicy?.gateAnalysisToDevelopment === false
+  ) {
+    evidence['approval.plan'] = satisfied(
+      sessionPolicy.source || 'session-policy://automatic-plan-authorization'
+    );
+  }
   if (baselineRequirementIds.includes('delivery.dependencies') && dependencies.length === 0) {
     evidence['delivery.dependencies'] = satisfied('issue-snapshot://no-blocking-dependencies');
   }

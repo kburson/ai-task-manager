@@ -115,6 +115,51 @@ test('an objection persists failed evidence and returns failed without a board m
   assert.deepEqual(calls[0].input.failures, ['missing required comment']);
 });
 
+test('resident semantic review reloads policy only for missing waivable planning sections', async () => {
+  const calls = [];
+  const workflowPolicy = {
+    isWaived: (id) => ['planning.metadata', 'planning.deep-dive'].includes(id),
+  };
+  const result = await reviewAgentValidationAction.run(
+    {
+      now: () => Date.parse('2026-09-15T01:00:00.000Z'),
+      review: {
+        repo: 'kburson/ai-task-manager',
+        readComments: async () => [],
+        computeChangedPaths: async () => [],
+        runAgentReviewGate: (input) => {
+          calls.push(['gate', input.workflowPolicy || null]);
+          return input.workflowPolicy
+            ? { pass: true, failures: [], validatorsRun: ['body-sections'] }
+            : {
+                pass: false,
+                failures: ["body-sections: section 'Deep Dive' is missing"],
+                validatorsRun: ['body-sections'],
+              };
+        },
+        loadWorkflowBoundary: async () => {
+          calls.push(['policy']);
+          return workflowPolicy;
+        },
+        onFailure: async () => calls.push(['failure']),
+        onPass: async () => calls.push(['pass']),
+      },
+    },
+    {
+      issue: { value: 1628 },
+      body: { value: '## User Story\nA\n## Scope\nS\n## Acceptance Criteria\n- [ ] A' },
+      stateVisitId: 'review:1',
+    }
+  );
+
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(
+    calls.map(([kind]) => kind),
+    ['gate', 'policy', 'gate', 'pass']
+  );
+  assert.equal(calls[2][1], workflowPolicy);
+});
+
 test('Review entry is forward while an in-Review retry is actions-only', () => {
   assert.deepEqual(buildReviewCursorRequest({ currentState: 'test', issue: 1458, cwd: '/wt' }), {
     issue: 1458,

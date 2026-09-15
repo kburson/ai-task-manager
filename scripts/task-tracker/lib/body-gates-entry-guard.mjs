@@ -39,6 +39,11 @@ import { uncheckedPreCloseCheckboxes, assertLifecycleSatisfied } from '../close-
 
 const TEST_GATES = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
 
+function policyGates(ctx, gates) {
+  if (!ctx?.workflowPolicy?.isWaived?.('planning.deep-dive')) return gates;
+  return gates.filter((gate) => !['deep-dive-placement', 'deep-dive-complete'].includes(gate.name));
+}
+
 function runValidateBody(body, gates) {
   const result = validateBody(body, { gates });
   if (result.ok) return [];
@@ -54,7 +59,7 @@ export const bodyGatesEntryGuardTest = Object.freeze({
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (typeof ctx?.body !== 'string' || ctx.body === '') return { ok: true };
-    const blockers = runValidateBody(ctx.body, TEST_GATES);
+    const blockers = runValidateBody(ctx.body, policyGates(ctx, TEST_GATES));
     if (blockers.length === 0) return { ok: true };
     return { ok: false, reason: blockers.join('; '), blockers };
   },
@@ -65,7 +70,7 @@ export const bodyGatesEntryGuardReview = Object.freeze({
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'review') return { ok: true };
     if (typeof ctx?.body !== 'string' || ctx.body === '') return { ok: true };
-    const blockers = runValidateBody(ctx.body, DEFAULT_GATES);
+    const blockers = runValidateBody(ctx.body, policyGates(ctx, DEFAULT_GATES));
     if (blockers.length === 0) return { ok: true };
     return { ok: false, reason: blockers.join('; '), blockers };
   },
@@ -76,7 +81,7 @@ export const bodyGatesEntryGuardDone = Object.freeze({
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'done') return { ok: true };
     if (typeof ctx?.body !== 'string' || ctx.body === '') return { ok: true };
-    const blockers = runValidateBody(ctx.body, DEFAULT_GATES);
+    const blockers = runValidateBody(ctx.body, policyGates(ctx, DEFAULT_GATES));
 
     const unchecked = uncheckedPreCloseCheckboxes(ctx.body);
     if (unchecked.length > 0) {

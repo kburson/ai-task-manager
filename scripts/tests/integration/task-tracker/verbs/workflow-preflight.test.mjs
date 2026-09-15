@@ -435,6 +435,46 @@ test('an empty dependency snapshot satisfies the current dependency invariant', 
   );
 });
 
+test('preflight treats documented automatic plan authorization as satisfied, not waived', async () => {
+  const runtime = runtimeFixture({ externalProtection: 'satisfied' });
+  runtime.readIssue = async () => ({
+    number: issue,
+    body,
+    currentState: 'plan',
+    projectFields: { status: 'Plan' },
+    evidence: {
+      'planning.deep-dive': { state: 'satisfied', reference: 'issue://deep-dive' },
+      'planning.metadata': { state: 'satisfied', reference: 'issue://metadata' },
+      'planning.planned-estimate': { state: 'satisfied', reference: 'issue://estimate' },
+      'planning.forecast': { state: 'satisfied', reference: 'issue://forecast' },
+      'delivery.ownership': { state: 'satisfied', reference: 'github://assignee' },
+      'delivery.issue-binding': { state: 'satisfied', reference: 'session://binding' },
+      'delivery.state-contiguity': { state: 'satisfied', reference: 'issue://state' },
+    },
+    conflicts: [],
+  });
+  runtime.listRecords = async () => [];
+  runtime.readDependencies = async () => [];
+  runtime.readSessionPolicy = async () => ({
+    gateAnalysisToDevelopment: false,
+    source: 'session-policy://full-auto',
+  });
+  const report = await runWorkflowPreflight({
+    repository,
+    issue,
+    target: 'develop',
+    now: '2026-09-15T00:00:00.000Z',
+    runtime,
+  });
+  const approval = report.requirements.find(({ id }) => id === 'approval.plan');
+  assert.equal(approval.outcome, 'satisfied');
+  assert.equal(approval.evidenceReference, 'session-policy://full-auto');
+  assert.equal(
+    report.waivers.some(({ id }) => id === 'approval.plan'),
+    false
+  );
+});
+
 test('production runtime derives ownership, binding, and state-contiguity evidence read-only', async () => {
   const calls = [];
   const runtime = createWorkflowPreflightRuntime(

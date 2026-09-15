@@ -54,18 +54,23 @@ export const planExitPlannedEstimateGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
-    const result = await planPlannedEstimateGate({
-      cfg: ctx.cfg,
-      issueNumber: ctx.issueNumber,
-      deps: ctx.deps?.plannedEstimate,
-    });
-    if (!result.ok) {
-      return {
-        ok: false,
-        reason: (result.blockers || []).join('; ') || 'planned-estimate-missing',
-        blockers: result.blockers || [],
-      };
+    const estimateWaived = ctx.workflowPolicy?.isWaived?.('planning.planned-estimate') === true;
+    const forecastWaived = ctx.workflowPolicy?.isWaived?.('planning.forecast') === true;
+    if (!estimateWaived) {
+      const result = await planPlannedEstimateGate({
+        cfg: ctx.cfg,
+        issueNumber: ctx.issueNumber,
+        deps: ctx.deps?.plannedEstimate,
+      });
+      if (!result.ok) {
+        return {
+          ok: false,
+          reason: (result.blockers || []).join('; ') || 'planned-estimate-missing',
+          blockers: result.blockers || [],
+        };
+      }
     }
+    if (forecastWaived) return { ok: true };
     const ready = String(ctx.body ?? '').match(FORECAST_READY_RE)?.[1] ?? null;
     const frozen = readPlanApprovedForecastRecordId(ctx.body);
     if (frozen !== null && frozen !== ready) {

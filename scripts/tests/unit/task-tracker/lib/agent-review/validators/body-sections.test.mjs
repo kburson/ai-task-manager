@@ -64,6 +64,28 @@ test('fails and names a missing section', () => {
   );
 });
 
+test('explicit planning waivers make only their matching sections optional', () => {
+  const withoutPlanningSections = WELL_FORMED.replace(
+    /## Plan Metadata\n\n- \*\*Size:\*\* S\n\n/,
+    ''
+  ).replace(/## Deep-Dive Analysis \(2026-07-14\)\n\nDesign prose\.\n\n/, '');
+  const policy = {
+    isWaived: (id) => ['planning.metadata', 'planning.deep-dive'].includes(id),
+  };
+  const waived = validate({ body: withoutPlanningSections, workflowPolicy: policy });
+  assert.equal(waived.pass, true, JSON.stringify(waived.failures));
+
+  const approvalOnly = validate({
+    body: withoutPlanningSections,
+    workflowPolicy: { isWaived: (id) => id === 'approval.plan' },
+  });
+  assert.equal(approvalOnly.pass, false);
+  assert.ok(approvalOnly.failures.some((failure) => /Plan Metadata.*missing/.test(failure)));
+  assert.ok(approvalOnly.failures.some((failure) => /Deep Dive.*missing/.test(failure)));
+  assert.equal(withoutPlanningSections.includes('aitm-deep-dive-complete'), false);
+  assert.equal(withoutPlanningSections.includes('aitm-plan-approved'), false);
+});
+
 test('fails and names an empty section', () => {
   // Blank out the Scope section content.
   const body = WELL_FORMED.replace('## Scope\n\nShip V1.', '## Scope\n\n   ');

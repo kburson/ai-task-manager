@@ -183,6 +183,58 @@ test('pre-mutation guard consumes the locked snapshot body without a second issu
   assert.equal(result.exit, 6);
 });
 
+test('pre-mutation boundary reloads policy only after a waivable guard refusal', async () => {
+  const calls = [];
+  const workflowPolicy = { isWaived: (id) => id === 'planning.deep-dive' };
+  const result = await runGuardExecution({
+    issueArg: '1628',
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    verbContext: 'promote',
+    shelveBackwardGuardAuthorized: false,
+    demoteFlag: false,
+    plan: { runGuardPipeline: true },
+    forceFlag: false,
+    supersedeFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'kburson/ai-task-manager' },
+    boundarySnapshot: {
+      body: {
+        value:
+          '## User Story\nAs a maintainer\nI want a gate\nSo that authority is current\n\n## Scope\nS\n\n## Acceptance Criteria\n- [ ] A',
+      },
+    },
+    gh: async () => {
+      throw new Error('locked snapshot should be authoritative');
+    },
+    pexec: async () => ({ stdout: '' }),
+    resolveLiveStateName: async () => '',
+    checkDirty: async () => ({ dirty: false }),
+    formatSummary: () => '',
+    resolveWorkspaceForIssue: () => process.cwd(),
+    backlogMoveWarning: async () => undefined,
+    lifecycleEvidence: null,
+    _loadWorkflowBoundary: async (input) => {
+      calls.push(['policy', input.body, input.requirementIds]);
+      return workflowPolicy;
+    },
+    _runGuards: async (_from, _to, guardCtx) => {
+      calls.push(['guards', guardCtx.workflowPolicy || null]);
+      return guardCtx.workflowPolicy
+        ? { ok: true, refusals: [] }
+        : {
+            ok: false,
+            refusals: [{ id: 'plan-exit-deep-dive', reason: 'deep-dive-missing' }],
+          };
+    },
+  });
+
+  assert.deepEqual(result, { exit: null });
+  assert.equal(calls.filter(([kind]) => kind === 'guards').length, 2);
+  assert.equal(calls.filter(([kind]) => kind === 'policy').length, 1);
+  assert.equal(calls.at(-1)[1], workflowPolicy);
+});
+
 test('moveState halts on status exit and never runs tail', async () => {
   const ctx = baseCtx({ _runStatusWrite: async () => ({ itemId: 'IT_1', exit: 7 }) });
   const res = await moveState(ctx);

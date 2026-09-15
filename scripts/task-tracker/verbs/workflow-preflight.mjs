@@ -4,6 +4,9 @@ import { listIssueCommentsSince } from '../lib/github-records/github-comment-sto
 import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
 import { RUNTIME_REL } from '../paths.mjs';
 import { loadState } from '../state.mjs';
+import { resolveGate } from '../lib/gate-resolve.mjs';
+import { loadSession } from '../lib/session-store.mjs';
+import { currentSessionId } from '../word-counter.mjs';
 import { WORKFLOW_POLICY_CAPABILITY } from '../lib/workflow-policy/catalog.mjs';
 import {
   evaluateWorkflowPreflight,
@@ -196,9 +199,15 @@ export function createWorkflowPreflightRuntime(ctx, deps = {}) {
       return [];
     },
     async readSessionPolicy() {
+      const session = (deps.loadSession || loadSession)(
+        (deps.currentSessionId || currentSessionId)()
+      );
       return {
-        gateAnalysisToDevelopment: ctx.cfg.gateAnalysisToDevelopment !== false,
-        gateReviewToDone: ctx.cfg.gateReviewToDone !== false,
+        gateAnalysisToDevelopment: resolveGate('analysisToDevelopment', {
+          session,
+          projectConfig: ctx.cfg,
+        }),
+        gateReviewToDone: resolveGate('reviewToDone', { session, projectConfig: ctx.cfg }),
         fullAutoMerge: ctx.cfg.fullAutoMerge || null,
         source: RUNTIME_REL.config,
       };

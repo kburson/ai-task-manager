@@ -53,6 +53,13 @@ const VERIFY_UNCHECKED = [
 // section — trips done-only `unchecked-checkbox` rule. The leading non-
 // lifecycle list label keeps it out of close-gate's allow-list.
 const HAS_UNCHECKED = '## Notes\n\n- [ ] arbitrary unchecked item\n';
+const DEEP_DIVE_TICKED_NO_SECTION = [
+  '## Pickup Directive — MANDATORY, DO NOT SKIP',
+  '> Follow it.',
+  '<!-- aitm-deep-dive-complete ts="2026-09-15T00:00:00.000Z" -->',
+].join('\n\n');
+const DEEP_DIVE_AND_DEPENDENCY_INVALID = `${DEEP_DIVE_TICKED_NO_SECTION}\n\n- [x] **Dependency Map** posted\n`;
+const DEEP_DIVE_POLICY = { isWaived: (id) => id === 'planning.deep-dive' };
 
 describe('bodyGatesEntryGuardTest', () => {
   it('exports stable id', () => {
@@ -97,6 +104,24 @@ describe('bodyGatesEntryGuardTest', () => {
     assert.ok(r.blockers.length >= 1);
     assert.ok(/dependency-map/.test(r.reason));
   });
+
+  it('accepts an explicit deep-dive waiver but retains the dependency gate', async () => {
+    assert.deepEqual(
+      await bodyGatesEntryGuardTest.run({
+        toState: 'test',
+        body: DEEP_DIVE_TICKED_NO_SECTION,
+        workflowPolicy: DEEP_DIVE_POLICY,
+      }),
+      { ok: true }
+    );
+    const retained = await bodyGatesEntryGuardTest.run({
+      toState: 'test',
+      body: DEEP_DIVE_AND_DEPENDENCY_INVALID,
+      workflowPolicy: DEEP_DIVE_POLICY,
+    });
+    assert.equal(retained.ok, false);
+    assert.match(retained.reason, /dependency-map/);
+  });
 });
 
 describe('bodyGatesEntryGuardReview', () => {
@@ -126,6 +151,22 @@ describe('bodyGatesEntryGuardReview', () => {
     assert.equal(r.ok, false);
     assert.ok(Array.isArray(r.blockers));
     assert.ok(/verification-commands/.test(r.reason));
+  });
+
+  it('filters waived deep-dive rules without filtering Review verification', async () => {
+    const deepDive = await bodyGatesEntryGuardReview.run({
+      toState: 'review',
+      body: DEEP_DIVE_TICKED_NO_SECTION,
+      workflowPolicy: DEEP_DIVE_POLICY,
+    });
+    assert.deepEqual(deepDive, { ok: true });
+    const verification = await bodyGatesEntryGuardReview.run({
+      toState: 'review',
+      body: VERIFY_UNCHECKED,
+      workflowPolicy: DEEP_DIVE_POLICY,
+    });
+    assert.equal(verification.ok, false);
+    assert.match(verification.reason, /verification-commands/);
   });
 });
 

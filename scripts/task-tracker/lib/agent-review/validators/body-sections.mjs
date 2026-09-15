@@ -31,6 +31,11 @@ export const CANONICAL_SECTIONS = [
   { label: 'AITM Progress Markers', match: (h) => /^aitm progress markers\b/i.test(h) },
 ];
 
+const SECTION_REQUIREMENT = Object.freeze({
+  'Plan Metadata': 'planning.metadata',
+  'Deep Dive': 'planning.deep-dive',
+});
+
 // Scan a body for every `## <text>` heading, returning `{ text, start, end }`
 // where `start`/`end` bound the section content (heading line excluded) up to
 // the next `##` heading or end-of-body. `###+` sub-headings are NOT section
@@ -73,17 +78,21 @@ function isRootOnlySection(label) {
 }
 
 // V1 validator. `context.body` is the issue body.
-export function validate({ body } = {}) {
+export function validate({ body, workflowPolicy } = {}) {
   const sections = scanSections(body);
   const failures = [];
+  const requiredSections = CANONICAL_SECTIONS.filter((row) => {
+    const requirementId = SECTION_REQUIREMENT[row.label];
+    return !requirementId || !workflowPolicy?.isWaived?.(requirementId);
+  });
 
   // Resolve each canonical row to the first matching heading in the body.
-  const resolved = CANONICAL_SECTIONS.map((row) => ({
+  const resolved = requiredSections.map((row) => ({
     row,
     hit: sections.find((s) => row.match(s.text) && (!isRootOnlySection(row.label) || !s.inDetails)),
   }));
 
-  for (const row of CANONICAL_SECTIONS.filter((r) => isRootOnlySection(r.label))) {
+  for (const row of requiredSections.filter((r) => isRootOnlySection(r.label))) {
     const hidden = sections.find((s) => row.match(s.text) && s.inDetails);
     if (hidden) {
       failures.push(
@@ -103,7 +112,9 @@ export function validate({ body } = {}) {
     }
   }
 
-  for (const heading of ['Story Origin', 'Plan Metadata']) {
+  for (const heading of ['Story Origin', 'Plan Metadata'].filter((label) =>
+    requiredSections.some((row) => row.label === label)
+  )) {
     if (hasNestedMetadataHeading(body, heading)) {
       failures.push(`section '${heading}' must be flat and contain no nested headings`);
     }

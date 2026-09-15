@@ -68,6 +68,7 @@ test('R4P-origin Plan approval is bound to current trunk before Develop', async 
       await planApprovedGuard.run({
         toState: 'develop',
         body,
+        cfg: { gateAnalysisToDevelopment: true },
         deps: { resolveTrunkSha: async () => SHA_A },
       })
     ).ok,
@@ -78,6 +79,7 @@ test('R4P-origin Plan approval is bound to current trunk before Develop', async 
       await planApprovedGuard.run({
         toState: 'develop',
         body,
+        cfg: { gateAnalysisToDevelopment: true },
         deps: { resolveTrunkSha: async () => SHA_B },
       })
     ).ok,
@@ -88,6 +90,7 @@ test('R4P-origin Plan approval is bound to current trunk before Develop', async 
       await planApprovedGuard.run({
         toState: 'develop',
         body: body.replace(` trunk-sha="${SHA_A}"`, ''),
+        cfg: { gateAnalysisToDevelopment: true },
         deps: { resolveTrunkSha: async () => SHA_A },
       })
     ).ok,
