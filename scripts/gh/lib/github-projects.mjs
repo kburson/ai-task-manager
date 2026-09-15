@@ -30,6 +30,12 @@ export async function gh(args, options = {}) {
       stderr += d.toString();
     });
     child.on('error', reject);
+    child.stdin.on('error', (error) => {
+      // Node 24 can report EPIPE when gh exits before consuming the complete
+      // payload. The child close event remains authoritative; every other
+      // stdin failure is unexpected and must fail the request.
+      if (error?.code !== 'EPIPE') reject(error);
+    });
     child.on('close', (code) => {
       if (code === 0) resolve(stdout);
       else {
