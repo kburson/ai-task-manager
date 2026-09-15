@@ -7,11 +7,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { readDeliveredCloseTransactions } from '../task-tracker/lib/close-convergence.mjs';
+import { parseEntryMarkers } from '../task-tracker/lib/stage-entry-grammar.mjs';
+
 const SHA_RE = /^[0-9a-f]{40}$/;
-const DONE_RE = /<!--\s*aitm-entered-done\s+[^>]*\bts="([^"]+)"[^>]*-->/g;
 const KIND_RE = /<!--\s*aitm-issue-kind\s+kind="([^"]+)"\s*-->/g;
 const WORKTREE_RE = /<!--\s*aitm-worktree-location\s+[^>]*\bbranch="([^"]+)"[^>]*-->/g;
-const CLOSE_RE = /<!--\s*aitm-delivered-close\s+[^>]*\baccepted-sha="([0-9a-f]{40})"[^>]*-->/g;
 const DELIVERY_RECEIPT_RE = /^<!--\s*aitm-delivery-receipt\s+(\{[^\r\n]+\})\s*-->/;
 const NO_COMMIT_RE = /^<!--\s*aitm-no-commit-delivery\s+(\{[^\r\n]+\})\s*-->/;
 const RECOVERY_RE =
@@ -83,9 +84,9 @@ export function selectDoneIssues(issues, { since, snapshot } = {}) {
     if (!Number.isSafeInteger(issue.number) || issue.number <= 0 || byNumber.has(issue.number)) {
       continue;
     }
-    const markers = allMatches(issue.body, DONE_RE);
+    const markers = parseEntryMarkers(issue.body).filter(({ state }) => state === 'done');
     if (markers.length === 0) continue;
-    const instants = markers.map((match) => canonicalInstant(match[1])).filter(Boolean);
+    const instants = markers.map(({ ts }) => canonicalInstant(ts)).filter(Boolean);
     if (instants.length === 0) continue;
     const doneAt = instants.sort().at(-1);
     if (doneAt < lower || doneAt > upper) continue;
@@ -180,7 +181,15 @@ function recoveriesFromIssues(issues) {
 
 async function classifyIssue(issue, context) {
   const { repository, trunkRef, trunkSha, ports, recoveries } = context;
-  const acceptedShas = allMatches(issue.body, CLOSE_RE).map((match) => match[1]);
+  let acceptedShas = [];
+  let malformedClose = false;
+  try {
+    acceptedShas = readDeliveredCloseTransactions(issue.body).map(
+      (transaction) => transaction.acceptedSha
+    );
+  } catch {
+    malformedClose = true;
+  }
   const acceptedSha = acceptedShas.length === 1 ? acceptedShas[0] : null;
   const kind = lastCapture(issue.body, KIND_RE, 'code');
   const sourceBranch = lastCapture(issue.body, WORKTREE_RE);
@@ -190,6 +199,7 @@ async function classifyIssue(issue, context) {
   const superseded = allMatches(issue.body, SUPERSEDED_RE);
   if (issue.doneMarkerCount !== 1) notes.push(`done-marker-count:${issue.doneMarkerCount}`);
   if (acceptedShas.length !== 1) notes.push(`accepted-sha-count:${acceptedShas.length}`);
+  if (malformedClose) notes.push('malformed-delivered-close');
   if (receiptProjection.malformed) notes.push('malformed-delivery-receipt');
   if (noCommitProjection.malformed) notes.push('malformed-no-commit-record');
 
@@ -217,6 +227,7 @@ async function classifyIssue(issue, context) {
     superseded.length === 1 &&
     issue.doneMarkerCount === 1 &&
     acceptedShas.length === 0 &&
+    !malformedClose &&
     receiptProjection.records.length === 0 &&
     noCommitProjection.records.length === 0 &&
     !receiptProjection.malformed &&

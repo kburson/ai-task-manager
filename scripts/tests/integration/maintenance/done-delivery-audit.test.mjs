@@ -108,6 +108,13 @@ function ports(overrides = {}) {
 }
 
 test('selectDoneIssues uses exact Done markers, frozen inclusive bounds, and one row per issue', () => {
+  const legacy = issue(6, { doneAt: SINCE });
+  legacy.body = legacy.body.replace(
+    `<!-- aitm-entered-done ts="${SINCE}" move="move:test" -->`,
+    `<!-- aitm-entered-done: ${SINCE} -->`
+  );
+  const reentered = issue(7, { doneAt: '2026-08-31T12:00:00.000Z' });
+  reentered.body += `\n<!-- aitm-entered-done-2 ts="${SNAPSHOT}" move="move:again" -->`;
   const selected = selectDoneIssues(
     [
       issue(1, { doneAt: SINCE }),
@@ -116,13 +123,16 @@ test('selectDoneIssues uses exact Done markers, frozen inclusive bounds, and one
       issue(4, { doneAt: '2026-09-15T14:00:00.001Z' }),
       { ...issue(5), body: 'mentions aitm-entered-done but has no marker' },
       issue(2, { title: 'duplicate API page', doneAt: SNAPSHOT }),
+      legacy,
+      reentered,
     ],
     { since: SINCE, snapshot: SNAPSHOT }
   );
   assert.deepEqual(
     selected.map(({ number }) => number),
-    [1, 2]
+    [1, 6, 2, 7]
   );
+  assert.equal(selected.at(-1).doneMarkerCount, 2);
 });
 
 test('receipt-backed squash verifies only with correlated live PR and landed trunk commit', async () => {
