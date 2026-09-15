@@ -29,9 +29,9 @@ export const CLAUDE_BASH_ALLOWLIST = Object.freeze([
   // Node — project scripts only; no `-e`/`-p`/`--eval` (interpreter payloads).
   'Bash(node scripts/**)',
   'Bash(node bin/**)',
-  // Dog-food / consumer-local symlink form: the Pickup Directive drives the
-  // task-tracker via `node node_modules/ai-task-manager/scripts/**`, which the
-  // `node scripts/**` glob above does not match (#665).
+  // Scoped consumer package form. The unscoped self-link form remains only for
+  // repository dogfood compatibility until the Task 3 skill migration (#1631).
+  'Bash(node node_modules/@kburson/ai-task-manager/scripts/**)',
   'Bash(node node_modules/ai-task-manager/scripts/**)',
 
   // aitm CLI — the canonical consumer entry point (`npx aitm <verb>`). Hot

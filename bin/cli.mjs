@@ -145,8 +145,9 @@ const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-sto
 const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
   'scripts/task-tracker/hooks/on-user-prompt.mjs'
 );
-const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
+const CODEX_PROMPT_TIMESTAMP_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/codex-prompt-timestamp.mjs'
+);
 // EPIC #238 / #240 — AskUserQuestion pause/resume hooks. The same module is
 // invoked twice with a phase argument: `pause` (PreToolUse) brackets the
 // question open, `resume` (PostToolUse) closes it with the measured wait.
@@ -170,9 +171,6 @@ const STOP_AUDIT_HOOK_CMD = hookBootstrapCommand(
 // when at least one seed file was accepted at install (a `none` selection
 // installs no hook).
 const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
-// #869 — SessionStart seed check: inspect + heal an unseeded worktree before any
-// other hook resolves a node_modules path. Routed through the shim like the rest.
-const SEED_CHECK_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/ensure-worktree-seeded.mjs');
 // Bare-path forms shipped before #869 — stripped and re-registered as shims so
 // re-running the installer migrates old settings idempotently (mirrors #792).
 const LEGACY_HOOK_COMMANDS = [
@@ -184,6 +182,8 @@ const LEGACY_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs',
 ];
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
@@ -241,16 +241,6 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
     if (Array.isArray(settings.hooks[event])) {
       settings.hooks[event] = removeHookCommands(settings.hooks[event], LEGACY_HOOK_COMMANDS);
     }
-  }
-
-  // #869 — seed check FIRST on SessionStart: heal an unseeded worktree before
-  // any other hook resolves a node_modules path. Idempotent by command string.
-  if (!Array.isArray(settings.hooks.SessionStart)) settings.hooks.SessionStart = [];
-  if (!settings.hooks.SessionStart.some((h) => hookEntryHasCommand(h, SEED_CHECK_HOOK_CMD))) {
-    settings.hooks.SessionStart.unshift({
-      matcher: '',
-      hooks: [{ type: 'command', command: SEED_CHECK_HOOK_CMD }],
-    });
   }
 
   const hookEntry = { matcher: '', hooks: [{ type: 'command', command: TIMING_HOOK_CMD }] };
@@ -435,6 +425,14 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
 
   if (!config.hooks) config.hooks = {};
 
+  // #1631 — strip exact pre-scoped lifecycle commands before registering the
+  // scoped-first forms below. This preserves unrelated user hook commands.
+  for (const event of Object.keys(config.hooks)) {
+    if (Array.isArray(config.hooks[event])) {
+      config.hooks[event] = removeHookCommands(config.hooks[event], LEGACY_HOOK_COMMANDS);
+    }
+  }
+
   function add(event, matcher, command, extra = {}) {
     if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
     const already = config.hooks[event].some(
@@ -505,6 +503,16 @@ function legacyGrokHookCommand(handlerName) {
   return `node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler ${handlerName}`;
 }
 
+const LEGACY_GROK_HOOK_COMMANDS = [
+  'seed',
+  'timing',
+  'bash-guard',
+  'activity-guard',
+  'source-edit-gate',
+  'agent-guard',
+  'memory-index',
+].map(legacyGrokHookCommand);
+
 export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) {
   let config = {};
   if (existsSync(hooksPath)) {
@@ -516,8 +524,23 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   }
   if (!config.hooks) config.hooks = {};
 
+  const legacyMemoryIndexEvents = new Set(
+    ['SessionStart', 'PostCompact'].filter((event) =>
+      (config.hooks[event] ?? []).some((entry) =>
+        hookEntryHasCommand(entry, legacyGrokHookCommand('memory-index'))
+      )
+    )
+  );
+
+  // #1631 — remove only exact pre-scoped managed Grok commands. The desired
+  // registrations below add scoped-first replacements while leaving user hooks.
+  for (const event of Object.keys(config.hooks)) {
+    if (Array.isArray(config.hooks[event])) {
+      config.hooks[event] = removeHookCommands(config.hooks[event], LEGACY_GROK_HOOK_COMMANDS);
+    }
+  }
+
   const requiredSpecs = [
-    ['SessionStart', 'startup|resume|clear|compact', 'seed'],
     ['SessionStart', 'startup|resume|clear|compact', 'timing'],
     ['PreCompact', 'manual|auto', 'timing'],
     ['PostCompact', 'manual|auto', 'timing'],
@@ -533,10 +556,13 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   ];
   const existingMemorySpecs = memorySpecs.filter(([event, , handlerName]) => {
     const entries = Array.isArray(config.hooks[event]) ? config.hooks[event] : [];
-    return entries.some(
-      (entry) =>
-        hookEntryHasCommand(entry, grokHookCommand(handlerName)) ||
-        hookEntryHasCommand(entry, legacyGrokHookCommand(handlerName))
+    return (
+      legacyMemoryIndexEvents.has(event) ||
+      entries.some(
+        (entry) =>
+          hookEntryHasCommand(entry, grokHookCommand(handlerName)) ||
+          hookEntryHasCommand(entry, legacyGrokHookCommand(handlerName))
+      )
     );
   });
   const specs = [...requiredSpecs, ...(memoryIndexHook ? memorySpecs : existingMemorySpecs)];

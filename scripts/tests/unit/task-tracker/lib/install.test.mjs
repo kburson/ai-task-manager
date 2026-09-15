@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #309
+// @story #1631
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -68,7 +68,7 @@ const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
   'scripts/task-tracker/hooks/on-user-prompt.mjs'
 );
 const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
+  hookBootstrapCommand('scripts/task-tracker/hooks/codex-prompt-timestamp.mjs');
 const LEGACY_TIMING_HOOK_CMD = '.claude/hooks/task-tracker.sh';
 const LEGACY_COMMIT_TRAIL_HOOK_CMD = '.claude/hooks/commit-trail.sh';
 const CANONICAL_DOCS = [

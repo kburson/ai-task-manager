@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #213
+// @story #1631
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -353,7 +353,6 @@ function grokEntries(event, matcher, handlerName) {
 }
 
 for (const [event, matcher, handlerName] of [
-  ['SessionStart', 'startup|resume|clear|compact', 'seed'],
   ['SessionStart', 'startup|resume|clear|compact', 'timing'],
   ['PreCompact', 'manual|auto', 'timing'],
   ['PostCompact', 'manual|auto', 'timing'],
@@ -387,6 +386,115 @@ for (const [event, matcher] of [
     `${event} memory-index bridge command must be idempotent`
   );
 }
+
+// #1631 — migration must recognize only the exact pre-scoped managed command
+// spellings, replace each once, and leave adjacent user hooks untouched.
+const scopedMigrationSettingsPath = path.join(tmp, '.claude-scoped-migration', 'settings.json');
+const scopedMigrationCodexPath = path.join(tmp, '.codex-scoped-migration', 'hooks.json');
+const scopedMigrationGrokPath = path.join(tmp, '.grok-scoped-migration', 'hooks', 'aitm.json');
+const legacyTimingCommand =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
+const legacyPromptTimestampCommand =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
+const legacyGuardCommand =
+  'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
+const legacyGrokTimingCommand =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler timing';
+const userHookCommand = 'echo user-hook';
+
+function commandCount(config, command) {
+  return Object.values(config.hooks ?? {})
+    .flat()
+    .flatMap((entry) => entry.hooks ?? [])
+    .filter((hook) => hook.command === command).length;
+}
+
+function eventCommandCount(config, event, command) {
+  return (config.hooks?.[event] ?? [])
+    .flatMap((entry) => entry.hooks ?? [])
+    .filter((hook) => hook.command === command).length;
+}
+
+mkdirSync(path.dirname(scopedMigrationSettingsPath), { recursive: true });
+writeFileSync(
+  scopedMigrationSettingsPath,
+  JSON.stringify({
+    hooks: {
+      SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: legacyTimingCommand }] }],
+      PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: legacyGuardCommand }] }],
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: userHookCommand }] }],
+    },
+  })
+);
+patchSettingsJson(scopedMigrationSettingsPath);
+patchSettingsJson(scopedMigrationSettingsPath);
+const migratedScopedSettings = JSON.parse(readFileSync(scopedMigrationSettingsPath, 'utf8'));
+for (const [event, legacyCommand, replacementCommand] of [
+  ['SessionStart', legacyTimingCommand, hookBootstrapCommand('scripts/task-tracker/hook-handler.mjs')],
+  ['PreToolUse', legacyGuardCommand, guardBootstrapCommand('bash-guard')],
+]) {
+  assert.equal(eventCommandCount(migratedScopedSettings, event, legacyCommand), 0, `${legacyCommand} removed`);
+  assert.equal(
+    eventCommandCount(migratedScopedSettings, event, replacementCommand),
+    1,
+    `${replacementCommand} installed once`
+  );
+}
+assert.equal(commandCount(migratedScopedSettings, userHookCommand), 1, 'neighboring user hook preserved');
+
+mkdirSync(path.dirname(scopedMigrationCodexPath), { recursive: true });
+writeFileSync(
+  scopedMigrationCodexPath,
+  JSON.stringify({
+    hooks: {
+      UserPromptSubmit: [
+        { hooks: [{ type: 'command', command: legacyPromptTimestampCommand }] },
+      ],
+    },
+  })
+);
+installCli.patchCodexHooksJson(scopedMigrationCodexPath);
+installCli.patchCodexHooksJson(scopedMigrationCodexPath);
+const migratedScopedCodex = JSON.parse(readFileSync(scopedMigrationCodexPath, 'utf8'));
+assert.equal(
+  commandCount(migratedScopedCodex, legacyPromptTimestampCommand),
+  0,
+  'legacy Codex prompt timestamp command removed'
+);
+assert.equal(
+  commandCount(
+    migratedScopedCodex,
+    hookBootstrapCommand('scripts/task-tracker/hooks/codex-prompt-timestamp.mjs')
+  ),
+  1,
+  'scoped Codex prompt timestamp replacement installed once'
+);
+
+mkdirSync(path.dirname(scopedMigrationGrokPath), { recursive: true });
+writeFileSync(
+  scopedMigrationGrokPath,
+  JSON.stringify({
+    hooks: {
+      SessionStart: [
+        {
+          matcher: 'startup|resume|clear|compact',
+          hooks: [{ type: 'command', command: legacyGrokTimingCommand }],
+        },
+      ],
+      CustomEvent: [{ matcher: 'custom', hooks: [{ type: 'command', command: userHookCommand }] }],
+    },
+  })
+);
+installCli.patchGrokHooksJson(scopedMigrationGrokPath);
+installCli.patchGrokHooksJson(scopedMigrationGrokPath);
+const migratedScopedGrok = JSON.parse(readFileSync(scopedMigrationGrokPath, 'utf8'));
+assert.equal(commandCount(migratedScopedGrok, legacyGrokTimingCommand), 0, 'legacy Grok command removed');
+assert.equal(
+  eventCommandCount(migratedScopedGrok, 'SessionStart', installCli.grokHookCommand('timing')),
+  1,
+  'scoped Grok SessionStart replacement installed once'
+);
+assert.equal(commandCount(migratedScopedGrok, userHookCommand), 1, 'neighboring Grok user hook preserved');
 
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');
