@@ -96,7 +96,7 @@ export async function runClose({
   supersessionCommentReadError = null,
   supersessionCommentReadTransform = null,
   replacementTransactionId = 'replacement-close-transaction',
-  dirtyWorkspace = { dirty: false, total: 0, files: [] },
+  dirtyWorkspace = { dirty: false, total: 0, files: [], skipped: false },
   acceptedSha = 'a'.repeat(40),
   createEstimationOutcomeWriter = null,
   trackEstimationOutcomes = false,

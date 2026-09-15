@@ -48,7 +48,7 @@ import {
   parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
 } from '../lib/delivery-records.mjs';
-import { isNoCommitKind } from '../lib/issue-kind.mjs';
+import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
 import {
   parseNoCommitDeliveryComment,
   projectNoCommitDeliveryRecords,
@@ -1175,21 +1175,27 @@ export async function readFalseDeliveryAuditAuthority({
     { timeout: GH_API_TIMEOUT_MS }
   );
   const comment = JSON.parse(String(commentOut || '{}'));
+  const auditBody = String(comment.body || '');
+  const ownedMarkerMatches = auditBody.match(
+    /^<!-- aitm-owned-comment key="audit\.deliverable-v1" -->$/gm
+  );
   if (
     String(comment.id) !== commentId ||
     comment.html_url !== deliverableUrl ||
     comment.user?.login !== actor ||
-    !String(comment.body || '').includes('<!-- aitm-owned-comment key="audit.deliverable-v1" -->')
+    ownedMarkerMatches?.length !== 1
   ) {
     throw new Error('false-delivery-close-recovery:audit-deliverable');
   }
-  const reportMatch = String(comment.body || '').match(
-    /committed at `([0-9a-f]{7,40})` in `(docs\/audits\/[A-Za-z0-9._/-]+\.md)`/
-  );
-  if (!reportMatch || reportMatch[2].split('/').includes('..')) {
+  const reportMatches = [
+    ...auditBody.matchAll(
+      /committed at `([0-9a-f]{7,40})` in `(docs\/audits\/[A-Za-z0-9._/-]+\.md)`/g
+    ),
+  ];
+  if (reportMatches.length !== 1 || reportMatches[0][2].split('/').includes('..')) {
     throw new Error('false-delivery-close-recovery:audit-report');
   }
-  const [, reportRef, reportPath] = reportMatch;
+  const [, reportRef, reportPath] = reportMatches[0];
   const { stdout: resolvedOut } = await pexec(
     'git',
     ['rev-parse', '--verify', `${reportRef}^{commit}`],
@@ -1396,10 +1402,36 @@ export async function runFalseDeliveryCloseRecovery({
     backing.length === 1 &&
     activeTransaction.completedSteps.length === TERMINAL_CLOSE_STEPS.length
   ) {
+    const record = backing[0].record;
+    const sameIdentity = parsedRecovery.filter(
+      (entry) => entry.record.recoveryId === record.recoveryId
+    );
+    if (sameIdentity.length !== 1) {
+      throw new Error('false-delivery-close-recovery:ambiguous-evidence');
+    }
+    const receiptInput = gate?.receipt?.verification?.receiptInput;
+    const transactionMatches =
+      activeTransaction.issueNumber === record.issueNumber &&
+      activeTransaction.acceptedSha === record.acceptedSha &&
+      activeTransaction.reviewAuthority === record.currentReviewAuthority &&
+      activeTransaction.completedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index]);
+    const currentAuthorityMatches =
+      acceptedSha === record.acceptedSha &&
+      gate?.testReceiptSha === record.acceptedSha &&
+      gate?.recoveryReviewApprovedSha === record.acceptedSha &&
+      terminalReviewAuthority() === record.currentReviewAuthority &&
+      receiptInput?.intentId === record.intentId &&
+      receiptInput?.issueNumber === record.issueNumber &&
+      receiptInput?.prNumber === record.prNumber &&
+      receiptInput?.expectedHeadSha === record.acceptedSha &&
+      receiptInput?.mergeCommitSha === record.mergeCommitSha;
+    if (!transactionMatches || !currentAuthorityMatches) {
+      throw new Error('false-delivery-close-recovery:completed-retry-authority');
+    }
     return {
       body: convergeBody,
       transaction: activeTransaction,
-      record: backing[0].record,
+      record,
     };
   }
   const oldTransaction = backing.length
@@ -1416,6 +1448,14 @@ export async function runFalseDeliveryCloseRecovery({
     normalizedComments.map(parseNoCommitDeliveryComment).filter(Boolean)
   );
   if (!noCommitRecords.record) {
+    throw new Error('false-delivery-close-recovery:historical-no-commit');
+  }
+  const targetDeliverable = parseDeliverablePosted(convergeBody);
+  if (
+    parseIssueKind(convergeBody) !== noCommitRecords.record.record.issueKind ||
+    parseIssueKind(convergeBody) !== 'epic' ||
+    targetDeliverable?.url !== noCommitRecords.record.record.deliverableUrl
+  ) {
     throw new Error('false-delivery-close-recovery:historical-no-commit');
   }
   const matchingPullRequests = (gate?.gateInput?.pullRequests ?? []).filter(
@@ -1471,7 +1511,7 @@ export async function runFalseDeliveryCloseRecovery({
       issueClosed: closeSnapshot.issueClosed,
       stateReason: closeSnapshot.stateReason ?? null,
       terminalDisposition: (await dispositionReader({ cfg, issueNumber })) || null,
-      dirty: dirty?.dirty ?? true,
+      dirty: dirty?.skipped === false && dirty?.dirty === false ? false : true,
       bindingOwnership: resolveBindingOwnership({
         projectDir,
         issue: `#${issueNumber}`,

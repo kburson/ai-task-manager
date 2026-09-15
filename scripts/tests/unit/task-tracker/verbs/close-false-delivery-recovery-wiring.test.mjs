@@ -19,6 +19,10 @@ import {
   renderNoCommitDeliveryComment,
 } from '../../../../task-tracker/lib/no-commit-delivery-record.mjs';
 import {
+  parseFalseDeliveryCloseRecoveryComment,
+  renderFalseDeliveryCloseRecoveryComment,
+} from '../../../../task-tracker/lib/false-delivery-close-recovery.mjs';
+import {
   parseFalseDeliveryCloseRecoveryArgs,
   permitsReopenedOutcomeCorrection,
   readFalseDeliveryAuditAuthority,
@@ -35,6 +39,8 @@ const MERGE_SHA = 'b'.repeat(40);
 const INTENT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const OLD_TRANSACTION_ID = 'old-close-transaction';
 const NEW_TRANSACTION_ID = 'replacement-close-transaction';
+const NO_COMMIT_DELIVERABLE_URL =
+  'https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-5675442778';
 
 test('production authority readers verify the owned audit report and live recovery issue', async () => {
   const auditComment = {
@@ -83,6 +89,31 @@ test('production authority readers verify the owned audit report and live recove
   assert.equal(audit.finding.classification, 'false-Done');
   assert.equal(audit.finding.recoveryIssueNumber, 1635);
 
+  const validAuditBody = auditComment.body;
+  for (const invalidBody of [
+    validAuditBody.replace(
+      '<!-- aitm-owned-comment key="audit.deliverable-v1" -->',
+      '> <!-- aitm-owned-comment key="audit.deliverable-v1" -->'
+    ),
+    `${validAuditBody}\nConflicting claim committed at \`deadbeef\` in \`docs/audits/other.md\`.`,
+  ]) {
+    auditComment.body = invalidBody;
+    await assert.rejects(
+      readFalseDeliveryAuditAuthority({
+        cfg: { repo: REPOSITORY, trunkRef: 'trunk' },
+        pexec,
+        dispositionReader: async () => 'Delivered',
+        auditIssueNumber: 1633,
+        recoveryIssueNumber: 1635,
+        issueNumber: ISSUE,
+        acceptedSha: ACCEPTED_SHA,
+        actor: 'kburson',
+      }),
+      /audit-(deliverable|report)/
+    );
+  }
+  auditComment.body = validAuditBody;
+
   const recovery = await readFalseDeliveryRecoveryAuthority({
     cfg: { repo: REPOSITORY },
     pexec: async () => ({
@@ -126,9 +157,16 @@ function transaction() {
   };
 }
 
-function bodyWith(value) {
+function bodyWith(value, { issueKind = 'epic', deliverableUrl = NO_COMMIT_DELIVERABLE_URL } = {}) {
   const completed = JSON.stringify(value.completedSteps).replaceAll('"', '&quot;');
-  return `issue body\n\n<!-- aitm-delivered-close schema="${value.schema}" tx="${value.transactionId}" issue="${value.issueNumber}" accepted-sha="${value.acceptedSha}" review-authority="${value.reviewAuthority}" completed="${completed}" -->\n`;
+  return `issue body
+
+## AITM Progress Markers
+
+<!-- aitm-issue-kind kind="${issueKind}" -->
+<!-- aitm-deliverable-posted url="${deliverableUrl}" ts="2026-09-15T06:13:54.000Z" -->
+<!-- aitm-delivered-close schema="${value.schema}" tx="${value.transactionId}" issue="${value.issueNumber}" accepted-sha="${value.acceptedSha}" review-authority="${value.reviewAuthority}" completed="${completed}" -->
+`;
 }
 
 function delivery() {
@@ -184,8 +222,7 @@ function harness(overrides = {}) {
     repository: REPOSITORY,
     issueNumber: ISSUE,
     issueKind: 'epic',
-    deliverableUrl:
-      'https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-5675442778',
+    deliverableUrl: NO_COMMIT_DELIVERABLE_URL,
     acceptedSha: ACCEPTED_SHA,
     provider: 'codex',
     sessionId: 'session-1624',
@@ -221,7 +258,7 @@ function harness(overrides = {}) {
     resolvedDeliveryGateRef: () => gate,
     terminalReviewAuthority: () => 'human-gate',
     dispositionReader: async () => 'Delivered',
-    inspectDirty: async () => ({ dirty: false }),
+    inspectDirty: async () => ({ dirty: false, skipped: false }),
     resolveWorkspaceForIssue: () => '/worktrees/1624',
     projectDir: '/worktrees/1624',
     cfg: { repo: REPOSITORY, assignee: '@me' },
@@ -319,6 +356,38 @@ test('refuses when gate-resolved test authority differs from the accepted transa
   assert.deepEqual(calls.order, []);
 });
 
+test('refuses when a missing recorded worktree makes clean inspection unavailable', async () => {
+  const { args, calls } = harness({
+    args: { inspectDirty: async () => ({ dirty: false, skipped: true, reason: 'missing-path' }) },
+  });
+  await assert.rejects(runFalseDeliveryCloseRecovery(args), /live-terminal-state/);
+  assert.deepEqual(calls.order, []);
+});
+
+test('refuses when a git inspection error makes clean inspection unavailable', async () => {
+  const { args, calls } = harness({
+    args: {
+      inspectDirty: async () => ({ dirty: false, skipped: true, reason: 'inspection-error' }),
+    },
+  });
+  await assert.rejects(runFalseDeliveryCloseRecovery(args), /live-terminal-state/);
+  assert.deepEqual(calls.order, []);
+});
+
+test('requires the fresh target body to remain epic with the recorded deliverable URL', async () => {
+  for (const convergeBody of [
+    bodyWith(transaction(), { issueKind: 'audit' }),
+    bodyWith(transaction(), {
+      deliverableUrl:
+        'https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-9999999999',
+    }),
+  ]) {
+    const { args, calls } = harness({ args: { convergeBody } });
+    await assert.rejects(runFalseDeliveryCloseRecovery(args), /historical-no-commit/);
+    assert.deepEqual(calls.order, []);
+  }
+});
+
 test('reuses a durable correction record after interruption without a second comment', async () => {
   const first = harness();
   const recovered = await runFalseDeliveryCloseRecovery(first.args);
@@ -401,6 +470,87 @@ test('a completed correction retry is idempotent after binding ownership is gone
   assert.deepEqual(result.transaction.completedSteps, TERMINAL_CLOSE_STEPS);
   assert.deepEqual(retry.calls.created, []);
   assert.deepEqual(retry.calls.mutations, []);
+});
+
+test('a completed correction retry still requires exact replacement and current SHA authority', async () => {
+  const first = harness();
+  const recovered = await runFalseDeliveryCloseRecovery(first.args);
+  const durableComment = {
+    id: 900,
+    body: first.calls.created[0],
+    issue_url: `https://api.github.com/repos/${REPOSITORY}/issues/${ISSUE}`,
+  };
+
+  const wrongTransaction = harness({
+    args: {
+      convergeBody: bodyWith({
+        ...recovered.transaction,
+        reviewAuthority: 'gate-bypassed',
+        completedSteps: [...TERMINAL_CLOSE_STEPS],
+      }),
+      boardState: 'done',
+      closeSnapshot: { issueClosed: true, stateReason: 'completed' },
+    },
+    ctx: { listFalseDeliveryRecoveryComments: async () => [durableComment] },
+  });
+  await assert.rejects(
+    runFalseDeliveryCloseRecovery(wrongTransaction.args),
+    /completed-retry-authority/
+  );
+
+  const wrongGate = harness({
+    args: {
+      convergeBody: bodyWith({
+        ...recovered.transaction,
+        completedSteps: [...TERMINAL_CLOSE_STEPS],
+      }),
+      boardState: 'done',
+      closeSnapshot: { issueClosed: true, stateReason: 'completed' },
+    },
+    ctx: { listFalseDeliveryRecoveryComments: async () => [durableComment] },
+  });
+  const currentGate = wrongGate.args.resolvedDeliveryGateRef();
+  wrongGate.args.resolvedDeliveryGateRef = () => ({
+    ...currentGate,
+    recoveryReviewApprovedSha: 'c'.repeat(40),
+  });
+  await assert.rejects(runFalseDeliveryCloseRecovery(wrongGate.args), /completed-retry-authority/);
+});
+
+test('a completed correction retry rejects a duplicate recovery identity', async () => {
+  const first = harness();
+  const recovered = await runFalseDeliveryCloseRecovery(first.args);
+  const durableComment = {
+    id: 900,
+    body: first.calls.created[0],
+    issue_url: `https://api.github.com/repos/${REPOSITORY}/issues/${ISSUE}`,
+  };
+  const parsed = parseFalseDeliveryCloseRecoveryComment(durableComment, {
+    repository: REPOSITORY,
+    issueNumber: ISSUE,
+  });
+  const conflictingComment = {
+    id: 901,
+    body: renderFalseDeliveryCloseRecoveryComment({
+      ...parsed.record,
+      replacementTransactionId: 'conflicting-replacement-transaction',
+    }),
+    issue_url: durableComment.issue_url,
+  };
+  const retry = harness({
+    args: {
+      convergeBody: bodyWith({
+        ...recovered.transaction,
+        completedSteps: [...TERMINAL_CLOSE_STEPS],
+      }),
+      boardState: 'done',
+      closeSnapshot: { issueClosed: true, stateReason: 'completed' },
+    },
+    ctx: {
+      listFalseDeliveryRecoveryComments: async () => [durableComment, conflictingComment],
+    },
+  });
+  await assert.rejects(runFalseDeliveryCloseRecovery(retry.args), /ambiguous-evidence/);
 });
 
 test('requires the complete false-delivery flag group and rejects incompatible close modes', () => {
