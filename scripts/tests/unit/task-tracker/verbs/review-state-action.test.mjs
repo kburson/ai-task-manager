@@ -1,4 +1,4 @@
-// @story #881 #1117 #1458
+// @story #881 #1117 #1458 #1629
 //
 // The Agent Review Gate is the ACTION of the Review state — not an exit
 // condition of Test, and not an entry condition of Review. That framing fixes
@@ -15,7 +15,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { emitReviewGateFailureTimeline } from '../../../../task-tracker/verbs/review.mjs';
+import {
+  emitReviewGateFailureTimeline,
+  emitReviewGateWaivedTimeline,
+  reviewCompletionMessage,
+} from '../../../../task-tracker/verbs/review.mjs';
 import { wakeReviewResidents } from '../../../../task-tracker/verbs/resume.mjs';
 import reviewState from '../../../../task-tracker/states/review.mjs';
 import { reviewAgentValidationAction } from '../../../../task-tracker/lib/resident-actions/review-agent-validation.mjs';
@@ -155,9 +159,114 @@ test('resident semantic review reloads policy only for missing waivable planning
   assert.equal(result.status, 'complete');
   assert.deepEqual(
     calls.map(([kind]) => kind),
-    ['gate', 'policy', 'gate', 'pass']
+    ['policy', 'gate', 'policy', 'gate', 'pass']
   );
-  assert.equal(calls[2][1], workflowPolicy);
+  assert.equal(calls[3][1], workflowPolicy);
+});
+
+test('a current semantic-review waiver returns waived without running validators or mutations', async () => {
+  const calls = [];
+  const authority = { recordId: '01M2H000000000000000000001', revision: 1 };
+  const result = await reviewAgentValidationAction.run(
+    {
+      now: () => Date.parse('2026-09-15T01:00:00.000Z'),
+      review: {
+        repo: 'kburson/ai-task-manager',
+        loadWorkflowBoundary: async (input) => {
+          calls.push(['policy', input.requirementIds, input.activity]);
+          return {
+            status: 'policy-compatible',
+            isWaived: (id) => id === 'review.semantic-resident',
+            decision: () => ({ authority }),
+          };
+        },
+        runAgentReviewGate: () => assert.fail('waived review must not run validators'),
+        onFailure: () => assert.fail('waived review must not stamp failure'),
+        onPass: () => assert.fail('waived review must not stamp pass'),
+        onWaived: async (input) => calls.push(['waived', input]),
+      },
+    },
+    {
+      issue: { value: 1629 },
+      body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+      stateVisitId: 'review:1',
+    },
+    { correlation: { key: 'review:1' } }
+  );
+
+  assert.deepEqual(result, {
+    status: 'waived',
+    evidence: {
+      authority,
+      requirementId: 'review.semantic-resident',
+    },
+  });
+  assert.deepEqual(
+    calls.map(([kind]) => kind),
+    ['policy', 'waived']
+  );
+  assert.deepEqual(calls[1][1].evidence, {
+    authority,
+    requirementId: 'review.semantic-resident',
+  });
+});
+
+test('waived semantic review emits a truthful durable timeline row', async () => {
+  const rows = [];
+  await emitReviewGateWaivedTimeline({
+    target: '#1629',
+    ts: '2026-09-15T01:00:00.000Z',
+    delta: { activeSec: 7, idleSec: 3 },
+    wordMarker: 10,
+    fullWordMarker: 20,
+    evidence: {
+      authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+      requirementId: 'review.semantic-resident',
+    },
+    deps: {
+      safePostTiming: async (_target, row) => rows.push(row),
+      buildRow: (row) => row,
+    },
+  });
+
+  assert.deepEqual(
+    rows.map(({ event }) => event),
+    ['review:waived']
+  );
+  assert.match(rows[0].description, /review\.semantic-resident/);
+  assert.match(rows[0].description, /01M2H000000000000000000001/);
+  assert.doesNotMatch(rows[0].description, /passed|REVIEW_COMPLETE/i);
+});
+
+test('verify revalidates a durable waiver and treats revocation as incomplete', async () => {
+  const snapshot = {
+    issue: { value: 1629 },
+    body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+    stateVisitId: 'review:1',
+    actionLedger: {
+      status: 'clean',
+      events: [{ phase: 'waived', correlation: { key: 'review:1' } }],
+    },
+  };
+  const authority = { recordId: 'record-1', revision: 1 };
+  const context = (waived) => ({
+    review: {
+      repo: 'kburson/ai-task-manager',
+      loadWorkflowBoundary: async () => ({
+        isWaived: () => waived,
+        decision: () => (waived ? { authority } : { outcome: 'missing' }),
+      }),
+    },
+  });
+
+  assert.deepEqual(await reviewAgentValidationAction.verify(context(true), snapshot), {
+    status: 'waived',
+    evidence: { authority, requirementId: 'review.semantic-resident' },
+  });
+  assert.deepEqual(await reviewAgentValidationAction.verify(context(false), snapshot), {
+    status: 'incomplete',
+    reason: 'not-run',
+  });
 });
 
 test('Review entry is forward while an in-Review retry is actions-only', () => {
@@ -202,6 +311,14 @@ test('Review classifies resident and boundary Cursor outcomes without swallowing
   });
   assert.deepEqual(
     classifyReviewCursorResult({
+      kind: 'resident-waived',
+      state: 'review',
+      result: { status: 'waived' },
+    }),
+    { status: 'waived', result: { status: 'waived' } }
+  );
+  assert.deepEqual(
+    classifyReviewCursorResult({
       kind: 'resident-result',
       state: 'review',
       result: { status: 'failed', reason: 'objection' },
@@ -214,6 +331,16 @@ test('Review classifies resident and boundary Cursor outcomes without swallowing
       status: 'cursor-refused',
       result: { kind: 'drift', expectedState: 'review', actualState: 'test' },
     }
+  );
+});
+
+test('Review reports waived semantic work without claiming verification passed', () => {
+  const waived = reviewCompletionMessage('#1629', 'waived');
+  assert.match(waived, /semantic resident action waived/i);
+  assert.doesNotMatch(waived, /all verification passed|review_complete/i);
+  assert.equal(
+    reviewCompletionMessage('#1629', 'complete'),
+    '✓ #1629 moved to Review — all verification passed.'
   );
 });
 

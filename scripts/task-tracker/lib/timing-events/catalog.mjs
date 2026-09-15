@@ -98,6 +98,7 @@ const CANONICAL_AUDIT_PHASES = new Set([
   'switch-end',
 ]);
 
+// @story #1629
 const AUDIT = [
   'demoted',
   'out-of-band-move',
@@ -114,6 +115,7 @@ const AUDIT = [
   'switch-end',
   'review:failed',
   'review:passed',
+  'review:waived',
   'test:failed',
   'rejected:develop',
   'discovery: idle-reconciled',

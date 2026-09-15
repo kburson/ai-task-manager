@@ -185,6 +185,19 @@ test('failed attempts advance ordinal while open attempts reuse it', () => {
     }).attemptId,
     2
   );
+  assert.deepEqual(
+    deriveActionAttempt({
+      actionHead: { attemptId: 2, phase: 'waived' },
+      correlation: { key: 'C' },
+      verifyStatus: 'waived',
+    }),
+    {
+      attemptId: 2,
+      correlation: { key: 'C' },
+      phase: 'waived',
+      complete: true,
+    }
+  );
 });
 
 test('append creates genesis, preserves action union, and exact retry no-ops', async () => {
@@ -423,11 +436,18 @@ function runnerRepository({ snapshots = [], now = Date.parse('2026-08-31T12:00:0
   };
 }
 
-function actionDouble({ id = 'review-check', serialization = 'correlation', verify, run } = {}) {
+function actionDouble({
+  id = 'review-check',
+  serialization = 'correlation',
+  managedProviderActivity,
+  verify,
+  run,
+} = {}) {
   const calls = { verify: 0, run: 0, contexts: [] };
   return {
     id,
     serialization,
+    ...(managedProviderActivity ? { managedProviderActivity } : {}),
     calls,
     async verify(context, snapshot) {
       calls.verify += 1;
@@ -443,8 +463,8 @@ function actionDouble({ id = 'review-check', serialization = 'correlation', veri
 }
 
 test('runner exports closed status vocabularies and a frozen narrow capability context', async () => {
-  assert.deepEqual(VERIFY_STATUSES, ['complete', 'incomplete']);
-  assert.deepEqual(ACTION_OUTCOMES, ['complete', 'waiting', 'paused', 'failed']);
+  assert.deepEqual(VERIFY_STATUSES, ['complete', 'incomplete', 'waived']);
+  assert.deepEqual(ACTION_OUTCOMES, ['complete', 'waiting', 'paused', 'failed', 'waived']);
   const base = runnerSnapshot();
   const fixture = runnerRepository({ snapshots: [base] });
   const action = actionDouble({ verify: { status: 'complete', evidence: { sha: 'abc' } } });
@@ -459,6 +479,107 @@ test('runner exports closed status vocabularies and a frozen narrow capability c
   assert.equal(context.gh, undefined);
   assert.equal(context.lockDirectory, undefined);
   assert.equal(context.requestTransition, undefined);
+});
+
+test('managed-provider denial is revalidated before every fresh or retry submission', async () => {
+  const base = runnerSnapshot({ body: { value: '## Scope\nManaged review' } });
+  const fixture = runnerRepository({ snapshots: [base, base, base, base] });
+  let policyReads = 0;
+  const action = actionDouble({
+    id: 'managed-review',
+    managedProviderActivity: 'managed-provider:peer-review',
+    verify: { status: 'incomplete' },
+    run: { status: 'complete' },
+  });
+  const runner = createResidentActionRunner({
+    repository: fixture.repository,
+    actionContext: {
+      workflowPolicy: {
+        repository: 'kburson/ai-task-manager',
+        evaluateManagedProviderBoundary: async () => {
+          policyReads += 1;
+          return { status: 'prohibited' };
+        },
+      },
+    },
+  });
+
+  for (const trigger of ['resident-entry', 'actions-only']) {
+    assert.deepEqual(
+      await runner.resume([action], base, {
+        trigger,
+        writeAuthorized: true,
+        fullAuto: true,
+        launch: true,
+      }),
+      { status: 'paused', reason: 'managed-provider-denied' }
+    );
+  }
+  assert.equal(policyReads, 2);
+  assert.equal(action.calls.run, 0);
+});
+
+test('runner records waived as a terminal non-success outcome and continues later actions', async () => {
+  const priorFailure = {
+    phase: 'failed',
+    attemptId: 1,
+    correlation: { key: 'old-failure' },
+  };
+  const base = runnerSnapshot({ actionLedger: { status: 'clean', events: [priorFailure] } });
+  const fixture = runnerRepository({ snapshots: [base, base, base] });
+  const waived = actionDouble({
+    id: 'waived-review',
+    verify: { status: 'incomplete' },
+    run: {
+      status: 'waived',
+      evidence: { authority: { recordId: '01M2H000000000000000000001' } },
+    },
+  });
+  const later = actionDouble({
+    id: 'later-check',
+    verify: { status: 'complete', evidence: { receipt: 'real' } },
+  });
+
+  const result = await createResidentActionRunner({ repository: fixture.repository }).resume(
+    [waived, later],
+    base,
+    { trigger: 'actions-only', writeAuthorized: true }
+  );
+
+  assert.deepEqual(result, { status: 'waived' });
+  assert.equal(waived.calls.run, 1);
+  assert.equal(later.calls.verify, 1);
+  assert.equal(fixture.appended.at(-1).phase, 'waived');
+  assert.equal(fixture.appended.at(-1).verifyStatus, 'waived');
+  assert.match(fixture.appended.at(-1).evidenceFingerprint, /^sha256:/);
+  assert.equal(
+    fixture.appended.some((event) => event.phase === 'resolved'),
+    false
+  );
+});
+
+test('runner returns a freshly revalidated durable waiver without running the action again', async () => {
+  const durable = {
+    phase: 'waived',
+    attemptId: 2,
+    correlation: { key: 'waived-review:correlation' },
+  };
+  const base = runnerSnapshot({ actionLedger: { status: 'clean', events: [durable] } });
+  const fixture = runnerRepository({ snapshots: [base] });
+  const action = actionDouble({
+    id: 'waived-review',
+    verify: { status: 'waived', evidence: { authority: { recordId: 'record-1' } } },
+  });
+
+  const result = await createResidentActionRunner({ repository: fixture.repository }).resume(
+    [action],
+    base,
+    { trigger: 'actions-only', writeAuthorized: true }
+  );
+
+  assert.deepEqual(result, { status: 'waived' });
+  assert.equal(action.calls.run, 0);
+  assert.equal(fixture.appended.length, 0);
 });
 
 test('verify-first traversal scans from start and never runs fresh completion', async () => {

@@ -86,6 +86,34 @@ test('resident-action ledger advance is narrow and phase monotonic', () => {
   );
 });
 
+test('resident-action waiver is terminal for an attempt and may be retried on a later attempt', () => {
+  const intent = inlineHead({ phase: 'intent', attemptId: 1, hash: HASH_A });
+  const waived = inlineHead({ phase: 'waived', attemptId: 1, hash: HASH_B });
+  const retry = inlineHead({ phase: 'intent', attemptId: 2, hash: HASH_C });
+
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances(intent, waived, {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+  assert.doesNotThrow(() =>
+    validateMarkerAdvances(waived, retry, {
+      allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+    })
+  );
+  assert.throws(
+    () =>
+      validateMarkerAdvances(
+        waived,
+        inlineHead({ phase: 'resolved', attemptId: 1, hash: HASH_C }),
+        {
+          allowMarkerAdvance: ['aitm-resident-action-ledger-head'],
+        }
+      ),
+    (error) => error instanceof MarkerAdvanceError && error.reason === 'phase-regression'
+  );
+});
+
 test('same-visit spill to inline is refused but new-visit reset is permitted', () => {
   const spilled = spillHead();
   assert.throws(

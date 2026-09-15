@@ -1,4 +1,4 @@
-// @story #1628
+// @story #1628 #1629
 // Shared, read-only workflow-policy decision used at live enforcement boundaries.
 
 import { evaluateWorkflowPolicy } from './evaluator.mjs';
@@ -129,6 +129,28 @@ export async function loadWorkflowBoundary(input = {}) {
   } catch (error) {
     return indeterminateWorkflowBoundary({ ...input, error });
   }
+}
+
+export async function evaluateManagedProviderBoundary(input = {}) {
+  const activity = input.activity || 'managed-provider:peer-review';
+  if (!String(activity).startsWith('managed-provider:')) {
+    throw new TypeError('workflow-policy:managed-provider-activity');
+  }
+  const loadBoundary = input.loadBoundary || loadWorkflowBoundary;
+  const boundary = await loadBoundary({
+    ...input,
+    activity,
+    requirementIds: [],
+  });
+  if (boundary.status === 'policy-compatible') {
+    return Object.freeze({ status: 'allowed', boundary });
+  }
+  const denied = boundary.blockers?.some(({ code }) => code === 'execution-prohibited');
+  return Object.freeze({
+    status: denied ? 'prohibited' : 'indeterminate',
+    reason: denied ? 'managed-provider-denied' : 'managed-provider-policy-unavailable',
+    boundary,
+  });
 }
 
 export function createGithubWorkflowBoundaryRuntime({ repository, graphql } = {}) {

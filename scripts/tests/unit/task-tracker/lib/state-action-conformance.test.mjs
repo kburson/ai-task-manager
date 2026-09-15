@@ -1,4 +1,4 @@
-// @story #1117 #1459
+// @story #1117 #1459 #1629
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -58,6 +58,7 @@ function actionCapabilities(repository, { pass = true } = {}) {
     },
     review: {
       repo: 'kburson/ai-task-manager',
+      loadWorkflowBoundary: async () => ({ isWaived: () => false }),
       readComments: async () => [],
       computeChangedPaths: async () => ['scripts/task-tracker/lib/state-cursor.mjs'],
       runAgentReviewGate: async () => ({

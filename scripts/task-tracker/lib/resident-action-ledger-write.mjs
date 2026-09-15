@@ -1,4 +1,4 @@
-// @story #1117 #1454
+// @story #1117 #1454 #1629
 
 import {
   RESIDENT_ACTION_HEAD_SCHEMA,
@@ -222,6 +222,14 @@ export function deriveActionAttempt({ actionHead, correlation, verifyStatus = 'i
       complete: true,
     });
   }
+  if (actionHead.phase === 'waived' && verifyStatus === 'waived') {
+    return Object.freeze({
+      attemptId: actionHead.attemptId,
+      correlation,
+      phase: 'waived',
+      complete: true,
+    });
+  }
   return Object.freeze({ attemptId: actionHead.attemptId + 1, correlation, phase: 'intent' });
 }
 
@@ -283,8 +291,12 @@ export async function appendActionEvent(input = {}) {
     correlation: effectiveCorrelation,
     verifyStatus,
   });
-  if (derived.complete && phase === 'resolved') {
-    return Object.freeze({ status: 'no-op', reason: 'already-resolved', head: completeHead });
+  if (derived.complete && ['resolved', 'waived'].includes(phase)) {
+    return Object.freeze({
+      status: 'no-op',
+      reason: phase === 'resolved' ? 'already-resolved' : 'already-waived',
+      head: completeHead,
+    });
   }
   const attemptId = input.attemptId ?? derived.attemptId;
   const eventId = deterministicEventId({

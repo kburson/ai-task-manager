@@ -1,3 +1,4 @@
+// @story #1629
 // `approve` verb — Review -> Done human gate.
 //
 // Records human review approval on an issue by appending a hidden marker to
@@ -42,6 +43,10 @@ import {
   isAgentReviewComplete,
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../lib/workflow-policy/enforcement.mjs';
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import {
@@ -61,6 +66,22 @@ async function defaultGetHeadSha({ projectDir }) {
 
 function removeStaleApprovalCarriers(body) {
   return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
+}
+
+async function isSemanticReviewWaived({ body, issueNumber, repo, now, deps }) {
+  const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+  const policy = await loadBoundary({
+    repository: repo,
+    issue: Number(issueNumber),
+    body,
+    requirementIds: ['review.semantic-resident'],
+    activity: 'completion-approval:review',
+    state: 'review',
+    now,
+    runtime:
+      deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: repo }),
+  });
+  return policy?.isWaived('review.semantic-resident') === true;
 }
 
 // Re-exports for back-compat with existing tests/callers that imported the
@@ -224,6 +245,15 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+      const semanticReviewWaived = isAgentReviewComplete(body)
+        ? false
+        : await isSemanticReviewWaived({
+            body,
+            issueNumber,
+            repo: cfg.repo,
+            now: nowIso(),
+            deps,
+          });
       const approvedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
       if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
@@ -260,7 +290,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         }
         const provenance = auto.fired ? 'full-auto' : 'human';
         const reasons = [];
-        if (!hasAcceptedReviewEvidence(lifecycleEvidence)) {
+        if (!hasAcceptedReviewEvidence(lifecycleEvidence) && !semanticReviewWaived) {
           reasons.push({ code: 'directory-review-evidence-missing' });
         }
         if (!hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance })) {
@@ -294,7 +324,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // with `result="pass"`. Refuse while it is incomplete or failing, so a human
       // is never asked to sign off on a story the agent has not signed off on
       // (observed on #878, where the gate ran only after the human was asked).
-      if (!isAgentReviewComplete(body)) {
+      if (!isAgentReviewComplete(body) && !semanticReviewWaived) {
         const reason = agentReviewIncompleteReason(body);
         return {
           status: 'agent-review-incomplete',

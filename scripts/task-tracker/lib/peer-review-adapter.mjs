@@ -1,3 +1,4 @@
+// @story #1629
 import {
   createNativePushTransport as installedCreateNativePushTransport,
   negotiateAutomaticRequired as installedNegotiateAutomaticRequired,
@@ -6,6 +7,7 @@ import {
   validateAutomaticParticipant as installedValidateAutomaticParticipant,
   validateResidentLease as installedValidateResidentLease,
 } from 'ai-peer-review';
+import { evaluateManagedProviderBoundary } from './workflow-policy/enforcement.mjs';
 
 export const AITM_PEER_REVIEW_CONFIG = Object.freeze({
   reviewsRoot: 'docs/superpowers/reviews',
@@ -83,4 +85,32 @@ export function peerReviewStatus({ workspace, api = installedPeerReviewApi }) {
     state: status.state,
     worktree: status.worktree ?? status.paths?.workspace ?? workspace,
   });
+}
+
+export async function invokeManagedPeerReview({
+  repository,
+  issue,
+  body,
+  state = 'review',
+  now = new Date().toISOString(),
+  runtime,
+  submit,
+  request = {},
+  loadBoundary,
+} = {}) {
+  if (typeof submit !== 'function') {
+    throw new TypeError('peer-review: submit callback is required');
+  }
+  const boundary = await evaluateManagedProviderBoundary({
+    repository,
+    issue: positiveIssue(issue),
+    body: String(body || ''),
+    activity: 'managed-provider:peer-review',
+    state,
+    now,
+    runtime,
+    loadBoundary,
+  });
+  if (boundary.status !== 'allowed') return boundary;
+  return Object.freeze({ status: 'submitted', result: await submit(request) });
 }

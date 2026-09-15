@@ -1,3 +1,4 @@
+// @story #1629
 // Body-invariant markers — the set of hidden HTML comment markers that
 // must NEVER be dropped by an issue-body mutation. This list is the
 // authoritative source for the marker-loss validator inside
@@ -52,10 +53,11 @@ const AC_STRUCK_COUNT_RE = /<!--\s*aitm-ac-struck\b/gi;
 const RESIDENT_ACTION_LEDGER_HEAD_RE = /<!--\s*aitm-resident-action-ledger-head\s+[^]*?-->/i;
 
 const PHASE_ADVANCES = Object.freeze({
-  intent: new Set(['waiting', 'resolved', 'failed']),
-  waiting: new Set(['resolved', 'failed']),
+  intent: new Set(['waiting', 'resolved', 'failed', 'waived']),
+  waiting: new Set(['resolved', 'failed', 'waived']),
   resolved: new Set(),
   failed: new Set(),
+  waived: new Set(),
 });
 
 export class MarkerAdvanceError extends Error {
@@ -122,7 +124,10 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
       if (!correctionBaseline && !PHASE_ADVANCES[prior.phase]?.has(current.phase)) {
         rejectAdvance(markerId, baseMatch, nextMatch, 'phase-regression', { actionId });
       }
-    } else if (current.phase !== 'intent' || !['resolved', 'failed'].includes(prior.phase)) {
+    } else if (
+      current.phase !== 'intent' ||
+      !['resolved', 'failed', 'waived'].includes(prior.phase)
+    ) {
       rejectAdvance(markerId, baseMatch, nextMatch, 'attempt-sequence', { actionId });
     }
   }

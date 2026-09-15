@@ -1,4 +1,4 @@
-// @story #1117 #1457
+// @story #1117 #1457 #1629
 
 import { computeTransitionPlan } from './move-state/transition-plan.mjs';
 import { BoundaryLockAcquireError } from './repository-adapter.mjs';
@@ -124,10 +124,15 @@ export function classifyReviewCursorResult(result) {
   if (result?.kind === 'resident-complete' || result?.kind === 'noop') {
     return Object.freeze({ status: 'complete' });
   }
+  if (result?.kind === 'resident-waived') {
+    return Object.freeze({ status: 'waived', result: result.result });
+  }
   if (result?.kind === 'resident-result') {
-    return result.result?.status === 'complete'
-      ? Object.freeze({ status: 'complete' })
-      : Object.freeze({ status: 'action-failed', result: result.result });
+    if (result.result?.status === 'complete') return Object.freeze({ status: 'complete' });
+    if (result.result?.status === 'waived') {
+      return Object.freeze({ status: 'waived', result: result.result });
+    }
+    return Object.freeze({ status: 'action-failed', result: result.result });
   }
   if (result?.kind === 'dormant') {
     return Object.freeze({ status: 'action-failed', result: result.result });
@@ -218,8 +223,17 @@ export function createStateCursor({ machine, repository, actions } = {}) {
           trigger,
           writeAuthorized: true,
         });
-        if (actionResult?.status !== 'complete') return dormant(current.id, actionResult);
+        if (!['complete', 'waived'].includes(actionResult?.status)) {
+          return dormant(current.id, actionResult);
+        }
         if (trigger === 'actions-only') {
+          if (actionResult.status === 'waived') {
+            return Object.freeze({
+              kind: 'resident-waived',
+              state: current.id,
+              result: actionResult,
+            });
+          }
           return Object.freeze({ kind: 'resident-complete', state: current.id });
         }
       }

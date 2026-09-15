@@ -1,10 +1,11 @@
-// @story #1452
+// @story #1452 #1629
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
   buildMoveContext,
+  classifyReviewCursorResult,
   normalizeMovementIntent,
 } from '../../../../task-tracker/lib/state-cursor.mjs';
 
@@ -36,6 +37,15 @@ const COMPLETE_REVIEW = Object.freeze({
   entryMarkerPresent: true,
   exitRowPresent: true,
   entryRowPresent: true,
+});
+
+test('Review cursor preserves waived resident outcomes as a distinct terminal status', () => {
+  for (const kind of ['resident-waived', 'resident-result']) {
+    assert.deepEqual(
+      classifyReviewCursorResult({ kind, state: 'review', result: { status: 'waived' } }),
+      { status: 'waived', result: { status: 'waived' } }
+    );
+  }
 });
 
 test('movement intent is evidence-free, normalized, and immutable', () => {

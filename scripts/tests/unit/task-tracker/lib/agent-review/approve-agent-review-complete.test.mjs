@@ -1,4 +1,4 @@
-// @story #881
+// @story #881 #1629
 //
 // The human approval is the Review → Done EXIT condition. It is offered only
 // once the Review state's ACTION — the Agent Review Gate — has completed with
@@ -89,6 +89,7 @@ function approveWith(body, extra = {}) {
   let current = body;
   return {
     calls,
+    getBody: () => current,
     run: () =>
       runApprove({
         issueNumber: 881,
@@ -118,6 +119,7 @@ function approveWith(body, extra = {}) {
             status: 'posted',
             ts: '2026-07-18T02:00:00Z',
           }),
+          loadWorkflowBoundary: async () => ({ isWaived: () => false }),
           ...extra,
         },
       }),
@@ -132,6 +134,24 @@ test('approve refuses when the gate has not run, and writes nothing', async () =
   assert.match(res.message, /Run `\/task review #881` first/);
   assert.equal(calls.mutated, 0, 'no approval marker may be stamped');
   assert.equal(calls.commented, 0, 'no Review Notes may be posted');
+});
+
+test('approve accepts a freshly revalidated review waiver without fabricating agent review pass', async () => {
+  const failed = stampReviewFailed(UNTICKED, ['historical objection'], {
+    ts: '2026-07-18T01:00:00.000Z',
+  });
+  const { calls, getBody, run } = approveWith(failed, {
+    loadWorkflowBoundary: async () => ({
+      isWaived: (id) => id === 'review.semantic-resident',
+    }),
+  });
+
+  const result = await run();
+
+  assert.notEqual(result.status, 'agent-review-incomplete');
+  assert.equal(calls.mutated, 1);
+  assert.doesNotMatch(getBody(), /gate="agent-review"[^>]*result="pass"/);
+  assert.match(getBody(), /aitm-review-failed/);
 });
 
 test('approve refuses while an objection is unresolved', async () => {

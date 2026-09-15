@@ -188,7 +188,10 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   // The classified refusal must process.exit before the success banner.
   const gateIdx = reviewSource.indexOf("cursorResult.kind === 'move-refused'");
   const exitIdx = reviewSource.indexOf('process.exit(cursorResult.exit', gateIdx);
-  const bannerIdx = reviewSource.indexOf('moved to Review — all verification passed', gateIdx);
+  const bannerIdx = reviewSource.indexOf(
+    'reviewCompletionMessage(target, reviewOutcome.status)',
+    gateIdx
+  );
   assert.ok(gateIdx > 0, 'Cursor refusal gate exists');
   assert.ok(exitIdx > gateIdx, 'gate exits non-zero on refusal');
   assert.ok(
