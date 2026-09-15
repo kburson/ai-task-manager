@@ -20,6 +20,15 @@
 - Persist and read back immutable correction evidence before replacing the protected close marker.
 - Preserve unrelated working-tree changes, including the main checkout's untracked `.vscode/` directory.
 
+## Decomposition Waiver
+
+- **Rationale**: The recovery capability, exact #1624 branch delivery, terminal correction, and seven-row audit proof form one atomic incident-recovery boundary; completing only a subset would leave either unusable recovery code or known false-Done records.
+- **Expected-focused-duration**: 4 hours
+- **Milestone-checkpoint-plan**: Review the pure authority red-green cycle, close wiring red-green cycle, public command contract, #1635 capability delivery, exact #1624 delivery, then terminal and audit convergence.
+- **Why-no-nested-children**: The user has reached the defect-chain limit and explicitly requires any further discovery to be fixed inside #1635 or returned to planning; new child defects would violate that authority and split one stateful recovery across competing owners.
+- **Approved-by**: kburson via explicit Full-Auto authorization and defect-chain constraint
+- **Approved-at**: 2026-09-15T16:10:51Z
+
 ---
 
 ### Task 1: Pure false-delivery correction authority
