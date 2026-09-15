@@ -92,7 +92,7 @@ comment or body write.
 
 ## Audited false-delivery recovery (`--restart-false-delivery-transaction`, #1635)
 
-**Human-only, exceptional, and same-SHA.** This mode corrects one completed close whose
+**Human-only and exceptional.** This mode corrects one completed close whose
 historical root-epic `aitm.no-commit-delivery/v1` record was later proven by a governed
 audit not to have delivered the accepted history to trunk. It is not a generic delivery
 backfill and does not erase or edit the old close transaction or no-commit record.
@@ -115,11 +115,15 @@ Before the first mutation it requires:
 - a closed Delivered audit with an owned, trunk-committed report row classifying the
   target `false-Done` and mapping it to the explicit recovery issue;
 - an open, assigned, non-Done recovery issue with the exact audit/target marker; and
-- human Review authority plus exact-SHA Test, merged trunk PR, delivery intent, delivery
-  receipt, and independently verified trunk evidence.
+- human Review authority plus Test, Review, merged trunk PR, delivery intent, delivery
+  receipt, and independently verified trunk evidence at one delivery-head SHA; and
+- when that delivery head differs from the historical accepted SHA, an exact two-parent
+  merge whose first parent is the historical accepted SHA and whose second parent is
+  reachable from the verified trunk ref.
 
-Immutable correction evidence is posted and read back before the protected close marker
-is replaced with a zero-step transaction at the same accepted SHA. Retries reuse the
+Immutable correction evidence naming the historical and delivered SHAs is posted and read
+back before the protected close marker is replaced with a zero-step transaction at the
+delivered SHA. Retries reuse the
 record and replacement identity. Prefix-aware checks permit only the live state produced
 by completed saga steps; a fully completed retry is read-only.
 

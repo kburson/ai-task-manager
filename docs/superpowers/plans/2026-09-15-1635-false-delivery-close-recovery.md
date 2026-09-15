@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver a fail-closed same-SHA recovery for #1624's completed false-delivery close, land its preserved implementation on trunk, and re-verify all seven audit findings.
+**Goal:** Deliver a fail-closed protected-base recovery for #1624's completed false-delivery close, preserve its historical accepted SHA, close against the delivered integration SHA, and re-verify all seven audit findings.
 
-**Architecture:** A new pure recovery module owns the closed evidence schema, predicates, persistence correlation, and close-transaction replacement. `close.mjs` supplies only live, independently resolved inputs and resumes the existing eight-step saga after durable evidence is written. Operational recovery first lands this capability, then delivers the untouched #1624 head and applies the new terminal correction.
+**Architecture:** A pure recovery module owns the closed evidence schema, predicates, persistence correlation, and close-transaction replacement. `close.mjs` supplies only live, independently resolved inputs and resumes the existing eight-step saga after durable evidence is written. The protected-base amendment admits either the historical same-SHA shape or one exact two-parent integration head whose first parent is the historical accepted SHA and whose second parent is reachable from verified trunk. Operational recovery first lands this amendment, then delivers #1624 through that integration head and applies the terminal correction.
 
 **Tech Stack:** Node.js ESM, `node:test`, Git/GitHub CLI, AITM governed lifecycle and delivery records.
 
@@ -13,10 +13,10 @@
 ## Global Constraints
 
 - Do not create another defect issue; absorb in-scope findings into #1635 or stop for planning.
-- Do not rewrite, rebase, amend, discard, or delete `feature/epic/1624` or its accepted head `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`.
+- Do not rewrite, rebase, amend, discard, or delete `feature/epic/1624` or its historical accepted head `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`; only add the approved current-trunk merge commit.
 - Do not edit or delete #1624's completed close transaction or no-commit delivery comment by hand.
 - Keep `--restart-stale-transaction`, `--restart-reopened-transaction`, unauthorized-close convergence, and ordinary close behavior unchanged.
-- Require same-SHA Test, Review, PR intent, PR receipt, and independently verified trunk delivery before correction.
+- Require Test, Review, PR intent, PR receipt, and independently verified trunk delivery to agree on the current delivery head before correction.
 - Persist and read back immutable correction evidence before replacing the protected close marker.
 - Preserve unrelated working-tree changes, including the main checkout's untracked `.vscode/` directory.
 
@@ -43,11 +43,11 @@
 - Consumes: canonical delivered-close transactions, no-commit delivery projection, PR delivery intent/receipt records, audit and recovery issue snapshots.
 - Produces: `authorizeFalseDeliveryCloseRestart(input)`, `createFalseDeliveryCloseRecoveryRecord(authorization, deps)`, `renderFalseDeliveryCloseRecoveryComment(record)`, `parseFalseDeliveryCloseRecoveryComment(comment, context)`, `resolveFalseDeliveryCloseRecovery(input)`, `replacementFalseDeliveryTransaction(authorization, record)`, `classifyFalseDeliveryRecoveryProgress(body, authorization, record)`, and `replaceFalseDeliveredCloseTransaction(body, authorization, record)`.
 
-- [ ] **Step 1: Write schema and predicate tests**
+- [x] **Step 1: Write schema and predicate tests**
 
-Create fixtures with one complete old transaction at `OLD_SHA`, one valid no-commit record at `OLD_SHA`, one merged PR/intent/receipt bundle at the same SHA, exact Test/Review SHA evidence, audit #1633 evidence, recovery #1635 evidence, and OPEN/REOPENED Review live state. Assert authorization succeeds and returns a deeply frozen value.
+Create fixtures with one complete old transaction at `OLD_SHA`, one valid no-commit record at `OLD_SHA`, and one merged PR/intent/receipt bundle at the current delivery SHA with exact Test/Review evidence, audit #1633 evidence, recovery #1635 evidence, and OPEN/REOPENED Review live state. Assert both the legacy same-SHA shape and the exact approved two-parent integration shape authorize and return deeply frozen values.
 
-Add table-driven refusals for partial/reordered close steps, different current SHA, missing or duplicate no-commit record, malformed delivery bundle, mismatched PR/intent/receipt, stale Test or Review SHA, non-reopened issue, non-Review board, non-Delivered disposition, dirty worktree, foreign binding, wrong audit finding, and wrong recovery marker.
+Add table-driven refusals for partial/reordered close steps, an unproven different current SHA, reversed or extra integration parents, unreachable trunk parent, missing or duplicate no-commit record, malformed delivery bundle, mismatched PR/intent/receipt, stale Test or Review SHA, non-reopened issue, non-Review board, non-Delivered disposition, dirty worktree, foreign binding, wrong audit finding, and wrong recovery marker.
 
 - [ ] **Step 2: Run the focused test and confirm RED**
 
@@ -64,11 +64,11 @@ Expected: failure because the module does not exist.
 Use exact-key validation and constants:
 
 ```js
-export const FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA = 'aitm.false-delivery-close-recovery/v1';
+export const FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA = 'aitm.false-delivery-close-recovery/v2';
 export const FALSE_DELIVERY_CLOSE_RECOVERY_REASON = 'historical-no-commit-false-delivery';
 ```
 
-Validate the complete old transaction, same accepted SHA across all current authority, the exact historical no-commit record, audit/recovery snapshots, and prefix-aware live state. Never accept asserted `verified: true` booleans.
+Validate the complete old transaction, the exact historical no-commit record, current delivery-head authority, the exact two-parent integration topology when the heads differ, audit/recovery snapshots, and prefix-aware live state. Never accept asserted `verified: true` booleans.
 
 - [ ] **Step 4: Add deterministic record and canonical comment tests**
 
@@ -83,7 +83,7 @@ Follow the audited codec and retry pattern in `reopened-close-recovery.mjs`. The
   schema: 'aitm.delivered-close/v1',
   transactionId: record.replacementTransactionId,
   issueNumber: authorization.issueNumber,
-  acceptedSha: authorization.oldTransaction.acceptedSha,
+  acceptedSha: record.deliveryHeadSha,
   reviewAuthority: authorization.currentReviewAuthority,
   completedSteps: [],
 }
@@ -198,7 +198,7 @@ git commit -m "[#1635] feat: restart false delivery close transactions"
 
 - [ ] **Step 1: Add failing help/catalog assertions**
 
-Assert usage includes all three new flags, examples name #1624/#1633/#1635, preconditions state same-SHA plus audit/no-commit/PR evidence, and effects state audit-first immutable replacement.
+Assert usage includes all three new flags, examples name #1624/#1633/#1635, preconditions state the same-SHA or exact protected-base integration shape plus audit/no-commit/PR evidence, and effects state audit-first immutable replacement.
 
 - [ ] **Step 2: Run help tests and confirm RED**
 
@@ -266,16 +266,16 @@ Use `npx aitm test 1635`, verify every command-backed AC/DoD item at the exact h
 
 Run `npx aitm deliver 1635`, execute only its emitted PR/push/merge action, verify hosted checks at the exact SHA, rerun `deliver` for the receipt, and confirm current `origin/trunk` contains the merged capability.
 
-### Task 5: Deliver the preserved #1624 history
+### Task 5: Deliver the preserved #1624 history through a protected-base integration head
 
 **Files:**
 
-- Do not modify files or commits on `feature/epic/1624`.
+- Do not modify files or rewrite existing commits on `feature/epic/1624`; add only the approved `--no-ff` merge of current `origin/trunk`.
 
 **Interfaces:**
 
-- Consumes: exact local branch head and the newly delivered recovery runtime.
-- Produces: exact remote branch, governed PR, hosted checks, merge receipt, and trunk content for accepted SHA `2158a289...`.
+- Consumes: historical accepted head, current trunk, and the newly delivered recovery runtime.
+- Produces: one exact two-parent integration head, updated governed PR, hosted checks, merge receipt, and trunk content preserving historical accepted SHA `2158a289...`.
 
 - [ ] **Step 1: Recheck immutable preflight**
 
@@ -288,19 +288,19 @@ git merge-tree --write-tree --messages origin/trunk feature/epic/1624
 git status --short
 ```
 
-Expected: exact head `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`, no source changes, and a conflict-free merge tree.
+Expected: pre-integration head `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`, no source changes, and a conflict-free merge tree.
 
-- [ ] **Step 2: Publish and open the exact-head PR**
+- [ ] **Step 2: Create and publish the exact integration head**
 
-Push `feature/epic/1624` without force or rewrite. Open one PR targeting `trunk` whose exact head OID is `2158a289...`, with issue attribution `[#1624]` and recovery context linking #1633/#1635.
+Demote #1624 to Develop before changing its head. Merge current `origin/trunk` with `--no-ff`, verify the new commit has exactly `[2158a289..., pre-merge trunk]` as its ordered parents, and push without force. PR #1638 remains the single governed PR and updates to that integration head.
 
 - [ ] **Step 3: Verify hosted checks and merge with merge-commit topology**
 
-Require all configured checks on the exact source head. Execute the governed merge action with method `merge`, then verify the merge commit has the pre-merge trunk head and `2158a289...` as its two parents and that current `origin/trunk` reaches the merge.
+Require all configured checks on the integration head. Execute only the provider action emitted by `npx aitm deliver 1624` through the sanctioned connector, rerun `deliver` for the receipt, and verify current `origin/trunk` incorporates the source head.
 
 - [ ] **Step 4: Record #1624's real delivery bundle**
 
-Restore #1624 to OPEN/REOPENED Review through the documented recovery boundary, bind the preserved worktree, refresh exact-SHA Test/Review evidence only if required, run `npx aitm deliver 1624`, and require one correlated intent and receipt for the merged PR.
+Restore #1624 to OPEN/REOPENED Review through the documented recovery boundary, bind the preserved worktree, refresh exact-SHA Test/Review evidence at the integration head, and require one superseding intent plus correlated receipt for PR #1638.
 
 ### Task 6: Correct #1624 and close the audit recovery
 
@@ -322,7 +322,7 @@ npx aitm close 1624 --restart-false-delivery-transaction \
   --audit-issue 1633 --recovery-issue 1635
 ```
 
-Expected: one immutable `aitm.false-delivery-close-recovery/v1` record, one completed replacement `aitm.delivered-close/v1` transaction at `2158a289...`, #1624 CLOSED/Done/Delivered, and preserved old records.
+Expected: one immutable `aitm.false-delivery-close-recovery/v2` record naming both the historical and delivery heads, one completed replacement `aitm.delivered-close/v1` transaction at the delivered integration SHA, #1624 CLOSED/Done/Delivered, and preserved old records.
 
 - [ ] **Step 2: Rerun the delivery audit against current trunk**
 

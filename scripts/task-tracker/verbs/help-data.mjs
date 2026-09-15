@@ -552,7 +552,7 @@ export const VERB_REFERENCE = {
       },
       {
         flag: '--restart-false-delivery-transaction',
-        desc: 'human-only same-SHA correction for an audited false-Done close whose historical root-epic no-commit record did not deliver to trunk; requires --audit-issue and --recovery-issue',
+        desc: 'human-only correction for an audited false-Done close whose historical root-epic no-commit record did not deliver to trunk; accepts the same SHA or one exact protected-base integration head and requires --audit-issue and --recovery-issue',
       },
       { flag: '--audit-issue <N>', desc: 'closed Delivered audit carrying the false-Done row' },
       {

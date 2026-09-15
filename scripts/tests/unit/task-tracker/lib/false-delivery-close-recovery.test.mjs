@@ -21,6 +21,7 @@ import {
   oldFalseDeliveryTransactionFromRecord,
   parseFalseDeliveryCloseRecoveryComment,
   renderFalseDeliveryCloseRecoveryComment,
+  replacementFalseDeliveryTransaction,
   replaceFalseDeliveredCloseTransaction,
   resolveFalseDeliveryCloseRecovery,
 } from '../../../../task-tracker/lib/false-delivery-close-recovery.mjs';
@@ -30,6 +31,8 @@ const ISSUE = 1624;
 const AUDIT_ISSUE = 1633;
 const RECOVERY_ISSUE = 1635;
 const ACCEPTED_SHA = 'a'.repeat(40);
+const DELIVERY_SHA = 'c'.repeat(40);
+const TRUNK_PARENT_SHA = 'd'.repeat(40);
 const MERGE_SHA = 'b'.repeat(40);
 const OLD_TRANSACTION_ID = 'old-close-transaction';
 const REPLACEMENT_TRANSACTION_ID = 'replacement-close-transaction';
@@ -72,6 +75,14 @@ function noCommitRecord(overrides = {}) {
 }
 
 function currentDelivery(overrides = {}) {
+  const deliveryHeadSha = overrides.deliveryHeadSha ?? ACCEPTED_SHA;
+  const sourceIntegration =
+    deliveryHeadSha === ACCEPTED_SHA
+      ? null
+      : {
+          deliveryHeadSha,
+          parentShas: [ACCEPTED_SHA, TRUNK_PARENT_SHA],
+        };
   const intent = buildDeliveryIntent({
     intentId: INTENT_ID,
     supersedesIntentId: null,
@@ -80,11 +91,11 @@ function currentDelivery(overrides = {}) {
     prNumber: 1640,
     baseRef: 'trunk',
     headRef: 'feature/epic/1624',
-    expectedHeadSha: ACCEPTED_SHA,
+    expectedHeadSha: deliveryHeadSha,
     mergeMethod: 'merge',
     attributionTokens: ['#1624'],
     commitTitle: '[#1624] Deliver preserved workflow exceptions',
-    commitMessage: `PR #1640\nRecovery #1635\nSource: ${ACCEPTED_SHA}\n\nAttribution: [#1624]`,
+    commitMessage: `PR #1640\nRecovery #1635\nSource: ${deliveryHeadSha}\n\nAttribution: [#1624]`,
     provider: 'codex',
     sessionId: 'session-1624-recovery',
     clientCreatedAt: '2026-09-15T16:30:00.000Z',
@@ -93,7 +104,7 @@ function currentDelivery(overrides = {}) {
     intentId: INTENT_ID,
     issueNumber: ISSUE,
     prNumber: 1640,
-    expectedHeadSha: ACCEPTED_SHA,
+    expectedHeadSha: deliveryHeadSha,
     mergeCommitSha: MERGE_SHA,
     baseRef: 'trunk',
     mergeMethod: 'merge',
@@ -109,20 +120,21 @@ function currentDelivery(overrides = {}) {
       merged: true,
       headRefName: 'feature/epic/1624',
       baseRefName: 'trunk',
-      headRefOid: ACCEPTED_SHA,
+      headRefOid: deliveryHeadSha,
       mergeCommitSha: MERGE_SHA,
     },
     intent,
     receipt,
-    testReceiptSha: ACCEPTED_SHA,
-    reviewApprovedSha: ACCEPTED_SHA,
+    testReceiptSha: deliveryHeadSha,
+    reviewApprovedSha: deliveryHeadSha,
     verifiedDelivery: {
       intentId: INTENT_ID,
       issueNumber: ISSUE,
       prNumber: 1640,
-      expectedHeadSha: ACCEPTED_SHA,
+      expectedHeadSha: deliveryHeadSha,
       mergeCommitSha: MERGE_SHA,
     },
+    sourceIntegration,
     ...overrides,
   };
 }
@@ -185,6 +197,40 @@ test('authorizes only the audited same-SHA false-delivery shape', () => {
   assert.equal(authorization.oldTransaction.acceptedSha, ACCEPTED_SHA);
   assert.equal(authorization.currentDelivery.receipt.intentId, INTENT_ID);
   assert.equal(Object.isFrozen(authorization), true);
+});
+
+test('authorizes an exact protected-base integration head without changing historical authority', () => {
+  const authorization = authorizeFalseDeliveryCloseRestart(
+    input({ currentDelivery: currentDelivery({ deliveryHeadSha: DELIVERY_SHA }) })
+  );
+  assert.equal(authorization.oldTransaction.acceptedSha, ACCEPTED_SHA);
+  assert.equal(authorization.currentDelivery.pullRequest.headRefOid, DELIVERY_SHA);
+  assert.deepEqual(authorization.currentDelivery.sourceIntegration.parentShas, [
+    ACCEPTED_SHA,
+    TRUNK_PARENT_SHA,
+  ]);
+});
+
+test('refuses a different delivery head without the exact approved integration topology', () => {
+  const valid = currentDelivery({ deliveryHeadSha: DELIVERY_SHA });
+  const cases = [
+    null,
+    { deliveryHeadSha: DELIVERY_SHA, parentShas: [TRUNK_PARENT_SHA, ACCEPTED_SHA] },
+    {
+      deliveryHeadSha: DELIVERY_SHA,
+      parentShas: [ACCEPTED_SHA, TRUNK_PARENT_SHA, 'e'.repeat(40)],
+    },
+    { deliveryHeadSha: 'e'.repeat(40), parentShas: [ACCEPTED_SHA, TRUNK_PARENT_SHA] },
+  ];
+  for (const sourceIntegration of cases) {
+    assert.throws(
+      () =>
+        authorizeFalseDeliveryCloseRestart(
+          input({ currentDelivery: { ...valid, sourceIntegration } })
+        ),
+      /current-evidence/
+    );
+  }
 });
 
 test('refuses alternate recovery categories and contradictory authority', () => {
@@ -252,6 +298,7 @@ test('writes a canonical durable record and rejects quoted or cross-issue eviden
   });
   assert.equal(record.schema, FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA);
   assert.equal(record.acceptedSha, ACCEPTED_SHA);
+  assert.equal(record.deliveryHeadSha, ACCEPTED_SHA);
   const rendered = renderFalseDeliveryCloseRecoveryComment(record);
   const comment = {
     id: '900',
@@ -278,6 +325,22 @@ test('writes a canonical durable record and rejects quoted or cross-issue eviden
         { repository: REPOSITORY, issueNumber: ISSUE }
       ),
     /malformed-comment/
+  );
+});
+
+test('records and closes against the delivered integration head', () => {
+  const authorization = authorizeFalseDeliveryCloseRestart(
+    input({ currentDelivery: currentDelivery({ deliveryHeadSha: DELIVERY_SHA }) })
+  );
+  const record = createFalseDeliveryCloseRecoveryRecord(authorization, {
+    now: NOW,
+    randomUUIDFn: () => REPLACEMENT_TRANSACTION_ID,
+  });
+  assert.equal(record.acceptedSha, ACCEPTED_SHA);
+  assert.equal(record.deliveryHeadSha, DELIVERY_SHA);
+  assert.equal(
+    replacementFalseDeliveryTransaction(authorization, record).acceptedSha,
+    DELIVERY_SHA
   );
 });
 

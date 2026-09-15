@@ -1,7 +1,8 @@
 // @story #1635
 //
-// Same-SHA terminal recovery for a completed close whose historical no-commit
-// delivery premise was later proven false by a governed audit.
+// Terminal recovery for a completed close whose historical no-commit delivery
+// premise was later proven false by a governed audit. A protected-base delivery
+// may use one exact merge head while preserving the historical accepted SHA.
 
 import { randomUUID } from 'node:crypto';
 
@@ -12,7 +13,7 @@ import {
 } from './close-convergence.mjs';
 import { decodeCanonical, encodeCanonical, fingerprint } from './resident-action-ledger-codec.mjs';
 
-export const FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA = 'aitm.false-delivery-close-recovery/v1';
+export const FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA = 'aitm.false-delivery-close-recovery/v2';
 export const FALSE_DELIVERY_CLOSE_RECOVERY_REASON = 'historical-no-commit-false-delivery';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -24,6 +25,7 @@ const RECORD_KEYS = Object.freeze([
   'auditIssueNumber',
   'completedSteps',
   'currentReviewAuthority',
+  'deliveryHeadSha',
   'intentId',
   'issueNumber',
   'mergeCommitSha',
@@ -136,6 +138,7 @@ function validateNoCommit(evidence, { repository, issueNumber, acceptedSha }) {
 
 function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha }) {
   const { pullRequest, intent, receipt } = current || {};
+  const deliveryHeadSha = pullRequest?.headRefOid;
   if (
     !isObject(current) ||
     !isObject(pullRequest) ||
@@ -143,21 +146,21 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
     !isObject(receipt) ||
     intent.schema !== 'aitm.delivery-intent/v1' ||
     receipt.schema !== 'aitm.delivery-receipt/v1' ||
-    current.testReceiptSha !== acceptedSha ||
-    current.reviewApprovedSha !== acceptedSha ||
-    pullRequest.headRefOid !== acceptedSha ||
+    !SHA_RE.test(deliveryHeadSha || '') ||
+    current.testReceiptSha !== deliveryHeadSha ||
+    current.reviewApprovedSha !== deliveryHeadSha ||
     (pullRequest.merged !== true && String(pullRequest.state || '').toUpperCase() !== 'MERGED') ||
     pullRequest.baseRefName !== 'trunk' ||
     !validIssueNumber(pullRequest.number) ||
     !SHA_RE.test(pullRequest.mergeCommitSha || '') ||
     intent.repository !== repository ||
     intent.issueNumber !== issueNumber ||
-    intent.expectedHeadSha !== acceptedSha ||
+    intent.expectedHeadSha !== deliveryHeadSha ||
     intent.prNumber !== pullRequest.number ||
     intent.headRef !== pullRequest.headRefName ||
     intent.baseRef !== pullRequest.baseRefName ||
     receipt.issueNumber !== issueNumber ||
-    receipt.expectedHeadSha !== acceptedSha ||
+    receipt.expectedHeadSha !== deliveryHeadSha ||
     receipt.prNumber !== pullRequest.number ||
     receipt.mergeCommitSha !== pullRequest.mergeCommitSha ||
     receipt.intentId !== intent.intentId ||
@@ -172,10 +175,26 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
   if (
     !isObject(verified) ||
     verified.issueNumber !== issueNumber ||
-    verified.expectedHeadSha !== acceptedSha ||
+    verified.expectedHeadSha !== deliveryHeadSha ||
     verified.prNumber !== pullRequest.number ||
     verified.mergeCommitSha !== pullRequest.mergeCommitSha ||
     verified.intentId !== intent.intentId
+  ) {
+    fail('current-evidence');
+  }
+  if (deliveryHeadSha === acceptedSha) {
+    if (current.sourceIntegration !== null) fail('current-evidence');
+    return;
+  }
+  const integration = current.sourceIntegration;
+  if (
+    !exactKeys(integration, ['deliveryHeadSha', 'parentShas']) ||
+    integration.deliveryHeadSha !== deliveryHeadSha ||
+    !Array.isArray(integration.parentShas) ||
+    integration.parentShas.length !== 2 ||
+    integration.parentShas[0] !== acceptedSha ||
+    !SHA_RE.test(integration.parentShas[1] || '') ||
+    new Set([deliveryHeadSha, ...integration.parentShas]).size !== 3
   ) {
     fail('current-evidence');
   }
@@ -248,6 +267,7 @@ function recordIntent(value) {
     auditIssueNumber: value.auditIssueNumber,
     completedSteps: [...value.completedSteps],
     currentReviewAuthority: value.currentReviewAuthority,
+    deliveryHeadSha: value.deliveryHeadSha,
     intentId: value.intentId,
     issueNumber: value.issueNumber,
     mergeCommitSha: value.mergeCommitSha,
@@ -269,6 +289,7 @@ function authorizationIntent(authorization) {
     auditIssueNumber: authorization.auditIssueNumber,
     completedSteps: authorization.oldTransaction.completedSteps,
     currentReviewAuthority: authorization.currentReviewAuthority,
+    deliveryHeadSha: authorization.currentDelivery.pullRequest.headRefOid,
     intentId: authorization.currentDelivery.intent.intentId,
     issueNumber: authorization.issueNumber,
     mergeCommitSha: authorization.currentDelivery.pullRequest.mergeCommitSha,
@@ -371,6 +392,7 @@ export function validateFalseDeliveryCloseRecoveryRecord(record) {
     record.replacementTransactionId.length === 0 ||
     record.oldTransactionId === record.replacementTransactionId ||
     !SHA_RE.test(record.acceptedSha || '') ||
+    !SHA_RE.test(record.deliveryHeadSha || '') ||
     !SHA_RE.test(record.mergeCommitSha || '') ||
     !REVIEW_AUTHORITIES.has(record.oldReviewAuthority) ||
     record.currentReviewAuthority !== 'human-gate' ||
@@ -483,7 +505,7 @@ export function replacementFalseDeliveryTransaction(authorization, recordInput) 
     schema: 'aitm.delivered-close/v1',
     transactionId: record.replacementTransactionId,
     issueNumber: authorization.issueNumber,
-    acceptedSha: authorization.oldTransaction.acceptedSha,
+    acceptedSha: record.deliveryHeadSha,
     reviewAuthority: authorization.currentReviewAuthority,
     completedSteps: [],
   });
@@ -518,7 +540,7 @@ export function findFalseDeliveryRecoveryBackedReplacement({
     .filter(
       ({ record }) =>
         record.replacementTransactionId === transaction.transactionId &&
-        record.acceptedSha === transaction.acceptedSha
+        record.deliveryHeadSha === transaction.acceptedSha
     );
   if (matches.length > 1) {
     return deepFreeze({ status: 'ambiguous', record: null, transaction });
