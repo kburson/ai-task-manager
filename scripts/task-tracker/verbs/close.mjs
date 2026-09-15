@@ -1687,7 +1687,8 @@ export function parseFalseDeliveryCloseRecoveryArgs(rest = []) {
   const valueAfter = (flag) => {
     const index = rest.indexOf(flag);
     if (index < 0) return null;
-    const value = Number(rest[index + 1]);
+    const raw = String(rest[index + 1] ?? '');
+    const value = /^#?\d+$/.test(raw) ? Number(raw.replace(/^#/, '')) : Number.NaN;
     return Number.isSafeInteger(value) && value > 0 ? value : null;
   };
   const auditIssueNumber = valueAfter('--audit-issue');

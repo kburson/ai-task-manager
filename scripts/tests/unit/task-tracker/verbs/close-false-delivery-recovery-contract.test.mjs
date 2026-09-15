@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #1635
+// @story #1635 #1624
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -29,9 +29,9 @@ test('requires the complete false-delivery flag group and rejects incompatible c
       '#1624',
       '--restart-false-delivery-transaction',
       '--audit-issue',
-      '1633',
+      '#1633',
       '--recovery-issue',
-      '1635',
+      '#1635',
     ]),
     { enabled: true, auditIssueNumber: 1633, recoveryIssueNumber: 1635 }
   );
