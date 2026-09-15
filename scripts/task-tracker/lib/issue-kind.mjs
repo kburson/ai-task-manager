@@ -126,6 +126,16 @@ export function isNoCommitKind(body) {
 }
 
 /**
+ * True when the issue's terminal deliverable lives in the issue record itself.
+ * Epics remain no-commit for Develop/Test, but their aggregate child history is
+ * commit-bearing delivery and a root epic must deliver that history upward.
+ */
+export function isIssueResidentDeliveryKind(body) {
+  const kind = parseIssueKind(body);
+  return NO_COMMIT_KINDS.has(kind) && kind !== 'epic';
+}
+
+/**
  * Deprecated #494 alias for {@link isNoCommitKind}. Retained for back-compat;
  * the predicate is identical now that `epic` shares the lane. New code should
  * call `isNoCommitKind`.

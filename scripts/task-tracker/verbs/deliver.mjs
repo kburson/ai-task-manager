@@ -57,7 +57,11 @@ import {
   observeMergeMethod,
 } from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
-import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
+import {
+  isIssueResidentDeliveryKind,
+  parseDeliverablePosted,
+  parseIssueKind,
+} from '../lib/issue-kind.mjs';
 import {
   buildNoCommitDeliveryRecord,
   parseNoCommitDeliveryComment,
@@ -737,7 +741,10 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   });
   if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
 
-  if (isNoCommitKind(issue.body) && pullRequestRefs.length === 0) {
+  // A root epic delivers aggregate child commits to trunk. Although it remains
+  // a no-commit kind for Develop/Test, provider delivery must not replace that
+  // branch delivery with an issue-comment-only receipt (#1632).
+  if (isIssueResidentDeliveryKind(issue.body) && pullRequestRefs.length === 0) {
     return deliverNoCommit({ deps, issue, issueNumber, cfg });
   }
 

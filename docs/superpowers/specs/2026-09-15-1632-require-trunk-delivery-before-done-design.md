@@ -111,4 +111,3 @@ epic branch and posted deliverable cannot reach terminal mutation without a PR.
 Companion cases must demonstrate successful correlated merged delivery, root
 epic child-trail proof on trunk, nested epic parent delivery, and preservation of
 genuine no-commit and authorized main-thread lanes.
-
