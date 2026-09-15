@@ -43,6 +43,7 @@ const NO_COMMIT_DELIVERABLE_URL =
   'https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-5675442778';
 
 test('production authority readers verify the owned audit report and live recovery issue', async () => {
+  const gitCalls = [];
   const auditComment = {
     id: 5682743221,
     html_url: 'https://github.com/kburson/ai-task-manager/issues/1633#issuecomment-5682743221',
@@ -60,6 +61,7 @@ test('production authority readers verify the owned audit report and live recove
   let auditIssueBody =
     '<!-- aitm-deliverable-posted url="https://github.com/kburson/ai-task-manager/issues/1633#issuecomment-5682743221" ts="2026-09-15T08:00:00.000Z" -->';
   const pexec = async (command, args) => {
+    if (command === 'git') gitCalls.push(args);
     if (command === 'gh' && args[0] === 'issue') {
       return {
         stdout: JSON.stringify({
@@ -79,7 +81,7 @@ test('production authority readers verify the owned audit report and live recove
     throw new Error(`unexpected command: ${command} ${args.join(' ')}`);
   };
   const audit = await readFalseDeliveryAuditAuthority({
-    cfg: { repo: REPOSITORY, trunkRef: 'trunk' },
+    cfg: { repo: REPOSITORY, trunkRef: 'origin/trunk' },
     pexec,
     dispositionReader: async () => 'Delivered',
     auditIssueNumber: 1633,
@@ -90,6 +92,10 @@ test('production authority readers verify the owned audit report and live recove
   });
   assert.equal(audit.finding.classification, 'false-Done');
   assert.equal(audit.finding.recoveryIssueNumber, 1635);
+  assert.deepEqual(
+    gitCalls.find((args) => args[0] === 'merge-base'),
+    ['merge-base', '--is-ancestor', 'c'.repeat(40), 'origin/trunk']
+  );
 
   const validReport = report;
   report = ['```md', validReport, '```'].join('\n');

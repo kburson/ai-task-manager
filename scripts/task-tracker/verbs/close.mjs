@@ -632,6 +632,11 @@ function closeBaseRef(cfg) {
   );
 }
 
+function closeRemoteTrunkRef(cfg) {
+  const trunkRef = String(cfg?.trunkRef || 'trunk').trim() || 'trunk';
+  return trunkRef.startsWith('origin/') ? trunkRef : `origin/${trunkRef}`;
+}
+
 export async function loadCloseDeliveryGateInput({
   issueNumber,
   cfg,
@@ -1259,11 +1264,10 @@ export async function readFalseDeliveryAuditAuthority({
   if (!/^[0-9a-f]{40}$/.test(reportCommit)) {
     throw new Error('false-delivery-close-recovery:audit-report');
   }
-  await pexec(
-    'git',
-    ['merge-base', '--is-ancestor', reportCommit, `origin/${cfg.trunkRef || 'trunk'}`],
-    { cwd: cfg.projectDir, timeout: GIT_TIMEOUT_MS }
-  );
+  await pexec('git', ['merge-base', '--is-ancestor', reportCommit, closeRemoteTrunkRef(cfg)], {
+    cwd: cfg.projectDir,
+    timeout: GIT_TIMEOUT_MS,
+  });
   const { stdout: reportOut } = await pexec('git', ['show', `${reportCommit}:${reportPath}`], {
     cwd: cfg.projectDir,
     timeout: GIT_TIMEOUT_MS,
