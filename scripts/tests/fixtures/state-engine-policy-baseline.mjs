@@ -326,24 +326,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3083,
+      3102,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3281,
+      3300,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 3426, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 3445, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3660,
+      3679,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']

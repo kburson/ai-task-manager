@@ -1154,34 +1154,43 @@ function stripMarkdownFencedBlocks(value) {
   return kept.join('\n');
 }
 
-function falseDeliveryProgressMarkersSection(body) {
-  const lines = String(body || '').split(/\r?\n/);
-  const start = lines.findIndex((line) => /^##[ \t]+AITM Progress Markers[ \t]*$/.test(line));
-  if (start < 0) throw new Error('false-delivery-close-recovery:historical-no-commit');
-  let end = lines.length;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    if (/^##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
+function strictCanonicalBodyClaims(body, markerName, category) {
+  const source = stripMarkdownFencedBlocks(body);
+  const claims = [...source.matchAll(new RegExp(`<!--\\s*${markerName}\\b[^>]*-->`, 'gi'))].map(
+    (match) => match[0]
+  );
+  const lines = source.split(/\r?\n/);
+  if (claims.length === 0 || claims.some((claim) => !lines.includes(claim))) {
+    throw new Error(`false-delivery-close-recovery:${category}`);
   }
-  return stripMarkdownFencedBlocks(lines.slice(start + 1, end).join('\n'));
+  return claims;
+}
+
+function strictProgressMarkerClaim(body, markerName, category) {
+  const source = stripMarkdownFencedBlocks(body);
+  const headings = [...source.matchAll(/^##[ \t]+AITM Progress Markers[ \t]*$/gm)];
+  const claims = strictCanonicalBodyClaims(source, markerName, category);
+  if (headings.length !== 1 || claims.length !== 1) {
+    throw new Error(`false-delivery-close-recovery:${category}`);
+  }
+  const start = headings[0].index + headings[0][0].length;
+  const tail = source.slice(start);
+  const nextHeading = tail.search(/^##[ \t]+/m);
+  const section = tail.slice(0, nextHeading < 0 ? tail.length : nextHeading);
+  if (!section.split(/\r?\n/).includes(claims[0])) {
+    throw new Error(`false-delivery-close-recovery:${category}`);
+  }
+  return claims[0];
 }
 
 function assertFalseDeliveryTargetNoCommitAuthority(body, historicalNoCommit) {
-  const section = falseDeliveryProgressMarkersSection(body);
-  const kindClaims = [...section.matchAll(/<!--\s*aitm-issue-kind\b[^>]*-->/gi)];
-  const deliverableClaims = [...section.matchAll(/<!--\s*aitm-deliverable-posted\b[^>]*-->/gi)];
-  const isCanonicalLine = (claim) => section.split('\n').includes(claim[0]);
-  if (
-    kindClaims.length !== 1 ||
-    deliverableClaims.length !== 1 ||
-    !isCanonicalLine(kindClaims[0]) ||
-    !isCanonicalLine(deliverableClaims[0])
-  ) {
-    throw new Error('false-delivery-close-recovery:historical-no-commit');
-  }
-  const isolated = `## AITM Progress Markers\n\n${kindClaims[0][0]}\n${deliverableClaims[0][0]}\n`;
+  const kindClaim = strictProgressMarkerClaim(body, 'aitm-issue-kind', 'historical-no-commit');
+  const deliverableClaim = strictProgressMarkerClaim(
+    body,
+    'aitm-deliverable-posted',
+    'historical-no-commit'
+  );
+  const isolated = `## AITM Progress Markers\n\n${kindClaim}\n${deliverableClaim}\n`;
   const issueKind = parseIssueKind(isolated);
   const deliverable = parseDeliverablePosted(isolated);
   const record = historicalNoCommit?.record;
@@ -1210,15 +1219,18 @@ export async function readFalseDeliveryAuditAuthority({
     { timeout: GH_API_TIMEOUT_MS }
   );
   const issue = JSON.parse(String(issueOut || '{}'));
-  const deliverableMatches = [
-    ...String(issue.body || '').matchAll(
-      /<!--\s*aitm-deliverable-posted\s+[^>]*\burl="([^"]+)"[^>]*-->/g
-    ),
-  ];
-  if (deliverableMatches.length !== 1) {
+  const deliverableClaim = strictProgressMarkerClaim(
+    issue.body,
+    'aitm-deliverable-posted',
+    'audit-deliverable'
+  );
+  const parsedDeliverable = parseDeliverablePosted(
+    `## AITM Progress Markers\n\n${deliverableClaim}\n`
+  );
+  if (!parsedDeliverable) {
     throw new Error('false-delivery-close-recovery:audit-deliverable');
   }
-  const deliverableUrl = deliverableMatches[0][1];
+  const deliverableUrl = parsedDeliverable.url;
   const expectedUrlPrefix = `https://github.com/${cfg.repo}/issues/${auditIssueNumber}#issuecomment-`;
   if (!deliverableUrl.startsWith(expectedUrlPrefix)) {
     throw new Error('false-delivery-close-recovery:audit-deliverable');
@@ -1332,15 +1344,22 @@ export async function readFalseDeliveryRecoveryAuthority({
     { timeout: GH_API_TIMEOUT_MS }
   );
   const issue = JSON.parse(String(stdout || '{}'));
-  const markers = [
-    ...String(issue.body || '').matchAll(
-      /<!--\s*aitm-delivery-audit-recovery\s+audit="(\d+)"\s+issue="(\d+)"\s*-->/g
-    ),
-  ].filter(
-    (match) =>
-      Number(match[1]) === Number(auditIssueNumber) && Number(match[2]) === Number(issueNumber)
+  const claims = strictCanonicalBodyClaims(
+    issue.body,
+    'aitm-delivery-audit-recovery',
+    'recovery-authority'
   );
-  if (markers.length !== 1 || typeof boardStateReader !== 'function') {
+  const markers = claims.map((claim) =>
+    claim.match(/^<!--\s*aitm-delivery-audit-recovery\s+audit="(\d+)"\s+issue="(\d+)"\s*-->$/)
+  );
+  const markerIssues = markers.map((match) => Number(match?.[2]));
+  const targetMarkers = markers.filter((match) => Number(match?.[2]) === Number(issueNumber));
+  if (
+    markers.some((match) => !match || Number(match[1]) !== Number(auditIssueNumber)) ||
+    new Set(markerIssues).size !== markerIssues.length ||
+    targetMarkers.length !== 1 ||
+    typeof boardStateReader !== 'function'
+  ) {
     throw new Error('false-delivery-close-recovery:recovery-authority');
   }
   return {

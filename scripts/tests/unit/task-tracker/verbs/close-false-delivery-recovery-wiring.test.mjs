@@ -57,12 +57,14 @@ test('production authority readers verify the owned audit report and live recove
     '|---|---|---|---|---|---|---|---|---|---|---|---|',
     `| [#${ISSUE}](https://github.com/kburson/ai-task-manager/issues/${ISSUE}) title | now | \`${ACCEPTED_SHA}\` | branch | none | not-recorded | not-recorded | none | none | **false-Done** | [#1635](https://github.com/kburson/ai-task-manager/issues/1635) | absent |`,
   ].join('\n');
+  let auditIssueBody =
+    '<!-- aitm-deliverable-posted url="https://github.com/kburson/ai-task-manager/issues/1633#issuecomment-5682743221" ts="2026-09-15T08:00:00.000Z" -->';
   const pexec = async (command, args) => {
     if (command === 'gh' && args[0] === 'issue') {
       return {
         stdout: JSON.stringify({
           state: 'CLOSED',
-          body: '<!-- aitm-deliverable-posted url="https://github.com/kburson/ai-task-manager/issues/1633#issuecomment-5682743221" -->',
+          body: `## AITM Progress Markers\n\n${auditIssueBody}`,
         }),
       };
     }
@@ -115,22 +117,51 @@ test('production authority readers verify the owned audit report and live recove
   }
   auditComment.body = validAuditBody;
 
-  const recovery = await readFalseDeliveryRecoveryAuthority({
-    cfg: { repo: REPOSITORY },
-    pexec: async () => ({
-      stdout: JSON.stringify({
-        state: 'OPEN',
-        assignees: [{ login: 'kburson' }],
-        body: '<!-- aitm-delivery-audit-recovery audit="1633" issue="1624" -->',
+  const validAuditIssueBody = auditIssueBody;
+  for (const invalidBody of [
+    ['```md', validAuditIssueBody, '```'].join('\n'),
+    `${validAuditIssueBody}\n<!-- aitm-deliverable-posted url="https://github.com/kburson/ai-task-manager/issues/1633#issuecomment-9999999999" ts="2026-09-15T08:00:00.000Z" -->`,
+  ]) {
+    auditIssueBody = invalidBody;
+    await assert.rejects(
+      readFalseDeliveryAuditAuthority({
+        cfg: { repo: REPOSITORY, trunkRef: 'trunk' },
+        pexec,
+        dispositionReader: async () => 'Delivered',
+        auditIssueNumber: 1633,
+        recoveryIssueNumber: 1635,
+        issueNumber: ISSUE,
+        acceptedSha: ACCEPTED_SHA,
+        actor: 'kburson',
       }),
-    }),
-    boardStateReader: async () => 'develop',
-    recoveryIssueNumber: 1635,
-    auditIssueNumber: 1633,
-    issueNumber: ISSUE,
-  });
+      /audit-deliverable/
+    );
+  }
+  auditIssueBody = validAuditIssueBody;
+
+  const readRecovery = (body) =>
+    readFalseDeliveryRecoveryAuthority({
+      cfg: { repo: REPOSITORY },
+      pexec: async () => ({
+        stdout: JSON.stringify({ state: 'OPEN', assignees: [{ login: 'kburson' }], body }),
+      }),
+      boardStateReader: async () => 'develop',
+      recoveryIssueNumber: 1635,
+      auditIssueNumber: 1633,
+      issueNumber: ISSUE,
+    });
+  const recoveryMarker = '<!-- aitm-delivery-audit-recovery audit="1633" issue="1624" -->';
+  const recovery = await readRecovery(
+    `${recoveryMarker}\n<!-- aitm-delivery-audit-recovery audit="1633" issue="1625" -->`
+  );
   assert.equal(recovery.boardState, 'develop');
   assert.deepEqual(recovery.marker, { auditIssueNumber: 1633, issueNumber: ISSUE });
+  for (const invalidBody of [
+    ['```md', recoveryMarker, '```'].join('\n'),
+    `${recoveryMarker}\n<!-- aitm-delivery-audit-recovery audit="999" issue="1624" -->`,
+  ]) {
+    await assert.rejects(readRecovery(invalidBody), /recovery-authority/);
+  }
 });
 
 test('production actor resolution dereferences @me through GitHub', async () => {
@@ -390,6 +421,7 @@ test('requires the fresh target body to remain epic with the recorded deliverabl
       '<!-- aitm-deliverable-posted url=',
       '<!-- aitm-deliverable-posted url="https://github.com/kburson/ai-task-manager/issues/1624#issuecomment-9999999999" ts="2026-09-15T06:13:54.000Z" -->\n<!-- aitm-deliverable-posted url='
     ),
+    `${bodyWith(transaction())}\n## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="audit" -->`,
   ]) {
     const { args, calls } = harness({ args: { convergeBody } });
     await assert.rejects(runFalseDeliveryCloseRecovery(args), /historical-no-commit/);
