@@ -42,4 +42,3 @@ record.
 - `--verify-report` exits zero against the committed snapshot.
 - The focused and repository-wide verification commands exit zero at the
   accepted SHA.
-

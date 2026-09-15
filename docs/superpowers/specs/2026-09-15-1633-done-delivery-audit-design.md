@@ -9,7 +9,7 @@ records with delivery authority.
 
 ## Population
 
-The CLI scans all non-PR GitHub issues updated at or after the lookback instant
+The CLI scans all non-PR GitHub issues updated at or after the look-back instant
 and selects those with exactly one valid `aitm-entered-done` marker between
 `--since` and the frozen snapshot, inclusive. The report stores both instants and
 the remote trunk head used as evidence. Verification regenerates the same closed
@@ -45,6 +45,8 @@ promoted to Delivered.
   on configured trunk.
 - `explicitly-local-only`: a valid issue-resident artifact delivery exists for an
   allowed non-epic no-commit kind.
+- `terminal-disposition-exception`: an explicit superseded/not-planned workflow
+  entered Done without claiming delivery under that issue.
 
 Root epics cannot use `explicitly-local-only`; #1632 made their aggregate child
 history a trunk-delivery obligation.
@@ -69,4 +71,3 @@ The audit discovers recovery issues through
 missing recovery coverage, but `--verify-report` refuses while any `false-Done`
 or `indeterminate` row lacks a unique governed recovery issue. The audit never
 mutates affected issues or git state.
-
