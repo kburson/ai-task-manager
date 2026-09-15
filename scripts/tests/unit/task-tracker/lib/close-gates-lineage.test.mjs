@@ -196,6 +196,28 @@ test('lineageDoneGate: empty trail marker → skip', async () => {
   assert.equal(r.skipped, 'empty-commits-marker');
 });
 
+test('lineageDoneGate: root epic without an own commit trail still proves children on trunk', async () => {
+  const seenHeads = [];
+  const r = await lineageDoneGate({
+    cfg: { repo: 'o/r' },
+    issueNumber: 912,
+    projectDir: '/x',
+    body: '## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->',
+    deps: {
+      graph,
+      branchExists: () => true,
+      listComments: listNoTrail,
+      epicTrailLog: async ({ epicHead }) => {
+        seenHeads.push(epicHead);
+        return epicTrailAllChildren();
+      },
+    },
+  });
+  assert.equal(r.ok, true, r.blocker);
+  assert.equal(r.epicHead, 'trunk');
+  assert.deepEqual(seenHeads, ['trunk']);
+});
+
 // ── AC-1: leaf gate asserts [#N] on the parent branch, not flat trunk ──────────
 
 test('lineageDoneGate: child with [#N] reachable on its epic branch → passes', async () => {
@@ -260,12 +282,13 @@ test('lineageDoneGate: standalone story scopes attribution to trunk', async () =
   assert.deepEqual(seenRefs, ['trunk']);
 });
 
-// ── AC-3: epic done check asserts the derived child-trail on the epic's branch ─
+// ── AC-3: epic done check asserts the derived child-trail on its parent target ─
 
 const epicTrailAllChildren = async () =>
   ['h1\x1f[#913] feat\x1fme\x1f2026-01-01', 'h2\x1f[#914] feat\x1fme\x1f2026-01-02'].join('\n');
 
-test('lineageDoneGate: epic passes when every child commit is on the epic branch', async () => {
+test('lineageDoneGate: root epic proves every child commit on trunk even while its branch survives', async () => {
+  const seenHeads = [];
   const r = await lineageDoneGate({
     cfg: { repo: 'o/r' },
     issueNumber: 912,
@@ -274,14 +297,18 @@ test('lineageDoneGate: epic passes when every child commit is on the epic branch
       graph,
       branchExists: () => true,
       listComments: listWithTrail,
-      epicTrailLog: epicTrailAllChildren,
+      epicTrailLog: async ({ epicHead }) => {
+        seenHeads.push(epicHead);
+        return epicTrailAllChildren();
+      },
     },
   });
   assert.equal(r.ok, true, r.blocker);
-  assert.equal(r.epicHead, 'feature/epic/912');
+  assert.equal(r.epicHead, 'trunk');
+  assert.deepEqual(seenHeads, ['trunk']);
 });
 
-test('lineageDoneGate: epic excludes a closed not-planned child from delivery reachability', async () => {
+test('lineageDoneGate: root epic excludes a closed not-planned child on trunk', async () => {
   const r = await lineageDoneGate({
     cfg: { repo: 'o/r' },
     issueNumber: 912,
@@ -305,10 +332,10 @@ test('lineageDoneGate: epic excludes a closed not-planned child from delivery re
     },
   });
   assert.equal(r.ok, true, r.blocker);
-  assert.equal(r.epicHead, 'feature/epic/912');
+  assert.equal(r.epicHead, 'trunk');
 });
 
-test('lineageDoneGate: epic refuses naming children whose commit is not on the epic branch', async () => {
+test('lineageDoneGate: root epic refuses naming children whose commit is not on trunk', async () => {
   const r = await lineageDoneGate({
     cfg: { repo: 'o/r' },
     issueNumber: 912,
@@ -325,6 +352,27 @@ test('lineageDoneGate: epic refuses naming children whose commit is not on the e
   assert.match(r.blocker, /close-epic-child-trail-incomplete/);
   assert.match(r.blocker, /#914/);
   assert.deepEqual(r.unreachable, [914]);
+});
+
+test('lineageDoneGate: nested epic proves its child trail on the parent even while its own branch survives', async () => {
+  const seenHeads = [];
+  const r = await lineageDoneGate({
+    cfg: { repo: 'o/r' },
+    issueNumber: 860,
+    projectDir: '/x',
+    deps: {
+      graph,
+      branchExists: () => true,
+      listComments: listWithTrail,
+      epicTrailLog: async ({ epicHead }) => {
+        seenHeads.push(epicHead);
+        return 'h1\x1f[#872] feat\x1fme\x1f2026-01-01';
+      },
+    },
+  });
+  assert.equal(r.ok, true, r.blocker);
+  assert.equal(r.epicHead, 'feature/epic/859');
+  assert.deepEqual(seenHeads, ['feature/epic/859']);
 });
 
 test('lineageDoneGate: nested epic uses its surviving parent when its own branch is missing', async () => {

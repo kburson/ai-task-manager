@@ -292,7 +292,8 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
   // #913 — Axis-1 "done" is delivered-to-parent-branch, not delivered-to-trunk.
   // The lineage-aware gate greps the `[#N]` deliverable on the issue's parent
   // branch (walking up to the nearest surviving ancestor → trunk), and for an
-  // epic asserts the derived child-trail on the epic's own branch. For a
+  // epic asserts the derived child-trail on the same resolved parent target.
+  // A surviving epic branch is its source, not proof of upward delivery. For a
   // trunk-only (no-epic) repo the parent branch IS trunk, so this degenerates to
   // exactly the former `commitsOnTrunkGate` reachability check — no regression.
   let trunkResult = null;
@@ -316,8 +317,8 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     blockers,
     dirtyCheckSkipped: dirtyResult?.skipped || null,
     // `trunkCheckSkipped`/`trunkRef` retain their legacy names for existing
-    // consumers; `doneBranch` is the #913 lineage-aware Axis-1 target branch
-    // (the walked-up parent branch, or the epic's own branch for an epic).
+    // consumers; `doneBranch` is the lineage-aware parent target branch for
+    // both leaves and epics (#913, corrected for root epics by #1632).
     trunkCheckSkipped: trunkResult?.skipped || null,
     trunkRef: trunkResult?.doneBranch || trunkResult?.epicHead || trunkResult?.trunkRef || null,
     doneBranch: trunkResult?.doneBranch || trunkResult?.epicHead || null,
