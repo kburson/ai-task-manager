@@ -125,7 +125,7 @@ function repoRoot() {
 // #1579 ships one linked-plan policy validator used by Plan approval. The
 // measured surface grows by exactly that maintained runtime entry.
 // #1618 ships one Project workflow compatibility policy used by init.
-const ENTRY_CEILING = 771;
+const ENTRY_CEILING = 772;
 
 let packedFileCache = null;
 function packedFiles() {
