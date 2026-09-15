@@ -129,6 +129,27 @@ export const VERB_REFERENCE = {
     ],
     examples: ['/task adopt-github-records 1086', '/task adopt-github-records 1086 --apply'],
   },
+  'workflow-exception': {
+    topic: 'evidence',
+    summary: 'Record, inspect, revise, or revoke durable issue-scoped workflow exceptions.',
+    usage:
+      '/task workflow-exception <record|show|revise|revoke> #N [#M ...] [--input-file <request.json>] [--json]',
+    flags: [
+      {
+        flag: '--input-file <path>',
+        desc: 'closed workflow-exception request; required except for show',
+      },
+      { flag: '--json', desc: 'emit the versioned per-issue result as JSON' },
+    ],
+    exitCodes: [
+      { code: 6, meaning: 'one or more explicit issue operations were blocked or indeterminate' },
+    ],
+    examples: [
+      '/task workflow-exception show #57 --json',
+      '/task workflow-exception record #57 --input-file .scratch/gh/57-workflow-exception.json',
+      '/task workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json',
+    ],
+  },
 
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {

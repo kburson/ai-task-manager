@@ -127,7 +127,9 @@ function repoRoot() {
 // #1618 ships one Project workflow compatibility policy used by init.
 // #1625 ships the four pure workflow-policy core modules. The measured package
 // surface grows by exactly those four entries; no test or excluded path ships.
-const ENTRY_CEILING = 775;
+// #1626 ships the exception record, authority resolver, immutable store, and
+// governed verb. These four runtime entries are the entire intentional growth.
+const ENTRY_CEILING = 779;
 
 let packedFileCache = null;
 function packedFiles() {
