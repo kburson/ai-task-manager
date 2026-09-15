@@ -1267,7 +1267,7 @@ export async function readFalseDeliveryAuditAuthority({
     cwd: cfg.projectDir,
     timeout: GIT_TIMEOUT_MS,
   });
-  const rows = String(reportOut || '')
+  const rows = stripFencedCodeBlocks(reportOut)
     .split(/\r?\n/)
     .filter((line) => line.startsWith('|'))
     .map((line) =>

@@ -52,7 +52,7 @@ test('production authority readers verify the owned audit report and live recove
       '<!-- aitm-owned-comment key="audit.deliverable-v1" -->',
     ].join('\n'),
   };
-  const report = [
+  let report = [
     '| Issue | Done | Accepted SHA | Source | PR | Target | Method | Merge | Trunk | Classification | Recovery | Notes |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|',
     `| [#${ISSUE}](https://github.com/kburson/ai-task-manager/issues/${ISSUE}) title | now | \`${ACCEPTED_SHA}\` | branch | none | not-recorded | not-recorded | none | none | **false-Done** | [#1635](https://github.com/kburson/ai-task-manager/issues/1635) | absent |`,
@@ -90,6 +90,23 @@ test('production authority readers verify the owned audit report and live recove
   });
   assert.equal(audit.finding.classification, 'false-Done');
   assert.equal(audit.finding.recoveryIssueNumber, 1635);
+
+  const validReport = report;
+  report = ['```md', validReport, '```'].join('\n');
+  await assert.rejects(
+    readFalseDeliveryAuditAuthority({
+      cfg: { repo: REPOSITORY, trunkRef: 'trunk' },
+      pexec,
+      dispositionReader: async () => 'Delivered',
+      auditIssueNumber: 1633,
+      recoveryIssueNumber: 1635,
+      issueNumber: ISSUE,
+      acceptedSha: ACCEPTED_SHA,
+      actor: 'kburson',
+    }),
+    /audit-finding/
+  );
+  report = validReport;
 
   const validAuditBody = auditComment.body;
   for (const invalidBody of [
