@@ -44,13 +44,17 @@ function fakeExecFile(result) {
 
 // A fake spawn returning a child emitter that replays canned stdout/stderr and
 // a close code (or an 'error' event) on the next tick.
-function fakeSpawn({ stdout = '', stderr = '', code = 0, error = null } = {}) {
+function fakeSpawn({ stdout = '', stderr = '', code = 0, error = null, stdinError = null } = {}) {
   const calls = [];
   const spawnFn = (file, args, options) => {
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
-    child.stdin = { end: (input) => calls.push({ file, args, options, input }) };
+    child.stdin = new EventEmitter();
+    child.stdin.end = (input) => {
+      calls.push({ file, args, options, input });
+      if (stdinError) child.stdin.emit('error', stdinError);
+    };
     queueMicrotask(() => {
       if (error) {
         child.emit('error', error);
@@ -98,6 +102,18 @@ test('gh: with input rejects with stderr on nonzero close', async () => {
 test('gh: with input rejects on child error event', async () => {
   deps.spawn = fakeSpawn({ error: new Error('spawn failed') });
   await assert.rejects(() => gh(['api'], { input: 'x' }), /spawn failed/);
+});
+
+test('gh: ignores stdin EPIPE when the child closes successfully', async () => {
+  const error = Object.assign(new Error('write EPIPE'), { code: 'EPIPE' });
+  deps.spawn = fakeSpawn({ stdout: 'ok', stdinError: error });
+  assert.equal(await gh(['api'], { input: 'x' }), 'ok');
+});
+
+test('gh: rejects non-EPIPE stdin errors', async () => {
+  const error = Object.assign(new Error('stdin failed'), { code: 'EIO' });
+  deps.spawn = fakeSpawn({ stdinError: error });
+  await assert.rejects(() => gh(['api'], { input: 'x' }), error);
 });
 
 // ── gql() ─────────────────────────────────────────────────────────────────────

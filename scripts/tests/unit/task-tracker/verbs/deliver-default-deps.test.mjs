@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #939
+// @story #939 #1635
 
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
@@ -230,6 +230,48 @@ test('default live PR snapshot records a server-confirmed deleted source branch'
     'gh',
     ['api', 'repos/kburson/ai-task-manager/git/ref/heads/codex/939-full-auto-merge'],
   ]);
+});
+
+test('#1635 merged PR attribution uses the full commit subject when GitHub truncates messageHeadline', async () => {
+  const fullSubject = 'fix(task-tracker): support protected-base false-delivery recovery [#1635]';
+  const exec = async (_command, args) => {
+    if (args[0] === 'pr') {
+      return {
+        stdout: JSON.stringify({
+          number: 1640,
+          state: 'MERGED',
+          isDraft: false,
+          baseRefName: 'trunk',
+          headRefName: 'codex/audit-1635-1624-delivery-recovery',
+          headRefOid: HEAD,
+          mergeable: 'UNKNOWN',
+          mergedAt: MERGED_AT,
+          mergeCommit: { oid: MERGE_HEAD },
+          headRepository: { name: 'ai-task-manager' },
+          headRepositoryOwner: { login: 'kburson' },
+        }),
+      };
+    }
+    if (args[0] === 'api' && args[1] === 'graphql') {
+      return {
+        stdout: JSON.stringify(
+          commitConnection([
+            { oid: HEAD, messageHeadline: `${fullSubject.slice(0, 69)}…`, message: fullSubject },
+          ])
+        ),
+      };
+    }
+    if (args[0] === 'api') return { stdout: '{}' };
+    throw new Error(`unexpected command: ${args.join(' ')}`);
+  };
+  const deps = createDefaultDeliverDeps(
+    { cfg: cfg(), projectDir: '/injected/project', getIssueBoardState: async () => 'Review' },
+    { exec }
+  );
+
+  const pullRequest = await deps.fetchPullRequest({ prNumber: 1640 });
+
+  assert.deepEqual(pullRequest.sourceCommitSubjects, [fullSubject]);
 });
 
 test('default PR adapter proves a complete paginated commit inventory', async () => {

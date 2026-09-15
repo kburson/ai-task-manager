@@ -576,7 +576,7 @@ export const VERB_REFERENCE = {
     summary:
       'Close through a durable terminal transaction; partial work recovers, and an already-closed retry is read-only.',
     usage:
-      '/task close [#N] [--force] [--repair] [--restart-stale-transaction] [--restart-reopened-transaction] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
+      '/task close [#N] [--force] [--repair] [--restart-stale-transaction] [--restart-reopened-transaction] [--restart-false-delivery-transaction --audit-issue <N> --recovery-issue <N>] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
@@ -591,6 +591,15 @@ export const VERB_REFERENCE = {
       {
         flag: '--restart-reopened-transaction',
         desc: 'restart a COMPLETED eight-step Delivered close transaction that survived a reopen, only on an OPEN/REOPENED issue in Review whose disposition is still Delivered, with correlated historical and current delivery bundles; writes immutable recovery evidence before replacing the protected marker and is idempotent across retries',
+      },
+      {
+        flag: '--restart-false-delivery-transaction',
+        desc: 'human-only correction for an audited false-Done close whose historical root-epic no-commit record did not deliver to trunk; accepts the same SHA or one exact protected-base integration head and requires --audit-issue and --recovery-issue',
+      },
+      { flag: '--audit-issue <N>', desc: 'closed Delivered audit carrying the false-Done row' },
+      {
+        flag: '--recovery-issue <N>',
+        desc: 'open assigned recovery issue carrying the exact audit-to-target marker',
       },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
       {
@@ -609,6 +618,7 @@ export const VERB_REFERENCE = {
       '/task close 708 --repair',
       '/task close 1461 --restart-stale-transaction',
       '/task close 1490 --restart-reopened-transaction',
+      '/task close 1624 --restart-false-delivery-transaction --audit-issue 1633 --recovery-issue 1635',
       '/task close 1403 --as incorporated --of 1381',
       '/task close 939 --of 1381',
     ],
