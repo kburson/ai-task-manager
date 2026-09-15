@@ -40,6 +40,26 @@ to observe a live environment, or it involves a third-party review),
 leave that checkbox unchecked, report `CODE_COMPLETE`, and list the
 unverified items. Do not check DoD boxes you cannot actually verify.
 
+## Workflow-exception completion example
+
+Keep performed, waived, pending, prohibited, and external results distinct. An
+authorized waiver is evidence about policy, not evidence that the underlying
+activity ran:
+
+```text
+STATUS: CODE_COMPLETE
+performed: delivery.tests, delivery.verification-evidence
+waived: review.peer (authority: github://.../workflow-exception/<record-id>)
+pending: approval.human-completion
+prohibited: provider.managed-execution
+external blocker: required hosted check is not yet green
+```
+
+Never rewrite `waived` as `passed`, infer completion approval from a review
+waiver, or treat a managed-provider denial as satisfied work. A preflight report
+is read-only and conditional; the action boundary must revalidate current
+authority and live external state.
+
 ## Before reporting CODE_COMPLETE — agent steps
 
 > ⛔ **All checkboxes checked means "ready for orchestrator to call

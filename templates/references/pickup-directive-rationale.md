@@ -189,6 +189,21 @@ guard (`scripts/task-tracker/bash-guard.mjs`) hard-refuses every `gh issue
 edit <N> --body <s>` and `--body-file <p>` regardless of diff; label,
 title, milestone, and assignee edits still pass.
 
+## Rule 16 — Workflow exceptions are explicit and revalidated
+
+Full-Auto, labels, issue prose, and caller flags never activate an exception.
+If an exception exists or is requested, use read-only `/task
+workflow-preflight #N --target <state>` for discovery. Preflight does not bind
+the issue, start a timer, mutate state, or authorize a later action. At each
+affected boundary, reload and revalidate the current GitHub-native record,
+including its repository, issue, scope, expiry, revision, and authority.
+
+Report authorized work as `waived`, never `passed`. A review waiver does not
+grant completion approval. Tests, verification evidence, ownership,
+dependencies, binding, state contiguity, exact-SHA provenance, CI, safe
+delivery, and external protection remain mandatory. An active managed-provider
+denial wins over Full-Auto and retry requests.
+
 ## Rank rules
 
 These ordering and capacity rules govern the board; they are consulted

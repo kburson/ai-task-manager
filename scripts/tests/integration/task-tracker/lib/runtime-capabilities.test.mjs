@@ -1,4 +1,4 @@
-// @story #561
+// @story #561 #1630
 // Proves the runtime context decomposes into named capability objects (AC1),
 // that a large verb (verbClose) is migrated to that narrow interface (AC2),
 // and that the migrated verb runs against a small hand-built fixture instead of
@@ -61,6 +61,15 @@ test('AC1: buildContext decomposes into named capability objects', () => {
     );
     // issueBodyMutator is the one synthesized capability (a narrow wrapper).
     assert.equal(typeof ctx.issueBodyMutator.mutate, 'function');
+    assert.equal(ctx.workflowPolicy.capability, 'aitm.workflow-policy/v1');
+    assert.deepEqual(Object.keys(ctx.workflowPolicy).sort(), [
+      'capability',
+      'evaluate',
+      'evaluateBoundary',
+      'evaluatePreflight',
+      'loadBoundary',
+    ]);
+    assert.equal(Object.isFrozen(ctx.workflowPolicy), true);
   } finally {
     if (prev === undefined) delete process.env.TT_SKIP_NETWORK;
     else process.env.TT_SKIP_NETWORK = prev;
@@ -112,6 +121,12 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
   );
   assert.equal(caps.githubClient.fetchSubIssues, flat.fetchSubIssues, 'by reference');
   assert.equal(typeof caps.issueBodyMutator.mutate, 'function');
+  assert.equal(caps.workflowPolicy.capability, 'aitm.workflow-policy/v1');
+  assert.equal(typeof caps.workflowPolicy.evaluate, 'function');
+  assert.equal(typeof caps.workflowPolicy.evaluateBoundary, 'function');
+  assert.equal(typeof caps.workflowPolicy.loadBoundary, 'function');
+  assert.equal(typeof caps.workflowPolicy.evaluatePreflight, 'function');
+  assert.equal(Object.isFrozen(caps.workflowPolicy), true);
 });
 
 test('strict sub-issue capability fetches project identity and Status name in one query', () => {

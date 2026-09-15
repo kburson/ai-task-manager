@@ -12,7 +12,7 @@ aitm-skill-loaded:rules/state-walk:1.2.0
 ## 8-state model
 
 ```
-backlog → assigned → refine → plan → develop → test → review → done
+backlog → refine → ready-for-plan → plan → develop → test → review → done
 ```
 
 `ready-for-plan` (display: "Ready for Planning") is the durable parking state after active refinement and before short-lived JIT Plan. `backlog → refine` begins shaping; `refine → ready-for-plan` records current refinement evidence; `ready-for-plan → plan` admits JIT planning. Assignment is ownership metadata, not a lifecycle state, and Plan→Develop enforces the exclusive local owner at the last responsible moment.
@@ -35,6 +35,23 @@ a user-facing `/task` alias or another lifecycle state. See
 | `/task reconcile <N> <accept-live\|revert-to-recorded>` | Drift recovery. Board ↔ local field-DB disagreement. `accept-live` treats GitHub Projects as source of truth; `revert-to-recorded` pushes the local recorded state back to the board. Run before any other verb on a drifted issue. |
 
 `/task plan-approve #N`, `/task approve #N`, and `/task reject #N --reason "..."` remain first-class — they are gate verbs, not state-walking verbs.
+
+## Workflow exceptions
+
+Workflow exceptions never add a state or permit a state jump. Inspect the
+effective policy without mutation using
+`/task workflow-preflight #N --target <state> [--json]`. A preflight result is
+advisory and conditional on future evidence; it does not bind the issue, start a
+timer, activate an exception, or authorize a later mutation.
+
+Only a current explicit `aitm.workflow-exception/v1` GitHub record can waive a
+catalogued planning, semantic-review, or approval requirement. Every affected
+boundary reloads and revalidates repository, issue, scope, expiry, revision, and
+authority. Missing, expired, revoked, stale, malformed, unsupported, or ambiguous
+records fail closed. A waiver is recorded as `waived`, never `passed`, and does
+not imply a separate completion approval. Retained tests, verification evidence,
+ownership, dependencies, binding, state contiguity, exact-SHA provenance, CI,
+safe delivery, and external protection remain required.
 
 `/task dod-stamp <key>` is a Test-stage helper, not a state-walking verb. It runs the verifier declared on a Functional DoD item **only when no valid exact-SHA Test receipt already covers that HEAD**; otherwise it stamps from the receipt. Review must not spawn standard lanes — reuse or refuse (demote + `/task test`). See `rules/functional-dod.md`.
 

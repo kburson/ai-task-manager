@@ -1,4 +1,4 @@
-// @story #561
+// @story #561 #1630
 // Capability decomposition for the runtime context.
 //
 // `buildContext()` (runtime.mjs) historically returned a single flat object
@@ -17,6 +17,10 @@
 // interface and be exercised against a small hand-built fixture.
 
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { WORKFLOW_POLICY_CAPABILITY } from './workflow-policy/catalog.mjs';
+import { evaluateWorkflowPolicy } from './workflow-policy/evaluator.mjs';
+import { evaluateWorkflowBoundary, loadWorkflowBoundary } from './workflow-policy/enforcement.mjs';
+import { evaluateWorkflowPreflight } from './workflow-policy/preflight.mjs';
 
 // The member surface of each capability, in dependency-interface terms. Tests
 // assert the assembled objects expose exactly these keys, so a member that
@@ -55,6 +59,13 @@ export const CAPABILITY_SURFACES = {
     'getIssueClosedState',
   ],
   issueBodyMutator: ['mutate'],
+  workflowPolicy: [
+    'capability',
+    'evaluate',
+    'evaluateBoundary',
+    'loadBoundary',
+    'evaluatePreflight',
+  ],
 };
 
 // Pluck the listed keys off the flat ctx into a fresh object. Functions are
@@ -79,5 +90,19 @@ export function assembleCapabilities(ctx) {
   const issueBodyMutator = {
     mutate: (args) => mutateIssueBody({ deps: { pexec: ctx.pexec }, ...args }),
   };
-  return { projectConfig, timingRecorder, stateRunner, githubClient, issueBodyMutator };
+  const workflowPolicy = Object.freeze({
+    capability: WORKFLOW_POLICY_CAPABILITY,
+    evaluate: evaluateWorkflowPolicy,
+    evaluateBoundary: evaluateWorkflowBoundary,
+    loadBoundary: loadWorkflowBoundary,
+    evaluatePreflight: evaluateWorkflowPreflight,
+  });
+  return {
+    projectConfig,
+    timingRecorder,
+    stateRunner,
+    githubClient,
+    issueBodyMutator,
+    workflowPolicy,
+  };
 }

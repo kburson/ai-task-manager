@@ -29,6 +29,9 @@ These rules apply to every verb. Skipping any is a process failure.
 10. **Honor project preferences.** Read `.ai-task-manager/task-tracker.json#preferences` at session start (`getPreferences()` from `scripts/task-tracker/config.mjs`). Keys: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`. See `rules/preferences.md`.
 11. **Post-Compact/Clear: follow the boot index before any verb.** If the session was just compacted, cleared, or freshly started — or no `aitm-boot-recovered:*` sentinel is in live context — read [`.ai-task-manager/templates/session-boot.md`](../../.ai-task-manager/templates/session-boot.md) and reload every Tier-1 file it names BEFORE running any verb. Discard prior `aitm-skill-loaded:*` sentinels; treat compacted summaries as hints, not source-of-truth. Emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel after reload.
 12. **Track before you start — no untracked work.** Every unit of work must be tracked by a GitHub issue before it begins. When you discover follow-up, out-of-scope, or newly-surfaced work worth doing, do not silently begin it and do not stage it as an untracked local or background "suggested task." Instead, offer to create a tracking issue (`/task new` → `scripts/gh/create-issue.mjs --shape <stub|epic|sub-issue|solo|defect>`) and bind to it first. The issue is what gives the work tracking, estimation, and a board state; an untracked task chip only starts work in the dark. No issue, no work.
+13. **Workflow exceptions:** current explicit GitHub records alone apply;
+    preflight is read-only, boundaries revalidate, and `waived` never means
+    `passed`. See `rules/state-walk.md` and `rules/full-auto.md`.
 
 ## CLI invocation
 

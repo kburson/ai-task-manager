@@ -25,6 +25,19 @@ The three controls are independent and additive. Translate them without a follow
 
 Apply every named phrase when the user combines them. `Full-Auto` runs `npx aitm auto both`. The inverse per-boundary commands are `auto-plan`, `auto-code`, and `auto-task`; `reset` clears session overrides and restores project then built-in precedence.
 
+## Workflow-policy boundary
+
+Full-Auto controls who may satisfy the ordinary plan, PR-code, and final-task
+review gates. It is not a workflow exception and cannot waive planning or
+semantic-review requirements. Only a current explicit GitHub-native workflow
+exception record can do that, and every affected action must revalidate it.
+
+An active `provider.managed-execution: deny` constraint is stronger than
+Full-Auto. Do not launch or retry a managed reviewer/provider when it applies,
+even when a caller requests one or retry logic would normally do so. A waived
+review remains `waived`, distinct from `passed`, and completion approval remains
+an independent decision.
+
 ## Manual code review
 
 Manual code review replaces the spawned implementation-review agent for that run. Do not spawn an implementation-review agent. Complete implementation verification, open the pull request, and wait until required CI is green before requesting the configured eligible human reviewer. AITM may assign that user as the PR reviewer; assignment alone is never approval evidence.
