@@ -31,6 +31,7 @@
     "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
     "link:self": "node scripts/task-tracker/ensure-self-link.mjs",
+    "tarball:pack": "npm pack --pack-destination .tmp/publish",
     "release": "npm publish --access public",
     "sync:templates": "node scripts/sync-templates.mjs",
     "format": "prettier --write .",
