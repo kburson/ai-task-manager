@@ -501,3 +501,13 @@ recertify
 relatedly
 underspecified
 Δwords
+behavioural
+comparand
+licence
+nonrecursive
+promisification
+promisified
+recharacterization
+subcall
+uncertifiable
+ungated
