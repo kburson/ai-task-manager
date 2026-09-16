@@ -1,6 +1,6 @@
 {
   "name": "@kburson/ai-task-manager",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "publishConfig": {
     "access": "public"
   },
@@ -67,7 +67,7 @@
     "docs/QUICKSTART.md",
     "docs/DESIGN.md",
     "docs/guides/",
-    "docs/superpowers/specs/2026-09-14-1624-workflow-exceptions-design.md",
+    "docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md",
     "docs/introduction/",
     "docs/ai-memory/",
     "!docs/ai-memory/archive/**",

@@ -315,7 +315,7 @@ test('hidden and placeholder Governing-spec metadata fall back to the sanctioned
       assert.ok(
         result.proposals.every((proposal) =>
           proposal.planMetadata.includes(
-            '**Governing-spec**: docs/superpowers/specs/2026-08-03-nested-epic-decomposition-design.md'
+            '**Governing-spec**: docs/superpowers/specs/delivered/2026-08-03-nested-epic-decomposition-design.md'
           )
         )
       );

@@ -17,7 +17,7 @@ import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 const pexec = promisify(execFile);
 const DEFAULT_GOVERNING_SPEC =
-  'docs/superpowers/specs/2026-08-03-nested-epic-decomposition-design.md';
+  'docs/superpowers/specs/delivered/2026-08-03-nested-epic-decomposition-design.md';
 const ISSUE_URL_RE = /\/issues\/(\d+)\b/;
 const CREATED_ISSUE_TOKEN_RE = /^AITM_CREATED_ISSUE=(\d+)$/m;
 

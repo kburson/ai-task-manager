@@ -7,7 +7,8 @@ import test from 'node:test';
 
 import { stateIds } from '../../../../task-tracker/lib/lifecycle-policy/index.mjs';
 
-const AUDIT_PATH = 'docs/superpowers/specs/2026-07-28-operational-state-engine-jit-audit.md';
+const AUDIT_PATH =
+  'docs/superpowers/specs/delivered/2026-07-28-operational-state-engine-jit-audit.md';
 const audit = readFileSync(join(process.cwd(), AUDIT_PATH), 'utf8');
 
 const EXPECTED_INPUTS = [

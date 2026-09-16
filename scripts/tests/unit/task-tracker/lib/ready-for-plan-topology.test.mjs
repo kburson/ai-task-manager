@@ -73,7 +73,7 @@ test('packaged configuration authors the canonical R4P key and retains the exist
 
 test('this topology child contains no live board migration execution', () => {
   const plan = readFileSync(
-    'docs/superpowers/plans/2026-08-11-ready-for-planning-ownership-lifecycle.md',
+    'docs/superpowers/plans/delivered/2026-08-11-ready-for-planning-ownership-lifecycle.md',
     'utf8'
   );
   assert.match(plan, /final migration child owns those writes|Live Board Migration/i);

@@ -10,7 +10,7 @@ import { BUG_BASH_DISPOSITIONS } from '../../../fixtures/state-engine-bug-bash-d
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const EVIDENCE_PATH = path.join(
   ROOT,
-  'docs/superpowers/specs/2026-07-27-state-engine-bug-bash-evidence.md'
+  'docs/superpowers/specs/delivered/2026-07-27-state-engine-bug-bash-evidence.md'
 );
 const UNIT_TEST_DIR = path.join(ROOT, 'scripts/tests/unit/task-tracker/lib');
 const REGRESSION_OWNER_FILES = new Set([
