@@ -33,7 +33,7 @@ function commands(settings, event) {
 
 function executeGenerated(command, payload, cwd, env) {
   // Provider commands carry a node -e payload; preserve its embedded JSON
-  // quotes, as the provider dispatcher does, rather than reparsing in a shell.
+  // quotes, as the provider dispatcher does, rather than parsing again in a shell.
   assert.ok(command.startsWith('node -e "') && command.endsWith('"'));
   return run(process.execPath, ['-e', command.slice(9, -1)], cwd, {
     env,
