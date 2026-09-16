@@ -9,6 +9,10 @@ description: Bind work sessions to GitHub issues and track time + context words 
 
 This path is retained as a redirect for installations that still point at `shared/SKILL.md`. The canonical Tier-1 router is now:
 
-`node_modules/ai-task-manager/skill/shared/router.md`
+`node_modules/@kburson/ai-task-manager/skill/shared/router.md`
+
+Only in an AITM source checkout, when the scoped package is absent, load
+`skill/shared/router.md` from that checkout instead. Installed consumer projects
+use the scoped path and require no dogfood self-link or worktree seeding.
 
 Load and follow the router. Detailed verb contracts live in `skill/shared/rules/*.md` (Tier-2) and load JIT.

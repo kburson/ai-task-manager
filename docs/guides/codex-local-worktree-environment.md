@@ -20,8 +20,9 @@ Every Git worktree receives these tracked files automatically:
 - `scripts/dev-env/verify-local-worktree.mjs`, the environment contract check.
 
 The worktree does not inherit `node_modules` or machine-local `.tmp/aitm`
-runtime state. The setup entrypoint intentionally recreates dependencies and
-the dogfood link inside the new worktree.
+runtime state. `./scripts/dev-env/setup-local-worktree.sh` is the complete
+development-worktree setup: it installs dependencies, repairs the explicit
+dogfood link, and verifies the new worktree.
 
 ## Host Prerequisites
 

@@ -1,4 +1,4 @@
-// @story #792
+// @story #792 #1631
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -11,15 +11,18 @@ import {
 } from '../../../../task-tracker/lib/guard-entrypoint.mjs';
 
 const CWD = '/proj';
-const NM = resolve(CWD, 'node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs');
+const NM = resolve(
+  CWD,
+  'node_modules/@kburson/ai-task-manager/scripts/task-tracker/bash-guard.mjs'
+);
 const REPO = resolve(CWD, 'scripts/task-tracker/bash-guard.mjs');
 
 // A fake `exists` that returns true only for the paths in `present`.
 const existsFrom = (present) => (p) => present.has(p);
 
-test('candidates: node_modules is tried before repo-relative', () => {
+test('candidates: scoped package is tried before repo-relative', () => {
   assert.deepEqual(guardEntrypointCandidates('bash-guard'), [
-    'node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs',
+    'node_modules/@kburson/ai-task-manager/scripts/task-tracker/bash-guard.mjs',
     'scripts/task-tracker/bash-guard.mjs',
   ]);
 });
@@ -31,7 +34,7 @@ test('candidates: rejects a non-string name', () => {
 
 // --- AC4: all three branches for the bash-guard entrypoint ---
 
-test('branch 1 — node_modules present → resolves to node_modules candidate', () => {
+test('branch 1 — scoped package present → resolves to scoped package candidate', () => {
   const got = resolveGuardEntrypoint('bash-guard', {
     cwd: CWD,
     exists: existsFrom(new Set([NM, REPO])), // both present → first still wins
@@ -39,7 +42,7 @@ test('branch 1 — node_modules present → resolves to node_modules candidate',
   assert.equal(got, NM);
 });
 
-test('branch 2 — node_modules absent, repo present → resolves to repo-relative candidate', () => {
+test('branch 2 — scoped package absent, repo present → resolves to repo-relative candidate', () => {
   const got = resolveGuardEntrypoint('bash-guard', {
     cwd: CWD,
     exists: existsFrom(new Set([REPO])),
@@ -57,13 +60,16 @@ test('branch 3 — both absent → returns null (fail-closed signal)', () => {
 
 // --- AC1/AC2/AC3: the emitted hook command carries the fallback chain ---
 
-test('bootstrap command embeds both candidate paths (node_modules first)', () => {
+test('bootstrap command embeds both candidate paths (scoped package first)', () => {
   const cmd = guardBootstrapCommand('bash-guard');
-  const nmIdx = cmd.indexOf('node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs');
-  const repoIdx = cmd.indexOf('"scripts/task-tracker/bash-guard.mjs"');
-  assert.ok(nmIdx !== -1, 'node_modules candidate present');
+  const scopedIdx = cmd.indexOf(
+    'node_modules/@kburson/ai-task-manager/scripts/task-tracker/bash-guard.mjs'
+  );
+  const repoIdx = cmd.indexOf('\\"scripts/task-tracker/bash-guard.mjs\\"');
+  assert.ok(scopedIdx !== -1, 'scoped package candidate present');
   assert.ok(repoIdx !== -1, 'repo-relative candidate present');
-  assert.ok(nmIdx < repoIdx, 'node_modules candidate is ordered first');
+  assert.ok(scopedIdx < repoIdx, 'scoped package candidate is ordered first');
+  assert.doesNotMatch(cmd, /node_modules\/ai-task-manager\//);
 });
 
 test('bootstrap command carries the fail-closed branch (exit 2 + stderr diagnostic)', () => {

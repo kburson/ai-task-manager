@@ -50,19 +50,19 @@ The `install` command creates these automatically. Shown here for reference:
     "SessionStart": [
       {
         "type": "command",
-        "command": "node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
+        "command": "node node_modules/@kburson/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
       }
     ],
     "PreCompact": [
       {
         "type": "command",
-        "command": "node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
+        "command": "node node_modules/@kburson/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
       }
     ],
     "PostCompact": [
       {
         "type": "command",
-        "command": "node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
+        "command": "node node_modules/@kburson/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
       }
     ]
   }
@@ -167,7 +167,7 @@ If you prefer to manage it yourself:
 
 ```bash
 # Copy the script
-cp node_modules/ai-task-manager/statusline/statusline.sh ~/.claude/statusline.sh
+cp node_modules/@kburson/ai-task-manager/statusline/statusline.sh ~/.claude/statusline.sh
 chmod +x ~/.claude/statusline.sh
 
 # Add to ~/.claude/settings.json

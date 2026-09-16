@@ -192,15 +192,15 @@ test('#1381: shared router discovers the provider-neutral incident-ledger rule',
   assert.match(rule, /Never use either mode to create delivery intent, delivery receipt/i);
 });
 
-test('#939: checked-in Claude and Codex skills equal installer-generated stubs', () => {
-  assert.equal(
-    readFileSync(path.join(REPO_ROOT, '.claude/skills/task/SKILL.md'), 'utf8'),
-    claudeStub()
-  );
-  assert.equal(
-    readFileSync(path.join(REPO_ROOT, '.agents/skills/task/SKILL.md'), 'utf8'),
-    codexStub()
-  );
+test('#1631: generated consumer stubs use scoped package paths', () => {
+  for (const [stub, adapterPath] of [
+    [claudeStub(), getProvider('claude').skillAdapterPath],
+    [codexStub(), getProvider('codex').skillAdapterPath],
+  ]) {
+    assert.ok(stub.includes(`node_modules/@kburson/ai-task-manager/${adapterPath}`));
+    assert.ok(stub.includes('node_modules/@kburson/ai-task-manager/skill/shared/SKILL.md'));
+    assert.ok(stub.includes('node_modules/@kburson/ai-task-manager/scripts/'));
+  }
 });
 
 test('#939: provider adapters own sanctioned integration wording', () => {
