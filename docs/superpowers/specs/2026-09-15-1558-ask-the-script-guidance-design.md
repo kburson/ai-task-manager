@@ -784,10 +784,12 @@ are not required to migrate the first state-walk decision path.
 ### 13.2 Contract
 
 `aitm.action-decision/v1` is the complete shared evaluator/executor contract,
-also consumed by #1561. It is not the default agent wire payload. Its shape,
-full evidence identities, and normalization digests remain unchanged by this
-amendment. Section 15 defines the distinct operational presentation and the
-explicit diagnostic mode that exposes this complete decision.
+also consumed by #1561. It is not the default agent wire payload. Its evidence
+identities and normalization digests remain complete. Amendment review defines
+previously underspecified failure, warning, and human-decision members below;
+these definitions apply to both consumers of the pre-implementation contract.
+Section 15 defines the distinct operational presentation and explicit
+diagnostic mode that exposes this complete decision.
 
 A read-only observation collector gathers required authority; a shared evaluator
 consumes its immutable evidence bundle, applies pure normalizations (§13.5),
@@ -796,7 +798,8 @@ bundle records an observation window and each source's observation time,
 identity, and revision or content digest. It is not an atomic GitHub snapshot.
 `snapshot.digest` binds the whole bundle, including normalization inputs.
 
-A compact example (one observed source shown) is:
+A compact example (one observed source shown, effective policy requires human
+plan approval) is:
 
 ```json
 {
@@ -825,13 +828,27 @@ A compact example (one observed source shown) is:
       "code": "plan-approval-missing",
       "remediation": {
         "id": "record-plan-approval",
-        "args": { "issue": 1631 }
+        "args": {
+          "issue": 1631
+        }
       }
     }
   ],
   "normalizations": [],
   "warnings": [],
-  "humanDecision": null,
+  "humanDecision": {
+    "requests": [
+      {
+        "kind": "plan-approval",
+        "actor": "configured-approver",
+        "subject": {
+          "issue": 1631,
+          "actionId": "promote"
+        },
+        "args": {}
+      }
+    ]
+  },
   "guidanceIds": ["transition.plan-to-develop"]
 }
 ```
@@ -863,6 +880,109 @@ All authority used in the final verdict must appear in the bundle. Bounded
 refreshes replace superseded values and record their observation provenance;
 incompatible issue/body/state/scope identities produce `indeterminate`. Missing
 required observations do not become empty successful evidence.
+
+#### Failure causes, including collection and navigation
+
+Every `blocked` or `indeterminate` decision carries at least one typed blocker;
+`ready` has none. An indeterminate decision includes a cause for each known
+unmet requirement, even when collection failed before any guard ran. Preserve
+already known final refusals alongside those causes; never claim that unevaluated
+guards passed. Optional reads deliberately not required by the selected path do
+not become failures. A failed required read cannot become an empty observation.
+
+The shared code registry defines `args` schemas for blocker causes as well as
+remediation arguments. `args` is required when its code declares arguments and
+absent when the declared shape is empty; undeclared keys are invalid. Initial
+collection codes are `authority-read-failed` with
+`{ source, reason }` and `authority-read-skipped` with `{ source }`. `source`
+is a registered authority-resource ID from A1's inventory, not a free-text
+message. `reason` is one of `timeout`, `rate-limited`, `unavailable`,
+`incomplete`, or `invalid`; raw error text is diagnostic-only. If one source
+kind has several independently required subjects, its registered args schema
+must also carry the typed subject needed to distinguish them.
+
+Non-guard producers use reserved, registered boundary IDs in the existing
+`guardId` slot: `authority-collection`, `action-navigation`, and
+`action-result-validation`. They are enumerated separately from executable
+guards and cannot be installed as guards or referenced as actions. The registry
+validates producer/code pairs; a collector cannot impersonate a live guard.
+Navigation emits `state-unavailable` with `{ reason: "unknown" | "conflicting" }`;
+malformed results emit the existing `guard-result-invalid` or `unknown-vocabulary`
+under the appropriate validated guard/boundary ID. The outer result validator
+can emit a fixed schema-valid indeterminate refusal without recursively passing
+the malformed result through presentation.
+
+Each cause still has exactly one registered remediation or closed
+`noAutomaticRemediation` disposition. Collection failures default to
+`{ reason: "authority-investigation-required" }`; navigation failures use
+`{ reason: "state-investigation-required" }`; invalid results use
+`{ reason: "result-investigation-required" }`. These codes permit explicit
+investigation; they do not authorize retries, repairs, or diagnostic calls on
+every query. An indeterminate response with `blockers: []` is invalid.
+
+For example, a transient timeout remains identifiable in the original routine
+response even if a later diagnostic call succeeds:
+
+```json
+{
+  "guardId": "authority-collection",
+  "code": "authority-read-failed",
+  "args": { "source": "issue-body", "reason": "timeout" },
+  "noAutomaticRemediation": { "reason": "authority-investigation-required" }
+}
+```
+
+#### Closed warning and human-decision types
+
+A1 owns data-only `CODE_DEFINITIONS` in the shared action-decision contract.
+Each definition declares its domain, allowed producer IDs, phase/status,
+closed argument schema, and disposition requirements. Decision blockers,
+operational warnings, admission failures, and post-success audit warnings have
+distinct domains; registering a code does not make it legal in all of them.
+Guidance imports the contract, never the reverse. Canonical definitions and
+their version enter the installed vocabulary digest and cache identity.
+Static emission checks and runtime validation reject undeclared codes/args.
+
+An operational warning is exactly `{ code, args }`, with `args` required even
+when empty. Each code defines a closed args object: no raw messages, source
+bodies, stack traces, or arbitrary nested evidence. Initial warning definitions
+include `guidance-source-diverged` from guidance admission with
+`{ source: ".ai-task-manager/aitm-guidance.yml", digest: <full file digest> }`,
+and `legacy-guard-warning` from inventoried legacy guard adapters with
+`{ guardId: <registered guard ID> }`. The latter preserves the warning's
+existence and origin; its untrusted raw text is diagnostic-only. A warning with
+operationally necessary details must instead receive its own typed code/args
+before that action is explain-ready. A1 inventories every warning producer;
+neither silently dropping a legacy warning nor treating it as a blocker is valid.
+
+Internal decision `warnings` contains evaluator warnings in deterministic
+producer order (registered evaluation order, then producer-local order).
+Presentation composes validated admission warnings first, then those evaluator
+warnings. Preserve duplicates and order; do not deduplicate by code or discard
+different subjects. The sole receipt-based exception is §17.1's source-warning
+suppression. `guidance-catalog-invalid` is an admission failure that prevents
+evaluation, not a warning in a successful explanation. A post-success
+`guidance-annotation-failed` belongs to mutation audit output, not readiness.
+
+`humanDecision` is required internally and is either `null` or exactly
+`{ requests: [...] }` with a nonempty ordered array. Each request is exactly
+`{ kind, actor, subject, args }`. `subject` is
+`{ issue: <positive integer>, actionId: <registered action ID> }` and names the
+evaluated scope. Closed initial kinds are `plan-approval`, `review-approval`,
+and `manual-investigation`. The first two use actor `configured-approver`;
+investigation uses `human-operator`. Actor names denote roles only; existing
+approval authority still selects and validates the actual authorized person.
+`args` is `{}` for plan approval, `{ head: <full HEAD> }` for exact-head review
+approval, and `{ guardId, code }` for investigation of a returned blocker.
+New kinds require reviewed registry definitions, not free-form strings.
+
+Requests follow the order of their corresponding blockers. Preserve all
+simultaneous requirements; a non-null value never means approval was granted
+and cannot accompany `ready`. Every remediation requiring human action under the evaluated effective
+policy has a matching request; an explicit no-automatic-remediation cause may also require one.
+Machine-investigable indeterminate causes need not invent a human request.
+The request and blocker must agree on scope and disposition. Missing, malformed,
+or unknown warning/request fields fail validation, not silently default to empty.
 
 ### 13.3 Shared execution
 
@@ -963,7 +1083,8 @@ state edges merely by being registered. Existing allowed-state policy remains
 authoritative; catalog data cannot redefine it.
 
 Validator stage 7 resolves action IDs against that enumeration, guard IDs
-against bootstrapped guard exports (not the historical comment inventory), and
+against bootstrapped guard exports plus §13.2's separately enumerated boundary
+producer IDs (not the historical comment inventory), and
 remediation IDs against the core registry in §14. Their versioned digest forms
 the installed vocabulary identity. The command-surface catalog remains CLI
 metadata; the workflow-policy catalog remains policy requirements; the new
@@ -1031,8 +1152,9 @@ legacy adapter.
 A checked-in migration inventory identifies remaining legacy guard/refusal
 sites, their source locations, and owning follow-up scope. A lint/fixture gate
 freezes that inventory: new or changed refusal sites require explicit codes and
-dispositions, not a larger unclassified allowance. Guard IDs come from runtime
-registration and exported constants, not the stale inventory comment.
+dispositions, not a larger unclassified allowance. Executable guard IDs come
+from runtime registration and exported constants, not the stale inventory
+comment; §13.2's non-guard failure producers are explicit registry entries.
 
 Child A2 migrates the v1 action paths in bounded guard-family batches, adding
 typed argument schemas and human/provider/destructive/Full-Auto classifications
@@ -1079,28 +1201,43 @@ free-text remediation as an executable instruction.
 
 ### 15.2 Routine operational response and first expansion
 
-`aitm explain` emits `aitm.action-explanation/v1`. Its `decision` member is the
-operational presentation below, not a nested `aitm.action-decision/v1`. This
-amendment defines the pre-implementation explanation schema explicitly; it
-does not rename or alter the shared internal contract used by #1561. Previously
-reviewed plan samples that nested the complete decision are superseded here.
+`aitm explain` emits `aitm.action-explanation/v1`. Its required `result`
+member is the named `ActionPresentationV1` type below; it is not a nested
+`aitm.action-decision/v1`. The envelope version binds that member's exact
+schema, so no redundant schema string is printed inside `result`. Diagnostic
+mode adds `fullDecision`, the separately versioned internal decision (§15.5).
+Previously reviewed pre-implementation samples using `decision`/`diagnostic`
+member names are superseded; the internal decision schema retains its name.
 
-The presentation is an allowlist with defined omission semantics:
+This is a closed v1 envelope/member contract: consumers validate the envelope
+version, required members, allowed keys, field types, and semantic invariants.
+Unsupported versions and missing/unknown fields fail closed, never imply ready
+or empty. After acceptance, adding/removing a field or changing its semantics
+requires a new envelope major version with an explicit compatibility decision
+and renewed context measurements. This conservative policy applies even to
+additive fields because v1 consumers reject unknown keys; a silent minor-version
+extension is not supported. Naming `ActionPresentationV1` does not create a
+second evaluator or another discriminator on the wire.
 
-| Field            | Routine contract                                                                                                                                                                                                                                     |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue`          | Required queried issue identity.                                                                                                                                                                                                                     |
-| `actionId`       | Required registered action ID, or `null` when navigation has no valid recommendation, including terminal Done. Never invent a next action.                                                                                                           |
-| `status`         | Required unchanged evaluator status: `ready`, `blocked`, or `indeterminate`. `ready` with `actionId: null` does not instruct execution.                                                                                                              |
-| `blockers`       | Required array, including `[]` for no blockers. Preserve every final refusal, order, stable `guardId`/`code`, and exactly one complete typed `remediation` or `noAutomaticRemediation` disposition. No first-blocker filtering or budget truncation. |
-| `normalizations` | When nonempty, preserve every `normalizerId`, the complete ordered `decisions` set, and `persist-on-execute` disposition. Omit only the internal `inputDigest` and `decisionDigest`; pending changes are never reported as persisted.                |
-| `warnings`       | When nonempty, preserve every typed operational warning and its required typed arguments from the evaluator/admission result. Do not filter by an agent's perceived relevance. Source-warning receipt suppression remains governed only by §17.1.    |
-| `humanDecision`  | Preserve the complete typed value whenever non-null; omission means no human decision is required. Presentation never invents approval.                                                                                                              |
+All seven presentation fields are required, including explicit empty arrays
+and null values:
 
-Absent `normalizations`/`warnings` means an empty array under this schema;
-absent `humanDecision` means null. These omissions apply only to a valid,
-complete evaluation, never to missing reads or malformed results. Fail closed
-before presentation on unknown codes, invalid dispositions, or schema errors.
+| Field            | Routine contract                                                                                                                                                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue`          | Required queried issue identity.                                                                                                                                                                                                   |
+| `actionId`       | Required registered action ID, or `null` when navigation has no valid recommendation, including terminal Done. Never invent a next action.                                                                                         |
+| `status`         | Required unchanged evaluator status: `ready`, `blocked`, or `indeterminate`. `ready` with `actionId: null` does not instruct execution.                                                                                            |
+| `blockers`       | Preserve every final refusal in order, its `guardId`/`code`, code-defined `args`, and exactly one complete typed remediation/disposition. Required nonempty for blocked/indeterminate; `[]` for ready. No filtering or truncation. |
+| `normalizations` | Required array. Preserve every `normalizerId`, complete ordered `decisions` set, and `persist-on-execute` disposition. Omit only internal `inputDigest`/`decisionDigest`; `[]` explicitly means no pending changes.                |
+| `warnings`       | Required array of the closed `{ code, args }` records in §13.2, in its defined composition order. `[]` explicitly means none after the sole §17.1 source-receipt suppression rule.                                                 |
+| `humanDecision`  | Required `null` or complete nonempty request object from §13.2. Null means no human decision is required. Presentation never invents approval.                                                                                     |
+
+The internal decision must also supply its arrays and `humanDecision`
+explicitly. Neither serializer nor consumer may replace missing/undefined
+fields with `[]`/`null`. Missing fields, malformed/truncated JSON, invalid
+statuses/dispositions, and unknown codes are failures, not empty successes.
+Schema validation detects missing fields; preservation tests are additionally
+required to catch a serializer that incorrectly emits valid empty values.
 All typed arguments needed to identify a blocker or perform a registered action
 remain intact, even if an argument is itself a full SHA or evidence reference.
 The boundary excludes redundant evidence, not operationally required values.
@@ -1114,17 +1251,19 @@ receipt rules. Source warnings/receipts remain available under §17.1.
 
 The serializer must not spread an internal decision object into output. Its
 allowlist and semantic-equivalence tests enforce the boundary across stdout,
-stderr, aliases, and routine debug/logging paths. Adding a default output field
-requires schema review and renewed context measurements. There is no automatic
-fallback to full diagnostics on blocked or indeterminate results.
+stderr, aliases, and routine debug/logging paths. There is no automatic fallback
+to full diagnostics on blocked or indeterminate results; their typed causes
+already appear in `result.blockers`. Explicit investigation is permitted for
+those causes and is distinct from unconditional diagnostic output.
 
 If required guidance is not declared present, the response includes its terse
-agent content:
+agent content. This example requires human plan approval under the effective
+policy, matching the internal example in §13.2:
 
 ```json
 {
   "schema": "aitm.action-explanation/v1",
-  "decision": {
+  "result": {
     "issue": 1631,
     "actionId": "promote",
     "status": "blocked",
@@ -1134,10 +1273,27 @@ agent content:
         "code": "plan-approval-missing",
         "remediation": {
           "id": "record-plan-approval",
-          "args": { "issue": 1631 }
+          "args": {
+            "issue": 1631
+          }
         }
       }
-    ]
+    ],
+    "normalizations": [],
+    "warnings": [],
+    "humanDecision": {
+      "requests": [
+        {
+          "kind": "plan-approval",
+          "actor": "configured-approver",
+          "subject": {
+            "issue": 1631,
+            "actionId": "promote"
+          },
+          "args": {}
+        }
+      ]
+    }
   },
   "guidance": [
     {
@@ -1146,11 +1302,21 @@ agent content:
       "status": "expanded",
       "agent": {
         "instruction": [
-          { "query": "promote" },
-          { "require_status": "ready" },
-          { "if_blocked": "use_returned_remediation_ids" },
-          { "execute": "promote" },
-          { "execution_revalidates": true }
+          {
+            "query": "promote"
+          },
+          {
+            "require_status": "ready"
+          },
+          {
+            "if_blocked": "use_returned_remediation_ids"
+          },
+          {
+            "execute": "promote"
+          },
+          {
+            "execution_revalidates": true
+          }
         ]
       }
     }
@@ -1226,7 +1392,7 @@ npx aitm explain #1631 --action close --diagnostic --json
 ```
 
 `--diagnostic` is a boolean switch on `explain` and its explanation aliases.
-It retains the same operational response and adds `diagnostic`, whose value is
+It retains the same operational response and adds `fullDecision`, whose value is
 the full `aitm.action-decision/v1` result from that same evaluation. Associated
 raw guard messages, when available, appear in an optional `diagnosticMessages`
 array of `{ guardId, text, untrusted: true }` records. They are never converted
@@ -1249,8 +1415,9 @@ diagnostic capability token. A caller needing a historical diagnostic record
 must explicitly capture that invocation's output using existing tooling.
 
 Routine skills do not request diagnostic mode automatically, including after a
-refusal. A registered remediation may explicitly require investigation for an
-unclassified or indeterminate result; an agent or human can then request it for
+refusal. A typed blocker's registered remediation or no-automatic-remediation
+disposition may explicitly require investigation for an unclassified or
+indeterminate result; an agent or human can then request it for
 that investigation. It cannot be required to discover omitted normal blockers,
 typed arguments, warnings, or pending changes. Any diagnostic output actually
 loaded into context is included in the measured transcript (§20.2).
@@ -1463,6 +1630,17 @@ demonstrate a measured reduction against that equivalent baseline as well as
 meeting the fixed budgets; do not raise either the ceilings or the baseline to
 make a candidate pass.
 
+Child D owns a distinct `context-comparison.json` report with both baseline and
+candidate source commits, adapter/tool versions, scenario/authority-fixture
+digests, ordered transcript paths, per-category counts, total counts, delta,
+and fixed-budget verdicts. Version and retain the baseline fixture/runner before
+skill migration so its evidence remains reproducible after cutover. Categories
+need not be symmetric: legacy instruction reads differ from guidance queries,
+but legacy lifecycle command requests and outputs are not zero. Compare complete
+total context for the same work, not category-by-category equivalence. The report
+must distinguish candidate serialization from actual CLI capture; a synthetic
+sample cannot establish that the required reduction will pass.
+
 Candidate fixtures can establish early feasibility but are not production CLI
 evidence. Record their source/schema/serializer versions, exact serialized
 costs, and explicit pass/fail before extraction proceeds. A failed candidate
@@ -1594,11 +1772,17 @@ dependency and work in production-only package-boundary tests.
 - stat/runtime cache identity and invalidation;
 - action enumeration, decision and remediation schemas, and legacy-refusal inventory;
 - distinct internal-decision and operational-presentation schemas with explicit
-  empty-field semantics; allowlisted serialization rather than object spreading;
+  required explicit-empty fields; allowlisted serialization rather than object spreading;
 - presentation preserves every refusal/disposition, required typed argument,
   warning, human decision, and ordered pending normalization change;
 - evidence-only changes preserve operational output; required operational changes
   remain visible; internal full hashes/identities/times remain intact;
+- missing versus explicit-empty fields, unsupported envelope versions, unknown
+  keys, and falsely emptied operational data fail validation/preservation checks;
+- every blocked/indeterminate result has typed causes, including required-read
+  timeout/rate-limit/incomplete/skipped cases and unknown/conflicting navigation;
+- warning producer/domain/args validation, ordering without code-only dedup,
+  legacy warning coverage, and human request shape/scope/blocker consistency;
 - Functional DoD projection purity, ordering, idempotency, and timestamp-independent decision identity;
 - receipt matching, mismatch, and post-compaction behavior;
 - warning and issue-annotation deduplication.
@@ -1615,6 +1799,10 @@ dependency and work in production-only package-boundary tests.
 - explain and execute consume the same guard result;
 - routine output contains no evidence-only snapshot or raw diagnostic messages in
   stdout/stderr, including blocked/indeterminate cases and explanation aliases;
+- a transient collection failure remains named in the original routine result
+  even when a later diagnostic call succeeds; no fabricated observation is used;
+- normal and diagnostic output use `result` consistently; only explicit
+  diagnostics add `fullDecision`, without confusing the two schemas;
 - diagnostic mode exposes the same invocation's complete internal result without
   extra authority reads, evaluation, writes, or instruction expansion;
 - every routine remediation is actionable from its returned typed data and
@@ -1730,6 +1918,8 @@ if B exceeds a size estimate. Further slicing follows the atomic-story limit.
 - response-capture harness, pinned lifecycle transcript, tokenizer calibration;
 - equivalent old/new complete-context comparison, including receipts and any
   diagnostic output actually loaded, with required measured reduction;
+- separately versioned `context-comparison.json`, preserved baseline runner and
+  paired transcripts, total-versus-total accounting and fixture/source provenance;
 - first/repeated/compaction/full-lifecycle token and live-read budget evidence.
 
 C depends on the applicable A2 migrations and B1 contract; final cache acceptance
