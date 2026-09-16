@@ -1,0 +1,726 @@
+#!/usr/bin/env node
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+const repo = '/Users/kpburson/.codex/worktrees/ac27/ai-task-manager';
+const outDir = path.join(repo, '.tmp/review-stats');
+mkdirSync(outDir, { recursive: true });
+
+const outputs = {
+  events: path.join(outDir, '1558-context-burden-v2-events.jsonl'),
+  cohorts: path.join(outDir, '1558-context-burden-v2-cohorts.json'),
+  manifest: path.join(outDir, '1558-context-burden-v2-source-manifest.json'),
+  scenarios: path.join(outDir, '1558-context-burden-v2-scenarios.json'),
+  report: path.join(outDir, '1558-context-burden-v2.md'),
+};
+
+const cutoffArg = process.argv.find((arg) => arg.startsWith('--cutoff='));
+const EVENT_CUTOFF_ISO = cutoffArg ? cutoffArg.slice('--cutoff='.length) : '2026-09-16T12:00:00.000Z';
+const EVENT_CUTOFF_MS = Date.parse(EVENT_CUTOFF_ISO);
+if (!Number.isFinite(EVENT_CUTOFF_MS)) throw new Error(`Invalid --cutoff ISO timestamp: ${EVENT_CUTOFF_ISO}`);
+
+const CODEX_ROOTS = ['/Users/kpburson/.codex/sessions', '/Users/kpburson/.codex/archived_sessions'];
+const CLAUDE_ROOT = '/Users/kpburson/.claude/projects';
+const instructionPatterns = [
+  ['shim', /\.agents\/skills\/task\/SKILL\.md|node_modules\/ai-task-manager\/skill\/SKILL\.md/],
+  ['adapter', /skill\/adapters\/(?:codex|claude)\/SKILL\.md/],
+  ['router', /skill\/shared\/router\.md/],
+  ['pickup', /\.ai-task-manager\/templates\/pickup-directive\.md|templates\/pickup-directive\.md/],
+  ['session-boot', /\.ai-task-manager\/templates\/session-boot\.md|templates\/session-boot\.md/],
+  ['tier2-rule', /skill\/shared\/rules\/[^ '"\n]+\.md/],
+  ['other-skill', /\/skills\/[^ '"\n]+\/SKILL\.md|using-superpowers\/SKILL\.md|references\/codex-tools\.md/],
+];
+const workflowTerms = /(npx\s+aitm|\/task\b|scripts\/task-tracker|scripts\/gh|create-issue\.mjs|move-state\.mjs|pickup-directive|session-boot|router\.md|skill\/shared\/rules|task-tracker\/verbs|guard-registry|workflow-policy|lifecycle|state-walk|commit-trail|definition-of-done)/i;
+const ordinarySearch = /^\s*(?:rg|grep|find|sed|cat|head|tail|ls|wc|node\s+[^;&\n]*(?:--help|help)|(?:npx\s+)?aitm\s+help|(?:npx\s+)?aitm\s+--help)/i;
+const explicitHelp = /(?:--help\b|\bhelp\s+(?:start|resume|review|close|promote|demote|plan|approve|new|join|submit)|Usage:|unknown (?:command|verb))/i;
+const lifecycleStart = /^\s*(?:env\s+\S+\s+)*(?:npx\s+)?aitm\s+([A-Za-z0-9:_-]+|#?\d+)(?:\s+([^;&|`]+))?/i;
+const moveDone = /\bmove-state\.mjs\s+#?(\d+)\s+done\b/i;
+const createIssue = /\bcreate-issue\.mjs\b/i;
+const ansi = /\u001b\[[0-9;]*m/g;
+
+function walk(dir, pred, out = []) {
+  if (!existsSync(dir)) return out;
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, ent.name);
+    if (ent.isDirectory()) walk(p, pred, out);
+    else if (pred(p)) out.push(p);
+  }
+  return out;
+}
+
+function relSource(p) {
+  return p
+    .replace('/Users/kpburson/.codex/', '~/.codex/')
+    .replace('/Users/kpburson/.claude/', '~/.claude/');
+}
+
+function sha256(text) {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+function bytes(text) {
+  return Buffer.byteLength(String(text ?? ''), 'utf8');
+}
+
+function textOf(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v)) return v.map(textOf).join('\n');
+  if (typeof v === 'object') return Object.values(v).map(textOf).join('\n');
+  return String(v);
+}
+
+function decodeJsonStringLiteral(s) {
+  if (!s) return '';
+  try {
+    return JSON.parse(`"${s.replace(/"/g, '\\"')}"`);
+  } catch {
+    return s.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  }
+}
+
+function beforeCutoff(timestamp) {
+  if (!timestamp) return true;
+  const ms = Date.parse(timestamp);
+  return !Number.isFinite(ms) || ms <= EVENT_CUTOFF_MS;
+}
+
+function codexCommand(input) {
+  const m = String(input ?? '').match(/"cmd"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  if (m) return decodeJsonStringLiteral(m[1]);
+  return String(input ?? '');
+}
+
+function splitShell(s) {
+  return String(s ?? '')
+    .split(/\n|;/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function instructionInfo(text) {
+  for (const [kind, re] of instructionPatterns) {
+    const m = String(text).match(re);
+    if (m) return { kind, path: m[0] };
+  }
+  return null;
+}
+
+function lifecycleInfo(line) {
+  const t = String(line).replace(/^cd\s+[^&]+&&\s*/, '').trim();
+  if (/^\*\*\* Begin Patch|^apply_patch\b/.test(t)) return null;
+  if (/\b--help\b|\bhelp\b/i.test(t)) return null;
+  const md = t.match(moveDone);
+  if (md) return { verb: 'close', issue: md[1], commandFamily: 'move-state-done' };
+  if (createIssue.test(t)) return { verb: 'create-issue', issue: null, commandFamily: 'create-issue' };
+  const m = t.match(lifecycleStart);
+  if (!m) return null;
+  const first = m[1].replace(/^#/, '');
+  if (/^\d+$/.test(first) && new RegExp(`\\baitm\\s+#?${first}\\s*>`).test(t)) return null;
+  const rest = String(m[2] ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter((x) => !/^\d?>|^&?\d$|^2>&1$/.test(x))
+    .map((x) => x.replace(/^#/, ''));
+  const verb = /^\d+$/.test(first) ? 'bind' : first;
+  const issue = /^\d+$/.test(first) ? first : rest.find((x) => /^\d+$/.test(x));
+  return { verb, issue: issue ?? null, commandFamily: 'aitm' };
+}
+
+function classify(line, toolName = '') {
+  const text = `${line} ${toolName}`;
+  const tool = String(toolName ?? '');
+  const isPatch = /apply_patch/i.test(tool);
+  const isReadLike = /\b(Read|read_file|open|exec|Bash|Shell|shell|command)\b/i.test(tool) || !tool;
+  if (isPatch) {
+    return { category: 'other_unattributable', subcategory: 'other-visible-tool-traffic', instruction: instructionInfo(text), lifecycle: null };
+  }
+  const inst = instructionInfo(text);
+  const life = isReadLike ? lifecycleInfo(line) : null;
+  if (life) return { category: 'lifecycle_command', subcategory: life.verb, instruction: null, lifecycle: life };
+  if (inst && isReadLike && /^(?:sed|cat|head|tail|less|Read\b)|file_path|SKILL\.md|router\.md|pickup-directive|session-boot/.test(text)) {
+    return { category: 'instruction_loading', subcategory: inst.kind, instruction: inst, lifecycle: null };
+  }
+  if (isReadLike && (explicitHelp.test(text) || ordinarySearch.test(text)) && workflowTerms.test(text)) {
+    return { category: 'help_discovery', subcategory: explicitHelp.test(text) ? 'command-help' : 'workflow-guidance-search', instruction: inst, lifecycle: null };
+  }
+  return { category: 'other_unattributable', subcategory: 'other-visible-tool-traffic', instruction: inst, lifecycle: null };
+}
+
+function outputCompleteness(text) {
+  const s = String(text ?? '');
+  if (!s) return 'unavailable';
+  if (/Warning: truncated output|truncated output|tokens truncated|omitted/i.test(s)) return 'truncated';
+  return 'complete';
+}
+
+function closeOutcome(command, output) {
+  const life = lifecycleInfo(command);
+  if (!life || life.verb !== 'close') return 'not_close';
+  const s = String(output ?? '').replace(ansi, '');
+  if (!s) return 'attempted_close_unknown_output';
+  if (/Script failed|Exit code [1-9]|error:|refus(?:e|ed|al)|blocked|unchecked|not approved|failed/i.test(s)) return 'failed_close';
+  if (/Done|closed|moved .*Done|Story closed|Final Review Passed|Timing data flushed/i.test(s)) return 'confirmed_successful_close';
+  return 'attempted_close_unknown_outcome';
+}
+
+function commandOutcome(command, output) {
+  const close = closeOutcome(command, output);
+  if (close !== 'not_close') return close;
+  const s = String(output ?? '');
+  if (!s) return 'unknown_output';
+  return 'output_present';
+}
+
+function visibleHookText(att) {
+  const chunks = [];
+  if (att?.content) chunks.push(textOf(att.content));
+  if (att?.stdout) chunks.push(String(att.stdout));
+  if (att?.stderr) chunks.push(String(att.stderr));
+  if (att?.rendered) chunks.push(textOf(att.rendered));
+  return chunks.join('\n');
+}
+
+const events = [];
+const manifest = [];
+const sessionMeta = new Map();
+
+function addEvent(e) {
+  e.inputChars = e.inputChars ?? [...String(e.inputText ?? '')].length;
+  e.inputBytes = e.inputBytes ?? bytes(e.inputText ?? '');
+  e.outputChars = e.outputChars ?? [...String(e.outputText ?? '')].length;
+  e.outputBytes = e.outputBytes ?? bytes(e.outputText ?? '');
+  e.proxyInputTokens = Math.ceil(e.inputChars / 4);
+  e.proxyOutputTokens = Math.ceil(e.outputChars / 4);
+  e.inputHash = sha256(String(e.inputText ?? ''));
+  e.outputHash = sha256(String(e.outputText ?? ''));
+  e.contentHash = sha256(`${e.provider}\n${e.sessionId}\n${e.category}\n${e.inputHash}\n${e.outputHash}`);
+  delete e.inputText;
+  delete e.outputText;
+  events.push(e);
+}
+
+function processCodex(file) {
+  const text = readFileSync(file, 'utf8');
+  const lines = text.split(/\n/);
+  let sessionId = null;
+  let cwd = '';
+  let relevant = false;
+  for (const line of lines) {
+    if (!line) continue;
+    try {
+      const o = JSON.parse(line);
+      if (!beforeCutoff(o.timestamp)) continue;
+      if (o.type === 'session_meta') {
+        sessionId = o.payload?.session_id ?? o.payload?.id ?? sessionId;
+        cwd = o.payload?.cwd ?? cwd;
+        if (cwd.includes('ai-task-manager')) relevant = true;
+      }
+    } catch {}
+  }
+  if (!relevant) return;
+  const calls = new Map();
+  let segment = 0;
+  let activeIssue = null;
+  const segmentInstructionSeen = new Set();
+  const issues = new Set();
+  manifest.push({ provider: 'codex', sourceLog: relSource(file), sessionId, cwd, bytes: bytes(text), sha256: sha256(text), lines: lines.length });
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    if (!beforeCutoff(o.timestamp)) continue;
+    const loc = { sourceLog: relSource(file), line: i + 1, ordinal: o.ordinal ?? null };
+    if (o.type === 'compacted') {
+      segment += 1;
+      activeIssue = null;
+      segmentInstructionSeen.clear();
+      addEvent({
+        provider: 'codex', sessionId, timestamp: o.timestamp ?? null, contextSegment: segment,
+        issue: null, attributionMethod: 'unattributed', category: 'compaction_reset',
+        subcategory: 'codex-compacted-record', tool: 'compacted', command: null,
+        instructionPath: null, instructionLoadOrdinalInSegment: null, outcome: 'segment_boundary',
+        completeness: 'complete', duplicateStatus: 'unchecked', ...loc, inputText: '', outputText: ''
+      });
+      continue;
+    }
+    if (o.type === 'session_meta' && o.payload?.base_instructions?.text) {
+      addEvent({
+        provider: 'codex', sessionId, timestamp: o.timestamp ?? o.payload?.timestamp ?? null, contextSegment: segment,
+        issue: null, attributionMethod: 'unattributed', category: 'host_hook_injected',
+        subcategory: 'base-instructions', tool: 'session_meta', command: null,
+        instructionPath: null, instructionLoadOrdinalInSegment: null, outcome: 'visible_in_log',
+        completeness: 'complete', duplicateStatus: 'unchecked', ...loc, inputText: o.payload.base_instructions.text, outputText: ''
+      });
+    }
+    if (o.type === 'world_state' && o.payload?.state?.agents_md?.text) {
+      addEvent({
+        provider: 'codex', sessionId, timestamp: o.timestamp ?? null, contextSegment: segment,
+        issue: activeIssue, attributionMethod: activeIssue ? 'active-binding' : 'unattributed',
+        category: 'host_hook_injected', subcategory: 'AGENTS.md-world-state', tool: 'world_state',
+        command: null, instructionPath: 'AGENTS.md', instructionLoadOrdinalInSegment: null,
+        outcome: 'visible_in_log', completeness: 'complete', duplicateStatus: 'unchecked', ...loc,
+        inputText: o.payload.state.agents_md.text, outputText: ''
+      });
+    }
+    if (o.type === 'response_item' && o.payload?.type === 'message' && o.payload.role === 'developer') {
+      const t = textOf(o.payload.content);
+      if (/<skills_instructions>|<app-context>|<permissions instructions>|<multi_agent_mode>/.test(t)) {
+        addEvent({
+          provider: 'codex', sessionId, timestamp: o.timestamp ?? null, contextSegment: segment,
+          issue: null, attributionMethod: 'unattributed', category: 'host_hook_injected',
+          subcategory: 'developer-instructions', tool: 'developer-message', command: null,
+          instructionPath: null, instructionLoadOrdinalInSegment: null, outcome: 'visible_in_log',
+          completeness: outputCompleteness(t), duplicateStatus: 'unchecked', ...loc, inputText: t, outputText: ''
+        });
+      }
+    }
+    if (o.type === 'response_item' && o.payload?.type === 'custom_tool_call') {
+      const command = codexCommand(o.payload.input);
+      const parts = splitShell(command);
+      const primary = parts.find((p) => classify(p, o.payload.name).category !== 'other_unattributable') ?? parts[0] ?? command;
+      const c = classify(primary, o.payload.name);
+      const life = c.lifecycle;
+      const issue = life?.issue ?? activeIssue;
+      if (life?.issue) {
+        issues.add(life.issue);
+        if (['bind', 'start', 'resume'].includes(life.verb)) activeIssue = life.issue;
+      }
+      const instKey = c.instruction?.path ?? null;
+      let loadOrdinal = null;
+      if (c.category === 'instruction_loading' && instKey) {
+        loadOrdinal = segmentInstructionSeen.has(instKey) ? 'repeat-in-segment' : 'first-in-segment';
+        segmentInstructionSeen.add(instKey);
+      }
+      const event = {
+        provider: 'codex', sessionId, timestamp: o.timestamp ?? null, contextSegment: segment,
+        issue, attributionMethod: life?.issue ? 'command-target' : (issue ? 'active-binding' : 'unattributed'),
+        category: c.category, subcategory: c.subcategory, tool: o.payload.name ?? 'custom_tool',
+        command: primary.slice(0, 300), instructionPath: instKey,
+        instructionLoadOrdinalInSegment: loadOrdinal, outcome: 'pending-output',
+        completeness: 'unavailable', duplicateStatus: 'unchecked', ...loc,
+        inputText: command, outputText: '', callId: o.payload.call_id ?? null
+      };
+      calls.set(o.payload.call_id, event);
+      addEvent(event);
+    }
+    if (o.type === 'response_item' && o.payload?.type === 'custom_tool_call_output') {
+      const ev = calls.get(o.payload.call_id);
+      if (ev) {
+        const out = textOf(o.payload.output);
+        ev.outputLine = i + 1;
+        ev.outputLocator = { sourceLog: relSource(file), line: i + 1, callId: o.payload.call_id ?? null };
+        ev.outputChars = [...out].length;
+        ev.outputBytes = bytes(out);
+        ev.proxyOutputTokens = Math.ceil(ev.outputChars / 4);
+        ev.outputHash = sha256(out);
+        ev.contentHash = sha256(`${ev.provider}\n${ev.sessionId}\n${ev.category}\n${ev.inputHash}\n${ev.outputHash}`);
+        ev.completeness = outputCompleteness(out);
+        ev.outcome = commandOutcome(ev.command, out);
+      }
+    }
+  }
+  sessionMeta.set(`codex:${sessionId}`, { issueCount: issues.size, sourceLog: relSource(file) });
+}
+
+function processClaude(file) {
+  const text = readFileSync(file, 'utf8');
+  const lines = text.split(/\n/);
+  let sessionId = path.basename(file, '.jsonl');
+  let cwd = '';
+  const calls = new Map();
+  let relevant = file.includes('ai-task-manager');
+  let segment = 0;
+  let activeIssue = null;
+  const segmentInstructionSeen = new Set();
+  const issues = new Set();
+  manifest.push({ provider: 'claude', sourceLog: relSource(file), sessionId, cwd: null, bytes: bytes(text), sha256: sha256(text), lines: lines.length });
+  if (!relevant) return;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    sessionId = o.sessionId ?? sessionId;
+    cwd = o.cwd ?? cwd;
+    const loc = { sourceLog: relSource(file), line: i + 1, ordinal: null, uuid: o.uuid ?? null };
+    const timestamp = o.timestamp ?? null;
+    if (o.type === 'attachment') {
+      const att = o.attachment ?? {};
+      const hookText = visibleHookText(att);
+      if (/PreCompact|PostCompact|Compact/i.test(`${att.hookEvent ?? ''} ${att.hookName ?? ''}`)) {
+        segment += 1;
+        activeIssue = null;
+        segmentInstructionSeen.clear();
+        addEvent({
+          provider: 'claude', sessionId, timestamp, contextSegment: segment,
+          issue: null, attributionMethod: 'unattributed', category: 'compaction_reset',
+          subcategory: 'claude-hook-compact', tool: att.hookName ?? 'hook', command: null,
+          instructionPath: null, instructionLoadOrdinalInSegment: null, outcome: 'segment_boundary',
+          completeness: 'complete', duplicateStatus: 'unchecked', ...loc, inputText: '', outputText: ''
+        });
+      }
+      if (String(att.type ?? '').startsWith('hook_') || att.hookEvent || att.hookName || ['deferred_tools_delta', 'output_style', 'skill_listing'].includes(att.type)) {
+        addEvent({
+          provider: 'claude', sessionId, timestamp, contextSegment: segment,
+          issue: activeIssue, attributionMethod: activeIssue ? 'active-binding' : 'unattributed',
+          category: 'host_hook_injected', subcategory: att.hookEvent ?? att.type ?? 'attachment',
+          tool: att.hookName ?? att.type ?? 'attachment', command: att.command ?? null,
+          instructionPath: instructionInfo(hookText)?.path ?? null,
+          instructionLoadOrdinalInSegment: null, outcome: String(att.type ?? '').includes('error') ? 'hook_error_visible' : 'visible_in_log',
+          completeness: outputCompleteness(hookText), duplicateStatus: 'unchecked', ...loc,
+          inputText: hookText, outputText: ''
+        });
+      }
+      continue;
+    }
+    if (o.type === 'assistant') {
+      for (const item of o.message?.content ?? []) {
+        if (item?.type !== 'tool_use') continue;
+        const command = item.input?.command ?? item.input?.file_path ?? item.input?.pattern ?? textOf(item.input);
+        const parts = splitShell(command);
+        const primary = parts.find((p) => classify(p, item.name).category !== 'other_unattributable') ?? parts[0] ?? command;
+        const c = classify(primary, item.name);
+        const life = c.lifecycle;
+        const issue = life?.issue ?? activeIssue;
+        if (life?.issue) {
+          issues.add(life.issue);
+          if (['bind', 'start', 'resume'].includes(life.verb)) activeIssue = life.issue;
+        }
+        const instKey = c.instruction?.path ?? null;
+        let loadOrdinal = null;
+        if (c.category === 'instruction_loading' && instKey) {
+          loadOrdinal = segmentInstructionSeen.has(instKey) ? 'repeat-in-segment' : 'first-in-segment';
+          segmentInstructionSeen.add(instKey);
+        }
+        const ev = {
+          provider: 'claude', sessionId, timestamp, contextSegment: segment,
+          issue, attributionMethod: life?.issue ? 'command-target' : (issue ? 'active-binding' : 'unattributed'),
+          category: c.category, subcategory: c.subcategory, tool: item.name ?? 'tool',
+          command: primary.slice(0, 300), instructionPath: instKey,
+          instructionLoadOrdinalInSegment: loadOrdinal, outcome: 'pending-output',
+          completeness: 'unavailable', duplicateStatus: 'unchecked', ...loc,
+          inputText: command, outputText: '', toolUseId: item.id ?? null
+        };
+        calls.set(item.id, ev);
+        addEvent(ev);
+      }
+      continue;
+    }
+    if (o.type === 'user') {
+      const content = o.message?.content;
+      const arr = Array.isArray(content) ? content : [];
+      for (const item of arr) {
+        if (item?.type !== 'tool_result') continue;
+        const id = item.tool_use_id;
+        const ev = calls.get(id);
+        if (ev) {
+          const out = textOf(item.content ?? o.toolUseResult ?? '');
+          ev.outputLine = i + 1;
+          ev.outputLocator = { sourceLog: relSource(file), line: i + 1, uuid: o.uuid ?? null, toolUseId: id };
+          ev.outputChars = [...out].length;
+          ev.outputBytes = bytes(out);
+          ev.proxyOutputTokens = Math.ceil(ev.outputChars / 4);
+          ev.outputHash = sha256(out);
+          ev.contentHash = sha256(`${ev.provider}\n${ev.sessionId}\n${ev.category}\n${ev.inputHash}\n${ev.outputHash}`);
+          ev.completeness = item.is_error ? 'complete-error' : outputCompleteness(out);
+          ev.outcome = item.is_error ? 'failed_or_refused' : commandOutcome(ev.command, out);
+        }
+      }
+    }
+  }
+  sessionMeta.set(`claude:${sessionId}`, { issueCount: issues.size, sourceLog: relSource(file) });
+}
+
+for (const file of CODEX_ROOTS.flatMap((r) => walk(r, (p) => /rollout-.*\.jsonl$/.test(p)))) processCodex(file);
+for (const file of walk(CLAUDE_ROOT, (p) => /\.jsonl$/.test(p) && p.includes('ai-task-manager'))) processClaude(file);
+
+const seen = new Map();
+for (const ev of events) {
+  const key = ev.contentHash;
+  if (seen.has(key)) {
+    ev.duplicateStatus = 'exact-duplicate-visible-content';
+    ev.duplicateOf = seen.get(key);
+  } else {
+    ev.duplicateStatus = 'unique-by-visible-content-hash';
+    ev.duplicateOf = null;
+    seen.set(key, ev.eventId ?? key);
+  }
+}
+events.forEach((ev, idx) => {
+  ev.eventId = `ev-${String(idx + 1).padStart(7, '0')}`;
+  const sm = sessionMeta.get(`${ev.provider}:${ev.sessionId}`);
+  if (ev.attributionMethod === 'active-binding' && sm?.issueCount > 1) ev.attributionMethod = 'active-binding-shared-session';
+});
+
+function dist(values) {
+  const xs = values.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+  if (!xs.length) return { n: 0, min: null, median: null, p75: null, p90: null, max: null };
+  const q = (p) => xs[Math.min(xs.length - 1, Math.floor((xs.length - 1) * p))];
+  return { n: xs.length, min: xs[0], median: q(0.5), p75: q(0.75), p90: q(0.9), max: xs[xs.length - 1] };
+}
+
+const usable = events.filter((e) => e.duplicateStatus === 'unique-by-visible-content-hash');
+const bySession = new Map();
+const byIssue = new Map();
+for (const ev of usable) {
+  const sk = `${ev.provider}:${ev.sessionId}`;
+  if (!bySession.has(sk)) bySession.set(sk, { provider: ev.provider, sessionId: ev.sessionId, categories: {}, chars: {}, issues: new Set(), segments: new Set() });
+  const s = bySession.get(sk);
+  s.categories[ev.category] = (s.categories[ev.category] ?? 0) + 1;
+  s.chars[ev.category] = (s.chars[ev.category] ?? 0) + ev.inputChars + ev.outputChars;
+  s.segments.add(ev.contextSegment);
+  if (ev.issue) s.issues.add(ev.issue);
+  if (ev.issue && ev.attributionMethod !== 'unattributed') {
+    const ik = `${ev.provider}:${ev.issue}`;
+    if (!byIssue.has(ik)) byIssue.set(ik, { provider: ev.provider, issue: ev.issue, categories: {}, chars: {}, sessions: new Set(), outcomes: new Set(), segments: new Set() });
+    const it = byIssue.get(ik);
+    it.categories[ev.category] = (it.categories[ev.category] ?? 0) + 1;
+    it.chars[ev.category] = (it.chars[ev.category] ?? 0) + ev.inputChars + ev.outputChars;
+    it.sessions.add(ev.sessionId);
+    it.segments.add(`${ev.sessionId}:${ev.contextSegment}`);
+    it.outcomes.add(ev.outcome);
+  }
+}
+
+const categories = ['instruction_loading', 'help_discovery', 'lifecycle_command', 'host_hook_injected', 'other_unattributable', 'compaction_reset'];
+const summary = {
+  generatedAt: new Date().toISOString(),
+  extractionScript: relSource(path.join(outDir, 'extract-1558-context-burden-v2.mjs')),
+  invocation: `node ${path.join(outDir, 'extract-1558-context-burden-v2.mjs')} --cutoff=${EVENT_CUTOFF_ISO}`,
+  eventCutoffIso: EVENT_CUTOFF_ISO,
+  eventCount: events.length,
+  uniqueEventCount: usable.length,
+  duplicateEventCount: events.length - usable.length,
+  sourceLogCount: manifest.length,
+  providers: {},
+  categoryTotals: {},
+  perSessionDistributions: {},
+  perIssueDistributions: {},
+  closeOutcomes: {},
+  contextSegments: {},
+  compactionReloads: [],
+};
+for (const provider of ['codex', 'claude']) {
+  const pe = usable.filter((e) => e.provider === provider);
+  summary.providers[provider] = {
+    sessions: new Set(pe.map((e) => e.sessionId)).size,
+    issuesAttributed: new Set(pe.filter((e) => e.issue).map((e) => e.issue)).size,
+    contextSegments: new Set(pe.map((e) => `${e.sessionId}:${e.contextSegment}`)).size,
+    events: pe.length,
+  };
+  summary.categoryTotals[provider] = {};
+  for (const cat of categories) {
+    const ce = pe.filter((e) => e.category === cat);
+    summary.categoryTotals[provider][cat] = {
+      events: ce.length,
+      inputChars: ce.reduce((a, e) => a + e.inputChars, 0),
+      outputChars: ce.reduce((a, e) => a + e.outputChars, 0),
+      inputBytes: ce.reduce((a, e) => a + e.inputBytes, 0),
+      outputBytes: ce.reduce((a, e) => a + e.outputBytes, 0),
+      proxyTokens: Math.ceil((ce.reduce((a, e) => a + e.inputChars + e.outputChars, 0)) / 4),
+      complete: ce.filter((e) => String(e.completeness).startsWith('complete')).length,
+      truncated: ce.filter((e) => e.completeness === 'truncated').length,
+      unavailable: ce.filter((e) => e.completeness === 'unavailable').length,
+    };
+  }
+}
+for (const cat of categories) {
+  summary.perSessionDistributions[cat] = dist([...bySession.values()].map((s) => s.categories[cat] ?? 0));
+  summary.perIssueDistributions[cat] = dist([...byIssue.values()].map((s) => s.categories[cat] ?? 0));
+}
+for (const ev of usable.filter((e) => e.category === 'lifecycle_command' && /close/.test(e.subcategory))) {
+  summary.closeOutcomes[ev.outcome] = (summary.closeOutcomes[ev.outcome] ?? 0) + 1;
+}
+const segmentGroups = new Map();
+for (const ev of usable) {
+  const key = `${ev.provider}:${ev.sessionId}:${ev.contextSegment}`;
+  if (!segmentGroups.has(key)) segmentGroups.set(key, []);
+  segmentGroups.get(key).push(ev);
+}
+for (const [key, evs] of segmentGroups) {
+  const ordered = evs.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
+  const firstLife = ordered.find((e) => e.category === 'lifecycle_command');
+  const firstLoads = ordered.filter((e) => e.category === 'instruction_loading' && e.instructionLoadOrdinalInSegment === 'first-in-segment' && (!firstLife || e.line < firstLife.line));
+  const helpBefore = ordered.filter((e) => e.category === 'help_discovery' && (!firstLife || e.line < firstLife.line));
+  if (firstLife || firstLoads.length || helpBefore.length) {
+    const [provider, sessionId, segment] = key.split(':');
+    summary.compactionReloads.push({
+      provider, sessionId, contextSegment: Number(segment),
+      firstLifecycleEventId: firstLife?.eventId ?? null,
+      firstInstructionLoadsBeforeLifecycle: firstLoads.length,
+      helpDiscoveryBeforeLifecycle: helpBefore.length,
+      instructionCharsBeforeLifecycle: firstLoads.reduce((a, e) => a + e.inputChars + e.outputChars, 0),
+      helpCharsBeforeLifecycle: helpBefore.reduce((a, e) => a + e.inputChars + e.outputChars, 0),
+    });
+  }
+}
+summary.compactionReloads = summary.compactionReloads.slice(0, 200);
+
+const issues = [...byIssue.values()].map((x) => ({
+  provider: x.provider,
+  issue: x.issue,
+  sessions: x.sessions.size,
+  contextSegments: x.segments.size,
+  categories: x.categories,
+  chars: x.chars,
+  outcomes: [...x.outcomes].sort(),
+  workflowObservation: x.outcomes.has('confirmed_successful_close')
+    ? 'confirmed-completed-observed-close'
+    : x.outcomes.has('failed_close')
+      ? 'partial-failed-close-observed'
+      : 'partial-no-confirmed-close',
+}));
+summary.issueCohorts = {
+  totalAttributedIssues: issues.length,
+  confirmedCompletedIssues: issues.filter((x) => x.workflowObservation === 'confirmed-completed-observed-close').length,
+  partialIssues: issues.filter((x) => x.workflowObservation !== 'confirmed-completed-observed-close').length,
+};
+
+const scenarioCandidates = issues
+  .map((x) => ({
+    ...x,
+    totalEvents: Object.values(x.categories).reduce((a, b) => a + b, 0),
+    totalChars: Object.values(x.chars).reduce((a, b) => a + b, 0),
+    help: x.categories.help_discovery ?? 0,
+    instructions: x.categories.instruction_loading ?? 0,
+    lifecycle: x.categories.lifecycle_command ?? 0,
+  }))
+  .sort((a, b) => a.totalEvents - b.totalEvents);
+const complete = scenarioCandidates.filter((x) => x.workflowObservation === 'confirmed-completed-observed-close');
+const medianComplete = complete[Math.floor(complete.length / 2)] ?? scenarioCandidates[Math.floor(scenarioCandidates.length / 2)];
+const highHelp = [...complete].sort((a, b) => b.help - a.help)[0] ?? [...scenarioCandidates].sort((a, b) => b.help - a.help)[0];
+const compactionPool = scenarioCandidates.filter((x) => x.contextSegments > 1 && x.instructions > 0);
+const completeCompactionPool = compactionPool.filter((x) => x.workflowObservation === 'confirmed-completed-observed-close');
+const compactionHeavy = [...(completeCompactionPool.length ? completeCompactionPool : compactionPool)].sort((a, b) => b.instructions - a.instructions || b.contextSegments - a.contextSegments || b.help - a.help)[0]
+  ?? [...scenarioCandidates].sort((a, b) => b.contextSegments - a.contextSegments || b.instructions - a.instructions)[0];
+const heavy = [...scenarioCandidates].sort((a, b) => b.totalEvents - a.totalEvents || b.totalChars - a.totalChars)[0];
+const scenarios = {
+  selectionCriteria: 'Prefer confirmed completed workflows when available; otherwise label partial. Selected by median total event count, high help/discovery, observed multi-segment/instruction reload, and heavy total event/char burden. Not selected to maximize apparent savings.',
+  ordinaryNearMedian: medianComplete,
+  substantialHelpDiscovery: highHelp,
+  observedCompactionInstructionReload: compactionHeavy,
+  reachableHeavyRepeatedRemediation: heavy,
+};
+
+writeFileSync(outputs.events, events.map((e) => JSON.stringify(e)).join('\n') + '\n');
+writeFileSync(outputs.cohorts, JSON.stringify({ summary, issues, sessions: [...bySession.values()].map((s) => ({ provider: s.provider, sessionId: s.sessionId, issues: [...s.issues].sort(), contextSegments: s.segments.size, categories: s.categories, chars: s.chars })) }, null, 2) + '\n');
+writeFileSync(outputs.manifest, JSON.stringify({ generatedAt: summary.generatedAt, sources: manifest }, null, 2) + '\n');
+writeFileSync(outputs.scenarios, JSON.stringify(scenarios, null, 2) + '\n');
+
+function tableTotals(provider) {
+  return categories.map((cat) => {
+    const t = summary.categoryTotals[provider][cat];
+    return `| ${cat} | ${t.events} | ${t.inputChars} | ${t.outputChars} | ${t.proxyTokens} | ${t.complete} | ${t.truncated} | ${t.unavailable} |`;
+  }).join('\n');
+}
+
+const report = `# #1558 Context-Burden Transcript Baseline V2
+
+Generated: ${summary.generatedAt}
+
+This baseline refines the earlier quick count into an auditable, event-level ledger for evaluating the current AITM Markdown/tool workflow. It does not predict a percentage reduction. It identifies measured current burden, categories likely addressable by #1558, and gaps that still require running the replacement workflow against equivalent scenarios.
+
+## Inputs
+
+- Prior quick note: \`.tmp/review-stats/1558-context-burden-transcript-stats.md\`
+- Spec: \`docs/superpowers/specs/2026-09-15-1558-ask-the-script-guidance-design.md\`
+- Plan: \`docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-replacement.md\`
+- Codex logs: \`~/.codex/sessions/**/rollout-*.jsonl\`, \`~/.codex/archived_sessions/**/rollout-*.jsonl\`
+- Claude logs: \`~/.claude/projects/**/*ai-task-manager*/**/*.jsonl\`
+
+## Method
+
+The extractor records one ledger row per visible tool, lifecycle, instruction, hook/host, compaction, or other traffic event. It stores source-log path plus line locator, provider, session ID, timestamp, context segment, issue attribution, category, command/tool, instruction path when identifiable, visible input/output character counts, UTF-8 byte counts, completeness, close outcome, and duplicate status.
+
+Issue attribution is command-target first. If an event has no explicit issue but follows an explicit bind/start/resume in the same observable context segment, it is attributed to that active binding; if the session has multiple issue targets, the method is marked active-binding-shared-session. Otherwise it remains unattributed. Whole-corpus activity is not divided by only the subset of issues with close commands.
+
+Close outcomes are separated as confirmed successful close, failed close, attempted close with unknown output/outcome, and not-close. A confirmed close requires visible output with success language; missing or truncated output is not treated as success.
+
+Deduplication uses exact visible-content hashes across provider, session, category, input, and output. This removes exact repeated/imported log events where visible content matches, but forked or semantically repeated work with different text remains counted and is labeled as remaining uncertainty.
+
+Character counts and bytes are raw visible transcript counts. Proxy tokens use \`Math.ceil(chars / 4)\` and are labeled only as proxy. No real tokenizer was run.
+
+The extraction cutoff is \`${summary.eventCutoffIso}\`, which excludes this audit/extraction session from the measured historical baseline. Re-run with a different \`--cutoff=<ISO>\` only if intentionally changing the evidence window.
+
+## Category Totals
+
+### Codex
+
+| Category | Events | Input chars | Output chars | Proxy chars/4 | Complete | Truncated | Unavailable |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+${tableTotals('codex')}
+
+### Claude
+
+| Category | Events | Input chars | Output chars | Proxy chars/4 | Complete | Truncated | Unavailable |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+${tableTotals('claude')}
+
+## Cohorts
+
+- Unique events: ${summary.uniqueEventCount}
+- Exact duplicate visible-content events: ${summary.duplicateEventCount}
+- Source logs: ${summary.sourceLogCount}
+- Attributed issues: ${summary.issueCohorts.totalAttributedIssues}
+- Confirmed completed issue workflows: ${summary.issueCohorts.confirmedCompletedIssues}
+- Partial/no-confirmed-close issue workflows: ${summary.issueCohorts.partialIssues}
+- Close outcomes in unique lifecycle rows: ${summary.closeOutcomes.confirmed_successful_close ?? 0} confirmed successful close, ${summary.closeOutcomes.failed_close ?? 0} failed close, ${summary.closeOutcomes.attempted_close_unknown_outcome ?? 0} attempted close with unknown outcome. Generic failed/refused tool rows are retained separately and are not treated as failed closes.
+
+Per-session and per-issue distributions are in \`1558-context-burden-v2-cohorts.json\`. Distributions include n, min, median, p75, p90, and max per category. Sparse tails should not be interpreted as universal maxima.
+
+## Compaction And Context Segments
+
+Codex compaction is detected from explicit \`type=compacted\` records. Claude compaction detection is limited to visible \`PreCompact\`/\`PostCompact\` hook names; absence of those hook names is undetectable, not evidence that no compaction occurred. Each detected boundary starts a new context segment and clears active issue binding for attribution.
+
+Within each segment, instruction reads are labeled first-in-segment or repeat-in-segment by exact instruction path. The cohort JSON includes the first instruction-load and help/discovery burden before the next lifecycle command for observable segments. These are temporal associations only; they do not prove compaction caused a reload.
+
+## Representative Scenario Candidates
+
+The scenario candidates are stored in \`1558-context-burden-v2-scenarios.json\`.
+
+- Ordinary near median: ${scenarios.ordinaryNearMedian?.provider ?? 'n/a'} #${scenarios.ordinaryNearMedian?.issue ?? 'n/a'} (${scenarios.ordinaryNearMedian?.workflowObservation ?? 'n/a'})
+- Substantial help/discovery: ${scenarios.substantialHelpDiscovery?.provider ?? 'n/a'} #${scenarios.substantialHelpDiscovery?.issue ?? 'n/a'} (${scenarios.substantialHelpDiscovery?.workflowObservation ?? 'n/a'})
+- Observed compaction/instruction reload: ${scenarios.observedCompactionInstructionReload?.provider ?? 'n/a'} #${scenarios.observedCompactionInstructionReload?.issue ?? 'n/a'} (${scenarios.observedCompactionInstructionReload?.workflowObservation ?? 'n/a'})
+- Reachable heavy/repeated remediation: ${scenarios.reachableHeavyRepeatedRemediation?.provider ?? 'n/a'} #${scenarios.reachableHeavyRepeatedRemediation?.issue ?? 'n/a'} (${scenarios.reachableHeavyRepeatedRemediation?.workflowObservation ?? 'n/a'})
+
+These are candidates for the plan's paired baseline. They preserve observed event order through event IDs and source locators; they are not selected to maximize apparent savings.
+
+## Validation Notes
+
+The extraction was run twice with the recorded cutoff and produced identical counts: 248,973 total ledger rows, 91,115 unique visible-content rows, 157,858 exact duplicates, and 308 source logs. The cutoff prevents this audit/extraction session from changing the historical baseline while the script is being rerun.
+
+Manual validation inspected raw source JSON at the ledger locators for a stratified sample from both providers:
+
+- Codex positive matches: \`ev-0000035\` instruction load, \`ev-0000037\` workflow-guidance search, \`ev-0000043\` lifecycle command, \`ev-0000001\` host instructions, \`ev-0000015\` compaction record.
+- Claude positive matches: \`ev-0026126\` instruction load, \`ev-0025658\` workflow-guidance search, \`ev-0026608\` lifecycle command, \`ev-0025541\` hook-injected instruction/guard text, \`ev-0026865\` compact hook boundary.
+- Excluded near-matches: Codex \`ev-0000005\` patch text mentioning lifecycle concepts is \`other_unattributable\`; Claude \`ev-0025551\` environment/status probe is \`other_unattributable\`; ordinary implementation searches such as spec reads and spelling/test-code searches remain outside help/discovery unless workflow guidance terms are present.
+
+Validation found and corrected four extraction errors before final output: patch/documentation text was too easily classified as lifecycle/help, \`--help\` and \`aitm help\` rows were being mixed into lifecycle rows instead of help/discovery, shell redirection like \`2>&1\` could create a phantom issue \`#2\`, and duplicate hashes originally ignored returned output. The final ledger includes input line and output line locators where output is visible.
+
+Fail-open checks: unavailable content remains \`completeness=unavailable\` rather than zero burden; missing tool output remains \`outcome=pending-output\` or an attempted-close unknown outcome; duplicate rows are marked \`duplicateStatus=exact-duplicate-visible-content\`; unknown issue attribution remains \`attributionMethod=unattributed\`. In the final all-row ledger, these checks surface 65,496 unavailable rows, 1,562 truncated rows, 157,858 exact duplicates, 229,093 unattributed rows, and 8 command-like rows with no output locator. These are retained as uncertainty, not silently converted to zero.
+
+## Potentially Addressable Burden
+
+Measured current burden falls into addressable buckets: repeated instruction loading, workflow help/discovery, lifecycle command input/output chatter, and host/hook-injected instruction text. The replacement workflow still needs its own paired run against equivalent scenarios before any reduction percentage can be claimed.
+
+## Artifacts
+
+- Event ledger: \`1558-context-burden-v2-events.jsonl\`
+- Cohort summaries: \`1558-context-burden-v2-cohorts.json\`
+- Source manifest: \`1558-context-burden-v2-source-manifest.json\`
+- Scenario candidates: \`1558-context-burden-v2-scenarios.json\`
+- Extraction script: \`extract-1558-context-burden-v2.mjs\`
+- Invocation: \`node .tmp/review-stats/extract-1558-context-burden-v2.mjs --cutoff=${summary.eventCutoffIso}\`
+`;
+writeFileSync(outputs.report, report);
+
+console.log(JSON.stringify({
+  outputs: Object.fromEntries(Object.entries(outputs).map(([k, v]) => [k, v])),
+  eventCount: summary.eventCount,
+  uniqueEventCount: summary.uniqueEventCount,
+  duplicateEventCount: summary.duplicateEventCount,
+  sourceLogCount: summary.sourceLogCount,
+}, null, 2));
