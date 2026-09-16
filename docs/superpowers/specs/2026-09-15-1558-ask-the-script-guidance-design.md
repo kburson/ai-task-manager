@@ -4,7 +4,7 @@
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | Date                        | 2026-09-15                                                                               |
 | Issue                       | #1558                                                                                    |
-| Status                      | AMENDMENT DRAFT — 2026-09-16; pending renewed manual spec review                         |
+| Status                      | AMENDMENT REVIEW COMPLETE — author/reviewer agreement; pending human acceptance          |
 | Supersedes after acceptance | The "Epic A — Ask-the-script" section of `2026-09-08-aitm-yml-pipeline-engine-design.md` |
 | Does not supersede          | That design's decisions for #1559, #1560, or #1561                                       |
 
@@ -16,12 +16,24 @@ exposed the cost of serializing the entire evidence bundle into every agent
 response. This amendment distinguishes internal evidence from operational
 presentation; it does not raise any context budget or weaken any guard.
 
-The existing plan and completed review records remain historical evidence for
+The existing plan and pre-amendment review records remain historical evidence for
 their recorded source digests. They do not constitute acceptance of this
 amendment. Delivery order is renewed manual spec review and acceptance, a new
 plan derived from the accepted revision, renewed manual plan review and
 acceptance, then backlog hydration. No implementation or hydration is authorized
 by this amendment draft.
+
+**Amendment review closure:** Claude and Codex reached agreement in amendment
+round 3 with no open findings. Closing records are
+`docs/superpowers/reviews/1558/spec/2026-09-16-1558-ask-the-script-guidance-design-amendment-r3-reviewer-claude-review.md`
+and
+`docs/superpowers/reviews/1558/spec/2026-09-16-1558-ask-the-script-guidance-design-amendment-r3-author-codex-response.md`.
+The agreed technical text has SHA-256
+`41a336449a460ed73fa616e06ecc54a1514405c4341460889aab14a35f7c1d07`
+at commit `ae51f9d23e553b8123629d48cfa1997b7d5ed60c`;
+this closing revision updates status/provenance only. Agreement recommends the
+amended design for human acceptance; it does not certify measured implementation
+feasibility, accept a replacement plan, or authorize backlog hydration.
 
 ## 1. Summary
 
