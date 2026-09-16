@@ -1,0 +1,312 @@
+{
+  "schema": "aitm.hydration-audit/v1",
+  "parent": 1558,
+  "reviewPr": 1652,
+  "sourcePlan": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md",
+  "sourcePlanCommit": "55dedc066701a9fce1066ac4ebebce58ed147638",
+  "sourcePlanSha256": "618fdc94c29fd673deeb5fb84d9208cf51cf5a05840042e8c0e52591e711070a",
+  "verifiedAt": "2026-09-16T18:06:40.427Z",
+  "coverage": {
+    "ok": true,
+    "expectedCount": 26,
+    "coveredCount": 26,
+    "fieldsAndEdges": "verified",
+    "citations": "verified",
+    "parent": 1558,
+    "planCommit": "55dedc066701a9fce1066ac4ebebce58ed147638"
+  },
+  "bodyReadbacks": {
+    "codeKind": 26,
+    "acceptanceCriteria": 76,
+    "suppliedCommandEntries": 37,
+    "rendererDerivedCommandsAccountedFor": true
+  },
+  "children": [
+    {
+      "rank": 1,
+      "issue": 1653,
+      "title": "Inventory lifecycle sources, effects, refusals, and behavioral flags",
+      "prerequisites": [],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 2,
+      "issue": 1654,
+      "title": "Build and prove whole-process transport interception",
+      "prerequisites": [1653],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 3,
+      "issue": 1655,
+      "title": "Model coherent authority fixtures and lifecycle scenarios",
+      "prerequisites": [1654],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 4,
+      "issue": 1656,
+      "title": "Capture and freeze both legacy adapter baselines",
+      "prerequisites": [1655],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 5,
+      "issue": 1657,
+      "title": "Index normative clauses and validate oracle traceability",
+      "prerequisites": [1656],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 6,
+      "issue": 1658,
+      "title": "Build complete candidate decisions and presentation fixtures",
+      "prerequisites": [1657],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 7,
+      "issue": 1659,
+      "title": "Measure sensitivity and assemble paired comparison artifacts",
+      "prerequisites": [1658],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 8,
+      "issue": 1660,
+      "title": "Record the sole feasibility decision and enforce the foundation gate",
+      "prerequisites": [1659],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 9,
+      "issue": 1661,
+      "title": "Establish the complete shared decision and typed vocabulary contract",
+      "prerequisites": [1660],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 10,
+      "issue": 1662,
+      "title": "Validate and project the compact operational result",
+      "prerequisites": [1660, 1661],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 11,
+      "issue": 1663,
+      "title": "Extract immutable authority collection and complete guard evaluation",
+      "prerequisites": [1660, 1662],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 12,
+      "issue": 1664,
+      "title": "Project Functional DoD and persist it only after readiness",
+      "prerequisites": [1660, 1663],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 13,
+      "issue": 1665,
+      "title": "Share bind, resume, and early promotion readiness",
+      "prerequisites": [1660, 1663, 1664],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 14,
+      "issue": 1666,
+      "title": "Share Test entry readiness without running tests in explanation",
+      "prerequisites": [1660, 1663, 1664],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 15,
+      "issue": 1667,
+      "title": "Share Review readiness and evidence-dependent navigation",
+      "prerequisites": [1660, 1665, 1666],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 16,
+      "issue": 1668,
+      "title": "Share delivery readiness without invoking providers",
+      "prerequisites": [1660, 1663],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 17,
+      "issue": 1669,
+      "title": "Share close readiness and preserve close-specific protections",
+      "prerequisites": [1660, 1664, 1667, 1668],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 18,
+      "issue": 1670,
+      "title": "Certify seven-action parity and authority-cost regression limits",
+      "prerequisites": [1660, 1669],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 19,
+      "issue": 1671,
+      "title": "Validate guidance syntax, schema, references, and field locations",
+      "prerequisites": [1660, 1661],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 20,
+      "issue": 1672,
+      "title": "Enforce guidance source trust and recovery admission",
+      "prerequisites": [1660, 1665, 1666, 1667, 1668, 1670, 1671],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 21,
+      "issue": 1673,
+      "title": "Integrate exhaustive entrypoint admission and success annotation",
+      "prerequisites": [1660, 1672],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 22,
+      "issue": 1674,
+      "title": "Compile and cache valid and invalid guidance results",
+      "prerequisites": [1660, 1673],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 23,
+      "issue": 1675,
+      "title": "Expose routine explanations, receipts, and explicit diagnostics",
+      "prerequisites": [1660, 1662, 1670, 1674],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 24,
+      "issue": 1676,
+      "title": "Hydrate the guidance catalog and migrate human documentation",
+      "prerequisites": [1660, 1675],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 25,
+      "issue": 1677,
+      "title": "Capture paired CLI transcripts, tokenizer calibration, and authority costs",
+      "prerequisites": [1660, 1676],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    },
+    {
+      "rank": 26,
+      "issue": 1678,
+      "title": "Slim both adapter protocols and certify the consumer release",
+      "prerequisites": [1660, 1677],
+      "priority": "P2",
+      "status": "Backlog",
+      "size": null,
+      "estimate": null,
+      "assignees": []
+    }
+  ]
+}
