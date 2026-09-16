@@ -161,8 +161,8 @@ try {
   );
   assert.match(
     readFileSync(grokSkill, 'utf8'),
-    /skill\/adapters\/grok\/SKILL\.md/,
-    'Grok stub must point to adapter'
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/grok\/SKILL\.md/,
+    'Grok stub must point to its scoped-package adapter'
   );
 
   mkdirSync(path.join(grokOnlyTarget, '.claude'), { recursive: true });

@@ -766,6 +766,7 @@ export function codexStub() {
 }
 
 function grokStub() {
+  const adapterPath = installedPackagePath(getProvider('grok').skillAdapterPath);
   return [
     '---',
     'name: task',
@@ -777,7 +778,7 @@ function grokStub() {
     '',
     'Load and follow the canonical Grok adapter instructions from:',
     '',
-    `\`node_modules/ai-task-manager/${getProvider('grok').skillAdapterPath}\``,
+    `\`${adapterPath}\``,
     '',
   ].join('\n');
 }
