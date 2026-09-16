@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-15-1558-ask-the-script-guidance-design.md`
 
-**Plan status:** DRAFT — awaiting human-orchestrated manual peer review and acceptance. This file authorizes neither implementation nor issue creation.
+**Plan status:** DRAFT — round-2 serialization feasibility is **NO-GO** under the current full-provenance wire format and ratified working budgets. Manual plan review continues. Only the bounded characterization work described below can be proposed for initial backlog hydration; this file authorizes neither implementation nor issue creation.
 
 **Source provenance:** Repository baseline `a5d0245b812959e906adc834f149cebca43ab08d` (merge of PR #1647). Source SHA-256: `8f3f37bc4724c072fe222cd8f720499c825748934c8b1689950e66ce261a1a8d`. The source and closing review files preserve their historical DRAFT/pending-human wording; the human's instruction on 2026-09-16 identifies that unchanged design as ratified. Do not rewrite those reviewed bytes to synchronize status labels. Closing records are under `docs/superpowers/reviews/1558/spec/`.
 
@@ -62,26 +62,43 @@ After manual acceptance, pin the accepted plan commit and digest. Hydrate throug
 
 Before implementation in a child worktree, run `scripts/dev-env/setup-local-worktree.sh`, then `node scripts/dev-env/verify-local-worktree.mjs`; verify `node_modules/ai-task-manager -> ..`. Bind/start the actual hydrated child, reconcile board/binding/branch attribution, and obtain the required plan acceptance before source edits. Test tags and commit messages must use that child's assigned issue number. Commit each task's files explicitly after its tests pass; do not stage unrelated work. This drafting task does not perform those future lifecycle actions.
 
-## Early feasibility and parser gates (round-1 revision)
+## Early feasibility and parser gates (round-2 revision)
 
-These gates precede implementation commitment; they do not relax the ratified budgets. The complete runnable planning probes are retained in Appendix A and were run with Node 26.8.1 on baseline `a5d0245b812959e906adc834f149cebca43ab08d` after lockfile installation.
+**Current decision: NO-GO for implementation, not a deferred feasibility estimate.** Appendix A.3 reproduces the measured cost of the existing candidate serialization at two observations, including `workflow-policy`: **6,097 Codex / 6,104 Claude** across the illustrative sixteen-query traffic, versus the **5,600** working maximum. The sampled clean response is **287**, exceeding its **240** working maximum. Thus the previously reported one-observation **5,321 / 5,328** is retained only as historical probe evidence, not as the candidate gate result. Two observations apply to the policy-enriched case; not every action necessarily needs policy collection, and actual per-action cardinalities must come from the inventory rather than imposing a uniform count.
 
-**Context observation.** Current `measure-context.mjs --all` outputs are **13,381 Codex / 13,482 Claude** for the static bind+review+close scenario. Its older source comments are not current measurements. Its legacy green exit is not §20.2 acceptance. Replacing that entire retained prose surface is the scope, so today's size is not an irreducible lower bound.
+The ratified numeric ceilings and provenance requirements are unchanged. This revision chooses full-information serialization below and records its current failure; it does not assert that all possible compliant encodings are impossible. The next decision must precede extraction: a measured compliant wire model must pass, or a human-approved design amendment must change the presentation contract or budgets. Tasks 2–15 cannot start while that decision is unresolved. Do not hydrate them as implementation-ready work. Following manual plan acceptance, Task 1's inventory/measurement portion alone may be hydrated as a bounded discovery child; split it from foundation coding and pin the WBS if its estimate requires that. A passing characterization report and explicit manual acceptance are required before Task 1's runtime changes or later tasks proceed.
 
-The Appendix A synthetic probe retains the current Tier-0 shim and explicit candidate router/pickup/adapter protocols. Its 16-query traffic counts full serialized sample decisions, request/receipt text, expanded/repeated guidance, and action command text:
+**Live static baseline:** `measure-context.mjs --all` reports **13,381 Codex / 13,482 Claude** for bind+review+close. Those legacy file costs are not an irreducible lower bound or a passing §20.2 report. Appendix A.1 retains the original candidate static strings (833/840) for comparison; Appendix A.3 is the parameterized measurement used here. These are measured serialized string costs, not claimed production evaluator outputs or a valid executed lifecycle.
 
-| Probe                                            | Codex | Claude |
-| ------------------------------------------------ | ----: | -----: |
-| Candidate static protocol floor, proxy tokens    |   833 |    840 |
-| Synthetic 16-query traffic, proxy tokens         | 4,488 |  4,488 |
-| Candidate static plus traffic                    | 5,321 |  5,328 |
-| Remaining room beneath the 5,600 working maximum |   279 |    272 |
+|                    Observations per sample | Codex, one blocker on blocked samples | Codex, three blockers on blocked samples | Clean response | One-blocker response |
+| -----------------------------------------: | ------------------------------------: | ---------------------------------------: | -------------: | -------------------: |
+|             1 — historical assumption only |                                 5,321 |                                    5,726 |            239 |                  273 |
+| 2 — includes policy-enrichment observation |                             **6,097** |                                **6,502** |        **287** |                  321 |
+|                                          3 |                                 6,853 |                                    7,258 |            334 |                  368 |
+|                                          5 |                                 8,397 |                                    8,802 |            431 |                  465 |
+|                                          8 |                                10,697 |                                   11,102 |            575 |                  609 |
 
-The sampled first expanded clean response is **239** proxy tokens, representative one-blocker response **273**, and a 32-blocker stress response **1,319**. Large blocker output is reported, never truncated; the spec does not impose the representative 400-token working maximum on every possible blocker set.
+Claude adds seven tokens to each traffic-plus-static total. Adding the second observation adds **194 characters / 48.5 proxy tokens per response**, or **776** across sixteen responses; source-name lengths make other increments slightly different. One additional same-width blocker adds **135 characters / 33.75 proxy tokens per affected response**. One additional repeated clean close query with two observations adds **1,156 characters / 289 proxy tokens**, including request and response. Measure slopes from actual emitted bytes/characters, not rounded counts multiplied as if exact. The scenario with eight observations plus two seven-blocker close responses measures **11,170 / 11,177**, above the 7,000 absolute ceiling. This is an explicit stress model, not a claimed observed maximum or a validated realistic lifecycle; the inventory-backed heavy case is required below.
 
-**Disposition: investigation-go only, not a feasibility certificate.** The small clean-response margin is one token. Samples use one synthetic authority observation, a candidate four-operation instruction, and illustrative state/action traffic. They are not live CLI output or the final per-action observation inventory; action-result output and divergence/normalization diagnostics require explicit accounting in the definitive transcript. The numbers demonstrate a candidate size, not proof of an irreducible minimum or complete protocol equivalence. Task 1 **Step 0** must replace those assumptions with the inventoried retained obligations, actual per-action required observation cardinality and mandatory output, and the fixed lifecycle query schedule before evaluator extraction begins. Commit that characterization evidence with Task 1. Tasks 2–15 are **no-go** until its clean/blocked/full-lifecycle estimates fit 240/400/5,600 and the static floor fits 4,000 without deleting authority or obligations. If the gate fails, stop the affected implementation sequence and return measured scope/serialization choices for manual review; any change to the ratified numeric ceilings requires explicit spec amendment and acceptance. Do not proceed fourteen tasks hoping Task 15 will fix it. Task 12 must replace estimates with actual captured CLI output before Task 13, and Task 15 remains the final full-release gate.
+### Serialization decision and fidelity boundary
 
-Before Backlog hydration, the human reviews these measured limits and the gated sequencing with this plan. Task 1 may be hydrated as the bounded foundation/characterization child; dependent children may be recorded as blocked backlog items but are not implementation-ready. If the Step 0 characterization itself exceeds atomic-story limits, split and pin that spike before Task 1 coding; do not conceal it in a large foundation estimate.
+- Keep the complete `ActionDecision` and complete agent-visible output. Preserve every blocker, typed disposition, effective observation, source identity, actual per-source observation time, full HEAD identity, and required digest/revision. Omit only fields the schema defines as absent, never inconvenient observations or failed checks.
+- Keep full SHA-256 values for fingerprints, bundle identity, normalization identity, and receipt matching. A 12-hex prefix carries 48 bits rather than 256 and is **not** a lossless encoding of a SHA-256 value. It is not accepted under an unchanged `sha256:`/receipt contract. A genuine authoritative revision may be used where spec §13.2 permits revision instead of content digest, with its scope/provenance; it cannot be an invented short hash.
+- Whitespace minification and canonical ordering are permitted. Source interning or time factoring is permitted internally only if exact decoding restores all original values. A wire dictionary/codec requires an explicit versioned public contract and reviewed decoder; the current `aitm.action-decision/v1` JSON shape remains unchanged until that is approved. Count the full dictionary, encoded values, and any agent-visible decode material in cost evidence. Do not omit identities or substitute an observation window for distinct per-source timestamps.
+- Round 2's proposed compact probe is **not** a lossless dictionary: it stores source names but drops the `identity` values and `observedAt` fields, replaces digests with prefixes, and also shortens HEAD. Its attractive size cannot certify the current contract. Regression fixtures must include two digests with the same prefix, different source identities, and distinct observation times; any proposed lossless codec must round-trip the full decision exactly.
+- The anti-truncation tests in Tasks 12/14 protect semantic/provenance content, not whitespace or encoding width. Any future approved lossless encoding must prove deep equality after decode; that does not by itself authorize a wire-schema change. No budget is met by hiding required output off-context, dropping blockers, or selectively counting fields.
+
+### Required measured characterization before foundation coding
+
+Task 1 performs its source/refusal/observation inventory **first**, then the serialization gate; the former Step 0 ordering is removed. Commit the following under `scripts/tests/fixtures/1558/` as part of that bounded characterization deliverable, with source commit, source symbols, schema/serializer version, and input-fixture digests:
+
+1. `action-observation-inventory.json`: all seven actions, each normal/conditional lane, required resources and reads, identities, observation count, policy-enrichment conditions, retained instruction obligations, and mandatory command/response output. Missing paths remain a no-go; a uniform guessed count does not qualify.
+2. `action-decision-fixtures/{bind,resume,promote,test,review,deliver,close}.json`: schema-valid serialized decision/explanation cases populated from that inventory and recorded deterministic authority fixtures. Include ready, representative blocked, indeterminate, policy-enriched where applicable, normalization, and source-warning variants. Do not call these production evaluator outputs before that evaluator exists. The measurement is exact for the committed data; the mapping to actual execution predicates must be reviewed and later cross-checked against the extracted evaluators.
+3. `action-cardinality.json`: per action/lane, observed maximum blocker count and observation count across the named fixtures, simultaneously reachable guard/refusal sites, per-site fan-out, and any unknown or data-dependent upper bound. A guard-slot count is not a blocker bound: one guard can emit several blocker strings/typed refusals, and dependencies, children, body length, and retries can grow payloads. Record explicit finite fixture inputs and label any unbounded dimension; never report an observed maximum as a universal limit.
+4. `serialization-sensitivity.json`: measured characters, UTF-8 bytes, chars/4 proxy and marginal observation/blocker/query costs across the inventoried range. Serialize full records with real field lengths and distinct observation times; no `count × average-token` gate. Include separately the fixed clean lifecycle, representative blocked lifecycle, and a mutually consistent heavy lifecycle with at least two multi-blocker close attempts where the inventory supports them. Show command/remediation/retry sequencing and every request, receipt, diagnostic and response; never execute blocked actions merely to make a schedule look complete.
+5. `feasibility-decision.json`: explicit pass/fail for each fixed ceiling and headroom rule, plus the heavy scenario's full total and its comparison with 7,000. If the declared realistic heavy case exceeds 7,000, or its bound is unknown, stop for manual scope/query-schedule/presentation disposition rather than suppressing the result. The ratified spec budgets a pinned representative lifecycle, not every arbitrarily long retry history; accepting the heavy-case scope or changing that contract requires a recorded human decision. The current synthetic failure cannot be overwritten by calling it an estimate.
+
+Extend VC1 to read these files, validate completeness against the inventory, serialize/measure them, and assert their recorded costs and go/no-go outcome. Pure characterization tests may pass while correctly recording **NO-GO**; a distinct acceptance assertion for foundation/extraction must fail until all required go conditions and manual disposition are satisfied. Do not equate a green measurement test with a green feasibility gate. Task 12 then replaces candidate serialization with actual CLI transcripts before Task 13; Tasks 14–15 provide tokenizer calibration and final release evidence. These later tests cannot waive the early decision.
 
 **Parser decision: go with exact `js-yaml` 5.4.2.** The installed package exports `parseEvents`, `getScalarValue`, and `constructFromEvents`. Executed probes verified separate raw/decoded ranges for plain, single-quoted, escaped double-quoted, literal-block, folded-block, and nested-flow values; observable duplicate keys, tags, anchors, aliases, and merge keys; and UTF-16 offsets after LF/CRLF/lone-CR normalization with accented/combining/non-BMP text. The nested-flow `bad` field occupies raw offsets `[38,41)`; the multi-line Unicode fixture is line 2, column 37. Construction determinism was checked. These are API-selection fixtures, not a substitute for Task 9's complete field-path mapper, budgets, schema, or normalization tests.
 
@@ -136,7 +153,7 @@ listLifecycleActions(); // frozen [{id, evaluator, executor, readiness: 'pending
 validateActionDecision(decision); // throws a named contract error on invalid data
 normalizeRefusal(raw, { guardId, legacyInventory }); // typed Blocker; siteId is lint provenance only
 validateRemediation({ id, args }); // validates core registry and prohibits bypasses
-vocabularyDigest(); // sha256 over versioned actions, bootstrapped guards, remediations
+vocabularyDigest(); // sha256 over versioned actions, bootstrapped guards, remediations, diagnostic codes
 
 // observations.mjs
 createObservationAttempt({ repository, issue, boundaryId, now, read });
@@ -184,13 +201,13 @@ As a lifecycle maintainer,
 I want to inspect one versioned action and refusal contract,
 So that core execution, explanation, and future gate producers cannot disagree about authority.
 
-**Scope/files:** Create `action-decision/contract.mjs`, `remediations.mjs`, and `legacy-refusals.json` under the mapped library directory. Modify `lib/lifecycle-policy/actions.mjs` and `lib/guard-registry.mjs`; inventory the real bootstrap in `lib/state-bootstrap.mjs` and `scripts/task-tracker/states/*.mjs`, updating their contracts where necessary. Preserve `lib/guard-bootstrap.mjs` as a compatibility re-export shim. Create `scripts/maintenance/lint-action-refusals.mjs`, `scripts/tests/helpers/action-decision-fixtures.mjs`, `scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs`, and `scripts/tests/fixtures/1558/authority-baseline.json`. Add the refusal lint to `package.json` and CI. Record the readiness/refusal inventory in `docs/guides/ask-the-script.md`.
+**Scope/files:** Create `action-decision/contract.mjs`, `remediations.mjs`, and `legacy-refusals.json` under the mapped library directory. Modify `lib/lifecycle-policy/actions.mjs` and `lib/guard-registry.mjs`; inventory the real bootstrap in `lib/state-bootstrap.mjs` and `scripts/task-tracker/states/*.mjs`, updating their contracts where necessary. Preserve `lib/guard-bootstrap.mjs` as a compatibility re-export shim. Create `scripts/maintenance/lint-action-refusals.mjs`, `scripts/tests/helpers/action-decision-fixtures.mjs`, `scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs`, and the seven-action characterization artifacts named in the early gate alongside `scripts/tests/fixtures/1558/authority-baseline.json`. Add the refusal lint to `package.json` and CI. Record the readiness/refusal inventory in `docs/guides/ask-the-script.md`.
 
 **Interfaces:** Produces action enumeration, schema validation, refusal normalization, vocabulary digest, and reusable authority/effect fixtures. Add bind/resume/deliver descriptors without inventing state edges. Core owns the contract before #1561 consumes it; no dependency on a completed plugin runtime. `listLifecycleActions()` returns all twelve descriptors. The five non-v1 actions (`refine`, `demote`, `shelve`, `park`, `cancel-plan`) retain their existing execution policy but have no ready evaluator. Explicit explanation returns `indeterminate` with `action-not-explain-ready` and a no-automatic-remediation disposition; it does not recommend execution. Unknown IDs return `unknown-vocabulary`, not a fabricated registered action. Readiness-complete is per conformance-tested lane, never inferred from registration.
 
-- [ ] **Step 0 — Close the early feasibility gate.** Reproduce Appendix A, map every retained obligation and required per-action observation/output, and replace the synthetic traffic assumptions with the pinned characterization schedule. Record clean/blocked/static/full-lifecycle costs and explicit go/no-go as described above before any extraction. A failed gate blocks Tasks 2–15 and requires manual plan/spec disposition. Add these recorded limits to VC1 fixture assertions.
 - [ ] **Step 1 — Characterize the real paths before extraction.** For each v1 action, inventory the command dispatcher, verb, delegates, mutator, guard slots, conditional reads, refusal branches, locks, and first effects. Include evidence-v2 and existing authorized close/delivery lanes. Inventory actual registered/exported guard IDs, not the comment table. Give each legacy site a stable siteId, source path/symbol, refusal-expression fingerprint, owner task, disposition, and effect classification (`pure`, `read-only-network`, `ref-mutating`, or `effectful`; include transitive helper effects and local filesystem reads). `commitsOnTrunkGate` → `fetchTrunk` is explicitly ref-mutating; no documentation assertion can classify it as pure. Separate current behavior from the planned read-only observation substitute. A changed refusal expression must invalidate the allowance even if line numbers merely move.
-- [ ] **Step 2 — Add failing contract assertions.** Use `node:test` and `node:assert/strict`; fixtures must exercise real normalizers, not copies of them.
+- [ ] **Step 2 — Measure and decide serialization before runtime changes.** After Step 1 inventory, produce the seven-action fixture matrix, cardinality/sensitivity reports, and explicit feasibility decision specified in the early gate. Serialize all actual fields and record the complete totals; no assumed observation count or average-size estimate can pass the gate. Preserve full fingerprints and per-source provenance under the selected wire contract. Keep the current result NO-GO until measured compliant fixtures and manual acceptance resolve it; otherwise stop here for a design amendment.
+- [ ] **Step 3 — Add failing contract assertions.** Use `node:test` and `node:assert/strict`; fixtures must exercise real normalizers, not copies of them.
 
 ```js
 assert.ok(listLifecycleActions().some(({ id }) => id === 'bind'));
@@ -212,19 +229,31 @@ assert.deepEqual(
 );
 ```
 
-- [ ] **Step 3 — Run VC1 and verify RED**, then implement schema validation and registry enumeration. Closed statuses are ready/blocked/indeterminate. Thrown guards, invalid results, and unknown vocabulary map to guard-error/guard-result-invalid/unknown-vocabulary and indeterminate. Typed-remediation validation failures never use the legacy adapter. Registry records include actionId, argument schema, human/provider/destructive/Full-Auto classifications, and guidanceId. Existing structured mutation output/exit codes may retain compatibility formatters while carrying the complete blocker list.
-- [ ] **Step 4 — Freeze and enforce the inventory.** Extend the existing parser-based maintenance approach using installed `espree`; scan guard registration and inventoried verb/mutator refusal symbols. Every reachable site must be typed or match a frozen legacy record. Test an added and an edited unclassified refusal; both fail the lint. Deleting/migrating a site removes its allowance. Reasons remain labeled diagnostic text outside operational choices. Task 1 does **not** type every historical guard branch: unchanged legacy results map by registered guard ID to the single reserved `unclassified-refusal`/human-investigation disposition only when every reachable legacy branch in that guard is in the frozen static inventory. `siteId` is static lint provenance, not recoverable runtime branch identity. The runtime does not invent it or parse reasons. New/changed guard branches must emit their own stable code and disposition; migrations belong to Tasks 4–8, with further family splits at Refine.
+- [ ] **Step 4 — Run VC1 and verify RED**, then implement schema validation and registry enumeration. Closed decision statuses are ready/blocked/indeterminate. `contract.mjs` also owns the closed, domain-qualified `CODE_DEFINITIONS` registry below; status and diagnostic code are distinct fields. Thrown guards, invalid results, and unknown vocabulary map to guard-error/guard-result-invalid/unknown-vocabulary and indeterminate. Typed-remediation validation failures never use the legacy adapter. Registry records include actionId, argument schema, human/provider/destructive/Full-Auto classifications, and guidanceId. Existing structured mutation output/exit codes may retain compatibility formatters while carrying the complete blocker list.
+      Define/export data-only `CODE_DEFINITIONS` in `action-decision/contract.mjs`; guidance imports this shared contract, not vice versa. Each record has code, domain, severity, legal phase/status, and disposition requirements. The initial named-code set is:
+
+  | Domain/phase                     | Codes and behavior                                                                                                                                                                                     |
+  | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | Decision, indeterminate          | `guard-error`, `guard-result-invalid`, `unknown-vocabulary`, `action-not-explain-ready`, `authority-read-skipped`, `guard-effect-forbidden`, `attribution-authority-unavailable` — no automatic action |
+  | Decision, blocked                | `unclassified-refusal` (frozen legacy/manual only), `migration-freeze`, `plan-approval-missing`; migrated guard-family codes are added here with their typed dispositions, not emitted ad hoc          |
+  | Execution normalization failures | `normalization-authority-drift`, `normalization-persist-failed`, `normalization-readback-failed` — stop subsequent effects; never rewrite a post-ready write failure as an earlier ready predicate     |
+  | Guidance admission/validation    | `guidance-catalog-invalid`, `guidance-catalog-untracked`, `unknown-agent-operation`; all additional source/schema/reference/budget diagnostics must be declared here before Task 9/10 emits them       |
+  | Post-success audit warning       | `guidance-annotation-failed` — warning only, cannot undo a committed transition                                                                                                                        |
+
+  Include the canonical code definitions/version in `vocabularyDigest()`, cache identity, and conformance fixtures. `lint-action-refusals.mjs` scans emitted code fields and constructor calls in both `action-decision/` and `guidance/`, plus migrated guard/verb boundaries; undeclared codes or illegal domain/phase combinations fail. Runtime validation rejects dynamic unknown values even when static analysis cannot resolve them. Only namespaced/versioned registry changes can expand the closed set; no arbitrary plugin codes or free-text parsing. Test an undeclared admission code and an audit warning misused as a ready decision, not just three guard exceptions. Validation diagnostics remain detailed; centralization does not collapse distinct errors into one generic code.
+
+- [ ] **Step 5 — Freeze and enforce the inventory.** Extend the existing parser-based maintenance approach using installed `espree`; scan guard registration and inventoried verb/mutator refusal symbols. Every reachable site must be typed or match a frozen legacy record. Test an added and an edited unclassified refusal; both fail the lint. Deleting/migrating a site removes its allowance. Reasons remain labeled diagnostic text outside operational choices. Task 1 does **not** type every historical guard branch: unchanged legacy results map by registered guard ID to the single reserved `unclassified-refusal`/human-investigation disposition only when every reachable legacy branch in that guard is in the frozen static inventory. `siteId` is static lint provenance, not recoverable runtime branch identity. The runtime does not invent it or parse reasons. New/changed guard branches must emit their own stable code and disposition; migrations belong to Tasks 4–8, with further family splits at Refine.
 
   Extend both `invoke()` and `consume()` in `guard-registry.mjs` to preserve typed `code`, `remediation`/`noAutomaticRemediation`, and optional multiple typed refusals returned by migrated producers; preserve legacy `reason`/string `blockers` only as diagnostic compatibility fields. For multiple typed refusals, validate every item and attach the registered guard ID to each. Catch/thrown and malformed results receive explicit contract error codes at this boundary; they cannot become legacy blocked text. Fixtures must prove two branches of one guard retain different emitted codes and an old multi-branch guard remains one conservative manual disposition without string parsing.
 
-- [ ] **Step 5 — Capture the pre-extraction baseline.** Instrument injected GitHub transport calls, including pages and retries, for ordinary readiness, waivable refusal, explain-equivalent read-only evaluation followed by execution, divergence-annotation overhead, and a fixed bind-to-close fixture. Record numeric request counts/logical reads and repeated-run median/p95 in `authority-baseline.json`, with commit/runtime/sample count. Existing code has no explain CLI: label that baseline as the executor's read-only phases and record would-be query boundaries rather than claiming an old explain measurement. Capture live timing in a separate controlled read-only run; do not perform live lifecycle mutations for benchmarks.
-- [ ] **Step 6 — Run VC1 to GREEN and commit** the contract, inventory, fixtures, and measured baseline. Test that a malformed typed result remains indeterminate and a legacy blocked result cannot produce an executable command.
+- [ ] **Step 6 — Capture the pre-extraction baseline.** Instrument injected GitHub transport calls, including pages and retries, for ordinary readiness, waivable refusal, explain-equivalent read-only evaluation followed by execution, divergence-annotation overhead, and a fixed bind-to-close fixture. Record numeric request counts/logical reads and repeated-run median/p95 in `authority-baseline.json`, with commit/runtime/sample count. Existing code has no explain CLI: label that baseline as the executor's read-only phases and record would-be query boundaries rather than claiming an old explain measurement. Capture live timing in a separate controlled read-only run; do not perform live lifecycle mutations for benchmarks.
+- [ ] **Step 7 — Run VC1 to GREEN and commit** the contract, inventory, fixtures, and measured baseline. Test that a malformed typed result remains indeterminate and a legacy blocked result cannot produce an executable command.
 
 **Acceptance criteria:**
 
 - [ ] All seven v1 actions use one bare-ID registry and one versioned decision contract; #1561 has a documented consumption boundary. <!-- aitm-verified vc-list="vc:1" -->
 - [ ] Every inventoried refusal is coded or explicitly manual, and new/changed unclassified sites fail CI. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Committed baseline evidence covers required read cases and the fixed lifecycle schedule with numeric counts and timing provenance. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Committed baseline and seven-action serialization evidence covers required reads, actual fixture cardinality, sensitivity, heavy lifecycle, explicit feasibility outcome, and timing provenance; foundation coding remains gated on acceptance. <!-- aitm-verified vc-list="vc:1" -->
 
 ### Task 2: Extract immutable authority collection and complete guard evaluation
 
@@ -628,7 +657,7 @@ So that repeated guidance does not consume context or masquerade as execution pe
 
 **Scope/files:** Create `verbs/explain.mjs` and `guidance/protocol.mjs`. Modify `guidance.mjs`, dispatcher/command-surface routing, `verbs/{promote,review,close,help,help-data}.mjs`, and static command self-doc data as required by the command-surface catalog. Create `scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs` and `scripts/tests/unit/task-tracker/lib/guidance-receipts.test.mjs`.
 
-**Interfaces:** Expose `aitm explain N [--action ID] [--known ID@DIGEST] [--known-source RECEIPT] --json`; `--known` is repeatable and accepts only current query receipts. `--known-source` is the plan's explicit transport for §17 source receipts. Add next/review/close `--explain --json` aliases to the same engine, plus guidance explain/source. Preserve full decision/provenance truth in compact serialization.
+**Interfaces:** Expose `aitm explain N [--action ID] [--known ID@DIGEST] [--known-source RECEIPT] --json`; `--known` is repeatable and accepts only current query receipts. `--known-source` is the plan's explicit transport for §17 source receipts. Add next/review/close `--explain --json` aliases to the same engine, plus guidance explain/source. Preserve full decision/provenance truth using the selected full-information wire contract in the early gate. Lossless minification is allowed; digest-prefix substitution, dropped source identities/times, or unapproved wire-schema changes are not.
 
 - [ ] **Step 1 — Add failing real-CLI tests.** Bare numeric issue arguments avoid shell comment interpretation of `#N`. Cover generic selection, explicit seven actions, registered-pending `demote` and the other four non-v1 actions (`action-not-explain-ready`/indeterminate), unknown `workflow.promote` and `rebind` (`unknown-vocabulary`), Done, unknown state, alias parity, blocked/indeterminate, human help, and source inspection. Early route explanation before mutation-oriented preflight/context setup.
 
@@ -719,7 +748,7 @@ assert.equal(
 );
 ```
 
-- [ ] **Step 2 — Run VC14 to RED.** Golden fixture validation must catch dropping stderr, dropping receipts/request commands, measuring selected JSON fields instead of full output, omitting a lifecycle boundary, and truncating blockers to meet the budget.
+- [ ] **Step 2 — Run VC14 to RED.** Golden fixture validation must catch dropping stderr, dropping receipts/request commands, measuring selected JSON fields instead of full output, omitting a lifecycle boundary, and deleting any blockers/observations/provenance to meet the budget. Encoding-width changes are not forbidden in themselves: an approved lossless codec must round-trip every original value and count its complete wire/decode material. Include same-prefix different digests, distinct identities, and differing observation times. A hash prefix or substituted timestamp fails content fidelity, even when the encoded text is shorter.
 - [ ] **Step 3 — Implement measurement and calibration.** Retain chars/4 as the proxy and document the existing tool's rounding convention consistently. Measure first/repeat/changed/compliant-compaction/stale-receipt and whole-lifecycle scenarios. Pin tokenizer package/version/encoding and record UTF-8 bytes, actual count, proxy, and ratio for clean/blocked/repeated/full lifecycle. Label calibration encoding-specific; do not claim one tokenizer measures all providers.
 - [ ] **Step 4 — Enforce authority-read invariants.** Compare explanation with the executor's corresponding read-only evaluation: unchanged fixture explanation cannot add requests. Count pages/retries and require zero duplicate in-attempt reads except named refreshes. Explain then execute must make independent collections. One divergence annotation lookup per successful mutation is permitted, with pages counted separately and one write when absent. Record live median/p95 separately from deterministic stub transport and local cold/warm cache latency. Set CI-derived timing/request ceilings with >=20% unused headroom and exact no-unexplained-request assertions.
 - [ ] **Step 5 — Commit harness and baseline evidence after VC14 passes.** Keep final §20.2 context acceptance a pending gate for Task 15: current un-slimmed adapters are allowed to produce a red budget report, but never falsely mark the epic/release green. Record both the pre-slim report and exact command to regenerate it. The Task 14 tests verify honest accounting and authority budgets; Task 15 turns on the fixed end-state context gate. This is not the first feasibility decision: Task 1 gates extraction, and Task 12 gates further migration using actual serialized output.
@@ -728,7 +757,7 @@ assert.equal(
 
 - [ ] Actual command transcripts include all static/request/response/receipt costs for both adapters and all specified scenarios, with pinned real-tokenizer calibration. <!-- aitm-verified vc-list="vc:14" -->
 - [ ] Deterministic authority reads and separately reported live/cache timings enforce the spec's cost model and explain/execute independence. <!-- aitm-verified vc-list="vc:14" -->
-- [ ] Worst-case multi-blocker size is reported truthfully without truncation; remaining adapter reduction is explicitly pending Task 15. <!-- aitm-verified vc-list="vc:14" -->
+- [ ] Per-action observed cardinalities and the inventory-backed heavy lifecycle are measured at the early gate and replayed here; totals exceeding 7,000 or unknown bounds retain an explicit manual disposition, and payloads are never truncated. Remaining adapter reduction is explicitly pending Task 15. <!-- aitm-verified vc-list="vc:14" -->
 
 ### Task 15: Slim both adapter protocols and certify the consumer release
 
@@ -820,7 +849,7 @@ Review priorities are completeness of action/entrypoint inventories, realistic A
 
 ## Appendix A: Reproducible round-1 planning probes
 
-Run each block from the repository root with `node --input-type=module` using a quoted heredoc, or save the block under repository-local scratch and run it with Node. These blocks were executed as planning investigations; they create no production API or lifecycle effects. The context probe intentionally prints its synthetic status. Preserve the input strings and ordered schedule when comparing its reported numbers; formatting outside strings does not change the result. Full-context and parser-conformance implementation evidence is still required by Tasks 1, 9, 12, 14, and 15.
+Run each block from the repository root with `node --input-type=module` using a quoted heredoc, or save the block under repository-local scratch and run it with Node. These blocks were executed as planning investigations; they create no production API or lifecycle effects. Appendix A.1 is historical round-1 comparison only and must not be used as a passing feasibility certificate. Appendix A.3 records the round-2 failing baseline and sensitivity. Both context probes intentionally print synthetic/model status. Preserve the input strings and ordered schedule when comparing its reported numbers; formatting outside strings does not change the result. Full-context and parser-conformance implementation evidence is still required by Tasks 1, 9, 12, 14, and 15.
 
 ### A.1 Candidate protocol and illustrative traffic
 
@@ -1019,3 +1048,162 @@ console.log(
   )
 );
 ```
+
+### A.3 Round-2 cardinality sensitivity — current result NO-GO
+
+This measured string-cost model reads the unchanged Appendix A.1 protocol strings, adds a distinct `workflow-policy` source at cardinality two, and publishes raw marginal costs. Uniform observations and repeated example blocker objects are sensitivity inputs, not production decisions or a valid workflow trace. The two-heavy-close row is a stress model, not the inventory-backed realistic lifecycle required before foundation coding. The program's table must not be promoted into the seven-action fixture deliverable without that inventory and schema validation.
+
+````js
+import fs from 'node:fs';
+const proxy = (s) => Math.ceil(s.length / 4);
+const plan = fs.readFileSync(
+  'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md',
+  'utf8'
+);
+const src = plan
+  .split('### A.1 Candidate protocol and illustrative traffic')[1]
+  .match(/```js\n([\s\S]*?)\n```/)[1];
+const grab = (re) => src.match(re)[1];
+const router = grab(/const router = `([\s\S]*?)`;/);
+const pickup = grab(/const pickup = `([\s\S]*?)`;/);
+const adapterCodex = grab(/codex: `([\s\S]*?)`,/);
+const shim = fs.readFileSync('skill/SKILL.md', 'utf8');
+const digest = 'sha256:' + 'a'.repeat(64);
+const head = 'b'.repeat(40);
+const at = '2026-09-16T00:00:00.000Z';
+const OBS = [
+  'authority',
+  'workflow-policy',
+  'issue-body',
+  'commit-trail',
+  'delivery-records',
+  'approval-evidence',
+  'child-states',
+  'ci-status',
+  'session-binding',
+  'board-state',
+];
+function response(action, status, known, blockers, nObs) {
+  const id = `action.${action}`;
+  const instruction = [
+    { query: action },
+    { require_status: 'ready' },
+    { execute: action },
+    { execution_revalidates: true },
+  ];
+  const observations = OBS.slice(0, nObs).map((s) => ({
+    source: s,
+    identity: 'repo:fixture/aitm:issue:1558',
+    observedAt: at,
+    digest,
+  }));
+  return (
+    JSON.stringify({
+      schema: 'aitm.action-explanation/v1',
+      decision: {
+        schema: 'aitm.action-decision/v1',
+        issue: 1558,
+        actionId: action,
+        status,
+        snapshot: { state: 'plan', head, digest, startedAt: at, completedAt: at, observations },
+        blockers,
+        normalizations: [],
+        warnings: [],
+        humanDecision: null,
+        guidanceIds: [id],
+      },
+      guidance: [
+        {
+          id,
+          digest,
+          status: known ? 'not-modified' : 'expanded',
+          ...(known ? {} : { agent: { instruction } }),
+        },
+      ],
+    }) + '\n'
+  );
+}
+const blocker = {
+  guardId: 'plan-exit-plan-approved',
+  code: 'plan-approval-missing',
+  remediation: { id: 'record-plan-approval', args: { issue: 1558 } },
+};
+const schedule = [
+  ['bind', 0],
+  ['promote', 0],
+  ['promote', 1],
+  ['promote', 1],
+  ['promote', 0],
+  ['test', 0],
+  ['review', 0],
+  ['review', 1],
+  ['review', 0],
+  ['deliver', 0],
+  ['close', 0],
+  ['close', 1],
+  ['promote', 1],
+  ['promote', 0],
+  ['resume', 0],
+  ['close', 1],
+];
+function lifecycle(nObs, nBlockers) {
+  let traffic = '';
+  for (const [action, known] of schedule) {
+    const id = `action.${action}`;
+    traffic += `npx aitm explain 1558 --action ${action}${known ? ` --known ${id}@${digest}` : ''} --json\n`;
+    const isBlocked = action === 'promote';
+    traffic += response(
+      action,
+      isBlocked ? 'blocked' : 'ready',
+      known,
+      isBlocked ? Array(nBlockers).fill(blocker) : [],
+      nObs
+    );
+    if (!known) traffic += `aitm-guidance-loaded:${id}:${digest}\n`;
+    traffic += `npx aitm ${action} 1558\n`;
+  }
+  const floor = [shim, router, pickup, adapterCodex].reduce((n, s) => n + proxy(s), 0);
+  return { floor, traffic: proxy(traffic), total: floor + proxy(traffic) };
+}
+const rows = [];
+for (const observations of [1, 2, 3, 5, 8]) {
+  rows.push({
+    observations,
+    oneBlocker: lifecycle(observations, 1).total,
+    threeBlockers: lifecycle(observations, 3).total,
+    cleanResponse: proxy(response('promote', 'ready', false, [], observations)),
+    blockedResponse: proxy(response('promote', 'blocked', false, [blocker], observations)),
+  });
+}
+const extraObservationCharacters =
+  response('promote', 'ready', false, [], 2).length -
+  response('promote', 'ready', false, [], 1).length;
+const extraBlockerCharacters =
+  response('promote', 'blocked', false, [blocker, blocker], 2).length -
+  response('promote', 'blocked', false, [blocker], 2).length;
+const query =
+  `npx aitm explain 1558 --action close --known action.close@${digest} --json\n` +
+  response('close', 'ready', true, [], 2);
+const heavyClose = response('close', 'blocked', true, Array(7).fill(blocker), 8);
+const plainClose = response('close', 'ready', true, [], 8);
+const stress = lifecycle(8, 1).total + Math.ceil((2 * (heavyClose.length - plainClose.length)) / 4);
+console.log(
+  JSON.stringify(
+    {
+      kind: 'parameterized-string-cost-model-not-production-fixtures',
+      rows,
+      claudeStaticDelta: 7,
+      extraObservationCharacters,
+      extraObservationProxy: extraObservationCharacters / 4,
+      extraObservationAcross16: lifecycle(2, 1).total - lifecycle(1, 1).total,
+      extraBlockerCharacters,
+      extraBlockerProxy: extraBlockerCharacters / 4,
+      extraRepeatedCloseQueryCharacters: query.length,
+      extraRepeatedCloseQueryProxy: proxy(query),
+      twoSevenBlockerCloseStressAtEightObservations: stress,
+    },
+    null,
+    2
+  )
+);
+````
