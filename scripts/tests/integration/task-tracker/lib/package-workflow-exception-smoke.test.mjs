@@ -15,7 +15,7 @@ const ROOT = join(HERE, '..', '..', '..', '..', '..');
 const REQUIRED_FILES = Object.freeze([
   'bin/aitm.mjs',
   'docs/guides/workflow.md',
-  'docs/superpowers/specs/2026-09-14-1624-workflow-exceptions-design.md',
+  'docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md',
   'hooks/commit-trail.sh',
   'hooks/task-tracker.sh',
   'scripts/task-tracker/lib/evidence-v2/runtime-capabilities.mjs',

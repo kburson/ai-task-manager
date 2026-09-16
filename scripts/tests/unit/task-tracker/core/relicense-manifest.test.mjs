@@ -19,14 +19,13 @@ test('package.json license is AGPL-3.0-or-later', () => {
   );
 });
 
-test('package.json version is 1.0.0 for the initial scoped publish', () => {
-  // The relicense shipped as a freshly *scoped* package (@kburson/ai-task-manager),
-  // which is a first publish under a new name and therefore correctly 1.0.0 — not a
-  // 2.0.0 in-place breaking bump. See #775.
-  assert.equal(
+test('package.json version is pre-1.0 while the package remains unpublished', () => {
+  // The package has never been published (tarball-only local installs so far), so
+  // it stays under semver's 0.x pre-release range until a deliberate GA cut.
+  assert.match(
     manifest.version,
-    '1.0.0',
-    'the scoped @kburson/ai-task-manager package is a fresh first publish; version must be 1.0.0'
+    /^0\./,
+    'the package is unpublished and pre-GA; version must stay in the 0.x range until a deliberate 1.0.0 GA cut'
   );
 });
 
