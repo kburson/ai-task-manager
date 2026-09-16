@@ -59,6 +59,8 @@ const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
 
 const PKG_NAME = 'ai-task-manager';
+const INSTALLED_PACKAGE_ROOT = 'node_modules/@kburson/ai-task-manager';
+const installedPackagePath = (repoRelPath) => `${INSTALLED_PACKAGE_ROOT}/${repoRelPath}`;
 
 // TTY gate: return raw string when stdout is not a TTY (pipe, file, CI log) so
 // downstream consumers don't see raw escape sequences as garbage characters.
@@ -678,6 +680,9 @@ function replaceWithSymlink(dest, src, label) {
 }
 
 export function claudeStub() {
+  const adapterPath = installedPackagePath(getProvider('claude').skillAdapterPath);
+  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
+  const scriptsPath = installedPackagePath('scripts/');
   return [
     '---',
     'name: task',
@@ -685,19 +690,6 @@ export function claudeStub() {
     '---',
     '',
     '# Task',
-    '',
-    '## Step 0 — Verify worktree seeding (run before anything else)',
-    '',
-    'If this session runs in a git worktree, its `node_modules` may be absent, which',
-    'breaks the skill reads below and silently redirects module resolution to the',
-    'parent checkout. The SessionStart hook heals this automatically; if you have any',
-    'doubt it ran, verify and self-heal before loading the skill:',
-    '',
-    '```bash',
-    "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
-    '```',
-    '',
-    'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
     '',
     '## Load-Once Procedure',
     '',
@@ -710,8 +702,8 @@ export function claudeStub() {
     '',
     'Files (id — path):',
     '',
-    `- \`adapter\` — \`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
-    '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
+    `- \`adapter\` — \`${adapterPath}\``,
+    `- \`shared\` — \`${sharedSkillPath}\``,
     '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on sub-issue pickup)',
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
@@ -721,16 +713,19 @@ export function claudeStub() {
     '',
     'Load and follow the canonical Claude adapter instructions from:',
     '',
-    `\`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
+    `\`${adapterPath}\``,
     '',
     'Use executable scripts from:',
     '',
-    '`node_modules/ai-task-manager/scripts/`',
+    `\`${scriptsPath}\``,
     '',
   ].join('\n');
 }
 
 export function codexStub() {
+  const adapterPath = installedPackagePath(getProvider('codex').skillAdapterPath);
+  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
+  const scriptsPath = installedPackagePath('scripts/');
   return [
     '---',
     'name: task',
@@ -738,19 +733,6 @@ export function codexStub() {
     '---',
     '',
     '# Task',
-    '',
-    '## Step 0 — Verify worktree seeding (run before anything else)',
-    '',
-    'If this session runs in a git worktree, its `node_modules` may be absent, which',
-    'breaks the skill reads below and silently redirects module resolution to the',
-    'parent checkout. The SessionStart hook heals this automatically; if you have any',
-    'doubt it ran, verify and self-heal before loading the skill:',
-    '',
-    '```bash',
-    "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
-    '```',
-    '',
-    'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
     '',
     '## Load-Once Procedure',
     '',
@@ -763,8 +745,8 @@ export function codexStub() {
     '',
     'Files (id — path):',
     '',
-    `- \`codex-adapter\` — \`node_modules/ai-task-manager/${getProvider('codex').skillAdapterPath}\``,
-    '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
+    `- \`codex-adapter\` — \`${adapterPath}\``,
+    `- \`shared\` — \`${sharedSkillPath}\``,
     '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on issue pickup)',
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
@@ -774,11 +756,11 @@ export function codexStub() {
     '',
     'Load and follow the canonical Codex adapter instructions from:',
     '',
-    `\`node_modules/ai-task-manager/${getProvider('codex').skillAdapterPath}\``,
+    `\`${adapterPath}\``,
     '',
     'Use executable scripts from:',
     '',
-    '`node_modules/ai-task-manager/scripts/`',
+    `\`${scriptsPath}\``,
     '',
   ].join('\n');
 }

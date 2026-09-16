@@ -151,13 +151,13 @@ try {
   assert.ok(existsSync(grokSkill), 'Grok SKILL.md missing from default all-provider install');
   assert.match(
     readFileSync(claudeSkill, 'utf8'),
-    /skill\/adapters\/claude\/SKILL\.md/,
-    'Claude stub must point to adapter'
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/claude\/SKILL\.md/,
+    'Claude stub must point to its scoped-package adapter'
   );
   assert.match(
     readFileSync(codexSkill, 'utf8'),
-    /skill\/adapters\/codex\/SKILL\.md/,
-    'Codex stub must point to adapter'
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md/,
+    'Codex stub must point to its scoped-package adapter'
   );
   assert.match(
     readFileSync(grokSkill, 'utf8'),
@@ -191,6 +191,23 @@ try {
     /grok, codex, claude/
   );
   const codexSkillBody = readFileSync(codexSkill, 'utf8');
+  const claudeSkillBody = readFileSync(claudeSkill, 'utf8');
+  for (const [provider, body] of [
+    ['Claude', claudeSkillBody],
+    ['Codex', codexSkillBody],
+  ]) {
+    assert.match(
+      body,
+      /node_modules\/@kburson\/ai-task-manager\/skill\/shared\/SKILL\.md/,
+      `${provider} stub must load the shared skill from the scoped package`
+    );
+    assert.match(
+      body,
+      /node_modules\/@kburson\/ai-task-manager\/scripts\//,
+      `${provider} stub must load scripts from the scoped package`
+    );
+    assert.doesNotMatch(body, /ensure-worktree-seeded|link:self|node_modules\/ai-task-manager\//);
+  }
   assert.match(
     codexSkillBody,
     /## Load-Once Procedure/,
@@ -203,12 +220,12 @@ try {
   );
   assert.match(
     codexSkillBody,
-    /`codex-adapter` — `node_modules\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md`/,
+    /`codex-adapter` — `node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md`/,
     'Codex stub must load the Codex adapter with codex-adapter stamp id'
   );
   assert.match(
     codexSkillBody,
-    /`shared` — `node_modules\/ai-task-manager\/skill\/shared\/SKILL\.md`/,
+    /`shared` — `node_modules\/@kburson\/ai-task-manager\/skill\/shared\/SKILL\.md`/,
     'Codex stub must include shared skill in load-once file list'
   );
 

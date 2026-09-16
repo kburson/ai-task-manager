@@ -2,12 +2,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { claudeStub, codexStub } from '../../../../../bin/cli.mjs';
 
-test('claude stub carries a Step 0 seed directive above the node_modules reads', () => {
-  const src = readFileSync('bin/cli.mjs', 'utf8');
-  // claudeStub() must include a Step 0 section that names the seed check script.
-  // The bound spans the authored prose block (~600 chars from the heading to the
-  // script reference) — wide enough to keep both in the same section, tight
-  // enough that the name can't drift into an unrelated part of the file.
-  assert.match(src, /Step 0[\s\S]{0,800}ensure-worktree-seeded/);
+test('consumer skill stubs omit dogfood worktree seeding instructions', () => {
+  for (const stub of [claudeStub(), codexStub()]) {
+    assert.doesNotMatch(stub, /ensure-worktree-seeded/);
+    assert.doesNotMatch(stub, /link:self/);
+    assert.doesNotMatch(stub, /node_modules\/ai-task-manager\//);
+  }
+});
+
+test('repository Codex skill retains its Step 0 dogfood bootstrap', () => {
+  const repositoryStub = readFileSync('.agents/skills/task/SKILL.md', 'utf8');
+  assert.match(repositoryStub, /## Step 0[\s\S]{0,800}ensure-worktree-seeded/);
 });
