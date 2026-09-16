@@ -98,6 +98,35 @@ Run `install` and `init` once in a maintainer environment, then commit the proje
 
 Review the diff before committing. If your repository does not use both Claude Code and Codex, only stage the adapter folder you installed.
 
+## Remove AI Task Manager From a Project
+
+Run project cleanup while the package is still installed, then remove the npm
+dependency:
+
+```bash
+npx @kburson/ai-task-manager uninstall --dry-run
+npx @kburson/ai-task-manager uninstall
+npm uninstall -D @kburson/ai-task-manager
+```
+
+By default, uninstall removes AITM-owned executable integrations while keeping
+durable `.ai-task-manager/` configuration, memory, templates, and GitHub issue
+templates. It preserves unrelated entries in shared hook and settings files and
+refuses to remove modified generated files. `--agent claude|codex|grok|all`
+limits cleanup to selected providers.
+
+To remove durable AITM data as well, inspect the destructive plan and confirm it
+explicitly:
+
+```bash
+npx @kburson/ai-task-manager uninstall --purge --dry-run
+npx @kburson/ai-task-manager uninstall --purge --yes
+```
+
+Purge mode additionally removes `.ai-task-manager/`, `.tmp/aitm/`, and
+unmodified AITM-owned `task.yml` and `bug.yml` issue templates. Other issue
+templates remain untouched.
+
 ## Initialize GitHub Project Integration
 
 Run:

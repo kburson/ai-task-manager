@@ -718,20 +718,27 @@ const DIRECT_SELF_DOC = Object.freeze({
     group: 'Package lifecycle',
     path: 'bin/cli.mjs',
     classification: 'agent-callable-standalone',
-    synopsis: 'Install, initialize, repair, configure, and inspect the AITM package.',
+    synopsis: 'Install, uninstall, initialize, repair, configure, and inspect the AITM package.',
     routable: true,
     usage:
-      'ai-task-manager <install|init|repair|statusline|configure preferences|memory-resync|version> [subcommand options]',
+      'ai-task-manager <install|uninstall|init|repair|statusline|configure preferences|memory-resync|version> [subcommand options]',
     arguments: [
       argument('install', 'Install agent files, hooks, templates, and optional memory seed.'),
+      argument(
+        'uninstall',
+        'Remove AITM-owned project integrations before uninstalling the npm package.'
+      ),
       argument('init', 'Initialize GitHub Project configuration.'),
       argument('repair', 'Repair missing task-tracker configuration fields.'),
       argument('statusline', 'Install the Claude status-line integration.'),
       argument('configure preferences', 'Run the team-workflow preferences editor.'),
       argument('memory-resync', 'Classify and resync installed operational memory.'),
       argument('version', 'Print the installed package version.'),
-      argument('--target <path>', 'Install, init, repair, configure, or resync target directory.'),
-      argument('--agent claude|codex|both', 'Install target agents; install only.'),
+      argument(
+        '--target <path>',
+        'Install, uninstall, init, repair, configure, or resync target directory.'
+      ),
+      argument('--agent claude|codex|grok|all', 'Install or uninstall selected agents.'),
       argument('--link-mode stub|symlink', 'Installed skill link mode; install only.'),
       argument('--codex-superpowers', 'Install project-scoped Codex Superpowers bootstrap.'),
       argument('--codex-superpowers-global', 'Also update the global Codex AGENTS bootstrap.'),
@@ -741,14 +748,22 @@ const DIRECT_SELF_DOC = Object.freeze({
       ),
       argument('--project <url|owner:number>', 'GitHub Project selection; init only.'),
       argument('--project-url <url>', 'Legacy GitHub Project URL alias; init only.'),
-      argument('--dry-run', 'Classify memory resync without writing.'),
+      argument('--dry-run', 'Preview uninstall cleanup or classify memory resync without writing.'),
+      argument('--purge', 'Also remove durable AITM project data and owned issue templates.'),
+      argument('--yes', 'Confirm destructive --purge cleanup in non-interactive use.'),
       argument('--list', 'List memory resync classifications without writing.'),
     ],
-    preconditions: ['Normal execution requires a writable target for mutating package commands.'],
-    effects: ['May install or repair AITM files; help and version are read-only.'],
+    preconditions: [
+      'Normal execution requires a writable target; run AITM uninstall before npm uninstall removes the package.',
+    ],
+    effects: [
+      'May install, conservatively remove, or repair AITM files; help, version, and uninstall --dry-run are read-only.',
+    ],
     output: ['Prints lifecycle progress, configuration diagnostics, or package help.'],
     examples: [
       'npx ai-task-manager install --agent codex --link-mode stub --memory-seed none',
+      'npx ai-task-manager uninstall --dry-run',
+      'npx ai-task-manager uninstall --purge --yes',
       'npx ai-task-manager init --project owner:1',
       'npx ai-task-manager memory-resync --list',
       'npx ai-task-manager install --help',
