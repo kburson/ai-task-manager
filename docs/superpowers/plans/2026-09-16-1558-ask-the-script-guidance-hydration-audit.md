@@ -1,6 +1,6 @@
 # #1558 Guidance Plan Hydration Audit
 
-The human authorized committing and pushing the review bundle, opening a PR to trunk, then hydrating the accepted plan on 2026-09-16. [PR #1652](https://github.com/kburson/ai-task-manager/pull/1652) contains all three manual Claude/Codex review rounds and the preserved WBS revisions. This record documents backlog creation; it does not grant implementation, lifecycle advancement or merge approval.
+The human authorized committing and pushing the review bundle, opening a PR to trunk, then hydrating the accepted plan on 2026-09-16. [PR #1652](https://github.com/kburson/ai-task-manager/pull/1652) contains all three manual Claude/Codex review rounds and the preserved WBS revisions. It merged during hydration at `ae8a3ad8c`; the audit was committed afterward and is submitted in a separate follow-up PR. This record documents backlog creation; it does not grant implementation, lifecycle advancement or merge approval.
 
 ## Immutable authority
 
@@ -55,4 +55,4 @@ The parent scope and active Source-plan were updated through governed issue-body
 
 Machine-readable live evidence is recorded in [the hydration audit JSON](./2026-09-16-1558-ask-the-script-guidance-hydration-audit.json). Its timestamp identifies the readback snapshot; subsequent lifecycle changes do not invalidate this historical record.
 
-Before PR creation, repository formatting and lint passed, all 856 fast-lane test files passed, and direct Prettier/Markdown lint checked all nine changed review/WBS documents with review-directory exclusions bypassed. All 26 hydration dry runs passed before creation. New audit artifacts were formatted and linted before their commit. The PR remains the integration vehicle; no trunk commit or merge was performed by this hydration.
+Before PR creation, repository formatting and lint passed, all 856 fast-lane test files passed, and direct Prettier/Markdown lint checked all nine changed review/WBS documents with review-directory exclusions bypassed. All 26 hydration dry runs passed before creation. New audit artifacts were formatted and linted before their commit. The review PR merged independently while hydration ran; the subsequent audit uses a follow-up PR. No local trunk edit or PR merge was performed by this hydration.

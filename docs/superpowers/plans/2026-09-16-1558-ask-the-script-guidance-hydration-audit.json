@@ -1,7 +1,7 @@
 {
   "schema": "aitm.hydration-audit/v1",
   "parent": 1558,
-  "pr": 1652,
+  "reviewPr": 1652,
   "sourcePlan": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md",
   "sourcePlanCommit": "55dedc066701a9fce1066ac4ebebce58ed147638",
   "sourcePlanSha256": "618fdc94c29fd673deeb5fb84d9208cf51cf5a05840042e8c0e52591e711070a",
