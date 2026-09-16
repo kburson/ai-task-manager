@@ -396,8 +396,7 @@ const legacyTimingCommand =
   'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
 const legacyPromptTimestampCommand =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
-const legacyGuardCommand =
-  'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
+const legacyGuardCommand = 'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
 const legacyGrokTimingCommand =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler timing';
 const retiredSeedCheckCommand = hookBootstrapCommand(
@@ -437,10 +436,18 @@ patchSettingsJson(scopedMigrationSettingsPath);
 patchSettingsJson(scopedMigrationSettingsPath);
 const migratedScopedSettings = JSON.parse(readFileSync(scopedMigrationSettingsPath, 'utf8'));
 for (const [event, legacyCommand, replacementCommand] of [
-  ['SessionStart', legacyTimingCommand, hookBootstrapCommand('scripts/task-tracker/hook-handler.mjs')],
+  [
+    'SessionStart',
+    legacyTimingCommand,
+    hookBootstrapCommand('scripts/task-tracker/hook-handler.mjs'),
+  ],
   ['PreToolUse', legacyGuardCommand, guardBootstrapCommand('bash-guard')],
 ]) {
-  assert.equal(eventCommandCount(migratedScopedSettings, event, legacyCommand), 0, `${legacyCommand} removed`);
+  assert.equal(
+    eventCommandCount(migratedScopedSettings, event, legacyCommand),
+    0,
+    `${legacyCommand} removed`
+  );
   assert.equal(
     eventCommandCount(migratedScopedSettings, event, replacementCommand),
     1,
@@ -452,16 +459,18 @@ assert.equal(
   0,
   'retired scoped SessionStart seed check removed'
 );
-assert.equal(commandCount(migratedScopedSettings, userHookCommand), 1, 'neighboring user hook preserved');
+assert.equal(
+  commandCount(migratedScopedSettings, userHookCommand),
+  1,
+  'neighboring user hook preserved'
+);
 
 mkdirSync(path.dirname(scopedMigrationCodexPath), { recursive: true });
 writeFileSync(
   scopedMigrationCodexPath,
   JSON.stringify({
     hooks: {
-      UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: legacyPromptTimestampCommand }] },
-      ],
+      UserPromptSubmit: [{ hooks: [{ type: 'command', command: legacyPromptTimestampCommand }] }],
     },
   })
 );
@@ -504,7 +513,11 @@ writeFileSync(
 installCli.patchGrokHooksJson(scopedMigrationGrokPath);
 installCli.patchGrokHooksJson(scopedMigrationGrokPath);
 const migratedScopedGrok = JSON.parse(readFileSync(scopedMigrationGrokPath, 'utf8'));
-assert.equal(commandCount(migratedScopedGrok, legacyGrokTimingCommand), 0, 'legacy Grok command removed');
+assert.equal(
+  commandCount(migratedScopedGrok, legacyGrokTimingCommand),
+  0,
+  'legacy Grok command removed'
+);
 assert.equal(
   eventCommandCount(migratedScopedGrok, 'SessionStart', retiredGrokSeedCommand),
   0,
@@ -515,7 +528,11 @@ assert.equal(
   1,
   'scoped Grok SessionStart replacement installed once'
 );
-assert.equal(commandCount(migratedScopedGrok, userHookCommand), 1, 'neighboring Grok user hook preserved');
+assert.equal(
+  commandCount(migratedScopedGrok, userHookCommand),
+  1,
+  'neighboring Grok user hook preserved'
+);
 
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');

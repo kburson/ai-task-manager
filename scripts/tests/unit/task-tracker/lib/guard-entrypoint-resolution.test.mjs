@@ -11,7 +11,10 @@ import {
 } from '../../../../task-tracker/lib/guard-entrypoint.mjs';
 
 const CWD = '/proj';
-const NM = resolve(CWD, 'node_modules/@kburson/ai-task-manager/scripts/task-tracker/bash-guard.mjs');
+const NM = resolve(
+  CWD,
+  'node_modules/@kburson/ai-task-manager/scripts/task-tracker/bash-guard.mjs'
+);
 const REPO = resolve(CWD, 'scripts/task-tracker/bash-guard.mjs');
 
 // A fake `exists` that returns true only for the paths in `present`.

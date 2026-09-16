@@ -67,8 +67,9 @@ const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-sto
 const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
   'scripts/task-tracker/hooks/on-user-prompt.mjs'
 );
-const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
-  hookBootstrapCommand('scripts/task-tracker/hooks/codex-prompt-timestamp.mjs');
+const CODEX_PROMPT_TIMESTAMP_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/codex-prompt-timestamp.mjs'
+);
 const LEGACY_TIMING_HOOK_CMD = '.claude/hooks/task-tracker.sh';
 const LEGACY_COMMIT_TRAIL_HOOK_CMD = '.claude/hooks/commit-trail.sh';
 const CANONICAL_DOCS = [

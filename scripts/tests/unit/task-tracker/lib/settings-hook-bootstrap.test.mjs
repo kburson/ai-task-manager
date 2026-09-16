@@ -21,7 +21,9 @@ test('patchSettingsJson emits scoped-first managed hook commands', () => {
   try {
     patchSettingsJson(p, { memoryIndexHook: true });
     const settings = JSON.parse(readFileSync(p, 'utf8'));
-    const managedCommands = allCommands(settings).filter((command) => command.includes('task-tracker'));
+    const managedCommands = allCommands(settings).filter((command) =>
+      command.includes('task-tracker')
+    );
     assert.ok(managedCommands.length > 0, 'expected generated managed commands');
     for (const command of managedCommands) {
       assert.doesNotMatch(command, /node_modules\/ai-task-manager\//);

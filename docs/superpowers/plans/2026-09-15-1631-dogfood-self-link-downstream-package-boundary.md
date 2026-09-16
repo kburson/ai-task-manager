@@ -142,7 +142,7 @@ Add a legacy-migration fixture containing exact pre-#1631 unscoped timing, promp
 Add an allowlist assertion for:
 
 ```js
-'Bash(node node_modules/@kburson/ai-task-manager/scripts/**)'
+'Bash(node node_modules/@kburson/ai-task-manager/scripts/**)';
 ```
 
 - [ ] **Step 2: Run installer tests and verify RED**
