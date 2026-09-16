@@ -14,7 +14,10 @@ read when that exact sentinel is already present in live context.
 
 Load and follow the canonical shared task workflow:
 
-`node_modules/ai-task-manager/skill/shared/router.md`
+`node_modules/@kburson/ai-task-manager/skill/shared/router.md`
+
+AITM source checkouts may fall back to `skill/shared/router.md` when the scoped
+package is absent. Resolve `rules/...` beside that router.
 
 Full-Auto defaults and the exact manual review phrases are governed by
 `rules/full-auto.md`; load it when the user names Full-Auto, manual plan review,

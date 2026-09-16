@@ -2,7 +2,7 @@
 // @story #1631
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import * as installCli from '../../../../../bin/cli.mjs';
@@ -10,7 +10,6 @@ import {
   guardBootstrapCommand,
   hookBootstrapCommand,
 } from '../../../../task-tracker/lib/guard-entrypoint.mjs';
-import { findMainWorktreePath } from '../../../../task-tracker/fleet-registry.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
@@ -38,10 +37,7 @@ function hasCommand(entries, cmd) {
 }
 
 function runInstalledCommand(command, { cwd = process.cwd(), input, env = process.env } = {}) {
-  const prefix = 'node -e "';
-  assert.ok(command.startsWith(prefix) && command.endsWith('"'), command);
-  const program = command.slice(prefix.length, -1);
-  return spawnSync(process.execPath, ['-e', program], {
+  return spawnSync('/bin/sh', ['-c', command], {
     cwd,
     env,
     input: JSON.stringify(input),
@@ -224,7 +220,17 @@ const nativeBase = {
   sessionId: 'grok-installed-command',
   timestamp: '2026-08-19T06:30:00.000Z',
 };
-for (const [handlerName, input, env] of [
+// A real shell resets PWD to its cwd. Use an isolated main checkout while
+// resolving the bridge to this worktree's bytes instead of faking PWD.
+const guardMain = path.join(tmp, 'guard-main');
+mkdirSync(path.join(guardMain, 'node_modules', '@kburson'), { recursive: true });
+assert.equal(spawnSync('git', ['init', '-q'], { cwd: guardMain }).status, 0);
+symlinkSync(
+  process.cwd(),
+  path.join(guardMain, 'node_modules', '@kburson', 'ai-task-manager'),
+  'dir'
+);
+for (const [handlerName, input, env, cwd] of [
   [
     'bash-guard',
     {
@@ -246,12 +252,14 @@ for (const [handlerName, input, env] of [
       toolName: 'spawn_subagent',
       toolInput: { isolation: 'none' },
     },
-    { ...process.env, PWD: findMainWorktreePath(process.cwd()) },
+    { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: guardMain },
+    guardMain,
   ],
 ]) {
   const result = runInstalledCommand(installedGrokCommand('PreToolUse', handlerName), {
     input,
     env,
+    cwd,
   });
   assert.equal(result.status, 2, `${handlerName}: ${result.stderr}`);
   assert.equal(JSON.parse(result.stdout).decision, 'deny', handlerName);
@@ -533,6 +541,81 @@ assert.equal(
   1,
   'neighboring Grok user hook preserved'
 );
+
+// Frozen output from the actual pre-#1631 patchers, not expectations rebuilt
+// through today's bootstrap helpers. Includes all guards, argument forms,
+// optional memory hooks, retired seeds, and the bare Codex timestamp command.
+const historical = JSON.parse(
+  readFileSync(
+    new URL('../../../fixtures/installer/pre-1631-provider-hooks.json', import.meta.url),
+    'utf8'
+  )
+);
+assert.equal(historical.base, '60f43d809f1b4e8475deac559980100b630a2a0b');
+for (const [provider, patch] of [
+  ['claude', patchSettingsJson],
+  ['codex', installCli.patchCodexHooksJson],
+  ['grok', installCli.patchGrokHooksJson],
+]) {
+  const upgradedPath = path.join(tmp, `${provider}-historical.json`);
+  const previous = structuredClone(historical.configs[provider]);
+  const oldCommands = Object.values(previous.hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks)
+    .map((hook) => hook.command);
+  const userHook = {
+    type: 'command',
+    command: `${oldCommands[0]} && echo user-customization`,
+    timeout: 17,
+  };
+  previous.hooks.SessionStart[0].hooks.push(userHook);
+  previous.hooks.CustomEvent = [
+    { matcher: 'custom', hooks: [{ type: 'command', command: 'echo user-hook' }] },
+  ];
+  previous.custom = { preserve: ['all', 'settings'] };
+  writeFileSync(upgradedPath, JSON.stringify(previous));
+  patch(upgradedPath, { memoryIndexHook: false });
+  const first = readFileSync(upgradedPath, 'utf8');
+  patch(upgradedPath, { memoryIndexHook: false });
+  assert.equal(
+    readFileSync(upgradedPath, 'utf8'),
+    first,
+    `${provider}: second upgrade must be byte-identical`
+  );
+  const upgraded = JSON.parse(first);
+  for (const command of oldCommands) {
+    assert.equal(
+      commandCount(upgraded, command),
+      0,
+      `${provider}: historical managed command survived: ${command}`
+    );
+  }
+  assert.deepEqual(upgraded.custom, previous.custom);
+  assert.deepEqual(upgraded.hooks.CustomEvent, previous.hooks.CustomEvent);
+  assert.deepEqual(
+    upgraded.hooks.SessionStart.flatMap((entry) => entry.hooks).find(
+      (hook) => hook.command === userHook.command
+    ),
+    userHook
+  );
+  const freshPath = path.join(tmp, `${provider}-fresh.json`);
+  patch(freshPath, { memoryIndexHook: true });
+  const fresh = JSON.parse(readFileSync(freshPath, 'utf8'));
+  for (const [event, entries] of Object.entries(fresh.hooks)) {
+    for (const entry of entries) {
+      for (const { command } of entry.hooks) {
+        assert.equal(
+          upgraded.hooks[event]
+            .filter((candidate) => candidate.matcher === entry.matcher)
+            .flatMap((candidate) => candidate.hooks)
+            .filter((hook) => hook.command === command).length,
+          1,
+          `${provider}: ${event}/${entry.matcher} replacement must be present once`
+        );
+      }
+    }
+  }
+}
 
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');

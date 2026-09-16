@@ -74,10 +74,13 @@ export function resolveGuardEntrypoint(name, { cwd, exists = existsSync } = {}) 
 // The inline program: resolves each candidate against process.cwd(), imports
 // the first existing one in-process (so it inherits stdin fd 0 and propagates
 // the guard's own process.exit code), and — if NEITHER exists — writes a
-// distinct stderr diagnostic and exits 2 (fail closed + loud, AC2). Only
-// single-quoted JS strings are used so the outer double-quoted `-e` argument
-// needs no inner-quote escaping (JSON serialization in settings.json handles
-// the surrounding double quotes).
+// distinct stderr diagnostic and exits 2 (fail closed + loud, AC2).
+// JSON encoding the settings object is separate from shell quoting: protect
+// every character interpreted inside the shell's double-quoted -e argument.
+function nodeEvalCommand(program) {
+  return `node -e "${program.replace(/[\\"$`]/g, '\\$&')}"`;
+}
+
 export function guardBootstrapCommand(name) {
   const candidates = JSON.stringify(guardEntrypointCandidates(name));
   const program =
@@ -89,7 +92,7 @@ export function guardBootstrapCommand(name) {
     `if(!p){process.stderr.write('aitm ${name}: guard entrypoint unresolved ` +
     `(scoped package + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
     `import(pathToFileURL(p).href);`;
-  return `node -e "${program}"`;
+  return nodeEvalCommand(program);
 }
 
 // #869 — bootstrap command for the lifecycle HOOKS. Unlike the guards (which run
@@ -113,7 +116,7 @@ export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
     `(scoped package + repo-relative both absent) — skipping\\n');process.exit(0);}` +
     `process.argv=[process.argv[0],p${argvTail ? ',' + argvTail : ''}];` +
     `import(pathToFileURL(p).href);`;
-  return `node -e "${program}"`;
+  return nodeEvalCommand(program);
 }
 
 // #1324 — Grok's bridge is the security boundary for native hook envelopes.
@@ -139,5 +142,5 @@ export function failClosedHookBootstrapCommand(repoRelPath, ...extraArgs) {
     `const e=realpathSync(p);` +
     `process.argv=[process.argv[0],e${argvTail ? ',' + argvTail : ''}];` +
     `import(pathToFileURL(e).href);`;
-  return `node -e "${program}"`;
+  return nodeEvalCommand(program);
 }

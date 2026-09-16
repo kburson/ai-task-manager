@@ -65,7 +65,7 @@ test('bootstrap command embeds both candidate paths (scoped package first)', () 
   const scopedIdx = cmd.indexOf(
     'node_modules/@kburson/ai-task-manager/scripts/task-tracker/bash-guard.mjs'
   );
-  const repoIdx = cmd.indexOf('"scripts/task-tracker/bash-guard.mjs"');
+  const repoIdx = cmd.indexOf('\\"scripts/task-tracker/bash-guard.mjs\\"');
   assert.ok(scopedIdx !== -1, 'scoped package candidate present');
   assert.ok(repoIdx !== -1, 'repo-relative candidate present');
   assert.ok(scopedIdx < repoIdx, 'scoped package candidate is ordered first');

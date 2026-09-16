@@ -9,7 +9,10 @@ description: Bind AI work sessions to GitHub issues and track time, context word
 
 Load and follow the canonical shared task workflow:
 
-`node_modules/ai-task-manager/skill/shared/router.md`
+`node_modules/@kburson/ai-task-manager/skill/shared/router.md`
+
+AITM source checkouts may fall back to `skill/shared/router.md` when the scoped
+package is absent. Resolve `rules/...` beside that router.
 
 The router is a Tier-1 stub: hard cross-cutting rules + verb → rule-file routing table. Detailed contracts live in `skill/shared/rules/*.md` (Tier-2) and load JIT only when their verb runs.
 
@@ -22,8 +25,8 @@ Claude-specific conventions:
 - `/task ...` is the primary user interface through `.claude/commands/task.md`.
 - Invoke support scripts via the `aitm` orchestrator, never by filepath (see below).
 - Runtime project state lives in `.ai-task-manager/`; read legacy `.claude/` state only as fallback when the shared file is absent.
-- Claude hook settings run direct Node commands from `node_modules/ai-task-manager/scripts/task-tracker/`.
-- **Worktree seeding (#869):** in a fresh `git worktree`, `node_modules` may be absent — the skill reads below would fail, or module resolution would silently fall through to the parent checkout. The SessionStart hook runs `scripts/task-tracker/ensure-worktree-seeded.mjs` to inspect and self-heal the `ai-task-manager` self-link before any other hook resolves a `node_modules` path. The reachable `.claude/skills/task/SKILL.md` stub also carries a `## Step 0` self-heal command as a backstop for the case where this packaged copy is itself unreachable.
+- Hook entrypoints resolve under `node_modules/@kburson/ai-task-manager/scripts/` first, with `scripts/` as the fallback only in an AITM source checkout.
+- **Dogfood only:** `./scripts/dev-env/setup-local-worktree.sh` seeds AITM source worktrees; repository stubs retain Step 0. Installed consumers need no seeding or self-link.
 - The status line remains Claude-specific and reads `.ai-task-manager/task-tracker-state.json` with a legacy `.claude/task-tracker-state.json` fallback.
 - For `github.merge-pull-request`, use only the sanctioned GitHub MCP `merge_pull_request` integration. It must accept the exact expected head SHA and the other bytes required by `rules/deliver.md`; unavailable means `missing-capability`, never a shell fallback.
 

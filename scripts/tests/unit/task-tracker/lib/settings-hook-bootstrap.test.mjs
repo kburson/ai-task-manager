@@ -1,10 +1,10 @@
 // @story #1631
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { patchSettingsJson } from '../../../../../bin/cli.mjs';
+import { patchSettingsJson, patchCodexHooksJson } from '../../../../../bin/cli.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from '../../../../../bin/lib/claude-bash-allowlist.mjs';
 
 function allCommands(settings) {
@@ -56,4 +56,26 @@ test('Claude allowlist permits scoped installed operational scripts', () => {
     CLAUDE_BASH_ALLOWLIST.includes('Bash(node node_modules/@kburson/ai-task-manager/scripts/**)'),
     'allowlist must include scoped installed operational scripts'
   );
+});
+
+test('memory-hook migration retains malformed event repair for Claude and Codex', () => {
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'settings-repair-'));
+  try {
+    for (const patch of [patchSettingsJson, patchCodexHooksJson]) {
+      const file = path.join(dir, `${patch.name}.json`);
+      writeFileSync(file, JSON.stringify({ hooks: { SessionStart: {}, PostCompact: 'invalid' } }));
+      patch(file);
+      const settings = JSON.parse(readFileSync(file, 'utf8'));
+      for (const event of ['SessionStart', 'PostCompact']) {
+        assert.ok(Array.isArray(settings.hooks[event]));
+        assert.ok(
+          settings.hooks[event].some((entry) =>
+            entry.hooks.some((hook) => hook.command.includes('/hook-handler.mjs'))
+          )
+        );
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
