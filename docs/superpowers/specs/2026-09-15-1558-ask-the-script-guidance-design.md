@@ -4,9 +4,36 @@
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | Date                        | 2026-09-15                                                                               |
 | Issue                       | #1558                                                                                    |
-| Status                      | DRAFT — pending manual peer review                                                       |
+| Status                      | AMENDMENT REVIEW COMPLETE — author/reviewer agreement; pending human acceptance          |
 | Supersedes after acceptance | The "Epic A — Ask-the-script" section of `2026-09-08-aitm-yml-pipeline-engine-design.md` |
 | Does not supersede          | That design's decisions for #1559, #1560, or #1561                                       |
+
+**Amendment provenance:** The previously ratified text is preserved at commit
+`795b2650694d07070ac8d75c19ab89200149f39e`, with SHA-256
+`8f3f37bc4724c072fe222cd8f720499c825748934c8b1689950e66ce261a1a8d`.
+The human authorized this focused amendment on 2026-09-16 after plan review
+exposed the cost of serializing the entire evidence bundle into every agent
+response. This amendment distinguishes internal evidence from operational
+presentation; it does not raise any context budget or weaken any guard.
+
+The existing plan and pre-amendment review records remain historical evidence for
+their recorded source digests. They do not constitute acceptance of this
+amendment. Delivery order is renewed manual spec review and acceptance, a new
+plan derived from the accepted revision, renewed manual plan review and
+acceptance, then backlog hydration. No implementation or hydration is authorized
+by this amendment draft.
+
+**Amendment review closure:** Claude and Codex reached agreement in amendment
+round 3 with no open findings. Closing records are
+`docs/superpowers/reviews/1558/spec/2026-09-16-1558-ask-the-script-guidance-design-amendment-r3-reviewer-claude-review.md`
+and
+`docs/superpowers/reviews/1558/spec/2026-09-16-1558-ask-the-script-guidance-design-amendment-r3-author-codex-response.md`.
+The agreed technical text has SHA-256
+`41a336449a460ed73fa616e06ecc54a1514405c4341460889aab14a35f7c1d07`
+at commit `ae51f9d23e553b8123629d48cfa1997b7d5ed60c`;
+this closing revision updates status/provenance only. Agreement recommends the
+amended design for human acceptance; it does not certify measured implementation
+feasibility, accept a replacement plan, or authorize backlog hydration.
 
 ## 1. Summary
 
@@ -38,6 +65,12 @@ present in live context, so repeated queries return references rather than
 repeating prose. The caller must discard those declarations after compaction and reload the
 required entries. This is a context optimization based on caller attestation,
 not CLI-verifiable evidence of model memory (§5.5).
+
+The evaluator retains complete decision evidence internally. Routine agent
+output contains the actionable result and needed instructions, not the full
+observation bundle. Detailed decision provenance is available through an
+explicit read-only diagnostic query. Instruction receipts remain a separate
+context-deduplication mechanism; evidence digests are not instruction receipts.
 
 This design covers AITM lifecycle decisions only: bind/resume, forward
 movement, Test, Review, delivery, and close. It does not mediate every edit,
@@ -164,6 +197,26 @@ capability, disables no guard, and cannot change execution readiness. An
 attempted invalid action is still refused at the executable boundary. Context
 protocol tests prove compliant caller behavior, not universal model adherence.
 
+### 5.6 Evidence retention is separate from context presentation
+
+Complete evaluation does not require complete evidence serialization into model
+context. The evaluator and executor use the full `aitm.action-decision/v1`
+contract (§13.2). A pure, schema-validated presentation function derives the
+routine operational response (§15.2) from that result; it performs no reads,
+guard evaluation, navigation, or mutation of its own.
+
+All blockers and their typed dispositions, operational warnings, required human
+decisions, and pending normalization changes remain visible. Source observations,
+their timestamps/identities/digests, and evidence-only diagnostic text stay in
+the internal result unless detailed inspection is explicitly requested. This
+is a defined public presentation boundary, not a lossy replacement for the
+evaluator's evidence. It must never be used to conceal a failed or unknown check.
+
+The presentation is intentionally not sufficient to reconstruct the evidence
+bundle and is never accepted as evaluator or executor input. It cannot become a
+second decision authority or a cache of live authority. Shortened evidence
+hashes and custom decoding protocols are unnecessary for this separation.
+
 ## 6. Current-state findings
 
 The present Tier-0/Tier-1/Tier-2 loader prevents irrelevant rule files from
@@ -221,7 +274,12 @@ Tracked or packaged YAML guidance source
       v
  read-only action evaluator <---- current repository/issue evidence
       |
-      +---- compact decision, blocker IDs, remediation IDs
+      +---- full internal decision and observation provenance
+      |        |
+      |        +-- explicit diagnostic request ---> full decision output
+      |
+      +---- pure operational presentation ---> all blockers/dispositions,
+      |                                       warnings, pending changes
       |
       +---- guidance references
                  |
@@ -737,6 +795,14 @@ are not required to migrate the first state-walk decision path.
 
 ### 13.2 Contract
 
+`aitm.action-decision/v1` is the complete shared evaluator/executor contract,
+also consumed by #1561. It is not the default agent wire payload. Its evidence
+identities and normalization digests remain complete. Amendment review defines
+previously underspecified failure, warning, and human-decision members below;
+these definitions apply to both consumers of the pre-implementation contract.
+Section 15 defines the distinct operational presentation and explicit
+diagnostic mode that exposes this complete decision.
+
 A read-only observation collector gathers required authority; a shared evaluator
 consumes its immutable evidence bundle, applies pure normalizations (§13.5),
 and returns a decision. Collection may involve more than one read/pass. The
@@ -744,7 +810,8 @@ bundle records an observation window and each source's observation time,
 identity, and revision or content digest. It is not an atomic GitHub snapshot.
 `snapshot.digest` binds the whole bundle, including normalization inputs.
 
-A compact example (one observed source shown) is:
+A compact example (one observed source shown, effective policy requires human
+plan approval) is:
 
 ```json
 {
@@ -773,13 +840,28 @@ A compact example (one observed source shown) is:
       "code": "plan-approval-missing",
       "remediation": {
         "id": "record-plan-approval",
-        "args": { "issue": 1631 }
-      }
+        "args": {
+          "issue": 1631
+        }
+      },
+      "args": {}
     }
   ],
   "normalizations": [],
   "warnings": [],
-  "humanDecision": null,
+  "humanDecision": {
+    "requests": [
+      {
+        "kind": "plan-approval",
+        "actor": "configured-approver",
+        "subject": {
+          "issue": 1631,
+          "actionId": "promote"
+        },
+        "args": {}
+      }
+    ]
+  },
   "guidanceIds": ["transition.plan-to-develop"]
 }
 ```
@@ -811,6 +893,128 @@ All authority used in the final verdict must appear in the bundle. Bounded
 refreshes replace superseded values and record their observation provenance;
 incompatible issue/body/state/scope identities produce `indeterminate`. Missing
 required observations do not become empty successful evidence.
+
+#### Failure causes, including collection and navigation
+
+Every `blocked` or `indeterminate` decision carries at least one typed blocker;
+`ready` has none. An indeterminate decision includes a cause for each known
+unmet requirement, even when collection failed before any guard ran. Preserve
+already known final refusals alongside those causes; never claim that unevaluated
+guards passed. Optional reads deliberately not required by the selected path do
+not become failures. A failed required read cannot become an empty observation.
+
+The shared code registry defines `args` schemas for blocker causes as well as
+remediation arguments. Every blocker cause requires `args`, explicitly `{}`
+when its code declares no arguments; undeclared keys are invalid. For blocker
+causes, operational warnings, and human requests alike, a missing `args` key is
+a validation failure, never an empty object. Initial
+collection codes are `authority-read-failed` with
+`{ source, reason }` and `authority-read-skipped` with `{ source }`. `source`
+is a registered authority-resource ID from A1's inventory, not a free-text
+message. `reason` is one of `timeout`, `rate-limited`, `unavailable`,
+`incomplete`, or `invalid`; raw error text is diagnostic-only. If one source
+kind has several independently required subjects, its registered args schema
+must also carry the typed subject needed to distinguish them.
+
+Non-guard producers use reserved, registered boundary IDs in the existing
+`guardId` slot: `authority-collection`, `action-navigation`, and
+`action-result-validation`. They are enumerated separately from executable
+guards and cannot be installed as guards or referenced as actions. The registry
+validates producer/code pairs; a collector cannot impersonate a live guard.
+Navigation emits `state-unavailable` with `{ reason: "unknown" | "conflicting" }`;
+malformed results emit the existing `guard-result-invalid` or `unknown-vocabulary`
+under the appropriate validated guard/boundary ID. The outer result validator
+can emit a fixed schema-valid indeterminate refusal without recursively passing
+the malformed result through presentation.
+
+Each cause still has exactly one registered remediation or closed
+`noAutomaticRemediation` disposition. Collection failures default to
+`{ reason: "authority-investigation-required" }`; navigation failures use
+`{ reason: "state-investigation-required" }`; invalid results use
+`{ reason: "result-investigation-required" }`. These codes permit explicit
+investigation; they do not authorize retries, repairs, or diagnostic calls on
+every query. An indeterminate response with `blockers: []` is invalid.
+
+For example, a transient timeout remains identifiable in the original routine
+response even if a later diagnostic call succeeds:
+
+```json
+{
+  "guardId": "authority-collection",
+  "code": "authority-read-failed",
+  "args": { "source": "issue-body", "reason": "timeout" },
+  "noAutomaticRemediation": { "reason": "authority-investigation-required" }
+}
+```
+
+#### Closed warning and human-decision types
+
+A1 owns data-only `CODE_DEFINITIONS` in the shared action-decision contract.
+Each definition declares its domain, allowed producer IDs, phase/status,
+closed argument schema, and disposition requirements. Decision blockers,
+operational warnings, admission failures, and post-success audit warnings have
+distinct domains; registering a code does not make it legal in all of them.
+Guidance imports the contract, never the reverse. Canonical definitions and
+their version enter the installed vocabulary digest and cache identity.
+Static emission checks and runtime validation reject undeclared codes/args.
+
+An operational warning is exactly `{ code, args }`, with `args` required even
+when empty. Each code defines a closed args object: no raw messages, source
+bodies, stack traces, or arbitrary nested evidence. Initial warning definitions
+include `guidance-source-diverged` from guidance admission with
+`{ source: ".ai-task-manager/aitm-guidance.yml", digest: <full file digest> }`,
+and `legacy-guard-warning` from inventoried legacy guard adapters with
+`{ guardId: <registered guard ID> }`. The latter preserves the warning's
+existence and origin; its untrusted raw text is diagnostic-only. A warning with
+operationally necessary details must instead receive its own typed code/args
+before that action is explain-ready. A1 inventories every warning producer;
+neither silently dropping a legacy warning nor treating it as a blocker is valid.
+
+Internal decision `warnings` contains evaluator warnings in deterministic
+producer order (registered evaluation order, then producer-local order).
+Presentation composes validated admission warnings first, then those evaluator
+warnings. Preserve duplicates and order; do not deduplicate by code or discard
+different subjects. The sole receipt-based exception is §17.1's source-warning
+suppression. `guidance-catalog-invalid` is an admission failure that prevents
+evaluation, not a warning in a successful explanation. A post-success
+`guidance-annotation-failed` belongs to mutation audit output, not readiness.
+
+`humanDecision` is required internally and is either `null` or exactly
+`{ requests: [...] }` with a nonempty ordered array. Each request is exactly
+`{ kind, actor, subject, args }`. `subject` is
+`{ issue: <positive integer>, actionId: <registered action ID> }` and names the
+scope of the required human work. Closed initial kinds are `plan-approval`, `review-approval`,
+and `manual-investigation`. The first two use actor `configured-approver`;
+investigation uses `human-operator`. Actor names denote roles only; existing
+approval authority still selects and validates the actual authorized person.
+`args` is `{}` for plan approval, `{ head: <full HEAD> }` for exact-head review
+approval, and `{ guardId, code }` for investigation of a returned blocker.
+New kinds require reviewed registry definitions, not free-form strings.
+
+`subject.issue` may differ from the queried `issue` only when a returned blocker
+explicitly identifies the other issue through its registered typed arguments or
+remediation. Both issues are in the current repository. The request's subject
+and action must match that blocker's registered subject/action mapping; never
+derive a target from raw reason text. For example, a parent `close` result can
+require a child's plan approval: `result.issue`/`result.actionId` still describe
+parent/close, while the request subject is child/promote and the corresponding
+plan-approval remediation explicitly names the child.
+
+The request is descriptive, not executable input. The original action applies
+only to `result.issue`; a remediation uses its own validated typed target. Before
+acting on another issue, follow the existing binding/approval workflow and obtain
+fresh evaluation for that target. Neither the parent's readiness nor its request
+authorizes the child's action. For manual investigation of unresolved navigation
+only, `subject.actionId` may be null, matching the indeterminate result; this
+does not select an executable action. Cross-repository targets are outside v1.
+
+Requests follow the order of their corresponding blockers. Preserve all
+simultaneous requirements; a non-null value never means approval was granted
+and cannot accompany `ready`. Every remediation requiring human action under the evaluated effective
+policy has a matching request; an explicit no-automatic-remediation cause may also require one.
+Machine-investigable indeterminate causes need not invent a human request.
+The request and blocker must agree on scope and disposition. Missing, malformed,
+or unknown warning/request fields fail validation, not silently default to empty.
 
 ### 13.3 Shared execution
 
@@ -911,7 +1115,8 @@ state edges merely by being registered. Existing allowed-state policy remains
 authoritative; catalog data cannot redefine it.
 
 Validator stage 7 resolves action IDs against that enumeration, guard IDs
-against bootstrapped guard exports (not the historical comment inventory), and
+against bootstrapped guard exports plus §13.2's separately enumerated boundary
+producer IDs (not the historical comment inventory), and
 remediation IDs against the core registry in §14. Their versioned digest forms
 the installed vocabulary identity. The command-surface catalog remains CLI
 metadata; the workflow-policy catalog remains policy requirements; the new
@@ -944,8 +1149,10 @@ in a closed registry with:
 
 Command material is represented as a verb/action plus typed argument object,
 never as a shell string. Override and bypass remediations are unreachable from
-guard output. Free-text messages are returned separately as quoted untrusted
-data.
+guard output. Free-text guard messages are available separately in explicit
+diagnostic output as quoted untrusted data. Routine output retains every typed
+refusal and its disposition without copying raw legacy messages, stack traces,
+or source bodies.
 
 The registry shape must remain compatible with #1561's gate verdict schema.
 Issue #1558 may implement the core registry first; #1561 extends gate production and
@@ -962,7 +1169,10 @@ inventoried legacy refusal maps to:
 {
   "guardId": "registered-legacy-guard",
   "code": "unclassified-refusal",
-  "noAutomaticRemediation": { "reason": "legacy-guard-requires-human-investigation" }
+  "noAutomaticRemediation": {
+    "reason": "legacy-guard-requires-human-investigation"
+  },
+  "args": {}
 }
 ```
 
@@ -977,8 +1187,9 @@ legacy adapter.
 A checked-in migration inventory identifies remaining legacy guard/refusal
 sites, their source locations, and owning follow-up scope. A lint/fixture gate
 freezes that inventory: new or changed refusal sites require explicit codes and
-dispositions, not a larger unclassified allowance. Guard IDs come from runtime
-registration and exported constants, not the stale inventory comment.
+dispositions, not a larger unclassified allowance. Executable guard IDs come
+from runtime registration and exported constants, not the stale inventory
+comment; §13.2's non-guard failure producers are explicit registry entries.
 
 Child A2 migrates the v1 action paths in bounded guard-family batches, adding
 typed argument schemas and human/provider/destructive/Full-Auto classifications
@@ -1023,15 +1234,112 @@ Help labels that boundary and points agents choosing an action to `explain`.
 The evaluator reuses its read-only policy primitives as needed, never its
 free-text remediation as an executable instruction.
 
-### 15.2 First expansion
+### 15.2 Routine operational response and first expansion
+
+`aitm explain` emits `aitm.action-explanation/v1`. Its required `result`
+member is the named `ActionPresentationV1` type below; it is not a nested
+`aitm.action-decision/v1`. The envelope version binds that member's exact
+schema, so no redundant schema string is printed inside `result`. Diagnostic
+mode adds `fullDecision`, the separately versioned internal decision (§15.5).
+Previously reviewed pre-implementation samples using `decision`/`diagnostic`
+member names are superseded; the internal decision schema retains its name.
+
+This is a closed v1 envelope/member contract: consumers validate the envelope
+version, required members, allowed keys, field types, and semantic invariants.
+Unsupported versions and missing/unknown fields fail closed, never imply ready
+or empty. After acceptance, adding/removing a field or changing its semantics
+requires a new envelope major version with an explicit compatibility decision
+and renewed context measurements. This conservative policy applies even to
+additive fields because v1 consumers reject unknown keys; a silent minor-version
+extension is not supported. Naming `ActionPresentationV1` does not create a
+second evaluator or another discriminator on the wire.
+
+The envelope versions `result`, `guidance`, and the declared diagnostic members
+together. A major bump requires re-certification of both result and guidance
+consumers (including adapters and aliases), the #1561 shared-contract boundary,
+and §20.2 measurements, even when only one member changes. The internal decision
+version changes only if its own contract changes. A flag cannot add experimental
+keys to v1; it may select only an already declared mode. Diagnostic mode requires
+both `fullDecision` and `diagnosticMessages`; routine mode forbids both. These
+mode-dependent keys are part of v1's closed schema, not unknown-key exceptions.
+
+All seven presentation fields are required, including explicit empty arrays
+and null values:
+
+| Field            | Routine contract                                                                                                                                                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue`          | Required queried issue identity.                                                                                                                                                                                                   |
+| `actionId`       | Required registered action ID, or `null` when navigation has no valid recommendation, including terminal Done. Never invent a next action.                                                                                         |
+| `status`         | Required unchanged evaluator status: `ready`, `blocked`, or `indeterminate`. `ready` with `actionId: null` does not instruct execution.                                                                                            |
+| `blockers`       | Preserve every final refusal in order, its `guardId`/`code`, code-defined `args`, and exactly one complete typed remediation/disposition. Required nonempty for blocked/indeterminate; `[]` for ready. No filtering or truncation. |
+| `normalizations` | Required array. Preserve every `normalizerId`, complete ordered `decisions` set, and `persist-on-execute` disposition. Omit only internal `inputDigest`/`decisionDigest`; `[]` explicitly means no pending changes.                |
+| `warnings`       | Required array of the closed `{ code, args }` records in §13.2, in its defined composition order. `[]` explicitly means none after the sole §17.1 source-receipt suppression rule.                                                 |
+| `humanDecision`  | Required `null` or complete nonempty request object from §13.2. Null means no human decision is required. Presentation never invents approval.                                                                                     |
+
+The internal decision must also supply its arrays and `humanDecision`
+explicitly. Neither serializer nor consumer may replace missing/undefined
+fields with `[]`/`null`. Missing fields, malformed/truncated JSON, invalid
+statuses/dispositions, and unknown codes are failures, not empty successes.
+Schema validation detects missing fields; preservation tests are additionally
+required to catch a serializer that incorrectly emits valid empty values.
+All typed arguments needed to identify a blocker or perform a registered action
+remain intact, even if an argument is itself a full SHA or evidence reference.
+The boundary excludes redundant evidence, not operationally required values.
+
+Routine output excludes the nested internal schema, `snapshot` (including HEAD,
+snapshot digest, observation window and observations), normalization digests,
+raw guard messages, stack traces, and evidence bodies. Internal `guidanceIds`
+resolve to the response's `guidance` entries rather than a duplicate ID list.
+All required guidance entries remain present, subject to the instruction-text
+receipt rules. Source warnings/receipts remain available under §17.1.
+
+The serializer must not spread an internal decision object into output. Its
+allowlist and semantic-equivalence tests enforce the boundary across stdout,
+stderr, aliases, and routine debug/logging paths. There is no automatic fallback
+to full diagnostics on blocked or indeterminate results; their typed causes
+already appear in `result.blockers`. Explicit investigation is permitted for
+those causes and is distinct from unconditional diagnostic output.
 
 If required guidance is not declared present, the response includes its terse
-agent content:
+agent content. This example requires human plan approval under the effective
+policy, matching the internal example in §13.2:
 
 ```json
 {
   "schema": "aitm.action-explanation/v1",
-  "decision": { "status": "blocked", "actionId": "promote" },
+  "result": {
+    "issue": 1631,
+    "actionId": "promote",
+    "status": "blocked",
+    "blockers": [
+      {
+        "guardId": "plan-exit-plan-approved",
+        "code": "plan-approval-missing",
+        "remediation": {
+          "id": "record-plan-approval",
+          "args": {
+            "issue": 1631
+          }
+        },
+        "args": {}
+      }
+    ],
+    "normalizations": [],
+    "warnings": [],
+    "humanDecision": {
+      "requests": [
+        {
+          "kind": "plan-approval",
+          "actor": "configured-approver",
+          "subject": {
+            "issue": 1631,
+            "actionId": "promote"
+          },
+          "args": {}
+        }
+      ]
+    }
+  },
   "guidance": [
     {
       "id": "transition.plan-to-develop",
@@ -1039,11 +1347,21 @@ agent content:
       "status": "expanded",
       "agent": {
         "instruction": [
-          { "query": "promote" },
-          { "require_status": "ready" },
-          { "if_blocked": "use_returned_remediation_ids" },
-          { "execute": "promote" },
-          { "execution_revalidates": true }
+          {
+            "query": "promote"
+          },
+          {
+            "require_status": "ready"
+          },
+          {
+            "if_blocked": "use_returned_remediation_ids"
+          },
+          {
+            "execute": "promote"
+          },
+          {
+            "execution_revalidates": true
+          }
         ]
       }
     }
@@ -1068,7 +1386,10 @@ npx aitm explain #1640 \
   --json
 ```
 
-AITM still evaluates dynamic state. When the digest matches, it returns:
+AITM still evaluates dynamic state and returns the complete current operational
+presentation on every query. Matching receipts suppress only static instruction
+text, never the decision or a refusal. The following is only the `guidance`
+fragment of such a response:
 
 ```json
 {
@@ -1097,9 +1418,56 @@ stale matching attestation (suppression, with mutation guards still enforced).
 An agent digest change always expands the changed instruction, even if the ID
 is unchanged. A human-only change does not invalidate an agent receipt.
 
+Instruction receipts identify an instruction and its content version. Snapshot
+digests, observation digests, and timestamps do not attest instruction loading
+and cannot substitute for `--known`. A retained receipt marker alone is not
+proof that its instruction survived compaction: searching for that marker must
+not override mandatory invalidation at a known context-reset boundary.
+
 The CLI never suppresses guidance because a disk/session ledger says it was
 previously emitted. Only a matching caller-presented attestation suppresses content; the CLI
 verifies the digest, not the claimed presence of instructions in model context.
+
+### 15.5 Explicit decision diagnostics
+
+Detailed provenance is opt-in:
+
+```text
+npx aitm explain #1631 --action close --diagnostic --json
+```
+
+`--diagnostic` is a boolean switch on `explain` and its explanation aliases.
+It retains the same operational response and adds `fullDecision`, whose value is
+the full `aitm.action-decision/v1` result from that same evaluation. Associated
+raw guard messages appear in a required `diagnosticMessages` array of
+`{ guardId, text, untrusted: true }` records, explicitly `[]` when there are none.
+Missing either diagnostic member in diagnostic mode is a validation failure.
+Messages are never converted to instructions; both diagnostic members are absent
+in routine output. The complete
+observations, full identities/digests, actual per-source timestamps, and
+normalization digests are available here without shortening or time hoisting.
+This mode does not load static human catalog prose; §16 owns that separate use.
+
+Both forms run the same collection, guards, policy enrichment, navigation, and
+normalization projection. Diagnostic mode must not fetch additional authority
+or re-evaluate after producing the operational result within that invocation.
+Normal calls already collect all required evidence; leaving it out of the wire
+payload does not leave it out of evaluation. Operational presentation must be
+identical with and without the switch for the same injected evidence/context.
+
+A later diagnostic call is a fresh observation and may differ from an earlier
+call. It is not retrieval of the earlier evidence bundle. This feature creates
+no evidence archive, durable receipt ledger, cross-call authority cache, or
+diagnostic capability token. A caller needing a historical diagnostic record
+must explicitly capture that invocation's output using existing tooling.
+
+Routine skills do not request diagnostic mode automatically, including after a
+refusal. A typed blocker's registered remediation or no-automatic-remediation
+disposition may explicitly require investigation for an unclassified or
+indeterminate result; an agent or human can then request it for
+that investigation. It cannot be required to discover omitted normal blockers,
+typed arguments, warnings, or pending changes. Any diagnostic output actually
+loaded into context is included in the measured transcript (§20.2).
 
 ## 16. Human explanation
 
@@ -1183,6 +1551,12 @@ Queries occur at decision boundaries:
 - after compaction;
 - after an external action such as PR merge or human approval.
 
+Routine queries use the operational presentation, without `--diagnostic`.
+The agent follows typed results rather than reconstructing readiness from
+observation records. Do not add an unconditional explain call before every
+command when the next action is already established. Execution still obtains
+fresh authority and revalidates, whether or not a separate query was needed.
+
 AITM is not queried before every file read, edit, test, or Git command.
 
 ## 19. Failure behavior
@@ -1238,6 +1612,14 @@ as well as Tier-2 content; raising the ceilings to fit current usage does not
 satisfy the epic. Numeric ceilings remain fixed; representative CI fixtures
 must fit with at least 20 percent unused headroom (e.g. 4,000 against 5,000).
 
+The presentation amendment leaves all four ceilings and the headroom rule
+unchanged. Working maxima remain **4,000 / 240 / 400 / 5,600** respectively.
+The 300/500 response ceilings apply to the routine operational response defined
+in §15.2. Explicit full diagnostic inspection is measured separately as detailed
+investigation; it is not the routine response disguised under another flag.
+If an investigation is needed in a pinned lifecycle, its diagnostic request and
+complete output count toward that lifecycle's unchanged total budget.
+
 Initial acceptance ceilings:
 
 - invoked router plus pickup context at or below 5,000 proxy tokens;
@@ -1259,6 +1641,60 @@ both adapter variants and a fixed lifecycle transcript with its read/query
 schedule. Large multi-blocker results must remain truthful: the 500-token
 ceiling applies to the pinned representative blocked fixture, with worst-case
 size reported separately, not truncated into false readiness.
+
+The internal evidence bundle costs no model context unless it is serialized
+into model-visible output. Excluding its unprinted bytes is the intended
+architectural saving; excluding bytes actually printed by any tool, log, or
+diagnostic is invalid accounting. The same rule applies to command arguments,
+guidance/source receipts, stderr, and any extra instruction needed to interpret
+the public response. Do not require a second query to retrieve information
+that §15.2 requires in the first response.
+
+Before foundation runtime implementation, inventory required observations and
+instruction obligations for all seven v1 actions. Measure schema-valid candidate
+operational and diagnostic responses populated from deterministic, recorded
+authority fixtures. Cover ready, representative blocked, indeterminate,
+normalization, warnings, and policy enrichment where applicable. Preserve exact
+operational semantics against the full decision; increasing observation count
+alone must not increase routine output when the operational result is unchanged.
+Changes that add blockers or required operational data must remain visible.
+
+Use a coherent lifecycle with real state/evidence transitions and §18's query
+boundaries, including first/repeated/changed/compaction cases. Do not manufacture
+a fixed number of calls, use one guessed observation count for every action, or
+execute a blocked action solely to fill a transcript. Include remediation and
+any required investigation. Also report a reachable heavy case with declared
+fixture inputs; observed maxima are not universal bounds on arbitrary retries,
+children, dependencies, or body sizes. No large result may be truncated to fit.
+
+Capture the current Markdown-based workflow and the proposed workflow against
+the same lifecycle scenario and authority fixtures. Include loaded skill text,
+requests and command outputs on both sides. The historical static-file baseline
+in §6 remains useful but is not equivalent to a full traffic measurement. Report
+static instructions, dynamic operational output, receipts, and explicit
+diagnostics separately and as a total for each adapter. The new workflow must
+demonstrate a measured reduction against that equivalent baseline as well as
+meeting the fixed budgets; do not raise either the ceilings or the baseline to
+make a candidate pass.
+
+Child D owns a distinct `context-comparison.json` report with both baseline and
+candidate source commits, adapter/tool versions, scenario/authority-fixture
+digests, ordered transcript paths, per-category counts, total counts, delta,
+and fixed-budget verdicts. Version and retain the baseline fixture/runner before
+skill migration so its evidence remains reproducible after cutover. Categories
+need not be symmetric: legacy instruction reads differ from guidance queries,
+but legacy lifecycle command requests and outputs are not zero. Compare complete
+total context for the same work, not category-by-category equivalence. The report
+must distinguish candidate serialization from actual CLI capture; a synthetic
+sample cannot establish that the required reduction will pass.
+
+Candidate fixtures can establish early feasibility but are not production CLI
+evidence. Record their source/schema/serializer versions, exact serialized
+costs, and explicit pass/fail before extraction proceeds. A failed candidate
+requires revision within these budgets, not budget relaxation. Later CLI
+capture tests must replace the candidate evidence before skill cutover/release.
+The former plan's synthetic full-bundle measurements do not establish either
+success or impossibility for this amended operational presentation.
 
 Keep chars/4 as the repository regression proxy, but calibrate digest-heavy
 responses against a real tokenizer before accepting these budgets. Record the
@@ -1382,6 +1818,20 @@ dependency and work in production-only package-boundary tests.
 - deterministic compilation and direct indexes;
 - stat/runtime cache identity and invalidation;
 - action enumeration, decision and remediation schemas, and legacy-refusal inventory;
+- distinct internal-decision and operational-presentation schemas with explicit
+  required explicit-empty fields; allowlisted serialization rather than object spreading;
+- presentation preserves every refusal/disposition, required typed argument,
+  warning, human decision, and ordered pending normalization change;
+- evidence-only changes preserve operational output; required operational changes
+  remain visible; internal full hashes/identities/times remain intact;
+- missing versus explicit-empty fields, unsupported envelope versions, unknown
+  keys, and falsely emptied operational data fail validation/preservation checks;
+- missing `args` fails for blocker causes, warnings, and human requests, including
+  no-argument codes whose valid value is explicitly `{}`;
+- every blocked/indeterminate result has typed causes, including required-read
+  timeout/rate-limit/incomplete/skipped cases and unknown/conflicting navigation;
+- warning producer/domain/args validation, ordering without code-only dedup,
+  legacy warning coverage, and human request shape/scope/blocker consistency;
 - Functional DoD projection purity, ordering, idempotency, and timestamp-independent decision identity;
 - receipt matching, mismatch, and post-compaction behavior;
 - warning and issue-annotation deduplication.
@@ -1396,6 +1846,22 @@ dependency and work in production-only package-boundary tests.
 - warm command proves no YAML parse or semantic validation;
 - cache corruption rebuilds without user intervention;
 - explain and execute consume the same guard result;
+- routine output contains no evidence-only snapshot or raw diagnostic messages in
+  stdout/stderr, including blocked/indeterminate cases and explanation aliases;
+- a transient collection failure remains named in the original routine result
+  even when a later diagnostic call succeeds; no fabricated observation is used;
+- normal and diagnostic output use `result` consistently; only explicit
+  diagnostics add `fullDecision`, without confusing the two schemas;
+- diagnostic mode requires `diagnosticMessages` even when empty; routine mode
+  rejects diagnostic members, and flags never permit unknown envelope keys;
+- a parent refusal naming child human work preserves distinct result/request/
+  remediation targets; mismatched or unregistered targets fail validation, and
+  child work uses its own binding and fresh evaluation rather than parent readiness;
+- diagnostic mode exposes the same invocation's complete internal result without
+  extra authority reads, evaluation, writes, or instruction expansion;
+- every routine remediation is actionable from its returned typed data and
+  required guidance without fetching omitted evidence; explicit investigation
+  remains possible for named no-automatic-remediation/indeterminate cases;
 - unchanged-state ready/execution equivalence across verb and mutator layers;
 - projected DoD readiness, persistence failure, concurrent edit, and readback failure;
 - two-timestamp decision identity, changed-HEAD revalidation, and execution-provenance readback;
@@ -1405,6 +1871,8 @@ dependency and work in production-only package-boundary tests.
 - state change after explanation safely refuses execution;
 - first query expands, repeated query references, compliant post-compaction query reloads;
 - stale matching attestation can suppress guidance but cannot bypass mutation guards;
+- a marker retained by compaction cannot override receipt invalidation; evidence
+  digests cannot serve as instruction receipts;
 - human prose does not enter routine agent output;
 - modified guidance warning and one issue annotation;
 - no GitHub write from explain, validate, source, or human help.
@@ -1418,6 +1886,10 @@ dependency and work in production-only package-boundary tests.
   first query, repeated query, changed entry, compliant compaction, stale receipt,
   and full lifecycle; measure the complete captured output, not handwritten samples;
 - calibrate those response fixtures with a pinned real tokenizer and record ratios;
+- compare complete old/new transcripts on equivalent fixtures, report each cost
+  category and total, and count any actually loaded diagnostic output;
+- verify no required information is displaced into uncounted follow-up calls and
+  that heavy results remain complete when they exceed representative budgets;
 - measure request counts and authority latency separately under §20.3;
 - assert package catalog, manifest/fingerprint source, schema, and required docs
   are shipped via the explicit `files` allowlist; record the intentional packed
@@ -1438,6 +1910,9 @@ children after this specification is accepted:
 - enumerate authoritative bare action IDs and shared navigation in lifecycle-policy;
 - inventory verb/mutator readiness and all refusal sites; capture live-read baselines;
 - define observation bundles, normalizers, stable codes, and remediation schemas;
+- define the separate pure operational presentation and opt-in diagnostic schema;
+- inventory all seven actions and prove candidate context feasibility under
+  unchanged budgets before foundation runtime work or evaluator extraction;
 - add fail-closed legacy normalization and its frozen inventory/lint gate;
 - align this single versioned contract with #1561.
 
@@ -1482,6 +1957,8 @@ if B exceeds a size estimate. Further slicing follows the atomic-story limit.
 ### Child C — Explain and conditional guidance protocol
 
 - generic/action-specific CLI surfaces backed by the migrated A evaluators;
+- allowlisted operational output and explicit `--diagnostic` inspection of the
+  same complete decision, with semantic preservation and output-boundary tests;
 - retained, explicitly narrower workflow-preflight diagnostic;
 - first expansion, attested `--known` behavior, and source/digest invalidation;
 - adapter compaction obligations and stale-attestation safety fixtures;
@@ -1493,6 +1970,10 @@ if B exceeds a size estimate. Further slicing follows the atomic-story limit.
 - router, pickup, and Tier-2 slimming for both adapters;
 - documentation migration;
 - response-capture harness, pinned lifecycle transcript, tokenizer calibration;
+- equivalent old/new complete-context comparison, including receipts and any
+  diagnostic output actually loaded, with required measured reduction;
+- separately versioned `context-comparison.json`, preserved baseline runner and
+  paired transcripts, total-versus-total accounting and fixture/source provenance;
 - first/repeated/compaction/full-lifecycle token and live-read budget evidence.
 
 C depends on the applicable A2 migrations and B1 contract; final cache acceptance
@@ -1516,6 +1997,10 @@ Child A1 and #1561 must share `aitm.action-decision/v1`, §13.6's authoritative
 action vocabulary, and §14's typed remediation contract. A1 owns the core
 contract first; #1561 extends producers against it. Neither epic may independently
 invent a second schema or require the other's complete implementation to start.
+
+The operational presentation in §15.2 is a view of that shared contract, not a
+replacement gate/plugin verdict. #1561 continues to consume complete decisions;
+it must not reconstruct evidence from the compact agent response.
 
 ## 26. Acceptance criteria for the parent epic
 
@@ -1542,7 +2027,10 @@ invent a second schema or require the other's complete implementation to start.
     idempotent issue annotation on the first successful lifecycle mutation.
 11. `aitm explain` returns compact dynamic decisions and expands static agent
     guidance only when a matching caller-attested receipt is absent; it makes
-    no claim to observe model context.
+    no claim to observe model context. The routine view preserves every required
+    operational field in §15.2 without printing the internal evidence bundle.
+    Explicit diagnostic mode exposes the complete decision from the same
+    evaluation without extra reads, writes, or guard passes.
 12. Compliant callers omit receipts after compaction; source/digest mismatch
     reloads required guidance, and repeated matching queries omit instruction
     text. Tests expose stale-attestation suppression and prove guards remain
@@ -1555,7 +2043,10 @@ invent a second schema or require the other's complete implementation to start.
     after equivalence tests pass.
 16. Measured first-query, repeated-query, post-compaction, and full-lifecycle
     context costs and live-authority costs meet §20's budgets, with captured
-    response transcripts and real-tokenizer calibration.
+    response transcripts and real-tokenizer calibration. Equivalent old/new
+    transcripts prove reduced context; all actually loaded diagnostics count,
+    no required result is hidden behind an uncounted follow-up, and none of the
+    numeric context ceilings or headroom requirements is relaxed.
 
 ## 27. Manual peer-review protocol
 
@@ -1584,6 +2075,13 @@ final reviewer response.
 No implementation plan should be treated as authoritative until this
 specification reaches terminal manual acceptance.
 
+For this amendment, preserve all prior responses and their recorded hashes.
+Use a distinct amendment review sequence/directory beneath
+`docs/superpowers/reviews/1558/spec/`; do not overwrite the earlier rounds.
+After amended-spec acceptance, generate the replacement plan and complete its
+own manual review before proposing backlog hydration. Earlier plan agreement
+does not authorize that replacement or the delivery work.
+
 ## 28. Reviewer focus
 
 The manual reviewer should pay particular attention to:
@@ -1601,3 +2099,9 @@ The manual reviewer should pay particular attention to:
 8. whether context budgets measure cumulative and repeated behavior honestly;
 9. whether the planned B1/B2 split preserves correct trust and divergence
    behavior before the compiled cache ships.
+10. whether the internal evidence/operational presentation boundary is explicit,
+    preserves every actionable result, and prevents evidence payloads from
+    leaking into routine context through aliases, warnings, or debug output;
+11. whether diagnostics and instruction receipts remain separate, and complete
+    equivalent lifecycle measurements demonstrate reduction without budget
+    increases or uncounted follow-up queries.
