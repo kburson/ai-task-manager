@@ -1,0 +1,65 @@
+{
+  "schema": "aitm.research-archive/v1",
+  "issue": 1558,
+  "date": "2026-09-16",
+  "status": "supporting-research-not-acceptance-baseline",
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-replacement.md",
+    "sha256": "9300f7f8730110e41d8ff2e0022f2d85d893e2f32549e0f9ddbe8f672b8ba635"
+  },
+  "sources": [
+    {
+      "path": ".tmp/review-stats/1558-context-burden-v2.md",
+      "bytes": 8927,
+      "sha256": "8d26a5b0692b28ea54dc66a8fc62946853d9b33e88fa745860fa9e275e9ff3a6"
+    },
+    {
+      "path": ".tmp/review-stats/extract-1558-context-burden-v2.mjs",
+      "bytes": 39852,
+      "sha256": "8e910dc83624f7ab319e2ddf875f1986954af1cb657b87a44aa4274d52c96674"
+    },
+    {
+      "path": ".tmp/review-stats/1558-context-burden-v2-cohorts.json",
+      "bytes": 245787,
+      "sha256": "928450b82fd52734ea93391fd9d93700c12e502a4c48b412464dac40d10eda73"
+    },
+    {
+      "path": ".tmp/review-stats/1558-context-burden-v2-source-manifest.json",
+      "bytes": 127312,
+      "sha256": "d5305d1065564e21ead0c3cb762bb0c8c1262d1b54242349fa6ba433fbdeb186"
+    },
+    {
+      "path": ".tmp/review-stats/1558-context-burden-v2-scenarios.json",
+      "bytes": 3328,
+      "sha256": "edbe241ea126f963a05b44630d19a8c704b779241875da82b638aec8d6326272"
+    },
+    {
+      "path": ".tmp/review-stats/1558-context-burden-v2-events.jsonl",
+      "bytes": 343393043,
+      "sha256": "a40e26ca6456d5a85e3c3f7c0bd114933ae79b0742996ef9b38bfda9da1f27e6"
+    }
+  ],
+  "preservation": "Original files remain unchanged in local scratch. Report archived with an assessment notice and Markdown formatting; extractor copied byte-for-byte as a non-runtime text snapshot. Full event/cohort/source-log datasets remain local and are not included in this archive. Their hashes identify the reviewed inputs; reproducing the original analysis requires those private source logs.",
+  "archivedArtifacts": [
+    {
+      "path": "README.md",
+      "bytes": 14205,
+      "sha256": "d86beee3bfaa9b837dfca4d43d1560d11f011322902a69b5385f92b6290c4d17"
+    },
+    {
+      "path": "2026-09-16-context-burden-v2.md",
+      "bytes": 9891,
+      "sha256": "d4aa512191e6e4195a7eb34d523d08d605ed62cd9f2522f926bc9b4ae81dcc0d"
+    },
+    {
+      "path": "extractor-v2.mjs.txt",
+      "bytes": 39852,
+      "sha256": "8e910dc83624f7ab319e2ddf875f1986954af1cb657b87a44aa4274d52c96674"
+    },
+    {
+      "path": "audit-evidence.json",
+      "bytes": 3900,
+      "sha256": "f2ebdaee1f09cf8dfa6170c8817b138cfff04b21daf63d92baf4ebed59499311"
+    }
+  ]
+}

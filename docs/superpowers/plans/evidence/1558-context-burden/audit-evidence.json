@@ -1,0 +1,119 @@
+{
+  "compaction": {
+    "codex": {
+      "allRows": 201,
+      "unique": 29,
+      "distinctSourceLinePairs": 201,
+      "distinctTimestamps": 201
+    },
+    "claude": {
+      "allRows": 2018,
+      "unique": 50,
+      "distinctSourceLinePairs": 2018,
+      "distinctTimestamps": 1907
+    }
+  },
+  "distinctRepeatedReadsDiscardedExamples": [
+    {
+      "provider": "codex",
+      "firstEvent": "ev-0013254",
+      "repeatEvent": "ev-0013951",
+      "sameSource": true,
+      "differentCallIds": true,
+      "firstLine": 9775,
+      "repeatLine": 15434,
+      "firstSegment": 8,
+      "repeatSegment": 13,
+      "firstTime": "2026-09-08T20:29:37.015Z",
+      "repeatTime": "2026-09-09T01:17:21.901Z",
+      "instruction": "/skills/systematic-debugging/SKILL.md"
+    },
+    {
+      "provider": "codex",
+      "firstEvent": "ev-0022284",
+      "repeatEvent": "ev-0022295",
+      "sameSource": true,
+      "differentCallIds": true,
+      "firstLine": 22088,
+      "repeatLine": 22158,
+      "firstSegment": 22,
+      "repeatSegment": 23,
+      "firstTime": "2026-09-11T21:46:34.141Z",
+      "repeatTime": "2026-09-11T21:48:29.948Z",
+      "instruction": "skill/shared/router.md"
+    },
+    {
+      "provider": "codex",
+      "firstEvent": "ev-0022285",
+      "repeatEvent": "ev-0022296",
+      "sameSource": true,
+      "differentCallIds": true,
+      "firstLine": 22095,
+      "repeatLine": 22163,
+      "firstSegment": 22,
+      "repeatSegment": 23,
+      "firstTime": "2026-09-11T21:46:40.201Z",
+      "repeatTime": "2026-09-11T21:48:33.266Z",
+      "instruction": ".ai-task-manager/templates/pickup-directive.md"
+    },
+    {
+      "provider": "codex",
+      "firstEvent": "ev-0022288",
+      "repeatEvent": "ev-0022299",
+      "sameSource": true,
+      "differentCallIds": true,
+      "firstLine": 22114,
+      "repeatLine": 22178,
+      "firstSegment": 22,
+      "repeatSegment": 23,
+      "firstTime": "2026-09-11T21:46:56.877Z",
+      "repeatTime": "2026-09-11T21:48:46.050Z",
+      "instruction": "skill/adapters/codex/SKILL.md"
+    },
+    {
+      "provider": "codex",
+      "firstEvent": "ev-0025443",
+      "repeatEvent": "ev-0025453",
+      "sameSource": true,
+      "differentCallIds": true,
+      "firstLine": 10880,
+      "repeatLine": 10973,
+      "firstSegment": 11,
+      "repeatSegment": 11,
+      "firstTime": "2026-09-15T06:15:31.430Z",
+      "repeatTime": "2026-09-15T12:02:40.974Z",
+      "instruction": "/skills/verification-before-completion/SKILL.md"
+    }
+  ],
+  "instructionRows": {
+    "codex": {
+      "unique-by-visible-content-hash": 1179,
+      "exact-duplicate-visible-content": 7
+    },
+    "claude": {
+      "unique-by-visible-content-hash": 523,
+      "exact-duplicate-visible-content": 157
+    }
+  },
+  "rawSourceCheck": {
+    "sourceLog": "~/.codex/archived_sessions/rollout-2026-09-10T23-14-33-01a08eac-a080-7053-a665-fe5729e94117.jsonl",
+    "compactionLine": 22136,
+    "compactionTimestamp": "2026-09-11T21:48:15.284Z",
+    "confirmedCallPairs": [
+      ["ev-0022284", "ev-0022295"],
+      ["ev-0022285", "ev-0022296"],
+      ["ev-0022288", "ev-0022299"]
+    ],
+    "method": "Read source records and confirm distinct tool-call IDs before and after the intervening explicit compacted record. No transcript bodies archived."
+  },
+  "syntheticExtractorChecks": {
+    "closeCommand": "npx aitm close 1558",
+    "timingOnlyOutput": "Timing data flushed",
+    "timingOnlyClassification": "confirmed_successful_close",
+    "truncatedOutput": "Done\nWarning: truncated output",
+    "truncatedClassification": "confirmed_successful_close",
+    "implementationSearch": "rg -n guard-registry scripts/tests/unit",
+    "implementationSearchClassification": "help_discovery",
+    "method": "Evaluate original function declarations in an isolated Node VM without running extractor I/O. These are classifier counterexamples, not claims that all close rows were wrong."
+  }
+}
