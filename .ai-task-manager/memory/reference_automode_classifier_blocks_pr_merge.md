@@ -10,6 +10,4 @@ metadata:
 
 The Claude Code **auto-mode classifier** is a separate guardrail from the Bash permission allow-list. It blocks outward-facing / irreversible actions — `gh pr merge` is the recurring one — **even when a Bash allow-rule for that exact command exists**. Adding the command to Bash approvals does not satisfy the classifier.
 
-When `gh pr merge` is blocked this way, don't retry variants: ask the user to run the merge manually, then continue the PR-based flow (git fetch → confirm `[#N]` squash commit on `origin/trunk` → approve → close).
-
-Related: [[project_pr_based_migration]].
+When `gh pr merge` is blocked this way, don't retry variants or try to hand-merge locally. This is exactly what [[project_governed_pr_delivery_is_current]]'s `deliver` verb is designed around: `deliver` emits a structured `AITM_PROVIDER_ACTION_REQUIRED` envelope naming the exact expected action, the host (human or a pre-approved permission rule) executes only that sanctioned action, and rerunning `deliver` verifies and records the receipt before `close` proceeds.

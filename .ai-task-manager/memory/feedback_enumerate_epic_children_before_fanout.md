@@ -14,7 +14,7 @@ Before creating any child under an epic (fan-out, adopt, `create-issue.mjs
 
 **Why:** This is a RECURRING failure. On 2026-07-20 during the #912 fan-out I
 created #917–#920 duplicating pre-existing #913–#916 (plus already-adopted
-#908) because I didn't read the epic's current children first — a resumed/
+\#908) because I didn't read the epic's current children first — a resumed/
 compacted session had lost that context. Duplicates had to be unlinked +
 closed NOT_PLANNED by hand. The user: "This is not the first time you have
 done this."

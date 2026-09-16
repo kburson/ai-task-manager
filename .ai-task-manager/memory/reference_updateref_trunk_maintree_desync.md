@@ -22,8 +22,10 @@ one edited anything; it's a pure ref-vs-worktree desync.
 `git -C <main-tree> reset --hard trunk` — rewrites index+worktree to the new tip.
 Stash first if the main tree has real uncommitted work.
 
-**Better long-term:** the [[project_pr_based_migration]] flow (push origin → PR →
-merge+pull in the main tree) updates ref+index+worktree together and avoids this
-entirely. Only reach for update-ref when doing a local-only close from a
-scope-blocked worktree. Seen live closing #869 (2026-07-17). Related:
-[[feedback_end_of_task_worktree_cleanup]].
+**Superseded as the normal path:** [[project_governed_pr_delivery_is_current]]
+(push origin → PR → `/task deliver` → merge) is now mandatory, and `close`
+targets `origin/trunk` (a remote-tracking ref never checked out anywhere),
+so a linked worktree never needs to touch local `trunk` at all. This
+update-ref workaround is a last-resort git mechanic for a genuinely
+scope-blocked worktree doing a local-only operation — it is not a
+sanctioned delivery step. Seen live closing #869 (2026-07-17).
