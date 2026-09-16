@@ -526,7 +526,21 @@ option exists or provides the required guarantees in the installed version.
 ### 11.3 Diagnostics
 
 Human output includes stable code, field path, one-based line and column,
-bounded excerpt, expectation, and repair guidance. JSON output conforms to:
+bounded excerpt, expectation, and repair guidance. An explicit source-position
+mapper converts parser offsets after strict UTF-8 decoding and CRLF/lone-CR to
+LF normalization. `parseEvents` offsets are zero-based UTF-16 code-unit indexes
+into that normalized JavaScript string, not UTF-8 byte offsets. Build the line
+index over the exact same string; report one-based lines and one-based UTF-16
+code-unit columns in both human and JSON diagnostics (not visual/grapheme
+columns). Preserve source ranges separately from decoded scalar values, so
+escapes and block-scalar folding cannot shift a diagnostic to a value offset.
+
+Position-mapper fixtures must cover LF/CRLF equivalence, lone CR, nested and
+quoted/block scalars, accented text, combining characters, and a non-BMP
+character in a human `explanation` before another field on the same line. Check
+both that field's range and its line/column; counting UTF-8 bytes or Unicode
+code points must fail those fixtures. An alternative parser must adapt its
+position units to this same contract. JSON output conforms to:
 
 ```json
 {
@@ -775,8 +789,23 @@ authority, thrown guards, malformed results, or required external unknowns are
 never converted to `ready`. Blockers carry a stable `guardId` and `code`, and
 exactly one of a typed registered `remediation` or the explicit
 `noAutomaticRemediation` disposition defined in §14.1. Pending normalization
-records name a closed normalizer ID, input digest, projected digest, and
-`persist-on-execute` disposition; they are diagnostic, never executable input.
+records contain a closed `normalizerId`, `inputDigest` over the observed body,
+an ordered `decisions` set, its `decisionDigest`, and `persist-on-execute`
+disposition; they are diagnostic, never executable input. There is no
+`projectedDigest` over rendered body bytes. For Functional DoD, each decision
+names the key, closed derivation-rule ID, and booleans `stamp` and `tick`, in
+`acs`-then-`checkboxes` order; omit keys with no intended change. Hash the
+canonical JSON of the normalizer ID/version and this decision set. Proposed
+marker `ts` and `sha`, evaluation timestamps, and rendered marker bytes are
+excluded from this decision digest; they remain execution provenance.
+
+Decision digests can compare derivation intent across observations, but neither
+they nor `snapshot.digest` are cross-call authorization or equality gates.
+Compatibility checks below apply within the current collected evidence bundle,
+not against an earlier explanation. Different proposed stamp timestamps alone
+are not authority drift. HEAD and fetched-body identity remain authoritative
+inputs: a changed HEAD/body requires fresh evaluation even when the intended
+decisions and their digest stay equal.
 
 All authority used in the final verdict must appear in the bundle. Bounded
 refreshes replace superseded values and record their observation provenance;
@@ -850,7 +879,12 @@ against the projection. Only after `ready` may it persist the intended derived
 stamps through the existing versioned body-write boundary. A concurrent-body
 retry must recompute the projection and readiness on the fresh base, not apply
 an old patch. After writing, read back and validate the persisted body and
-remaining authority before advancing state or executing the next effect. A
+remaining authority before advancing state or executing the next effect.
+Readback checks the current execution attempt's intended postconditions (the
+specified stamps/ticks) and the newly persisted stamps' actual execution HEAD
+and timestamp, never byte equality with an explain-time projection. An already
+satisfied normalization legitimately yields an empty decision set on the next
+evaluation; do not compare that empty set with the pre-write set as drift. A
 failed write/readback refuses further effects; no stale pre-derive-body fallback
 can authorize the transition. A successfully persisted normalization may remain
 if a later transition fails; report it and make retry idempotent.
@@ -859,7 +893,10 @@ Child A must remove the current mutate-before-evaluate dependency in
 `deriveAndRescan` from these decision paths, preserving existing gate strength.
 Required equivalence cases include complete ACs with unstamped derived keys,
 incomplete ACs, already stamped bodies, policy-enriched guards, concurrent edits,
-and failed persistence/readback. This refactor is required delivery scope, not
+and failed persistence/readback. Also require unchanged-body/HEAD evaluation at
+two timestamps to retain the same decision set/digest, changed HEAD to force
+fresh guard evaluation regardless of that digest, and execution-time readback
+to pass with its own stamp provenance. This refactor is required delivery scope, not
 an assumption that current `runGuards` is already sufficient.
 
 ### 13.6 Action vocabulary and navigation
@@ -1174,7 +1211,11 @@ be visible but cannot make an already committed transition un-happen.
 
 The target is one YAML parse and full validation per unchanged source/runtime
 identity. Warm operations read a tiny manifest and only the agent index when
-needed. No successful cache action prints output.
+needed. No successful cache action prints output. This is the consumer-release
+contract after B2. B1 alone parses and fully validates on every invocation;
+that intermediate development state is not released to consumers (§22/§24).
+Record B1 cold parse/validation measurements as B2's baseline, not as evidence
+of an unchanged-source warm-cache guarantee.
 
 The implementation records benchmark fixtures for:
 
@@ -1302,8 +1343,10 @@ absent.
 
 ## 22. Compatibility and migration
 
-1. Ship the guidance catalog, schema, validator, and source resolver with trust
-   and divergence behavior; add the compiled cache separately. Add the required
+1. Implement the guidance catalog, schema, validator, and source resolver with
+   trust/divergence behavior in B1, and the compiled cache in B2 as separate
+   changes. Release B1 and B2 together; no consumer release may enable the B1
+   operational loader before B2 meets §20.1. Add the required
    `instructions/` assets to `package.json`'s `files` allowlist, measure the packed
    entry delta, and deliberately document/adjust the package-boundary ceiling
    if the new runtime surface exceeds it. Do not silently relax that test.
@@ -1331,7 +1374,7 @@ dependency and work in production-only package-boundary tests.
 ### 23.1 Unit tests
 
 - source resolution and tracked-status classification;
-- YAML syntax and schema diagnostics with line/column evidence;
+- YAML syntax/schema diagnostics and the normalized-source UTF-16 position mapper;
 - duplicate IDs, unknown keys, closed instruction operations, and size limits;
 - registry-reference and completeness validation;
 - semantic and raw-file fingerprints;
@@ -1339,7 +1382,7 @@ dependency and work in production-only package-boundary tests.
 - deterministic compilation and direct indexes;
 - stat/runtime cache identity and invalidation;
 - action enumeration, decision and remediation schemas, and legacy-refusal inventory;
-- Functional DoD projection purity, ordering, and idempotency;
+- Functional DoD projection purity, ordering, idempotency, and timestamp-independent decision identity;
 - receipt matching, mismatch, and post-compaction behavior;
 - warning and issue-annotation deduplication.
 
@@ -1355,6 +1398,7 @@ dependency and work in production-only package-boundary tests.
 - explain and execute consume the same guard result;
 - unchanged-state ready/execution equivalence across verb and mutator layers;
 - projected DoD readiness, persistence failure, concurrent edit, and readback failure;
+- two-timestamp decision identity, changed-HEAD revalidation, and execution-provenance readback;
 - policy-enrichment passes, observation provenance, and required-read failure;
 - unclassified legacy refusal remains blocked and never yields an action;
 - new/changed refusal sites cannot expand the unclassified inventory;
@@ -1380,7 +1424,9 @@ dependency and work in production-only package-boundary tests.
   entry delta and any justified package-ceiling adjustment;
 - assert no project override is installed by `init`;
 - assert help, router, and Tier-2 pointers name only supported commands/paths;
-- assert the package can run the validator with production dependencies only.
+- assert the package can run the validator with production dependencies only;
+- gate the first consumer release of the operational loader on B2 warm-load
+  parser/validator-avoidance and cache-invalidation acceptance tests.
 
 ## 24. Delivery decomposition for #1558
 
@@ -1416,9 +1462,12 @@ This makes the migration a sized workstream rather than one implicit sub-bullet.
 - project warning and idempotent issue annotation;
 - explicit package allowlist and packed-entry budget evidence.
 
-B1 is independently useful without a cache. Fingerprint/trust and divergence
-behavior ship with the first operational loader; they cannot be postponed until
-a performance story without changing correctness for adopted overrides.
+B1 is independently testable and can land as an intermediate development change
+without a cache. It incurs full parse/validation per command and must record
+that cold-cost baseline. It is not a standalone consumer release: B1 and B2
+ship together, with B2's cache acceptance tests as a release gate. Fingerprint/
+trust and divergence behavior remain in B1 because they belong to the first
+operational loader's correctness, including during development.
 
 ### Child B2 — Compiled guidance cache
 
