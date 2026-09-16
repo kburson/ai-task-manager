@@ -488,4 +488,16 @@ xurl
 Yoder
 zxcvbn
 Zylos
+bijective
+effectful
+instrumentable
+investigable
+lifecycles
+lossier
+readbacks
+recertification
+recertifying
+recertify
+relatedly
+underspecified
 Δwords
