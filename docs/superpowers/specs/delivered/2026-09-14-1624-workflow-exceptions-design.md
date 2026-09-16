@@ -18,14 +18,14 @@ Success means AITM can explain the effective requirements before execution, perf
 
 On 2026-09-14, the installed `@kburson/ai-task-manager` package reported version `1.0.0`. The following checks were reproduced against live #57 body/comments using individual guards, without running a state mutation:
 
-| Check | Observed result |
-| --- | --- |
-| Planned Estimate appendix | `planned-estimate-appendix-missing` |
-| Deep-dive posted marker | `plan-develop-deep-dive-posted-marker-missing` |
-| Deep-dive section | `plan-develop-deep-dive-section-missing` |
-| Deep-dive complete marker | `plan-develop-deep-dive-complete-marker-missing` |
-| Plan Metadata | `plan-develop-plan-metadata-empty` |
-| Plan approval | Separate guard also refuses the absent approval marker |
+| Check                     | Observed result                                        |
+| ------------------------- | ------------------------------------------------------ |
+| Planned Estimate appendix | `planned-estimate-appendix-missing`                    |
+| Deep-dive posted marker   | `plan-develop-deep-dive-posted-marker-missing`         |
+| Deep-dive section         | `plan-develop-deep-dive-section-missing`               |
+| Deep-dive complete marker | `plan-develop-deep-dive-complete-marker-missing`       |
+| Plan Metadata             | `plan-develop-plan-metadata-empty`                     |
+| Plan approval             | Separate guard also refuses the absent approval marker |
 
 Supplying disabled approval-policy settings did not change these results. The promote wrapper intentionally omits the plan-approval refusal from initial reporting; the central state-change path enforces it. Source editing in Develop independently requires the deep-dive markers. Later body validation requires Plan Metadata and Deep Dive sections.
 
@@ -55,14 +55,14 @@ The state chain remains Backlog → Refine → Ready for Planning → Plan → D
 
 Use stable requirement IDs, independent of error text and marker syntax. The initial catalog must distinguish at least:
 
-| Requirement family | Exception behavior |
-| --- | --- |
-| Planning outputs | A finite named bundle may waive deep-dive content/markers, planning metadata, and the Planned Estimate appendix, including applicable plan-only forecast evidence. Refine fields and substantive scope/acceptance criteria remain required. |
-| Plan approval | Separate explicit scope. A planning waiver alone must not silently grant approval. A no-plan bundle must explicitly disclose its treatment of approval before authorization. |
-| Design/implementation/peer review | Individually identified activities, with a documented finite no-review bundle. Include automated semantic review resident actions and reviewer launch paths. |
-| Human delivery/completion approval | Separate from all review activity. Preserve existing supported human/Full-Auto authorization rules unless independently and explicitly excepted under an allowed policy. Never infer this from “no review.” |
-| Provider execution | A restrictive `deny` constraint on AITM-managed provider/reviewer launches. It does not terminate the user's current interactive agent or claim control over arbitrary external processes. |
-| Tests, verification evidence, ownership, dependencies, issue binding, state contiguity, commit provenance, CI, safe delivery | Not waivable through this feature. Existing independent mechanisms, if any, retain their own scope and authority. |
+| Requirement family                                                                                                           | Exception behavior                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Planning outputs                                                                                                             | A finite named bundle may waive deep-dive content/markers, planning metadata, and the Planned Estimate appendix, including applicable plan-only forecast evidence. Refine fields and substantive scope/acceptance criteria remain required. |
+| Plan approval                                                                                                                | Separate explicit scope. A planning waiver alone must not silently grant approval. A no-plan bundle must explicitly disclose its treatment of approval before authorization.                                                                |
+| Design/implementation/peer review                                                                                            | Individually identified activities, with a documented finite no-review bundle. Include automated semantic review resident actions and reviewer launch paths.                                                                                |
+| Human delivery/completion approval                                                                                           | Separate from all review activity. Preserve existing supported human/Full-Auto authorization rules unless independently and explicitly excepted under an allowed policy. Never infer this from “no review.”                                 |
+| Provider execution                                                                                                           | A restrictive `deny` constraint on AITM-managed provider/reviewer launches. It does not terminate the user's current interactive agent or claim control over arbitrary external processes.                                                  |
+| Tests, verification evidence, ownership, dependencies, issue binding, state contiguity, commit provenance, CI, safe delivery | Not waivable through this feature. Existing independent mechanisms, if any, retain their own scope and authority.                                                                                                                           |
 
 Bundles are user-facing conveniences that expand to an explicit versioned list of requirement IDs. They are not wildcard waivers, and new requirements are never automatically included. Unknown requirement IDs or unsupported bundle versions refuse activation.
 

@@ -283,7 +283,7 @@ test('regex declarations are non-data and do not hide following authorities', ()
 test('the convergence report records every C1 disposition and the #1006 handoff', () => {
   const reportPath = path.join(
     ROOT,
-    'docs/superpowers/specs/2026-07-28-state-engine-policy-convergence.md'
+    'docs/superpowers/specs/delivered/2026-07-28-state-engine-policy-convergence.md'
   );
   assert.equal(existsSync(reportPath), true);
   const report = readFileSync(reportPath, 'utf8');
@@ -298,7 +298,10 @@ test('the convergence report records every C1 disposition and the #1006 handoff'
   }
 
   const register = readFileSync(
-    path.join(ROOT, 'docs/superpowers/specs/2026-07-27-state-engine-bug-bash-evidence.md'),
+    path.join(
+      ROOT,
+      'docs/superpowers/specs/delivered/2026-07-27-state-engine-bug-bash-evidence.md'
+    ),
     'utf8'
   );
   const rows = [...register.matchAll(/^\| #(\d+)\s+\| `([^`]+)`\s+\| ([^|]+)\| ([^|]+)\|$/gm)];
