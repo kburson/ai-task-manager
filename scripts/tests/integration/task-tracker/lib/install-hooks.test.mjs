@@ -400,6 +400,10 @@ const legacyGuardCommand =
   'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
 const legacyGrokTimingCommand =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler timing';
+const retiredSeedCheckCommand = hookBootstrapCommand(
+  'scripts/task-tracker/ensure-worktree-seeded.mjs'
+);
+const retiredGrokSeedCommand = installCli.grokHookCommand('seed');
 const userHookCommand = 'echo user-hook';
 
 function commandCount(config, command) {
@@ -420,7 +424,10 @@ writeFileSync(
   scopedMigrationSettingsPath,
   JSON.stringify({
     hooks: {
-      SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: legacyTimingCommand }] }],
+      SessionStart: [
+        { matcher: '', hooks: [{ type: 'command', command: legacyTimingCommand }] },
+        { matcher: '', hooks: [{ type: 'command', command: retiredSeedCheckCommand }] },
+      ],
       PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: legacyGuardCommand }] }],
       Stop: [{ matcher: '', hooks: [{ type: 'command', command: userHookCommand }] }],
     },
@@ -440,6 +447,11 @@ for (const [event, legacyCommand, replacementCommand] of [
     `${replacementCommand} installed once`
   );
 }
+assert.equal(
+  eventCommandCount(migratedScopedSettings, 'SessionStart', retiredSeedCheckCommand),
+  0,
+  'retired scoped SessionStart seed check removed'
+);
 assert.equal(commandCount(migratedScopedSettings, userHookCommand), 1, 'neighboring user hook preserved');
 
 mkdirSync(path.dirname(scopedMigrationCodexPath), { recursive: true });
@@ -480,6 +492,10 @@ writeFileSync(
           matcher: 'startup|resume|clear|compact',
           hooks: [{ type: 'command', command: legacyGrokTimingCommand }],
         },
+        {
+          matcher: 'startup|resume|clear|compact',
+          hooks: [{ type: 'command', command: retiredGrokSeedCommand }],
+        },
       ],
       CustomEvent: [{ matcher: 'custom', hooks: [{ type: 'command', command: userHookCommand }] }],
     },
@@ -489,6 +505,11 @@ installCli.patchGrokHooksJson(scopedMigrationGrokPath);
 installCli.patchGrokHooksJson(scopedMigrationGrokPath);
 const migratedScopedGrok = JSON.parse(readFileSync(scopedMigrationGrokPath, 'utf8'));
 assert.equal(commandCount(migratedScopedGrok, legacyGrokTimingCommand), 0, 'legacy Grok command removed');
+assert.equal(
+  eventCommandCount(migratedScopedGrok, 'SessionStart', retiredGrokSeedCommand),
+  0,
+  'retired scoped Grok seed check removed'
+);
 assert.equal(
   eventCommandCount(migratedScopedGrok, 'SessionStart', installCli.grokHookCommand('timing')),
   1,

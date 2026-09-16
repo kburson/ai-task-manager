@@ -171,6 +171,11 @@ const STOP_AUDIT_HOOK_CMD = hookBootstrapCommand(
 // when at least one seed file was accepted at install (a `none` selection
 // installs no hook).
 const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
+// #1631 — formerly emitted for consumer SessionStart. Retained only so an
+// upgrade removes the exact scoped-first bootstrap command; never register it.
+const RETIRED_SEED_CHECK_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/ensure-worktree-seeded.mjs'
+);
 // Bare-path forms shipped before #869 — stripped and re-registered as shims so
 // re-running the installer migrates old settings idempotently (mirrors #792).
 const LEGACY_HOOK_COMMANDS = [
@@ -184,6 +189,7 @@ const LEGACY_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs',
+  RETIRED_SEED_CHECK_HOOK_CMD,
 ];
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
@@ -511,7 +517,11 @@ const LEGACY_GROK_HOOK_COMMANDS = [
   'source-edit-gate',
   'agent-guard',
   'memory-index',
-].map(legacyGrokHookCommand);
+]
+  .map(legacyGrokHookCommand)
+  // #1631 — formerly emitted for consumer SessionStart. Cleanup-only: Grok
+  // consumers must no longer register repository worktree seeding.
+  .concat(grokHookCommand('seed'));
 
 export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) {
   let config = {};
