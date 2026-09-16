@@ -8,6 +8,8 @@ node_modules/
 !.scratch/README.md
 tmp/
 
+.vscode/settings.json
+
 # c8 code-coverage output (#570) — regenerable from `npm run test:coverage`
 
 # ai-task-manager — per-run test-timing artifact (#861), regenerable from
