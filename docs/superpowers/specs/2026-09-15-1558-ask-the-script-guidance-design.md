@@ -35,8 +35,9 @@ then compiled into split, minified JSON artifacts. Routine calls load only a
 small agent index. Human prose and detailed diagnostics remain off the hot
 path. Content fingerprints let the agent declare which instructions are still
 present in live context, so repeated queries return references rather than
-repeating prose. Compaction invalidates those declarations and safely reloads
-the required entries.
+repeating prose. The caller must discard those declarations after compaction and reload the
+required entries. This is a context optimization based on caller attestation,
+not CLI-verifiable evidence of model memory (§5.5).
 
 This design covers AITM lifecycle decisions only: bind/resume, forward
 movement, Test, Review, delivery, and close. It does not mediate every edit,
@@ -149,34 +150,50 @@ Guard messages and human explanation are data, not executable instructions.
 Only closed action and remediation identifiers can become operational guidance.
 Third-party text is quoted and labeled untrusted.
 
-### 5.5 Context suppression requires live-context evidence
+### 5.5 Context suppression relies on caller attestation
 
-A durable session ledger cannot prove that a model still holds instruction
-text after compaction. AITM suppresses content only when the caller presents a
-matching guidance receipt from the current live context.
+Neither a durable session ledger nor a caller-supplied receipt proves that a
+model still holds instruction text. `--known` is a caller attestation; the CLI
+can verify the ID/digest match, but cannot observe live model context or detect
+compaction. An agent or summarizer may retain a receipt while losing the
+instruction. Suppression can therefore leave the agent under-informed.
+
+Receipt invalidation is an adapter/prompt obligation, with that residual risk
+made explicit. It is not lifecycle authority: suppressed guidance grants no
+capability, disables no guard, and cannot change execution readiness. An
+attempted invalid action is still refused at the executable boundary. Context
+protocol tests prove compliant caller behavior, not universal model adherence.
 
 ## 6. Current-state findings
 
 The present Tier-0/Tier-1/Tier-2 loader prevents irrelevant rule files from
 loading, but used Tier-2 files accumulate for the rest of the context. At the
-audited checkout, `measure-context.mjs` reports:
+audited checkout `a650be5a090f28325e03f47a22b7495674cf5011`, reproduced with
+`node scripts/task-tracker/measure-context.mjs --all --adapter codex` and the
+same command with `--adapter claude`, reports:
 
 | Scenario              | Codex proxy tokens | Claude proxy tokens |
 | --------------------- | -----------------: | ------------------: |
-| Router invoked        |              3,483 |               3,692 |
-| Bind                  |              7,791 |               8,000 |
-| Bind + Review + Close |             12,542 |              12,751 |
+| Router invoked        |              3,537 |               3,746 |
+| Bind                  |              8,102 |               8,311 |
+| Bind + Review + Close |             13,282 |              13,491 |
 
-The full-lifecycle figure includes approximately 7,600 tokens beyond the
-invoked router for pickup, bind, state movement, review, close, and commit
-trail prose.
+The full-lifecycle figure includes 9,745 proxy tokens beyond the invoked
+router for pickup, bind, state movement, review, close, and commit-trail prose.
+Pickup alone costs 1,400; invoked plus pickup costs 4,937 (Codex) and 5,146
+(Claude). The 5,000 target in §20.2 therefore requires actual reduction for
+Claude. Its full-lifecycle baseline is only 9 tokens below the existing 13,500
+ceiling: the script passes, but its documented 20 percent headroom policy is
+not met. Claude parallel orchestration is also below that policy at 17.9
+percent headroom (11,487 of 14,000). These are migration inputs for Child D,
+not evidence that the new budgets already pass.
 
 The repository already has useful seams:
 
 - `lib/guard-registry.mjs` aggregates all selected guard refusals.
 - `promote`, `review`, and `close` already have read-only or preflight
   functions that can be separated from effects.
-- the command catalog provides stable command identities and static help;
+- the command-surface catalog provides stable command identities and static help;
 - #1624 introduced a read-only workflow-policy preflight and snapshot pattern;
 - the skill loader already uses versioned sentinels and explicit post-compact
   invalidation;
@@ -238,11 +255,19 @@ The only project override is:
 .ai-task-manager/aitm-guidance.yml
 ```
 
-The published package source is:
+The published source is `instructions/aitm-guidance.yml` relative to the
+package root containing the running AITM module. The resolver starts from
+`import.meta.url`, resolves that installed package root and canonical source
+path using the active runtime, and verifies package identity. It must not
+construct a project-relative `node_modules` path or select another package copy.
+For a conventional install of the current scoped package, an illustrative path
+is `node_modules/@kburson/ai-task-manager/instructions/aitm-guidance.yml`.
 
-```text
-node_modules/ai-task-manager/instructions/aitm-guidance.yml
-```
+The same resolver serves source checkouts, linked worktrees, global installs,
+npx caches, and package-manager layouts. Canonicalization uses the active
+runtime's filesystem/resolution support (including virtual layouts where
+supported); an unreadable source is a named failure, never a guessed fallback.
+The source-inspection command reports the resolved absolute path.
 
 AITM never searches for `./aitm-guidance.yml` or another root-level variant.
 Project-root configuration files should remain small and dot-prefixed; this
@@ -267,11 +292,13 @@ not a schema failure, because an author must be able to validate before commit.
 
 ### 8.3 Deliberate project adoption
 
-Documentation instructs a human to copy the file explicitly:
+Documentation instructs a human to run `npx aitm guidance source` without an
+override, then copy the reported packaged absolute path explicitly. The path
+below is a placeholder for that output, not an assumed install layout:
 
 ```bash
 mkdir -p .ai-task-manager
-cp node_modules/ai-task-manager/instructions/aitm-guidance.yml \
+cp /absolute/package/path/instructions/aitm-guidance.yml \
   .ai-task-manager/aitm-guidance.yml
 git add .ai-task-manager/aitm-guidance.yml
 ```
@@ -307,7 +334,7 @@ regain the `published` classification merely by editing or restamping them.
 
   binds:
     action_ids:
-      - workflow.promote
+      - promote
     guard_ids:
       - plan-exit-plan-approved
       - plan-exit-deep-dive
@@ -319,10 +346,10 @@ regain the `published` classification merely by editing or restamping them.
 
   agent:
     instruction:
-      - query: workflow.promote
+      - query: promote
       - require_status: ready
       - if_blocked: use_returned_remediation_ids
-      - execute: workflow.promote
+      - execute: promote
       - never: bypass_guard
       - never: execute_free_text
       - execution_revalidates: true
@@ -338,22 +365,22 @@ regain the `published` classification merely by editing or restamping them.
       and evaluates the same guards again while holding the mutation lock.
     triggered_when:
       - The issue is currently in Plan.
-      - The requested action is workflow.promote.
+      - The requested action is promote.
     execution:
       - Refresh issue, board, repository, and binding authority.
       - Evaluate registered Plan exit and Develop entry guards.
       - Refuse when any required evidence is missing or indeterminate.
       - Advance one legal edge only after every guard passes.
     examples:
-      - command: npx aitm explain 1631 --action workflow.promote
+      - command: npx aitm explain 1631 --action promote
         purpose: Inspect readiness without changing state.
       - command: npx aitm promote 1631
         purpose: Revalidate and perform the transition.
     documentation:
       - path: docs/guides/workflow.md
-        anchor: plan-to-develop
+        anchor: kanban-board-states
       - path: docs/guides/guard-architecture.md
-        anchor: transition-guards
+        anchor: the-exitentry-slot-model
 ```
 
 ### 9.3 Closed agent vocabulary
@@ -388,7 +415,11 @@ help. It must include `summary` and `explanation`. Trigger, execution, example,
 and documentation lists are optional but schema-validated when present.
 
 Package documentation references must remain package-relative and resolve to a
-shipped file. Examples are display data; they are never promoted into an action
+shipped file; an optional anchor must resolve to an explicit HTML anchor or a
+GitHub-compatible Markdown heading slug, including duplicate-heading suffixes.
+Stage 7 validates both paths and anchors. The existing `lint:doc-anchors` is a
+curated guide-content check, not a general resolver; the guidance validator
+must add the latter. Examples are display data; they are never promoted into an action
 without resolving a registered action/remediation ID.
 
 ## 10. Fingerprints and trust classifications
@@ -467,7 +498,7 @@ The validator collects all independent errors in one run:
 4. top-level schema and unknown-key rejection;
 5. entry identity, uniqueness, types, and field limits;
 6. closed agent instruction grammar;
-7. action, guard, remediation, prohibition, and documentation references;
+7. action, guard, remediation, prohibition, and documentation path/anchor references;
 8. completeness against installed lifecycle guidance requirements;
 9. provenance and fingerprint consistency;
 10. per-entry, per-section, and full-catalog context budgets.
@@ -475,6 +506,22 @@ The validator collects all independent errors in one run:
 YAML anchors, aliases, merge keys, and custom tags are forbidden. They obscure
 review, complicate deterministic normalization, and expand the parser attack
 surface without serving this catalog.
+
+The parser must retain syntax events or a syntax tree with source ranges before
+materializing plain values, so schema errors have field locations and forbidden
+syntax can be rejected before resolution loses it. Plain `js-yaml.load()` is
+insufficient. The checkout pins `js-yaml` 5.4.2, whose public `parseEvents` API
+exposes scalar offsets, anchor/tag ranges, and alias events; these can build a
+field-path/source-range map before `constructFromEvents` materializes values.
+This event-based path is the initial candidate, not a requirement to add a
+second YAML package. Default CORE_SCHEMA does not resolve merge keys, so the
+validator must explicitly reject `<<` syntax regardless of construction mode.
+
+Before selection, fixtures must prove per-field line/column mapping (including
+nested collections and quoted/block scalars), duplicate detection, all forbidden
+syntax detection, and deterministic normalization. An AST/CST alternative is
+allowed if it meets the same contract. Do not assume the older `listener`
+option exists or provides the required guarantees in the installed version.
 
 ### 11.3 Diagnostics
 
@@ -596,11 +643,25 @@ The fast-path source identity contains:
 - catalog schema version;
 - action/guard/remediation registry digest;
 - published catalog digest;
-- Git-index identity used for tracked-status validation.
+- worktree-specific Git-index identity used for tracked-status validation.
+
+Resolve the worktree Git directory with `git rev-parse --git-dir`, resolving a
+relative result against the worktree. Resolve the effective index with
+`git rev-parse --git-path index` (and respect an explicitly selected index);
+never assume `.git/index`, since `.git` is a file in linked worktrees. Include
+any shared-index dependency when Git uses a split index. Unknown tracking
+identity requires a fresh tracking check or an indeterminate refusal.
+
+Stat fields are optimization hints, not portable proofs. Inodes may be unstable
+or unavailable on Windows, and ctime can change after chmod or checkout without
+content changing. False misses are acceptable. When the filesystem cannot
+provide a reliable tuple, compare content digests and recheck tracking instead
+of silently treating missing fields as equal; unchanged content can still
+reuse the compiled validation result.
 
 Mtime alone is insufficient because files can be replaced or timestamps
-preserved. The full stat tuple is still inexpensive and prevents ordinary false
-hits. The source SHA-256 is calculated on a cache miss and recorded in the
+preserved. On supported filesystems, the full stat tuple is inexpensive and avoids
+ordinary false hits; it is not protection against adversarial metadata replay. The source SHA-256 is calculated on a cache miss and recorded in the
 manifest; it need not be recalculated on an unchanged-identity fast path.
 
 ### 12.4 Cold compile
@@ -662,19 +723,35 @@ are not required to migrate the first state-walk decision path.
 
 ### 13.2 Contract
 
-The evaluator receives an immutable action snapshot and returns:
+A read-only observation collector gathers required authority; a shared evaluator
+consumes its immutable evidence bundle, applies pure normalizations (§13.5),
+and returns a decision. Collection may involve more than one read/pass. The
+bundle records an observation window and each source's observation time,
+identity, and revision or content digest. It is not an atomic GitHub snapshot.
+`snapshot.digest` binds the whole bundle, including normalization inputs.
+
+A compact example (one observed source shown) is:
 
 ```json
 {
   "schema": "aitm.action-decision/v1",
   "issue": 1631,
-  "actionId": "workflow.promote",
+  "actionId": "promote",
   "status": "blocked",
   "snapshot": {
     "state": "plan",
     "head": "abc123...",
     "digest": "sha256:...",
-    "observedAt": "2026-09-15T00:00:00.000Z"
+    "startedAt": "2026-09-15T00:00:00.000Z",
+    "completedAt": "2026-09-15T00:00:01.000Z",
+    "observations": [
+      {
+        "source": "issue-body",
+        "identity": "issue:1631",
+        "observedAt": "2026-09-15T00:00:00.500Z",
+        "digest": "sha256:..."
+      }
+    ]
   },
   "blockers": [
     {
@@ -686,6 +763,7 @@ The evaluator receives an immutable action snapshot and returns:
       }
     }
   ],
+  "normalizations": [],
   "warnings": [],
   "humanDecision": null,
   "guidanceIds": ["transition.plan-to-develop"]
@@ -694,7 +772,16 @@ The evaluator receives an immutable action snapshot and returns:
 
 Statuses are `ready`, `blocked`, and `indeterminate`. Unknown state, unreadable
 authority, thrown guards, malformed results, or required external unknowns are
-never converted to `ready`.
+never converted to `ready`. Blockers carry a stable `guardId` and `code`, and
+exactly one of a typed registered `remediation` or the explicit
+`noAutomaticRemediation` disposition defined in §14.1. Pending normalization
+records name a closed normalizer ID, input digest, projected digest, and
+`persist-on-execute` disposition; they are diagnostic, never executable input.
+
+All authority used in the final verdict must appear in the bundle. Bounded
+refreshes replace superseded values and record their observation provenance;
+incompatible issue/body/state/scope identities produce `indeterminate`. Missing
+required observations do not become empty successful evidence.
 
 ### 13.3 Shared execution
 
@@ -702,8 +789,28 @@ Each mutating verb must call the same evaluator or the same lower-level guard
 and preflight functions used by the evaluator. The architecture must not copy
 gate logic into a report-only module.
 
-The executing verb refreshes evidence under its normal lock. Explanation
-snapshots are diagnostic and carry no capability token.
+The authoritative view includes the complete transition guard result enforced
+by `scripts/task-tracker/lib/move-state/guard-execution.mjs`, plus all required
+verb/delegate preflights. `promote`'s historical `REFUSAL_ID_TO_STATUS` filter is
+only a compatibility formatter: it must never remove a blocker from readiness.
+Child A must inventory both layers, including conditional refreshes such as
+pre-Refine contiguity recovery, and extract their read-only orchestration.
+
+Preserve the two-pass policy behavior: evaluate the baseline guard set; only
+when its refusals require workflow-policy authority, collect that boundary,
+record the additional observations, and re-evaluate the complete set. Do not
+union provisional refusals into the final result or turn a failed policy read
+into readiness. An unavailable required boundary is `indeterminate`; a valid
+boundary with no applicable exception retains the underlying blocker. Already
+sanctioned workflow-policy exceptions remain governed by that existing code;
+explanation/remediation never invents or grants an exception.
+
+Each pass uses immutable inputs. Read-only dependency adapters must record any
+lazy guard reads into the observation bundle and prevent mutation-capable
+helpers from entering explanation. The executing verb refreshes evidence under
+its normal lock; a subprocess or later effect boundary must refresh/revalidate
+again rather than trusting an earlier verdict or reusing authority across
+processes. Explanation snapshots are diagnostic and carry no capability token.
 
 ### 13.4 Equivalence invariants
 
@@ -712,11 +819,77 @@ For the same unchanged authoritative snapshot:
 1. `ready` cannot be followed by refusal for a known precondition omitted from
    explanation.
 2. An execution refusal must be representable by the same stable code and
-   remediation ID in explanation.
+   typed remediation or explicit no-automatic-remediation disposition in explanation.
 3. Changed state may turn a prior `ready` into refusal; execution revalidation
    is the authority.
 4. Explain never performs mutation, provider action, test execution, or
-   approval stamping.
+   approval stamping. Pure projections are permitted; their pending writes are
+   disclosed and never represented as already persisted evidence.
+5. Infrastructure/write failures after a ready verdict are execution failures,
+   not omitted readiness predicates. Drift, projection persistence failure,
+   and failed readback must be named and must stop subsequent effects.
+
+### 13.5 Normalizing preconditions
+
+A normalizing precondition derives an expected representation from observed
+facts without adding external proof. It is distinct from a guard (a predicate)
+and a remediation (an action to satisfy a missing requirement). Version 1
+requires a pure Functional DoD projection for `acs` and `checkboxes`, shared
+by `promote`, `review`, `close`, and explanation where applicable.
+
+Extract the body transform from `functional-dod-derive.mjs` into a pure function
+of the observed body, HEAD, and explicit evaluation timestamp. Preserve its
+ordering (`acs` before `checkboxes`), derivation criteria, and idempotency.
+The projector returns the projected body and intended derived-evidence writes.
+It must not tick unrelated requirements, invent approvals/test results, or call
+GitHub. Guards evaluate this projected body in both consumers. Explain reports
+any pending `functional-dod-derived` normalization and performs no write.
+
+Execution refreshes under the normal lock and evaluates all readiness checks
+against the projection. Only after `ready` may it persist the intended derived
+stamps through the existing versioned body-write boundary. A concurrent-body
+retry must recompute the projection and readiness on the fresh base, not apply
+an old patch. After writing, read back and validate the persisted body and
+remaining authority before advancing state or executing the next effect. A
+failed write/readback refuses further effects; no stale pre-derive-body fallback
+can authorize the transition. A successfully persisted normalization may remain
+if a later transition fails; report it and make retry idempotent.
+
+Child A must remove the current mutate-before-evaluate dependency in
+`deriveAndRescan` from these decision paths, preserving existing gate strength.
+Required equivalence cases include complete ACs with unstamped derived keys,
+incomplete ACs, already stamped bodies, policy-enriched guards, concurrent edits,
+and failed persistence/readback. This refactor is required delivery scope, not
+an assumption that current `runGuards` is already sufficient.
+
+### 13.6 Action vocabulary and navigation
+
+The authoritative lifecycle action registry is
+`scripts/task-tracker/lib/lifecycle-policy/actions.mjs`. Adopt its existing bare
+IDs unchanged (`promote`, `test`, `review`, `close`, etc.); `workflow.*` is not a
+second accepted namespace. Child A adds enumeration and typed bindings to the
+same module for the v1 scope, including `bind`, `resume`, and `deliver`, with
+explicit evaluator/executor references. Session/delivery actions do not acquire
+state edges merely by being registered. Existing allowed-state policy remains
+authoritative; catalog data cannot redefine it.
+
+Validator stage 7 resolves action IDs against that enumeration, guard IDs
+against bootstrapped guard exports (not the historical comment inventory), and
+remediation IDs against the core registry in §14. Their versioned digest forms
+the installed vocabulary identity. The command-surface catalog remains CLI
+metadata; the workflow-policy catalog remains policy requirements; the new
+**guidance catalog** remains explanatory content. Modules, tests, and diagnostics
+must use these qualified names.
+
+Untargeted explanation uses `actionPolicyFor('promote', state)` and the existing
+`forwardTarget(state)` in `lifecycle-policy/executable-transitions.mjs` for the
+next edge/delegate. Extract and share any existing evidence-dependent selection
+(e.g. rerunning incomplete Review before close) with the verb, and return
+required delivery as a blocker/remediation when appropriate. Do not create a
+second state walk. Terminal Done has no recommended forward action; unknown or
+conflicting state is indeterminate. Explicit bind/resume/deliver queries use
+their registered evaluators. #1561 consumes these exact IDs and the shared
+`aitm.action-decision/v1` contract; it cannot introduce parallel aliases.
 
 ## 14. Remediation registry
 
@@ -741,6 +914,44 @@ The registry shape must remain compatible with #1561's gate verdict schema.
 Issue #1558 may implement the core registry first; #1561 extends gate production and
 discovery without changing the consumer contract.
 
+### 14.1 Refusal migration
+
+Current `runGuards` returns `{ id, reason, blockers? }`; stable refusal codes
+and remediation bindings do not yet exist. Child A1 introduces a shared
+normalizer used by explanation and execution. During migration, an explicitly
+inventoried legacy refusal maps to:
+
+```json
+{
+  "guardId": "registered-legacy-guard",
+  "code": "unclassified-refusal",
+  "noAutomaticRemediation": { "reason": "legacy-guard-requires-human-investigation" }
+}
+```
+
+The pair `(guardId, code)` is stable; quoted legacy reason text is diagnostic
+only and must not be parsed to choose a command. This remains `blocked`, never
+an implicit success. Thrown guards, malformed output, and unknown vocabulary
+instead yield `guard-error`, `guard-result-invalid`, or `unknown-vocabulary`,
+respectively, and `indeterminate`, with no
+automatic remediation. A malformed typed remediation cannot fall back to the
+legacy adapter.
+
+A checked-in migration inventory identifies remaining legacy guard/refusal
+sites, their source locations, and owning follow-up scope. A lint/fixture gate
+freezes that inventory: new or changed refusal sites require explicit codes and
+dispositions, not a larger unclassified allowance. Guard IDs come from runtime
+registration and exported constants, not the stale inventory comment.
+
+Child A2 migrates the v1 action paths in bounded guard-family batches, adding
+typed argument schemas and human/provider/destructive/Full-Auto classifications
+with code/remediation conformance fixtures. Existing legacy sites may remain
+under AC2 only when explicitly inventoried with the no-automatic-remediation
+disposition; they do not count as automated recovery. Parent acceptance requires
+coverage of every reachable refusal by either a coded disposition or that
+reviewed legacy inventory. This avoids an implicit thirty-guard big-bang while
+making migration effort and residual manual work visible.
+
 ## 15. Explanation and conditional guidance protocol
 
 ### 15.1 CLI
@@ -754,7 +965,7 @@ npx aitm explain #1631 --json
 Targeted form:
 
 ```text
-npx aitm explain #1631 --action workflow.close --json
+npx aitm explain #1631 --action close --json
 ```
 
 Compatibility surfaces invoke the same engine:
@@ -765,8 +976,15 @@ npx aitm review #1631 --explain --json
 npx aitm close #1631 --explain --json
 ```
 
-The generic command can recommend the next lifecycle action without requiring
-the skill to explain the state machine first.
+The generic command recommends the next lifecycle action through §13.6's
+shared navigation policy, without a second state machine in the skill.
+
+`workflow-preflight #N --target <state> --json` remains supported as a narrower
+workflow-policy diagnostic with its existing output contract. It is neither
+aliased to nor absorbed into `explain`, and its success is not action readiness.
+Help labels that boundary and points agents choosing an action to `explain`.
+The evaluator reuses its read-only policy primitives as needed, never its
+free-text remediation as an executable instruction.
 
 ### 15.2 First expansion
 
@@ -776,7 +994,7 @@ agent content:
 ```json
 {
   "schema": "aitm.action-explanation/v1",
-  "decision": { "status": "blocked", "actionId": "workflow.promote" },
+  "decision": { "status": "blocked", "actionId": "promote" },
   "guidance": [
     {
       "id": "transition.plan-to-develop",
@@ -784,10 +1002,10 @@ agent content:
       "status": "expanded",
       "agent": {
         "instruction": [
-          { "query": "workflow.promote" },
+          { "query": "promote" },
           { "require_status": "ready" },
           { "if_blocked": "use_returned_remediation_ids" },
-          { "execute": "workflow.promote" },
+          { "execute": "promote" },
           { "execution_revalidates": true }
         ]
       }
@@ -796,7 +1014,7 @@ agent content:
 }
 ```
 
-The agent emits a live-context receipt:
+The agent emits a receipt attesting that it loaded the instruction:
 
 ```text
 aitm-guidance-loaded:transition.plan-to-develop:sha256:...
@@ -808,7 +1026,7 @@ The caller supplies only receipts relevant to the current query:
 
 ```text
 npx aitm explain #1640 \
-  --action workflow.promote \
+  --action promote \
   --known transition.plan-to-develop@sha256:... \
   --json
 ```
@@ -833,14 +1051,18 @@ No static instruction text is repeated.
 
 After compaction, clear, fresh worker start, or any condition that invalidates
 skill sentinels, the agent treats `aitm-guidance-loaded:*` receipts as absent.
-The next query reloads only the entries it needs.
+The next query omits `--known` and reloads only the entries it needs. Adapters
+must prohibit restoring receipts from compaction summaries or disk ledgers.
+The CLI cannot enforce that prohibition; a retained matching receipt can still
+suppress content. Tests must include both compliant omission (reload) and a
+stale matching attestation (suppression, with mutation guards still enforced).
 
 An agent digest change always expands the changed instruction, even if the ID
 is unchanged. A human-only change does not invalidate an agent receipt.
 
 The CLI never suppresses guidance because a disk/session ledger says it was
-previously emitted. Only a matching caller-presented live-context receipt
-suppresses content.
+previously emitted. Only a matching caller-presented attestation suppresses content; the CLI
+verifies the digest, not the claimed presence of instructions in model context.
 
 ## 16. Human explanation
 
@@ -880,8 +1102,9 @@ aitm-guidance-source:project-owned-diverged:sha256:...
 ```
 
 The full warning is not repeated while a matching source receipt is present.
-It is emitted again after compaction, a fresh context, source change, or digest
-change.
+It is emitted again when the caller correctly discards the receipt after
+compaction/fresh context, or when source/digest matching fails. Source receipts
+have the same attestation limitation as instruction receipts (§5.5).
 
 ### 17.2 GitHub annotation
 
@@ -968,7 +1191,13 @@ validator.
 
 ### 20.2 Context
 
-Initial acceptance targets:
+The following are reduction targets for each supported adapter, not a statement
+that current HEAD passes. Child D must slim the router and/or pickup protocol
+as well as Tier-2 content; raising the ceilings to fit current usage does not
+satisfy the epic. Numeric ceilings remain fixed; representative CI fixtures
+must fit with at least 20 percent unused headroom (e.g. 4,000 against 5,000).
+
+Initial acceptance ceilings:
 
 - invoked router plus pickup context at or below 5,000 proxy tokens;
 - clean-path action explanation at or below 300 proxy tokens;
@@ -981,7 +1210,57 @@ Initial acceptance targets:
 
 Measurements include first query, repeated query, changed instruction, and
 post-compaction reload. A budget that measures only the first call is
-insufficient.
+insufficient. Static text and dynamic responses are distinct measurement
+subjects. The full-lifecycle fixture counts each actual instruction expansion,
+command/receipt input, and complete agent-visible response, including repeated
+metadata and diagnostics; it must not count only selected JSON fields. Record
+both adapter variants and a fixed lifecycle transcript with its read/query
+schedule. Large multi-blocker results must remain truthful: the 500-token
+ceiling applies to the pinned representative blocked fixture, with worst-case
+size reported separately, not truncated into false readiness.
+
+Keep chars/4 as the repository regression proxy, but calibrate digest-heavy
+responses against a real tokenizer before accepting these budgets. Record the
+tokenizer/package/encoding versions, response bytes, actual counts, and the
+actual-to-proxy ratio for clean, blocked, repeated, and full-lifecycle fixtures.
+Do not present proxy counts as measured model tokens or assume one encoding
+represents every provider. Child D supplies that evidence; it does not exist
+in the current static-file measurement tool.
+
+### 20.3 Live-authority cost
+
+Guidance-cache hits do not reduce required live-authority reads. Instrument
+network request count (including pagination/retries), logical authority reads,
+and elapsed time separately for explain and execution. Report cold/warm guidance
+cost separately from authority collection, including a full lifecycle with the
+§18 query schedule and an explanation followed immediately by mutation.
+
+Within one command/evaluation attempt, identical reads may share an immutable
+result keyed by repository, issue, resource, scope, and boundary identity. Guards
+must not repeat the same fetch in the two policy passes when that observation
+remains valid. Invalidate on an effect, scope change, required refresh, or retry;
+never share across subprocesses, separate commands, or a later mutation boundary.
+
+The expected read model is:
+
+| Case                       | Authority reads attributable to this design                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Ordinary explanation       | One collection of the action's required resources; zero policy-record reads when baseline guards pass.               |
+| Waivable refusal           | Baseline collection plus one scoped policy-boundary collection, then pure re-evaluation using recorded observations. |
+| Explain then execute       | Two independent collections; execution also pays required normalization readback/boundary refreshes.                 |
+| Diverged-guidance mutation | At most one annotation lookup per successful mutation (including pagination); one write only when absent.            |
+
+Child A1 must capture numeric baseline request counts and median/p95 wall time
+for these cases and the fixed full-lifecycle fixture before extraction. Child A2
+and D record comparable post-change measurements and commit CI regression
+ceilings with at least 20 percent headroom. For unchanged fixture authority,
+explain may not exceed the corresponding executor's read-only evaluation
+request count, and duplicate reads within an evaluation are failures unless
+identified as a required refresh. Lifecycle request totals must equal the
+recorded per-boundary sums plus documented annotation/normalization overhead;
+new unexplained requests fail the budget. Record live timing separately from
+deterministic stub-request counts so service latency does not masquerade as
+local cache cost. No fixed millisecond baseline is asserted before measurement.
 
 ## 21. Security and authority analysis
 
@@ -1023,7 +1302,11 @@ absent.
 
 ## 22. Compatibility and migration
 
-1. Ship the package catalog, schema, validator, compiler, and source resolver.
+1. Ship the guidance catalog, schema, validator, and source resolver with trust
+   and divergence behavior; add the compiled cache separately. Add the required
+   `instructions/` assets to `package.json`'s `files` allowlist, measure the packed
+   entry delta, and deliberately document/adjust the package-boundary ceiling
+   if the new runtime surface exceeds it. Do not silently relax that test.
 2. Validate the packaged catalog in package-boundary and release tests.
 3. Add the action evaluator and explanation protocol while existing Tier-2
    rules remain authoritative guidance.
@@ -1037,10 +1320,11 @@ Existing installations with no project catalog use the packaged source and
 require no migration. Existing sentinels remain valid until the corresponding
 skill files are slimmed; guidance receipts use a separate namespace.
 
-`js-yaml` is currently a development dependency. If selected for runtime
-parsing, it becomes a production dependency and is covered by package-boundary
-tests. An alternative parser must meet the same duplicate-key, tag, anchor,
-source-location, and deterministic-normalization requirements.
+`js-yaml` 5.4.2 is currently a development dependency. Evaluate its event/range
+API first under §11.2; selection requires the contract fixtures to pass. Also
+prove duplicate-key, tag, anchor/alias/merge rejection, field locations, and
+deterministic normalization. The chosen runtime parser must be a production
+dependency and work in production-only package-boundary tests.
 
 ## 23. Testing strategy
 
@@ -1054,7 +1338,8 @@ source-location, and deterministic-normalization requirements.
 - trust classification;
 - deterministic compilation and direct indexes;
 - stat/runtime cache identity and invalidation;
-- action decision and remediation schemas;
+- action enumeration, decision and remediation schemas, and legacy-refusal inventory;
+- Functional DoD projection purity, ordering, and idempotency;
 - receipt matching, mismatch, and post-compaction behavior;
 - warning and issue-annotation deduplication.
 
@@ -1068,19 +1353,31 @@ source-location, and deterministic-normalization requirements.
 - warm command proves no YAML parse or semantic validation;
 - cache corruption rebuilds without user intervention;
 - explain and execute consume the same guard result;
-- unchanged-state ready/execution equivalence;
+- unchanged-state ready/execution equivalence across verb and mutator layers;
+- projected DoD readiness, persistence failure, concurrent edit, and readback failure;
+- policy-enrichment passes, observation provenance, and required-read failure;
+- unclassified legacy refusal remains blocked and never yields an action;
+- new/changed refusal sites cannot expand the unclassified inventory;
 - state change after explanation safely refuses execution;
-- first query expands, repeated query references, compaction reloads;
+- first query expands, repeated query references, compliant post-compaction query reloads;
+- stale matching attestation can suppress guidance but cannot bypass mutation guards;
 - human prose does not enter routine agent output;
 - modified guidance warning and one issue annotation;
 - no GitHub write from explain, validate, source, or human help.
 
 ### 23.3 Context and package tests
 
-- extend `measure-context.mjs` with first-query, repeated-query, changed-entry,
-  and post-compaction scenarios;
+- retain `measure-context.mjs` for static-file scenarios and add
+  `scripts/task-tracker/measure-guidance-context.mjs` as a second measurement
+  harness for captured command responses and ordered request/response transcripts;
+- run real CLI serialization with injected deterministic authority fixtures for
+  first query, repeated query, changed entry, compliant compaction, stale receipt,
+  and full lifecycle; measure the complete captured output, not handwritten samples;
+- calibrate those response fixtures with a pinned real tokenizer and record ratios;
+- measure request counts and authority latency separately under §20.3;
 - assert package catalog, manifest/fingerprint source, schema, and required docs
-  are shipped;
+  are shipped via the explicit `files` allowlist; record the intentional packed
+  entry delta and any justified package-ceiling adjustment;
 - assert no project override is installed by `init`;
 - assert help, router, and Tier-2 pointers name only supported commands/paths;
 - assert the package can run the validator with production dependencies only.
@@ -1090,40 +1387,68 @@ source-location, and deterministic-normalization requirements.
 Issue #1558 remains the parent epic. It should be re-refined into at least these
 children after this specification is accepted:
 
-### Child A — Shared action-decision and remediation contract
+### Child A1 — Shared action-decision foundation
 
-- extract side-effect-free action evaluators;
-- add structured blocker/remediation output;
-- prove explain/execute equivalence;
-- align the contract with #1561.
+- enumerate authoritative bare action IDs and shared navigation in lifecycle-policy;
+- inventory verb/mutator readiness and all refusal sites; capture live-read baselines;
+- define observation bundles, normalizers, stable codes, and remediation schemas;
+- add fail-closed legacy normalization and its frozen inventory/lint gate;
+- align this single versioned contract with #1561.
 
-### Child B — Guidance catalog, validator, and compiled cache
+### Child A2 — Evaluator extraction and guard-family migration
 
-- package/project source resolution;
-- YAML schema and human/agent split;
-- validator and fail-closed loading;
-- fingerprints/trust classification;
-- split compiled JSON cache and invalidation;
-- project warning and issue annotation.
+- extract pure Functional DoD projection and move stamping behind readiness;
+- share full mutator/verb preflight and conditional policy-enrichment orchestration;
+- migrate guard families to typed codes/remediations with conformance fixtures;
+- prove explanation/execution parity, observation provenance, and refresh failures.
+
+A2 depends on A1 and should split further by guard family/action when estimates
+exceed the atomic-story limit. Each slice inventories remaining legacy sites;
+readiness for an action is exposed only after its full path passes parity tests.
+This makes the migration a sized workstream rather than one implicit sub-bullet.
+
+### Child B1 — Guidance catalog, validator, and correct source loading
+
+- module-relative package and tracked-project source resolution;
+- syntax-event/tree parser, source locations, schema, reference/anchor validation;
+- fail-closed loading and standalone validator;
+- fingerprints/trust classification and package-release fingerprint checks;
+- project warning and idempotent issue annotation;
+- explicit package allowlist and packed-entry budget evidence.
+
+B1 is independently useful without a cache. Fingerprint/trust and divergence
+behavior ship with the first operational loader; they cannot be postponed until
+a performance story without changing correctness for adopted overrides.
+
+### Child B2 — Compiled guidance cache
+
+- deterministic split JSON artifacts, invalid-result caching, and silent warm loads;
+- portable/worktree-aware source/index identity and conservative fallbacks;
+- atomic publication, corruption recovery, and parser/validator avoidance tests;
+- cold/warm runtime evidence.
+
+B2 depends on B1. This is a planned functional seam, not merely a possible split
+if B exceeds a size estimate. Further slicing follows the atomic-story limit.
 
 ### Child C — Explain and conditional guidance protocol
 
-- generic and action-specific CLI surfaces;
-- first expansion and `--known` receipt behavior;
-- compaction/change invalidation;
+- generic/action-specific CLI surfaces backed by the migrated A evaluators;
+- retained, explicitly narrower workflow-preflight diagnostic;
+- first expansion, attested `--known` behavior, and source/digest invalidation;
+- adapter compaction obligations and stale-attestation safety fixtures;
 - human explanation and source inspection.
 
 ### Child D — Skill migration and measured context reduction
 
-- catalog hydration from current lifecycle rules;
-- router/Tier-2 slimming;
+- guidance catalog hydration from current lifecycle rules;
+- router, pickup, and Tier-2 slimming for both adapters;
 - documentation migration;
-- lifecycle and repeated-query token-budget evidence.
+- response-capture harness, pinned lifecycle transcript, tokenizer calibration;
+- first/repeated/compaction/full-lifecycle token and live-read budget evidence.
 
-Child B may be split during planning if its implementation estimate exceeds the
-repository's atomic-story limit. The cache is not independently valuable
-without the catalog and validator, so it remains inside Child B unless size,
-not conceptual ownership, forces the split.
+C depends on the applicable A2 migrations and B1 contract; final cache acceptance
+requires B2. D may inventory content early but cannot remove operational prose
+until parity, context, and authority-cost evidence pass.
 
 ## 25. Dependencies and related work
 
@@ -1135,17 +1460,23 @@ not conceptual ownership, forces the split.
   configuration must remain distinct from agent guidance.
 - **#1559** is unrelated.
 - **#1624** supplies useful workflow-policy snapshot and preflight patterns but
-  does not replace action readiness.
+  does not replace action readiness; its `workflow-preflight` command remains
+  the narrower diagnostic defined in §15.1.
 
-Child A and #1561 must share one versioned verdict/remediation contract. Neither
-epic may independently invent a second schema.
+Child A1 and #1561 must share `aitm.action-decision/v1`, §13.6's authoritative
+action vocabulary, and §14's typed remediation contract. A1 owns the core
+contract first; #1561 extends producers against it. Neither epic may independently
+invent a second schema or require the other's complete implementation to start.
 
 ## 26. Acceptance criteria for the parent epic
 
 1. A read-only action evaluator reports current lifecycle readiness using the
-   same guards/preflights as execution.
+   same full guards/preflights, pure normalizations, and policy-enrichment
+   orchestration as execution, with observation provenance and no writes.
 2. Every blocker has a stable code and a registered, typed remediation or an
-   explicit no-automatic-remediation disposition.
+   explicit no-automatic-remediation disposition. Legacy reserved codes are
+   allowed only under §14.1's frozen migration inventory; no automatic action
+   may be inferred from their free text.
 3. No guard or plugin can emit an executable free-text command or bypass
    remediation.
 4. A published, inspectable guidance catalog contains separate structured agent
@@ -1158,13 +1489,15 @@ epic may independently invent a second schema.
    effects and points to the validator; no package fallback occurs.
 9. Valid and invalid YAML results compile into deterministic, split JSON cache
    artifacts and unchanged warm calls do not reparse or revalidate YAML.
-10. Project-diverged guidance produces one live-context warning and one
+10. Project-diverged guidance produces a caller-receipt-deduplicated warning and one
     idempotent issue annotation on the first successful lifecycle mutation.
 11. `aitm explain` returns compact dynamic decisions and expands static agent
-    guidance only when a matching live-context receipt is absent.
-12. Compaction, source changes, and agent-instruction digest changes reload the
-    required guidance; repeated unchanged queries do not repeat instruction
-    text.
+    guidance only when a matching caller-attested receipt is absent; it makes
+    no claim to observe model context.
+12. Compliant callers omit receipts after compaction; source/digest mismatch
+    reloads required guidance, and repeated matching queries omit instruction
+    text. Tests expose stale-attestation suppression and prove guards remain
+    effective; compaction detection is not attributed to the CLI.
 13. Human explanation is available on explicit request and absent from routine
     agent output.
 14. Mutating verbs refresh and revalidate authority; explanation never grants
@@ -1172,7 +1505,8 @@ epic may independently invent a second schema.
 15. Tier-2 lifecycle prose is reduced to the minimal query/receipt protocol
     after equivalence tests pass.
 16. Measured first-query, repeated-query, post-compaction, and full-lifecycle
-    context costs meet the budgets in this specification.
+    context costs and live-authority costs meet §20's budgets, with captured
+    response transcripts and real-tokenizer calibration.
 
 ## 27. Manual peer-review protocol
 
@@ -1216,4 +1550,5 @@ The manual reviewer should pay particular attention to:
    mutate;
 7. whether #1558 and #1561 share a schema without creating a sequencing cycle;
 8. whether context budgets measure cumulative and repeated behavior honestly;
-9. whether Child B should be split during implementation planning.
+9. whether the planned B1/B2 split preserves correct trust and divergence
+   behavior before the compiled cache ships.
