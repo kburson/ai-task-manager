@@ -1,10 +1,10 @@
-// @story #1630
+// @story #1630 #1631
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
@@ -33,7 +33,7 @@ const REQUIRED_FILES = Object.freeze([
   'templates/references/status-reporting.md',
 ]);
 
-test('clean offline packed install exposes the supported workflow-exception package', () => {
+test('clean offline packed install exposes the supported workflow-exception package', async () => {
   const sourceStatusBefore = execFileSync('git', ['status', '--porcelain=v1'], {
     cwd: ROOT,
     encoding: 'utf8',
@@ -87,12 +87,52 @@ test('clean offline packed install exposes the supported workflow-exception pack
     );
 
     const installedRoot = join(consumerDir, 'node_modules', '@kburson', 'ai-task-manager');
+    assert.equal(existsSync(join(consumerDir, 'node_modules', 'ai-task-manager')), false);
     for (const required of REQUIRED_FILES) {
       assert.ok(
         existsSync(join(installedRoot, required)),
         `required installed file missing: ${required}`
       );
     }
+
+    // Import the installed modules themselves: a manifest-only file check
+    // cannot catch an omitted transitive dependency in the published graph.
+    const enforcement = await import(
+      pathToFileURL(join(installedRoot, 'scripts/task-tracker/lib/workflow-policy/enforcement.mjs'))
+    );
+    const preflight = await import(
+      pathToFileURL(join(installedRoot, 'scripts/task-tracker/lib/workflow-policy/preflight.mjs'))
+    );
+    for (const name of [
+      'evaluateWorkflowBoundary',
+      'indeterminateWorkflowBoundary',
+      'loadWorkflowBoundary',
+      'evaluateManagedProviderBoundary',
+      'createGithubWorkflowBoundaryRuntime',
+      'requirementIdsForGuardRefusals',
+    ])
+      assert.equal(typeof enforcement[name], 'function', `installed enforcement export: ${name}`);
+    for (const name of [
+      'evaluateWorkflowPreflight',
+      'indeterminateWorkflowPreflightReport',
+      'formatWorkflowPreflightReport',
+    ])
+      assert.equal(typeof preflight[name], 'function', `installed preflight export: ${name}`);
+    assert.deepEqual(enforcement.requirementIdsForGuardRefusals([{ id: 'plan-exit-deep-dive' }]), [
+      'planning.deep-dive',
+    ]);
+    const unavailable = preflight.indeterminateWorkflowPreflightReport({
+      repository: 'example/consumer',
+      issue: 57,
+      targetState: 'develop',
+      inspectedAt: '2026-09-14T12:00:00.000Z',
+      error: new Error('offline smoke'),
+    });
+    assert.equal(unavailable.status, 'indeterminate');
+    assert.equal(
+      JSON.parse(preflight.formatWorkflowPreflightReport(unavailable, { json: true })).schema,
+      'aitm.workflow-preflight-report/v1'
+    );
 
     const consumerModule = join(consumerDir, 'consume.mjs');
     writeFileSync(

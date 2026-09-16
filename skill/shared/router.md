@@ -11,7 +11,10 @@ Tier-1 rules and routing.
 
 On first read, emit `aitm-skill-loaded:router:1.1.0` once. Tier-2 rule files announce their own sentinels on JIT load.
 
-**Full design:** `node_modules/ai-task-manager/docs/DESIGN.md`
+**Full design:** `node_modules/@kburson/ai-task-manager/docs/DESIGN.md`.
+
+Paths: `skill/`, `scripts/`, `docs/`: scoped root or AITM dogfood checkout.
+`rules/`: beside router; `.ai-task-manager/`: project root.
 
 ## Hard cross-cutting rules
 

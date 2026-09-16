@@ -18,14 +18,17 @@ After `/clear`, `/compact`, or a package update, treat the sentinel as absent an
 
 Load and follow the canonical shared task workflow:
 
-`node_modules/ai-task-manager/skill/shared/router.md`
+`node_modules/@kburson/ai-task-manager/skill/shared/router.md`
+
+AITM source checkouts may fall back to `skill/shared/router.md` when the scoped
+package is absent. Resolve `rules/...` beside that router.
 
 The router is a Tier-1 stub: hard cross-cutting rules + verb → rule-file routing table. Detailed contracts live in `skill/shared/rules/*.md` (Tier-2) and load JIT only when their verb runs. Rule files are tool-agnostic — any Codex-specific divergence stays in this adapter file.
 
 Codex-specific conventions:
 
 - Treat `/task ...` as a natural-language request unless the environment provides a native slash command. Run the task-tracker script directly when needed.
-- Use executable scripts from `node_modules/ai-task-manager/scripts/`.
+- Executable scripts resolve under `node_modules/@kburson/ai-task-manager/scripts/` first; only an AITM source checkout may fall back to its own `scripts/` directory after explicit repository dogfood setup.
 - Runtime project state lives in `.ai-task-manager/`; read legacy `.claude/` state only as fallback when the shared file is absent.
 - Codex repo-local skills are installed under `.agents/skills/task/SKILL.md`.
 - Codex hooks are installed under `.codex/hooks.json`; project-local hooks require a trusted project and may need `/hooks` review before they run.
@@ -34,7 +37,7 @@ Codex-specific conventions:
 - For `github.merge-pull-request`, use only the sanctioned GitHub `merge_pull_request` integration exposed to the Codex host. It must accept the exact expected head SHA and the other bytes required by `rules/deliver.md`; unavailable means `missing-capability`, never a shell fallback.
 
 Primary command form — invoke through the `aitm` orchestrator, never by a
-support script's `node_modules/ai-task-manager/scripts/...` filepath:
+support script's package filepath:
 
 ```bash
 npx aitm <verb> [args...]      # /task state-machine verbs

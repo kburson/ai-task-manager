@@ -59,6 +59,8 @@ const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
 
 const PKG_NAME = 'ai-task-manager';
+const INSTALLED_PACKAGE_ROOT = 'node_modules/@kburson/ai-task-manager';
+const installedPackagePath = (repoRelPath) => `${INSTALLED_PACKAGE_ROOT}/${repoRelPath}`;
 
 // TTY gate: return raw string when stdout is not a TTY (pipe, file, CI log) so
 // downstream consumers don't see raw escape sequences as garbage characters.
@@ -145,8 +147,9 @@ const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-sto
 const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
   'scripts/task-tracker/hooks/on-user-prompt.mjs'
 );
-const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
+const CODEX_PROMPT_TIMESTAMP_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/codex-prompt-timestamp.mjs'
+);
 // EPIC #238 / #240 — AskUserQuestion pause/resume hooks. The same module is
 // invoked twice with a phase argument: `pause` (PreToolUse) brackets the
 // question open, `resume` (PostToolUse) closes it with the measured wait.
@@ -170,11 +173,51 @@ const STOP_AUDIT_HOOK_CMD = hookBootstrapCommand(
 // when at least one seed file was accepted at install (a `none` selection
 // installs no hook).
 const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
-// #869 — SessionStart seed check: inspect + heal an unseeded worktree before any
-// other hook resolves a node_modules path. Routed through the shim like the rest.
-const SEED_CHECK_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/ensure-worktree-seeded.mjs');
+// #1631 — formerly emitted for consumer SessionStart. Retained only so an
+// upgrade removes the exact scoped-first bootstrap command; never register it.
+const RETIRED_SEED_CHECK_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/ensure-worktree-seeded.mjs'
+);
 // Bare-path forms shipped before #869 — stripped and re-registered as shims so
 // re-running the installer migrates old settings idempotently (mirrors #792).
+// Frozen removal-only serialization from 60f43d809f1b4e8475deac559980100b630a2a0b.
+// Do not derive historical bytes from the live command builder: its quoting,
+// diagnostics, and argument encoding can change independently of migration.
+function historicalBootstrapCommand(kind, repoRelPath, ...extraArgs) {
+  const guard = kind === 'guard';
+  const grok = kind === 'grok';
+  const label = guard
+    ? repoRelPath
+        .split('/')
+        .pop()
+        .replace(/\.mjs$/, '')
+    : repoRelPath.split('/').pop();
+  const candidates = JSON.stringify([`node_modules/ai-task-manager/${repoRelPath}`, repoRelPath]);
+  const argvTail = extraArgs.map((arg) => JSON.stringify(String(arg))).join(',');
+  const program =
+    `const {${grok ? 'existsSync,realpathSync' : 'existsSync'}}=require('fs');` +
+    `const {resolve}=require('path');` +
+    `const {pathToFileURL}=require('url');` +
+    `const c=${candidates};` +
+    `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
+    `if(!p){` +
+    (grok
+      ? `const r=${JSON.stringify(`AITM Grok hook entrypoint is unavailable: ${label}`)};process.stdout.write(JSON.stringify({decision:'deny',reason:r}));`
+      : '') +
+    `process.stderr.write('aitm ${label}: ${guard ? 'guard' : 'hook'} entrypoint unresolved ` +
+    `(node_modules + repo-relative both absent) — ${guard || grok ? 'failing closed' : 'skipping'}\\n');process.exit(${guard || grok ? 2 : 0});}` +
+    (grok ? 'const e=realpathSync(p);' : '') +
+    (guard
+      ? ''
+      : `process.argv=[process.argv[0],${grok ? 'e' : 'p'}${argvTail ? ',' + argvTail : ''}];`) +
+    `import(pathToFileURL(${grok ? 'e' : 'p'}).href);`;
+  return `node -e "${program}"`;
+}
+
+const HISTORICAL_MEMORY_INDEX_HOOK_CMD = historicalBootstrapCommand(
+  'hook',
+  'scripts/task-tracker/hooks/memory-index.mjs'
+);
 const LEGACY_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs',
@@ -184,6 +227,20 @@ const LEGACY_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs',
+  RETIRED_SEED_CHECK_HOOK_CMD,
+  ...[
+    ['scripts/task-tracker/hook-handler.mjs'],
+    ['scripts/task-tracker/commit-trail-handler.mjs'],
+    ['scripts/task-tracker/hooks/on-stop.mjs'],
+    ['scripts/task-tracker/hooks/on-user-prompt.mjs'],
+    ['scripts/task-tracker/hooks/on-ask.mjs', 'pause'],
+    ['scripts/task-tracker/hooks/on-ask.mjs', 'resume'],
+    ['scripts/task-tracker/hooks/stop-audit-pause-resume.mjs'],
+    ['scripts/task-tracker/hooks/memory-index.mjs'],
+    ['scripts/task-tracker/ensure-worktree-seeded.mjs'],
+  ].map((args) => historicalBootstrapCommand('hook', ...args)),
 ];
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
@@ -195,9 +252,26 @@ const LEGACY_COMMIT_TRAIL_HOOK_COMMANDS = ['.claude/hooks/commit-trail.sh'];
 // runs). `patchSettingsJson` removes them and re-registers the `node -e`
 // existence-pick form (`guardBootstrapCommand`) so re-running the installer
 // migrates old settings idempotently instead of leaving both entries.
-const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.map(
-  (name) => `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`
-);
+const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.flatMap((name) => [
+  `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`,
+  historicalBootstrapCommand('guard', `scripts/task-tracker/${name}.mjs`),
+]);
+
+function existingMemoryIndexEvents(config, managedCommands) {
+  return new Set(
+    ['SessionStart', 'PostCompact'].filter((event) =>
+      (Array.isArray(config.hooks[event]) ? config.hooks[event] : []).some((entry) =>
+        managedCommands.some((command) => hookEntryHasCommand(entry, command))
+      )
+    )
+  );
+}
+
+const MEMORY_INDEX_COMMANDS = [
+  MEMORY_INDEX_HOOK_CMD,
+  HISTORICAL_MEMORY_INDEX_HOOK_CMD,
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
+];
 
 function hookEntryHasCommand(entry, command) {
   return (
@@ -232,6 +306,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   }
 
   if (!settings.hooks) settings.hooks = {};
+  const existingMemory = existingMemoryIndexEvents(settings, MEMORY_INDEX_COMMANDS);
 
   // #869 — strip every pre-shim bare-path lifecycle hook command across all
   // events, then let the registrations below re-add the shim forms. A global
@@ -241,16 +316,6 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
     if (Array.isArray(settings.hooks[event])) {
       settings.hooks[event] = removeHookCommands(settings.hooks[event], LEGACY_HOOK_COMMANDS);
     }
-  }
-
-  // #869 — seed check FIRST on SessionStart: heal an unseeded worktree before
-  // any other hook resolves a node_modules path. Idempotent by command string.
-  if (!Array.isArray(settings.hooks.SessionStart)) settings.hooks.SessionStart = [];
-  if (!settings.hooks.SessionStart.some((h) => hookEntryHasCommand(h, SEED_CHECK_HOOK_CMD))) {
-    settings.hooks.SessionStart.unshift({
-      matcher: '',
-      hooks: [{ type: 'command', command: SEED_CHECK_HOOK_CMD }],
-    });
   }
 
   const hookEntry = { matcher: '', hooks: [{ type: 'command', command: TIMING_HOOK_CMD }] };
@@ -391,8 +456,9 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   // #728 — always-loaded memory-index hook on SessionStart + PostCompact.
   // Installed ONLY when at least one memory-seed file was accepted at install.
   // Idempotent: matched by command string so re-running install never dupes.
-  if (memoryIndexHook) {
+  if (memoryIndexHook || existingMemory.size > 0) {
     for (const event of ['SessionStart', 'PostCompact']) {
+      if (!memoryIndexHook && !existingMemory.has(event)) continue;
       if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
       const already = settings.hooks[event].some((h) =>
         hookEntryHasCommand(h, MEMORY_INDEX_HOOK_CMD)
@@ -434,6 +500,15 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
   }
 
   if (!config.hooks) config.hooks = {};
+  const existingMemory = existingMemoryIndexEvents(config, MEMORY_INDEX_COMMANDS);
+
+  // #1631 — strip exact pre-scoped lifecycle commands before registering the
+  // scoped-first forms below. This preserves unrelated user hook commands.
+  for (const event of Object.keys(config.hooks)) {
+    if (Array.isArray(config.hooks[event])) {
+      config.hooks[event] = removeHookCommands(config.hooks[event], LEGACY_HOOK_COMMANDS);
+    }
+  }
 
   function add(event, matcher, command, extra = {}) {
     if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
@@ -458,9 +533,14 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
     );
   }
 
-  if (memoryIndexHook) {
-    add('SessionStart', 'startup|resume|clear|compact', MEMORY_INDEX_HOOK_CMD);
-    add('PostCompact', 'manual|auto', MEMORY_INDEX_HOOK_CMD);
+  for (const event of ['SessionStart', 'PostCompact']) {
+    if (memoryIndexHook || existingMemory.has(event)) {
+      add(
+        event,
+        event === 'SessionStart' ? 'startup|resume|clear|compact' : 'manual|auto',
+        MEMORY_INDEX_HOOK_CMD
+      );
+    }
   }
 
   // #792 — strip any legacy bare `node node_modules/…/<guard>.mjs` PreToolUse
@@ -505,6 +585,28 @@ function legacyGrokHookCommand(handlerName) {
   return `node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler ${handlerName}`;
 }
 
+const LEGACY_GROK_HOOK_COMMANDS = [
+  'seed',
+  'timing',
+  'bash-guard',
+  'activity-guard',
+  'source-edit-gate',
+  'agent-guard',
+  'memory-index',
+]
+  .flatMap((handlerName) => [
+    legacyGrokHookCommand(handlerName),
+    historicalBootstrapCommand(
+      'grok',
+      'scripts/task-tracker/hooks/grok-wire.mjs',
+      '--handler',
+      handlerName
+    ),
+  ])
+  // #1631 — formerly emitted for consumer SessionStart. Cleanup-only: Grok
+  // consumers must no longer register repository worktree seeding.
+  .concat(grokHookCommand('seed'));
+
 export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) {
   let config = {};
   if (existsSync(hooksPath)) {
@@ -516,8 +618,25 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   }
   if (!config.hooks) config.hooks = {};
 
+  const legacyMemoryIndexEvents = existingMemoryIndexEvents(config, [
+    legacyGrokHookCommand('memory-index'),
+    historicalBootstrapCommand(
+      'grok',
+      'scripts/task-tracker/hooks/grok-wire.mjs',
+      '--handler',
+      'memory-index'
+    ),
+  ]);
+
+  // #1631 — remove only exact pre-scoped managed Grok commands. The desired
+  // registrations below add scoped-first replacements while leaving user hooks.
+  for (const event of Object.keys(config.hooks)) {
+    if (Array.isArray(config.hooks[event])) {
+      config.hooks[event] = removeHookCommands(config.hooks[event], LEGACY_GROK_HOOK_COMMANDS);
+    }
+  }
+
   const requiredSpecs = [
-    ['SessionStart', 'startup|resume|clear|compact', 'seed'],
     ['SessionStart', 'startup|resume|clear|compact', 'timing'],
     ['PreCompact', 'manual|auto', 'timing'],
     ['PostCompact', 'manual|auto', 'timing'],
@@ -533,10 +652,13 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   ];
   const existingMemorySpecs = memorySpecs.filter(([event, , handlerName]) => {
     const entries = Array.isArray(config.hooks[event]) ? config.hooks[event] : [];
-    return entries.some(
-      (entry) =>
-        hookEntryHasCommand(entry, grokHookCommand(handlerName)) ||
-        hookEntryHasCommand(entry, legacyGrokHookCommand(handlerName))
+    return (
+      legacyMemoryIndexEvents.has(event) ||
+      entries.some(
+        (entry) =>
+          hookEntryHasCommand(entry, grokHookCommand(handlerName)) ||
+          hookEntryHasCommand(entry, legacyGrokHookCommand(handlerName))
+      )
     );
   });
   const specs = [...requiredSpecs, ...(memoryIndexHook ? memorySpecs : existingMemorySpecs)];
@@ -642,6 +764,9 @@ function replaceWithSymlink(dest, src, label) {
 }
 
 export function claudeStub() {
+  const adapterPath = installedPackagePath(getProvider('claude').skillAdapterPath);
+  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
+  const scriptsPath = installedPackagePath('scripts/');
   return [
     '---',
     'name: task',
@@ -649,19 +774,6 @@ export function claudeStub() {
     '---',
     '',
     '# Task',
-    '',
-    '## Step 0 — Verify worktree seeding (run before anything else)',
-    '',
-    'If this session runs in a git worktree, its `node_modules` may be absent, which',
-    'breaks the skill reads below and silently redirects module resolution to the',
-    'parent checkout. The SessionStart hook heals this automatically; if you have any',
-    'doubt it ran, verify and self-heal before loading the skill:',
-    '',
-    '```bash',
-    "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
-    '```',
-    '',
-    'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
     '',
     '## Load-Once Procedure',
     '',
@@ -674,8 +786,8 @@ export function claudeStub() {
     '',
     'Files (id — path):',
     '',
-    `- \`adapter\` — \`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
-    '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
+    `- \`adapter\` — \`${adapterPath}\``,
+    `- \`shared\` — \`${sharedSkillPath}\``,
     '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on sub-issue pickup)',
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
@@ -685,16 +797,19 @@ export function claudeStub() {
     '',
     'Load and follow the canonical Claude adapter instructions from:',
     '',
-    `\`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
+    `\`${adapterPath}\``,
     '',
     'Use executable scripts from:',
     '',
-    '`node_modules/ai-task-manager/scripts/`',
+    `\`${scriptsPath}\``,
     '',
   ].join('\n');
 }
 
 export function codexStub() {
+  const adapterPath = installedPackagePath(getProvider('codex').skillAdapterPath);
+  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
+  const scriptsPath = installedPackagePath('scripts/');
   return [
     '---',
     'name: task',
@@ -702,19 +817,6 @@ export function codexStub() {
     '---',
     '',
     '# Task',
-    '',
-    '## Step 0 — Verify worktree seeding (run before anything else)',
-    '',
-    'If this session runs in a git worktree, its `node_modules` may be absent, which',
-    'breaks the skill reads below and silently redirects module resolution to the',
-    'parent checkout. The SessionStart hook heals this automatically; if you have any',
-    'doubt it ran, verify and self-heal before loading the skill:',
-    '',
-    '```bash',
-    "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
-    '```',
-    '',
-    'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
     '',
     '## Load-Once Procedure',
     '',
@@ -727,8 +829,8 @@ export function codexStub() {
     '',
     'Files (id — path):',
     '',
-    `- \`codex-adapter\` — \`node_modules/ai-task-manager/${getProvider('codex').skillAdapterPath}\``,
-    '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
+    `- \`codex-adapter\` — \`${adapterPath}\``,
+    `- \`shared\` — \`${sharedSkillPath}\``,
     '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on issue pickup)',
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
@@ -738,16 +840,17 @@ export function codexStub() {
     '',
     'Load and follow the canonical Codex adapter instructions from:',
     '',
-    `\`node_modules/ai-task-manager/${getProvider('codex').skillAdapterPath}\``,
+    `\`${adapterPath}\``,
     '',
     'Use executable scripts from:',
     '',
-    '`node_modules/ai-task-manager/scripts/`',
+    `\`${scriptsPath}\``,
     '',
   ].join('\n');
 }
 
 function grokStub() {
+  const adapterPath = installedPackagePath(getProvider('grok').skillAdapterPath);
   return [
     '---',
     'name: task',
@@ -759,7 +862,7 @@ function grokStub() {
     '',
     'Load and follow the canonical Grok adapter instructions from:',
     '',
-    `\`node_modules/ai-task-manager/${getProvider('grok').skillAdapterPath}\``,
+    `\`${adapterPath}\``,
     '',
   ].join('\n');
 }

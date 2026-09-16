@@ -164,6 +164,10 @@ test('rejects a dogfood link that resolves outside the current worktree', () => 
 });
 
 test('setup script installs, repairs, and verifies without binding task work', () => {
+  const manifest = JSON.parse(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+  assert.equal(manifest.scripts.prepare, undefined);
+  assert.equal(manifest.scripts['link:self'], 'node scripts/task-tracker/ensure-self-link.mjs');
+
   assert.equal(existsSync(SETUP_SCRIPT), true, 'setup-local-worktree.sh must exist');
 
   const source = readFileSync(SETUP_SCRIPT, 'utf8');

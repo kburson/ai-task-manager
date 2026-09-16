@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #309
+// @story #1631
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -67,8 +67,9 @@ const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-sto
 const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
   'scripts/task-tracker/hooks/on-user-prompt.mjs'
 );
-const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
+const CODEX_PROMPT_TIMESTAMP_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/codex-prompt-timestamp.mjs'
+);
 const LEGACY_TIMING_HOOK_CMD = '.claude/hooks/task-tracker.sh';
 const LEGACY_COMMIT_TRAIL_HOOK_CMD = '.claude/hooks/commit-trail.sh';
 const CANONICAL_DOCS = [
@@ -151,18 +152,18 @@ try {
   assert.ok(existsSync(grokSkill), 'Grok SKILL.md missing from default all-provider install');
   assert.match(
     readFileSync(claudeSkill, 'utf8'),
-    /skill\/adapters\/claude\/SKILL\.md/,
-    'Claude stub must point to adapter'
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/claude\/SKILL\.md/,
+    'Claude stub must point to its scoped-package adapter'
   );
   assert.match(
     readFileSync(codexSkill, 'utf8'),
-    /skill\/adapters\/codex\/SKILL\.md/,
-    'Codex stub must point to adapter'
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md/,
+    'Codex stub must point to its scoped-package adapter'
   );
   assert.match(
     readFileSync(grokSkill, 'utf8'),
-    /skill\/adapters\/grok\/SKILL\.md/,
-    'Grok stub must point to adapter'
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/grok\/SKILL\.md/,
+    'Grok stub must point to its scoped-package adapter'
   );
 
   mkdirSync(path.join(grokOnlyTarget, '.claude'), { recursive: true });
@@ -191,6 +192,23 @@ try {
     /grok, codex, claude/
   );
   const codexSkillBody = readFileSync(codexSkill, 'utf8');
+  const claudeSkillBody = readFileSync(claudeSkill, 'utf8');
+  for (const [provider, body] of [
+    ['Claude', claudeSkillBody],
+    ['Codex', codexSkillBody],
+  ]) {
+    assert.match(
+      body,
+      /node_modules\/@kburson\/ai-task-manager\/skill\/shared\/SKILL\.md/,
+      `${provider} stub must load the shared skill from the scoped package`
+    );
+    assert.match(
+      body,
+      /node_modules\/@kburson\/ai-task-manager\/scripts\//,
+      `${provider} stub must load scripts from the scoped package`
+    );
+    assert.doesNotMatch(body, /ensure-worktree-seeded|link:self|node_modules\/ai-task-manager\//);
+  }
   assert.match(
     codexSkillBody,
     /## Load-Once Procedure/,
@@ -203,12 +221,12 @@ try {
   );
   assert.match(
     codexSkillBody,
-    /`codex-adapter` — `node_modules\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md`/,
+    /`codex-adapter` — `node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md`/,
     'Codex stub must load the Codex adapter with codex-adapter stamp id'
   );
   assert.match(
     codexSkillBody,
-    /`shared` — `node_modules\/ai-task-manager\/skill\/shared\/SKILL\.md`/,
+    /`shared` — `node_modules\/@kburson\/ai-task-manager\/skill\/shared\/SKILL\.md`/,
     'Codex stub must include shared skill in load-once file list'
   );
 
