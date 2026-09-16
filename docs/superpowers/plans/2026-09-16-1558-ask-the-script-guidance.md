@@ -10,7 +10,9 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-15-1558-ask-the-script-guidance-design.md`
 
-**Plan status:** DRAFT — round-2 serialization feasibility is **NO-GO** under the current full-provenance wire format and ratified working budgets. Manual plan review continues. Only the bounded characterization work described below can be proposed for initial backlog hydration; this file authorizes neither implementation nor issue creation.
+**Plan status:** Manual author/reviewer agreement reached in round 3 on the plan's characterization scope and feasibility gates; **not implementation-ready or human-approved for execution**. Serialization feasibility remains **NO-GO** under the current full-provenance wire format and ratified working budgets. Only the bounded characterization work described below can be proposed for initial backlog hydration; this file authorizes neither implementation nor issue creation.
+
+**Review closure:** Claude's `docs/superpowers/reviews/1558/plan/2026-09-16-round-3-reviewer-claude.md` and Codex's `docs/superpowers/reviews/1558/plan/2026-09-16-round-3-author-codex.md` record terminal agreement with no open review findings. Task 1's inventory/measurement portion remains subject to human acceptance; Task 1 runtime changes and Tasks 2–15 remain blocked by the feasibility gate. Round 3's optional terse-encoding experiment is exploratory input, not an approved wire contract or passing acceptance evidence. No ratified design requirement or numeric ceiling changed.
 
 **Source provenance:** Repository baseline `a5d0245b812959e906adc834f149cebca43ab08d` (merge of PR #1647). Source SHA-256: `8f3f37bc4724c072fe222cd8f720499c825748934c8b1689950e66ce261a1a8d`. The source and closing review files preserve their historical DRAFT/pending-human wording; the human's instruction on 2026-09-16 identifies that unchanged design as ratified. Do not rewrite those reviewed bytes to synchronize status labels. Closing records are under `docs/superpowers/reviews/1558/spec/`.
 
