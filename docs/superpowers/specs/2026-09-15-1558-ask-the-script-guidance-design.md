@@ -831,7 +831,8 @@ plan approval) is:
         "args": {
           "issue": 1631
         }
-      }
+      },
+      "args": {}
     }
   ],
   "normalizations": [],
@@ -891,8 +892,10 @@ guards passed. Optional reads deliberately not required by the selected path do
 not become failures. A failed required read cannot become an empty observation.
 
 The shared code registry defines `args` schemas for blocker causes as well as
-remediation arguments. `args` is required when its code declares arguments and
-absent when the declared shape is empty; undeclared keys are invalid. Initial
+remediation arguments. Every blocker cause requires `args`, explicitly `{}`
+when its code declares no arguments; undeclared keys are invalid. For blocker
+causes, operational warnings, and human requests alike, a missing `args` key is
+a validation failure, never an empty object. Initial
 collection codes are `authority-read-failed` with
 `{ source, reason }` and `authority-read-skipped` with `{ source }`. `source`
 is a registered authority-resource ID from A1's inventory, not a free-text
@@ -968,13 +971,30 @@ evaluation, not a warning in a successful explanation. A post-success
 `{ requests: [...] }` with a nonempty ordered array. Each request is exactly
 `{ kind, actor, subject, args }`. `subject` is
 `{ issue: <positive integer>, actionId: <registered action ID> }` and names the
-evaluated scope. Closed initial kinds are `plan-approval`, `review-approval`,
+scope of the required human work. Closed initial kinds are `plan-approval`, `review-approval`,
 and `manual-investigation`. The first two use actor `configured-approver`;
 investigation uses `human-operator`. Actor names denote roles only; existing
 approval authority still selects and validates the actual authorized person.
 `args` is `{}` for plan approval, `{ head: <full HEAD> }` for exact-head review
 approval, and `{ guardId, code }` for investigation of a returned blocker.
 New kinds require reviewed registry definitions, not free-form strings.
+
+`subject.issue` may differ from the queried `issue` only when a returned blocker
+explicitly identifies the other issue through its registered typed arguments or
+remediation. Both issues are in the current repository. The request's subject
+and action must match that blocker's registered subject/action mapping; never
+derive a target from raw reason text. For example, a parent `close` result can
+require a child's plan approval: `result.issue`/`result.actionId` still describe
+parent/close, while the request subject is child/promote and the corresponding
+plan-approval remediation explicitly names the child.
+
+The request is descriptive, not executable input. The original action applies
+only to `result.issue`; a remediation uses its own validated typed target. Before
+acting on another issue, follow the existing binding/approval workflow and obtain
+fresh evaluation for that target. Neither the parent's readiness nor its request
+authorizes the child's action. For manual investigation of unresolved navigation
+only, `subject.actionId` may be null, matching the indeterminate result; this
+does not select an executable action. Cross-repository targets are outside v1.
 
 Requests follow the order of their corresponding blockers. Preserve all
 simultaneous requirements; a non-null value never means approval was granted
@@ -1137,7 +1157,10 @@ inventoried legacy refusal maps to:
 {
   "guardId": "registered-legacy-guard",
   "code": "unclassified-refusal",
-  "noAutomaticRemediation": { "reason": "legacy-guard-requires-human-investigation" }
+  "noAutomaticRemediation": {
+    "reason": "legacy-guard-requires-human-investigation"
+  },
+  "args": {}
 }
 ```
 
@@ -1219,6 +1242,15 @@ additive fields because v1 consumers reject unknown keys; a silent minor-version
 extension is not supported. Naming `ActionPresentationV1` does not create a
 second evaluator or another discriminator on the wire.
 
+The envelope versions `result`, `guidance`, and the declared diagnostic members
+together. A major bump requires re-certification of both result and guidance
+consumers (including adapters and aliases), the #1561 shared-contract boundary,
+and §20.2 measurements, even when only one member changes. The internal decision
+version changes only if its own contract changes. A flag cannot add experimental
+keys to v1; it may select only an already declared mode. Diagnostic mode requires
+both `fullDecision` and `diagnosticMessages`; routine mode forbids both. These
+mode-dependent keys are part of v1's closed schema, not unknown-key exceptions.
+
 All seven presentation fields are required, including explicit empty arrays
 and null values:
 
@@ -1276,7 +1308,8 @@ policy, matching the internal example in §13.2:
           "args": {
             "issue": 1631
           }
-        }
+        },
+        "args": {}
       }
     ],
     "normalizations": [],
@@ -1394,9 +1427,11 @@ npx aitm explain #1631 --action close --diagnostic --json
 `--diagnostic` is a boolean switch on `explain` and its explanation aliases.
 It retains the same operational response and adds `fullDecision`, whose value is
 the full `aitm.action-decision/v1` result from that same evaluation. Associated
-raw guard messages, when available, appear in an optional `diagnosticMessages`
-array of `{ guardId, text, untrusted: true }` records. They are never converted
-to instructions; this array is absent in routine output. The complete
+raw guard messages appear in a required `diagnosticMessages` array of
+`{ guardId, text, untrusted: true }` records, explicitly `[]` when there are none.
+Missing either diagnostic member in diagnostic mode is a validation failure.
+Messages are never converted to instructions; both diagnostic members are absent
+in routine output. The complete
 observations, full identities/digests, actual per-source timestamps, and
 normalization digests are available here without shortening or time hoisting.
 This mode does not load static human catalog prose; §16 owns that separate use.
@@ -1779,6 +1814,8 @@ dependency and work in production-only package-boundary tests.
   remain visible; internal full hashes/identities/times remain intact;
 - missing versus explicit-empty fields, unsupported envelope versions, unknown
   keys, and falsely emptied operational data fail validation/preservation checks;
+- missing `args` fails for blocker causes, warnings, and human requests, including
+  no-argument codes whose valid value is explicitly `{}`;
 - every blocked/indeterminate result has typed causes, including required-read
   timeout/rate-limit/incomplete/skipped cases and unknown/conflicting navigation;
 - warning producer/domain/args validation, ordering without code-only dedup,
@@ -1803,6 +1840,11 @@ dependency and work in production-only package-boundary tests.
   even when a later diagnostic call succeeds; no fabricated observation is used;
 - normal and diagnostic output use `result` consistently; only explicit
   diagnostics add `fullDecision`, without confusing the two schemas;
+- diagnostic mode requires `diagnosticMessages` even when empty; routine mode
+  rejects diagnostic members, and flags never permit unknown envelope keys;
+- a parent refusal naming child human work preserves distinct result/request/
+  remediation targets; mismatched or unregistered targets fail validation, and
+  child work uses its own binding and fresh evaluation rather than parent readiness;
 - diagnostic mode exposes the same invocation's complete internal result without
   extra authority reads, evaluation, writes, or instruction expansion;
 - every routine remediation is actionable from its returned typed data and
