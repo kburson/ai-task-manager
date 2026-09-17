@@ -1,0 +1,91 @@
+{
+  "schema": "aitm.guidance-legacy-authority-baseline/v1",
+  "sourceCommit": "8f3547e4fdab9f05f293d9b65e95b62f3972424c",
+  "observationModel": "bounded-non-atomic",
+  "resources": [
+    {
+      "id": "session-state",
+      "transport": "local-file",
+      "identity": "session plus project root",
+      "revision": "content-digest",
+      "requiredBy": ["bind", "resume", "promote", "test", "review", "deliver", "close"]
+    },
+    {
+      "id": "worktree-binding",
+      "transport": "local-git",
+      "identity": "absolute worktree path plus branch",
+      "revision": "HEAD",
+      "requiredBy": ["bind", "resume", "test", "deliver", "close"]
+    },
+    {
+      "id": "repository-head",
+      "transport": "local-git",
+      "identity": "repository plus worktree",
+      "revision": "full HEAD",
+      "requiredBy": ["promote", "test", "review", "deliver", "close"]
+    },
+    {
+      "id": "issue-body",
+      "transport": "github-cli",
+      "identity": "repository plus issue number",
+      "revision": "body digest and body-version",
+      "requiredBy": ["bind", "resume", "promote", "test", "review", "deliver", "close"]
+    },
+    {
+      "id": "board-state",
+      "transport": "github-graphql",
+      "identity": "project item plus status field",
+      "revision": "project field value",
+      "requiredBy": ["bind", "resume", "promote", "test", "review", "deliver", "close"]
+    },
+    {
+      "id": "issue-owner",
+      "transport": "github-graphql",
+      "identity": "repository issue assignees",
+      "revision": "ordered login set",
+      "requiredBy": ["bind", "resume", "promote", "test", "review", "deliver", "close"]
+    },
+    {
+      "id": "dependency-graph",
+      "transport": "github-graphql",
+      "identity": "repository issue blockedBy and blocking edges",
+      "revision": "node identity and state set",
+      "requiredBy": ["promote", "review", "close"]
+    },
+    {
+      "id": "project-policy",
+      "transport": "local-file",
+      "identity": "task-tracker configuration",
+      "revision": "content digest",
+      "requiredBy": ["promote", "test", "review", "deliver", "close"]
+    },
+    {
+      "id": "verification-evidence",
+      "transport": "issue-body-and-local-git",
+      "identity": "verification receipts plus exact HEAD",
+      "revision": "receipt digest and full HEAD",
+      "requiredBy": ["test", "review", "deliver", "close"]
+    },
+    {
+      "id": "review-approval",
+      "transport": "issue-body-and-github-review",
+      "identity": "issue approval marker plus pull-request review",
+      "revision": "approved full HEAD",
+      "requiredBy": ["deliver", "close"]
+    },
+    {
+      "id": "delivery-record",
+      "transport": "github-comments-and-pull-request",
+      "identity": "delivery intent result and pull request",
+      "revision": "transaction identity plus merge commit",
+      "requiredBy": ["deliver", "close"]
+    },
+    {
+      "id": "mutation-lock",
+      "transport": "local-lock-and-environment",
+      "identity": "repository issue verb owner",
+      "revision": "lock token",
+      "requiredBy": ["bind", "resume", "promote", "test", "review", "deliver", "close"]
+    }
+  ]
+}
