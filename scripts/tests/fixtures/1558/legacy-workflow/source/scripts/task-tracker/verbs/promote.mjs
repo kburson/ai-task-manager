@@ -1,0 +1,823 @@
+// `promote` verb — directional forward state-change (#81 rename of `/task move`).
+//
+// One verb advances the issue by exactly one state along the FORWARD chain:
+//   backlog → refine → ready-for-plan → plan → develop → test → review → done.
+//
+// Promote is the only sanctioned forward chokepoint. Existing stage verbs
+// (refine / plan-approve / approve / review / close) remain as aliases — promote
+// delegates to them so their gates and side effects run unchanged. The new
+// behaviour layered on top is:
+//
+//   1. Drift detection (live board state vs. recorded lastKnownState).
+//   2. Stamp `<!-- aitm-last-known-state -->` metadata to the new target.
+//   3. Append a `move:<target>` audit row to the ⏱ Timing Log.
+//
+// Pure core: `runPromote({ issueNumber, cfg, deps })`. All side-effecting
+// callers are injected so tests stay offline.
+
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { pexec } from '../../gh/lib/gh-client.mjs';
+
+import { actionPolicyFor, normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
+import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
+import { getProjectDir } from '../paths.mjs';
+import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
+import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
+import { stampStartTime } from '../lib/stamp-start-time.mjs';
+import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { appendAuditMarker } from '../lib/markers.mjs';
+import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
+import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { runGuards } from '../lib/guard-registry.mjs';
+import '../lib/guard-bootstrap.mjs';
+import { assertBoundToIssue } from '../lib/bind-context.mjs';
+import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
+import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
+import { nowIso } from '../lib/evidence-runner.mjs';
+import {
+  isAgentReviewComplete,
+  agentReviewIncompleteReason,
+} from '../lib/agent-review/review-gate.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
+import { loadSession } from '../lib/session-store.mjs';
+import { currentSessionId } from '../word-counter.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+  requirementIdsForGuardRefusals,
+} from '../lib/workflow-policy/enforcement.mjs';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
+
+// #336 — refusal-id → verb-status translation. promote.mjs delegates pre-
+// transition rule enforcement to `runGuards(from, to, ctx)`; refusals from
+// the registry are translated to the verb's structured `{ status, blockers,
+// message }` vocabulary that `verbs/check`, `auto`, and the slow tests pin.
+// Unknown refusal ids default to `guard-refused`.
+const REFUSAL_ID_TO_STATUS = {
+  'refine-entry-fields-priority': 'refine-gate-refused',
+  'plan-entry-fields-body': 'refine-gate-refused',
+  'plan-entry-fields-board': 'refine-exit-refused',
+  'refine-exit-current-snapshot': 'refine-exit-refused',
+  'refine-exit-wip-budget': 'wip-budget-refused',
+  'plan-exit-planned-estimate': 'planned-estimate-refused',
+  'plan-exit-deep-dive': 'deep-dive-refused',
+  'plan-exit-plan-metadata': 'plan-metadata-refused',
+  'plan-exit-ownership': 'ownership-refused',
+  // #386 — plan→develop refuses a body with no `## Verification Commands`
+  // section (>= 1 parseable entry); the gate-first `test` verb would otherwise
+  // dead-end at "nothing to verify".
+  'plan-exit-vc-presence': 'vc-presence-refused',
+  'plan-exit-decomposition': 'decomposition-refused',
+  'ready-for-plan-exit-epic-children-r4p-or-beyond': 'epic-children-refused',
+  'plan-exit-epic-children-r4p-or-beyond': 'epic-children-refused',
+  // `plan-exit-plan-approved` intentionally omitted: historical verb didn't
+  // enforce this marker; the central `move-state.mjs` subprocess does. Adding
+  // it here would surface refusals at the verb that legacy tests don't expect.
+  'develop-exit-code-complete': 'code-complete-refused',
+  // `develop-exit-receipt` is intentionally omitted. The delegated `test`
+  // action creates that receipt before it asks the Cursor to cross the
+  // Develop→Test boundary; refusing it in this wrapper would deadlock generic
+  // promote before the Develop resident action can run.
+  'develop-exit-commit-trail-head': 'commit-trail-stale',
+  // #267 — test→review gates migrated from inline checks in this file
+  // (former dod-verified + #257 completeness blocks) and from verbReview
+  // (the duplicate copies). Both now live in `STATES.test.exitGuards`.
+  'test-exit-dod-verified': 'dod-verified-missing',
+  'test-exit-pre-close-completeness': 'completeness-refused',
+  'blocked-by-not-done': 'blocked-refused',
+  // #356 — child-cannot-lead-epic migrated into the exitGuards registry.
+  // Preserves the legacy verb-level `parent-admission-refused` status.
+  'child-cannot-lead-epic-exit': 'parent-admission-refused',
+  // #357 — refine→plan stage-completion marker check migrated from the
+  // inline pre-flight at promote.mjs L270-285 into the exit-guard registry.
+  // Preserves the legacy verb-level `refine-exit-refused` status.
+  'refine-exit-complete-marker': 'refine-exit-refused',
+  // #450 — stub TBD placeholder check at refine→plan.
+  'refine-exit-stub-placeholder': 'refine-stub-placeholder-refused',
+  // #432 — ## User Story hard-refuse at refine→plan.
+  'user-story-block': 'user-story-refused',
+  // #473 — unresolved `{discuss}` directive hard-blocks the first forward
+  // first promotion out of Backlog, regardless of TT_FULL_AUTO.
+  'discuss-unresolved': 'discuss-refused',
+};
+
+function refusalsToVerbResult(refusals, { issueNumber, target }) {
+  if (!refusals || refusals.length === 0) return null;
+  // Pick the primary refusal as the FIRST refusal whose id has a known
+  // status mapping. Falls back to the literal first refusal.
+  const primary = refusals.find((r) => REFUSAL_ID_TO_STATUS[r.id]) || refusals[0];
+  const status = REFUSAL_ID_TO_STATUS[primary.id] || 'guard-refused';
+  const blockers = [];
+  for (const r of refusals) {
+    if (Array.isArray(r.blockers) && r.blockers.length > 0) {
+      blockers.push(...r.blockers);
+    } else if (r.reason) {
+      blockers.push(r.reason);
+    }
+  }
+  return {
+    status,
+    blockers,
+    message: `Refusing to promote #${issueNumber} to ${target}: ${primary.reason}`,
+  };
+}
+
+// Map source state → stage alias verb. Promote delegates to the alias so its
+// gate stack runs unchanged. States with no alias (`backlog`, `refine`, `plan`)
+// fall through to a direct internal move-state call.
+//
+// `refine` and `plan` previously delegated to `analyze` and `approve`
+// (plan→develop walker), both retired in #98 — they now use the direct-move
+// fall-through, same as `backlog`. The plan→develop gate that required the
+// `aitm-plan-approved` marker is enforced by move-state itself.
+//
+// #881 — `test` gained an alias. Without one, a Test-column promote took the
+// bare direct-move branch and parked the issue in Review having never run the
+// Agent Review Gate, so the driving agent went straight on to solicit the human's
+// `approve` on an agent-unreviewed story (observed on #878). Delegating to
+// `review` means the Review state's action always runs on arrival.
+export const ALIAS_VERB = Object.fromEntries(
+  actionPolicyFor('promote').allowedStates.flatMap((state) => {
+    const delegate = actionPolicyFor('promote', state).delegate;
+    return delegate ? [[state, delegate]] : [];
+  })
+);
+
+// ---------------------------------------------------------------------------
+// Default I/O — extracted so tests inject stubs.
+// ---------------------------------------------------------------------------
+
+async function defaultFetchIssueBody({ issueNumber, repo }) {
+  const { owner, repoName } = splitRepo(repo);
+  const data = await gql(
+    `
+    query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) { body }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) }
+  );
+  const issue = data?.repository?.issue;
+  if (!issue) throw new Error(`promote: issue #${issueNumber} not found in ${repo}`);
+  return { body: issue.body || '' };
+}
+
+// #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
+// runs on the FRESH base each push attempt.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+}
+
+async function defaultGetLiveState({ issueNumber, cfg }) {
+  const { owner, repoName } = splitRepo(cfg.repo);
+  const data = await gql(
+    `
+    query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) {
+          projectItems(first: 10) {
+            nodes {
+              project { id }
+              fieldValueByName(name: "Status") {
+                ... on ProjectV2ItemFieldSingleSelectValue { name }
+              }
+            }
+          }
+        }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) }
+  );
+  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
+  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
+  return normalizeStateId(node?.fieldValueByName?.name);
+}
+
+// #533 — the alias delegate spawned for a forward transition is `test`
+// (develop→test) or `close` (review→done). The `test` delegate stages a fresh
+// worktree, runs `npm ci`, then every `## Verification Commands` entry under a
+// per-command `SANDBOX_TIMEOUT_MS` (`lib/process-timeouts.mjs`). A single
+// `GH_API_TIMEOUT_MS`-class budget (a one-API-call timeout) reused as the outer
+// cap SIGTERMs the sandbox at 60s, before `npm ci` even finishes — no results
+// comment, leftover worktree, swallowed exit 1. So `test` gets NO outer
+// timeout: the inner per-command `SANDBOX_TIMEOUT_MS` governs the only
+// long-running work. Quick delegates (`close`) keep the prior short budget.
+export function spawnVerbTimeout(verb) {
+  if (verb === 'test') return undefined;
+  return GH_API_TIMEOUT_MS * 4;
+}
+
+function defaultSpawnVerb({ verb, issueNumber }) {
+  const script = path.resolve(__dir, '../task-tracker.mjs');
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [script, verb, String(issueNumber)], {
+      stdio: ['ignore', 'inherit', 'inherit'],
+      env: { ...process.env },
+      timeout: spawnVerbTimeout(verb),
+    });
+    child.on('exit', (code) => resolve(code ?? 1));
+    child.on('error', () => resolve(1));
+  });
+}
+
+// #533 — quick board mutation; short budget is correct and unchanged.
+export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
+
+// #755 — call the move-state host in-process instead of spawning
+// `node scripts/gh/move-state.mjs`. `runMoveStateHost` returns the same numeric
+// exit code the child process exit code used to give us, so runPromote's
+// `transitionResult.exitCode !== 0` branching downstream is unchanged. In-process
+// is strictly more worktree-safe: the host resolves project context from this
+// caller's cwd via getProjectDir (never the package install dir), and it inherits
+// the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
+// re-acquisition rather than deadlocking. `host` is injectable for tests.
+export function defaultRunMoveState(
+  { issueNumber, target, command = 'promote' },
+  { host = runMoveStateHost } = {}
+) {
+  const cursorRequest = buildCommandCursorRequest({
+    command,
+    issue: issueNumber,
+    cwd: process.cwd(),
+    requestedTarget: target,
+  });
+  return host({
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: command,
+      AITM_CURSOR_TRIGGER: cursorRequest.trigger,
+    },
+  });
+}
+
+// `defaultFetchParentIssue` is imported from `../lib/fetch-parent-issue.mjs`
+// (top of file). Extracted so guard adapters share the same default deps.
+
+// ---------------------------------------------------------------------------
+// Pure core.
+// ---------------------------------------------------------------------------
+
+export async function runPromote({
+  issueNumber,
+  cfg,
+  deps = {},
+  now = () => new Date().toISOString(),
+} = {}) {
+  if (!issueNumber) throw new Error('promote: issueNumber is required');
+  if (!cfg) throw new Error('promote: cfg is required');
+  const assertBound = deps.assertBound ?? assertBoundToIssue;
+  assertBound(issueNumber);
+
+  const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
+  const getLiveState = deps.getLiveState || defaultGetLiveState;
+  const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
+  const runMoveState =
+    deps.runMoveState ||
+    ((args) => defaultRunMoveState({ ...args, command: deps.cursorCommand || 'promote' }));
+
+  const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const { state: rawRecorded } = readLastKnownState(initialBody);
+  const live = (await getLiveState({ issueNumber, cfg })) || null;
+
+  // First-touch bootstrap: a pre-existing issue with no lastKnownState metadata.
+  // Sync recorded to live and continue — drift detection has nothing to compare
+  // against on the very first promote.
+  let recorded = rawRecorded;
+  let body = initialBody;
+  let bootstrapped = false;
+  if (!recorded) {
+    if (!live) {
+      return {
+        status: 'error',
+        message: `promote: no recorded state and no live state for #${issueNumber} — board item missing`,
+      };
+    }
+    // #295 — closure stamps the bootstrap marker on the FRESH base.
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => writeLastKnownState(base, live),
+    });
+    body = writeLastKnownState(body, live);
+    recorded = live;
+    bootstrapped = true;
+  } else if (live && live !== recorded) {
+    return {
+      status: 'drift-refused',
+      live,
+      recorded,
+      message:
+        `drift detected: board says "${live}", task-tracker says "${recorded}". ` +
+        `Run \`/task reconcile <accept-live|revert-to-recorded>\`.`,
+    };
+  }
+
+  const promotePolicy = actionPolicyFor('promote', recorded);
+  if (promotePolicy.kind === 'refused' && recorded === 'done') {
+    return {
+      status: 'terminal-refused',
+      message: `already in done (#${issueNumber}); promote is forward-only.`,
+    };
+  }
+  if (promotePolicy.kind === 'unknown-state') {
+    return {
+      status: 'error',
+      message: `promote: unknown recorded state "${recorded}" for #${issueNumber}`,
+    };
+  }
+  const target = promotePolicy.target;
+  if (!target) {
+    return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
+  }
+
+  // #998 — `ALIAS_VERB.review` is `close` unconditionally; without this check
+  // a story sitting in `review` with an unresolved `aitm-review-failed`
+  // marker (or no Agent Review evidence at all) would sail straight to the
+  // human-approval/close gate the instant "Final Review Passed" happened to
+  // be ticked, shipping on a known-failed, possibly now-stale Agent Review.
+  // Redirect to `/task review` — the same completeness signal `approve.mjs`
+  // already gates human sign-off on — instead of proceeding to `close`.
+  if (recorded === 'review' && !isAgentReviewComplete(body)) {
+    const reason = agentReviewIncompleteReason(body);
+    const exitCode = await spawnVerb({ verb: 'review', issueNumber, cfg });
+    return {
+      status: 'redelegated-to-review',
+      reason,
+      delegate: 'review',
+      delegateExitCode: exitCode,
+      message:
+        reason === 'review-failed'
+          ? `promote: #${issueNumber} carries an \`aitm-review-failed\` marker — redirected to ` +
+            `\`/task review\` instead of \`/task close\` to re-run the Agent Review Gate (exited ${exitCode}).`
+          : `promote: #${issueNumber} has no passing Agent Review evidence — redirected to ` +
+            `\`/task review\` instead of \`/task close\` to run the Review state's action (exited ${exitCode}).`,
+    };
+  }
+
+  // #357 — refine→plan stage-completion marker check migrated into the
+  // exit-guard registry (`refineExitCompleteMarkerGuard`). The runGuards call
+  // below evaluates it; refusals surface as `refine-exit-refused` via
+  // REFUSAL_ID_TO_STATUS.
+
+  // #336 — delegate forward-transition gate enforcement to the guard registry.
+  // Every previously-inline gate for backlog→refine, refine→ready-for-plan,
+  // ready-for-plan→plan, plan→develop,
+  // and develop→test now lives in `STATES[from].exitGuards`. Side-channel:
+  // `planEntryFieldsBody` stashes the resolved refinement plan on `guardCtx`
+  // so the refine→plan post-success hook can run `applyRefinementEstimate`.
+  //
+  // Refusals from guards NOT in `REFUSAL_ID_TO_STATUS` are intentionally
+  // ignored at verb level — they fall through to the subprocess `move-state.mjs`
+  // call which runs the SAME runGuards and surfaces them as `transition-failed`.
+  // This preserves the historical "verb didn't check X" boundary for guards
+  // like `blocked-by-not-done` (test fixtures don't stub a real blocker lookup)
+  // and `plan-exit-plan-approved` (fixtures don't stub the marker).
+  // #502 — the test→review exit guard (`testExitPreCloseCompletenessGuard`)
+  // scans `guardCtx.body` for unticked pre-close checkboxes but does NOT itself
+  // derive the two auto-derived Functional DoD keys (`acs`/`checkboxes`). Those
+  // are stamped+ticked by `deriveAndStampFunctionalDod` at close time, so a
+  // story whose every AC + non-self checkbox is genuinely complete would still
+  // be refused here on `acs`/`checkboxes` alone. `verbs/review.mjs` already runs
+  // the derive before its copy of this guard; the `promote` path must do the
+  // same. `deriveAndRescan` runs the derive (logging, never swallowing, any
+  // failure) and ALWAYS re-fetches the live body so the guard reads ground
+  // truth regardless of derive ok/noop/throw.
+  if (recorded === 'test' && target === 'review') {
+    const { scanBody } = await deriveAndRescan({
+      issueNumber,
+      repo: cfg.repo,
+      scanBody: body,
+      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
+    });
+    body = scanBody;
+  }
+
+  const guardCtx = {
+    issueNumber,
+    repo: cfg.repo,
+    fromState: recorded,
+    toState: target,
+    body,
+    cfg,
+    deps,
+    projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
+    sessionPolicy:
+      deps.sessionPolicy ||
+      (deps.loadSession || loadSession)((deps.currentSessionId || currentSessionId)()),
+  };
+  const runGuardsFn = deps.runGuards || runGuards;
+  let guardResult = await runGuardsFn(recorded, target, guardCtx);
+  const policyRequirementIds = requirementIdsForGuardRefusals(guardResult.refusals);
+  if (policyRequirementIds.length > 0) {
+    const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+    guardCtx.workflowPolicy = await loadBoundary({
+      repository: cfg.repo,
+      issue: issueNumber,
+      body,
+      requirementIds: policyRequirementIds,
+      activity: `workflow-transition:${target}`,
+      state: recorded,
+      now: nowIso(),
+      runtime:
+        deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+    });
+    guardResult = await runGuardsFn(recorded, target, guardCtx);
+  }
+  const mappedRefusals = (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
+  const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
+  if (verbRefusal) return verbRefusal;
+  const refinementPlan = guardCtx.refinementPlan || null;
+
+  // #267 — Test → Review pre-flight gates (dod-verified marker + #257
+  // completeness scan) migrated into `STATES.test.exitGuards` and reached via
+  // `runGuards('test', 'review', ctx)` above. The verb-status surface
+  // (`dod-verified-missing` / `completeness-refused`) is preserved by the
+  // `REFUSAL_ID_TO_STATUS` mapping for `test-exit-dod-verified` and
+  // `test-exit-pre-close-completeness`. The inline checks that used to live
+  // here are deleted; the duplicate copies in `verbs/review.mjs` are removed
+  // by the same change (single source of truth, parity across both paths).
+
+  // #356 — child-cannot-lead-epic gate migrated into the state-keyed
+  // exit-guard registry (`childCannotLeadEpicExitGuard` on all 6 forward
+  // states). The runGuards call above already evaluated it; refusals are
+  // surfaced as `parent-admission-refused` via REFUSAL_ID_TO_STATUS.
+
+  const aliasVerb = promotePolicy.delegate || null;
+  const transitionResult = aliasVerb
+    ? {
+        kind: 'alias',
+        verb: aliasVerb,
+        exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
+      }
+    : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
+
+  if (transitionResult.exitCode !== 0) {
+    // Re-read live board to classify the failure.
+    //   liveAfter === target  → delegate reached target then side-task failed
+    //                            (#175): treat as soft warning, verify/repair
+    //                            markers, return promoted-with-warning.
+    //   liveAfter !== target  → board never reached target (mid-move or
+    //                            unchanged): keep transition-failed semantics.
+    let liveAfter = null;
+    try {
+      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
+    } catch {
+      liveAfter = null;
+    }
+
+    if (liveAfter === target) {
+      // #271 — the #210 (Fix B) defensive dod-verified post-move rollback was
+      // removed here. With #270 landed, `/task test` is gate-first: the
+      // develop-exit sandbox-proof guard (registry) refuses the move before
+      // the board write, so a board-reached-target / dod-marker-missing combo
+      // is structurally impossible on the happy path. The single source of
+      // truth is the exact-head Develop receipt guard on `STATES.develop.exit`.
+      // #175 — board reached target. Verify markers, repair if needed,
+      // surface delegate exit as soft warning.
+      let markerRepair = { status: 'noop' };
+      try {
+        // #295 — repair inside the closure so the FRESH base is inspected on
+        // every push attempt. Identity-return when the markers are already
+        // correct produces a `no-op` from versionedWriteBody.
+        markerRepair = await writeIssueBodyWithRetry({
+          issueNumber,
+          repo: cfg.repo,
+          target,
+          mutate: (base) => {
+            const { state: stateAfter } = readLastKnownState(base);
+            const hasEntry = parseEntryMarkers(base).some((entry) => entry.stage === target);
+            if (stateAfter === target && hasEntry) return base;
+            const nowTs = now();
+            let repaired = base;
+            if (stateAfter !== target) repaired = writeLastKnownState(repaired, target);
+            if (!hasEntry) repaired = stampEntryMarker(repaired, target, nowTs);
+            return repaired;
+          },
+          deps: { mutateIssueBody: mutateBody },
+          postComment: deps.postComment,
+        });
+      } catch {
+        // best-effort — marker is unreadable; warning still surfaces below.
+      }
+
+      // #128 — paired `<prev>:complete` + `<next>:enter` rows are emitted
+      // at the move-state.mjs chokepoint on every successful Status write.
+      // The previous `move:<target>` audit row was redundant with that pair
+      // and is intentionally removed.
+
+      return {
+        status: 'promoted-with-warning',
+        from: recorded,
+        to: target,
+        via:
+          transitionResult.kind === 'alias'
+            ? `/task ${transitionResult.verb}`
+            : 'direct move-state',
+        delegate: transitionResult.kind === 'alias' ? transitionResult.verb : null,
+        delegateExitCode: transitionResult.exitCode,
+        markerRepair,
+        message: `promote: ${
+          transitionResult.kind === 'alias'
+            ? `delegate /task ${transitionResult.verb}`
+            : `move-state.mjs ${target}`
+        } exited ${transitionResult.exitCode}; board reached "${target}" — soft warning, markers verified.`,
+      };
+    }
+
+    const drifted = liveAfter && liveAfter !== recorded;
+    if (drifted) {
+      // Mid-move drift: board moved past `recorded` but not to `target`.
+      // move-state.mjs centrally stamps markers on each successful Status
+      // mutation (#170), so the marker is already in sync with `liveAfter`.
+      // #516 — record the reconcile as a body audit marker (`aitm-reconciled`)
+      // for visibility, not a ⏱ Timing Log row (the move already elapsed inside
+      // the underlying state).
+      try {
+        const nowTs = now();
+        await mutateBody({
+          issueNumber,
+          repo: cfg.repo,
+          mutate: (base) =>
+            appendAuditMarker(base, {
+              kind: 'reconciled',
+              ts: nowTs,
+              detail: `${recorded} → ${liveAfter} (${
+                transitionResult.kind === 'alias'
+                  ? `alias /task ${transitionResult.verb}`
+                  : 'move-state'
+              } exited ${transitionResult.exitCode})`,
+            }),
+        });
+      } catch {
+        // best-effort
+      }
+    }
+    return {
+      status: 'transition-failed',
+      transitionResult,
+      reconciledTo: drifted ? liveAfter : null,
+      message:
+        `promote: ${
+          transitionResult.kind === 'alias'
+            ? `delegate /task ${transitionResult.verb}`
+            : `move-state.mjs ${target}`
+        } exited ${transitionResult.exitCode}; ` +
+        (drifted
+          ? `board drifted to "${liveAfter}"; marker reconciled.`
+          : `recorded state left at "${recorded}".`),
+    };
+  }
+
+  // #710 — Defense-in-depth: an exit-0 from a delegate verb (alias path) is
+  // less authoritative than move-state.mjs's own return, because the delegate
+  // could exit 0 while refusing to change state (the original close.mjs
+  // dirty-close bug). Re-read the live board and only declare `promoted` when
+  // the target state was actually reached. Scoped to the alias path: a direct
+  // move-state transition writes the board itself, so its 0 is authoritative
+  // and a second fetch would only add latency.
+  if (transitionResult.kind === 'alias') {
+    let liveAfter = null;
+    try {
+      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
+    } catch {
+      liveAfter = null;
+    }
+    if (liveAfter && liveAfter !== target) {
+      return {
+        status: 'transition-failed',
+        transitionResult,
+        reconciledTo: null,
+        message:
+          `promote: delegate /task ${transitionResult.verb} exited 0 but board is "${liveAfter}", ` +
+          `not "${target}" — refusing to report a false success. Recorded state left at "${recorded}".`,
+      };
+    }
+  }
+
+  // Transition succeeded. Entry-marker AND lastKnownState stamping are both
+  // centralized in move-state.mjs's success path (#170 — single mutator).
+  // Refine-entry success hook: stamp the "Start time" field on the
+  // project board so the refine→plan exit gate has a value to verify. Idempotent
+  // (skips when already set). Best-effort — board state is already committed.
+  if (target === 'refine') {
+    try {
+      const stamp = deps.stampStartTime || stampStartTime;
+      await stamp({ cfg, issueNumber, now });
+    } catch {
+      // best-effort
+    }
+  }
+
+  // Refine-stage post-success hook: post the audit comment (idempotent) and
+  // strip the rationale marker from the body. Best-effort — failures here do
+  // not roll back the board move.
+  let refinementPost = null;
+  if (target === 'ready-for-plan' && refinementPlan) {
+    try {
+      refinementPost = await applyRefinementEstimate({
+        cfg,
+        issueNumber,
+        plan: refinementPlan,
+        deps: deps.refinementEstimate || deps.groomEstimate,
+      });
+    } catch (err) {
+      refinementPost = { status: 'post-failed', error: err.message };
+    }
+  }
+
+  // #674 — Develop→Test post-success hook: post the "## New Automated Tests"
+  // comment derived from the commit-trail SHAs. Best-effort — a posting
+  // failure does not roll back the board move.
+  let newTestsPost = null;
+  if (target === 'test') {
+    try {
+      newTestsPost = await postNewAutomatedTestsComment({
+        cfg,
+        issueNumber,
+        cwd: guardCtx.projectDir,
+        deps: deps.newAutomatedTestsComment,
+      });
+    } catch (err) {
+      newTestsPost = { status: 'post-failed', error: err.message };
+    }
+  }
+
+  // #128 — paired `<prev>:complete` + `<next>:enter` rows are emitted at
+  // the move-state.mjs chokepoint on every successful Status write. The
+  // previous `move:<target>` audit row was redundant with that pair and
+  // is intentionally removed.
+
+  return {
+    status: 'promoted',
+    from: recorded,
+    to: target,
+    via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
+    bootstrapped,
+    refinementPost,
+    newTestsPost,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// CLI wrapper.
+// ---------------------------------------------------------------------------
+
+function parseArgs(rest) {
+  for (const a of rest) {
+    const m = String(a).match(/^#?(\d+)$/);
+    if (m) return { issueNumber: Number(m[1]) };
+  }
+  return { issueNumber: null };
+}
+
+export async function verbPromote(rest, cfg, deps = {}) {
+  const { issueNumber } = parseArgs(rest);
+  if (!issueNumber) {
+    process.stderr.write('Usage: promote #N\n');
+    process.exit(1);
+  }
+
+  let result;
+  try {
+    result = await withIssueLock(
+      { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
+      // `deps` defaults to `{}` on the real CLI path, so live behaviour is
+      // unchanged; verb tests inject the seam to drive every result branch.
+      () => runPromote({ issueNumber, cfg, deps })
+    );
+  } catch (err) {
+    if (err instanceof IssueLockError) {
+      process.stderr.write(`⛔ ${err.message}\n`);
+      process.exit(7);
+    }
+    process.stderr.write(`promote: ${err.message}\n`);
+    process.exit(1);
+  }
+
+  switch (result.status) {
+    case 'promoted': {
+      process.stdout.write(
+        `✓ #${issueNumber} promoted: ${result.from} → ${result.to}` +
+          (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
+          ` (${result.via})\n`
+      );
+      if (result.refinementPost?.status === 'posted') {
+        process.stdout.write(`  ↳ posted "### 🛠 Refine estimate" comment\n`);
+      } else if (result.refinementPost?.status === 'duplicate') {
+        process.stdout.write(`  ↳ refine-estimate comment already present (idempotent skip)\n`);
+      } else if (result.refinementPost?.status === 'post-failed') {
+        process.stderr.write(
+          `  ⚠ refine-estimate comment post failed: ${result.refinementPost.error}\n`
+        );
+      }
+      if (result.newTestsPost?.status === 'posted') {
+        process.stdout.write(`  ↳ posted "## New Automated Tests" comment\n`);
+      } else if (result.newTestsPost?.status === 'post-failed') {
+        process.stderr.write(
+          `  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}\n`
+        );
+      }
+      return;
+    }
+    case 'promoted-with-warning': {
+      process.stdout.write(
+        `✓ #${issueNumber} promoted: ${result.from} → ${result.to} (${result.via})\n`
+      );
+      process.stderr.write(
+        `  ⚠ delegate ${result.delegate ? `/task ${result.delegate}` : '(direct)'} exited ${result.delegateExitCode} — board reached target; treating as soft warning.\n`
+      );
+      if (result.markerRepair?.status === 'ok') {
+        process.stderr.write(`  ↳ marker repaired (attempts: ${result.markerRepair.attempts})\n`);
+      } else if (result.markerRepair?.status === 'failed') {
+        process.stderr.write(
+          `  ↳ marker-repair FAILED; audit comment posted: ${result.markerRepair.auditPosted}\n`
+        );
+      }
+      return;
+    }
+    case 'refine-gate-refused':
+    case 'refine-exit-refused':
+    case 'refine-stub-placeholder-refused':
+    case 'planned-estimate-refused':
+    case 'deep-dive-refused':
+    case 'plan-metadata-refused':
+    case 'decomposition-refused':
+    case 'ownership-refused':
+    case 'wip-budget-refused':
+    case 'commit-trail-stale':
+    case 'blocked-refused':
+    case 'epic-children-refused':
+    case 'parent-admission-refused':
+    case 'code-complete-refused':
+    case 'dod-verified-missing':
+    case 'vc-presence-refused':
+    case 'discuss-refused':
+    case 'completeness-refused': {
+      process.stderr.write(`\n⛔ ${result.message}\n`);
+      for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
+      process.stderr.write('\n');
+      process.exit(4);
+    }
+    case 'drift-refused': {
+      process.stderr.write(
+        `\n⛔ Refusing to promote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`
+      );
+      process.exit(4);
+    }
+    case 'terminal-refused': {
+      process.stderr.write(`\n⛔ ${result.message}\n\n`);
+      process.exit(4);
+    }
+    case 'transition-failed': {
+      process.stderr.write(`promote: ${result.message}\n`);
+      process.exit(result.transitionResult?.exitCode || 1);
+    }
+    case 'parent-admission-error':
+    case 'error': {
+      process.stderr.write(`promote: ${result.message}\n`);
+      process.exit(1);
+    }
+    default: {
+      process.stderr.write(`promote: unknown result status: ${result.status}\n`);
+      process.exit(1);
+    }
+  }
+}
+
+const _isMain = (() => {
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
+})();
+
+if (_isMain) {
+  const { loadConfig } = await import('../config.mjs');
+  const { loadState } = await import('../state.mjs');
+  const { statePath } = await import('../paths.mjs');
+  const { preflightVerb } = await import('../lib/verb-preflight.mjs');
+  const cfg = loadConfig();
+  const target = parseArgs(process.argv.slice(2)).issueNumber;
+  const sp = statePath();
+  await preflightVerb({
+    stateBefore: loadState(sp),
+    statePath: sp,
+    target: target ? `#${target}` : undefined,
+    cfg,
+    verb: 'promote',
+  });
+  await verbPromote(process.argv.slice(2), cfg);
+}
