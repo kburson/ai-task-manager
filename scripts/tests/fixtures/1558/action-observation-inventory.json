@@ -1,0 +1,421 @@
+{
+  "schema": "aitm.guidance-legacy-action-observation-inventory/v1",
+  "sourceCommit": "8f3547e4fdab9f05f293d9b65e95b62f3972424c",
+  "actions": [
+    {
+      "id": "bind",
+      "entrypoint": "start",
+      "observations": [
+        {
+          "id": "bind.start-and-resume",
+          "source": {
+            "path": "scripts/task-tracker/verbs/start.mjs",
+            "symbol": "verbStart",
+            "excerpt": "export async function verbStart(ctx) {",
+            "fingerprint": "sha256:b4a702ddb25ba1220c21e52a37676d8de023cc03b4076cd5607287b2914e715a"
+          },
+          "predicates": [
+            "explicit positive issue number",
+            "singleton verified owner",
+            "board-marker contiguity",
+            "occupancy claim",
+            "worktree relocation confirmation when binding changes"
+          ],
+          "resources": [
+            "session-state",
+            "worktree-binding",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "pickup directive is evaluated only for Plan-or-later issues",
+            "Review resident wake is suppressed for start"
+          ],
+          "refusals": [
+            "missing issue",
+            "assignee absent or mismatched",
+            "board-marker drift",
+            "occupied binding",
+            "unconfirmed relocation"
+          ],
+          "warnings": [
+            "orphan-pause finalization is best effort",
+            "fleet registry update is best effort"
+          ],
+          "humanObligations": ["confirm a changed worktree location"],
+          "locks": [
+            "binding occupancy claim",
+            "issue mutation lock for issue-resident binding evidence"
+          ],
+          "firstEffects": [
+            "claim binding occupancy",
+            "save active session binding",
+            "append worktree-location marker"
+          ],
+          "helperClass": "effectful"
+        }
+      ]
+    },
+    {
+      "id": "resume",
+      "entrypoint": "resume",
+      "observations": [
+        {
+          "id": "resume.session-reengagement",
+          "source": {
+            "path": "scripts/task-tracker/verbs/resume.mjs",
+            "symbol": "verbResume",
+            "excerpt": "export async function verbResume(ctx) {",
+            "fingerprint": "sha256:20516b775d7331009d430c689cf1f43a43e897214777c476aa626db0b4152286"
+          },
+          "predicates": [
+            "paused lastActive or explicit issue",
+            "occupancy claim",
+            "worktree binding",
+            "paired timing evidence",
+            "board-marker contiguity"
+          ],
+          "resources": [
+            "session-state",
+            "worktree-binding",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "no-argument resume requires paused state",
+            "Review resident action may wake only on non-start resume"
+          ],
+          "refusals": [
+            "nothing paused",
+            "missing previous task",
+            "occupancy conflict",
+            "assignee mismatch",
+            "state drift"
+          ],
+          "warnings": [
+            "orphan-pause finalization does not block resume",
+            "fleet registry update is best effort"
+          ],
+          "humanObligations": ["resolve an occupied binding or mismatched owner"],
+          "locks": ["binding occupancy claim", "issue mutation lock for binding evidence"],
+          "firstEffects": ["claim occupancy", "bank transcript tail", "save resumed session state"],
+          "helperClass": "effectful"
+        }
+      ]
+    },
+    {
+      "id": "promote",
+      "entrypoint": "promote",
+      "observations": [
+        {
+          "id": "promote.forward-transition",
+          "source": {
+            "path": "scripts/task-tracker/verbs/promote.mjs",
+            "symbol": "verbPromote",
+            "excerpt": "export async function verbPromote(rest, cfg, deps = {}) {",
+            "fingerprint": "sha256:dd223b454e5c3001a5222501f8d85e555f33b5857057e12a7b2032ca6f619ac2"
+          },
+          "predicates": [
+            "active binding matches",
+            "live board equals marker",
+            "allowed forward edge",
+            "state-specific guards",
+            "dependency and ownership gates",
+            "Plan evidence and approval for Develop"
+          ],
+          "resources": [
+            "session-state",
+            "repository-head",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "dependency-graph",
+            "project-policy",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "workflow-policy authority is fetched only when a baseline refusal needs enrichment",
+            "pre-Refine recovery may refresh contiguity evidence"
+          ],
+          "refusals": [
+            "unknown or disallowed state",
+            "binding mismatch",
+            "drift",
+            "missing refinement",
+            "missing deep dive",
+            "missing estimate forecast",
+            "missing plan approval",
+            "blocking dependency"
+          ],
+          "warnings": [
+            "post-transition comments and timing tail can report verified warnings after the state saga"
+          ],
+          "humanObligations": [
+            "supply required refinement or plan approval",
+            "resolve explicit workflow-policy exception request"
+          ],
+          "locks": ["issue advisory mutation lock", "move-state mutation lock"],
+          "firstEffects": [
+            "run guarded move-state saga",
+            "close exit timing row",
+            "write target entry marker and board state"
+          ],
+          "helperClass": "effectful"
+        }
+      ]
+    },
+    {
+      "id": "test",
+      "entrypoint": "test",
+      "observations": [
+        {
+          "id": "test.develop-verification",
+          "source": {
+            "path": "scripts/task-tracker/verbs/test.mjs",
+            "symbol": "verbTest",
+            "excerpt": "export async function verbTest(ctx) {",
+            "fingerprint": "sha256:1a01a6e6c2157761c1e0efbe6431bd6c8607d11a774e6dce881a9aa10ec118cb"
+          },
+          "predicates": [
+            "network-enabled governed execution",
+            "active binding",
+            "Develop-compatible live state",
+            "clean exact-HEAD verification input",
+            "declared verification commands and DoD evidence"
+          ],
+          "resources": [
+            "session-state",
+            "worktree-binding",
+            "repository-head",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "project-policy",
+            "verification-evidence",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "a reusable exact-SHA receipt may avoid rerunning unchanged verification",
+            "setup and sandbox paths vary by repository capability"
+          ],
+          "refusals": [
+            "TT_SKIP_NETWORK set",
+            "missing target",
+            "dirty tree",
+            "verification command failure",
+            "HEAD drift",
+            "body evidence write or readback failure"
+          ],
+          "warnings": [
+            "sandbox cleanup and comment posting can produce post-verification warnings"
+          ],
+          "humanObligations": ["repair failing verification or reconcile changed scope"],
+          "locks": ["test action lock", "issue body mutation lock", "state transition lock"],
+          "firstEffects": [
+            "create exact-HEAD sandbox",
+            "install dependencies",
+            "execute declared verification commands"
+          ],
+          "helperClass": "effectful"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "entrypoint": "review",
+      "observations": [
+        {
+          "id": "review.agent-review-gate",
+          "source": {
+            "path": "scripts/task-tracker/verbs/review.mjs",
+            "symbol": "verbReview",
+            "excerpt": "export async function verbReview(ctx) {",
+            "fingerprint": "sha256:e3c5dce38a5ea95d821b9923112e1165c4f9d5bc11a2c6abb0fbfffb754ee3c4"
+          },
+          "predicates": [
+            "Test state or idempotent Review",
+            "verified exact-SHA test evidence",
+            "all pre-review checkboxes",
+            "agent semantic review",
+            "dependency and epic ordering"
+          ],
+          "resources": [
+            "session-state",
+            "repository-head",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "dependency-graph",
+            "project-policy",
+            "verification-evidence",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "review probes execute only when explicitly declared",
+            "resident review can pause for provider action or human input"
+          ],
+          "refusals": [
+            "unverified checks",
+            "stale verification receipt",
+            "review findings",
+            "probe failure",
+            "dependency state violation",
+            "review evidence persistence failure"
+          ],
+          "warnings": ["deferred review and waived review emit separate audited timeline outcomes"],
+          "humanObligations": [
+            "resolve review findings",
+            "provide required external review authority"
+          ],
+          "locks": [
+            "Review action serialization",
+            "issue body mutation lock",
+            "state transition lock"
+          ],
+          "firstEffects": [
+            "run semantic review gate",
+            "record review evidence",
+            "move Test to Review"
+          ],
+          "helperClass": "effectful"
+        }
+      ]
+    },
+    {
+      "id": "deliver",
+      "entrypoint": "deliver",
+      "observations": [
+        {
+          "id": "deliver.provider-action",
+          "source": {
+            "path": "scripts/task-tracker/verbs/deliver.mjs",
+            "symbol": "verbDeliver",
+            "excerpt": "export async function verbDeliver(ctx, injected = {}) {",
+            "fingerprint": "sha256:b597fca926f252c740a2a40247e1874467fc72346b5e83e211138893589519a4"
+          },
+          "predicates": [
+            "active Review binding",
+            "exact source HEAD",
+            "delivery lineage",
+            "pull-request and code-review authority",
+            "configured provider-action mechanism"
+          ],
+          "resources": [
+            "session-state",
+            "worktree-binding",
+            "repository-head",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "project-policy",
+            "verification-evidence",
+            "review-approval",
+            "delivery-record",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "no-commit lane skips pull-request creation",
+            "provider-action lane emits an external action request before execution",
+            "reconciliation requires authenticated operator identity"
+          ],
+          "refusals": [
+            "missing target",
+            "non-Review state",
+            "stale or missing exact-SHA evidence",
+            "invalid lineage",
+            "missing manual code review",
+            "delivery record conflict"
+          ],
+          "warnings": [
+            "provider action required is a typed waiting result, not success",
+            "post-merge record finalization may surface audit warnings"
+          ],
+          "humanObligations": [
+            "complete an external provider action when requested",
+            "resolve manual review requirements"
+          ],
+          "locks": ["delivery action ledger serialization", "issue mutation lock"],
+          "firstEffects": [
+            "append immutable delivery intent",
+            "emit or execute provider action",
+            "verify merged source identity"
+          ],
+          "helperClass": "effectful"
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "entrypoint": "close",
+      "observations": [
+        {
+          "id": "close.review-to-done",
+          "source": {
+            "path": "scripts/task-tracker/verbs/close.mjs",
+            "symbol": "verbClose",
+            "excerpt": "export async function verbClose(ctx) {",
+            "fingerprint": "sha256:9ff9194988a3a7934fdace8e59eec0e42143e2c70b680c270476cc528959ff4d"
+          },
+          "predicates": [
+            "Review state",
+            "all pre-close checkboxes",
+            "exact-HEAD review approval or current Full-Auto authority",
+            "verified delivery incorporation",
+            "dependency and epic closure ordering",
+            "clean worktree"
+          ],
+          "resources": [
+            "session-state",
+            "worktree-binding",
+            "repository-head",
+            "issue-body",
+            "board-state",
+            "issue-owner",
+            "dependency-graph",
+            "project-policy",
+            "verification-evidence",
+            "review-approval",
+            "delivery-record",
+            "mutation-lock"
+          ],
+          "conditionalAuthority": [
+            "directory and incorporated lanes use distinct delivery proof",
+            "Full-Auto authority is exact-HEAD scoped",
+            "reopened close recovery reuses only valid durable transactions"
+          ],
+          "refusals": [
+            "unchecked checkbox",
+            "missing or stale approval",
+            "unverified delivery",
+            "dirty worktree",
+            "child-cannot-lead-epic",
+            "close transaction conflict",
+            "board/body readback failure"
+          ],
+          "warnings": [
+            "timing flush, label cleanup, and terminal housekeeping preserve explicit post-close diagnostics"
+          ],
+          "humanObligations": [
+            "approve the exact reviewed HEAD when the effective policy requires it",
+            "resolve incomplete delivery or child state"
+          ],
+          "locks": [
+            "close convergence transaction",
+            "issue mutation lock",
+            "state transition lock"
+          ],
+          "firstEffects": [
+            "derive and persist close-ready evidence",
+            "record close transaction",
+            "move Review to Done and close the GitHub issue"
+          ],
+          "helperClass": "effectful"
+        }
+      ]
+    }
+  ]
+}
