@@ -10,6 +10,7 @@
       "id": "action-inventory",
       "sourcePath": "scripts/tests/fixtures/1558/action-observation-inventory.json",
       "snapshotPath": "scripts/tests/fixtures/1558/action-observation-inventory.json",
+      "encoding": "identity",
       "bytes": 14709,
       "sha256": "sha256:d88fed95e3a3ae03305f095c88affe393481772f53652e16ffbabbc9f4a05b1f"
     },
@@ -17,6 +18,7 @@
       "id": "behavioral-flags",
       "sourcePath": "scripts/tests/fixtures/1558/behavioral-flags.json",
       "snapshotPath": "scripts/tests/fixtures/1558/behavioral-flags.json",
+      "encoding": "identity",
       "bytes": 35480,
       "sha256": "sha256:c7fb3616949a3804e6966bf1acd79bd977d9959b093a20dea91c72cfd2c265a2"
     },
@@ -24,6 +26,7 @@
       "id": "authority-baseline",
       "sourcePath": "scripts/tests/fixtures/1558/authority-baseline.json",
       "snapshotPath": "scripts/tests/fixtures/1558/authority-baseline.json",
+      "encoding": "identity",
       "bytes": 3162,
       "sha256": "sha256:32ec5ddac931a44c880339b6cad987f3099b8019b5f020858fff22c76ecc5a51"
     },
@@ -31,6 +34,7 @@
       "id": "authority-store",
       "sourcePath": "scripts/tests/fixtures/1558/legacy-workflow/authority-store.json",
       "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/authority-store.json",
+      "encoding": "identity",
       "bytes": 893,
       "sha256": "sha256:d2b67c1e1da3afa7ed05750160090a5fc405c5538ac22918851c87e2eae2324b"
     },
@@ -38,104 +42,119 @@
       "id": "lifecycle-scenarios",
       "sourcePath": "scripts/tests/fixtures/1558/legacy-workflow/lifecycle-scenarios.json",
       "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/lifecycle-scenarios.json",
+      "encoding": "identity",
       "bytes": 12580,
       "sha256": "sha256:1364fa38a7710471349de771cdb8929b2c68456993c9acf2e545e6e4d07daed9"
     },
     {
       "id": "runner-guidance-legacy-cli",
       "sourcePath": "scripts/tests/helpers/guidance-legacy-cli.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-cli.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-cli.mjs.base64",
+      "encoding": "base64",
       "bytes": 4193,
       "sha256": "sha256:3f06a81f28b2ff397c765fddc215e6f87ec7526ffc830c1374ff2117edef7604"
     },
     {
       "id": "runner-guidance-legacy-preload",
       "sourcePath": "scripts/tests/helpers/guidance-legacy-preload.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-preload.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-preload.mjs.base64",
+      "encoding": "base64",
       "bytes": 8008,
       "sha256": "sha256:8bf9ebba496f02b7e6c625da04153d98b167ed78a81d8ef9f3318df6947455d0"
     },
     {
       "id": "runner-guidance-legacy-transport",
       "sourcePath": "scripts/tests/helpers/guidance-legacy-transport.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-transport.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-transport.mjs.base64",
+      "encoding": "base64",
       "bytes": 3212,
       "sha256": "sha256:81b2bdef5ec1a7e4de7b7613b2a0078565e39b8274868e6d6a2cbfab454074ee"
     },
     {
       "id": "runner-guidance-legacy-authority",
       "sourcePath": "scripts/tests/helpers/guidance-legacy-authority.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-authority.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-authority.mjs.base64",
+      "encoding": "base64",
       "bytes": 7082,
       "sha256": "sha256:d97dd5df4ab04fe6bfe5a74aeb6fa4646115a2e6df4f59c7932f7d90528b4b8a"
     },
     {
       "id": "source-bin/aitm.mjs",
       "sourcePath": "bin/aitm.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm.mjs.base64",
+      "encoding": "base64",
       "bytes": 7221,
       "sha256": "sha256:88bd2f8ef1c8beb78f5588b9d7cd5f52136f0395427bb7e98548de35b9a44e5e"
     },
     {
       "id": "source-bin/aitm-registry.mjs",
       "sourcePath": "bin/aitm-registry.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm-registry.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm-registry.mjs.base64",
+      "encoding": "base64",
       "bytes": 6320,
       "sha256": "sha256:018d0cb31abe71ac64584ca95ae6a063ff35fc385aa1f549ca578112cd00f75c"
     },
     {
       "id": "source-scripts/task-tracker/task-tracker.mjs",
       "sourcePath": "scripts/task-tracker/task-tracker.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/task-tracker.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/task-tracker.mjs.base64",
+      "encoding": "base64",
       "bytes": 26802,
       "sha256": "sha256:93aef697fbd850ee492ed378abe7c9dfaa4caa7bdfcf90d0b835dd73ccd9c328"
     },
     {
       "id": "source-scripts/task-tracker/verbs/start.mjs",
       "sourcePath": "scripts/task-tracker/verbs/start.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs.base64",
+      "encoding": "base64",
       "bytes": 910,
       "sha256": "sha256:3bea25bd9dc0bc875711ed3fb3bb93737a371590d9b201f4d08045007b7eec5c"
     },
     {
       "id": "source-scripts/task-tracker/verbs/resume.mjs",
       "sourcePath": "scripts/task-tracker/verbs/resume.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs.base64",
+      "encoding": "base64",
       "bytes": 21956,
       "sha256": "sha256:f71a0e9d8b68d2785ef94e86d2aa33b1ac97af2e14bed2882a5b3d2766f1cb84"
     },
     {
       "id": "source-scripts/task-tracker/verbs/promote.mjs",
       "sourcePath": "scripts/task-tracker/verbs/promote.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs.base64",
+      "encoding": "base64",
       "bytes": 35082,
       "sha256": "sha256:ecd874854f6758c7c05090c4542470bda844a23571946c026db8803888e149f2"
     },
     {
       "id": "source-scripts/task-tracker/verbs/test.mjs",
       "sourcePath": "scripts/task-tracker/verbs/test.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs.base64",
+      "encoding": "base64",
       "bytes": 65600,
       "sha256": "sha256:93982631ca306c7758c70db102bea85d6f3f03086f5985efb6c738c1a6e774e9"
     },
     {
       "id": "source-scripts/task-tracker/verbs/review.mjs",
       "sourcePath": "scripts/task-tracker/verbs/review.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs.base64",
+      "encoding": "base64",
       "bytes": 68554,
       "sha256": "sha256:bf83b48af358d199d4b1d2f0d08d1c3d8d1c3cd8462f5eb158ffaf3c4194eea5"
     },
     {
       "id": "source-scripts/task-tracker/verbs/deliver.mjs",
       "sourcePath": "scripts/task-tracker/verbs/deliver.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs.base64",
+      "encoding": "base64",
       "bytes": 63749,
       "sha256": "sha256:874c91f3cc4abdc2a0f68786eb98e3da020ead821e1a716b29124d694676ae31"
     },
     {
       "id": "source-scripts/task-tracker/verbs/close.mjs",
       "sourcePath": "scripts/task-tracker/verbs/close.mjs",
-      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs",
+      "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs.base64",
+      "encoding": "base64",
       "bytes": 179366,
       "sha256": "sha256:8ccd93eb5f291b53d854790626390f4e72a1260154aec4cc6b4c1150ae7bb738"
     }
@@ -147,7 +166,8 @@
         {
           "role": "shim",
           "sourcePath": ".claude/skills/task/SKILL.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.claude/skills/task/SKILL.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.claude/skills/task/SKILL.md.base64",
+          "encoding": "base64",
           "bytes": 2292,
           "characters": 2282,
           "proxyTokens": 571,
@@ -156,7 +176,8 @@
         {
           "role": "adapter",
           "sourcePath": "skill/adapters/claude/SKILL.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/adapters/claude/SKILL.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/adapters/claude/SKILL.md.base64",
+          "encoding": "base64",
           "bytes": 5427,
           "characters": 5399,
           "proxyTokens": 1350,
@@ -165,7 +186,8 @@
         {
           "role": "shared",
           "sourcePath": "skill/shared/SKILL.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/SKILL.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/SKILL.md.base64",
+          "encoding": "base64",
           "bytes": 848,
           "characters": 848,
           "proxyTokens": 212,
@@ -174,7 +196,8 @@
         {
           "role": "router",
           "sourcePath": "skill/shared/router.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/router.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/router.md.base64",
+          "encoding": "base64",
           "bytes": 8622,
           "characters": 8598,
           "proxyTokens": 2150,
@@ -183,7 +206,8 @@
         {
           "role": "pickup",
           "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.ai-task-manager/templates/pickup-directive.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.ai-task-manager/templates/pickup-directive.md.base64",
+          "encoding": "base64",
           "bytes": 5647,
           "characters": 5599,
           "proxyTokens": 1400,
@@ -192,7 +216,8 @@
         {
           "role": "bind-rule",
           "sourcePath": "skill/shared/rules/bind.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/bind.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/bind.md.base64",
+          "encoding": "base64",
           "bytes": 5499,
           "characters": 5466,
           "proxyTokens": 1367,
@@ -201,7 +226,8 @@
         {
           "role": "state-walk-rule",
           "sourcePath": "skill/shared/rules/state-walk.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/state-walk.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/state-walk.md.base64",
+          "encoding": "base64",
           "bytes": 7235,
           "characters": 7189,
           "proxyTokens": 1798,
@@ -210,7 +236,8 @@
         {
           "role": "functional-dod-rule",
           "sourcePath": "skill/shared/rules/functional-dod.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/functional-dod.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/functional-dod.md.base64",
+          "encoding": "base64",
           "bytes": 7815,
           "characters": 7777,
           "proxyTokens": 1945,
@@ -219,7 +246,8 @@
         {
           "role": "review-rule",
           "sourcePath": "skill/shared/rules/review.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/review.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/review.md.base64",
+          "encoding": "base64",
           "bytes": 8802,
           "characters": 8767,
           "proxyTokens": 2192,
@@ -228,7 +256,8 @@
         {
           "role": "delivery-rule",
           "sourcePath": "skill/shared/rules/deliver.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/deliver.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/deliver.md.base64",
+          "encoding": "base64",
           "bytes": 5202,
           "characters": 5202,
           "proxyTokens": 1301,
@@ -237,7 +266,8 @@
         {
           "role": "close-rule",
           "sourcePath": "skill/shared/rules/close.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/close.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/close.md.base64",
+          "encoding": "base64",
           "bytes": 10469,
           "characters": 10433,
           "proxyTokens": 2609,
@@ -246,7 +276,8 @@
         {
           "role": "full-auto-rule",
           "sourcePath": "skill/shared/rules/full-auto.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/full-auto.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/full-auto.md.base64",
+          "encoding": "base64",
           "bytes": 2990,
           "characters": 2986,
           "proxyTokens": 747,
@@ -254,7 +285,7 @@
         }
       ],
       "transcriptPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/claude.json",
-      "transcriptSha256": "sha256:0b6789ed74e5eeac92bc2c07bba973f2bfe70bfcc45fe2df7e95c44c44b8f5f5",
+      "transcriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
       "staticCharacters": 70546,
       "staticProxyTokens": 17642
     },
@@ -264,7 +295,8 @@
         {
           "role": "shim",
           "sourcePath": ".agents/skills/task/SKILL.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.agents/skills/task/SKILL.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.agents/skills/task/SKILL.md.base64",
+          "encoding": "base64",
           "bytes": 2352,
           "characters": 2342,
           "proxyTokens": 586,
@@ -273,7 +305,8 @@
         {
           "role": "adapter",
           "sourcePath": "skill/adapters/codex/SKILL.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/adapters/codex/SKILL.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/adapters/codex/SKILL.md.base64",
+          "encoding": "base64",
           "bytes": 5024,
           "characters": 4996,
           "proxyTokens": 1249,
@@ -282,7 +315,8 @@
         {
           "role": "shared",
           "sourcePath": "skill/shared/SKILL.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/SKILL.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/SKILL.md.base64",
+          "encoding": "base64",
           "bytes": 848,
           "characters": 848,
           "proxyTokens": 212,
@@ -291,7 +325,8 @@
         {
           "role": "router",
           "sourcePath": "skill/shared/router.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/router.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/router.md.base64",
+          "encoding": "base64",
           "bytes": 8622,
           "characters": 8598,
           "proxyTokens": 2150,
@@ -300,7 +335,8 @@
         {
           "role": "pickup",
           "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.ai-task-manager/templates/pickup-directive.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.ai-task-manager/templates/pickup-directive.md.base64",
+          "encoding": "base64",
           "bytes": 5647,
           "characters": 5599,
           "proxyTokens": 1400,
@@ -309,7 +345,8 @@
         {
           "role": "bind-rule",
           "sourcePath": "skill/shared/rules/bind.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/bind.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/bind.md.base64",
+          "encoding": "base64",
           "bytes": 5499,
           "characters": 5466,
           "proxyTokens": 1367,
@@ -318,7 +355,8 @@
         {
           "role": "state-walk-rule",
           "sourcePath": "skill/shared/rules/state-walk.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/state-walk.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/state-walk.md.base64",
+          "encoding": "base64",
           "bytes": 7235,
           "characters": 7189,
           "proxyTokens": 1798,
@@ -327,7 +365,8 @@
         {
           "role": "functional-dod-rule",
           "sourcePath": "skill/shared/rules/functional-dod.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/functional-dod.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/functional-dod.md.base64",
+          "encoding": "base64",
           "bytes": 7815,
           "characters": 7777,
           "proxyTokens": 1945,
@@ -336,7 +375,8 @@
         {
           "role": "review-rule",
           "sourcePath": "skill/shared/rules/review.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/review.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/review.md.base64",
+          "encoding": "base64",
           "bytes": 8802,
           "characters": 8767,
           "proxyTokens": 2192,
@@ -345,7 +385,8 @@
         {
           "role": "delivery-rule",
           "sourcePath": "skill/shared/rules/deliver.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/deliver.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/deliver.md.base64",
+          "encoding": "base64",
           "bytes": 5202,
           "characters": 5202,
           "proxyTokens": 1301,
@@ -354,7 +395,8 @@
         {
           "role": "close-rule",
           "sourcePath": "skill/shared/rules/close.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/close.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/close.md.base64",
+          "encoding": "base64",
           "bytes": 10469,
           "characters": 10433,
           "proxyTokens": 2609,
@@ -363,7 +405,8 @@
         {
           "role": "full-auto-rule",
           "sourcePath": "skill/shared/rules/full-auto.md",
-          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/full-auto.md",
+          "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/full-auto.md.base64",
+          "encoding": "base64",
           "bytes": 2990,
           "characters": 2986,
           "proxyTokens": 747,
@@ -371,7 +414,7 @@
         }
       ],
       "transcriptPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/codex.json",
-      "transcriptSha256": "sha256:1fb5770dc0b95d20a8a61706eaf4229acc8076f27d425f6e4ebc9bd9c8be6641",
+      "transcriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
       "staticCharacters": 70203,
       "staticProxyTokens": 17556
     }
@@ -432,5 +475,5 @@
       }
     }
   },
-  "generationSha256": "sha256:2f6d45ae059d82fbac3d541e2d4725670cc423ddd3c237238b50fd501e50078b"
+  "generationSha256": "sha256:fa73a6eb8fe5fde63eff448cd039f932589392f84f9e15d473a8ff01cd921006"
 }
