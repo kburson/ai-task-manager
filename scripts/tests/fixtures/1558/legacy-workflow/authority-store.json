@@ -1,0 +1,43 @@
+{
+  "schema": "aitm.guidance-legacy-authority-store/v1",
+  "sourceCommit": "8f3547e4fdab9f05f293d9b65e95b62f3972424c",
+  "initialState": {
+    "issue": {
+      "number": 1655,
+      "open": true,
+      "bound": false,
+      "assignee": "kburson",
+      "bodyVersion": 1
+    },
+    "board": {
+      "status": "develop",
+      "projectId": "PVT_fixture",
+      "itemId": "PVTI_fixture"
+    },
+    "session": {
+      "activeIssue": null,
+      "paused": true
+    },
+    "approvals": {
+      "plan": true,
+      "review": false
+    },
+    "verification": {
+      "exactHeadReceipt": null
+    },
+    "dependencies": {
+      "blockedBy": []
+    },
+    "pullRequest": {
+      "number": 42,
+      "state": "OPEN",
+      "mergeable": "MERGEABLE",
+      "delivered": false
+    },
+    "provider": {
+      "repository": "kburson/ai-task-manager",
+      "actor": "kburson",
+      "attempts": 0
+    }
+  }
+}

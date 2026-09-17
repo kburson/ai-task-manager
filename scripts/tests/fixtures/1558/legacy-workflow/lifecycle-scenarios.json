@@ -1,0 +1,349 @@
+{
+  "schema": "aitm.guidance-legacy-lifecycle-scenarios/v1",
+  "scenarios": [
+    {
+      "id": "bind-success",
+      "action": "bind",
+      "outcome": "success",
+      "productionPredicates": ["singleton owner", "board-marker contiguity", "unoccupied binding"],
+      "formatter": "scripts/task-tracker/verbs/start.mjs",
+      "initialStatePatch": {},
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "bind.issue", "resource": "issue", "subject": "1655" },
+        { "id": "bind.board", "resource": "board", "subject": "1655" }
+      ],
+      "expectedTransport": [
+        { "id": "bind.read-issue" },
+        {
+          "id": "bind.mutate-binding",
+          "mutation": { "issue": { "bound": true }, "session": { "activeIssue": 1655 } }
+        }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "bind-refusal",
+      "action": "bind",
+      "outcome": "refusal",
+      "productionPredicates": ["singleton owner", "board-marker contiguity", "unoccupied binding"],
+      "formatter": "scripts/task-tracker/verbs/start.mjs",
+      "initialStatePatch": { "issue": { "assignee": null } },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "bind.issue", "resource": "issue", "subject": "1655" },
+        { "id": "bind.board", "resource": "board", "subject": "1655" }
+      ],
+      "expectedTransport": [{ "id": "bind.read-issue" }],
+      "expectedEffects": 0
+    },
+    {
+      "id": "resume-success",
+      "action": "resume",
+      "outcome": "success",
+      "productionPredicates": ["paused last-active issue", "occupancy claim", "worktree binding"],
+      "formatter": "scripts/task-tracker/verbs/resume.mjs",
+      "initialStatePatch": {
+        "issue": { "bound": true },
+        "session": { "activeIssue": 1655, "paused": true }
+      },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "resume.issue", "resource": "issue", "subject": "1655" },
+        { "id": "resume.board", "resource": "board", "subject": "1655" }
+      ],
+      "expectedTransport": [
+        { "id": "resume.read-issue" },
+        { "id": "resume.mutate-session", "mutation": { "session": { "paused": false } } }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "resume-refusal",
+      "action": "resume",
+      "outcome": "refusal",
+      "productionPredicates": ["paused last-active issue", "occupancy claim", "worktree binding"],
+      "formatter": "scripts/task-tracker/verbs/resume.mjs",
+      "initialStatePatch": { "session": { "activeIssue": null, "paused": false } },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "resume.issue", "resource": "issue", "subject": "1655" },
+        { "id": "resume.board", "resource": "board", "subject": "1655" }
+      ],
+      "expectedTransport": [{ "id": "resume.read-issue" }],
+      "expectedEffects": 0
+    },
+    {
+      "id": "promote-success",
+      "action": "promote",
+      "outcome": "success",
+      "productionPredicates": ["active binding", "allowed forward edge", "dependency gate"],
+      "formatter": "scripts/task-tracker/verbs/promote.mjs",
+      "initialStatePatch": {
+        "issue": { "bound": true },
+        "session": { "activeIssue": 1655, "paused": false }
+      },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "promote.board", "resource": "board", "subject": "1655" },
+        { "id": "promote.dependencies.1", "resource": "dependency", "subject": "1655", "page": 1 },
+        { "id": "promote.dependencies.2", "resource": "dependency", "subject": "1655", "page": 2 }
+      ],
+      "expectedTransport": [
+        { "id": "promote.read-board" },
+        { "id": "promote.read-dependencies-page-1" },
+        { "id": "promote.read-dependencies-page-2" },
+        { "id": "promote.mutate-board", "mutation": { "board": { "status": "test" } } }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "promote-refusal",
+      "action": "promote",
+      "outcome": "refusal",
+      "productionPredicates": ["active binding", "allowed forward edge", "dependency gate"],
+      "formatter": "scripts/task-tracker/verbs/promote.mjs",
+      "initialStatePatch": {
+        "issue": { "bound": true },
+        "session": { "activeIssue": 1655, "paused": false }
+      },
+      "authorityPatch": { "board": { "status": "plan" } },
+      "expectedAuthorityAccesses": [
+        { "id": "promote.board", "resource": "board", "subject": "1655" },
+        { "id": "promote.dependencies.1", "resource": "dependency", "subject": "1655", "page": 1 },
+        { "id": "promote.dependencies.2", "resource": "dependency", "subject": "1655", "page": 2 }
+      ],
+      "expectedTransport": [
+        { "id": "promote.read-board" },
+        { "id": "promote.read-dependencies-page-1" },
+        { "id": "promote.read-dependencies-page-2" }
+      ],
+      "expectedEffects": 0
+    },
+    {
+      "id": "test-success",
+      "action": "test",
+      "outcome": "success",
+      "productionPredicates": [
+        "clean exact HEAD",
+        "declared verification commands",
+        "Develop state"
+      ],
+      "formatter": "scripts/task-tracker/verbs/test.mjs",
+      "initialStatePatch": {
+        "issue": { "bound": true },
+        "session": { "activeIssue": 1655, "paused": false }
+      },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "test.issue", "resource": "issue", "subject": "1655" },
+        { "id": "test.verification", "resource": "verification", "subject": "HEAD" }
+      ],
+      "expectedTransport": [
+        { "id": "test.read-issue" },
+        {
+          "id": "test.write-receipt",
+          "mutation": { "verification": { "exactHeadReceipt": "receipt-fixture" } }
+        }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "test-refusal",
+      "action": "test",
+      "outcome": "refusal",
+      "productionPredicates": [
+        "clean exact HEAD",
+        "declared verification commands",
+        "Develop state"
+      ],
+      "formatter": "scripts/task-tracker/verbs/test.mjs",
+      "initialStatePatch": {
+        "issue": { "bound": true },
+        "session": { "activeIssue": 1655, "paused": false }
+      },
+      "authorityPatch": { "board": { "status": "plan" } },
+      "expectedAuthorityAccesses": [
+        { "id": "test.issue", "resource": "issue", "subject": "1655" },
+        { "id": "test.verification", "resource": "verification", "subject": "HEAD" }
+      ],
+      "expectedTransport": [{ "id": "test.read-issue" }],
+      "expectedEffects": 0
+    },
+    {
+      "id": "review-success",
+      "action": "review",
+      "outcome": "success",
+      "productionPredicates": [
+        "Test state",
+        "reviewable verification receipt",
+        "agent review gate"
+      ],
+      "formatter": "scripts/task-tracker/verbs/review.mjs",
+      "initialStatePatch": {
+        "board": { "status": "test" },
+        "verification": { "exactHeadReceipt": "receipt-fixture" }
+      },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "review.verification", "resource": "verification", "subject": "HEAD" },
+        { "id": "review.board", "resource": "board", "subject": "1655" }
+      ],
+      "expectedTransport": [
+        { "id": "review.read-verification" },
+        { "id": "review.mutate-board", "mutation": { "board": { "status": "review" } } }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "review-refusal",
+      "action": "review",
+      "outcome": "refusal",
+      "productionPredicates": [
+        "Test state",
+        "reviewable verification receipt",
+        "agent review gate"
+      ],
+      "formatter": "scripts/task-tracker/verbs/review.mjs",
+      "initialStatePatch": {
+        "board": { "status": "test" },
+        "verification": { "exactHeadReceipt": null }
+      },
+      "authorityPatch": {},
+      "expectedAuthorityAccesses": [
+        { "id": "review.verification", "resource": "verification", "subject": "HEAD" },
+        { "id": "review.board", "resource": "board", "subject": "1655" }
+      ],
+      "expectedTransport": [{ "id": "review.read-verification" }],
+      "expectedEffects": 0
+    },
+    {
+      "id": "deliver-success",
+      "action": "deliver",
+      "outcome": "success",
+      "productionPredicates": [
+        "review approval",
+        "mergeable pull request",
+        "provider authorization"
+      ],
+      "formatter": "scripts/task-tracker/verbs/deliver.mjs",
+      "initialStatePatch": { "board": { "status": "review" } },
+      "authorityPatch": { "approvals": { "review": true } },
+      "expectedAuthorityAccesses": [
+        { "id": "deliver.pr.page-1", "resource": "pull-request", "subject": "42", "page": 1 },
+        {
+          "id": "deliver.provider.attempt-1",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 1
+        },
+        {
+          "id": "deliver.provider.attempt-2",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 2
+        }
+      ],
+      "expectedTransport": [
+        { "id": "deliver.read-pr-page-1" },
+        { "id": "deliver.provider-attempt-1" },
+        { "id": "deliver.provider-attempt-2" },
+        {
+          "id": "deliver.mutate-provider",
+          "mutation": {
+            "pullRequest": { "delivered": true, "state": "MERGED" },
+            "provider": { "attempts": 2 }
+          }
+        }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "deliver-refusal",
+      "action": "deliver",
+      "outcome": "refusal",
+      "productionPredicates": [
+        "review approval",
+        "mergeable pull request",
+        "provider authorization"
+      ],
+      "formatter": "scripts/task-tracker/verbs/deliver.mjs",
+      "initialStatePatch": { "board": { "status": "review" } },
+      "authorityPatch": {
+        "pullRequest": { "mergeable": "CONFLICTING" },
+        "approvals": { "review": true }
+      },
+      "expectedAuthorityAccesses": [
+        { "id": "deliver.pr.page-1", "resource": "pull-request", "subject": "42", "page": 1 },
+        {
+          "id": "deliver.provider.attempt-1",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 1
+        },
+        {
+          "id": "deliver.provider.attempt-2",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 2
+        }
+      ],
+      "expectedTransport": [
+        { "id": "deliver.read-pr-page-1" },
+        { "id": "deliver.provider-attempt-1" },
+        { "id": "deliver.provider-attempt-2" }
+      ],
+      "expectedEffects": 0
+    },
+    {
+      "id": "close-success",
+      "action": "close",
+      "outcome": "success",
+      "productionPredicates": ["Review state", "review approval", "delivery evidence"],
+      "formatter": "scripts/task-tracker/verbs/close.mjs",
+      "initialStatePatch": {
+        "board": { "status": "review" },
+        "pullRequest": { "delivered": true, "state": "MERGED" }
+      },
+      "authorityPatch": { "approvals": { "review": true } },
+      "expectedAuthorityAccesses": [
+        { "id": "close.issue", "resource": "issue", "subject": "1655" },
+        { "id": "close.approval", "resource": "approval", "subject": "1655" },
+        { "id": "close.delivery", "resource": "pull-request", "subject": "42" }
+      ],
+      "expectedTransport": [
+        { "id": "close.read-issue" },
+        { "id": "close.read-approval" },
+        { "id": "close.read-delivery" },
+        {
+          "id": "close.mutate-issue",
+          "mutation": { "issue": { "open": false }, "board": { "status": "done" } }
+        }
+      ],
+      "expectedEffects": 1
+    },
+    {
+      "id": "close-refusal",
+      "action": "close",
+      "outcome": "refusal",
+      "productionPredicates": ["Review state", "review approval", "delivery evidence"],
+      "formatter": "scripts/task-tracker/verbs/close.mjs",
+      "initialStatePatch": {
+        "board": { "status": "review" },
+        "pullRequest": { "delivered": true, "state": "MERGED" }
+      },
+      "authorityPatch": { "approvals": { "review": false } },
+      "expectedAuthorityAccesses": [
+        { "id": "close.issue", "resource": "issue", "subject": "1655" },
+        { "id": "close.approval", "resource": "approval", "subject": "1655" },
+        { "id": "close.delivery", "resource": "pull-request", "subject": "42" }
+      ],
+      "expectedTransport": [
+        { "id": "close.read-issue" },
+        { "id": "close.read-approval" },
+        { "id": "close.read-delivery" }
+      ],
+      "expectedEffects": 0
+    }
+  ]
+}

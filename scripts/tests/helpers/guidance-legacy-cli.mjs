@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { projectTmpDir } from '../../task-tracker/paths.mjs';
+import { attachLegacyAuthorityCapture } from './guidance-legacy-authority.mjs';
 import { readJsonLines, reconcileTransportLedger } from './guidance-legacy-transport.mjs';
 
 const helperRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -99,5 +100,14 @@ export function captureLegacyWorkflow({
     throw error;
   }
   capture.reconciliation = reconcileTransportLedger(scenario.requests ?? [], transportLedger);
-  return capture;
+  const fixture =
+    typeof authorityFixture === 'string' && authorityFixture
+      ? JSON.parse(readFileSync(authorityFixture, 'utf8'))
+      : authorityFixture;
+  return attachLegacyAuthorityCapture({
+    capture,
+    fixture,
+    authorityScenario: scenario.authorityScenario,
+    requestDeclarations: scenario.requests ?? [],
+  });
 }
