@@ -44,7 +44,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/start.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:3bea25bd9dc0bc875711ed3fb3bb93737a371590d9b201f4d08045007b7eec5c"
       },
       "productionPredicates": ["singleton owner", "board-marker contiguity", "unoccupied binding"],
@@ -113,7 +114,8 @@
       "status": 3,
       "formatter": {
         "path": "scripts/task-tracker/verbs/start.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:3bea25bd9dc0bc875711ed3fb3bb93737a371590d9b201f4d08045007b7eec5c"
       },
       "productionPredicates": ["singleton owner", "board-marker contiguity", "unoccupied binding"],
@@ -166,7 +168,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/resume.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:f71a0e9d8b68d2785ef94e86d2aa33b1ac97af2e14bed2882a5b3d2766f1cb84"
       },
       "productionPredicates": ["paused last-active issue", "occupancy claim", "worktree binding"],
@@ -235,7 +238,8 @@
       "status": 3,
       "formatter": {
         "path": "scripts/task-tracker/verbs/resume.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:f71a0e9d8b68d2785ef94e86d2aa33b1ac97af2e14bed2882a5b3d2766f1cb84"
       },
       "productionPredicates": ["paused last-active issue", "occupancy claim", "worktree binding"],
@@ -288,7 +292,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/promote.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:ecd874854f6758c7c05090c4542470bda844a23571946c026db8803888e149f2"
       },
       "productionPredicates": ["active binding", "allowed forward edge", "dependency gate"],
@@ -379,7 +384,8 @@
       "status": 3,
       "formatter": {
         "path": "scripts/task-tracker/verbs/promote.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:ecd874854f6758c7c05090c4542470bda844a23571946c026db8803888e149f2"
       },
       "productionPredicates": ["active binding", "allowed forward edge", "dependency gate"],
@@ -454,7 +460,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/test.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:93982631ca306c7758c70db102bea85d6f3f03086f5985efb6c738c1a6e774e9"
       },
       "productionPredicates": [
@@ -527,7 +534,8 @@
       "status": 1,
       "formatter": {
         "path": "scripts/task-tracker/verbs/test.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:93982631ca306c7758c70db102bea85d6f3f03086f5985efb6c738c1a6e774e9"
       },
       "productionPredicates": [
@@ -584,7 +592,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/review.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:bf83b48af358d199d4b1d2f0d08d1c3d8d1c3cd8462f5eb158ffaf3c4194eea5"
       },
       "productionPredicates": [
@@ -657,7 +666,8 @@
       "status": 3,
       "formatter": {
         "path": "scripts/task-tracker/verbs/review.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:bf83b48af358d199d4b1d2f0d08d1c3d8d1c3cd8462f5eb158ffaf3c4194eea5"
       },
       "productionPredicates": [
@@ -714,7 +724,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/deliver.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:874c91f3cc4abdc2a0f68786eb98e3da020ead821e1a716b29124d694676ae31"
       },
       "productionPredicates": [
@@ -812,7 +823,8 @@
       "status": 1,
       "formatter": {
         "path": "scripts/task-tracker/verbs/deliver.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:874c91f3cc4abdc2a0f68786eb98e3da020ead821e1a716b29124d694676ae31"
       },
       "productionPredicates": [
@@ -891,7 +903,8 @@
       "status": 0,
       "formatter": {
         "path": "scripts/task-tracker/verbs/close.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:8ccd93eb5f291b53d854790626390f4e72a1260154aec4cc6b4c1150ae7bb738"
       },
       "productionPredicates": ["Review state", "review approval", "delivery evidence"],
@@ -982,7 +995,8 @@
       "status": 7,
       "formatter": {
         "path": "scripts/task-tracker/verbs/close.mjs",
-        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs.base64",
+        "encoding": "base64",
         "sha256": "sha256:8ccd93eb5f291b53d854790626390f4e72a1260154aec4cc6b4c1150ae7bb738"
       },
       "productionPredicates": ["Review state", "review approval", "delivery evidence"],
