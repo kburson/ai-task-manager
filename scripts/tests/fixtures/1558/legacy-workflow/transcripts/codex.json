@@ -1,0 +1,1045 @@
+{
+  "schema": "aitm.guidance-legacy-transcript/v1",
+  "adapter": "codex",
+  "sourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+  "observedAt": "2026-09-17T19:59:02.348Z",
+  "runtime": { "node": "v26.8.1", "platform": "darwin", "architecture": "arm64" },
+  "captureMode": "unchanged-cli-generation-over-deterministic-authority",
+  "loadedTextDigests": {
+    "shim": "sha256:4ece8b159746e4f75b89836e528f6826fb58598789466ed13347fff4ae0da10c",
+    "adapter": "sha256:5b75552dca1ff1235f010f370b287ada18a104c7e3436bf69a9aa8abe22e35ff",
+    "shared": "sha256:9e0676d1533ce4c53eef9cb9a126caa0dd65ace3294bb2cbecc7a3ac491204a1",
+    "router": "sha256:44c4bd58802bd50458eafd067688c990cd1df950a69757f225809292ba7e07b0",
+    "pickup": "sha256:d773378bee19f52023ff18a41d53e06f21d7df13cf4405d0f4540e7ff99547df",
+    "bind-rule": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83",
+    "state-walk-rule": "sha256:979c25c1ed9130f760b5240f53a97c1e43ff0e74c8224d4f386964a6a0d88623",
+    "functional-dod-rule": "sha256:3b1f96b850df76f7af436c0a0968103364cdb4496dd4f70bab14fd4d7651fefd",
+    "review-rule": "sha256:47437c5e0eed93a36dfe7710ee526d83be32a26f15aa7198f9b6e6b02784e31f",
+    "delivery-rule": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756",
+    "close-rule": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85",
+    "full-auto-rule": "sha256:6fea87e1369dad9efca356c9f967f0e002e1f766bb039da0c5cb4b1256966bcd"
+  },
+  "runnerDigests": {
+    "runner-guidance-legacy-cli": "sha256:3f06a81f28b2ff397c765fddc215e6f87ec7526ffc830c1374ff2117edef7604",
+    "runner-guidance-legacy-preload": "sha256:8bf9ebba496f02b7e6c625da04153d98b167ed78a81d8ef9f3318df6947455d0",
+    "runner-guidance-legacy-transport": "sha256:81b2bdef5ec1a7e4de7b7613b2a0078565e39b8274868e6d6a2cbfab454074ee",
+    "runner-guidance-legacy-authority": "sha256:d97dd5df4ab04fe6bfe5a74aeb6fa4646115a2e6df4f59c7932f7d90528b4b8a"
+  },
+  "scenarioSha256": "sha256:1364fa38a7710471349de771cdb8929b2c68456993c9acf2e545e6e4d07daed9",
+  "authorityFixtureSha256": "sha256:d2b67c1e1da3afa7ed05750160090a5fc405c5538ac22918851c87e2eae2324b",
+  "entries": [
+    {
+      "sequence": 1,
+      "scenarioId": "bind-success",
+      "action": "bind",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "start", "1655", "--role", "agent"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "Bound #1655.\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/start.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs",
+        "sha256": "sha256:3bea25bd9dc0bc875711ed3fb3bb93737a371590d9b201f4d08045007b7eec5c"
+      },
+      "productionPredicates": ["singleton owner", "board-marker contiguity", "unoccupied binding"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "bind.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "bind.mutate-binding",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "bind.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "bind.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "bind",
+          "transportRequestId": "bind.mutate-binding",
+          "beforeDigest": "sha256:b86ca2d318d294a1e8a58e2a90051cdeb07daff9e41205397fb03828a7a528ac",
+          "afterDigest": "sha256:208e7ffe7944f798246ac97a18a9c72c0d7e7f6a4427fe14f2224883d7f4623c",
+          "patch": { "issue": { "bound": true }, "session": { "activeIssue": 1655 } }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:b86ca2d318d294a1e8a58e2a90051cdeb07daff9e41205397fb03828a7a528ac",
+        "finalSha256": "sha256:208e7ffe7944f798246ac97a18a9c72c0d7e7f6a4427fe14f2224883d7f4623c"
+      }
+    },
+    {
+      "sequence": 2,
+      "scenarioId": "bind-refusal",
+      "action": "bind",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "start", "1655", "--role", "agent"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "",
+      "stderr": "start: singleton owner gate refused #1655\n",
+      "status": 3,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/start.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs",
+        "sha256": "sha256:3bea25bd9dc0bc875711ed3fb3bb93737a371590d9b201f4d08045007b7eec5c"
+      },
+      "productionPredicates": ["singleton owner", "board-marker contiguity", "unoccupied binding"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "bind.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "bind.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "bind.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:23d3859d10bb05e0881949339fceac04cd14995ff2b8e856f8e774b53ec71da7",
+        "finalSha256": "sha256:23d3859d10bb05e0881949339fceac04cd14995ff2b8e856f8e774b53ec71da7"
+      }
+    },
+    {
+      "sequence": 3,
+      "scenarioId": "resume-success",
+      "action": "resume",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "resume", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "Resumed #1655.\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/resume.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs",
+        "sha256": "sha256:f71a0e9d8b68d2785ef94e86d2aa33b1ac97af2e14bed2882a5b3d2766f1cb84"
+      },
+      "productionPredicates": ["paused last-active issue", "occupancy claim", "worktree binding"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "resume.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "resume.mutate-session",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "resume.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "resume.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "resume",
+          "transportRequestId": "resume.mutate-session",
+          "beforeDigest": "sha256:208e7ffe7944f798246ac97a18a9c72c0d7e7f6a4427fe14f2224883d7f4623c",
+          "afterDigest": "sha256:be8336e15375d2179582fc1c517efc54a4f535285b1493af5082e4e6099b893c",
+          "patch": { "session": { "paused": false } }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:208e7ffe7944f798246ac97a18a9c72c0d7e7f6a4427fe14f2224883d7f4623c",
+        "finalSha256": "sha256:be8336e15375d2179582fc1c517efc54a4f535285b1493af5082e4e6099b893c"
+      }
+    },
+    {
+      "sequence": 4,
+      "scenarioId": "resume-refusal",
+      "action": "resume",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "resume", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "",
+      "stderr": "resume: no paused task is available for #1655\n",
+      "status": 3,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/resume.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs",
+        "sha256": "sha256:f71a0e9d8b68d2785ef94e86d2aa33b1ac97af2e14bed2882a5b3d2766f1cb84"
+      },
+      "productionPredicates": ["paused last-active issue", "occupancy claim", "worktree binding"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "resume.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "resume.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "resume.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:dce80db345e13b5a26c3debde3ca0ec1f9c00d4d6ae039fbf7d9e625f2d38ef0",
+        "finalSha256": "sha256:dce80db345e13b5a26c3debde3ca0ec1f9c00d4d6ae039fbf7d9e625f2d38ef0"
+      }
+    },
+    {
+      "sequence": 5,
+      "scenarioId": "promote-success",
+      "action": "promote",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "promote", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "Issue #1655 moved to: test\n#1655 promoted: develop -> test\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/promote.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs",
+        "sha256": "sha256:ecd874854f6758c7c05090c4542470bda844a23571946c026db8803888e149f2"
+      },
+      "productionPredicates": ["active binding", "allowed forward edge", "dependency gate"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "promote.read-board",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "promote.read-dependencies-page-1",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 3,
+          "requestId": "promote.read-dependencies-page-2",
+          "page": 2,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 4,
+          "requestId": "promote.mutate-board",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "promote.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "promote.dependencies.1",
+          "resource": "dependency",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 3,
+          "id": "promote.dependencies.2",
+          "resource": "dependency",
+          "subject": "1655",
+          "page": 2,
+          "attempt": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "promote",
+          "transportRequestId": "promote.mutate-board",
+          "beforeDigest": "sha256:be8336e15375d2179582fc1c517efc54a4f535285b1493af5082e4e6099b893c",
+          "afterDigest": "sha256:814a7c74acf89ed23dcd99521ca7b52883a0442881947161d06d1573bc7ac6df",
+          "patch": { "board": { "status": "test" } }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:be8336e15375d2179582fc1c517efc54a4f535285b1493af5082e4e6099b893c",
+        "finalSha256": "sha256:814a7c74acf89ed23dcd99521ca7b52883a0442881947161d06d1573bc7ac6df"
+      }
+    },
+    {
+      "sequence": 6,
+      "scenarioId": "promote-refusal",
+      "action": "promote",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "promote", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "",
+      "stderr": "promote: dependency or Plan gate refused #1655\n",
+      "status": 3,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/promote.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs",
+        "sha256": "sha256:ecd874854f6758c7c05090c4542470bda844a23571946c026db8803888e149f2"
+      },
+      "productionPredicates": ["active binding", "allowed forward edge", "dependency gate"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "promote.read-board",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "promote.read-dependencies-page-1",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 3,
+          "requestId": "promote.read-dependencies-page-2",
+          "page": 2,
+          "attempt": 1,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "promote.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "promote.dependencies.1",
+          "resource": "dependency",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 3,
+          "id": "promote.dependencies.2",
+          "resource": "dependency",
+          "subject": "1655",
+          "page": 2,
+          "attempt": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:d212dae3b2a02dcb13dd78ab046f81d80c0a99d26a41c2210c3699adec0a54a8",
+        "finalSha256": "sha256:d212dae3b2a02dcb13dd78ab046f81d80c0a99d26a41c2210c3699adec0a54a8"
+      }
+    },
+    {
+      "sequence": 7,
+      "scenarioId": "test-success",
+      "action": "test",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "test", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "#1655 verification passed at exact HEAD\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/test.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs",
+        "sha256": "sha256:93982631ca306c7758c70db102bea85d6f3f03086f5985efb6c738c1a6e774e9"
+      },
+      "productionPredicates": [
+        "clean exact HEAD",
+        "declared verification commands",
+        "Develop state"
+      ],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "test.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "test.write-receipt",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "test.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "test.verification",
+          "resource": "verification",
+          "subject": "HEAD",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "test",
+          "transportRequestId": "test.write-receipt",
+          "beforeDigest": "sha256:be8336e15375d2179582fc1c517efc54a4f535285b1493af5082e4e6099b893c",
+          "afterDigest": "sha256:3bcfefbfeb39ad7df6555c2233920dadd5397cdd6890c96cf76bf7a702e5a13c",
+          "patch": { "verification": { "exactHeadReceipt": "receipt-fixture" } }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:be8336e15375d2179582fc1c517efc54a4f535285b1493af5082e4e6099b893c",
+        "finalSha256": "sha256:3bcfefbfeb39ad7df6555c2233920dadd5397cdd6890c96cf76bf7a702e5a13c"
+      }
+    },
+    {
+      "sequence": 8,
+      "scenarioId": "test-refusal",
+      "action": "test",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "test", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "",
+      "stderr": "test: exact-HEAD verification refused for #1655\n",
+      "status": 1,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/test.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs",
+        "sha256": "sha256:93982631ca306c7758c70db102bea85d6f3f03086f5985efb6c738c1a6e774e9"
+      },
+      "productionPredicates": [
+        "clean exact HEAD",
+        "declared verification commands",
+        "Develop state"
+      ],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "test.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "test.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "test.verification",
+          "resource": "verification",
+          "subject": "HEAD",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:d212dae3b2a02dcb13dd78ab046f81d80c0a99d26a41c2210c3699adec0a54a8",
+        "finalSha256": "sha256:d212dae3b2a02dcb13dd78ab046f81d80c0a99d26a41c2210c3699adec0a54a8"
+      }
+    },
+    {
+      "sequence": 9,
+      "scenarioId": "review-success",
+      "action": "review",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "review", "1655", "--duration-minutes", "1", "--words", "1"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "#1655 moved to Review\nPROMPT_REQUIRED: review-approval #1655\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/review.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs",
+        "sha256": "sha256:bf83b48af358d199d4b1d2f0d08d1c3d8d1c3cd8462f5eb158ffaf3c4194eea5"
+      },
+      "productionPredicates": [
+        "Test state",
+        "reviewable verification receipt",
+        "agent review gate"
+      ],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "review.read-verification",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "review.mutate-board",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "review.verification",
+          "resource": "verification",
+          "subject": "HEAD",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "review.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "review",
+          "transportRequestId": "review.mutate-board",
+          "beforeDigest": "sha256:fecc624ff70346ce31904b2c5ed8b5ce3c7fd399f0edc120f4070d2f33778d68",
+          "afterDigest": "sha256:25d862ed6b53aefac733c3f0a473871e2b9423cbd9b44447d367dfd8c7e219d3",
+          "patch": { "board": { "status": "review" } }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:fecc624ff70346ce31904b2c5ed8b5ce3c7fd399f0edc120f4070d2f33778d68",
+        "finalSha256": "sha256:25d862ed6b53aefac733c3f0a473871e2b9423cbd9b44447d367dfd8c7e219d3"
+      }
+    },
+    {
+      "sequence": 10,
+      "scenarioId": "review-refusal",
+      "action": "review",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "review", "1655", "--duration-minutes", "1", "--words", "1"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "",
+      "stderr": "review: exact-HEAD verification receipt missing\n",
+      "status": 3,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/review.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs",
+        "sha256": "sha256:bf83b48af358d199d4b1d2f0d08d1c3d8d1c3cd8462f5eb158ffaf3c4194eea5"
+      },
+      "productionPredicates": [
+        "Test state",
+        "reviewable verification receipt",
+        "agent review gate"
+      ],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "review.read-verification",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "review.verification",
+          "resource": "verification",
+          "subject": "HEAD",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "review.board",
+          "resource": "board",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:ec272595c9f436658632551e00014c38c847f4e7ede4f57414613155bfcbe88c",
+        "finalSha256": "sha256:ec272595c9f436658632551e00014c38c847f4e7ede4f57414613155bfcbe88c"
+      }
+    },
+    {
+      "sequence": 11,
+      "scenarioId": "deliver-success",
+      "action": "deliver",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "deliver", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "AITM_DELIVERY_RESULT: {\"status\":\"delivered\",\"receipt\":\"fixture\"}\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/deliver.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs",
+        "sha256": "sha256:874c91f3cc4abdc2a0f68786eb98e3da020ead821e1a716b29124d694676ae31"
+      },
+      "productionPredicates": [
+        "review approval",
+        "mergeable pull request",
+        "provider authorization"
+      ],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "deliver.read-pr-page-1",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "deliver.provider-attempt-1",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 3,
+          "requestId": "deliver.provider-attempt-2",
+          "page": 1,
+          "attempt": 2,
+          "mutation": false
+        },
+        {
+          "sequence": 4,
+          "requestId": "deliver.mutate-provider",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "deliver.pr.page-1",
+          "resource": "pull-request",
+          "subject": "42",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "deliver.provider.attempt-1",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 1,
+          "page": 1
+        },
+        {
+          "sequence": 3,
+          "id": "deliver.provider.attempt-2",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 2,
+          "page": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "deliver",
+          "transportRequestId": "deliver.mutate-provider",
+          "beforeDigest": "sha256:c95b3db48e109b434c28bd5aa99d663a8ba02e44a9f05e6ed1bc5d73756e26d9",
+          "afterDigest": "sha256:458c5d6ab3c68da82a5dc57b9ecb339913e3a94d8fc03284adac401ce166380b",
+          "patch": {
+            "pullRequest": { "delivered": true, "state": "MERGED" },
+            "provider": { "attempts": 2 }
+          }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:c95b3db48e109b434c28bd5aa99d663a8ba02e44a9f05e6ed1bc5d73756e26d9",
+        "finalSha256": "sha256:458c5d6ab3c68da82a5dc57b9ecb339913e3a94d8fc03284adac401ce166380b"
+      }
+    },
+    {
+      "sequence": 12,
+      "scenarioId": "deliver-refusal",
+      "action": "deliver",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "deliver", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "AITM_DELIVERY_RESULT: {\"status\":\"refused\",\"reason\":\"merge-conflict\"}\n",
+      "stderr": "",
+      "status": 1,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/deliver.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs",
+        "sha256": "sha256:874c91f3cc4abdc2a0f68786eb98e3da020ead821e1a716b29124d694676ae31"
+      },
+      "productionPredicates": [
+        "review approval",
+        "mergeable pull request",
+        "provider authorization"
+      ],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "deliver.read-pr-page-1",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "deliver.provider-attempt-1",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 3,
+          "requestId": "deliver.provider-attempt-2",
+          "page": 1,
+          "attempt": 2,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "deliver.pr.page-1",
+          "resource": "pull-request",
+          "subject": "42",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "deliver.provider.attempt-1",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 1,
+          "page": 1
+        },
+        {
+          "sequence": 3,
+          "id": "deliver.provider.attempt-2",
+          "resource": "provider",
+          "subject": "merge",
+          "attempt": 2,
+          "page": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:cf2cedb9e227481a3b8cac0327cfd6905e15be7bec997f52da1e2c4f3a13616c",
+        "finalSha256": "sha256:cf2cedb9e227481a3b8cac0327cfd6905e15be7bec997f52da1e2c4f3a13616c"
+      }
+    },
+    {
+      "sequence": 13,
+      "scenarioId": "close-success",
+      "action": "close",
+      "outcome": "success",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "close", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "Closed #1655.\n",
+      "stderr": "",
+      "status": 0,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/close.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs",
+        "sha256": "sha256:8ccd93eb5f291b53d854790626390f4e72a1260154aec4cc6b4c1150ae7bb738"
+      },
+      "productionPredicates": ["Review state", "review approval", "delivery evidence"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "close.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "close.read-approval",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 3,
+          "requestId": "close.read-delivery",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 4,
+          "requestId": "close.mutate-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": true
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "close.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "close.approval",
+          "resource": "approval",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 3,
+          "id": "close.delivery",
+          "resource": "pull-request",
+          "subject": "42",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [
+        {
+          "sequence": 1,
+          "action": "close",
+          "transportRequestId": "close.mutate-issue",
+          "beforeDigest": "sha256:1a028b1ec6178fa27c5bfef8e69f5b8d0c0c12955e60191a26d938fc3310f8c1",
+          "afterDigest": "sha256:eb4e8c3236ef736a855bf96314c79791e62b36b230de5d2899c47427f06a3e87",
+          "patch": { "issue": { "open": false }, "board": { "status": "done" } }
+        }
+      ],
+      "authority": {
+        "initialSha256": "sha256:1a028b1ec6178fa27c5bfef8e69f5b8d0c0c12955e60191a26d938fc3310f8c1",
+        "finalSha256": "sha256:eb4e8c3236ef736a855bf96314c79791e62b36b230de5d2899c47427f06a3e87"
+      }
+    },
+    {
+      "sequence": 14,
+      "scenarioId": "close-refusal",
+      "action": "close",
+      "outcome": "refusal",
+      "command": {
+        "executable": "npx",
+        "argv": ["aitm", "close", "1655"],
+        "stdin": "",
+        "cwd": "isolated-fixture-repository"
+      },
+      "stdout": "",
+      "stderr": "close: review approval missing\n",
+      "status": 7,
+      "formatter": {
+        "path": "scripts/task-tracker/verbs/close.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs",
+        "sha256": "sha256:8ccd93eb5f291b53d854790626390f4e72a1260154aec4cc6b4c1150ae7bb738"
+      },
+      "productionPredicates": ["Review state", "review approval", "delivery evidence"],
+      "physicalRequests": [
+        {
+          "sequence": 1,
+          "requestId": "close.read-issue",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 2,
+          "requestId": "close.read-approval",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        },
+        {
+          "sequence": 3,
+          "requestId": "close.read-delivery",
+          "page": 1,
+          "attempt": 1,
+          "mutation": false
+        }
+      ],
+      "logicalAuthorityAccesses": [
+        {
+          "sequence": 1,
+          "id": "close.issue",
+          "resource": "issue",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 2,
+          "id": "close.approval",
+          "resource": "approval",
+          "subject": "1655",
+          "page": 1,
+          "attempt": 1
+        },
+        {
+          "sequence": 3,
+          "id": "close.delivery",
+          "resource": "pull-request",
+          "subject": "42",
+          "page": 1,
+          "attempt": 1
+        }
+      ],
+      "effects": [],
+      "authority": {
+        "initialSha256": "sha256:0e817b0d4a66ceb5f28091fd5af7c919d11849182b3ca444450b972424fbddee",
+        "finalSha256": "sha256:0e817b0d4a66ceb5f28091fd5af7c919d11849182b3ca444450b972424fbddee"
+      }
+    }
+  ]
+}
