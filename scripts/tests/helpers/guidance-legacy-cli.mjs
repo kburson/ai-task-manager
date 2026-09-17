@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { projectTmpDir } from '../../task-tracker/paths.mjs';
 import { readJsonLines, reconcileTransportLedger } from './guidance-legacy-transport.mjs';
 
 const helperRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -44,8 +45,7 @@ export function captureLegacyWorkflow({
     throw new Error('scratchRoot must be an absolute isolated path');
   mkdirSync(scratchRoot, { recursive: true });
   const workspace = mkdtempSync(path.join(scratchRoot, 'legacy-workflow-'));
-  const temporaryDirectory = path.join(workspace, 'tmp');
-  mkdirSync(temporaryDirectory);
+  const temporaryDirectory = projectTmpDir(workspace);
   execFileSync('git', ['init', '--quiet', workspace]);
   const configPath = path.join(workspace, 'transport-config.json');
   const ledgerPath = path.join(workspace, 'transport-ledger.jsonl');
