@@ -100,10 +100,11 @@ export function captureLegacyWorkflow({
     throw error;
   }
   capture.reconciliation = reconcileTransportLedger(scenario.requests ?? [], transportLedger);
-  const fixture =
-    typeof authorityFixture === 'string' && authorityFixture
+  const fixture = scenario.authorityScenario
+    ? typeof authorityFixture === 'string' && authorityFixture
       ? JSON.parse(readFileSync(authorityFixture, 'utf8'))
-      : authorityFixture;
+      : authorityFixture
+    : null;
   return attachLegacyAuthorityCapture({
     capture,
     fixture,
