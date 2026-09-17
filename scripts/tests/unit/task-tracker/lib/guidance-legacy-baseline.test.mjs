@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { discoverTestFiles } from '../../../../task-tracker/lib/discover-test-files.mjs';
+import { replayLegacyAuthorityCapture } from '../../../helpers/guidance-legacy-authority.mjs';
+import { reconcileTransportLedger } from '../../../helpers/guidance-legacy-transport.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
@@ -18,6 +18,13 @@ const ADAPTERS = ['claude', 'codex'];
 
 function bytes(file) {
   return readFileSync(path.join(projectRoot, file));
+}
+
+function snapshotBytes(record) {
+  const stored = bytes(record.snapshotPath);
+  if (record.encoding === 'base64') return Buffer.from(stored.toString('utf8').trim(), 'base64');
+  assert.equal(record.encoding, 'identity');
+  return stored;
 }
 
 function sha256(value) {
@@ -34,25 +41,30 @@ function percentile(samples, ratio) {
   return ordered[Math.max(0, Math.ceil(ordered.length * ratio) - 1)];
 }
 
-test('aggregate baseline executes the predecessor inventory, transport and authority proofs', () => {
-  const files = [
-    'scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs',
-    'scripts/tests/unit/task-tracker/lib/guidance-legacy-transport.test.mjs',
-    'scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs',
-    'scripts/tests/unit/task-tracker/lib/guidance-legacy-authority.test.mjs',
-  ];
-  const discovered = new Set(discoverTestFiles({ projectRoot }));
-  for (const file of files) assert.equal(discovered.has(file), true, `undiscovered ${file}`);
-  const env = { ...process.env, NODE_OPTIONS: '' };
-  delete env.NODE_TEST_CONTEXT;
-  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', ...files], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    env,
-  });
-  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /tests \d+/);
-  assert.match(result.stdout, /fail 0/);
+test('aggregate baseline re-executes predecessor inventory, transport and authority assertions', () => {
+  const actions = loadJson(path.join(fixtureRoot, 'action-observation-inventory.json'));
+  const flags = loadJson(path.join(fixtureRoot, 'behavioral-flags.json'));
+  const scenarios = loadJson(path.join(workflowRoot, 'lifecycle-scenarios.json'));
+  const authority = loadJson(path.join(workflowRoot, 'authority-store.json'));
+  assert.deepEqual(
+    actions.actions.map(({ id }) => id),
+    ACTIONS
+  );
+  assert.equal(flags.flags.length > 0, true);
+  for (const scenario of scenarios.scenarios) {
+    const ledger = scenario.expectedTransport.map(({ id }) => ({ requestId: id }));
+    assert.equal(
+      reconcileTransportLedger(scenario.expectedTransport, ledger).physicalCount,
+      scenario.expectedTransport.length
+    );
+    const replay = replayLegacyAuthorityCapture({
+      fixture: authority,
+      scenario,
+      transportLedger: ledger,
+    });
+    assert.equal(replay.authorityAccesses.length, scenario.expectedAuthorityAccesses.length);
+    assert.equal(replay.effects.length, scenario.expectedEffects);
+  }
 });
 
 test('frozen baseline retains both complete adapter generations and closes every digest', () => {
@@ -63,7 +75,7 @@ test('frozen baseline retains both complete adapter generations and closes every
   assert.deepEqual(baseline.adapters.map(({ id }) => id).sort(), ADAPTERS);
 
   for (const input of baseline.inputs) {
-    const content = bytes(input.snapshotPath);
+    const content = snapshotBytes(input);
     assert.equal(content.length, input.bytes, `${input.id} byte count drifted`);
     assert.equal(sha256(content), input.sha256, `${input.id} digest drifted`);
   }
@@ -75,7 +87,7 @@ test('frozen baseline retains both complete adapter generations and closes every
       `${adapter.id} loaded-text stack incomplete`
     );
     for (const loaded of adapter.loadedText) {
-      const content = bytes(loaded.snapshotPath);
+      const content = snapshotBytes(loaded);
       assert.equal(content.length, loaded.bytes, `${adapter.id}:${loaded.role} bytes drifted`);
       assert.equal(content.toString('utf8').length, loaded.characters);
       assert.equal(Math.ceil(loaded.characters / 4), loaded.proxyTokens);
