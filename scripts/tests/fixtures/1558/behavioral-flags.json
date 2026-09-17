@@ -1,0 +1,741 @@
+{
+  "schema": "aitm.guidance-legacy-behavioral-flags/v1",
+  "sourceCommit": "8f3547e4fdab9f05f293d9b65e95b62f3972424c",
+  "flags": [
+    {
+      "flag": "AITM_CAPTURE_REAL_GH",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/action-capture.mjs",
+          "symbol": "AITM_CAPTURE_REAL_GH@action-capture.mjs",
+          "excerpt": "const realGh = env.AITM_CAPTURE_REAL_GH || resolveGh(env.PATH);",
+          "fingerprint": "sha256:e1d389543afe8bac87f0d80208a43a641b19ad7d0df22038f290c8ef48b1d317"
+        }
+      ],
+      "defaultBehavior": "Action capture resolves the real gh executable from PATH",
+      "nondefaultBehavior": "Action capture delegates to the explicitly preserved real-gh path after inserting its capture shim",
+      "changes": {
+        "predicate": false,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_CASCADE",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/move-state/audit-timing.mjs",
+          "symbol": "AITM_CASCADE@audit-timing.mjs",
+          "excerpt": "if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;",
+          "fingerprint": "sha256:99bc1e858a9cc1c731e6957b3a6aae51df413b19decf13feeb026f8550ecb0cd"
+        },
+        {
+          "path": "scripts/task-tracker/lib/move-state/cache-unpark.mjs",
+          "symbol": "AITM_CASCADE@cache-unpark.mjs",
+          "excerpt": "if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;",
+          "fingerprint": "sha256:99bc1e858a9cc1c731e6957b3a6aae51df413b19decf13feeb026f8550ecb0cd"
+        }
+      ],
+      "defaultBehavior": "A top-level Done transition performs exit timing and cache-unpark work",
+      "nondefaultBehavior": "A nested close cascade suppresses duplicate exit timing and cache-unpark effects",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_CREATE_ISSUE_INTERNAL",
+      "reads": [
+        {
+          "path": "scripts/gh/create-issue.mjs",
+          "symbol": "AITM_CREATE_ISSUE_INTERNAL@create-issue.mjs",
+          "excerpt": "const internalEnv = process.env.AITM_CREATE_ISSUE_INTERNAL === '1';",
+          "fingerprint": "sha256:cacdffcfeaebbb8a0077fbb8cf6844d0d4f5c847983e5137f100114073ae955f"
+        }
+      ],
+      "defaultBehavior": "Direct execution of create-issue is refused by the package-owned entry guard",
+      "nondefaultBehavior": "The sanctioned task-tracker wrapper may enter the create-issue implementation",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_DUP_CHILD_SIBLINGS_JSON",
+      "reads": [
+        {
+          "path": "scripts/gh/create-issue.mjs",
+          "symbol": "AITM_DUP_CHILD_SIBLINGS_JSON@create-issue.mjs",
+          "excerpt": "const injected = process.env.AITM_DUP_CHILD_SIBLINGS_JSON;",
+          "fingerprint": "sha256:6496b757c1f03ef2c82667ddf46c735667024c0d2f24fb34f8b00bc96b20fb28"
+        }
+      ],
+      "defaultBehavior": "Duplicate-child authority is read from GitHub",
+      "nondefaultBehavior": "A test fixture supplies the sibling set used by the duplicate-child predicate",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_EVIDENCE_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/evidence-v2/execution-context.mjs",
+          "symbol": "AITM_EVIDENCE_CONTEXT@execution-context.mjs",
+          "excerpt": "if (env.AITM_EVIDENCE_CONTEXT)",
+          "fingerprint": "sha256:f340380167965dca1b1422a5bc54d61af8d76879687c79ffdcb198859f1ada66"
+        }
+      ],
+      "defaultBehavior": "Evidence-v2 execution derives context through its ordinary runtime inputs",
+      "nondefaultBehavior": "A child process reads the serialized execution context passed by its parent",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_EVIDENCE_RECORDED_FIXTURE",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/runtime.mjs",
+          "symbol": "AITM_EVIDENCE_RECORDED_FIXTURE@runtime.mjs",
+          "excerpt": "fixturePath: process.env.AITM_EVIDENCE_RECORDED_FIXTURE,",
+          "fingerprint": "sha256:413dce815578b9d1197125676c79082b49dbee7bfe52a48ef92acf1af5667d6a"
+        }
+      ],
+      "defaultBehavior": "The runtime does not enable the recorded evidence fixture adapter",
+      "nondefaultBehavior": "The runtime loads recorded evidence from the named fixture path",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_FAKE_BODY_FILE",
+      "reads": [
+        {
+          "path": "scripts/tests/helpers/pexec-body-store.mjs",
+          "symbol": "pexecBodyStore",
+          "excerpt": "const storeFile = process.env.AITM_FAKE_BODY_FILE;",
+          "fingerprint": "sha256:cecd4f34b24bbc7f4e3af924b97cdf9d2f24130089da58d0872639b4caadc40a"
+        }
+      ],
+      "defaultBehavior": "Absent from production; test helper has no external body store selected",
+      "nondefaultBehavior": "Test helper routes body reads and writes to a fixture file",
+      "changes": {
+        "predicate": false,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "test-only-reader-must-remain-outside-production",
+      "disposition": "retain",
+      "rationale": "The variable has test-only readers; recording that boundary makes any production reader a classified regression.",
+      "ownerTask": "wbs-01-inventory",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_FORCE_STAMP",
+      "reads": [
+        {
+          "path": "bin/lib/stamp-skill-version.mjs",
+          "symbol": "AITM_FORCE_STAMP@stamp-skill-version.mjs",
+          "excerpt": "if (process.env.AITM_FORCE_STAMP === '1') return false;",
+          "fingerprint": "sha256:d28a6848b81194afee164c9421dc7db22bb6bb571328274aab06142eb3facee0"
+        }
+      ],
+      "defaultBehavior": "Skill stamping may skip an already current destination",
+      "nondefaultBehavior": "Tests and CI force the stamp path even when the destination appears current",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_GH_TEST_DOUBLE_BIN",
+      "reads": [
+        {
+          "path": "scripts/gh/lib/gh-client.mjs",
+          "symbol": "AITM_GH_TEST_DOUBLE_BIN@gh-client.mjs",
+          "excerpt": "const declaredBin = env.AITM_GH_TEST_DOUBLE_BIN;",
+          "fingerprint": "sha256:7380dcfd86fbacf4c9e991879463bca96f6492f5f01e7495c6385dd63876dbb4"
+        }
+      ],
+      "defaultBehavior": "GitHub execution resolves the normal gh binary",
+      "nondefaultBehavior": "Tests authorize the declared GitHub test-double executable",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_GUARD_FORCE_THROW",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/bash-guard.mjs",
+          "symbol": "AITM_GUARD_FORCE_THROW@bash-guard.mjs",
+          "excerpt": "if (process.env.AITM_GUARD_FORCE_THROW) {",
+          "fingerprint": "sha256:a256c19ca4fafd519f9c2f98ff4735b395e5937eee2320dab94f2e9416f2db7d"
+        }
+      ],
+      "defaultBehavior": "The shell guard evaluates normally",
+      "nondefaultBehavior": "The fault fixture forces the guard to throw before ordinary evaluation",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "fault-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_INTERNAL",
+      "reads": [
+        {
+          "path": "scripts/gh/move-state.mjs",
+          "symbol": "AITM_INTERNAL@move-state.mjs",
+          "excerpt": "const AITM_INTERNAL = env.AITM_INTERNAL === '1';",
+          "fingerprint": "sha256:8e2354bf7dc1c6bffc55621a25a79854bb6dbf62e7232d56e879e2014170dd49"
+        }
+      ],
+      "defaultBehavior": "move-state rejects direct arbitrary lifecycle entry",
+      "nondefaultBehavior": "A sanctioned workflow verb identifies its internal move-state delegation",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_ISSUE_LOCK_HELD",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/issue-mutator-lock.mjs",
+          "symbol": "isIssueLockHeld",
+          "excerpt": "const raw = env?.[ISSUE_LOCK_HELD_ENV];",
+          "fingerprint": "sha256:dbce3e5b78823128a69e13bc0f17ca9810b8f82ef8c2adc2de31fae534e81e12"
+        }
+      ],
+      "defaultBehavior": "A nested process acquires its own issue mutation lock",
+      "nondefaultBehavior": "A matching self-published issue token tells the sanctioned nested process that its parent already holds the lock",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-published-by-the-lock-owner",
+      "disposition": "retain",
+      "rationale": "This is lock-ownership propagation, not a public bypass; arbitrary inherited values remain subject to token and self-publication checks.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_REHEARSAL_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/evidence-v2/execution-context.mjs",
+          "symbol": "AITM_REHEARSAL_CONTEXT@execution-context.mjs",
+          "excerpt": "if (!env.AITM_REHEARSAL_CONTEXT) return null;",
+          "fingerprint": "sha256:156a1b655402d3db29304372ab7c3839fdf53bb6c29091f105de1cd4a201ea6b"
+        }
+      ],
+      "defaultBehavior": "Evidence-v2 executes without a rehearsal manifest",
+      "nondefaultBehavior": "A rehearsal child loads the named isolated execution context",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_SKIP_DUP_CHILD_GATE",
+      "reads": [
+        {
+          "path": "scripts/gh/create-issue.mjs",
+          "symbol": "AITM_SKIP_DUP_CHILD_GATE@create-issue.mjs",
+          "excerpt": "process.env.AITM_SKIP_DUP_CHILD_GATE !== '1'",
+          "fingerprint": "sha256:6c1149bf293413c714eb4ead579f629e49b1a194285dc70b03273887d017a3c0"
+        }
+      ],
+      "defaultBehavior": "Issue creation checks for duplicate child scope",
+      "nondefaultBehavior": "The test fixture skips duplicate-child enforcement",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_SKIP_PARENT_STATE_GATE",
+      "reads": [
+        {
+          "path": "scripts/gh/create-issue.mjs",
+          "symbol": "AITM_SKIP_PARENT_STATE_GATE@create-issue.mjs",
+          "excerpt": "process.env.AITM_SKIP_PARENT_STATE_GATE !== '1'",
+          "fingerprint": "sha256:88533f591e73775c2d6dd76287ec6b8b435becee48fce0ef01ff455dbdafa766"
+        }
+      ],
+      "defaultBehavior": "Sub-issue creation enforces the parent lifecycle state",
+      "nondefaultBehavior": "The test fixture skips the parent-state prerequisite",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_TEST_ISSUE_NUMBER",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/verify-epic-trail.mjs",
+          "symbol": "AITM_TEST_ISSUE_NUMBER@verify-epic-trail.mjs",
+          "excerpt": "const governed = Number(String(env.AITM_TEST_ISSUE_NUMBER || '').replace(/^#/, ''));",
+          "fingerprint": "sha256:0b45b4b251d377b9b24afec83869ded50071cb88b0c3c9a9725d0618e7189feb"
+        }
+      ],
+      "defaultBehavior": "Epic-trail verification uses its ordinary governed target resolution",
+      "nondefaultBehavior": "The test fixture selects an explicit issue number",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_TEST_NO_GH_RETRY",
+      "reads": [
+        {
+          "path": "scripts/gh/lib/with-retry.mjs",
+          "symbol": "testModeRetryCap",
+          "excerpt": "const v = process.env[TEST_NO_RETRY_ENV];",
+          "fingerprint": "sha256:96e55c3656106dfeb81e4fe6a9074ffcb8b3becf6fcc5655abbf8489381ee19a"
+        }
+      ],
+      "defaultBehavior": "Transient GitHub failures receive the configured bounded retry and backoff budget",
+      "nondefaultBehavior": "Any nonempty value except 0 collapses the retry budget to zero for spawned test processes",
+      "changes": {
+        "predicate": false,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "The test-only fast-failure control changes transport timing and cannot participate in a measured legacy workflow.",
+      "ownerTask": "wbs-02-transport",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_UPSTREAM_REPO",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/upstream-report.mjs",
+          "symbol": "AITM_UPSTREAM_REPO@upstream-report.mjs",
+          "excerpt": "const override = env && env.AITM_UPSTREAM_REPO ? String(env.AITM_UPSTREAM_REPO).trim() : '';",
+          "fingerprint": "sha256:731f741e6d21dfe3638434c023c7806a273dae30b1b1da24cb813f459d132bed"
+        }
+      ],
+      "defaultBehavior": "Reports resolve upstream repository identity from Git configuration",
+      "nondefaultBehavior": "An operator explicitly overrides the upstream repository identity",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "operator-control",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_VERB_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/gh/move-state.mjs",
+          "symbol": "AITM_VERB_CONTEXT@move-state.mjs",
+          "excerpt": "const AITM_VERB_CONTEXT = String(env.AITM_VERB_CONTEXT || '').trim();",
+          "fingerprint": "sha256:1d659016f4e21e2bbd263f936808b064ddf9e8a761909f3e89ed3a6bdf888d8a"
+        }
+      ],
+      "defaultBehavior": "move-state has no sanctioned caller context and refuses direct lifecycle jumps",
+      "nondefaultBehavior": "The parent workflow verb declares the narrow transition context move-state validates",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "AITM_VERIFY_DEBUG",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/versioned-issue-write.mjs",
+          "symbol": "AITM_VERIFY_DEBUG@versioned-issue-write.mjs",
+          "excerpt": "if (process.env.AITM_VERIFY_DEBUG) {",
+          "fingerprint": "sha256:61ccee2103ba6c26ae84c17db06e13e73366178a8a225bb3571f4fc19471b501"
+        }
+      ],
+      "defaultBehavior": "Versioned issue writes emit no extra verification diagnostics",
+      "nondefaultBehavior": "Versioned issue writes emit diagnostic verification detail without changing authority",
+      "changes": {
+        "predicate": false,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_FAKE_NEW_ISSUE",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/verbs/new.mjs",
+          "symbol": "TT_FAKE_NEW_ISSUE@new.mjs",
+          "excerpt": "if (process.env.TT_FAKE_NEW_ISSUE) return process.env.TT_FAKE_NEW_ISSUE;",
+          "fingerprint": "sha256:2771bc0d824c4125c203e31d46a9c50b327bf3633509ee2c2f4496b0943994c7"
+        }
+      ],
+      "defaultBehavior": "New-issue creation obtains the actual created issue number",
+      "nondefaultBehavior": "Tests substitute a fixture issue number",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_FULL_AUTO",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/plan-approval-audit.mjs",
+          "symbol": "TT_FULL_AUTO@plan-approval-audit.mjs",
+          "excerpt": "return env?.TT_FULL_AUTO === '1';",
+          "fingerprint": "sha256:f6047c0a6391788006fe1915977e73c5488d010db90c32770fbe49db936a6eb4"
+        },
+        {
+          "path": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "symbol": "TT_FULL_AUTO@plan-exit-ownership-guard.mjs",
+          "excerpt": "mode: env.TT_FULL_AUTO === '1' ? 'full-auto' : 'interactive',",
+          "fingerprint": "sha256:b4f36c7d24d057489b56fd1fd9a71aa02a1e4d39d48d95d9a20f208480ce10a2"
+        },
+        {
+          "path": "scripts/task-tracker/verbs/approve.mjs",
+          "symbol": "TT_FULL_AUTO@approve.mjs",
+          "excerpt": "const envOn = env.TT_FULL_AUTO === '1';",
+          "fingerprint": "sha256:eabb83adb1d204383652a3f0f1b07bb6907bc66d9705b70555e76e6221b1d0fe"
+        },
+        {
+          "path": "scripts/task-tracker/verbs/review.mjs",
+          "symbol": "TT_FULL_AUTO@review.mjs",
+          "excerpt": "if (env?.TT_FULL_AUTO === '1') return false;",
+          "fingerprint": "sha256:fbcd55883ad3e03d7fd51cbce90791c64902e39a8f0f06976bab67c034fc3b88"
+        }
+      ],
+      "defaultBehavior": "Plan and terminal approvals retain interactive human gates",
+      "nondefaultBehavior": "Explicit Full-Auto policy supplies audited plan and exact-HEAD terminal approval provenance",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "operator-control",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Required governed operator or process-boundary control; inventory prevents accidental use as measurement authority.",
+      "ownerTask": "out-of-scope-preserved-control",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_REPAIR_FAKE_FIELDS",
+      "reads": [
+        {
+          "path": "scripts/gh/init-repair.mjs",
+          "symbol": "TT_REPAIR_FAKE_FIELDS@init-repair.mjs",
+          "excerpt": ": process.env.TT_REPAIR_FAKE_FIELDS",
+          "fingerprint": "sha256:60afe1b33d814800f6884f39377b2bcfb5389ced58ca223ee7025c25588e540e"
+        }
+      ],
+      "defaultBehavior": "Init repair reads live project field definitions",
+      "nondefaultBehavior": "Tests inject serialized project field definitions",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_REPAIR_FAKE_OPTIONS",
+      "reads": [
+        {
+          "path": "scripts/gh/init-repair.mjs",
+          "symbol": "TT_REPAIR_FAKE_OPTIONS@init-repair.mjs",
+          "excerpt": "const raw = process.env.TT_REPAIR_FAKE_OPTIONS;",
+          "fingerprint": "sha256:9708f524a4fd041fd44dbbd8bfbd6619ae6cd52db2e3dcc29c9ca470e16809c8"
+        }
+      ],
+      "defaultBehavior": "Init repair reads live project field options",
+      "nondefaultBehavior": "Tests inject serialized project field options",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_SKIP_DIRTY_CHECK",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/move-state/guard-execution.mjs",
+          "symbol": "TT_SKIP_DIRTY_CHECK@guard-execution.mjs",
+          "excerpt": "if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {",
+          "fingerprint": "sha256:1b0fc2c303b0b3454940e469c1ae615f9a4889965e548b2ecdd9e81cc1781140"
+        },
+        {
+          "path": "scripts/task-tracker/verbs/close.mjs",
+          "symbol": "TT_SKIP_DIRTY_CHECK@close.mjs",
+          "excerpt": "if (!terminalResume && process.env.TT_SKIP_DIRTY_CHECK !== '1') {",
+          "fingerprint": "sha256:2b17445c7a0cf9c830427e184d39574ff80dda354b74aa5bd1d8728aa877bfbd"
+        }
+      ],
+      "defaultBehavior": "Review and close refuse a dirty governed worktree",
+      "nondefaultBehavior": "Tests skip the dirty-worktree predicate",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_SKIP_FIELD_SELF_CHECK",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/runtime.mjs",
+          "symbol": "TT_SKIP_FIELD_SELF_CHECK@runtime.mjs",
+          "excerpt": "if (process.env.TT_SKIP_FIELD_SELF_CHECK !== '1') {",
+          "fingerprint": "sha256:da190dffea47f8178afd5207b9bb72fef5d9c2d9fa8697eaef4cd0e4dc3096d4"
+        }
+      ],
+      "defaultBehavior": "Runtime startup verifies configured project fields",
+      "nondefaultBehavior": "Tests skip the startup field self-check",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    },
+    {
+      "flag": "TT_SKIP_NETWORK",
+      "reads": [
+        {
+          "path": "scripts/gh/dispatch-prep.mjs",
+          "symbol": "TT_SKIP_NETWORK@dispatch-prep.mjs",
+          "excerpt": ": process.env.TT_SKIP_NETWORK === '1';",
+          "fingerprint": "sha256:5fb35cb89b90c4ade52758b094eda6f79bac4c6f991c8dcb6313e92bc526ff35"
+        },
+        {
+          "path": "scripts/gh/ensure-wave-parent.mjs",
+          "symbol": "TT_SKIP_NETWORK@ensure-wave-parent.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK !== '1') {",
+          "fingerprint": "sha256:932f36c1eb4ddad0e05924f61370acdc18c757981ed76061c4d5aa2be8baa42d"
+        },
+        {
+          "path": "scripts/gh/init-repair.mjs",
+          "symbol": "TT_SKIP_NETWORK@init-repair.mjs",
+          "excerpt": ": process.env.TT_SKIP_NETWORK === '1';",
+          "fingerprint": "sha256:5fb35cb89b90c4ade52758b094eda6f79bac4c6f991c8dcb6313e92bc526ff35"
+        },
+        {
+          "path": "scripts/gh/lib/gh-client.mjs",
+          "symbol": "TT_SKIP_NETWORK@gh-client.mjs",
+          "excerpt": "process.env.TT_SKIP_NETWORK !== '1' ||",
+          "fingerprint": "sha256:4506c693949f9d564c8809346899896f6c6be5c8e76e357ce82bfe244be6e5fc"
+        },
+        {
+          "path": "scripts/gh/lib/live-state.mjs",
+          "symbol": "TT_SKIP_NETWORK@live-state.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK === '1') return '';",
+          "fingerprint": "sha256:ae1fc15f9bd9b805b72e4a685b1cd259ca00d6d17e3541241ebafb16d46c8080"
+        },
+        {
+          "path": "scripts/gh/move-state.mjs",
+          "symbol": "TT_SKIP_NETWORK@move-state.mjs",
+          "excerpt": "const SKIP_NETWORK = env.TT_SKIP_NETWORK === '1';",
+          "fingerprint": "sha256:03228df75581722c0af6fa63dab414c260abff85b63227f2123cbd8a1a4fd934"
+        },
+        {
+          "path": "scripts/gh/set-priority.mjs",
+          "symbol": "TT_SKIP_NETWORK@set-priority.mjs",
+          "excerpt": "deps.skipNetwork !== undefined ? deps.skipNetwork : process.env.TT_SKIP_NETWORK === '1';",
+          "fingerprint": "sha256:c6de653eb52dfddf4722a02b4d0488e1be35a6596c24637c5498bd6ee26b5eb3"
+        },
+        {
+          "path": "scripts/gh/set-rank.mjs",
+          "symbol": "TT_SKIP_NETWORK@set-rank.mjs",
+          "excerpt": "deps.skipNetwork !== undefined ? deps.skipNetwork : process.env.TT_SKIP_NETWORK === '1';",
+          "fingerprint": "sha256:c6de653eb52dfddf4722a02b4d0488e1be35a6596c24637c5498bd6ee26b5eb3"
+        },
+        {
+          "path": "scripts/task-tracker/bash-guard.mjs",
+          "symbol": "TT_SKIP_NETWORK@bash-guard.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK === '1') return;",
+          "fingerprint": "sha256:fc2288eda905f5ac780d182c2292f3486eb0710491afebdb8f308529ad0368e5"
+        },
+        {
+          "path": "scripts/task-tracker/hook-handler.mjs",
+          "symbol": "TT_SKIP_NETWORK@hook-handler.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK === '1') return;",
+          "fingerprint": "sha256:fc2288eda905f5ac780d182c2292f3486eb0710491afebdb8f308529ad0368e5"
+        },
+        {
+          "path": "scripts/task-tracker/lib/verb-preflight.mjs",
+          "symbol": "TT_SKIP_NETWORK@verb-preflight.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK === '1') {",
+          "fingerprint": "sha256:11491b8a425caf3bb1b0a7988ae4f2a12a2608598aac8eb03f1cf1520265539d"
+        },
+        {
+          "path": "scripts/task-tracker/lib/worktree-relocation-guard.mjs",
+          "symbol": "TT_SKIP_NETWORK@worktree-relocation-guard.mjs",
+          "excerpt": "if (env.TT_SKIP_NETWORK === '1') return { status: 'network-skipped' };",
+          "fingerprint": "sha256:2c8667bf58588370ffc70726c03ecc726d8c5774bb74a453aa79be5c38a5b71a"
+        },
+        {
+          "path": "scripts/task-tracker/runtime.mjs",
+          "symbol": "TT_SKIP_NETWORK@runtime.mjs",
+          "excerpt": "const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';",
+          "fingerprint": "sha256:ab9818aa7d0fd2253a0c9812a499af02a760bdc95bf39ae70030f418c4b834d9"
+        },
+        {
+          "path": "scripts/task-tracker/verbs/approve.mjs",
+          "symbol": "TT_SKIP_NETWORK@approve.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK === '1') {",
+          "fingerprint": "sha256:11491b8a425caf3bb1b0a7988ae4f2a12a2608598aac8eb03f1cf1520265539d"
+        },
+        {
+          "path": "scripts/task-tracker/verbs/plan-approve.mjs",
+          "symbol": "TT_SKIP_NETWORK@plan-approve.mjs",
+          "excerpt": "if (process.env.TT_SKIP_NETWORK === '1') {",
+          "fingerprint": "sha256:11491b8a425caf3bb1b0a7988ae4f2a12a2608598aac8eb03f1cf1520265539d"
+        }
+      ],
+      "defaultBehavior": "Commands perform required GitHub reads and writes",
+      "nondefaultBehavior": "Tests suppress or replace network-backed behavior at inventoried call sites",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "test-fixture",
+      "baselinePolicy": "remove-from-characterization-environment",
+      "disposition": "relocate",
+      "rationale": "Test or fault injection cannot authorize the legacy characterization baseline and moves with its owning implementation child.",
+      "ownerTask": "wbs-01-inventory-for-later-owning-child",
+      "verifier": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs"
+    }
+  ]
+}
