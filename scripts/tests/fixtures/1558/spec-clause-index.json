@@ -1,0 +1,512 @@
+{
+  "schema": "aitm.guidance-spec-clause-index/v1",
+  "source": {
+    "path": "docs/superpowers/specs/2026-09-15-1558-ask-the-script-guidance-design.md",
+    "commit": "a168753999617066d98bbc1227c4b5d97fa531c5",
+    "sha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78"
+  },
+  "closure": {
+    "clauseCount": 70,
+    "clauseIdsSha256": "sha256:1972610ef96ee12ef99a537f9e3c3895624ff016e0f7002984aa3be1ea71ac31"
+  },
+  "clauses": [
+    {
+      "id": "clause.evidence.bundle-complete",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Every authority source used by the final verdict appears in the immutable evidence bundle."
+    },
+    {
+      "id": "clause.evidence.observation-window",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "The bundle records an observation window and each source observation time, identity, revision, or digest."
+    },
+    {
+      "id": "clause.evidence.snapshot-digest",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "The snapshot digest binds the complete authority bundle including normalization inputs."
+    },
+    {
+      "id": "clause.evidence.refresh-provenance",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Bounded refreshes replace superseded values while retaining observation provenance for the replacement."
+    },
+    {
+      "id": "clause.evidence.missing-not-empty",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Missing required observations never become empty evidence that can produce a successful decision."
+    },
+    {
+      "id": "clause.normalization.identity",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Each pending normalization retains its closed normalizer ID, input digest, ordered decisions, decision digest, and persist-on-execute disposition."
+    },
+    {
+      "id": "clause.normalization.decision-fields",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Functional DoD decisions name the key, derivation rule, stamp boolean, and tick boolean in acs then checkboxes order."
+    },
+    {
+      "id": "clause.normalization.digest-omissions",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Normalization intent digests exclude proposed timestamps, SHA stamps, evaluation timestamps, and rendered marker bytes only."
+    },
+    {
+      "id": "clause.evidence.digest-not-authority",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Decision and snapshot digests are neither cross-call authorization capabilities nor equality gates."
+    },
+    {
+      "id": "clause.evidence.head-body-refresh",
+      "section": "13.2",
+      "group": "evidence-and-normalization",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Changed HEAD or fetched body identity requires fresh evaluation even when normalization intent is unchanged."
+    },
+
+    {
+      "id": "clause.presentation.issue",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine presentation always includes the queried issue identity without substitution."
+    },
+    {
+      "id": "clause.presentation.action-id",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine presentation includes a registered action ID or null when navigation has no valid recommendation."
+    },
+    {
+      "id": "clause.presentation.status",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine presentation preserves the evaluator status exactly as ready, blocked, or indeterminate."
+    },
+    {
+      "id": "clause.presentation.blockers",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine blockers preserve every final refusal in order with typed args and one complete disposition."
+    },
+    {
+      "id": "clause.presentation.normalizations",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine normalizations preserve IDs, ordered decisions, and disposition while omitting only internal digests."
+    },
+    {
+      "id": "clause.presentation.warnings",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine warnings remain a required ordered array after the sole receipt-based suppression rule."
+    },
+    {
+      "id": "clause.presentation.human-decision",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine humanDecision is required and is null or the complete nonempty request object."
+    },
+    {
+      "id": "clause.presentation.explicit-empty",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "All seven presentation fields remain present and valid empty arrays or nulls are explicit rather than omitted."
+    },
+    {
+      "id": "clause.presentation.closed-envelope",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Unknown versions, members, types, and semantically inconsistent values fail closed under the v1 envelope."
+    },
+    {
+      "id": "clause.presentation.no-evidence-duplication",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Routine output excludes snapshots, internal schemas, raw messages, normalization digests, evidence bodies, and duplicate guidance IDs."
+    },
+    {
+      "id": "clause.presentation.operational-values-complete",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "All typed operational arguments including full SHA and evidence references remain intact without truncation."
+    },
+    {
+      "id": "clause.presentation.no-diagnostic-fallback",
+      "section": "15.2",
+      "group": "presentation-shape",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Blocked and indeterminate routine results never trigger automatic fallback to full diagnostics."
+    },
+
+    {
+      "id": "clause.causes.blocked-nonempty",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Every blocked or indeterminate decision carries at least one typed blocker."
+    },
+    {
+      "id": "clause.causes.ready-empty",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "A ready decision contains no blockers and cannot hide an unmet requirement."
+    },
+    {
+      "id": "clause.causes.complete-known-refusals",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Indeterminate results preserve every already known final refusal and every known unmet requirement."
+    },
+    {
+      "id": "clause.causes.args-required",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Each blocker, warning, and human request contains required closed args, explicitly empty only when declared."
+    },
+    {
+      "id": "clause.causes.collection-codes",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Collection failures use registered authority-read-failed or authority-read-skipped codes with typed sources."
+    },
+    {
+      "id": "clause.causes.collection-reasons",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Authority read failure reasons use only timeout, rate-limited, unavailable, incomplete, or invalid."
+    },
+    {
+      "id": "clause.causes.multi-subject",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "A source with multiple independently required subjects carries the typed subject needed to distinguish them."
+    },
+    {
+      "id": "clause.causes.reserved-producers",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Authority collection, action navigation, and result validation use reserved producers separate from executable guards."
+    },
+    {
+      "id": "clause.causes.producer-code-pair",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "The registry validates producer and code pairs so boundary producers cannot impersonate live guards."
+    },
+    {
+      "id": "clause.causes.navigation",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Navigation failures emit state-unavailable with a closed unknown or conflicting reason."
+    },
+    {
+      "id": "clause.causes.outer-validator",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Malformed results produce a fixed schema-valid indeterminate refusal without recursive presentation validation."
+    },
+    {
+      "id": "clause.causes.one-disposition",
+      "section": "13.2",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Every blocker has exactly one registered remediation or closed no-automatic-remediation disposition."
+    },
+    {
+      "id": "clause.causes.legacy-stable",
+      "section": "14.1",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Inventoried legacy refusals map to a stable guard and code with human-investigation disposition and empty args."
+    },
+    {
+      "id": "clause.causes.legacy-no-text-execution",
+      "section": "14.1",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Quoted legacy reason text remains diagnostic data and is never parsed to select a command."
+    },
+    {
+      "id": "clause.causes.invalid-no-fallback",
+      "section": "14.1",
+      "group": "typed-causes-and-dispositions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Malformed typed remediations fail validation and cannot fall back to a legacy adapter."
+    },
+
+    {
+      "id": "clause.warnings.closed-shape",
+      "section": "13.2",
+      "group": "warnings",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Operational warnings are exactly closed code and args records without raw messages or arbitrary evidence."
+    },
+    {
+      "id": "clause.warnings.source-diverged",
+      "section": "13.2",
+      "group": "warnings",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Guidance source divergence carries the project override path and its full file digest."
+    },
+    {
+      "id": "clause.warnings.legacy-origin",
+      "section": "13.2",
+      "group": "warnings",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Legacy guard warnings preserve their existence and registered guard origin while raw text remains diagnostic."
+    },
+    {
+      "id": "clause.warnings.composition-order",
+      "section": "13.2",
+      "group": "warnings",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Presentation composes admission warnings before evaluator warnings in deterministic producer order."
+    },
+    {
+      "id": "clause.warnings.duplicates",
+      "section": "13.2",
+      "group": "warnings",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Warning duplicates and distinct subjects remain complete and ordered rather than deduplicated."
+    },
+    {
+      "id": "clause.warnings.domain-separation",
+      "section": "13.2",
+      "group": "warnings",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Admission failures and post-success audit failures remain separate domains and do not masquerade as readiness warnings."
+    },
+
+    {
+      "id": "clause.human.required-shape",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Internal humanDecision is null or exactly a nonempty ordered requests array."
+    },
+    {
+      "id": "clause.human.request-shape",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Each human request contains exactly kind, actor, subject, and closed args."
+    },
+    {
+      "id": "clause.human.plan-approval",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Plan approval requests name the configured approver, issue and promote action, with empty args."
+    },
+    {
+      "id": "clause.human.review-approval",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Review approval requests include the configured approver and the complete exact HEAD argument."
+    },
+    {
+      "id": "clause.human.investigation",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Manual investigation requests name a human operator and the corresponding guard and blocker code."
+    },
+    {
+      "id": "clause.human.complete-policy-requests",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Every effective-policy remediation requiring human action has a matching request and all simultaneous requests remain present."
+    },
+    {
+      "id": "clause.human.blocker-order",
+      "section": "13.2",
+      "group": "human-decisions",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Human requests follow the order of their corresponding blockers and agree on scope and disposition."
+    },
+
+    {
+      "id": "clause.navigation.cross-issue-mapping",
+      "section": "13.2",
+      "group": "navigation-and-cross-issue",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Cross-issue human subjects are permitted only when a typed blocker or remediation identifies the same repository target."
+    },
+    {
+      "id": "clause.navigation.fresh-target-evaluation",
+      "section": "13.2",
+      "group": "navigation-and-cross-issue",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Acting on another issue requires normal binding and fresh evaluation; the parent result grants no authority."
+    },
+    {
+      "id": "clause.navigation.investigation-null-action",
+      "section": "13.2",
+      "group": "navigation-and-cross-issue",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Unresolved navigation investigation may use a null action without selecting an executable operation."
+    },
+    {
+      "id": "clause.navigation.terminal-null-action",
+      "section": "15.2",
+      "group": "navigation-and-cross-issue",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Terminal Done has no fabricated forward action and returns a null recommendation."
+    },
+
+    {
+      "id": "clause.guidance.expansion-complete",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "When no matching receipt is supplied, every required guidance entry expands with complete agent instructions."
+    },
+    {
+      "id": "clause.guidance.receipt-suppresses-text-only",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "A matching caller receipt suppresses only static instruction text and never dynamic results or refusals."
+    },
+    {
+      "id": "clause.guidance.changed-digest-expands",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "A changed agent instruction digest expands the instruction even when its stable ID is unchanged."
+    },
+    {
+      "id": "clause.guidance.compaction-invalidates",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Compaction, clear, fresh worker, and sentinel invalidation require discarding instruction receipts."
+    },
+    {
+      "id": "clause.guidance.no-ledger-restore",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Adapters never restore instruction receipts from summaries, disk ledgers, evidence, or provenance."
+    },
+    {
+      "id": "clause.guidance.receipt-not-authority",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Instruction receipts attest current-context text presence and do not authorize lifecycle execution."
+    },
+    {
+      "id": "clause.guidance.stale-attestation-behavior",
+      "section": "15.2",
+      "group": "guidance-and-receipts",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "A stale matching caller attestation may suppress text but leaves every mutation guard enforced."
+    },
+
+    {
+      "id": "clause.diagnostics.mode-members",
+      "section": "15.5",
+      "group": "diagnostics",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Diagnostic mode requires both fullDecision and diagnosticMessages while routine mode forbids both."
+    },
+    {
+      "id": "clause.diagnostics.message-shape",
+      "section": "15.5",
+      "group": "diagnostics",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Diagnostic messages contain guard ID, raw text, and an explicit untrusted true marker."
+    },
+    {
+      "id": "clause.diagnostics.same-evaluation",
+      "section": "15.5",
+      "group": "diagnostics",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Diagnostic mode uses the same evaluation and must not fetch additional authority or reevaluate."
+    },
+    {
+      "id": "clause.diagnostics.operational-equivalence",
+      "section": "15.5",
+      "group": "diagnostics",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Operational presentation is identical with and without diagnostics for the same injected evidence."
+    },
+    {
+      "id": "clause.diagnostics.no-archive",
+      "section": "15.5",
+      "group": "diagnostics",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Diagnostics create no evidence archive, durable receipt ledger, authority cache, or capability token."
+    },
+
+    {
+      "id": "clause.override.chat-warning",
+      "section": "17.1",
+      "group": "project-override",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "First use of diverged project guidance emits the prescribed warning and full source receipt."
+    },
+    {
+      "id": "clause.override.receipt-suppression",
+      "section": "17.1",
+      "group": "project-override",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "A matching source receipt suppresses repeated warnings until context reset or source digest change."
+    },
+    {
+      "id": "clause.override.annotation-after-success",
+      "section": "17.2",
+      "group": "project-override",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "The first successful lifecycle mutation under diverged guidance posts one idempotent issue annotation."
+    },
+    {
+      "id": "clause.override.invalid-no-annotation",
+      "section": "17.2",
+      "group": "project-override",
+      "sourceSha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78",
+      "requirement": "Invalid guidance prevents mutation and therefore never writes the divergence annotation."
+    }
+  ]
+}
