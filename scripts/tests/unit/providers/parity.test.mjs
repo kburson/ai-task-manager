@@ -56,8 +56,11 @@ const EXPECTED_CLAUDE = Object.freeze({
   skillAdapterPath: 'skill/adapters/claude/SKILL.md',
   installRecipe: {
     writer: 'claude-settings',
+    skillContract: 'claude-skill',
     hookTarget: '.claude/settings.json',
+    hookContract: 'claude-settings',
     commandTarget: '.claude/commands/task.md',
+    commandContract: 'claude-command',
   },
   externalActions: {
     'github.merge-pull-request': {
@@ -83,8 +86,11 @@ const EXPECTED_CODEX = Object.freeze({
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
   installRecipe: {
     writer: 'codex-hooks',
+    skillContract: 'codex-skill',
     hookTarget: '.codex/hooks.json',
+    hookContract: 'codex-hooks',
     commandTarget: null,
+    commandContract: null,
   },
   externalActions: {
     'github.merge-pull-request': {

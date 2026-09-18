@@ -17,8 +17,11 @@ export const grokAdapter = {
   skillAdapterPath: 'skill/adapters/grok/SKILL.md',
   installRecipe: {
     writer: 'grok-hooks',
+    skillContract: 'grok-skill',
     hookTarget: '.grok/hooks/aitm.json',
+    hookContract: 'grok-hooks',
     commandTarget: null,
+    commandContract: null,
   },
   externalActions: {
     'github.merge-pull-request': null,
