@@ -1,4 +1,4 @@
-// @story #868 #1615
+// @story #868 #1615 #1694
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -49,5 +49,16 @@ test('npm pack excludes the test corpus while retaining required runtime files a
     'package/docs/guides/grok-provider.md',
   ]) {
     assert.ok(packed.has(required), `npm pack retains required runtime asset: ${required}`);
+  }
+
+  for (const required of [
+    'package/scripts/package/doctor.mjs',
+    'package/scripts/package/install-content.mjs',
+    'package/scripts/package/install-contract.mjs',
+    'package/scripts/package/install-inventory.mjs',
+    'package/scripts/package/install-manifest-store.mjs',
+    'package/scripts/package/install-observer.mjs',
+  ]) {
+    assert.ok(packed.has(required), `npm pack retains required doctor runtime: ${required}`);
   }
 });

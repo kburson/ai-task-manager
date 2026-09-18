@@ -1,4 +1,4 @@
-// @story #1692
+// @story #1692 #1694
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -25,4 +25,29 @@ test('package inventory is sorted and digests exact shipped bytes', () => {
   );
   assert.match(inventory.templates[0].digest, /^[a-f0-9]{64}$/);
   assert.equal(inventory.configs[0].ownership, 'reference');
+});
+
+test('pickup directive digest is stable across install-time version stamping', () => {
+  const unstampedRoot = join(root, 'unstamped-package');
+  const stampedRoot = join(root, 'stamped-package');
+  for (const packageRoot of [unstampedRoot, stampedRoot]) {
+    mkdirSync(join(packageRoot, 'templates'), { recursive: true });
+    writeFileSync(join(packageRoot, 'package.json'), '{"version":"1.2.3"}\n');
+  }
+  writeFileSync(
+    join(unstampedRoot, 'templates', 'pickup-directive.md'),
+    '<!-- aitm-skill-version: 0.0.0 -->\n# Pickup\n'
+  );
+  writeFileSync(
+    join(stampedRoot, 'templates', 'pickup-directive.md'),
+    '<!-- aitm-skill-version: 1.2.3 -->\n# Pickup\n'
+  );
+
+  const unstamped = collectPackageInventory(unstampedRoot, {
+    templateFiles: ['pickup-directive.md'],
+  });
+  const stamped = collectPackageInventory(stampedRoot, {
+    templateFiles: ['pickup-directive.md'],
+  });
+  assert.equal(unstamped.templates[0].digest, stamped.templates[0].digest);
 });
