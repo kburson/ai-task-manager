@@ -777,7 +777,7 @@ git commit -m "[#1689] feat: add read-only AITM doctor command"
 - Consumes: tarball runtime, package bins, explicit installer, doctor, Git, and the existing npm/Node matrix.
 - Produces: a packed-consumer proof that `npm ci && npx aitm doctor` succeeds from committed outputs and representative drift returns a complete unhealthy report.
 
-- [ ] **Step 1: Write failing package-boundary assertions**
+- [x] **Step 1: Write failing package-boundary assertions**
 
 Add:
 
@@ -794,7 +794,7 @@ for (const required of [
 }
 ```
 
-- [ ] **Step 2: Write failing packed-consumer scenario**
+- [x] **Step 2: Write failing packed-consumer scenario**
 
 Follow `packaged-tail-profile-consumer.test.mjs`:
 
@@ -807,7 +807,7 @@ Follow `packaged-tail-profile-consumer.test.mjs`:
 7. Delete the Codex skill and add an unrelated user hook key; assert exit `1`, `provider.codex.skill` is `missing`, and the user key is not modified.
 8. Assert the packed package has no `postinstall` and doctor did not recreate the skill.
 
-- [ ] **Step 3: Run packed test and verify failure**
+- [x] **Step 3: Run packed test and verify failure**
 
 Run:
 
@@ -817,11 +817,11 @@ node --test scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.m
 
 Expected: FAIL until the packed runtime works end to end.
 
-- [ ] **Step 4: Add the test to the compatibility matrix**
+- [x] **Step 4: Add the test to the compatibility matrix**
 
 Append the test path to the explicit `node --test` command in `npm-pack-compatibility`. Do not add doctor to the source repository fast lane: the prepared consumer fixture is the authority for selected install intent.
 
-- [ ] **Step 5: Verify packed behavior**
+- [x] **Step 5: Verify packed behavior**
 
 Run:
 
@@ -830,12 +830,12 @@ node --test \
   scripts/tests/integration/meta/package-test-corpus.test.mjs \
   scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs
 npm pack --dry-run --json > .scratch/inspect/1689-pack-report.json
-node -e "const r=require('./.scratch/inspect/1689-pack-report.json'); const f=new Set(r[0].files.map(x=>x.path)); for (const p of ['scripts/package/doctor.mjs','scripts/package/install-contract.mjs','scripts/package/install-observer.mjs']) if(!f.has(p)) throw new Error('missing '+p)"
+node -e "const raw=require('./.scratch/inspect/1689-pack-report.json'); const r=Array.isArray(raw)?raw[0]:Object.values(raw)[0]; const f=new Set(r.files.map(x=>x.path)); for (const p of ['scripts/package/doctor.mjs','scripts/package/install-contract.mjs','scripts/package/install-observer.mjs']) if(!f.has(p)) throw new Error('missing '+p)"
 ```
 
 Expected: PASS locally; GitHub runs the same test under Node 24/npm 11.8.0 and Node 26/npm 12.0.2.
 
-- [ ] **Step 6: Commit package-consumer proof**
+- [x] **Step 6: Commit package-consumer proof**
 
 ```bash
 git add .github/workflows/ci.yml \
@@ -862,7 +862,7 @@ git commit -m "[#1689] test: prove doctor in packed cloud consumers"
 - Consumes: final command, manifest, migration behavior, and consumer evidence.
 - Produces: one consistent contract—explicit install/commit once; `npm ci && npx aitm doctor && npm test` in fresh environments; explicit reinstall for missing/stale manifest.
 
-- [ ] **Step 1: Write failing documentation assertions**
+- [x] **Step 1: Write failing documentation assertions**
 
 Extend installer tests:
 
@@ -880,13 +880,13 @@ for (const rel of [
 
 Require the setup guide generated-path table to name `.ai-task-manager/install-manifest.json`.
 
-- [ ] **Step 2: Run test and verify failure**
+- [x] **Step 2: Run test and verify failure**
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/install.test.mjs`
 
 Expected: FAIL because docs and installed skill do not name doctor.
 
-- [ ] **Step 3: Update maintainer/cloud/skill guidance**
+- [x] **Step 3: Update maintainer/cloud/skill guidance**
 
 Use this exact distinction:
 
@@ -901,7 +901,7 @@ Fresh checkout / cloud CI (read-only verification):
 
 State that missing/stale manifests require explicit install with intended options and that doctor never repairs. Explain repo `AGENTS.md` is portable while `~/.codex` is host-local/optional. Put the installed-skill rule in `skill/shared/router.md` so every provider reaches one canonical instruction.
 
-- [ ] **Step 4: Run focused verification**
+- [x] **Step 4: Run focused verification**
 
 Run:
 
@@ -919,7 +919,7 @@ node --test \
 
 Expected: PASS.
 
-- [ ] **Step 5: Run issue verification commands individually**
+- [x] **Step 5: Run issue verification commands individually**
 
 ```bash
 npm test
@@ -932,7 +932,7 @@ git log --oneline -1
 
 Expected: every command exits `0`.
 
-- [ ] **Step 6: Inspect final authority boundary**
+- [x] **Step 6: Inspect final authority boundary**
 
 Run:
 
@@ -944,7 +944,7 @@ git diff --name-only origin/trunk...HEAD
 
 Expected: no doctor workflow verb/dispatch case; no npm lifecycle install/doctor hook; only #1689 implementation, tests, docs, spec, and plan files.
 
-- [ ] **Step 7: Commit documentation and plan evidence**
+- [x] **Step 7: Commit documentation and plan evidence**
 
 ```bash
 git add README.md docs/introduction/install-and-setup.md docs/guides/settings-guide.md \

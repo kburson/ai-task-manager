@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// #501 — refresh the tracked `.ai-task-manager/templates/` runtime mirror from
+// @story #501 #1694
+// Refresh the tracked `.ai-task-manager/templates/` runtime mirror from
 // `templates/`. Lightweight, idempotent counterpart to `installTemplates()`
 // (bin/cli.mjs): copies ONLY the markdown template set (TEMPLATE_FILES) and
 // touches no hooks/settings/config.
@@ -15,13 +16,23 @@
 
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, mkdirSync, readFileSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  copyFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 
 import { TEMPLATE_FILES } from '../bin/lib/template-manifest.mjs';
+import { renderStampedSkillVersion } from '../bin/lib/stamp-skill-version.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
+const PACKAGE_VERSION = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version;
 
 /**
  * Copy each `files[i]` from `srcDir` into `destDir`, overwriting. Returns a
@@ -32,9 +43,10 @@ const REPO_ROOT = join(__dirname, '..');
  * @param {string} opts.srcDir   directory holding the canonical templates
  * @param {string} opts.destDir  runtime mirror directory (created if absent)
  * @param {string[]} [opts.files] template file names (defaults to TEMPLATE_FILES)
+ * @param {string} [opts.version] version stamped into the pickup directive
  * @returns {{name:string, status:'synced'|'unchanged'}[]}
  */
-export function syncTemplates({ srcDir, destDir, files = TEMPLATE_FILES } = {}) {
+export function syncTemplates({ srcDir, destDir, files = TEMPLATE_FILES, version } = {}) {
   if (!srcDir) throw new Error('syncTemplates: srcDir is required');
   if (!destDir) throw new Error('syncTemplates: destDir is required');
   mkdirSync(destDir, { recursive: true });
@@ -42,9 +54,13 @@ export function syncTemplates({ srcDir, destDir, files = TEMPLATE_FILES } = {}) 
   for (const name of files) {
     const src = join(srcDir, name);
     const out = join(destDir, name);
-    const bundled = readFileSync(src, 'utf8');
+    const source = readFileSync(src, 'utf8');
+    const bundled =
+      name === 'pickup-directive.md' && version
+        ? renderStampedSkillVersion(source, version)
+        : source;
     const changed = !existsSync(out) || readFileSync(out, 'utf8') !== bundled;
-    if (changed) copyFileSync(src, out);
+    if (changed) writeFileSync(out, bundled, 'utf8');
     results.push({ name, status: changed ? 'synced' : 'unchanged' });
   }
   return results;
@@ -96,6 +112,7 @@ function main() {
     ...syncTemplates({
       srcDir: join(REPO_ROOT, 'templates'),
       destDir: join(REPO_ROOT, '.ai-task-manager', 'templates'),
+      version: PACKAGE_VERSION,
     }),
     ...syncReferenceTree({
       srcDir: join(REPO_ROOT, 'templates', 'references'),

@@ -131,6 +131,7 @@ jobs:
           scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs
           scripts/tests/unit/task-tracker/core/scope-pack.test.mjs
           scripts/tests/integration/meta/package-test-corpus.test.mjs
+          scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs
           scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs
 
   slow:
