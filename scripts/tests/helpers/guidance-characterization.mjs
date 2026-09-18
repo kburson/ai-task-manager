@@ -259,7 +259,9 @@ function validateHumanDecision(value, decision) {
     exact(request, ['actor', 'args', 'kind', 'subject'], 'human-request-shape');
     exact(request.subject, ['actionId', 'issue'], 'human-subject-shape');
     positiveInteger(request.subject.issue, 'human-subject-issue');
-    action(request.subject.actionId, 'human-subject-action', { nullable: true });
+    action(request.subject.actionId, 'human-subject-action', {
+      nullable: request.kind === 'manual-investigation',
+    });
     if (request.kind === 'plan-approval') {
       if (request.actor !== 'configured-approver') fail('human-actor');
       validateArgs(request.args, [], 'human-args');
@@ -351,6 +353,7 @@ export function validateCandidateDecision(decision) {
     if (!GUIDANCE_IDS.has(id)) fail('guidance-id');
   }
   const unresolvedNavigation = decision.blockers.some(({ code }) => code === 'state-unavailable');
+  if (decision.snapshot.state === 'done' && decision.status !== 'ready') fail('terminal-status');
   if (decision.snapshot.state === 'done' && decision.actionId !== null) fail('terminal-action');
   if (unresolvedNavigation && decision.actionId !== null) fail('navigation-action');
   if (decision.actionId === null && decision.snapshot.state !== 'done' && !unresolvedNavigation) {
@@ -693,6 +696,7 @@ export function renderCandidateExplanation({
     guidance: guidance(decision, knownGuidance),
   };
   if (diagnostic) {
+    envelope.admissionWarningCount = admissionWarnings.length;
     envelope.fullDecision = structuredClone(decision);
     envelope.diagnosticMessages = structuredClone(diagnosticMessages);
   }
@@ -704,7 +708,14 @@ export function validateCandidateExplanation(envelope) {
   exact(
     envelope,
     diagnostic
-      ? ['diagnosticMessages', 'fullDecision', 'guidance', 'result', 'schema']
+      ? [
+          'admissionWarningCount',
+          'diagnosticMessages',
+          'fullDecision',
+          'guidance',
+          'result',
+          'schema',
+        ]
       : ['guidance', 'result', 'schema'],
     'explanation-shape'
   );
@@ -732,6 +743,13 @@ export function validateCandidateExplanation(envelope) {
     validateGuidanceInstruction(entry, envelope.result);
   }
   if (diagnostic) {
+    if (
+      !Number.isSafeInteger(envelope.admissionWarningCount) ||
+      envelope.admissionWarningCount < 0 ||
+      envelope.admissionWarningCount > envelope.result.warnings.length
+    ) {
+      fail('diagnostic-admission-warning-count');
+    }
     validateCandidateDecision(envelope.fullDecision);
     if (!Array.isArray(envelope.diagnosticMessages)) fail('diagnostic-messages');
     for (const message of envelope.diagnosticMessages) {
@@ -743,10 +761,7 @@ export function validateCandidateExplanation(envelope) {
     const expected = presentation(envelope.fullDecision);
     const actualWithoutAdmission = {
       ...envelope.result,
-      warnings:
-        expected.warnings.length === 0
-          ? []
-          : envelope.result.warnings.slice(-expected.warnings.length),
+      warnings: envelope.result.warnings.slice(envelope.admissionWarningCount),
     };
     if (JSON.stringify(expected) !== JSON.stringify(actualWithoutAdmission)) {
       fail('diagnostic-operational-equivalence');

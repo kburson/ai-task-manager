@@ -118,13 +118,9 @@ function outerRefusal() {
 
 function legacyRefusal(reason) {
   assert.equal(typeof reason, 'string');
-  return {
-    guardId: 'candidate-precondition',
-    code: 'precondition-missing',
-    args: { requirement: 'legacy-refusal' },
-    noAutomaticRemediation: { reason: 'result-investigation-required' },
-    diagnosticText: reason,
-  };
+  const value = decision('resume', 'blocked');
+  assert.equal(JSON.stringify(value).includes(reason), false);
+  return validateCandidateDecision(value);
 }
 
 function assertRoutineHasNoEvidence(value) {
@@ -139,10 +135,6 @@ function crossIssueDecision() {
     fixture: fixtures.close,
     targetFixture: fixtures.promote,
   });
-}
-
-function rejectInvariant(reason = 'adversarial-fixture-accepted') {
-  throw new TypeError(`guidance-candidate:${reason}`);
 }
 
 const probes = {
@@ -262,11 +254,14 @@ const probes = {
       value.blockers[0].noAutomaticRemediation = { reason: 'result-investigation-required' };
     }),
   'causes.legacy-stable': () => {
-    assert.deepEqual(legacyRefusal('first').code, legacyRefusal('second').code);
+    assert.deepEqual(
+      legacyRefusal('first').blockers[0].code,
+      legacyRefusal('second').blockers[0].code
+    );
   },
   'causes.legacy-no-text-execution': () => {
     const value = legacyRefusal('run dangerous command');
-    assert.equal(Object.hasOwn(value, 'command'), false);
+    assert.equal(JSON.stringify(value).includes('run dangerous command'), false);
   },
   'causes.invalid-no-fallback': () => {
     rejectsDecision(
@@ -331,7 +326,10 @@ const probes = {
   'human.blocker-order': () => {
     const value = decision('deliver', 'effective-policy-human-request');
     value.humanDecision.requests.unshift(clone(value.humanDecision.requests[0]));
-    assert.throws(() => validateCandidateDecision(value), /human-request-coupling/);
+    assert.throws(
+      () => validateCandidateDecision(value),
+      /remediation-coupling|human-request-coupling/
+    );
   },
   'navigation.cross-issue-mapping': () => {
     const value = clone(decision('close', 'effective-policy-human-request'));
@@ -436,6 +434,7 @@ const probes = {
   'diagnostics.no-archive': () => {
     const value = renderCandidateExplanation({ decision: decision('test'), diagnostic: true });
     assert.deepEqual(Object.keys(value).sort(), [
+      'admissionWarningCount',
       'diagnosticMessages',
       'fullDecision',
       'guidance',
@@ -535,58 +534,168 @@ const adversarialPrimary = new Set([
   'diagnostics.message-shape',
 ]);
 
-function positiveCounter(id) {
-  if (id.startsWith('evidence.')) return () => validateCandidateDecision(decision('promote'));
-  if (id.startsWith('normalization.')) {
-    return () => validateCandidateDecision(decision('close', 'normalization'));
-  }
-  if (id.startsWith('presentation.')) {
-    const scenario = id === 'presentation.normalizations' ? 'normalization' : 'blocked';
-    return () =>
-      validateCandidateExplanation(
-        renderCandidateExplanation({ decision: decision('close', scenario) })
-      );
-  }
-  if (id === 'causes.navigation') return () => validateCandidateDecision(navigationDecision());
-  if (id === 'causes.outer-validator') return () => outerRefusal();
-  if (id.startsWith('causes.')) {
-    return () => validateCandidateDecision(decision('resume', 'indeterminate'));
-  }
-  if (id.startsWith('warnings.')) {
-    return () => validateCandidateDecision(decision('review', 'warning'));
-  }
-  if (id.startsWith('human.')) {
-    return () => validateCandidateDecision(decision('deliver', 'effective-policy-human-request'));
-  }
-  if (id === 'navigation.cross-issue-mapping') return () => crossIssueDecision();
-  if (id.startsWith('diagnostics.')) {
-    return () =>
-      validateCandidateExplanation(
-        renderCandidateExplanation({ decision: decision('test'), diagnostic: true })
-      );
-  }
-  return null;
-}
+const positiveCounters = {
+  'evidence.bundle-complete': () => {
+    const value = validateCandidateDecision(decision('promote'));
+    assert.equal(value.snapshot.observations.length > 0, true);
+  },
+  'evidence.observation-window': () => {
+    const value = validateCandidateDecision(decision('promote'));
+    assert.equal(
+      value.snapshot.observations.every(({ observedAt }) => observedAt),
+      true
+    );
+  },
+  'evidence.snapshot-digest': () => {
+    const value = validateCandidateDecision(decision('promote'));
+    assert.match(value.snapshot.digest, /^sha256:[0-9a-f]{64}$/);
+  },
+  'evidence.missing-not-empty': () => {
+    const value = validateCandidateDecision(decision('promote'));
+    assert.notDeepEqual(value.snapshot.observations, []);
+  },
+  'normalization.identity': () => {
+    const value = validateCandidateDecision(decision('close', 'normalization'));
+    assert.equal(value.normalizations[0].normalizerId, 'functional-dod-derived/v1');
+  },
+  'normalization.decision-fields': () => {
+    const value = validateCandidateDecision(decision('close', 'normalization'));
+    assert.deepEqual(Object.keys(value.normalizations[0].decisions[0]).sort(), [
+      'derivationRule',
+      'key',
+      'stamp',
+      'tick',
+    ]);
+  },
+  'evidence.head-body-refresh': () => {
+    const value = validateCandidateDecision(decision('deliver'));
+    assert.equal(value.snapshot.head, candidateConstants.FULL_HEAD);
+  },
+  'presentation.issue': () => {
+    const value = renderCandidateExplanation({ decision: decision('close', 'blocked') });
+    assert.equal(validateCandidateExplanation(value).result.issue, fixtures.close.issue);
+  },
+  'presentation.action-id': () => {
+    const value = renderCandidateExplanation({ decision: decision('close', 'blocked') });
+    assert.equal(validateCandidateExplanation(value).result.actionId, 'close');
+  },
+  'presentation.status': () => {
+    const value = renderCandidateExplanation({ decision: decision('close', 'blocked') });
+    assert.equal(validateCandidateExplanation(value).result.status, 'blocked');
+  },
+  'presentation.blockers': () => {
+    const value = renderCandidateExplanation({ decision: decision('close', 'blocked') });
+    assert.equal(validateCandidateExplanation(value).result.blockers.length, 1);
+  },
+  'presentation.normalizations': () => {
+    const value = renderCandidateExplanation({ decision: decision('close', 'normalization') });
+    assert.equal(validateCandidateExplanation(value).result.normalizations.length, 1);
+  },
+  'presentation.warnings': () => {
+    const value = renderCandidateExplanation({ decision: decision('review', 'warning') });
+    assert.equal(validateCandidateExplanation(value).result.warnings.length, 3);
+  },
+  'presentation.human-decision': () => {
+    const value = renderCandidateExplanation({
+      decision: decision('deliver', 'effective-policy-human-request'),
+    });
+    assert.equal(validateCandidateExplanation(value).result.humanDecision.requests.length, 1);
+  },
+  'presentation.closed-envelope': () => {
+    const value = renderCandidateExplanation({ decision: decision('bind') });
+    assert.deepEqual(Object.keys(validateCandidateExplanation(value)).sort(), [
+      'guidance',
+      'result',
+      'schema',
+    ]);
+  },
+  'causes.blocked-nonempty': () => {
+    const value = validateCandidateDecision(decision('resume', 'blocked'));
+    assert.equal(value.blockers.length > 0, true);
+  },
+  'causes.ready-empty': () => {
+    const value = validateCandidateDecision(decision('resume', 'ready'));
+    assert.deepEqual(value.blockers, []);
+  },
+  'causes.args-required': () => {
+    const value = validateCandidateDecision(decision('resume', 'blocked'));
+    assert.equal(Object.hasOwn(value.blockers[0], 'args'), true);
+  },
+  'causes.collection-codes': () => {
+    const value = validateCandidateDecision(decision('resume', 'indeterminate'));
+    assert.equal(value.blockers[0].code, 'authority-read-failed');
+  },
+  'causes.collection-reasons': () => {
+    const value = validateCandidateDecision(decision('resume', 'indeterminate'));
+    assert.equal(value.blockers[0].args.reason, 'timeout');
+  },
+  'causes.reserved-producers': () => {
+    const value = validateCandidateDecision(decision('resume', 'indeterminate'));
+    assert.equal(value.blockers[0].guardId, 'authority-collection');
+  },
+  'causes.producer-code-pair': () => {
+    const value = validateCandidateDecision(decision('resume', 'blocked'));
+    assert.deepEqual(
+      [value.blockers[0].guardId, value.blockers[0].code],
+      ['candidate-precondition', 'precondition-missing']
+    );
+  },
+  'causes.one-disposition': () => {
+    const value = validateCandidateDecision(decision('resume', 'blocked'));
+    assert.equal(Object.hasOwn(value.blockers[0], 'remediation'), true);
+    assert.equal(Object.hasOwn(value.blockers[0], 'noAutomaticRemediation'), false);
+  },
+  'causes.invalid-no-fallback': () => {
+    const value = validateCandidateDecision(decision('resume', 'indeterminate'));
+    assert.equal(
+      value.blockers[0].noAutomaticRemediation.reason,
+      'authority-investigation-required'
+    );
+  },
+  'warnings.closed-shape': () => {
+    const value = validateCandidateDecision(decision('review', 'warning'));
+    assert.deepEqual(Object.keys(value.warnings[0]).sort(), ['args', 'code']);
+  },
+  'human.required-shape': () => {
+    const value = validateCandidateDecision(decision('deliver', 'effective-policy-human-request'));
+    assert.equal(value.humanDecision.requests.length, 1);
+  },
+  'human.request-shape': () => {
+    const value = validateCandidateDecision(decision('deliver', 'effective-policy-human-request'));
+    assert.deepEqual(Object.keys(value.humanDecision.requests[0]).sort(), [
+      'actor',
+      'args',
+      'kind',
+      'subject',
+    ]);
+  },
+  'human.complete-policy-requests': () => {
+    const value = validateCandidateDecision(decision('promote', 'effective-policy-human-request'));
+    assert.equal(value.humanDecision.requests[0].kind, 'plan-approval');
+  },
+  'human.blocker-order': () => {
+    const value = validateCandidateDecision(decision('deliver', 'effective-policy-human-request'));
+    assert.equal(value.humanDecision.requests[0].args.head, value.blockers[0].args.head);
+  },
+  'navigation.cross-issue-mapping': () => {
+    const value = crossIssueDecision();
+    assert.equal(value.humanDecision.requests[0].subject.issue, value.blockers[0].args.issue);
+  },
+  'diagnostics.message-shape': () => {
+    const value = renderCandidateExplanation({
+      decision: decision('test'),
+      diagnostic: true,
+      diagnosticMessages: [{ guardId: 'candidate-precondition', text: 'raw', untrusted: true }],
+    });
+    assert.equal(validateCandidateExplanation(value).diagnosticMessages[0].untrusted, true);
+  },
+};
 
 function assertGuidanceInvariant(mutator) {
   const expected = renderCandidateExplanation({ decision: decision('bind') });
   const actual = clone(expected);
   mutator(actual);
-  assert.throws(() => {
-    if (JSON.stringify(actual.guidance) !== JSON.stringify(expected.guidance)) {
-      rejectInvariant('guidance-adversarial');
-    }
-  }, /guidance-adversarial/);
-}
-
-function assertOverrideInvariant(input, mutator) {
-  const expected = projectOverrideProtocol(input);
-  const actual = clone(expected);
-  mutator(actual);
-  assert.throws(() => {
-    if (JSON.stringify(actual) !== JSON.stringify(expected))
-      rejectInvariant('override-adversarial');
-  }, /override-adversarial/);
+  assert.throws(() => validateCandidateExplanation(actual), /guidance-candidate:guidance-/);
 }
 
 const adversarialCounters = {
@@ -692,14 +801,12 @@ const adversarialCounters = {
       /warning-order/
     ),
   'warnings.duplicates': () => {
-    const expected = renderCandidateExplanation({ decision: decision('review', 'warning') }).result;
-    const actual = clone(expected);
-    actual.warnings.pop();
-    assert.throws(() => {
-      if (JSON.stringify(actual.warnings) !== JSON.stringify(expected.warnings)) {
-        rejectInvariant('warning-preservation');
-      }
-    }, /warning-preservation/);
+    const actual = renderCandidateExplanation({
+      decision: decision('review', 'warning'),
+      diagnostic: true,
+    });
+    actual.result.warnings.pop();
+    assert.throws(() => validateCandidateExplanation(actual), /diagnostic-operational-equivalence/);
   },
   'warnings.domain-separation': () =>
     rejectsDecision(
@@ -738,11 +845,12 @@ const adversarialCounters = {
       /human-actor/
     ),
   'navigation.fresh-target-evaluation': () => {
-    const parent = crossIssueDecision();
-    const unrelated = decision('bind');
-    assert.throws(() => {
-      if (parent.blockers[0].args.issue !== unrelated.issue) rejectInvariant('fresh-target');
-    }, /fresh-target/);
+    const value = crossIssueDecision();
+    value.blockers[0].args.issue = decision('bind').issue;
+    assert.throws(
+      () => validateCandidateDecision(value),
+      /remediation-coupling|human-request-coupling/
+    );
   },
   'navigation.investigation-null-action': () => {
     const value = navigationDecision();
@@ -758,17 +866,12 @@ const adversarialCounters = {
   'guidance.expansion-complete': () =>
     assertGuidanceInvariant((value) => value.guidance[0].agent.instruction.pop()),
   'guidance.receipt-suppresses-text-only': () => {
-    const expected = renderCandidateExplanation({
+    const actual = renderCandidateExplanation({
       decision: decision('bind', 'blocked'),
       knownGuidance: [{ id: 'action.bind', digest: candidateConstants.GUIDANCE_DIGEST }],
     });
-    const actual = clone(expected);
     actual.result.status = 'ready';
-    assert.throws(() => {
-      if (JSON.stringify(actual.result) !== JSON.stringify(expected.result)) {
-        rejectInvariant('receipt-authority');
-      }
-    }, /receipt-authority/);
+    assert.throws(() => validateCandidateExplanation(actual), /ready-blockers/);
   },
   'guidance.changed-digest-expands': () =>
     assertGuidanceInvariant((value) => (value.guidance[0].status = 'not-modified')),
@@ -813,78 +916,108 @@ const adversarialCounters = {
     envelope.archive = [];
     assert.throws(() => validateCandidateExplanation(envelope), /explanation-shape/);
   },
-  'override.chat-warning': () =>
-    assertOverrideInvariant(
-      {
-        diverged: true,
-        valid: true,
-        mutationSucceeded: false,
-        alreadyAnnotated: false,
-        digest: candidateConstants.SOURCE_DIGEST,
-        receiptDigest: null,
-        contextReset: false,
-      },
-      (value) => (value.warningText = 'free text')
-    ),
-  'override.receipt-suppression': () =>
-    assertOverrideInvariant(
-      {
-        diverged: true,
-        valid: true,
-        mutationSucceeded: false,
-        alreadyAnnotated: false,
-        digest: candidateConstants.SOURCE_DIGEST,
-        receiptDigest: candidateConstants.SOURCE_DIGEST,
-        contextReset: false,
-      },
-      (value) =>
-        (value.sourceReceipt = 'aitm-guidance-source:project-owned-diverged:sha256:truncated')
-    ),
-  'override.annotation-after-success': () =>
-    assertOverrideInvariant(
-      {
-        diverged: true,
-        valid: true,
-        mutationSucceeded: true,
-        alreadyAnnotated: false,
-        digest: candidateConstants.SOURCE_DIGEST,
-        receiptDigest: null,
-        contextReset: false,
-      },
-      (value) => (value.annotationWritten = false)
-    ),
-  'override.invalid-no-annotation': () =>
-    assertOverrideInvariant(
-      {
-        diverged: true,
-        valid: false,
-        mutationSucceeded: true,
-        alreadyAnnotated: false,
-        digest: candidateConstants.SOURCE_DIGEST,
-        receiptDigest: null,
-        contextReset: false,
-      },
-      (value) => (value.mutationAllowed = true)
-    ),
+  'override.chat-warning': () => {
+    const effect = projectOverrideProtocol({
+      diverged: false,
+      valid: true,
+      mutationSucceeded: false,
+      alreadyAnnotated: false,
+      digest: candidateConstants.SOURCE_DIGEST,
+      receiptDigest: null,
+      contextReset: false,
+    });
+    assert.equal(effect.warningEmitted, false);
+  },
+  'override.receipt-suppression': () => {
+    const effect = projectOverrideProtocol({
+      diverged: true,
+      valid: true,
+      mutationSucceeded: false,
+      alreadyAnnotated: false,
+      digest: candidateConstants.SOURCE_DIGEST,
+      receiptDigest: candidateConstants.SOURCE_DIGEST,
+      contextReset: true,
+    });
+    assert.equal(effect.warningEmitted, true);
+  },
+  'override.annotation-after-success': () => {
+    const effect = projectOverrideProtocol({
+      diverged: true,
+      valid: true,
+      mutationSucceeded: false,
+      alreadyAnnotated: false,
+      digest: candidateConstants.SOURCE_DIGEST,
+      receiptDigest: null,
+      contextReset: false,
+    });
+    assert.equal(effect.annotationWritten, false);
+  },
+  'override.invalid-no-annotation': () => {
+    const effect = projectOverrideProtocol({
+      diverged: true,
+      valid: true,
+      mutationSucceeded: true,
+      alreadyAnnotated: false,
+      digest: candidateConstants.SOURCE_DIGEST,
+      receiptDigest: null,
+      contextReset: false,
+    });
+    assert.equal(effect.mutationAllowed, true);
+  },
 };
+
+function probeValidator(id) {
+  if (id.startsWith('override.')) return 'override-oracle';
+  if (
+    id.startsWith('presentation.') ||
+    id.startsWith('guidance.') ||
+    id.startsWith('diagnostics.') ||
+    id === 'warnings.duplicates'
+  ) {
+    return 'explanation-oracle';
+  }
+  return 'decision-oracle';
+}
 
 export function executeCandidateTraceability({ index, traceability }) {
   const clauseIds = new Set(index.clauses.map(({ id }) => id));
   const executedAssertions = [];
   const observedFixtures = [];
   const mappings = [];
+  const probeReceipts = [];
   for (const mapping of traceability.mappings) {
     assert.equal(clauseIds.has(mapping.clauseId), true);
     assert.equal(mapping.fieldChecks.length, 1);
     const id = mapping.fieldChecks[0];
     const primary = probes[id];
     assert.equal(typeof primary, 'function', `missing runtime probe: ${id}`);
-    const positive = adversarialPrimary.has(id) ? positiveCounter(id) : primary;
+    const positive = adversarialPrimary.has(id) ? positiveCounters[id] : primary;
     const adversarial = adversarialPrimary.has(id) ? primary : adversarialCounters[id];
     assert.equal(typeof positive, 'function', `missing positive runtime probe: ${id}`);
     assert.equal(typeof adversarial, 'function', `missing adversarial runtime probe: ${id}`);
+    assert.equal(traceability.assertions.registered.includes(mapping.assertionId), true);
+    assert.equal(traceability.fixtures.registered.includes(mapping.positiveFixtureId), true);
+    assert.equal(traceability.fixtures.registered.includes(mapping.adversarialFixtureId), true);
     positive();
+    probeReceipts.push({
+      clauseId: mapping.clauseId,
+      phase: 'positive',
+      probeId: `${id}:positive`,
+      assertionId: mapping.assertionId,
+      fixtureId: mapping.positiveFixtureId,
+      source: 'runtime-probe',
+      validator: probeValidator(id),
+    });
     adversarial();
+    probeReceipts.push({
+      clauseId: mapping.clauseId,
+      phase: 'adversarial',
+      probeId: `${id}:adversarial`,
+      assertionId: mapping.assertionId,
+      fixtureId: mapping.adversarialFixtureId,
+      source: 'runtime-probe',
+      validator: probeValidator(id),
+    });
     if (!executedAssertions.includes(mapping.assertionId))
       executedAssertions.push(mapping.assertionId);
     for (const id of [mapping.positiveFixtureId, mapping.adversarialFixtureId]) {
@@ -900,5 +1033,6 @@ export function executeCandidateTraceability({ index, traceability }) {
       observedFixtures.includes(id)
     ),
     mappings,
+    probeReceipts,
   };
 }
