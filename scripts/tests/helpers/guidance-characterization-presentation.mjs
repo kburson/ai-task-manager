@@ -120,6 +120,45 @@ function blocker(value) {
   }
 }
 
+function remediationCoupling(value, result) {
+  const remediation = value.remediation;
+  if (value.code === 'precondition-missing') {
+    if (
+      remediation?.id !== 'satisfy-precondition' ||
+      remediation.args.issue !== result.issue ||
+      remediation.args.actionId !== result.actionId
+    ) {
+      fail('remediation-coupling');
+    }
+  } else if (
+    value.code === 'plan-approval-missing' ||
+    value.code === 'cross-issue-plan-approval-missing'
+  ) {
+    const issue =
+      value.code === 'cross-issue-plan-approval-missing' ? value.args.issue : result.issue;
+    if (remediation?.id !== 'record-plan-approval' || remediation.args.issue !== issue) {
+      fail('remediation-coupling');
+    }
+  } else if (value.code === 'review-approval-missing') {
+    if (
+      remediation?.id !== 'request-review-approval' ||
+      remediation.args.issue !== result.issue ||
+      remediation.args.head !== value.args.head
+    ) {
+      fail('remediation-coupling');
+    }
+  } else {
+    const expectedReason = new Map([
+      ['authority-read-failed', 'authority-investigation-required'],
+      ['state-unavailable', 'state-investigation-required'],
+      ['guard-result-invalid', 'result-investigation-required'],
+    ]).get(value.code);
+    if (expectedReason && value.noAutomaticRemediation?.reason !== expectedReason) {
+      fail('remediation-coupling');
+    }
+  }
+}
+
 function normalization(value) {
   exact(value, ['decisions', 'disposition', 'normalizerId'], 'normalization-shape');
   if (value.normalizerId !== 'functional-dod-derived/v1') fail('normalizer-id');
@@ -252,6 +291,7 @@ export function validateCandidatePresentation(result) {
   if (!STATUSES.has(result.status)) fail('status');
   if (!Array.isArray(result.blockers)) fail('blockers');
   result.blockers.forEach(blocker);
+  result.blockers.forEach((value) => remediationCoupling(value, result));
   if (result.status === 'ready' && result.blockers.length !== 0) fail('ready-blockers');
   if (result.status !== 'ready' && result.blockers.length === 0) fail('not-ready-blockers');
   if (!Array.isArray(result.normalizations)) fail('normalizations');

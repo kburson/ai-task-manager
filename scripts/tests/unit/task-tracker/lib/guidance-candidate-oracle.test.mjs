@@ -271,6 +271,8 @@ test('routine consumer rejects malformed operational values independently of the
     (value) => (value.result.humanDecision.requests[0].args.head = 'f'.repeat(40)),
     (value) => (value.result.humanDecision.requests[0].subject.actionId = 'bind'),
     (value) => (value.result.humanDecision = null),
+    (value) => (value.result.blockers[0].remediation.args.issue += 1),
+    (value) => (value.result.blockers[0].remediation.args.head = 'f'.repeat(40)),
   ]) {
     const candidate = clone(approvalEnvelope);
     mutate(candidate);
@@ -310,11 +312,19 @@ test('cross-issue request is typed and followed by a fresh target evaluation', a
     (value) => (value.blockers[0].args.repository = 'other/repository'),
     (value) => (value.humanDecision.requests[0].subject.issue += 1),
     (value) => (value.humanDecision.requests[0].subject.actionId = 'bind'),
+    (value) => (value.blockers[0].remediation.args.issue += 1),
   ]) {
     const candidate = clone(parent);
     mutate(candidate);
     assert.throws(() => validateCandidateDecision(candidate), /guidance-candidate:/);
   }
+
+  const precondition = buildCandidateDecision({ fixture: fixture('promote'), scenario: 'blocked' });
+  precondition.blockers[0].remediation.args.actionId = 'bind';
+  assert.throws(
+    () => validateCandidateDecision(precondition),
+    /guidance-candidate:remediation-coupling/
+  );
 });
 
 test('diagnostic equivalence includes composed admission warnings', async () => {
