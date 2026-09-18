@@ -15,7 +15,18 @@
       "assert.project-override",
       "assert.closed-envelope-probe"
     ],
-    "executed": ["assert.closed-envelope-probe"]
+    "executed": [
+      "assert.evidence-and-normalization",
+      "assert.presentation-shape",
+      "assert.typed-causes-and-dispositions",
+      "assert.warnings",
+      "assert.human-decisions",
+      "assert.navigation-and-cross-issue",
+      "assert.guidance-and-receipts",
+      "assert.diagnostics",
+      "assert.project-override",
+      "assert.closed-envelope-probe"
+    ]
   },
   "fixtures": {
     "registered": [
@@ -41,6 +52,24 @@
       "fixture.closed-envelope-probe.adversarial"
     ],
     "observed": [
+      "fixture.evidence-and-normalization.positive",
+      "fixture.evidence-and-normalization.adversarial",
+      "fixture.presentation-shape.positive",
+      "fixture.presentation-shape.adversarial",
+      "fixture.typed-causes-and-dispositions.positive",
+      "fixture.typed-causes-and-dispositions.adversarial",
+      "fixture.warnings.positive",
+      "fixture.warnings.adversarial",
+      "fixture.human-decisions.positive",
+      "fixture.human-decisions.adversarial",
+      "fixture.navigation-and-cross-issue.positive",
+      "fixture.navigation-and-cross-issue.adversarial",
+      "fixture.guidance-and-receipts.positive",
+      "fixture.guidance-and-receipts.adversarial",
+      "fixture.diagnostics.positive",
+      "fixture.diagnostics.adversarial",
+      "fixture.project-override.positive",
+      "fixture.project-override.adversarial",
       "fixture.closed-envelope-probe.positive",
       "fixture.closed-envelope-probe.adversarial"
     ]
@@ -53,7 +82,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.bundle-complete"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.evidence.observation-window",
@@ -62,7 +91,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.observation-window"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.evidence.snapshot-digest",
@@ -71,7 +100,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.snapshot-digest"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.evidence.refresh-provenance",
@@ -80,7 +109,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.refresh-provenance"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.evidence.missing-not-empty",
@@ -89,7 +118,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.missing-not-empty"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.normalization.identity",
@@ -98,7 +127,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["normalization.identity"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.normalization.decision-fields",
@@ -107,7 +136,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["normalization.decision-fields"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.normalization.digest-omissions",
@@ -116,7 +145,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["normalization.digest-omissions"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.evidence.digest-not-authority",
@@ -125,7 +154,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.digest-not-authority"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.evidence.head-body-refresh",
@@ -134,7 +163,7 @@
       "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["evidence.head-body-refresh"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.issue",
@@ -143,7 +172,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.issue"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.action-id",
@@ -152,7 +181,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.action-id"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.status",
@@ -161,7 +190,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.status"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.blockers",
@@ -170,7 +199,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.blockers"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.normalizations",
@@ -179,7 +208,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.normalizations"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.warnings",
@@ -188,7 +217,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.warnings"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.human-decision",
@@ -197,7 +226,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.human-decision"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.explicit-empty",
@@ -206,7 +235,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.explicit-empty"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.closed-envelope",
@@ -224,7 +253,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.no-evidence-duplication"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.operational-values-complete",
@@ -233,7 +262,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.operational-values-complete"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.presentation.no-diagnostic-fallback",
@@ -242,7 +271,7 @@
       "adversarialFixtureId": "fixture.presentation-shape.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["presentation.no-diagnostic-fallback"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.blocked-nonempty",
@@ -251,7 +280,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.blocked-nonempty"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.ready-empty",
@@ -260,7 +289,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.ready-empty"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.complete-known-refusals",
@@ -269,7 +298,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.complete-known-refusals"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.args-required",
@@ -278,7 +307,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.args-required"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.collection-codes",
@@ -287,7 +316,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.collection-codes"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.collection-reasons",
@@ -296,7 +325,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.collection-reasons"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.multi-subject",
@@ -305,7 +334,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.multi-subject"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.reserved-producers",
@@ -314,7 +343,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.reserved-producers"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.producer-code-pair",
@@ -323,7 +352,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.producer-code-pair"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.navigation",
@@ -332,7 +361,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.navigation"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.outer-validator",
@@ -341,7 +370,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.outer-validator"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.one-disposition",
@@ -350,7 +379,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.one-disposition"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.legacy-stable",
@@ -359,7 +388,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.legacy-stable"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.legacy-no-text-execution",
@@ -368,7 +397,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.legacy-no-text-execution"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.causes.invalid-no-fallback",
@@ -377,7 +406,7 @@
       "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["causes.invalid-no-fallback"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.warnings.closed-shape",
@@ -386,7 +415,7 @@
       "adversarialFixtureId": "fixture.warnings.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["warnings.closed-shape"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.warnings.source-diverged",
@@ -395,7 +424,7 @@
       "adversarialFixtureId": "fixture.warnings.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["warnings.source-diverged"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.warnings.legacy-origin",
@@ -404,7 +433,7 @@
       "adversarialFixtureId": "fixture.warnings.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["warnings.legacy-origin"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.warnings.composition-order",
@@ -413,7 +442,7 @@
       "adversarialFixtureId": "fixture.warnings.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["warnings.composition-order"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.warnings.duplicates",
@@ -422,7 +451,7 @@
       "adversarialFixtureId": "fixture.warnings.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["warnings.duplicates"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.warnings.domain-separation",
@@ -431,7 +460,7 @@
       "adversarialFixtureId": "fixture.warnings.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["warnings.domain-separation"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.required-shape",
@@ -440,7 +469,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.required-shape"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.request-shape",
@@ -449,7 +478,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.request-shape"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.plan-approval",
@@ -458,7 +487,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.plan-approval"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.review-approval",
@@ -467,7 +496,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.review-approval"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.investigation",
@@ -476,7 +505,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.investigation"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.complete-policy-requests",
@@ -485,7 +514,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.complete-policy-requests"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.human.blocker-order",
@@ -494,7 +523,7 @@
       "adversarialFixtureId": "fixture.human-decisions.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["human.blocker-order"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.navigation.cross-issue-mapping",
@@ -503,7 +532,7 @@
       "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["navigation.cross-issue-mapping"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.navigation.fresh-target-evaluation",
@@ -512,7 +541,7 @@
       "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["navigation.fresh-target-evaluation"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.navigation.investigation-null-action",
@@ -521,7 +550,7 @@
       "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["navigation.investigation-null-action"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.navigation.terminal-null-action",
@@ -530,7 +559,7 @@
       "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["navigation.terminal-null-action"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.expansion-complete",
@@ -539,7 +568,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.expansion-complete"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.receipt-suppresses-text-only",
@@ -548,7 +577,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.receipt-suppresses-text-only"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.changed-digest-expands",
@@ -557,7 +586,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.changed-digest-expands"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.compaction-invalidates",
@@ -566,7 +595,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.compaction-invalidates"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.no-ledger-restore",
@@ -575,7 +604,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.no-ledger-restore"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.receipt-not-authority",
@@ -584,7 +613,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.receipt-not-authority"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.guidance.stale-attestation-behavior",
@@ -593,7 +622,7 @@
       "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["guidance.stale-attestation-behavior"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.diagnostics.mode-members",
@@ -602,7 +631,7 @@
       "adversarialFixtureId": "fixture.diagnostics.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["diagnostics.mode-members"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.diagnostics.message-shape",
@@ -611,7 +640,7 @@
       "adversarialFixtureId": "fixture.diagnostics.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["diagnostics.message-shape"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.diagnostics.same-evaluation",
@@ -620,7 +649,7 @@
       "adversarialFixtureId": "fixture.diagnostics.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["diagnostics.same-evaluation"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.diagnostics.operational-equivalence",
@@ -629,7 +658,7 @@
       "adversarialFixtureId": "fixture.diagnostics.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["diagnostics.operational-equivalence"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.diagnostics.no-archive",
@@ -638,7 +667,7 @@
       "adversarialFixtureId": "fixture.diagnostics.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["diagnostics.no-archive"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.override.chat-warning",
@@ -647,7 +676,7 @@
       "adversarialFixtureId": "fixture.project-override.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["override.chat-warning"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.override.receipt-suppression",
@@ -656,7 +685,7 @@
       "adversarialFixtureId": "fixture.project-override.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["override.receipt-suppression"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.override.annotation-after-success",
@@ -665,7 +694,7 @@
       "adversarialFixtureId": "fixture.project-override.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["override.annotation-after-success"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     },
     {
       "clauseId": "clause.override.invalid-no-annotation",
@@ -674,7 +703,7 @@
       "adversarialFixtureId": "fixture.project-override.adversarial",
       "expectedOutcome": "accept-positive-reject-adversarial",
       "fieldChecks": ["override.invalid-no-annotation"],
-      "executionStatus": "pending-wbs-6"
+      "executionStatus": "executed"
     }
   ]
 }
