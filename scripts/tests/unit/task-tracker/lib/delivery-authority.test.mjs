@@ -49,6 +49,7 @@ function waivedReviewInput(overrides = {}) {
       evidence: {
         requirementId: 'review.semantic-resident',
         authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+        acceptedSha: ACCEPTED,
       },
     },
     testReceiptSha: ACCEPTED,
@@ -95,6 +96,7 @@ test('waived review authority fails closed on missing, stale, mismatched, or una
           evidence: {
             requirementId: 'review.peer',
             authority: { recordId: WAIVER_RECORD_ID },
+            acceptedSha: ACCEPTED,
           },
         },
       },
@@ -113,6 +115,31 @@ test('waived review authority fails closed on missing, stale, mismatched, or una
       },
     ],
     [
+      'accepted-head',
+      {
+        terminalReviewOutcome: {
+          outcome: 'waived',
+          evidence: {
+            requirementId: 'review.semantic-resident',
+            authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+          },
+        },
+      },
+    ],
+    [
+      'accepted-head',
+      {
+        terminalReviewOutcome: {
+          outcome: 'waived',
+          evidence: {
+            requirementId: 'review.semantic-resident',
+            authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+            acceptedSha: LATER,
+          },
+        },
+      },
+    ],
+    [
       'authority',
       {
         terminalReviewOutcome: {
@@ -120,6 +147,7 @@ test('waived review authority fails closed on missing, stale, mismatched, or una
           evidence: {
             requirementId: 'review.semantic-resident',
             authority: { recordId: WAIVER_RECORD_ID, revision: 1 },
+            acceptedSha: ACCEPTED,
           },
         },
       },

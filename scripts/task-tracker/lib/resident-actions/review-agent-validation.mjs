@@ -9,6 +9,7 @@ import {
 } from '../agent-review/review-gate.mjs';
 import { parseProofMarker } from '../proof-marker.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
+import { terminalReviewHandoffOutcome } from '../terminal-review-handoff.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -59,11 +60,48 @@ async function loadSemanticReviewPolicy(context, snapshot) {
   });
 }
 
-function waivedEvidence(policy) {
+function waivedEvidence(policy, snapshot) {
   return {
     authority: policy.decision(SEMANTIC_REVIEW_REQUIREMENT)?.authority,
+    acceptedSha: valueOf(snapshot?.headSha),
     requirementId: SEMANTIC_REVIEW_REQUIREMENT,
   };
+}
+
+async function hasCurrentTerminalWaiver(context, snapshot, evidence) {
+  const capabilities = context?.review;
+  if (snapshot?.reviewCommentsStatus === 'error') return 'error';
+  if (
+    !Array.isArray(snapshot?.reviewComments) &&
+    typeof capabilities?.readComments !== 'function'
+  ) {
+    return 'error';
+  }
+  let comments;
+  try {
+    comments = Array.isArray(snapshot?.reviewComments)
+      ? snapshot.reviewComments
+      : typeof capabilities?.readComments === 'function'
+        ? await capabilities.readComments({
+            issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
+            snapshot,
+          })
+        : [];
+  } catch {
+    return 'error';
+  }
+  const timingComments = Array.isArray(comments)
+    ? comments.filter(({ body }) => String(valueOf(body) || '').includes('⏱ Timing Log'))
+    : [];
+  if (timingComments.length !== 1) return 'stale';
+  const terminal = terminalReviewHandoffOutcome(valueOf(timingComments[0].body));
+  return terminal?.outcome === 'waived' &&
+    terminal.evidence?.requirementId === evidence.requirementId &&
+    terminal.evidence?.acceptedSha === evidence.acceptedSha &&
+    terminal.evidence?.authority?.recordId === evidence.authority?.recordId &&
+    terminal.evidence?.authority?.revision === evidence.authority?.revision
+    ? 'current'
+    : 'stale';
 }
 
 export const reviewAgentValidationAction = Object.freeze({
@@ -77,7 +115,19 @@ export const reviewAgentValidationAction = Object.freeze({
       if (currentEvent(snapshot)?.phase === 'waived') {
         const policy = await loadSemanticReviewPolicy(context, snapshot);
         if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
-          return { status: 'waived', evidence: waivedEvidence(policy) };
+          // A durable waived ledger event proves the action decision, but an
+          // active failure carrier still needs the waived self-loop to run so
+          // onWaived can retire that obsolete blocker.
+          if (reason === 'review-failed') return { status: 'incomplete', reason };
+          const evidence = waivedEvidence(policy, snapshot);
+          const terminalStatus = await hasCurrentTerminalWaiver(context, snapshot, evidence);
+          if (terminalStatus === 'error') {
+            return { status: 'paused', reason: 'review-comments-unavailable' };
+          }
+          if (terminalStatus !== 'current') {
+            return { status: 'incomplete', reason: 'stale-waiver-evidence' };
+          }
+          return { status: 'waived', evidence };
         }
       }
       return { status: 'incomplete', reason };
@@ -111,7 +161,7 @@ export const reviewAgentValidationAction = Object.freeze({
 
     const policy = await loadSemanticReviewPolicy(context, snapshot);
     if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
-      const evidence = waivedEvidence(policy);
+      const evidence = waivedEvidence(policy, snapshot);
       if (typeof capabilities.onWaived === 'function') {
         await capabilities.onWaived({
           issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
