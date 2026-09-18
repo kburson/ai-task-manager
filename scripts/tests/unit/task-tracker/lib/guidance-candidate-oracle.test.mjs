@@ -222,6 +222,38 @@ test('guidance receipts suppress static text only and digest changes expand it a
   assert.equal(Object.hasOwn(changed.guidance[0], 'agent'), true);
 });
 
+test('guidance uses a closed action grammar and terminal guidance never instructs execution', async () => {
+  const {
+    buildCandidateDecision,
+    buildTerminalCandidateDecision,
+    renderCandidateExplanation,
+    validateCandidateExplanation,
+  } = await oracle();
+  const actionEnvelope = renderCandidateExplanation({
+    decision: buildCandidateDecision({ fixture: fixture('close'), scenario: 'ready' }),
+  });
+  for (const mutate of [
+    (value) => (value.guidance[0].id = 'unknown.guidance'),
+    (value) => (value.guidance[0].agent.instruction[0] = { shell: 'rm' }),
+    (value) => (value.guidance[0].agent.instruction[3] = { execute: 'workflow.close' }),
+  ]) {
+    const candidate = clone(actionEnvelope);
+    mutate(candidate);
+    assert.throws(() => validateCandidateExplanation(candidate), /guidance-candidate:guidance-/);
+  }
+
+  const terminal = renderCandidateExplanation({
+    decision: buildTerminalCandidateDecision({ fixture: fixture('close') }),
+  });
+  assert.equal(terminal.guidance[0].id, 'state.done');
+  assert.deepEqual(terminal.guidance[0].agent.instruction, [
+    { terminal_state: 'done' },
+    { recommendation: null },
+  ]);
+  assert.equal(JSON.stringify(terminal.guidance).includes('execute'), false);
+  assert.equal(JSON.stringify(terminal.guidance).includes('query'), false);
+});
+
 test('diagnostic mode adds the same full decision and only explicitly untrusted messages', async () => {
   const { buildCandidateDecision, renderCandidateExplanation } = await oracle();
   const decision = buildCandidateDecision({ fixture: fixture('test'), scenario: 'indeterminate' });

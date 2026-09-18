@@ -60,6 +60,7 @@ function warningRecord() {
 function twoBlockerDecision() {
   const value = clone(decision('resume', 'indeterminate'));
   value.actionId = null;
+  value.guidanceIds = ['navigation.unresolved'];
   value.humanDecision.requests[0].subject.actionId = null;
   value.blockers.push({
     guardId: 'action-navigation',
@@ -97,6 +98,7 @@ function navigationDecision() {
       },
     ],
   };
+  value.guidanceIds = ['navigation.unresolved'];
   return value;
 }
 
