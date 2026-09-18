@@ -161,6 +161,48 @@ test('closed decision validation rejects missing values, unknown members and inc
   );
 });
 
+test('terminal decisions reject blocked state before presentation guidance is derived', async () => {
+  const { buildTerminalCandidateDecision, validateCandidateDecision } = await oracle();
+  const value = buildTerminalCandidateDecision({ fixture: fixture('close') });
+  value.status = 'blocked';
+  value.blockers = [
+    {
+      guardId: 'action-result-validation',
+      code: 'guard-result-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'result-investigation-required' },
+    },
+  ];
+  assert.throws(() => validateCandidateDecision(value), /guidance-candidate:terminal-status/);
+});
+
+test('approval requests require a concrete action subject at the decision boundary', async () => {
+  const { buildCandidateDecision, validateCandidateDecision } = await oracle();
+  const value = buildCandidateDecision({
+    fixture: fixture('deliver'),
+    scenario: 'effective-policy-human-request',
+  });
+  value.humanDecision.requests[0].subject.actionId = null;
+  assert.throws(() => validateCandidateDecision(value), /guidance-candidate:human-subject-action/);
+});
+
+test('standalone diagnostic validation rejects unaccounted leading warnings', async () => {
+  const { buildCandidateDecision, renderCandidateExplanation, validateCandidateExplanation } =
+    await oracle();
+  const envelope = renderCandidateExplanation({
+    decision: buildCandidateDecision({ fixture: fixture('test'), scenario: 'ready' }),
+    diagnostic: true,
+  });
+  envelope.result.warnings.unshift({
+    code: 'legacy-guard-warning',
+    args: { guardId: 'candidate-precondition' },
+  });
+  assert.throws(
+    () => validateCandidateExplanation(envelope),
+    /guidance-candidate:diagnostic-operational-equivalence/
+  );
+});
+
 test('warnings, normalizations and human requests preserve order, duplicates and full values', async () => {
   const { buildCandidateDecision, renderCandidateExplanation, candidateConstants } = await oracle();
   const warning = buildCandidateDecision({ fixture: fixture('review'), scenario: 'warning' });
@@ -453,6 +495,25 @@ test('all frozen clauses point to executed assertions and observed positive and 
   const index = json('spec-clause-index.json');
   const traceability = json('oracle-traceability.json');
   const runtime = executeCandidateTraceability({ index, traceability });
+  assert.equal(runtime.probeReceipts.length, traceability.mappings.length * 2);
+  for (const mapping of traceability.mappings) {
+    const fieldCheck = mapping.fieldChecks[0];
+    const receipts = runtime.probeReceipts.filter(({ clauseId }) => clauseId === mapping.clauseId);
+    assert.deepEqual(
+      receipts.map(({ phase }) => phase),
+      ['positive', 'adversarial']
+    );
+    for (const receipt of receipts) {
+      assert.equal(receipt.assertionId, mapping.assertionId);
+      assert.equal(
+        receipt.fixtureId,
+        receipt.phase === 'positive' ? mapping.positiveFixtureId : mapping.adversarialFixtureId
+      );
+      assert.equal(receipt.probeId, `${fieldCheck}:${receipt.phase}`);
+      assert.equal(receipt.source, 'runtime-probe');
+      assert.match(receipt.validator, /^(decision|explanation|override)-oracle$/);
+    }
+  }
   assert.deepEqual(traceability.assertions.executed, runtime.executedAssertions);
   assert.deepEqual(traceability.fixtures.observed, runtime.observedFixtures);
   assert.deepEqual(
