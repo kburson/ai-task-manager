@@ -302,6 +302,19 @@ export async function resolveReviewVerificationEvidence({
   };
 }
 
+export function resolveAcceptedReviewHead(reviewEvidence, currentHead, { exact = false } = {}) {
+  const evidenceSha = reviewEvidence?.fingerprint?.commitSha || reviewEvidence?.receipt?.commitSha;
+  if (/^[0-9a-f]{40}$/.test(evidenceSha || '')) return evidenceSha;
+  if (
+    /^[0-9a-f]{40}$/.test(currentHead || '') &&
+    (reviewEvidence?.mode === 'github-records-v1' ||
+      (!exact && reviewEvidence?.mode === 'legacy-marker'))
+  ) {
+    return currentHead;
+  }
+  return null;
+}
+
 export function appendReviewProbeEvidence({
   body,
   issueNumber,
@@ -1521,10 +1534,11 @@ export async function verbReview(ctx) {
     // gating on this result is the only correct check. A re-run while already in
     // Review is a satisfied no-op (#882) and passes here, which is what makes the
     // state action re-runnable in place.
-    const acceptedTestHeadSha =
-      reviewEvidence.fingerprint?.commitSha ||
-      reviewEvidence.receipt?.commitSha ||
-      (await getReviewHeadSha({ projectDir }));
+    const currentReviewHeadSha = await getReviewHeadSha({ projectDir });
+    const acceptedTestHeadSha = resolveAcceptedReviewHead(reviewEvidence, currentReviewHeadSha);
+    const exactWaiverHeadSha = resolveAcceptedReviewHead(reviewEvidence, currentReviewHeadSha, {
+      exact: true,
+    });
     if (!/^[0-9a-f]{40}$/.test(acceptedTestHeadSha || '')) {
       process.stderr.write(
         `⛔ Refusing /task review for ${target}: exact accepted Test head is unavailable.\n`
@@ -1587,6 +1601,9 @@ export async function verbReview(ctx) {
           });
         },
         onWaived: async ({ ts, evidence }) => {
+          if (exactWaiverHeadSha === null || evidence.acceptedSha !== exactWaiverHeadSha) {
+            throw new Error('review: exact accepted Test head is unavailable for waiver authority');
+          }
           await emitReviewGateWaivedTimeline({
             target,
             issueNumber: issueNum,
