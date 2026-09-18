@@ -710,26 +710,18 @@ export function renderCandidateExplanation({
     guidance: guidance(decision, knownGuidance),
   };
   if (diagnostic) {
-    envelope.admissionWarningCount = admissionWarnings.length;
     envelope.fullDecision = structuredClone(decision);
     envelope.diagnosticMessages = structuredClone(diagnosticMessages);
   }
-  return validateCandidateExplanation(envelope);
+  return validateCandidateExplanation(envelope, { admissionWarnings });
 }
 
-export function validateCandidateExplanation(envelope) {
+export function validateCandidateExplanation(envelope, { admissionWarnings = [] } = {}) {
   const diagnostic = Object.hasOwn(envelope ?? {}, 'fullDecision');
   exact(
     envelope,
     diagnostic
-      ? [
-          'admissionWarningCount',
-          'diagnosticMessages',
-          'fullDecision',
-          'guidance',
-          'result',
-          'schema',
-        ]
+      ? ['diagnosticMessages', 'fullDecision', 'guidance', 'result', 'schema']
       : ['guidance', 'result', 'schema'],
     'explanation-shape'
   );
@@ -757,13 +749,6 @@ export function validateCandidateExplanation(envelope) {
     validateGuidanceInstruction(entry, envelope.result);
   }
   if (diagnostic) {
-    if (
-      !Number.isSafeInteger(envelope.admissionWarningCount) ||
-      envelope.admissionWarningCount < 0 ||
-      envelope.admissionWarningCount > envelope.result.warnings.length
-    ) {
-      fail('diagnostic-admission-warning-count');
-    }
     validateCandidateDecision(envelope.fullDecision);
     if (!Array.isArray(envelope.diagnosticMessages)) fail('diagnostic-messages');
     for (const message of envelope.diagnosticMessages) {
@@ -772,12 +757,8 @@ export function validateCandidateExplanation(envelope) {
       string(message.text, 'diagnostic-text');
       if (message.untrusted !== true) fail('diagnostic-trust');
     }
-    const expected = presentation(envelope.fullDecision);
-    const actualWithoutAdmission = {
-      ...envelope.result,
-      warnings: envelope.result.warnings.slice(envelope.admissionWarningCount),
-    };
-    if (JSON.stringify(expected) !== JSON.stringify(actualWithoutAdmission)) {
+    const expected = presentation(envelope.fullDecision, admissionWarnings);
+    if (JSON.stringify(expected) !== JSON.stringify(envelope.result)) {
       fail('diagnostic-operational-equivalence');
     }
   }
