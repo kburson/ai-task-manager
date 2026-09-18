@@ -1,5 +1,6 @@
 // @story #1658
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -21,6 +22,24 @@ function json(name) {
 
 function clone(value) {
   return structuredClone(value);
+}
+
+function refreshSnapshotDigest(decision) {
+  decision.snapshot.digest = `sha256:${createHash('sha256')
+    .update(
+      JSON.stringify({
+        state: decision.snapshot.state,
+        head: decision.snapshot.head,
+        startedAt: decision.snapshot.startedAt,
+        completedAt: decision.snapshot.completedAt,
+        observations: decision.snapshot.observations,
+        normalizationInputs: decision.normalizations.map(({ inputDigest, normalizerId }) => ({
+          normalizerId,
+          inputDigest,
+        })),
+      })
+    )
+    .digest('hex')}`;
 }
 
 async function oracle() {
@@ -219,6 +238,61 @@ test('replacement observations retain distinct provenance identities', async () 
   assert.throws(
     () => validateCandidateDecision(value),
     /guidance-candidate:observation-identity-duplicate/
+  );
+});
+
+test('candidate decisions reject observations outside their window or bound to another issue', async () => {
+  const { buildCandidateDecision, validateCandidateDecision } = await oracle();
+  const baseline = buildCandidateDecision({
+    fixture: fixture('promote'),
+    scenario: 'ready',
+    evidenceCopies: 2,
+  });
+
+  for (const [mutate, expected] of [
+    [
+      (value) => (value.snapshot.observations[0].observedAt = '2026-09-17T17:59:59.999Z'),
+      /guidance-candidate:observation-window/,
+    ],
+    [
+      (value) => (value.snapshot.observations[0].observedAt = '2026-09-17T18:00:01.001Z'),
+      /guidance-candidate:observation-window/,
+    ],
+    [
+      (value) => (value.snapshot.observations[0].identity = `issue:${value.issue + 1}`),
+      /guidance-candidate:observation-identity-issue/,
+    ],
+    [
+      (value) => (value.snapshot.observations[1].identity = `evidence:${value.issue + 1}:1`),
+      /guidance-candidate:observation-identity-issue/,
+    ],
+  ]) {
+    const candidate = clone(baseline);
+    mutate(candidate);
+    refreshSnapshotDigest(candidate);
+    assert.throws(() => validateCandidateDecision(candidate), expected);
+  }
+});
+
+test('multiple required subjects from one authority source require distinct typed subjects', async () => {
+  const { buildCandidateDecision, validateCandidateDecision } = await oracle();
+  const value = buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' });
+  value.blockers.push(clone(value.blockers[0]));
+  value.humanDecision.requests.push(clone(value.humanDecision.requests[0]));
+
+  assert.throws(
+    () => validateCandidateDecision(value),
+    /guidance-candidate:blocker-subject-required/
+  );
+
+  value.blockers[0].args.subject = { issue: value.issue };
+  value.blockers[1].args.subject = { issue: value.issue + 1 };
+  assert.equal(validateCandidateDecision(value), value);
+
+  value.blockers[1].args.subject.issue = value.issue;
+  assert.throws(
+    () => validateCandidateDecision(value),
+    /guidance-candidate:blocker-subject-duplicate/
   );
 });
 

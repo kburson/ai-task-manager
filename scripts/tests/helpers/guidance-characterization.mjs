@@ -82,6 +82,11 @@ function validateArgs(value, keys, reason) {
   return value;
 }
 
+function validateAuthoritySubject(value) {
+  exact(value, ['issue'], 'blocker-subject');
+  positiveInteger(value.issue, 'blocker-subject');
+}
+
 function validateDisposition(blocker) {
   const hasRemediation = Object.hasOwn(blocker, 'remediation');
   const hasClosed = Object.hasOwn(blocker, 'noAutomaticRemediation');
@@ -126,13 +131,19 @@ function validateBlocker(blocker) {
   string(blocker.code, 'blocker-code');
   if (blocker.code === 'authority-read-failed') {
     if (blocker.guardId !== 'authority-collection') fail('producer-code-pair');
-    validateArgs(blocker.args, ['reason', 'source'], 'blocker-args');
+    const keys = Object.hasOwn(blocker.args, 'subject')
+      ? ['reason', 'source', 'subject']
+      : ['reason', 'source'];
+    validateArgs(blocker.args, keys, 'blocker-args');
     if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
     if (!REASONS.has(blocker.args.reason)) fail('blocker-reason');
+    if (blocker.args.subject) validateAuthoritySubject(blocker.args.subject);
   } else if (blocker.code === 'authority-read-skipped') {
     if (blocker.guardId !== 'authority-collection') fail('producer-code-pair');
-    validateArgs(blocker.args, ['source'], 'blocker-args');
+    const keys = Object.hasOwn(blocker.args, 'subject') ? ['source', 'subject'] : ['source'];
+    validateArgs(blocker.args, keys, 'blocker-args');
     if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
+    if (blocker.args.subject) validateAuthoritySubject(blocker.args.subject);
   } else if (blocker.code === 'unclassified-refusal') {
     if (blocker.guardId !== 'registered-legacy-guard') fail('producer-code-pair');
     validateArgs(blocker.args, [], 'blocker-args');
@@ -164,6 +175,26 @@ function validateBlocker(blocker) {
     fail('blocker-code');
   }
   validateDisposition(blocker);
+}
+
+function validateAuthoritySubjects(blockers) {
+  const bySource = new Map();
+  for (const blocker of blockers) {
+    if (!new Set(['authority-read-failed', 'authority-read-skipped']).has(blocker.code)) continue;
+    const group = bySource.get(blocker.args.source) ?? [];
+    group.push(blocker);
+    bySource.set(blocker.args.source, group);
+  }
+  for (const group of bySource.values()) {
+    if (group.length < 2) continue;
+    const subjects = new Set();
+    for (const blocker of group) {
+      if (!blocker.args.subject) fail('blocker-subject-required');
+      const identity = JSON.stringify(blocker.args.subject);
+      if (subjects.has(identity)) fail('blocker-subject-duplicate');
+      subjects.add(identity);
+    }
+  }
 }
 
 function validateRemediationCoupling(blocker, decision) {
@@ -297,7 +328,7 @@ function validateHumanDecision(value, decision) {
   }
 }
 
-function validateSnapshot(value, normalizations) {
+function validateSnapshot(value, normalizations, issue) {
   exact(
     value,
     ['completedAt', 'digest', 'head', 'observations', 'startedAt', 'state'],
@@ -320,6 +351,11 @@ function validateSnapshot(value, normalizations) {
     if (identities.has(observation.identity)) fail('observation-identity-duplicate');
     identities.add(observation.identity);
     instant(observation.observedAt, 'observation-time');
+    if (observation.observedAt < value.startedAt || observation.observedAt > value.completedAt) {
+      fail('observation-window');
+    }
+    const identityIssue = /^(?:issue|evidence):(\d+)(?::\d+)?$/.exec(observation.identity);
+    if (!identityIssue || Number(identityIssue[1]) !== issue) fail('observation-identity-issue');
     digestValue(observation.digest, 'observation-digest');
   }
   if (value.digest !== snapshotDigest(value, normalizations)) fail('snapshot-digest');
@@ -348,12 +384,13 @@ export function validateCandidateDecision(decision) {
   if (!STATUSES.has(decision.status)) fail('decision-status');
   if (!Array.isArray(decision.blockers)) fail('blockers');
   decision.blockers.forEach(validateBlocker);
+  validateAuthoritySubjects(decision.blockers);
   decision.blockers.forEach((blocker) => validateRemediationCoupling(blocker, decision));
   if (decision.status === 'ready' && decision.blockers.length !== 0) fail('ready-blockers');
   if (decision.status !== 'ready' && decision.blockers.length === 0) fail('not-ready-blockers');
   if (!Array.isArray(decision.normalizations)) fail('normalizations');
   decision.normalizations.forEach(validateNormalization);
-  validateSnapshot(decision.snapshot, decision.normalizations);
+  validateSnapshot(decision.snapshot, decision.normalizations, decision.issue);
   if (!Array.isArray(decision.warnings)) fail('warnings');
   decision.warnings.forEach(validateWarning);
   validateWarningOrder(decision.warnings);
