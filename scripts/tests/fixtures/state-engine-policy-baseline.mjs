@@ -315,7 +315,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "'lifecycle-warn'",
       ['lifecycle-warn']
     ),
-    timingEmitter('scripts/task-tracker/verbs/approve.mjs', 556, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/approve.mjs', 558, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
@@ -394,22 +394,22 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'start',
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 648, 'event-call', "'review:failed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 661, 'event-call', "'review:failed'", [
       'review:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 689, 'event-call', "'review:passed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 702, 'event-call', "'review:passed'", [
       'review:passed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 740, 'event-call', "'review:waived'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 753, 'event-call', "'review:waived'", [
       'review:waived',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 803, 'event-call', "'test:failed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 816, 'event-call', "'test:failed'", [
       'test:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 977, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 990, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1490, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1503, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 48, 'flush-call', "'stop'", ['stop']),
