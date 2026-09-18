@@ -67,6 +67,25 @@ test('intent normalization and manifest output are deterministic', () => {
   assert.deepEqual(compareManifestContract(manifest, contract), { compatible: true });
 });
 
+test('symlink mode records the provider skill directory as the symlink artifact', () => {
+  const intent = normalizeInstallIntent({
+    providers: ['codex'],
+    linkMode: 'symlink',
+    features: {},
+    memoryFiles: [],
+  });
+  const contract = createInstallContract({
+    intent,
+    adapters: [getProvider('codex')],
+    inventory,
+  });
+  const skill = contract.artifacts.find(({ id }) => id === 'provider.codex.skill');
+  assert.deepEqual(
+    { path: skill.path, kind: skill.kind },
+    { path: '.agents/skills/task', kind: 'symlink' }
+  );
+});
+
 test('manifest validation rejects unsafe and ambiguous artifacts with stable codes', () => {
   const base = {
     schema: INSTALL_MANIFEST_SCHEMA,
@@ -112,4 +131,47 @@ test('manifest validation rejects unsafe and ambiguous artifacts with stable cod
     () => parseInstallManifest({ ...base, artifacts: [duplicate, duplicate] }),
     /duplicate-id/
   );
+});
+
+test('manifest validation exposes every contract-level stable error code', () => {
+  const base = {
+    schema: INSTALL_MANIFEST_SCHEMA,
+    intent: { providers: ['codex'], linkMode: 'stub', features: {}, memoryFiles: [] },
+    generatedBy: { packageName: 'x', packageVersion: '1', contractDigest: 'a'.repeat(64) },
+    artifacts: [],
+  };
+  const validArtifact = {
+    id: 'x',
+    path: 'safe',
+    kind: 'file',
+    ownership: 'generated',
+    required: true,
+    contract: 'exact',
+  };
+  const cases = [
+    ['schema', { ...base, schema: 'unknown' }],
+    ['provider', { ...base, intent: { ...base.intent, providers: ['unknown'] } }],
+    [
+      'feature-combination',
+      {
+        ...base,
+        intent: {
+          ...base.intent,
+          providers: ['claude'],
+          features: { codexSuperpowers: true },
+        },
+      },
+    ],
+    ['artifact-shape', { ...base, artifacts: [{ ...validArtifact, contract: '' }] }],
+    [
+      'duplicate-path-contract',
+      {
+        ...base,
+        artifacts: [validArtifact, { ...validArtifact, id: 'y', contract: 'other' }],
+      },
+    ],
+  ];
+  for (const [code, value] of cases) {
+    assert.throws(() => parseInstallManifest(value), new RegExp(code), code);
+  }
 });

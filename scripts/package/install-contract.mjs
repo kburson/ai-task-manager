@@ -122,10 +122,11 @@ export function createInstallContract({ intent: rawIntent, adapters = [], invent
     const adapter = byName.get(provider);
     if (!adapter) fail('provider', `${provider} adapter missing`);
     const recipe = adapter.installRecipe || {};
+    const symlinkMode = intent.linkMode === 'symlink';
     const skill = {
       id: `provider.${provider}.skill`,
-      path: posix.join(adapter.installTarget, 'SKILL.md'),
-      kind: intent.linkMode === 'symlink' ? 'symlink' : 'file',
+      path: symlinkMode ? adapter.installTarget : posix.join(adapter.installTarget, 'SKILL.md'),
+      kind: symlinkMode ? 'symlink' : 'file',
       ownership: 'generated',
       required: true,
       contract: recipe.skillContract,

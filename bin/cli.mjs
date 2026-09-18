@@ -54,6 +54,7 @@ import {
 } from '../scripts/package/install-content.mjs';
 import { collectPackageInventory } from '../scripts/package/install-inventory.mjs';
 import {
+  INSTALL_MANIFEST_PATH,
   createInstallContract,
   createInstallManifest,
   normalizeInstallIntent,
@@ -750,7 +751,7 @@ function installStub(file, content, label) {
   ok(`${label} ${dim(relative(process.cwd(), file))}${written ? '' : ` ${dim('(unchanged)')}`}`);
 }
 
-export function replaceWithSymlink(dest, src, label, targetDir) {
+export function assertSymlinkSourceContained(targetDir, src) {
   const contained = relative(resolve(targetDir), resolve(src));
   if (
     !contained ||
@@ -762,6 +763,10 @@ export function replaceWithSymlink(dest, src, label, targetDir) {
       '--link-mode symlink requires the installed package to resolve inside the target project; use --link-mode stub'
     );
   }
+}
+
+export function replaceWithSymlink(dest, src, label, targetDir) {
+  assertSymlinkSourceContained(targetDir, src);
   mkdirSync(dirname(dest), { recursive: true });
   let existing = null;
   try {
@@ -876,13 +881,17 @@ function knownCodexBootstrapBlocks() {
   return new Set([current, currentJit, assigned, onDeck]);
 }
 
-function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installClaude(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Claude Code files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
     replaceWithSymlink(
       skillDest,
-      join(PKG_ROOT, dirname(adapter.skillAdapterPath)),
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
       'Skill',
       targetDir
     );
@@ -901,13 +910,17 @@ function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter }
   }
 }
 
-function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installCodex(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Codex files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
     replaceWithSymlink(
       skillDest,
-      join(PKG_ROOT, dirname(adapter.skillAdapterPath)),
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
       'Skill',
       targetDir
     );
@@ -920,13 +933,17 @@ function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } 
   }
 }
 
-function installGrok(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installGrok(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Grok files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
     replaceWithSymlink(
       skillDest,
-      join(PKG_ROOT, dirname(adapter.skillAdapterPath)),
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
       'Skill',
       targetDir
     );
@@ -1266,6 +1283,10 @@ async function cmdUninstall(args) {
     planUninstallProvider(getProvider(providerName), targetDir)
   );
   if (selectedNames.includes('codex')) actions.push(...planBootstrapCleanup(targetDir));
+  const manifestPath = join(targetDir, INSTALL_MANIFEST_PATH);
+  if (existsSync(manifestPath)) {
+    actions.push({ kind: 'remove', path: manifestPath, recursive: false });
+  }
   if (purge) actions.push(...planPurge(targetDir));
   for (const action of actions) {
     const verb = action.kind === 'write' ? 'UPDATE' : 'REMOVE';
@@ -1564,11 +1585,29 @@ export async function runInstall(options, deps = {}) {
   const installShared = deps.installTemplates || installTemplates;
   const inventoryFor = deps.collectPackageInventory || collectPackageInventory;
   const publish = deps.writeInstallManifest || writeInstallManifest;
+  const packageRoot = deps.packageRoot || PKG_ROOT;
+
+  const baseIntent = normalizeInstallIntent({
+    providers: selectedNames,
+    linkMode,
+    features: {
+      memoryIndex: false,
+      codexSuperpowers: enableCodexSuperpowers,
+      codexSuperpowersGlobal: globalCodexSuperpowers,
+    },
+    memoryFiles: [],
+  });
+  if (baseIntent.linkMode === 'symlink') {
+    for (const providerName of baseIntent.providers) {
+      const adapter = getProvider(providerName);
+      assertSymlinkSourceContained(targetDir, join(packageRoot, dirname(adapter.skillAdapterPath)));
+    }
+  }
 
   const memorySeed = await installMemory(targetDir, args);
   const memoryIndexHook = memorySeed.count > 0;
   for (const providerName of selectedNames) {
-    installOne(getProvider(providerName), targetDir, linkMode, { memoryIndexHook });
+    installOne(getProvider(providerName), targetDir, linkMode, { memoryIndexHook, packageRoot });
   }
   const codexSelected = selectedNames.includes('codex');
   if (codexSelected && enableCodexSuperpowers) {
@@ -1577,19 +1616,19 @@ export async function runInstall(options, deps = {}) {
   installShared(targetDir);
 
   const intent = normalizeInstallIntent({
-    providers: selectedNames,
-    linkMode,
+    providers: baseIntent.providers,
+    linkMode: baseIntent.linkMode,
     features: {
       memoryIndex: memoryIndexHook,
-      codexSuperpowers: enableCodexSuperpowers,
-      codexSuperpowersGlobal: globalCodexSuperpowers,
+      codexSuperpowers: baseIntent.features.codexSuperpowers,
+      codexSuperpowersGlobal: baseIntent.features.codexSuperpowersGlobal,
     },
     memoryFiles: memorySeed.files,
   });
   const contract = createInstallContract({
     intent,
     adapters: selectedNames.map(getProvider),
-    inventory: inventoryFor(PKG_ROOT),
+    inventory: inventoryFor(packageRoot),
   });
   const manifest = createInstallManifest({
     packageName: pkg.name,

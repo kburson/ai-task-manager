@@ -9,6 +9,7 @@ import {
   readlinkSync,
   realpathSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { after, test } from 'node:test';
@@ -77,6 +78,65 @@ test('runInstall never publishes after an earlier effect fails', async () => {
   assert.equal(published, false);
 });
 
+test('runInstall rejects invalid feature combinations before any install effect', async () => {
+  const calls = [];
+  await assert.rejects(
+    () =>
+      runInstall(
+        {
+          targetDir: '/repo',
+          args: [],
+          selectedNames: ['claude'],
+          linkMode: 'stub',
+          enableCodexSuperpowers: true,
+          globalCodexSuperpowers: false,
+        },
+        {
+          installMemorySeed: async () => {
+            calls.push('memory');
+            return { count: 0, files: [] };
+          },
+          installProvider: () => calls.push('provider'),
+          setupCodexSuperpowers: () => calls.push('bootstrap'),
+          installTemplates: () => calls.push('templates'),
+          collectPackageInventory: () => inventory,
+          writeInstallManifest: () => calls.push('manifest'),
+        }
+      ),
+    /feature-combination/
+  );
+  assert.deepEqual(calls, []);
+});
+
+test('runInstall rejects an external symlink source before memory installation', async () => {
+  const calls = [];
+  await assert.rejects(
+    () =>
+      runInstall(
+        {
+          targetDir: join(scratch, 'external-symlink-target'),
+          args: [],
+          selectedNames: ['codex'],
+          linkMode: 'symlink',
+          enableCodexSuperpowers: false,
+          globalCodexSuperpowers: false,
+        },
+        {
+          installMemorySeed: async () => {
+            calls.push('memory');
+            return { count: 0, files: [] };
+          },
+          installProvider: () => calls.push('provider'),
+          installTemplates: () => calls.push('templates'),
+          collectPackageInventory: () => inventory,
+          writeInstallManifest: () => calls.push('manifest'),
+        }
+      ),
+    /requires the installed package to resolve inside the target project/
+  );
+  assert.deepEqual(calls, []);
+});
+
 test('real stub install publishes a deterministic selected-provider manifest last', async () => {
   const target = join(scratch, 'consumer');
   mkdirSync(target, { recursive: true });
@@ -117,4 +177,40 @@ test('contained symlink uses a relative target and resolves to its package sourc
   assert.equal(lstatSync(destination).isSymbolicLink(), true);
   assert.equal(isAbsolute(readlinkSync(destination)), false);
   assert.equal(realpathSync(destination), realpathSync(source));
+});
+
+test('contained symlink install publishes a manifest matching the directory symlink', async () => {
+  const target = join(scratch, 'contained-install');
+  const packageRoot = join(target, 'node_modules', '@kburson', 'ai-task-manager');
+  const source = join(packageRoot, 'skill', 'adapters', 'codex');
+  mkdirSync(source, { recursive: true });
+  writeFileSync(join(source, 'SKILL.md'), '# task\n', 'utf8');
+
+  const result = await runInstall(
+    {
+      targetDir: target,
+      args: [],
+      selectedNames: ['codex'],
+      linkMode: 'symlink',
+      enableCodexSuperpowers: false,
+      globalCodexSuperpowers: false,
+    },
+    {
+      packageRoot,
+      installMemorySeed: async () => ({ count: 0, files: [] }),
+      installTemplates: () => {},
+      collectPackageInventory: () => inventory,
+    }
+  );
+
+  const skill = result.manifest.artifacts.find(({ id }) => id === 'provider.codex.skill');
+  assert.deepEqual(
+    { path: skill.path, kind: skill.kind },
+    { path: '.agents/skills/task', kind: 'symlink' }
+  );
+  assert.equal(lstatSync(join(target, skill.path)).isSymbolicLink(), true);
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(target, '.ai-task-manager', 'install-manifest.json'), 'utf8')),
+    result.manifest
+  );
 });

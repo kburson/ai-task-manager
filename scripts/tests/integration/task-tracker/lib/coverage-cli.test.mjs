@@ -277,6 +277,8 @@ test('uninstall removes Codex integrations while preserving user hooks and durab
     { env }
   );
   assert.equal(installed.status, 0, installed.stderr);
+  const manifestPath = join(target, '.ai-task-manager', 'install-manifest.json');
+  assert.equal(existsSync(manifestPath), true, 'install manifest published');
 
   const hooksPath = join(target, '.codex', 'hooks.json');
   const hooks = JSON.parse(readFileSync(hooksPath, 'utf8'));
@@ -328,6 +330,7 @@ test('uninstall removes Codex integrations while preserving user hooks and durab
     'durable\n',
     'durable project data preserved'
   );
+  assert.equal(existsSync(manifestPath), false, 'stale install manifest removed');
   const repeated = run(['uninstall', '--target', target, '--agent', 'codex'], { env });
   assert.equal(repeated.status, 0, repeated.stderr);
   assert.deepEqual(JSON.parse(readFileSync(hooksPath, 'utf8')), after);
