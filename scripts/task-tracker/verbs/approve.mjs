@@ -180,6 +180,7 @@ async function defaultMutateIssueBody({
   mutate,
   allowUnverifiedTicks,
   validateFreshBase,
+  validateFreshBaseAsync,
 }) {
   return mutateIssueBody({
     issueNumber,
@@ -188,6 +189,7 @@ async function defaultMutateIssueBody({
     deps: { pexec },
     allowUnverifiedTicks,
     validateFreshBase,
+    validateFreshBaseAsync,
   });
 }
 
@@ -458,12 +460,11 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // Driver collection can include an unbounded human prompt. Re-read the
       // policy and its durable terminal evidence after that window so a waiver
       // revoked while approval was waiting cannot authorize the body write.
-      if (semanticReviewWaiverAuthority) {
+      const revalidateSemanticReviewWaiver = async (freshBody) => {
         const freshHeadSha = await getHeadSha({ projectDir });
         if (freshHeadSha !== approvedSha) {
           throw new Error(`approve: HEAD changed before approval write`);
         }
-        const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
         const freshTestReceiptSha = await resolveTestReceiptSha(freshBody, approvedSha);
         const freshWaiverAuthority = await resolveSemanticReviewWaiverAuthority({
           body: freshBody,
@@ -482,6 +483,10 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
             `approve: semantic review waiver authority changed before approval write`
           );
         }
+      };
+      if (semanticReviewWaiverAuthority) {
+        const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+        await revalidateSemanticReviewWaiver(freshBody);
       }
 
       // #295 — re-derive everything inside the closure on the FRESH base so
@@ -607,6 +612,9 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
             );
           }
         },
+        validateFreshBaseAsync: semanticReviewWaiverAuthority
+          ? revalidateSemanticReviewWaiver
+          : undefined,
       });
       // #655 — read-back verification. The write call not throwing is NOT proof
       // the `aitm-review-approved` marker persisted (the #652 silent-success

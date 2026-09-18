@@ -113,10 +113,11 @@ function approveWith(body, extra = {}) {
           fetchIssueBody: async () => current,
           // Apply the caller's mutate for real: approve verifies its own stamp
           // persisted, so a constant echo fails the post-write check.
-          mutateIssueBody: async ({ mutate, validateFreshBase } = {}) => {
+          mutateIssueBody: async ({ mutate, validateFreshBase, validateFreshBaseAsync } = {}) => {
             calls.mutated += 1;
             const next = typeof mutate === 'function' ? await mutate(current) : current;
             validateFreshBase?.(current, next);
+            await validateFreshBaseAsync?.(current, next);
             current = next;
             return { body: current };
           },
@@ -271,6 +272,39 @@ test('approve rechecks waiver authority after driver collection before writing',
 
   await assert.rejects(run, /waiver authority changed before approval write/);
   assert.equal(calls.mutated, 0);
+});
+
+test('approve rechecks waiver authority inside the fresh-base write attempt', async () => {
+  const terminalWaiver = [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n');
+  let policyReads = 0;
+  const { calls, run } = approveWith(VALID_UNTICKED, {
+    fetchComments: async () => [{ body: terminalWaiver }],
+    loadWorkflowBoundary: async ({ repository, issue, body }) => {
+      policyReads += 1;
+      const waived = policyReads < 3;
+      return {
+        status: 'policy-compatible',
+        scopeIdentity: computeScopeIdentity({ repository, issue, body }),
+        isWaived: (id) => waived && id === 'review.semantic-resident',
+        decision: () =>
+          waived
+            ? {
+                outcome: 'waived',
+                authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+              }
+            : { outcome: 'required' },
+      };
+    },
+  });
+
+  await assert.rejects(run, /waiver authority changed before approval write/);
+  assert.equal(calls.mutated, 1);
+  assert.equal(policyReads, 3);
 });
 
 test('approve refuses a waiver when HEAD changes during driver collection', async () => {
