@@ -25,7 +25,8 @@ export const WAIVED_TIMING_COMMENT = {
     '## ⏱ Timing Log',
     '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
     '|---|---|---|---|---|---|---|---|',
-    `| 2026-08-22 08:59:00 -05:00 | review:waived |  |  |  | 100 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived | <!-- row-sec: a=0 i=0 -->`,
+    `| 2026-08-22 08:59:00 -05:00 | review:waived |  |  |  | 100 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${HEAD}" --> | <!-- row-sec: a=0 i=0 -->`,
+    '| 2026-08-22 08:59:30 -05:00 | review:approved |  |  |  | 100 | story approved | <!-- row-sec: a=0 i=0 -->',
   ].join('\n'),
 };
 

@@ -5,9 +5,9 @@ import { closesTerminalReviewHandoff } from './timing-events/index.mjs';
 const WAIVER_DESCRIPTION_RE =
   /requirement ([a-z0-9._-]+); authority record ([A-Z0-9]+); result=waived/i;
 const WAIVER_AUTHORITY_MARKER_RE =
-  /<!--\s*aitm-review-waiver\s+requirement="([a-z0-9._-]+)"\s+record-id="([0-9A-HJKMNP-TV-Z]{26})"\s+revision="([1-9][0-9]*)"\s*-->/i;
+  /<!--\s*aitm-review-waiver\s+requirement="([a-z0-9._-]+)"\s+record-id="([0-9A-HJKMNP-TV-Z]{26})"\s+revision="([1-9][0-9]*)"\s+accepted-sha="([0-9a-f]{40})"\s*-->/;
 
-export function terminalReviewHandoffOutcome(body) {
+function parseTerminalReviewOutcome(body, { retainAcrossApproval = false } = {}) {
   let outcome = null;
   for (const line of String(body ?? '').split('\n')) {
     const row = parseTimingRow(line);
@@ -27,6 +27,7 @@ export function terminalReviewHandoffOutcome(body) {
                 recordId: structured[2],
                 revision: Number(structured[3]),
               }),
+              acceptedSha: structured[4],
             })
           : legacy
             ? Object.freeze({
@@ -35,11 +36,25 @@ export function terminalReviewHandoffOutcome(body) {
               })
             : null,
       });
-    } else if (closesTerminalReviewHandoff(event)) {
+    } else if (
+      closesTerminalReviewHandoff(event) &&
+      !(retainAcrossApproval && event === 'review:approved')
+    ) {
       outcome = null;
     }
   }
   return outcome;
+}
+
+export function terminalReviewHandoffOutcome(body) {
+  return parseTerminalReviewOutcome(body);
+}
+
+// Delivery runs after approval has closed the Review timing span. Preserve the
+// typed waiver across that audit boundary, while still invalidating it on a
+// new Review attempt, a failure, rework, wrap-up, or issue closure.
+export function deliveryReviewHandoffOutcome(body) {
+  return parseTerminalReviewOutcome(body, { retainAcrossApproval: true });
 }
 
 export function isTerminalReviewHandoffOpen(body) {

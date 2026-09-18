@@ -8,7 +8,10 @@ import { developExitCommitTrailHeadGuard } from '../../../../task-tracker/lib/de
 import { developExitSandboxProofGuard } from '../../../../task-tracker/lib/develop-exit-sandbox-proof-guard.mjs';
 import { testExitDodVerifiedGuard } from '../../../../task-tracker/lib/test-exit-dod-verified-guard.mjs';
 import { testExitPreCloseCompletenessGuard } from '../../../../task-tracker/lib/test-exit-pre-close-completeness-guard.mjs';
-import { resolveReviewVerificationEvidence } from '../../../../task-tracker/verbs/review.mjs';
+import {
+  resolveAcceptedReviewHead,
+  resolveReviewVerificationEvidence,
+} from '../../../../task-tracker/verbs/review.mjs';
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 
 const issueNumber = 1143;
@@ -228,6 +231,17 @@ test('Review preserves the legacy lane and requires accepted Test evidence for d
   assert.equal(missing.ok, false);
   assert.equal(missing.mode, 'github-records-v1');
   assert.equal(missing.reasons[0].code, 'directory-test-evidence-missing');
+});
+
+test('typed waiver heads require exact receipt or accepted directory evidence', () => {
+  const receipt = { mode: 'receipt-v1', receipt: { commitSha } };
+  const directory = { mode: 'github-records-v1' };
+  const legacy = { mode: 'legacy-marker' };
+
+  assert.equal(resolveAcceptedReviewHead(receipt, commitSha, { exact: true }), commitSha);
+  assert.equal(resolveAcceptedReviewHead(directory, commitSha, { exact: true }), commitSha);
+  assert.equal(resolveAcceptedReviewHead(legacy, commitSha), commitSha);
+  assert.equal(resolveAcceptedReviewHead(legacy, commitSha, { exact: true }), null);
 });
 
 function preflightDeps(body, resolveLifecycleEvidence) {
