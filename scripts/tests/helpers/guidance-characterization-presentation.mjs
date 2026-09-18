@@ -74,13 +74,13 @@ function blocker(value) {
     ) {
       fail('blocker-reason');
     }
-    if (value.args.subject) authoritySubject(value.args.subject);
+    if (Object.hasOwn(value.args, 'subject')) authoritySubject(value.args.subject);
   } else if (value.code === 'authority-read-skipped') {
     if (value.guardId !== 'authority-collection') fail('producer-code-pair');
     const keys = Object.hasOwn(value.args, 'subject') ? ['source', 'subject'] : ['source'];
     exact(value.args, keys, 'blocker-args');
     if (!SOURCES.has(value.args.source)) fail('blocker-source');
-    if (value.args.subject) authoritySubject(value.args.subject);
+    if (Object.hasOwn(value.args, 'subject')) authoritySubject(value.args.subject);
   } else if (value.code === 'unclassified-refusal') {
     if (value.guardId !== 'registered-legacy-guard') fail('producer-code-pair');
     exact(value.args, [], 'blocker-args');
@@ -341,6 +341,11 @@ export function validateCandidatePresentation(result) {
   result.blockers.forEach((value) => remediationCoupling(value, result));
   if (result.status === 'ready' && result.blockers.length !== 0) fail('ready-blockers');
   if (result.status !== 'ready' && result.blockers.length === 0) fail('not-ready-blockers');
+  const unresolvedNavigation = result.blockers.some(({ code }) => code === 'state-unavailable');
+  if (unresolvedNavigation && result.actionId !== null) fail('navigation-action');
+  if (result.actionId === null && result.status !== 'ready' && !unresolvedNavigation) {
+    fail('null-action');
+  }
   if (!Array.isArray(result.normalizations)) fail('normalizations');
   result.normalizations.forEach(normalization);
   if (!Array.isArray(result.warnings)) fail('warnings');

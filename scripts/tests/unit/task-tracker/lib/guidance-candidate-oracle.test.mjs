@@ -313,6 +313,72 @@ test('multiple required subjects from one authority source require distinct type
   );
 });
 
+test('authority subjects reject present falsy values at decision and presentation boundaries', async () => {
+  const {
+    buildCandidateDecision,
+    renderCandidateExplanation,
+    validateCandidateDecision,
+    validateCandidateExplanation,
+  } = await oracle();
+  const value = buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' });
+  value.blockers[0].args.subject = null;
+
+  assert.throws(() => validateCandidateDecision(value), /guidance-candidate:blocker-subject/);
+
+  const envelope = renderCandidateExplanation({
+    decision: buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' }),
+  });
+  envelope.result.blockers[0].args.subject = false;
+  assert.throws(
+    () => validateCandidateExplanation(envelope),
+    /guidance-candidate:presentation-blocker-subject/
+  );
+});
+
+test('routine presentation enforces null action navigation and terminal semantics', async () => {
+  const {
+    buildCandidateDecision,
+    buildTerminalCandidateDecision,
+    renderCandidateExplanation,
+    validateCandidateExplanation,
+  } = await oracle();
+
+  const terminal = renderCandidateExplanation({
+    decision: buildTerminalCandidateDecision({ fixture: fixture('close') }),
+  });
+  assert.equal(validateCandidateExplanation(terminal), terminal);
+
+  const missingNavigation = renderCandidateExplanation({
+    decision: buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' }),
+  });
+  missingNavigation.result.actionId = null;
+  missingNavigation.result.humanDecision.requests[0].subject.actionId = null;
+  assert.throws(
+    () => validateCandidateExplanation(missingNavigation),
+    /guidance-candidate:presentation-null-action/
+  );
+
+  const inventedAction = renderCandidateExplanation({
+    decision: buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' }),
+  });
+  inventedAction.result.blockers = [
+    {
+      guardId: 'action-navigation',
+      code: 'state-unavailable',
+      args: { reason: 'unknown' },
+      noAutomaticRemediation: { reason: 'state-investigation-required' },
+    },
+  ];
+  inventedAction.result.humanDecision.requests[0].args = {
+    guardId: 'action-navigation',
+    code: 'state-unavailable',
+  };
+  assert.throws(
+    () => validateCandidateExplanation(inventedAction),
+    /guidance-candidate:presentation-navigation-action/
+  );
+});
+
 test('terminal decisions reject blocked state before presentation guidance is derived', async () => {
   const { buildTerminalCandidateDecision, validateCandidateDecision } = await oracle();
   const value = buildTerminalCandidateDecision({ fixture: fixture('close') });

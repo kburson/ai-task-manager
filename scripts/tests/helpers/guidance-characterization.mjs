@@ -137,13 +137,13 @@ function validateBlocker(blocker) {
     validateArgs(blocker.args, keys, 'blocker-args');
     if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
     if (!REASONS.has(blocker.args.reason)) fail('blocker-reason');
-    if (blocker.args.subject) validateAuthoritySubject(blocker.args.subject);
+    if (Object.hasOwn(blocker.args, 'subject')) validateAuthoritySubject(blocker.args.subject);
   } else if (blocker.code === 'authority-read-skipped') {
     if (blocker.guardId !== 'authority-collection') fail('producer-code-pair');
     const keys = Object.hasOwn(blocker.args, 'subject') ? ['source', 'subject'] : ['source'];
     validateArgs(blocker.args, keys, 'blocker-args');
     if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
-    if (blocker.args.subject) validateAuthoritySubject(blocker.args.subject);
+    if (Object.hasOwn(blocker.args, 'subject')) validateAuthoritySubject(blocker.args.subject);
   } else if (blocker.code === 'unclassified-refusal') {
     if (blocker.guardId !== 'registered-legacy-guard') fail('producer-code-pair');
     validateArgs(blocker.args, [], 'blocker-args');
