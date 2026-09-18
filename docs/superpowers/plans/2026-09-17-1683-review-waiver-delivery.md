@@ -175,7 +175,6 @@ node --test scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs s
 - [ ] **Step 2: Run repository verification**
 
 ```bash
-node scripts/dev-env/verify-local-worktree.mjs && git diff --check
 npm test
 npm run test:slow
 npm run lint
