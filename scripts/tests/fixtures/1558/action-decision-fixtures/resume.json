@@ -1,0 +1,13 @@
+{
+  "schema": "aitm.guidance-action-fixtures/v1",
+  "actionId": "resume",
+  "issue": 2102,
+  "scenarios": [
+    "ready",
+    "blocked",
+    "indeterminate",
+    "warning",
+    "normalization",
+    "effective-policy-human-request"
+  ]
+}
