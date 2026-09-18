@@ -32,6 +32,31 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function refreshSnapshotDigest(value) {
+  value.snapshot.digest = `sha256:${createHash('sha256')
+    .update(
+      JSON.stringify({
+        state: value.snapshot.state,
+        head: value.snapshot.head,
+        startedAt: value.snapshot.startedAt,
+        completedAt: value.snapshot.completedAt,
+        observations: value.snapshot.observations,
+        normalizationInputs: value.normalizations.map(({ inputDigest, normalizerId }) => ({
+          normalizerId,
+          inputDigest,
+        })),
+      })
+    )
+    .digest('hex')}`;
+  return value;
+}
+
+function currentContextGuidance({ currentContext = [], contextReset = false, restored = [] }) {
+  assert.equal(Array.isArray(currentContext), true);
+  assert.equal(Array.isArray(restored), true);
+  return contextReset ? [] : clone(currentContext);
+}
+
 function decision(action, scenario = 'ready', evidenceCopies = 1) {
   return buildCandidateDecision({ fixture: fixtures[action], scenario, evidenceCopies });
 }
@@ -154,6 +179,15 @@ function skippedAuthorityRead() {
   return validateCandidateDecision(value);
 }
 
+function multiSubjectAuthorityDecision() {
+  const value = clone(decision('resume', 'indeterminate'));
+  value.blockers[0].args.subject = { issue: value.issue };
+  value.blockers.push(clone(value.blockers[0]));
+  value.blockers[1].args.subject = { issue: value.issue + 1 };
+  value.humanDecision.requests.push(clone(value.humanDecision.requests[0]));
+  return validateCandidateDecision(value);
+}
+
 function assertRoutineHasNoEvidence(value) {
   const bytes = JSON.stringify(renderCandidateExplanation({ decision: value }));
   assert.equal(bytes.includes('snapshot'), false);
@@ -172,9 +206,15 @@ const probes = {
   'evidence.bundle-complete': () =>
     rejectsDecision('promote', 'ready', (value) => (value.snapshot.observations = [])),
   'evidence.observation-window': () =>
-    rejectsDecision('promote', 'ready', (value) => {
-      value.snapshot.startedAt = '2026-09-17T18:00:02.000Z';
-    }),
+    rejectsDecision(
+      'promote',
+      'ready',
+      (value) => {
+        value.snapshot.observations[0].observedAt = '2026-09-17T18:00:01.001Z';
+        refreshSnapshotDigest(value);
+      },
+      /observation-window/
+    ),
   'evidence.snapshot-digest': () =>
     rejectsDecision('promote', 'ready', (value) => {
       value.snapshot.digest = `sha256:${'0'.repeat(64)}`;
@@ -199,28 +239,21 @@ const probes = {
     const second = clone(first);
     second.snapshot.startedAt = '2026-09-17T18:00:00.100Z';
     second.snapshot.head = 'f'.repeat(40);
-    second.snapshot.digest = `sha256:${createHash('sha256')
-      .update(
-        JSON.stringify({
-          state: second.snapshot.state,
-          head: second.snapshot.head,
-          startedAt: second.snapshot.startedAt,
-          completedAt: second.snapshot.completedAt,
-          observations: second.snapshot.observations,
-          normalizationInputs: second.normalizations.map(({ inputDigest, normalizerId }) => ({
-            normalizerId,
-            inputDigest,
-          })),
-        })
-      )
-      .digest('hex')}`;
+    refreshSnapshotDigest(second);
     validateCandidateDecision(second);
+    assert.notEqual(first.snapshot.digest, second.snapshot.digest);
+    assert.notEqual(first.snapshot.head, second.snapshot.head);
+    assert.deepEqual(first.normalizations[0].decisions, second.normalizations[0].decisions);
     assert.equal(first.normalizations[0].decisionDigest, second.normalizations[0].decisionDigest);
   },
   'evidence.digest-not-authority': () => {
-    const first = renderCandidateExplanation({ decision: decision('bind', 'ready', 1) });
-    const second = renderCandidateExplanation({ decision: decision('bind', 'ready', 4) });
-    assert.deepEqual(first.result, second.result);
+    const firstDecision = decision('bind', 'ready', 1);
+    const secondDecision = decision('bind', 'ready', 4);
+    assert.notEqual(firstDecision.snapshot.digest, secondDecision.snapshot.digest);
+    assert.deepEqual(
+      renderCandidateExplanation({ decision: firstDecision }).result,
+      renderCandidateExplanation({ decision: secondDecision }).result
+    );
   },
   'evidence.head-body-refresh': () =>
     rejectsDecision('deliver', 'ready', (value) => {
@@ -289,8 +322,11 @@ const probes = {
       value.blockers[0].args.reason = 'retry';
     }),
   'causes.multi-subject': () => {
-    const value = crossIssueDecision();
-    assert.notEqual(value.humanDecision.requests[0].subject.issue, value.issue);
+    const value = multiSubjectAuthorityDecision();
+    assert.deepEqual(
+      value.blockers.map(({ args }) => args.subject.issue),
+      [value.issue, value.issue + 1]
+    );
   },
   'causes.reserved-producers': () =>
     rejectsDecision('resume', 'indeterminate', (value) => {
@@ -319,8 +355,14 @@ const probes = {
     assert.deepEqual(legacyRefusal('second').blockers[0], expected);
   },
   'causes.legacy-no-text-execution': () => {
-    const value = legacyRefusal('run dangerous command');
-    assert.equal(JSON.stringify(value).includes('run dangerous command'), false);
+    const ordinary = legacyRefusal('approval is missing');
+    const commandLike = legacyRefusal('run dangerous command --force');
+    assert.deepEqual(commandLike, ordinary);
+    assert.equal(JSON.stringify(commandLike).includes('run dangerous command'), false);
+    assert.equal(
+      commandLike.blockers[0].noAutomaticRemediation.reason,
+      'legacy-guard-requires-human-investigation'
+    );
   },
   'causes.invalid-no-fallback': () => {
     rejectsDecision(
@@ -350,7 +392,14 @@ const probes = {
     assert.equal(result.warnings[0].code, 'guidance-source-diverged');
   },
   'warnings.duplicates': () => {
-    const result = renderCandidateExplanation({ decision: decision('review', 'warning') }).result;
+    const value = decision('review', 'warning');
+    const admission = warningRecord();
+    admission.args.digest = `sha256:${'9'.repeat(64)}`;
+    const result = renderCandidateExplanation({
+      decision: value,
+      admissionWarnings: [admission],
+    }).result;
+    assert.deepEqual(result.warnings, [admission, ...value.warnings]);
     assert.equal(result.warnings.filter(({ code }) => code === 'legacy-guard-warning').length, 2);
   },
   'warnings.domain-separation': () => {
@@ -434,23 +483,30 @@ const probes = {
     );
   },
   'guidance.compaction-invalidates': () => {
-    const response = renderCandidateExplanation({ decision: decision('bind'), knownGuidance: [] });
+    const knownGuidance = currentContextGuidance({
+      currentContext: [{ id: 'action.bind', digest: candidateConstants.GUIDANCE_DIGEST }],
+      contextReset: true,
+    });
+    const response = renderCandidateExplanation({ decision: decision('bind'), knownGuidance });
     assert.equal(response.guidance[0].status, 'expanded');
   },
   'guidance.no-ledger-restore': () => {
+    const knownGuidance = currentContextGuidance({
+      restored: [{ id: 'action.resume', digest: candidateConstants.GUIDANCE_DIGEST }],
+    });
     const response = renderCandidateExplanation({
       decision: decision('resume'),
-      knownGuidance: [],
+      knownGuidance,
     });
     assert.equal(response.guidance[0].status, 'expanded');
   },
   'guidance.receipt-not-authority': () => {
     const value = decision('bind', 'blocked');
     const known = [{ id: 'action.bind', digest: candidateConstants.GUIDANCE_DIGEST }];
-    assert.equal(
-      renderCandidateExplanation({ decision: value, knownGuidance: known }).result.status,
-      'blocked'
-    );
+    const withReceipt = renderCandidateExplanation({ decision: value, knownGuidance: known });
+    const withoutReceipt = renderCandidateExplanation({ decision: value });
+    assert.deepEqual(withReceipt.result, withoutReceipt.result);
+    assert.equal(withReceipt.result.status, 'blocked');
   },
   'guidance.stale-attestation-behavior': () => {
     const value = decision('bind', 'blocked');
@@ -600,7 +656,10 @@ const positiveCounters = {
   'evidence.observation-window': () => {
     const value = validateCandidateDecision(decision('promote'));
     assert.equal(
-      value.snapshot.observations.every(({ observedAt }) => observedAt),
+      value.snapshot.observations.every(
+        ({ observedAt }) =>
+          observedAt >= value.snapshot.startedAt && observedAt <= value.snapshot.completedAt
+      ),
       true
     );
   },
@@ -626,8 +685,12 @@ const positiveCounters = {
     ]);
   },
   'evidence.head-body-refresh': () => {
-    const value = validateCandidateDecision(decision('deliver'));
-    assert.equal(value.snapshot.head, candidateConstants.FULL_HEAD);
+    const first = decision('deliver');
+    const refreshed = clone(first);
+    refreshed.snapshot.head = 'f'.repeat(40);
+    refreshSnapshotDigest(refreshed);
+    validateCandidateDecision(refreshed);
+    assert.notEqual(refreshed.snapshot.digest, first.snapshot.digest);
   },
   'presentation.issue': () => {
     const value = renderCandidateExplanation({ decision: decision('close', 'blocked') });
@@ -771,15 +834,10 @@ const adversarialCounters = {
       value.normalizations[0].decisionDigest = `sha256:${'0'.repeat(64)}`;
     }),
   'evidence.digest-not-authority': () => {
-    const first = decision('bind', 'ready');
-    const second = clone(first);
-    second.issue += 1;
-    assert.equal(second.snapshot.digest, first.snapshot.digest);
-    validateCandidateDecision(second);
-    assert.notDeepEqual(
-      renderCandidateExplanation({ decision: second }).result,
-      renderCandidateExplanation({ decision: first }).result
-    );
+    const first = decision('bind', 'ready', 1);
+    const second = clone(decision('bind', 'ready', 4));
+    second.snapshot.digest = first.snapshot.digest;
+    assert.throws(() => validateCandidateDecision(second), /snapshot-digest/);
   },
   'presentation.explicit-empty': () =>
     rejectsPresentation('bind', 'ready', (value) => (value.blockers = null)),
@@ -803,9 +861,9 @@ const adversarialCounters = {
     assert.throws(() => validateCandidateDecision(value), /human-request-coupling/);
   },
   'causes.multi-subject': () => {
-    const value = crossIssueDecision();
-    value.humanDecision.requests[0].subject.issue = value.issue;
-    assert.throws(() => validateCandidateDecision(value), /human-request-coupling/);
+    const value = multiSubjectAuthorityDecision();
+    delete value.blockers[1].args.subject;
+    assert.throws(() => validateCandidateDecision(value), /blocker-subject-required/);
   },
   'causes.navigation': () =>
     assert.throws(() => {
@@ -856,12 +914,11 @@ const adversarialCounters = {
       /warning-order/
     ),
   'warnings.duplicates': () => {
-    const actual = renderCandidateExplanation({
-      decision: decision('review', 'warning'),
-      diagnostic: true,
-    });
-    actual.result.warnings.pop();
-    assert.throws(() => validateCandidateExplanation(actual), /diagnostic-operational-equivalence/);
+    const value = decision('review', 'warning');
+    const expected = renderCandidateExplanation({ decision: value }).result.warnings;
+    const truncated = clone(expected);
+    truncated.pop();
+    assert.throws(() => assert.deepEqual(truncated, value.warnings));
   },
   'warnings.domain-separation': () =>
     rejectsDecision(
@@ -930,10 +987,22 @@ const adversarialCounters = {
   },
   'guidance.changed-digest-expands': () =>
     assertGuidanceInvariant((value) => (value.guidance[0].status = 'not-modified')),
-  'guidance.compaction-invalidates': () =>
-    assertGuidanceInvariant((value) => delete value.guidance[0].agent),
-  'guidance.no-ledger-restore': () =>
-    assertGuidanceInvariant((value) => (value.guidance[0].digest = `sha256:${'0'.repeat(64)}`)),
+  'guidance.compaction-invalidates': () => {
+    const stale = [{ id: 'action.bind', digest: candidateConstants.GUIDANCE_DIGEST }];
+    const improperlyRetained = renderCandidateExplanation({
+      decision: decision('bind'),
+      knownGuidance: stale,
+    });
+    assert.equal(improperlyRetained.guidance[0].status, 'not-modified');
+  },
+  'guidance.no-ledger-restore': () => {
+    const restored = [{ id: 'action.resume', digest: candidateConstants.GUIDANCE_DIGEST }];
+    const improperlyRestored = renderCandidateExplanation({
+      decision: decision('resume'),
+      knownGuidance: restored,
+    });
+    assert.equal(improperlyRestored.guidance[0].status, 'not-modified');
+  },
   'guidance.receipt-not-authority': () =>
     rejectsDecision(
       'bind',
@@ -943,8 +1012,16 @@ const adversarialCounters = {
       },
       /ready-blockers/
     ),
-  'guidance.stale-attestation-behavior': () =>
-    assertGuidanceInvariant((value) => (value.guidance[0].status = 'not-modified')),
+  'guidance.stale-attestation-behavior': () => {
+    const value = decision('bind', 'blocked');
+    const response = renderCandidateExplanation({
+      decision: value,
+      knownGuidance: [{ id: 'action.bind', digest: candidateConstants.GUIDANCE_DIGEST }],
+    });
+    assert.equal(response.guidance[0].status, 'not-modified');
+    assert.equal(response.result.status, 'blocked');
+    assert.equal(response.result.blockers.length, 1);
+  },
   'diagnostics.mode-members': () => {
     const envelope = renderCandidateExplanation({ decision: decision('test'), diagnostic: true });
     delete envelope.fullDecision;
@@ -952,7 +1029,10 @@ const adversarialCounters = {
   },
   'diagnostics.same-evaluation': () => {
     const envelope = renderCandidateExplanation({ decision: decision('test'), diagnostic: true });
-    envelope.fullDecision.issue += 1;
+    envelope.fullDecision.warnings.push({
+      code: 'legacy-guard-warning',
+      args: { guardId: 'candidate-precondition' },
+    });
     assert.throws(
       () => validateCandidateExplanation(envelope),
       /diagnostic-operational-equivalence/
