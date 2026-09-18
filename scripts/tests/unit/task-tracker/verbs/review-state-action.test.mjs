@@ -404,30 +404,32 @@ test('verify re-runs a durable waiver whose terminal row lacks exact-head author
   assert.deepEqual(result, { status: 'incomplete', reason: 'stale-waiver-evidence' });
 });
 
-test('verify pauses when Review comments cannot be read', async () => {
-  const result = await reviewAgentValidationAction.verify(
-    {
-      review: {
-        repo: 'kburson/ai-task-manager',
-        loadWorkflowBoundary: async () => ({
-          isWaived: () => true,
-          decision: () => ({
-            outcome: 'waived',
-            authority: { recordId: '01M2H000000000000000000001', revision: 1 },
-          }),
+test('verify pauses when Review comments are unreadable or no reader exists', async () => {
+  const context = {
+    review: {
+      repo: 'kburson/ai-task-manager',
+      loadWorkflowBoundary: async () => ({
+        isWaived: () => true,
+        decision: () => ({
+          outcome: 'waived',
+          authority: { recordId: '01M2H000000000000000000001', revision: 1 },
         }),
-      },
+      }),
     },
-    {
-      issue: { value: 1629 },
-      body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
-      headSha: { value: 'a'.repeat(40) },
-      reviewCommentsStatus: 'error',
-      actionLedger: { status: 'clean', events: [{ phase: 'waived' }] },
-    }
-  );
-
-  assert.deepEqual(result, { status: 'paused', reason: 'review-comments-unavailable' });
+  };
+  const snapshot = {
+    issue: { value: 1629 },
+    body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+    headSha: { value: 'a'.repeat(40) },
+    actionLedger: { status: 'clean', events: [{ phase: 'waived' }] },
+  };
+  for (const reviewCommentsStatus of ['error', undefined]) {
+    const result = await reviewAgentValidationAction.verify(context, {
+      ...snapshot,
+      reviewCommentsStatus,
+    });
+    assert.deepEqual(result, { status: 'paused', reason: 'review-comments-unavailable' });
+  }
 });
 
 test('waived semantic review refuses unusable authority before clearing a failure carrier', async () => {

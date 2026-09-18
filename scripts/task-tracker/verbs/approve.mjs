@@ -20,7 +20,6 @@ import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
   parseReviewApprovedMarker,
-  parseDodVerifiedMarker,
   removeReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
@@ -73,18 +72,9 @@ function removeStaleApprovalCarriers(body) {
   return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
 }
 
-function defaultResolveTestReceiptSha(body, approvedSha) {
+function defaultResolveTestReceiptSha(body) {
   const receiptSha = parseVerificationReceipt(body, 'test')?.commitSha;
-  if (/^[0-9a-f]{40}$/.test(receiptSha || '')) return receiptSha;
-  const legacySha = parseDodVerifiedMarker(body)?.sha;
-  if (
-    /^[0-9a-f]{7,40}$/.test(legacySha || '') &&
-    /^[0-9a-f]{40}$/.test(approvedSha || '') &&
-    approvedSha.startsWith(legacySha)
-  ) {
-    return approvedSha;
-  }
-  return null;
+  return /^[0-9a-f]{40}$/.test(receiptSha || '') ? receiptSha : null;
 }
 
 async function resolveSemanticReviewWaiverAuthority({
@@ -155,6 +145,8 @@ async function resolveSemanticReviewWaiverAuthority({
 function sameSemanticReviewWaiverAuthority(left, right) {
   return (
     left?.scopeIdentity === right?.scopeIdentity &&
+    left?.reviewAuthority?.outcome === right?.reviewAuthority?.outcome &&
+    left?.reviewAuthority?.acceptedSha === right?.reviewAuthority?.acceptedSha &&
     left?.reviewAuthority?.authority?.recordId === right?.reviewAuthority?.authority?.recordId &&
     left?.reviewAuthority?.authority?.revision === right?.reviewAuthority?.authority?.revision
   );
@@ -328,7 +320,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-      const approvedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
+      const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
+      const approvedSha = await getHeadSha({ projectDir });
       if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
       }
@@ -466,6 +459,10 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // policy and its durable terminal evidence after that window so a waiver
       // revoked while approval was waiting cannot authorize the body write.
       if (semanticReviewWaiverAuthority) {
+        const freshHeadSha = await getHeadSha({ projectDir });
+        if (freshHeadSha !== approvedSha) {
+          throw new Error(`approve: HEAD changed before approval write`);
+        }
         const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
         const freshTestReceiptSha = await resolveTestReceiptSha(freshBody, approvedSha);
         const freshWaiverAuthority = await resolveSemanticReviewWaiverAuthority({
@@ -599,8 +596,10 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
             );
           }
           const freshReason = agentReviewIncompleteReason(freshBase);
+          const freshTestReceiptSha = resolveTestReceiptSha(freshBase, approvedSha);
           if (
             freshReason === 'review-failed' ||
+            freshTestReceiptSha !== approvedSha ||
             freshScopeIdentity !== semanticReviewWaiverAuthority.scopeIdentity
           ) {
             throw new Error(

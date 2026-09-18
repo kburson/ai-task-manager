@@ -71,6 +71,12 @@ function waivedEvidence(policy, snapshot) {
 async function hasCurrentTerminalWaiver(context, snapshot, evidence) {
   const capabilities = context?.review;
   if (snapshot?.reviewCommentsStatus === 'error') return 'error';
+  if (
+    !Array.isArray(snapshot?.reviewComments) &&
+    typeof capabilities?.readComments !== 'function'
+  ) {
+    return 'error';
+  }
   let comments;
   try {
     comments = Array.isArray(snapshot?.reviewComments)

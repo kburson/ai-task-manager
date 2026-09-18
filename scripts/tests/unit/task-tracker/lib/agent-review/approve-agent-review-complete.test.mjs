@@ -215,7 +215,7 @@ test('approve accepts exact terminal waived Review authority without fabricating
   assert.doesNotMatch(getBody(), /gate="agent-review"[^>]*result="pass"/);
 });
 
-test('approve accepts legacy Test evidence when its SHA prefix binds to the full approved head', async () => {
+test('approve refuses legacy abbreviated Test evidence for exact-head waiver authority', async () => {
   const terminalWaiver = [
     '## ⏱ Timing Log',
     '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
@@ -237,10 +237,8 @@ test('approve accepts legacy Test evidence when its SHA prefix binds to the full
     }),
   });
 
-  const result = await run();
-
-  assert.equal(result.status, 'approved');
-  assert.equal(calls.mutated, 1);
+  await assert.rejects(run, /accepted head does not match Test receipt/);
+  assert.equal(calls.mutated, 0);
 });
 
 test('approve rechecks waiver authority after driver collection before writing', async () => {
@@ -272,6 +270,32 @@ test('approve rechecks waiver authority after driver collection before writing',
   });
 
   await assert.rejects(run, /waiver authority changed before approval write/);
+  assert.equal(calls.mutated, 0);
+});
+
+test('approve refuses a waiver when HEAD changes during driver collection', async () => {
+  const terminalWaiver = [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n');
+  let headReads = 0;
+  const { calls, run } = approveWith(VALID_UNTICKED, {
+    getHeadSha: async () => (++headReads === 1 ? APPROVED_SHA : 'b'.repeat(40)),
+    fetchComments: async () => [{ body: terminalWaiver }],
+    loadWorkflowBoundary: async ({ repository, issue, body }) => ({
+      status: 'policy-compatible',
+      scopeIdentity: computeScopeIdentity({ repository, issue, body }),
+      isWaived: (id) => id === 'review.semantic-resident',
+      decision: () => ({
+        outcome: 'waived',
+        authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+      }),
+    }),
+  });
+
+  await assert.rejects(run, /HEAD changed before approval write/);
   assert.equal(calls.mutated, 0);
 });
 
@@ -310,6 +334,40 @@ test('approve refuses a waiver stamp when the fresh body scope changed after val
   const initial = VALID_UNTICKED;
   const changed = initial.replace('Original scope', 'Expanded concurrent scope');
   const { calls, run } = approveWith(initial, {
+    fetchComments: async () => [{ body: terminalWaiver }],
+    loadWorkflowBoundary: async ({ repository, issue, body }) => ({
+      status: 'policy-compatible',
+      scopeIdentity: computeScopeIdentity({ repository, issue, body }),
+      isWaived: (id) => id === 'review.semantic-resident',
+      decision: () => ({
+        outcome: 'waived',
+        authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+      }),
+    }),
+    mutateIssueBody: async ({ mutate, validateFreshBase }) => {
+      calls.mutated += 1;
+      const next = mutate(changed);
+      validateFreshBase?.(changed, next);
+      return { body: next };
+    },
+  });
+
+  await assert.rejects(run, /waiver authority changed before approval write/);
+  assert.equal(calls.mutated, 1);
+});
+
+test('approve refuses a waiver stamp when the fresh Test receipt changes without a scope change', async () => {
+  const terminalWaiver = [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n');
+  const initial = `${VALID_UNTICKED}\n<!-- test-receipt current -->`;
+  const changed = initial.replace('test-receipt current', 'test-receipt changed');
+  const { calls, run } = approveWith(initial, {
+    resolveTestReceiptSha: (body) =>
+      body.includes('test-receipt changed') ? 'b'.repeat(40) : APPROVED_SHA,
     fetchComments: async () => [{ body: terminalWaiver }],
     loadWorkflowBoundary: async ({ repository, issue, body }) => ({
       status: 'policy-compatible',
