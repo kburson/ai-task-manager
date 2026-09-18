@@ -463,7 +463,12 @@ test('cross-issue request is typed and followed by a fresh target evaluation', a
 });
 
 test('diagnostic equivalence includes composed admission warnings', async () => {
-  const { buildCandidateDecision, renderCandidateExplanation, candidateConstants } = await oracle();
+  const {
+    buildCandidateDecision,
+    renderCandidateExplanation,
+    validateCandidateExplanation,
+    candidateConstants,
+  } = await oracle();
   const decision = buildCandidateDecision({ fixture: fixture('review'), scenario: 'warning' });
   const admissionWarnings = [
     {
@@ -477,6 +482,16 @@ test('diagnostic equivalence includes composed admission warnings', async () => 
   const routine = renderCandidateExplanation({ decision, admissionWarnings });
   const diagnostic = renderCandidateExplanation({ decision, admissionWarnings, diagnostic: true });
   assert.deepEqual(diagnostic.result, routine.result);
+  assert.equal(Object.hasOwn(diagnostic, 'admissionWarningCount'), false);
+  assert.equal(validateCandidateExplanation(diagnostic, { admissionWarnings }), diagnostic);
+  assert.throws(
+    () =>
+      validateCandidateExplanation({
+        ...structuredClone(diagnostic),
+        admissionWarningCount: admissionWarnings.length,
+      }),
+    /guidance-candidate:explanation-shape/
+  );
 });
 
 test('project override annotation occurs only after a valid successful first mutation', async () => {
