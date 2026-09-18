@@ -1,4 +1,4 @@
-// @story #501
+// @story #501 #1694
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -73,6 +73,31 @@ test('syncTemplates: creates the mirror file when absent', () => {
 
     assert.equal(readFileSync(join(destDir, 'definition-of-done.md'), 'utf8'), 'dod body\n');
     assert.deepEqual(results, [{ name: 'definition-of-done.md', status: 'synced' }]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('syncTemplates: stamps the pickup directive when a package version is supplied', () => {
+  const { root, srcDir, destDir } = fixture();
+  try {
+    writeFileSync(
+      join(srcDir, 'pickup-directive.md'),
+      '<!-- aitm-skill-version: 0.0.0 -->\n# Pickup\n',
+      'utf8'
+    );
+
+    syncTemplates({
+      srcDir,
+      destDir,
+      files: ['pickup-directive.md'],
+      version: '1.2.3',
+    });
+
+    assert.equal(
+      readFileSync(join(destDir, 'pickup-directive.md'), 'utf8'),
+      '<!-- aitm-skill-version: 1.2.3 -->\n# Pickup\n'
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

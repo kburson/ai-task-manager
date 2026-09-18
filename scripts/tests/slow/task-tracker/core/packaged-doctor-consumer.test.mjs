@@ -1,4 +1,5 @@
 // @story #1694
+// cspell:ignore gpgsign
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -33,8 +34,10 @@ test('packed consumer verifies committed bootstrap after npm ci and reports drif
   const sandbox = mkdtempSync(join(projectScratchDir('test'), 'aitm-doctor-pack-'));
   const packDir = join(sandbox, 'pack');
   const consumerDir = join(sandbox, 'consumer');
+  const sourceConsumerDir = join(sandbox, 'source-consumer');
   mkdirSync(packDir, { recursive: true });
   mkdirSync(consumerDir, { recursive: true });
+  mkdirSync(sourceConsumerDir, { recursive: true });
 
   try {
     const rawPackReport = run('npm', ['pack', '--json', '--pack-destination', packDir], ROOT);
@@ -56,6 +59,8 @@ test('packed consumer verifies committed bootstrap after npm ci and reports drif
     run('git', ['init'], consumerDir);
     run('git', ['config', 'user.email', 'doctor@example.test'], consumerDir);
     run('git', ['config', 'user.name', 'Doctor Consumer'], consumerDir);
+    run('git', ['config', 'commit.gpgsign', 'false'], consumerDir);
+    writeFileSync(join(consumerDir, '.gitignore'), 'node_modules/\n');
     run(
       join(consumerDir, 'node_modules', '.bin', 'ai-task-manager'),
       ['install', '--agent', 'codex', '--link-mode', 'stub', '--target', consumerDir],
@@ -63,6 +68,11 @@ test('packed consumer verifies committed bootstrap after npm ci and reports drif
     );
     run('git', ['add', '.'], consumerDir);
     run('git', ['commit', '-m', 'commit portable AITM integration'], consumerDir);
+    assert.equal(
+      run('git', ['ls-files', 'node_modules'], consumerDir),
+      '',
+      'consumer commit excludes installed dependency bytes'
+    );
 
     const installedPackage = JSON.parse(
       readFileSync(
@@ -84,6 +94,30 @@ test('packed consumer verifies committed bootstrap after npm ci and reports drif
 
     const manifest = JSON.parse(
       readFileSync(join(consumerDir, '.ai-task-manager', 'install-manifest.json'), 'utf8')
+    );
+    run(
+      process.execPath,
+      [
+        join(ROOT, 'bin', 'cli.mjs'),
+        'install',
+        '--agent',
+        'codex',
+        '--link-mode',
+        'stub',
+        '--target',
+        sourceConsumerDir,
+      ],
+      ROOT
+    );
+    const sourceManifest = JSON.parse(
+      readFileSync(join(sourceConsumerDir, '.ai-task-manager', 'install-manifest.json'), 'utf8')
+    );
+    const pickupDigest = (record) =>
+      record.artifacts.find(({ id }) => id === 'template.pickup-directive.md')?.digest;
+    assert.equal(
+      pickupDigest(sourceManifest),
+      pickupDigest(manifest),
+      'source and packed installs publish the same pickup directive digest'
     );
     for (const { id } of manifest.artifacts) {
       assert.ok(
@@ -109,9 +143,19 @@ test('packed consumer verifies committed bootstrap after npm ci and reports drif
     assert.equal(drift.status, 1, drift.stdout + drift.stderr);
     const driftReport = JSON.parse(drift.stdout);
     assert.equal(driftReport.healthy, false);
+    assert.deepEqual(
+      driftReport.checks.map(({ id }) => id),
+      healthyReport.checks.map(({ id }) => id),
+      'drift report remains complete'
+    );
     assert.equal(
       driftReport.checks.find(({ id }) => id === 'provider.codex.skill')?.status,
       'missing'
+    );
+    assert.equal(
+      driftReport.checks.find(({ id }) => id === 'provider.codex.hooks')?.status,
+      'ok',
+      'unrelated user hook keys do not create managed-hook drift'
     );
     assert.equal(readFileSync(hooksPath, 'utf8'), hooksBefore);
     assert.equal(existsSync(skillPath), false, 'doctor must not recreate the missing skill');

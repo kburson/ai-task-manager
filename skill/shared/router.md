@@ -32,7 +32,12 @@ These rules apply to every verb. Skipping any is a process failure.
 13. **Workflow exceptions:** current explicit GitHub records alone apply;
     preflight is read-only, boundaries revalidate, and `waived` never means
     `passed`. See `rules/state-walk.md` and `rules/full-auto.md`.
-14. **Cloud bootstrap:** `npm ci && npx aitm doctor && npm test`; see the install guide.
+
+## Bootstrap health
+
+Maintainer: run `npx ai-task-manager install [selected options]`; review and
+commit portable outputs. Fresh/cloud only: `npm ci && npx aitm doctor && npm test`.
+Doctor never repairs; missing/stale manifests require explicit reinstall. See the install guide.
 
 ## CLI invocation
 
@@ -77,4 +82,8 @@ Unlisted verbs need no Tier-2 file; invoke the CLI and print output.
 
 ## gh issue command policy (bash-guard)
 
-The PreToolUse Bash hook (`scripts/task-tracker/bash-guard.mjs` → `lib/gh-edit-guard.mjs`) is the authoritative gh-issue policy. Summary: `gh issue view`/`list`, label & state-meta `gh issue edit` flags, `gh issue comment` (prefer structured helpers), and `gh issue reopen` are allowed; `gh issue create` and `gh issue close` are **BLOCKED** (hard rules 3–4 — use `scripts/gh/create-issue.mjs --shape …` / `/task close`); `gh issue edit --body` / `--body-file` is refused — route every body write through `mutateIssueBody` so hidden markers survive (`rules/create-issue.md`, `rules/state-walk.md`). `gh api graphql` mutations are allowed but exceptional (prefer helpers; document the site).
+`scripts/task-tracker/bash-guard.mjs` is the authoritative gh-issue policy:
+reads, comments, metadata edits, and reopen are allowed; create/close are blocked
+(use `scripts/gh/create-issue.mjs --shape …` / `/task close`). Route bodies via
+`mutateIssueBody` (`rules/create-issue.md`, `rules/state-walk.md`). `gh api graphql`
+mutations are exceptional; prefer helpers and document the site.

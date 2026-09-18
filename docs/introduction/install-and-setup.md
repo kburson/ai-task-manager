@@ -91,7 +91,7 @@ The `init` command adds GitHub project configuration and issue templates:
 Commit the generated project files:
 
 ```bash
-git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
+git add .gitignore .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
 

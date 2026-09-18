@@ -46,7 +46,7 @@ npx ai-task-manager init
 
 # 4. Commit the generated config — install/init outputs are project-portable,
 #    so ephemeral clones (cloud workstations, fresh worktrees) inherit them
-git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
+git add .gitignore .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
 

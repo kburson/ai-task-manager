@@ -144,9 +144,11 @@ function assertDocsDescribeReadOnlyCloudBootstrap() {
   for (const rel of [
     'README.md',
     'docs/introduction/install-and-setup.md',
+    'docs/guides/settings-guide.md',
     'skill/shared/router.md',
   ]) {
     const text = readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.match(text, /npx ai-task-manager install/, `${rel} names maintainer install`);
     assert.match(text, /npm ci && npx aitm doctor && npm test/, `${rel} has cloud sequence`);
     assert.doesNotMatch(
       text,
@@ -163,6 +165,10 @@ function assertDocsDescribeReadOnlyCloudBootstrap() {
     /`\.ai-task-manager\/install-manifest\.json`/,
     'setup generated-path table names the install manifest'
   );
+  for (const rel of ['README.md', 'docs/introduction/install-and-setup.md']) {
+    const text = readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.match(text, /git add [^\n]*\.gitignore/, `${rel} stages the managed gitignore`);
+  }
 }
 
 try {

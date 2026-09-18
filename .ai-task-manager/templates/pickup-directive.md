@@ -1,4 +1,4 @@
-<!-- aitm-skill-version: 0.0.0 -->
+<!-- aitm-skill-version: 0.1.0 -->
 
 # Pickup Directive — Agent Instructions
 
