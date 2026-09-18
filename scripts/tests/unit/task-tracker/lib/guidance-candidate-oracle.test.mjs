@@ -61,7 +61,13 @@ test('candidate decisions validate every action and scenario without dropping op
       assert.equal(validateCandidateDecision(decision), decision);
       assert.equal(decision.issue, definition.issue);
       assert.equal(decision.actionId, action);
-      assert.equal(decision.status, expectedStatuses[scenario]);
+      const expectedStatus =
+        scenario === 'effective-policy-human-request' &&
+        definition.policyRequest === 'manual-investigation'
+          ? 'indeterminate'
+          : expectedStatuses[scenario];
+      assert.equal(decision.status, expectedStatus);
+      assert.equal(decision.snapshot.state, definition.state);
       assert.equal(decision.snapshot.head.length, 40);
       assert.match(decision.snapshot.digest, /^sha256:[0-9a-f]{64}$/);
     }
@@ -100,7 +106,8 @@ test('routine presentation has exactly seven fields and evidence cardinality can
   const approvalResult = renderCandidateExplanation({ decision: approval }).result;
   assert.equal(approvalResult.blockers.length, 1);
   assert.equal(approvalResult.humanDecision.requests.length, 1);
-  assert.equal(approvalResult.blockers[0].args.issue, definition.issue + 100);
+  assert.equal(approvalResult.blockers[0].args.head, candidateConstants.FULL_HEAD);
+  assert.equal(approvalResult.humanDecision.requests[0].args.head, candidateConstants.FULL_HEAD);
 });
 
 test('closed decision validation rejects missing values, unknown members and inconsistent semantics', async () => {
@@ -236,15 +243,50 @@ test('diagnostic mode adds the same full decision and only explicitly untrusted 
   assert.equal(Object.hasOwn(routine, 'diagnosticMessages'), false);
 });
 
+test('routine consumer rejects malformed operational values independently of the serializer', async () => {
+  const { buildCandidateDecision, renderCandidateExplanation, validateCandidateExplanation } =
+    await oracle();
+  const envelope = renderCandidateExplanation({
+    decision: buildCandidateDecision({ fixture: fixture('close'), scenario: 'blocked' }),
+  });
+  for (const mutate of [
+    (value) => (value.result.issue = -1),
+    (value) => (value.result.status = 'invented'),
+    (value) => (value.result.blockers = null),
+  ]) {
+    const candidate = clone(envelope);
+    mutate(candidate);
+    assert.throws(() => validateCandidateExplanation(candidate), /guidance-candidate:/);
+  }
+});
+
+test('diagnostic equivalence includes composed admission warnings', async () => {
+  const { buildCandidateDecision, renderCandidateExplanation, candidateConstants } = await oracle();
+  const decision = buildCandidateDecision({ fixture: fixture('review'), scenario: 'warning' });
+  const admissionWarnings = [
+    {
+      code: 'guidance-source-diverged',
+      args: {
+        source: '.ai-task-manager/aitm-guidance.yml',
+        digest: candidateConstants.SOURCE_DIGEST,
+      },
+    },
+  ];
+  const routine = renderCandidateExplanation({ decision, admissionWarnings });
+  const diagnostic = renderCandidateExplanation({ decision, admissionWarnings, diagnostic: true });
+  assert.deepEqual(diagnostic.result, routine.result);
+});
+
 test('project override annotation occurs only after a valid successful first mutation', async () => {
-  const { projectOverrideMutationEffect } = await oracle();
+  const { projectOverrideMutationEffect, projectOverrideProtocol, candidateConstants } =
+    await oracle();
   assert.deepEqual(
     projectOverrideMutationEffect({
       valid: true,
       mutationSucceeded: true,
       alreadyAnnotated: false,
     }),
-    { mutationAllowed: true, annotationWritten: true }
+    { mutationAllowed: true, warningEmitted: true, annotationWritten: true }
   );
   assert.deepEqual(
     projectOverrideMutationEffect({
@@ -252,20 +294,61 @@ test('project override annotation occurs only after a valid successful first mut
       mutationSucceeded: true,
       alreadyAnnotated: false,
     }),
-    { mutationAllowed: false, annotationWritten: false }
+    { mutationAllowed: false, warningEmitted: false, annotationWritten: false }
   );
   assert.deepEqual(
     projectOverrideMutationEffect({ valid: true, mutationSucceeded: true, alreadyAnnotated: true }),
-    { mutationAllowed: true, annotationWritten: false }
+    { mutationAllowed: true, warningEmitted: true, annotationWritten: false }
+  );
+  const common = {
+    diverged: true,
+    valid: true,
+    mutationSucceeded: false,
+    alreadyAnnotated: false,
+    digest: candidateConstants.SOURCE_DIGEST,
+  };
+  assert.equal(
+    projectOverrideProtocol({ ...common, receiptDigest: common.digest, contextReset: false })
+      .warningEmitted,
+    false
+  );
+  assert.equal(
+    projectOverrideProtocol({ ...common, receiptDigest: common.digest, contextReset: true })
+      .warningEmitted,
+    true
+  );
+  assert.equal(
+    projectOverrideProtocol({
+      ...common,
+      receiptDigest: `sha256:${'0'.repeat(64)}`,
+      contextReset: false,
+    }).warningEmitted,
+    true
   );
 });
 
-test('all frozen clauses point to executed assertions and observed positive and adversarial fixtures', () => {
+test('all frozen clauses point to executed assertions and observed positive and adversarial fixtures', async () => {
+  const { executeCandidateTraceability } =
+    await import('../../../helpers/guidance-characterization-harness.mjs');
   const index = json('spec-clause-index.json');
   const traceability = json('oracle-traceability.json');
+  const runtime = executeCandidateTraceability({ index, traceability });
+  assert.deepEqual(traceability.assertions.executed, runtime.executedAssertions);
+  assert.deepEqual(traceability.fixtures.observed, runtime.observedFixtures);
+  assert.deepEqual(
+    traceability.mappings.map(({ clauseId, executionStatus }) => ({ clauseId, executionStatus })),
+    runtime.mappings
+  );
   const result = assertOracleTraceability({ index, traceability, requireAllExecuted: true });
   assert.equal(result.mappingCount, 70);
   assert.equal(result.executedCount, 70);
   assert.equal(result.pendingCount, 0);
   assert.equal(traceability.clauseIndexSha256, digestJson(index));
+
+  const missingProbe = clone(traceability);
+  missingProbe.mappings[0].fieldChecks = ['unregistered.runtime-probe'];
+  assert.throws(
+    () => executeCandidateTraceability({ index, traceability: missingProbe }),
+    /missing runtime probe/
+  );
 });

@@ -2,6 +2,8 @@
   "schema": "aitm.guidance-action-fixtures/v1",
   "actionId": "bind",
   "issue": 2101,
+  "state": "backlog",
+  "policyRequest": "manual-investigation",
   "scenarios": [
     "ready",
     "blocked",
