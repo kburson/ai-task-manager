@@ -22,10 +22,12 @@
 ### Task 1: Make the Fast CI Checkout History-Complete
 
 **Files:**
+
 - Modify: `scripts/tests/unit/task-tracker/core/ci-745-trunk-ref.test.mjs`
 - Modify: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Consumes: the GitHub pull-request merge ref, the local `trunk` ref materialized by #745, and the existing `trunk...HEAD` docs-only classifier.
 - Produces: a fast-lane checkout with complete ancestry and a source-level contract that refuses restoration of shallow depth 2.
 
