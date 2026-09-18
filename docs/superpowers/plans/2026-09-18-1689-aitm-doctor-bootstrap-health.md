@@ -944,7 +944,7 @@ git diff --name-only origin/trunk...HEAD
 
 Expected: no doctor workflow verb/dispatch case; no npm lifecycle install/doctor hook; only #1689 implementation, tests, docs, spec, and plan files.
 
-- [ ] **Step 7: Commit documentation and plan evidence**
+- [x] **Step 7: Commit documentation and plan evidence**
 
 ```bash
 git add README.md docs/introduction/install-and-setup.md docs/guides/settings-guide.md \
