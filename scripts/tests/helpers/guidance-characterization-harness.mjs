@@ -118,8 +118,38 @@ function outerRefusal() {
 
 function legacyRefusal(reason) {
   assert.equal(typeof reason, 'string');
-  const value = decision('resume', 'blocked');
+  const value = clone(decision('resume', 'blocked'));
+  value.blockers = [
+    {
+      guardId: 'registered-legacy-guard',
+      code: 'unclassified-refusal',
+      args: {},
+      noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
+    },
+  ];
+  value.humanDecision = {
+    requests: [
+      {
+        kind: 'manual-investigation',
+        actor: 'human-operator',
+        subject: { issue: value.issue, actionId: value.actionId },
+        args: { guardId: 'registered-legacy-guard', code: 'unclassified-refusal' },
+      },
+    ],
+  };
   assert.equal(JSON.stringify(value).includes(reason), false);
+  return validateCandidateDecision(value);
+}
+
+function skippedAuthorityRead() {
+  const value = clone(decision('resume', 'indeterminate'));
+  value.blockers[0] = {
+    guardId: 'authority-collection',
+    code: 'authority-read-skipped',
+    args: { source: 'issue-comment' },
+    noAutomaticRemediation: { reason: 'authority-investigation-required' },
+  };
+  value.humanDecision.requests[0].args.code = 'authority-read-skipped';
   return validateCandidateDecision(value);
 }
 
@@ -226,9 +256,16 @@ const probes = {
   'causes.args-required': () =>
     rejectsDecision('resume', 'blocked', (value) => delete value.blockers[0].args),
   'causes.collection-codes': () =>
-    rejectsDecision('resume', 'indeterminate', (value) => {
-      value.blockers[0].code = 'read-failed';
-    }),
+    rejectsDecision(
+      'resume',
+      'indeterminate',
+      (value) => {
+        value.blockers[0] = clone(skippedAuthorityRead().blockers[0]);
+        value.blockers[0].args.reason = 'timeout';
+        value.humanDecision.requests[0].args.code = 'authority-read-skipped';
+      },
+      /blocker-args/
+    ),
   'causes.collection-reasons': () =>
     rejectsDecision('resume', 'indeterminate', (value) => {
       value.blockers[0].args.reason = 'retry';
@@ -254,10 +291,14 @@ const probes = {
       value.blockers[0].noAutomaticRemediation = { reason: 'result-investigation-required' };
     }),
   'causes.legacy-stable': () => {
-    assert.deepEqual(
-      legacyRefusal('first').blockers[0].code,
-      legacyRefusal('second').blockers[0].code
-    );
+    const expected = {
+      guardId: 'registered-legacy-guard',
+      code: 'unclassified-refusal',
+      args: {},
+      noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
+    };
+    assert.deepEqual(legacyRefusal('first').blockers[0], expected);
+    assert.deepEqual(legacyRefusal('second').blockers[0], expected);
   },
   'causes.legacy-no-text-execution': () => {
     const value = legacyRefusal('run dangerous command');
@@ -622,8 +663,12 @@ const positiveCounters = {
     assert.equal(Object.hasOwn(value.blockers[0], 'args'), true);
   },
   'causes.collection-codes': () => {
-    const value = validateCandidateDecision(decision('resume', 'indeterminate'));
-    assert.equal(value.blockers[0].code, 'authority-read-failed');
+    const failed = validateCandidateDecision(decision('resume', 'indeterminate'));
+    const skipped = skippedAuthorityRead();
+    assert.deepEqual(
+      [failed.blockers[0].code, skipped.blockers[0].code],
+      ['authority-read-failed', 'authority-read-skipped']
+    );
   },
   'causes.collection-reasons': () => {
     const value = validateCandidateDecision(decision('resume', 'indeterminate'));
@@ -699,25 +744,26 @@ function assertGuidanceInvariant(mutator) {
 }
 
 const adversarialCounters = {
-  'evidence.refresh-provenance': () =>
-    assert.throws(
-      () =>
-        buildCandidateDecision({ fixture: fixtures.promote, scenario: 'ready', evidenceCopies: 0 }),
-      /snapshot-observations/
-    ),
+  'evidence.refresh-provenance': () => {
+    const value = clone(decision('promote', 'ready', 3));
+    value.snapshot.observations[1].identity = value.snapshot.observations[0].identity;
+    assert.throws(() => validateCandidateDecision(value), /observation-identity-duplicate/);
+  },
   'normalization.digest-omissions': () =>
     rejectsDecision('close', 'normalization', (value) => {
       value.normalizations[0].decisionDigest = `sha256:${'0'.repeat(64)}`;
     }),
-  'evidence.digest-not-authority': () =>
-    rejectsDecision(
-      'bind',
-      'ready',
-      (value) => {
-        value.blockers.push(decision('bind', 'blocked').blockers[0]);
-      },
-      /ready-blockers/
-    ),
+  'evidence.digest-not-authority': () => {
+    const first = decision('bind', 'ready');
+    const second = clone(first);
+    second.issue += 1;
+    assert.equal(second.snapshot.digest, first.snapshot.digest);
+    validateCandidateDecision(second);
+    assert.notDeepEqual(
+      renderCandidateExplanation({ decision: second }).result,
+      renderCandidateExplanation({ decision: first }).result
+    );
+  },
   'presentation.explicit-empty': () =>
     rejectsPresentation('bind', 'ready', (value) => (value.blockers = null)),
   'presentation.no-evidence-duplication': () =>
@@ -755,24 +801,16 @@ const adversarialCounters = {
     value.blockers[0].guardId = 'candidate-precondition';
     assert.throws(() => validateCandidateDecision(value), /producer-code-pair/);
   },
-  'causes.legacy-stable': () =>
-    rejectsDecision(
-      'resume',
-      'blocked',
-      (value) => {
-        value.blockers[0].code = 'raw legacy refusal';
-      },
-      /blocker-code/
-    ),
-  'causes.legacy-no-text-execution': () =>
-    rejectsDecision(
-      'resume',
-      'blocked',
-      (value) => {
-        value.blockers[0].command = 'run dangerous command';
-      },
-      /blocker-shape/
-    ),
+  'causes.legacy-stable': () => {
+    const value = clone(legacyRefusal('stable'));
+    value.blockers[0].noAutomaticRemediation.reason = 'authority-investigation-required';
+    assert.throws(() => validateCandidateDecision(value), /remediation-coupling/);
+  },
+  'causes.legacy-no-text-execution': () => {
+    const value = clone(legacyRefusal('run dangerous command'));
+    value.blockers[0].command = 'run dangerous command';
+    assert.throws(() => validateCandidateDecision(value), /blocker-shape/);
+  },
   'warnings.source-diverged': () =>
     rejectsDecision(
       'review',
@@ -1020,8 +1058,8 @@ export function executeCandidateTraceability({ index, traceability }) {
     });
     if (!executedAssertions.includes(mapping.assertionId))
       executedAssertions.push(mapping.assertionId);
-    for (const id of [mapping.positiveFixtureId, mapping.adversarialFixtureId]) {
-      if (!observedFixtures.includes(id)) observedFixtures.push(id);
+    for (const fixtureId of [mapping.positiveFixtureId, mapping.adversarialFixtureId]) {
+      if (!observedFixtures.includes(fixtureId)) observedFixtures.push(fixtureId);
     }
     mappings.push({ clauseId: mapping.clauseId, executionStatus: 'executed' });
   }

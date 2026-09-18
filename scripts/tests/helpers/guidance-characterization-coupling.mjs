@@ -14,7 +14,12 @@ export function assertHumanRequestCoupling(decision) {
         actionId: blocker.args.actionId,
       });
     }
-    if (blocker.code === 'authority-read-failed' || blocker.code === 'state-unavailable') {
+    if (
+      blocker.code === 'authority-read-failed' ||
+      blocker.code === 'authority-read-skipped' ||
+      blocker.code === 'unclassified-refusal' ||
+      blocker.code === 'state-unavailable'
+    ) {
       required.push({
         kind: 'manual-investigation',
         issue: decision.issue,

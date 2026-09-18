@@ -3,6 +3,8 @@ const ACTIONS = new Set(['bind', 'resume', 'promote', 'test', 'review', 'deliver
 const STATUSES = new Set(['ready', 'blocked', 'indeterminate']);
 const BLOCKER_CODES = new Set([
   'authority-read-failed',
+  'authority-read-skipped',
+  'unclassified-refusal',
   'state-unavailable',
   'guard-result-invalid',
   'precondition-missing',
@@ -13,6 +15,7 @@ const BLOCKER_CODES = new Set([
 const GUARDS = new Set([
   'candidate-precondition',
   'candidate-cross-issue',
+  'registered-legacy-guard',
   'authority-collection',
   'action-navigation',
   'action-result-validation',
@@ -63,6 +66,13 @@ function blocker(value) {
     ) {
       fail('blocker-reason');
     }
+  } else if (value.code === 'authority-read-skipped') {
+    if (value.guardId !== 'authority-collection') fail('producer-code-pair');
+    exact(value.args, ['source'], 'blocker-args');
+    if (!SOURCES.has(value.args.source)) fail('blocker-source');
+  } else if (value.code === 'unclassified-refusal') {
+    if (value.guardId !== 'registered-legacy-guard') fail('producer-code-pair');
+    exact(value.args, [], 'blocker-args');
   } else if (value.code === 'state-unavailable') {
     if (value.guardId !== 'action-navigation') fail('producer-code-pair');
     exact(value.args, ['reason'], 'blocker-args');
@@ -111,6 +121,7 @@ function blocker(value) {
     if (
       !new Set([
         'authority-investigation-required',
+        'legacy-guard-requires-human-investigation',
         'state-investigation-required',
         'result-investigation-required',
       ]).has(value.noAutomaticRemediation.reason)
@@ -150,6 +161,8 @@ function remediationCoupling(value, result) {
   } else {
     const expectedReason = new Map([
       ['authority-read-failed', 'authority-investigation-required'],
+      ['authority-read-skipped', 'authority-investigation-required'],
+      ['unclassified-refusal', 'legacy-guard-requires-human-investigation'],
       ['state-unavailable', 'state-investigation-required'],
       ['guard-result-invalid', 'result-investigation-required'],
     ]).get(value.code);
@@ -227,6 +240,8 @@ function humanDecision(value, result) {
       });
     } else if (
       returnedBlocker.code === 'authority-read-failed' ||
+      returnedBlocker.code === 'authority-read-skipped' ||
+      returnedBlocker.code === 'unclassified-refusal' ||
       returnedBlocker.code === 'state-unavailable'
     ) {
       required.push({

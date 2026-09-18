@@ -11,6 +11,7 @@ const SOURCES = new Set(['issue-body', 'issue-comment', 'project-board', 'delive
 const GUARDS = new Set([
   'candidate-precondition',
   'candidate-cross-issue',
+  'registered-legacy-guard',
   'authority-collection',
   'action-navigation',
   'action-result-validation',
@@ -106,6 +107,7 @@ function validateDisposition(blocker) {
     if (
       !new Set([
         'authority-investigation-required',
+        'legacy-guard-requires-human-investigation',
         'state-investigation-required',
         'result-investigation-required',
       ]).has(blocker.noAutomaticRemediation.reason)
@@ -127,6 +129,13 @@ function validateBlocker(blocker) {
     validateArgs(blocker.args, ['reason', 'source'], 'blocker-args');
     if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
     if (!REASONS.has(blocker.args.reason)) fail('blocker-reason');
+  } else if (blocker.code === 'authority-read-skipped') {
+    if (blocker.guardId !== 'authority-collection') fail('producer-code-pair');
+    validateArgs(blocker.args, ['source'], 'blocker-args');
+    if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
+  } else if (blocker.code === 'unclassified-refusal') {
+    if (blocker.guardId !== 'registered-legacy-guard') fail('producer-code-pair');
+    validateArgs(blocker.args, [], 'blocker-args');
   } else if (blocker.code === 'state-unavailable') {
     if (blocker.guardId !== 'action-navigation') fail('producer-code-pair');
     validateArgs(blocker.args, ['reason'], 'blocker-args');
@@ -188,6 +197,8 @@ function validateRemediationCoupling(blocker, decision) {
   } else {
     const expectedReason = new Map([
       ['authority-read-failed', 'authority-investigation-required'],
+      ['authority-read-skipped', 'authority-investigation-required'],
+      ['unclassified-refusal', 'legacy-guard-requires-human-investigation'],
       ['state-unavailable', 'state-investigation-required'],
       ['guard-result-invalid', 'result-investigation-required'],
     ]).get(blocker.code);
@@ -301,10 +312,13 @@ function validateSnapshot(value, normalizations) {
   if (!Array.isArray(value.observations) || value.observations.length === 0) {
     fail('snapshot-observations');
   }
+  const identities = new Set();
   for (const observation of value.observations) {
     exact(observation, ['digest', 'identity', 'observedAt', 'source'], 'observation-shape');
     if (!SOURCES.has(observation.source)) fail('observation-source');
     string(observation.identity, 'observation-identity');
+    if (identities.has(observation.identity)) fail('observation-identity-duplicate');
+    identities.add(observation.identity);
     instant(observation.observedAt, 'observation-time');
     digestValue(observation.digest, 'observation-digest');
   }
