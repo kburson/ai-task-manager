@@ -2,10 +2,19 @@
 import { createHash } from 'node:crypto';
 
 import { assertHumanRequestCoupling } from './guidance-characterization-coupling.mjs';
+import { validateCandidatePresentation } from './guidance-characterization-presentation.mjs';
 
 const ACTIONS = new Set(['bind', 'resume', 'promote', 'test', 'review', 'deliver', 'close']);
 const STATUSES = new Set(['ready', 'blocked', 'indeterminate']);
 const REASONS = new Set(['timeout', 'rate-limited', 'unavailable', 'incomplete', 'invalid']);
+const SOURCES = new Set(['issue-body', 'issue-comment', 'project-board', 'delivery', 'timing-log']);
+const GUARDS = new Set([
+  'candidate-precondition',
+  'candidate-cross-issue',
+  'authority-collection',
+  'action-navigation',
+  'action-result-validation',
+]);
 const GUIDANCE_DIGEST = `sha256:${'7'.repeat(64)}`;
 const SOURCE_DIGEST = `sha256:${'8'.repeat(64)}`;
 const FULL_HEAD = '1234567890abcdef1234567890abcdef12345678';
@@ -25,6 +34,16 @@ function exact(value, keys, reason) {
 
 function digest(value) {
   return `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
+}
+
+function snapshotDigest(value) {
+  return digest({
+    state: value.state,
+    head: value.head,
+    startedAt: value.startedAt,
+    completedAt: value.completedAt,
+    observations: value.observations,
+  });
 }
 
 function positiveInteger(value, reason) {
@@ -66,6 +85,10 @@ function validateDisposition(blocker) {
     } else if (blocker.remediation.id === 'record-plan-approval') {
       validateArgs(blocker.remediation.args, ['issue'], 'remediation-args');
       positiveInteger(blocker.remediation.args.issue, 'remediation-issue');
+    } else if (blocker.remediation.id === 'request-review-approval') {
+      validateArgs(blocker.remediation.args, ['head', 'issue'], 'remediation-args');
+      positiveInteger(blocker.remediation.args.issue, 'remediation-issue');
+      if (!/^[0-9a-f]{40}$/.test(blocker.remediation.args.head)) fail('remediation-head');
     } else {
       fail('remediation-id');
     }
@@ -112,6 +135,13 @@ function validateBlocker(blocker) {
     positiveInteger(blocker.args.issue, 'blocker-subject');
     action(blocker.args.actionId, 'blocker-action');
     string(blocker.args.repository, 'blocker-repository');
+  } else if (blocker.code === 'plan-approval-missing') {
+    if (blocker.guardId !== 'candidate-precondition') fail('producer-code-pair');
+    validateArgs(blocker.args, [], 'blocker-args');
+  } else if (blocker.code === 'review-approval-missing') {
+    if (blocker.guardId !== 'candidate-precondition') fail('producer-code-pair');
+    validateArgs(blocker.args, ['head'], 'blocker-args');
+    if (!/^[0-9a-f]{40}$/.test(blocker.args.head)) fail('blocker-head');
   } else {
     fail('blocker-code');
   }
@@ -142,6 +172,12 @@ function validateNormalization(value) {
       fail('normalization-booleans');
     }
   }
+  if (
+    value.decisionDigest !==
+    digest({ normalizerId: 'functional-dod-derived/v1', decisions: value.decisions })
+  ) {
+    fail('normalization-decision-digest');
+  }
 }
 
 function validateWarning(value) {
@@ -152,7 +188,7 @@ function validateWarning(value) {
     digestValue(value.args.digest, 'warning-digest');
   } else if (value.code === 'legacy-guard-warning') {
     validateArgs(value.args, ['guardId'], 'warning-args');
-    string(value.args.guardId, 'warning-guard');
+    if (!GUARDS.has(value.args.guardId)) fail('warning-guard');
   } else {
     fail('warning-code');
   }
@@ -208,11 +244,12 @@ function validateSnapshot(value) {
   }
   for (const observation of value.observations) {
     exact(observation, ['digest', 'identity', 'observedAt', 'source'], 'observation-shape');
-    string(observation.source, 'observation-source');
+    if (!SOURCES.has(observation.source)) fail('observation-source');
     string(observation.identity, 'observation-identity');
     instant(observation.observedAt, 'observation-time');
     digestValue(observation.digest, 'observation-digest');
   }
+  if (value.digest !== snapshotDigest(value)) fail('snapshot-digest');
 }
 
 export function validateCandidateDecision(decision) {
@@ -268,7 +305,7 @@ function baseDecision(fixture) {
     actionId: fixture.actionId,
     status: 'ready',
     snapshot: {
-      state: 'develop',
+      state: fixture.state,
       head: FULL_HEAD,
       digest: digest({
         action: fixture.actionId,
@@ -300,18 +337,30 @@ function preconditionBlocker(fixture) {
 }
 
 export function buildCandidateDecision({ fixture, scenario, evidenceCopies = 1 }) {
-  exact(fixture, ['actionId', 'issue', 'scenarios', 'schema'], 'fixture-shape');
+  exact(
+    fixture,
+    ['actionId', 'issue', 'policyRequest', 'scenarios', 'schema', 'state'],
+    'fixture-shape'
+  );
   if (fixture.schema !== 'aitm.guidance-action-fixtures/v1') fail('fixture-schema');
   action(fixture.actionId, 'fixture-action');
   positiveInteger(fixture.issue, 'fixture-issue');
+  string(fixture.state, 'fixture-state');
+  if (
+    !new Set(['manual-investigation', 'plan-approval', 'review-approval']).has(
+      fixture.policyRequest
+    )
+  ) {
+    fail('fixture-policy-request');
+  }
   if (!fixture.scenarios.includes(scenario)) fail('fixture-scenario');
   const decision = baseDecision(fixture);
   decision.snapshot.observations = Array.from({ length: evidenceCopies }, (_, index) => ({
     ...decision.snapshot.observations[0],
-    source: index === 0 ? 'issue-body' : `evidence-${index}`,
+    source: index === 0 ? 'issue-body' : 'issue-comment',
     identity: index === 0 ? `issue:${fixture.issue}` : `evidence:${fixture.issue}:${index}`,
   }));
-  decision.snapshot.digest = digest(decision.snapshot.observations);
+  decision.snapshot.digest = snapshotDigest(decision.snapshot);
   if (scenario === 'blocked') {
     decision.status = 'blocked';
     decision.blockers = [preconditionBlocker(fixture)];
@@ -364,27 +413,80 @@ export function buildCandidateDecision({ fixture, scenario, evidenceCopies = 1 }
       },
     ];
   } else if (scenario === 'effective-policy-human-request') {
-    const child = fixture.issue + 100;
-    decision.status = 'blocked';
-    decision.blockers = [
-      {
-        guardId: 'candidate-cross-issue',
-        code: 'cross-issue-plan-approval-missing',
-        args: { repository: 'kburson/ai-task-manager', issue: child, actionId: 'promote' },
-        remediation: { id: 'record-plan-approval', args: { issue: child } },
-      },
-    ];
-    decision.humanDecision = {
-      requests: [
+    if (fixture.policyRequest === 'manual-investigation') {
+      decision.status = 'indeterminate';
+      decision.blockers = [
         {
-          kind: 'plan-approval',
-          actor: 'configured-approver',
-          subject: { issue: child, actionId: 'promote' },
-          args: {},
+          guardId: 'authority-collection',
+          code: 'authority-read-failed',
+          args: { source: 'project-board', reason: 'incomplete' },
+          noAutomaticRemediation: { reason: 'authority-investigation-required' },
         },
-      ],
-    };
+      ];
+      decision.humanDecision = {
+        requests: [
+          {
+            kind: 'manual-investigation',
+            actor: 'human-operator',
+            subject: { issue: fixture.issue, actionId: fixture.actionId },
+            args: { guardId: 'authority-collection', code: 'authority-read-failed' },
+          },
+        ],
+      };
+    } else if (fixture.policyRequest === 'plan-approval') {
+      decision.status = 'blocked';
+      decision.blockers = [
+        {
+          guardId: 'candidate-precondition',
+          code: 'plan-approval-missing',
+          args: {},
+          remediation: { id: 'record-plan-approval', args: { issue: fixture.issue } },
+        },
+      ];
+      decision.humanDecision = {
+        requests: [
+          {
+            kind: 'plan-approval',
+            actor: 'configured-approver',
+            subject: { issue: fixture.issue, actionId: 'promote' },
+            args: {},
+          },
+        ],
+      };
+    } else {
+      decision.status = 'blocked';
+      decision.blockers = [
+        {
+          guardId: 'candidate-precondition',
+          code: 'review-approval-missing',
+          args: { head: FULL_HEAD },
+          remediation: {
+            id: 'request-review-approval',
+            args: { issue: fixture.issue, head: FULL_HEAD },
+          },
+        },
+      ];
+      decision.humanDecision = {
+        requests: [
+          {
+            kind: 'review-approval',
+            actor: 'configured-approver',
+            subject: { issue: fixture.issue, actionId: fixture.actionId },
+            args: { head: FULL_HEAD },
+          },
+        ],
+      };
+    }
   }
+  return validateCandidateDecision(decision);
+}
+
+export function buildTerminalCandidateDecision({ fixture }) {
+  const decision = buildCandidateDecision({ fixture, scenario: 'ready' });
+  decision.actionId = null;
+  decision.snapshot.state = 'done';
+  decision.snapshot.digest = snapshotDigest(decision.snapshot);
+  decision.guidanceIds = ['state.done'];
   return validateCandidateDecision(decision);
 }
 
@@ -465,6 +567,7 @@ export function validateCandidateExplanation(envelope) {
     ['actionId', 'blockers', 'humanDecision', 'issue', 'normalizations', 'status', 'warnings'],
     'presentation-shape'
   );
+  validateCandidatePresentation(envelope.result);
   if (!Array.isArray(envelope.guidance) || envelope.guidance.length === 0) fail('guidance');
   for (const entry of envelope.guidance) {
     if (entry.status === 'expanded') {
@@ -489,7 +592,15 @@ export function validateCandidateExplanation(envelope) {
       string(message.text, 'diagnostic-text');
       if (message.untrusted !== true) fail('diagnostic-trust');
     }
-    if (JSON.stringify(presentation(envelope.fullDecision)) !== JSON.stringify(envelope.result)) {
+    const expected = presentation(envelope.fullDecision);
+    const actualWithoutAdmission = {
+      ...envelope.result,
+      warnings:
+        expected.warnings.length === 0
+          ? []
+          : envelope.result.warnings.slice(-expected.warnings.length),
+    };
+    if (JSON.stringify(expected) !== JSON.stringify(actualWithoutAdmission)) {
       fail('diagnostic-operational-equivalence');
     }
   }
@@ -497,9 +608,34 @@ export function validateCandidateExplanation(envelope) {
 }
 
 export function projectOverrideMutationEffect({ valid, mutationSucceeded, alreadyAnnotated }) {
+  return projectOverrideProtocol({
+    diverged: true,
+    valid,
+    mutationSucceeded,
+    alreadyAnnotated,
+    digest: SOURCE_DIGEST,
+    receiptDigest: null,
+    contextReset: false,
+  });
+}
+
+export function projectOverrideProtocol({
+  diverged,
+  valid,
+  mutationSucceeded,
+  alreadyAnnotated,
+  digest,
+  receiptDigest,
+  contextReset,
+}) {
+  digestValue(digest, 'override-digest');
+  if (receiptDigest !== null) digestValue(receiptDigest, 'override-receipt-digest');
+  const active = diverged === true && valid === true;
   return {
     mutationAllowed: valid === true,
-    annotationWritten: valid === true && mutationSucceeded === true && alreadyAnnotated !== true,
+    warningEmitted:
+      active && (contextReset === true || receiptDigest === null || receiptDigest !== digest),
+    annotationWritten: active && mutationSucceeded === true && alreadyAnnotated !== true,
   };
 }
 
