@@ -33,6 +33,7 @@ export const TEMPLATE_FILES = [
 import { durableSeedFiles } from './memory-seed-set.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
 
 const SEED_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'ai-memory');
 
@@ -40,4 +41,12 @@ const SEED_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'd
 // Accepts an override dir for tests; defaults to the repo's docs/ai-memory.
 export function memorySeedFiles(dir = SEED_DIR) {
   return durableSeedFiles(dir);
+}
+
+export function referenceTemplateFiles(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort();
 }
