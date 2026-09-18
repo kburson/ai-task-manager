@@ -71,7 +71,7 @@
   - `INSTALL_GITIGNORE_ENTRIES: readonly string[]`
   - provider `installRecipe.skillContract`, `hookContract`, and `commandContract` keys.
 
-- [ ] **Step 1: Write failing ownership-contract tests**
+- [x] **Step 1: Write failing ownership-contract tests**
 
 Create `install-content.test.mjs` with explicit provider cases:
 
@@ -124,7 +124,7 @@ assert.deepEqual(claude.installRecipe, {
 });
 ```
 
-- [ ] **Step 2: Run focused tests and verify failure**
+- [x] **Step 2: Run focused tests and verify failure**
 
 Run:
 
@@ -136,7 +136,7 @@ node --test \
 
 Expected: FAIL because the module and adapter keys do not exist.
 
-- [ ] **Step 3: Move canonical content and managed-fragment logic**
+- [x] **Step 3: Move canonical content and managed-fragment logic**
 
 Move the current skill-stub and Claude-command generators into `install-content.mjs` byte-for-byte. Move provider hook specifications into pure builders so writing and comparison share command lists:
 
@@ -176,7 +176,7 @@ export { applyManagedHookContract, renderProviderSkillStub };
 
 Update each patch function to parse the existing file, call `applyManagedHookContract`, and write the result. Preserve malformed-file fallback, legacy-hook removal, idempotency, and user content.
 
-- [ ] **Step 4: Prove byte and semantic parity**
+- [x] **Step 4: Prove byte and semantic parity**
 
 Run:
 
@@ -193,7 +193,7 @@ node --test \
 
 Expected: PASS. Applying each contract twice is idempotent; toggling memory integration changes only the memory hook.
 
-- [ ] **Step 5: Commit ownership extraction**
+- [x] **Step 5: Commit ownership extraction**
 
 ```bash
 git add bin/cli.mjs scripts/package/install-content.mjs scripts/providers/ \
@@ -232,7 +232,7 @@ git commit -m "[#1689] refactor: share installer ownership contracts"
   - `parseInstallManifest(value): InstallManifest`
   - `compareManifestContract(manifest, contract): { compatible: boolean, reason?: string }`.
 
-- [ ] **Step 1: Write failing inventory and manifest tests**
+- [x] **Step 1: Write failing inventory and manifest tests**
 
 Cover provider selection, link modes, feature constraints, ownership, path safety, ordering, and digest stability:
 
@@ -264,7 +264,7 @@ assert.deepEqual(
 
 Reject exact error codes `schema`, `provider`, `feature-combination`, `absolute-path`, `path-traversal`, `duplicate-id`, `duplicate-path-contract`, and `artifact-shape`.
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run:
 
@@ -276,7 +276,7 @@ node --test \
 
 Expected: FAIL because the modules do not exist.
 
-- [ ] **Step 3: Implement deterministic package inventory**
+- [x] **Step 3: Implement deterministic package inventory**
 
 Export a sorted recursive reference-file list from `template-manifest.mjs` and implement:
 
@@ -304,7 +304,7 @@ export function collectPackageInventory(packageRoot) {
 
 `exactFile` records a SHA-256 digest. Use `reference` or `managed-fragment` ownership—not exact digests—for `project-fields.json`, `project-field-events.json`, `activity-policy.json`, and user-owned `task-tracker.json` content.
 
-- [ ] **Step 4: Implement pure contract and compatibility digest**
+- [x] **Step 4: Implement pure contract and compatibility digest**
 
 Use this descriptor:
 
@@ -324,7 +324,7 @@ Derive skill paths from `installTarget` and link mode, hook/command paths from `
 
 Compute `contractDigest` from normalized intent plus sorted descriptors. Exclude package version, absolute roots, timestamps, and host paths. `parseInstallManifest` validates structure/containment; `compareManifestContract` separately marks a valid older contract stale.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
@@ -367,7 +367,7 @@ git commit -m "[#1689] feat: define installation manifest contract"
   - `installMemorySeed(...) -> { count: number, files: string[] }`
   - `runInstall(args, deps?): Promise<{ manifest: InstallManifest }>` for sequencing tests.
 
-- [ ] **Step 1: Write failing atomic-publication and sequencing tests**
+- [x] **Step 1: Write failing atomic-publication and sequencing tests**
 
 Test the store with injected methods:
 
@@ -392,7 +392,7 @@ test('manifest store writes temporary content then renames atomically', () => {
 
 Add `runInstall` dependency-order tests asserting provider writes, optional bootstrap, and templates all precede `writeManifest`. Inject a throwing template writer and assert the manifest writer is never called.
 
-- [ ] **Step 2: Run focused tests and verify failure**
+- [x] **Step 2: Run focused tests and verify failure**
 
 Run:
 
@@ -404,7 +404,7 @@ node --test \
 
 Expected: FAIL because publication and the injectable orchestrator do not exist.
 
-- [ ] **Step 3: Implement atomic deterministic publication**
+- [x] **Step 3: Implement atomic deterministic publication**
 
 Write exactly `${JSON.stringify(manifest, null, 2)}\n` to a sibling temporary path and rename it. On failure, remove only that explicit temporary path with `force: true` and rethrow; never delete or truncate an existing manifest.
 
@@ -419,7 +419,7 @@ return {
 
 Preserve all current prompts and console copy.
 
-- [ ] **Step 4: Make symlink mode portable or refuse it before publication**
+- [x] **Step 4: Make symlink mode portable or refuse it before publication**
 
 Change `replaceWithSymlink` to receive `targetDir`, prove the package source is contained by the project, and write a relative target:
 
@@ -434,7 +434,7 @@ symlinkSync(relative(dirname(dest), src), dest, 'dir');
 
 Test a contained package, an external/workspace source refusal, an existing non-symlink refusal, and a relative link resolving to its canonical source.
 
-- [ ] **Step 5: Publish manifest as the final install effect**
+- [x] **Step 5: Publish manifest as the final install effect**
 
 Refactor `cmdInstall` around exported `runInstall`. After provider, optional bootstrap, and template writes succeed:
 
@@ -463,7 +463,7 @@ writeInstallManifest(targetDir, manifest);
 
 Only then print `Install complete`. Repeating the same install must preserve identical manifest bytes.
 
-- [ ] **Step 6: Verify installer variants and failure paths**
+- [x] **Step 6: Verify installer variants and failure paths**
 
 Run:
 
@@ -477,7 +477,7 @@ node --test \
 
 Expected: PASS. Integration cases cover Claude-only, Codex repo bootstrap, Grok-only, stub, symlink, and selected-memory manifests.
 
-- [ ] **Step 7: Commit final install publication**
+- [x] **Step 7: Commit final install publication**
 
 ```bash
 git add bin/cli.mjs bin/lib/memory-seed-install.mjs \
@@ -509,7 +509,7 @@ git commit -m "[#1689] feat: publish successful install manifests"
   - `observeInstallation({ projectRoot, packageRoot, manifest, contract, deps? }): InstallationObservations`
   - `evaluateInstallation({ projectRoot, manifestResult, contractResult, observations }): DoctorReport`.
 
-- [ ] **Step 1: Write failing observer safety tests**
+- [x] **Step 1: Write failing observer safety tests**
 
 Use temporary Git repositories to cover existence, tracking, content, and symlink safety:
 
@@ -525,11 +525,11 @@ test('observer distinguishes untracked, modified, and unsafe facts', () => {
 
 Snapshot recursive files and `git status --porcelain=v1 --untracked-files=all` before/after. Inject an `execFileSync` spy rejecting every Git subcommand except `rev-parse` and `ls-files`.
 
-- [ ] **Step 2: Write the failing evaluator matrix**
+- [x] **Step 2: Write the failing evaluator matrix**
 
 Pass synthetic observations for every status and assert exact recovery text. Cover missing/invalid/stale manifest; missing, untracked, and modified artifacts; managed-fragment mismatch; absolute, escaping, broken, and cyclic links; healthy relative links; optional absent `~/.codex` files; and absent Git context. Required unhealthy rows set `healthy: false`; optional rows do not.
 
-- [ ] **Step 3: Run tests and verify failure**
+- [x] **Step 3: Run tests and verify failure**
 
 Run:
 
@@ -542,7 +542,7 @@ node --test \
 
 Expected: FAIL because observer/evaluator APIs do not exist.
 
-- [ ] **Step 4: Implement read-only observation**
+- [x] **Step 4: Implement read-only observation**
 
 Resolve root with `git rev-parse --show-toplevel`. Validate paths before joining. Use `lstatSync` before following links; reject absolute targets, cycles, broken targets, and every hop outside the real root.
 
@@ -561,7 +561,7 @@ Parse JSON as data and call the Task 1 comparator; never execute hooks/configura
 For `managed-block` artifacts, call `matchesCodexBootstrapBlock` so surrounding
 user-authored `AGENTS.md` prose does not affect health.
 
-- [ ] **Step 5: Implement closed-status aggregation**
+- [x] **Step 5: Implement closed-status aggregation**
 
 Add:
 
@@ -585,7 +585,7 @@ function check({ id, status, required, details, recovery }) {
 
 Order context rows (`package.runtime`, `git.repository`, `manifest.*`), artifact rows by ID, then optional host rows. Derive summary counts and `healthy` from required rows. If a manifest is missing/invalid, keep independent rows and omit artifact rows that cannot be derived safely; never infer providers.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 
@@ -630,7 +630,7 @@ git commit -m "[#1689] feat: evaluate bootstrap installation health"
   - `runDoctor({ argv, cwd, stdout, stderr, deps? }): number`
   - `npx aitm doctor [--json]` as a routable standalone script.
 
-- [ ] **Step 1: Write failing CLI tests**
+- [x] **Step 1: Write failing CLI tests**
 
 ```js
 test('JSON mode emits one document and maps unhealthy to exit 1', () => {
@@ -655,7 +655,7 @@ test('JSON mode emits one document and maps unhealthy to exit 1', () => {
 
 Add healthy `0`, invalid/duplicate/valued flag `2`, human/JSON row parity, aggregate failures, optional health, and help `0` cases.
 
-- [ ] **Step 2: Write failing routing/deadlock tests**
+- [x] **Step 2: Write failing routing/deadlock tests**
 
 ```js
 assert.equal(kind('doctor'), 'script');
@@ -675,7 +675,7 @@ test('AC5: doctor is standalone and never a task-tracker verb', () => {
 });
 ```
 
-- [ ] **Step 3: Run command-surface tests and verify failure**
+- [x] **Step 3: Run command-surface tests and verify failure**
 
 Run:
 
@@ -689,7 +689,7 @@ node --test \
 
 Expected: FAIL because doctor is not registered.
 
-- [ ] **Step 4: Implement CLI without workflow imports**
+- [x] **Step 4: Implement CLI without workflow imports**
 
 ```js
 export function parseDoctorArgs(argv) {
@@ -734,11 +734,11 @@ if (isDirectInvocation(import.meta.url)) {
 }
 ```
 
-- [ ] **Step 5: Register complete self-documentation**
+- [x] **Step 5: Register complete self-documentation**
 
 Add doctor to `ROUTABLE_SELF_DOC`, `ROUTABLE_ARGUMENTS`, and `ROUTABLE_CONTRACTS`: group `Diagnostics`, usage `aitm doctor [--json]`, effect `Reads package, project files, and local Git metadata; writes nothing`, human/JSON output, exits `0/1/2`. Do not add a verb.
 
-- [ ] **Step 6: Verify CLI parity and independence**
+- [x] **Step 6: Verify CLI parity and independence**
 
 The integration test initializes a temporary Git repository, runs install, commits portable outputs, and invokes:
 
@@ -751,7 +751,7 @@ Assert normalized human IDs/statuses equal JSON checks, no task state appears, `
 
 Run the Step 3 command again. Expected: PASS.
 
-- [ ] **Step 7: Commit standalone doctor**
+- [x] **Step 7: Commit standalone doctor**
 
 ```bash
 git add scripts/package/doctor.mjs scripts/lib/self-doc.mjs bin/aitm-registry.mjs \
