@@ -729,6 +729,9 @@ export async function emitReviewGateWaivedTimeline({
   ) {
     throw new Error('review: unusable waiver authority');
   }
+  if (typeof mutateBodyFn !== 'function') {
+    throw new Error('review: failure retirement capability unavailable');
+  }
   const authorityMarker = ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" accepted-sha="${acceptedSha}" -->`;
   const posted = await safePostTiming(
     target,
@@ -761,17 +764,15 @@ export async function emitReviewGateWaivedTimeline({
   ) {
     throw new Error('review: terminal waiver row failed readback verification');
   }
-  if (typeof mutateBodyFn === 'function') {
-    const result = await mutateBodyFn({
-      issueNumber,
-      repo,
-      mutate: clearReviewFailed,
-      timeout: GH_API_TIMEOUT_MS,
-      deps: { pexec },
-    });
-    if (hasReviewFailed(result?.body)) {
-      throw new Error('review: waived outcome could not retire aitm-review-failed');
-    }
+  const result = await mutateBodyFn({
+    issueNumber,
+    repo,
+    mutate: clearReviewFailed,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
+  if (typeof result?.body !== 'string' || hasReviewFailed(result.body)) {
+    throw new Error('review: waived outcome could not retire aitm-review-failed');
   }
 }
 

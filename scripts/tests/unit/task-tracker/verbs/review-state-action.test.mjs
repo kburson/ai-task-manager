@@ -241,6 +241,7 @@ test('waived semantic review emits a truthful durable timeline row', async () =>
       requirementId: 'review.semantic-resident',
     },
     deps: {
+      mutateBodyFn: async ({ mutate }) => ({ body: mutate('') }),
       safePostTiming: async (_target, row) => {
         rows.push(row);
         return { ok: true };
@@ -461,6 +462,41 @@ test('waived semantic review refuses unusable authority before clearing a failur
   );
 
   assert.equal(mutated, false);
+  assert.equal(posted, false);
+});
+
+test('waived semantic review requires the failure-retirement capability before posting', async () => {
+  let posted = false;
+
+  await assert.rejects(
+    emitReviewGateWaivedTimeline({
+      target: '#1629',
+      issueNumber: 1629,
+      repo: 'kburson/ai-task-manager',
+      ts: '2026-09-15T01:00:00.000Z',
+      delta: { activeSec: 7, idleSec: 3 },
+      wordMarker: 10,
+      fullWordMarker: 20,
+      evidence: {
+        authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+        acceptedSha: 'a'.repeat(40),
+        requirementId: 'review.semantic-resident',
+      },
+      deps: {
+        safePostTiming: async () => {
+          posted = true;
+          return { ok: true };
+        },
+        readTimingCommentBodyFn: async () => ({
+          status: 'found',
+          body: waiverTimingBody(),
+        }),
+        buildRow: (row) => row,
+      },
+    }),
+    /failure retirement capability unavailable/
+  );
+
   assert.equal(posted, false);
 });
 

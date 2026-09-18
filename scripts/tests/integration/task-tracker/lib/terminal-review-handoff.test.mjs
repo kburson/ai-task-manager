@@ -25,7 +25,7 @@ const { appendRow, buildInitialComment } =
 const { parseTimingRow } = await import('../../../../task-tracker/lib/timing-row-reader.mjs');
 const { DeliveryPreflightError, validateDeliveryPreflight } =
   await import('../../../../task-tracker/lib/delivery-preflight.mjs');
-const { isTerminalReviewHandoffOpen, terminalReviewHandoffOutcome } =
+const { deliveryReviewHandoffOutcome, isTerminalReviewHandoffOpen, terminalReviewHandoffOutcome } =
   await import('../../../../task-tracker/lib/terminal-review-handoff.mjs');
 const { emitReviewGateWaivedTimeline } = await import('../../../../task-tracker/verbs/review.mjs');
 
@@ -81,6 +81,7 @@ test('Review waiver emitter and terminal parser preserve structured authority re
       acceptedSha: 'a'.repeat(40),
     },
     deps: {
+      mutateBodyFn: async ({ mutate }) => ({ body: mutate('') }),
       safePostTiming: async (_target, row) => {
         rows.push(row);
         return { ok: true };
@@ -117,6 +118,21 @@ test('a later lifecycle event closes the typed terminal review outcome', () => {
   const closed = `${terminalTimingBody}\n| 2026-08-04 07:22:43 -05:00 | demoted:develop |  |  |  | 101,167 | rework | <!-- row-sec: a=0 i=0 -->`;
   assert.equal(terminalReviewHandoffOutcome(closed), null);
   assert.equal(isTerminalReviewHandoffOpen(closed), false);
+});
+
+test('delivery retains waived authority across approval but not wrap-up', () => {
+  const waived = terminalTimingBody
+    .replace('review:passed', 'review:waived')
+    .replace(
+      'agent review passed',
+      `semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="01M2H000000000000000000001" revision="2" accepted-sha="${'a'.repeat(40)}" -->`
+    );
+  const approved = `${waived}\n| 2026-08-04 07:22:43 -05:00 | review:approved |  |  |  | 101,167 | story approved | <!-- row-sec: a=0 i=0 -->`;
+  assert.equal(terminalReviewHandoffOutcome(approved), null);
+  assert.equal(deliveryReviewHandoffOutcome(approved)?.outcome, 'waived');
+
+  const wrapped = `${approved}\n| 2026-08-04 07:23:43 -05:00 | issue:wrap |  |  |  | 101,167 | wrap-up | <!-- row-sec: a=0 i=0 -->`;
+  assert.equal(deliveryReviewHandoffOutcome(wrapped), null);
 });
 
 function captureLog(fn) {

@@ -13,7 +13,7 @@ import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
 } from './workflow-policy/enforcement.mjs';
-import { terminalReviewHandoffOutcome } from './terminal-review-handoff.mjs';
+import { deliveryReviewHandoffOutcome } from './terminal-review-handoff.mjs';
 
 const INPUT_KEYS = [
   'acceptedReviewSha',
@@ -111,7 +111,7 @@ export async function resolveLiveDeliveryReviewAuthority({
     throw new TypeError('delivery-preflight:review-authority-timing-ambiguous');
   }
   const terminalOutcome =
-    timingComments.length === 1 ? terminalReviewHandoffOutcome(timingComments[0].body) : null;
+    timingComments.length === 1 ? deliveryReviewHandoffOutcome(timingComments[0].body) : null;
   if (terminalOutcome === null) {
     throw new TypeError('delivery-preflight:agent-review-evidence');
   }

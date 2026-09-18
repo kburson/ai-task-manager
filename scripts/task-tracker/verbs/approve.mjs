@@ -95,6 +95,7 @@ async function resolveSemanticReviewWaiverAuthority({
   approvedSha,
   testReceiptSha,
   comments,
+  fetchComments,
   deps,
 }) {
   const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
@@ -110,8 +111,15 @@ async function resolveSemanticReviewWaiverAuthority({
       deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: repo }),
   });
   if (!policy?.isWaived('review.semantic-resident')) return null;
-  const timingComments = Array.isArray(comments)
-    ? comments.filter(({ body: commentBody }) => String(commentBody || '').includes('⏱ Timing Log'))
+  const resolvedComments = Array.isArray(comments)
+    ? comments
+    : typeof fetchComments === 'function'
+      ? await fetchComments()
+      : [];
+  const timingComments = Array.isArray(resolvedComments)
+    ? resolvedComments.filter(({ body: commentBody }) =>
+        String(commentBody || '').includes('⏱ Timing Log')
+      )
     : [];
   if (timingComments.length !== 1) {
     const reason = timingComments.length > 1 ? 'ambiguous' : 'missing-or-unavailable';
@@ -132,7 +140,9 @@ async function resolveSemanticReviewWaiverAuthority({
       acceptedReviewSha: null,
       workflowPolicy: policy,
     });
-    if (typeof policy.scopeIdentity !== 'string' || policy.scopeIdentity.length === 0) return null;
+    if (typeof policy.scopeIdentity !== 'string' || policy.scopeIdentity.length === 0) {
+      throw new Error('approve: semantic review waiver scope identity missing');
+    }
     return Object.freeze({ reviewAuthority, scopeIdentity: policy.scopeIdentity });
   } catch (error) {
     throw new Error(
@@ -336,7 +346,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
             now: nowIso(),
             approvedSha,
             testReceiptSha,
-            comments: await fetchComments({ issueNumber, repo: cfg.repo }),
+            fetchComments: () => fetchComments({ issueNumber, repo: cfg.repo }),
             deps,
           });
       const semanticReviewWaived = semanticReviewWaiverAuthority !== null;
@@ -465,7 +475,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
           now: nowIso(),
           approvedSha,
           testReceiptSha: freshTestReceiptSha,
-          comments: await fetchComments({ issueNumber, repo: cfg.repo }),
+          fetchComments: () => fetchComments({ issueNumber, repo: cfg.repo }),
           deps,
         });
         if (
