@@ -71,6 +71,30 @@ The `install` command creates these automatically. Shown here for reference:
 
 The timing hook commands are direct Node invocations so installed hook execution does not require POSIX shell support. If your project still needs an optional `setup-nvm.sh` hook, register it before the direct Node timing hook.
 
+### Maintainer install and cloud verification
+
+AITM installation records repository intent; dependency installation only
+restores package bytes. A maintainer selects providers and options explicitly,
+reviews the generated diff, and commits
+`.ai-task-manager/install-manifest.json` with the portable outputs:
+
+```bash
+npx ai-task-manager install [selected options]
+```
+
+Fresh checkouts and cloud CI then verify that committed integration without
+changing it:
+
+```bash
+npm ci && npx aitm doctor && npm test
+```
+
+Doctor never repairs drift. A missing or stale manifest requires another
+explicit maintainer install with the intended options, followed by review and a
+commit. Repository `AGENTS.md` is portable when the repo-level Codex bootstrap
+is selected. Mirrored `~/.codex/skills` and `~/.codex/AGENTS.md` are optional
+host-local state, not prerequisites for cloud verification.
+
 ### Bash permissions allowlist
 
 `install` writes a positive `permissions.allow` allowlist into `.claude/settings.json` instead of granting a broad `Bash` allow. The PreToolUse hooks (`bash-guard.mjs`, `activity-guard.mjs`) remain in place as defense-in-depth, but the primary security boundary is the enumerated allowlist.

@@ -60,13 +60,14 @@ The installer writes stable, project-local files so every developer and agent in
 
 Common generated paths:
 
-| Path                           | Purpose                                                                                   |
-| ------------------------------ | ----------------------------------------------------------------------------------------- |
-| `.ai-task-manager/`            | Project config, runtime templates, memory index, Pickup Directive, and Definition of Done |
-| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                               |
-| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                                     |
-| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable                             |
-| `.codex/hooks.json`            | Codex hook configuration when Codex support is installed                                  |
+| Path                                     | Purpose                                                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `.ai-task-manager/`                      | Project config, runtime templates, memory index, Pickup Directive, and Definition of Done |
+| `.ai-task-manager/install-manifest.json` | Versioned declaration of selected install intent and portable managed artifacts           |
+| `.claude/skills/task/SKILL.md`           | Claude Code task skill shim                                                               |
+| `.agents/skills/task/SKILL.md`           | Codex task skill shim                                                                     |
+| `.claude/settings.json`                  | Claude Code hook and allow-rule configuration when applicable                             |
+| `.codex/hooks.json`                      | Codex hook configuration when Codex support is installed                                  |
 
 ```mermaid
 flowchart TB
@@ -94,7 +95,30 @@ git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/
 git commit -m "chore: add ai-task-manager"
 ```
 
-Run `install` and `init` once in a maintainer environment, then commit the project-portable outputs. Ephemeral cloud environments should clone the repository and run normal tool setup such as `npm ci`; they should not rerun the interactive installer or initialize project board metadata.
+Maintainer setup is intent-changing. Run `install` and `init` in a maintainer
+environment, review the diff, and commit
+`.ai-task-manager/install-manifest.json` together with the project-portable
+outputs:
+
+```bash
+npx ai-task-manager install [selected options]
+```
+
+Fresh checkouts and cloud CI consume that recorded intent. They do not rerun the
+installer or initialize project board metadata; they verify the committed
+integration before the normal test suite:
+
+```bash
+npm ci && npx aitm doctor && npm test
+```
+
+Doctor is read-only and never repairs repository state. If the manifest is
+missing or stale, a maintainer must explicitly rerun the installer with the
+intended providers and options, review the resulting diff, and commit the
+refreshed manifest and portable outputs. A repository `AGENTS.md` created by
+the Codex bootstrap option is portable project state. Mirrored skills and an
+`AGENTS.md` under `~/.codex` are optional host-local state and are reported as
+such rather than required for cloud verification.
 
 Review the diff before committing. If your repository does not use both Claude Code and Codex, only stage the adapter folder you installed.
 

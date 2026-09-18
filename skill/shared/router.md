@@ -35,6 +35,14 @@ These rules apply to every verb. Skipping any is a process failure.
 13. **Workflow exceptions:** current explicit GitHub records alone apply;
     preflight is read-only, boundaries revalidate, and `waived` never means
     `passed`. See `rules/state-walk.md` and `rules/full-auto.md`.
+14. **Install declares; doctor observes.** A maintainer explicitly runs
+    `npx ai-task-manager install` with the intended options, reviews the diff,
+    and commits `.ai-task-manager/install-manifest.json` plus portable outputs.
+    Fresh checkouts and cloud CI run
+    `npm ci && npx aitm doctor && npm test`; doctor is read-only and never
+    repairs. Missing or stale manifests require another explicit maintainer
+    install. Repository `AGENTS.md` is portable; `~/.codex` artifacts are
+    optional host-local state.
 
 ## CLI invocation
 
