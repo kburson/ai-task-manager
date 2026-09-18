@@ -22,12 +22,26 @@ import {
 } from '../../../../../task-tracker/lib/agent-review/review-gate.mjs';
 import { runApprove } from '../../../../../task-tracker/verbs/approve.mjs';
 import { computeScopeIdentity } from '../../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
+import { loadWorkflowBoundary } from '../../../../../task-tracker/lib/workflow-policy/enforcement.mjs';
+import { createWorkflowExceptionEnvelope } from '../../../../../task-tracker/lib/workflow-policy/exception-record.mjs';
 
 // `runApprove` takes the mutator lock, which mkdirs under projectDir — give it a
 // real scratch dir rather than a path that cannot be created.
 const PROJECT_DIR = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-approve-881-'));
+const REPOSITORY = 'o/r';
+const ISSUE_NUMBER = 881;
 const APPROVED_SHA = 'a'.repeat(40);
 const WAIVER_RECORD_ID = '01M2H000000000000000000001';
+const WAIVER_GRANT_ID = '01M2H000000000000000000090';
+const WAIVER_OPERATION_ID = `sha256:${'b'.repeat(64)}`;
+const WAIVER_AUTHORIZATION = Object.freeze({
+  reference: 'codex://sessions/01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed/messages/msg_waiver',
+  statement: 'For issue #881, waive the semantic resident review requirement.',
+  principal: 'github-user:kburson',
+  recordingActor: 'codex/session:01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed',
+  origin: 'codex-session-transcript',
+  verificationLevel: 'host-verified-user-message',
+});
 
 const UNTICKED = ['## Definition of Done', '', '- [ ] Agent Review Passed', ''].join('\n');
 const VALID_UNTICKED = [
@@ -44,6 +58,42 @@ const PASSED = stampAgentReviewPassed(UNTICKED, {
   ts: '2026-07-18T00:00:00.000Z',
   validators: ['body-sections', 'required-comments'],
 });
+
+function terminalWaiverComment({ revision = 2 } = {}) {
+  return [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="${revision}" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n');
+}
+
+function semanticReviewWaiverRecord(body) {
+  return {
+    commentNodeId: 'IC_semantic_review_waiver',
+    envelope: createWorkflowExceptionEnvelope({
+      repository: REPOSITORY,
+      issue: ISSUE_NUMBER,
+      exceptionId: 'review-semantic-resident-waiver',
+      revision: 1,
+      status: 'active',
+      scopeIdentity: computeScopeIdentity({
+        repository: REPOSITORY,
+        issue: ISSUE_NUMBER,
+        body,
+      }),
+      requirementIds: ['review.semantic-resident'],
+      constraints: [],
+      reason: 'Test waiver for approve default clock regression coverage.',
+      authorization: WAIVER_AUTHORIZATION,
+      expiresAt: null,
+      operationId: WAIVER_OPERATION_ID,
+      createdAt: '2026-07-18T01:00:00.000Z',
+      recordId: WAIVER_RECORD_ID,
+      grantId: WAIVER_GRANT_ID,
+    }),
+  };
+}
 
 // ── the predicate ───────────────────────────────────────────────────────────
 
@@ -104,8 +154,8 @@ function approveWith(body, extra = {}) {
     getBody: () => current,
     run: () =>
       runApprove({
-        issueNumber: 881,
-        cfg: { repo: 'o/r' },
+        issueNumber: ISSUE_NUMBER,
+        cfg: { repo: REPOSITORY },
         projectDir: PROJECT_DIR,
         deps: {
           assertBound: () => {},
@@ -131,7 +181,7 @@ function approveWith(body, extra = {}) {
           promptDrivers: async () => [],
           deriveDrivers: () => [],
           detectFullAuto: () => ({ fired: true, signals: 'test' }),
-          nowIso: () => '2026-07-18T02:00:00Z',
+          nowIso: () => '2026-07-18T02:00:00.000Z',
           reconcileReviewApprovedTiming: async () => ({
             status: 'posted',
             ts: '2026-07-18T02:00:00Z',
@@ -190,12 +240,7 @@ test('approve reports ambiguous timing authority instead of claiming review neve
 });
 
 test('approve accepts exact terminal waived Review authority without fabricating pass evidence', async () => {
-  const terminalWaiver = [
-    '## ⏱ Timing Log',
-    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
-    '|---|---|---|---|---|---|---|---|',
-    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
-  ].join('\n');
+  const terminalWaiver = terminalWaiverComment();
   const { calls, getBody, run } = approveWith(VALID_UNTICKED, {
     fetchComments: async () => [{ body: terminalWaiver }],
     loadWorkflowBoundary: async ({ repository, issue, body }) => ({
@@ -216,13 +261,42 @@ test('approve accepts exact terminal waived Review authority without fabricating
   assert.doesNotMatch(getBody(), /gate="agent-review"[^>]*result="pass"/);
 });
 
+test('approve default clock uses canonical millisecond ISO for waiver boundary checks', async () => {
+  const seenNow = [];
+  const records = [semanticReviewWaiverRecord(VALID_UNTICKED)];
+  const { calls, run } = approveWith(VALID_UNTICKED, {
+    nowIso: undefined,
+    fetchComments: async () => [{ body: terminalWaiverComment({ revision: 1 }) }],
+    loadWorkflowBoundary: async (input) => {
+      const { now } = input;
+      seenNow.push(now);
+      return loadWorkflowBoundary({
+        ...input,
+        runtime: {
+          listRecords: async () => records,
+        },
+      });
+    },
+  });
+
+  const result = await run();
+
+  assert.equal(result.status, 'approved');
+  assert.equal(calls.mutated, 1);
+  assert.equal(seenNow.length, 3, 'initial, post-driver, and fresh-base checks');
+  assert.ok(
+    seenNow.every(
+      (now) =>
+        typeof now === 'string' &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(now) &&
+        new Date(now).toISOString() === now
+    ),
+    'approve sends canonical millisecond ISO instants to the real waiver resolver'
+  );
+});
+
 test('approve refuses legacy abbreviated Test evidence for exact-head waiver authority', async () => {
-  const terminalWaiver = [
-    '## ⏱ Timing Log',
-    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
-    '|---|---|---|---|---|---|---|---|',
-    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
-  ].join('\n');
+  const terminalWaiver = terminalWaiverComment();
   const legacyBody = `${VALID_UNTICKED}\n<!-- aitm-dod-verified sha="${APPROVED_SHA.slice(0, 8)}" ts="2026-07-18T01:00:00.000Z" -->`;
   const { calls, run } = approveWith(legacyBody, {
     resolveTestReceiptSha: undefined,
