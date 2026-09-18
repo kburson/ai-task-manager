@@ -717,23 +717,17 @@ export async function emitReviewGateWaivedTimeline({
   const authorityId = evidence?.authority?.recordId || 'unknown';
   const authorityRevision = evidence?.authority?.revision;
   const acceptedSha = evidence?.acceptedSha;
-  const authorityMarker =
-    Number.isSafeInteger(authorityRevision) && /^[0-9a-f]{40}$/.test(acceptedSha || '')
-      ? ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" accepted-sha="${acceptedSha}" -->`
-      : '';
-  if (typeof mutateBodyFn === 'function') {
-    const result = await mutateBodyFn({
-      issueNumber,
-      repo,
-      mutate: clearReviewFailed,
-      timeout: GH_API_TIMEOUT_MS,
-      deps: { pexec },
-    });
-    if (hasReviewFailed(result?.body)) {
-      throw new Error('review: waived outcome could not retire aitm-review-failed');
-    }
+  if (
+    requirementId !== 'review.semantic-resident' ||
+    !/^[0-9A-HJKMNP-TV-Z]{26}$/.test(authorityId) ||
+    !Number.isSafeInteger(authorityRevision) ||
+    authorityRevision <= 0 ||
+    !/^[0-9a-f]{40}$/.test(acceptedSha || '')
+  ) {
+    throw new Error('review: unusable waiver authority');
   }
-  await safePostTiming(
+  const authorityMarker = ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" accepted-sha="${acceptedSha}" -->`;
+  const posted = await safePostTiming(
     target,
     buildRowFn({
       ts,
@@ -746,6 +740,21 @@ export async function emitReviewGateWaivedTimeline({
       description: `semantic resident action waived — requirement ${requirementId}; authority record ${authorityId}; result=waived${authorityMarker}`,
     })
   );
+  if (posted?.ok !== true || posted.skipped === true) {
+    throw new Error('review: terminal waiver row was not posted');
+  }
+  if (typeof mutateBodyFn === 'function') {
+    const result = await mutateBodyFn({
+      issueNumber,
+      repo,
+      mutate: clearReviewFailed,
+      timeout: GH_API_TIMEOUT_MS,
+      deps: { pexec },
+    });
+    if (hasReviewFailed(result?.body)) {
+      throw new Error('review: waived outcome could not retire aitm-review-failed');
+    }
+  }
 }
 
 // #844 (D6) — the SANDBOX-VERIFICATION-FAILURE demote path. Distinct from the
@@ -1496,8 +1505,13 @@ export async function verbReview(ctx) {
     const acceptedTestHeadSha =
       reviewEvidence.fingerprint?.commitSha ||
       reviewEvidence.receipt?.commitSha ||
-      parseDodVerifiedMarker(rawBody)?.sha ||
-      'accepted-test-evidence';
+      (await getReviewHeadSha({ projectDir }));
+    if (!/^[0-9a-f]{40}$/.test(acceptedTestHeadSha || '')) {
+      process.stderr.write(
+        `⛔ Refusing /task review for ${target}: exact accepted Test head is unavailable.\n`
+      );
+      process.exit(4);
+    }
     const reviewActionContext = {
       now: () => Date.parse(nowIso()),
       // Review preflight above already validated the exact-head Test evidence.

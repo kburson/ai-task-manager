@@ -57,6 +57,7 @@ import {
 import { resolveDeliveryReviewAuthority } from '../lib/delivery-authority.mjs';
 import { terminalReviewHandoffOutcome } from '../lib/terminal-review-handoff.mjs';
 import { computeScopeIdentity } from '../lib/workflow-policy/scope-identity.mjs';
+import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
@@ -77,15 +78,10 @@ async function resolveSemanticReviewWaiverAuthority({
   repo,
   now,
   approvedSha,
+  testReceiptSha,
   comments,
   deps,
 }) {
-  const timingComments = Array.isArray(comments)
-    ? comments.filter(({ body: commentBody }) => String(commentBody || '').includes('⏱ Timing Log'))
-    : [];
-  if (timingComments.length !== 1) return null;
-  const terminalReviewOutcome = terminalReviewHandoffOutcome(timingComments[0].body);
-  if (terminalReviewOutcome?.outcome !== 'waived') return null;
   const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
   const policy = await loadBoundary({
     repository: repo,
@@ -98,18 +94,36 @@ async function resolveSemanticReviewWaiverAuthority({
     runtime:
       deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: repo }),
   });
+  if (!policy?.isWaived('review.semantic-resident')) return null;
+  const timingComments = Array.isArray(comments)
+    ? comments.filter(({ body: commentBody }) => String(commentBody || '').includes('⏱ Timing Log'))
+    : [];
+  if (timingComments.length !== 1) {
+    const reason = timingComments.length > 1 ? 'ambiguous' : 'missing-or-unavailable';
+    throw new Error(`approve: semantic review waiver timing ${reason}`);
+  }
+  const terminalReviewOutcome = terminalReviewHandoffOutcome(timingComments[0].body);
+  if (terminalReviewOutcome?.outcome !== 'waived') {
+    throw new Error('approve: semantic review waiver terminal outcome missing');
+  }
+  if (!/^[0-9a-f]{40}$/.test(testReceiptSha || '') || approvedSha !== testReceiptSha) {
+    throw new Error('approve: semantic review waiver accepted head does not match Test receipt');
+  }
   try {
     const reviewAuthority = resolveDeliveryReviewAuthority({
       agentReviewPassed: false,
       terminalReviewOutcome,
-      testReceiptSha: approvedSha,
+      testReceiptSha,
       acceptedReviewSha: null,
       workflowPolicy: policy,
     });
     if (typeof policy.scopeIdentity !== 'string' || policy.scopeIdentity.length === 0) return null;
     return Object.freeze({ reviewAuthority, scopeIdentity: policy.scopeIdentity });
-  } catch {
-    return null;
+  } catch (error) {
+    throw new Error(
+      `approve: semantic review waiver authority invalid (${String(error?.message || error)})`,
+      { cause: error }
+    );
   }
 }
 
@@ -285,7 +299,12 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
       }
-      const semanticReviewWaiverAuthority = isAgentReviewComplete(body)
+      const agentReviewComplete = isAgentReviewComplete(body);
+      const resolveTestReceiptSha =
+        deps.resolveTestReceiptSha ||
+        ((source) => parseVerificationReceipt(source, 'test')?.commitSha ?? null);
+      const testReceiptSha = agentReviewComplete ? null : await resolveTestReceiptSha(body);
+      const semanticReviewWaiverAuthority = agentReviewComplete
         ? null
         : await resolveSemanticReviewWaiverAuthority({
             body,
@@ -293,6 +312,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
             repo: cfg.repo,
             now: nowIso(),
             approvedSha,
+            testReceiptSha,
             comments: await fetchComments({ issueNumber, repo: cfg.repo }),
             deps,
           });
@@ -506,15 +526,20 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         validateFreshBase: (freshBase) => {
           if (!semanticReviewWaiverAuthority) {
             if (isAgentReviewComplete(freshBase)) return;
+            throw new Error(`approve: agent review evidence changed before approval write`);
+          }
+          let freshScopeIdentity;
+          try {
+            freshScopeIdentity = computeScopeIdentity({
+              repository: cfg.repo,
+              issue: Number(issueNumber),
+              body: freshBase,
+            });
+          } catch {
             throw new Error(
               `approve: semantic review waiver authority changed before approval write`
             );
           }
-          const freshScopeIdentity = computeScopeIdentity({
-            repository: cfg.repo,
-            issue: Number(issueNumber),
-            body: freshBase,
-          });
           const freshReason = agentReviewIncompleteReason(freshBase);
           if (
             freshReason === 'review-failed' ||

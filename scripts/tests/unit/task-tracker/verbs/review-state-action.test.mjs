@@ -228,7 +228,10 @@ test('waived semantic review emits a truthful durable timeline row', async () =>
       requirementId: 'review.semantic-resident',
     },
     deps: {
-      safePostTiming: async (_target, row) => rows.push(row),
+      safePostTiming: async (_target, row) => {
+        rows.push(row);
+        return { ok: true };
+      },
       buildRow: (row) => row,
     },
   });
@@ -253,6 +256,7 @@ test('waived semantic review retires the active failure carrier without stamping
     '<!-- aitm-review-failed:end -->',
   ].join('\n');
   const rows = [];
+  const order = [];
 
   await emitReviewGateWaivedTimeline({
     target: '#1629',
@@ -269,10 +273,15 @@ test('waived semantic review retires the active failure carrier without stamping
     },
     deps: {
       mutateBodyFn: async ({ mutate }) => {
+        order.push('clear-failure');
         body = mutate(body);
         return { body };
       },
-      safePostTiming: async (_target, row) => rows.push(row),
+      safePostTiming: async (_target, row) => {
+        order.push('post-waiver');
+        rows.push(row);
+        return { ok: true };
+      },
       buildRow: (row) => row,
     },
   });
@@ -283,6 +292,7 @@ test('waived semantic review retires the active failure carrier without stamping
     rows.map(({ event }) => event),
     ['review:waived']
   );
+  assert.deepEqual(order, ['post-waiver', 'clear-failure']);
 });
 
 test('verify revalidates a durable waiver and treats revocation as incomplete', async () => {
@@ -295,8 +305,18 @@ test('verify revalidates a durable waiver and treats revocation as incomplete', 
       status: 'clean',
       events: [{ phase: 'waived', correlation: { key: 'review:1' } }],
     },
+    reviewComments: [
+      {
+        body: [
+          '## ⏱ Timing Log',
+          '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+          '|---|---|---|---|---|---|---|---|',
+          `| 2026-09-15 01:00:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="01M2H000000000000000000001" revision="1" accepted-sha="${'a'.repeat(40)}" --> | <!-- row-sec: a=0 i=0 -->`,
+        ].join('\n'),
+      },
+    ],
   };
-  const authority = { recordId: 'record-1', revision: 1 };
+  const authority = { recordId: '01M2H000000000000000000001', revision: 1 };
   const context = (waived) => ({
     review: {
       repo: 'kburson/ai-task-manager',
@@ -319,6 +339,113 @@ test('verify revalidates a durable waiver and treats revocation as incomplete', 
     status: 'incomplete',
     reason: 'not-run',
   });
+});
+
+test('verify re-runs a durable waiver whose terminal row lacks exact-head authority', async () => {
+  const snapshot = {
+    issue: { value: 1629 },
+    body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+    headSha: { value: 'a'.repeat(40) },
+    stateVisitId: 'review:1',
+    actionLedger: {
+      status: 'clean',
+      events: [{ phase: 'waived', correlation: { key: 'review:1' } }],
+    },
+    reviewComments: [
+      {
+        body: [
+          '## ⏱ Timing Log',
+          '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+          '|---|---|---|---|---|---|---|---|',
+          '| 2026-09-15 01:00:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived | <!-- row-sec: a=0 i=0 -->',
+        ].join('\n'),
+      },
+    ],
+  };
+
+  const result = await reviewAgentValidationAction.verify(
+    {
+      review: {
+        repo: 'kburson/ai-task-manager',
+        loadWorkflowBoundary: async () => ({
+          isWaived: () => true,
+          decision: () => ({
+            outcome: 'waived',
+            authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+          }),
+        }),
+      },
+    },
+    snapshot
+  );
+
+  assert.deepEqual(result, { status: 'incomplete', reason: 'stale-waiver-evidence' });
+});
+
+test('waived semantic review refuses unusable authority before clearing a failure carrier', async () => {
+  let mutated = false;
+  let posted = false;
+
+  await assert.rejects(
+    emitReviewGateWaivedTimeline({
+      target: '#1629',
+      issueNumber: 1629,
+      repo: 'kburson/ai-task-manager',
+      ts: '2026-09-15T01:00:00.000Z',
+      delta: { activeSec: 7, idleSec: 3 },
+      wordMarker: 10,
+      fullWordMarker: 20,
+      evidence: {
+        authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+        acceptedSha: 'accepted-test-evidence',
+        requirementId: 'review.semantic-resident',
+      },
+      deps: {
+        mutateBodyFn: async () => {
+          mutated = true;
+        },
+        safePostTiming: async () => {
+          posted = true;
+        },
+        buildRow: (row) => row,
+      },
+    }),
+    /unusable waiver authority/
+  );
+
+  assert.equal(mutated, false);
+  assert.equal(posted, false);
+});
+
+test('waived semantic review preserves the failure carrier when the terminal row is only queued', async () => {
+  let mutated = false;
+
+  await assert.rejects(
+    emitReviewGateWaivedTimeline({
+      target: '#1629',
+      issueNumber: 1629,
+      repo: 'kburson/ai-task-manager',
+      ts: '2026-09-15T01:00:00.000Z',
+      delta: { activeSec: 7, idleSec: 3 },
+      wordMarker: 10,
+      fullWordMarker: 20,
+      evidence: {
+        authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+        acceptedSha: 'a'.repeat(40),
+        requirementId: 'review.semantic-resident',
+      },
+      deps: {
+        mutateBodyFn: async () => {
+          mutated = true;
+        },
+        safePostTiming: async () => ({ ok: false, queued: true }),
+        buildRow: (row) => row,
+      },
+    }),
+    /terminal waiver row was not posted/
+  );
+
+  assert.equal(mutated, false);
 });
 
 test('verify re-runs a durable waiver when a stale failure carrier still needs retirement', async () => {

@@ -81,7 +81,10 @@ test('Review waiver emitter and terminal parser preserve structured authority re
       acceptedSha: 'a'.repeat(40),
     },
     deps: {
-      safePostTiming: async (_target, row) => rows.push(row),
+      safePostTiming: async (_target, row) => {
+        rows.push(row);
+        return { ok: true };
+      },
       buildRow,
     },
   });

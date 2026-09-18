@@ -125,6 +125,7 @@ function approveWith(body, extra = {}) {
           },
           fetchComments: async () => [],
           getHeadSha: async () => APPROVED_SHA,
+          resolveTestReceiptSha: () => APPROVED_SHA,
           fetchProjectValues: async () => ({}),
           promptDrivers: async () => [],
           deriveDrivers: () => [],
@@ -165,9 +166,25 @@ test('approve refuses a live waiver without a matching terminal waived Review ou
     }),
   });
 
-  const result = await run();
+  await assert.rejects(run, /semantic review waiver timing missing-or-unavailable/);
+  assert.equal(calls.mutated, 0);
+});
 
-  assert.equal(result.status, 'agent-review-incomplete');
+test('approve reports ambiguous timing authority instead of claiming review never ran', async () => {
+  const { calls, run } = approveWith(VALID_UNTICKED, {
+    fetchComments: async () => [{ body: '## ⏱ Timing Log' }, { body: '## ⏱ Timing Log' }],
+    loadWorkflowBoundary: async ({ repository, issue, body }) => ({
+      status: 'policy-compatible',
+      scopeIdentity: computeScopeIdentity({ repository, issue, body }),
+      isWaived: (id) => id === 'review.semantic-resident',
+      decision: () => ({
+        outcome: 'waived',
+        authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+      }),
+    }),
+  });
+
+  await assert.rejects(run, /semantic review waiver timing ambiguous/);
   assert.equal(calls.mutated, 0);
 });
 
@@ -196,6 +213,31 @@ test('approve accepts exact terminal waived Review authority without fabricating
   assert.notEqual(result.status, 'agent-review-incomplete');
   assert.equal(calls.mutated, 1);
   assert.doesNotMatch(getBody(), /gate="agent-review"[^>]*result="pass"/);
+});
+
+test('approve binds waived authority to the Test receipt rather than local HEAD alone', async () => {
+  const terminalWaiver = [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-07-18 01:30:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${WAIVER_RECORD_ID}" revision="2" accepted-sha="${APPROVED_SHA}" --> | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n');
+  const { calls, run } = approveWith(VALID_UNTICKED, {
+    fetchComments: async () => [{ body: terminalWaiver }],
+    resolveTestReceiptSha: () => 'b'.repeat(40),
+    loadWorkflowBoundary: async ({ repository, issue, body }) => ({
+      status: 'policy-compatible',
+      scopeIdentity: computeScopeIdentity({ repository, issue, body }),
+      isWaived: (id) => id === 'review.semantic-resident',
+      decision: () => ({
+        outcome: 'waived',
+        authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+      }),
+    }),
+  });
+
+  await assert.rejects(run, /accepted head does not match Test receipt/);
+  assert.equal(calls.mutated, 0);
 });
 
 test('approve refuses a waiver stamp when the fresh body scope changed after validation', async () => {
@@ -317,6 +359,20 @@ test('approve proceeds once the state action has passed', async () => {
     'agent-review-incomplete',
     'a passing gate must not be blocked by this check'
   );
+});
+
+test('ordinary approval refuses when fresh pass evidence disappears before the write', async () => {
+  const { calls, run } = approveWith(PASSED, {
+    mutateIssueBody: async ({ mutate, validateFreshBase }) => {
+      calls.mutated += 1;
+      const next = mutate(UNTICKED);
+      validateFreshBase?.(UNTICKED, next);
+      return { body: next };
+    },
+  });
+
+  await assert.rejects(run, /agent review evidence changed before approval write/);
+  assert.equal(calls.mutated, 1);
 });
 
 test('the wrong-state check still precedes the completeness check', async () => {

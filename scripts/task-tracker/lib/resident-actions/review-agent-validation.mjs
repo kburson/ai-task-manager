@@ -9,6 +9,7 @@ import {
 } from '../agent-review/review-gate.mjs';
 import { parseProofMarker } from '../proof-marker.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
+import { terminalReviewHandoffOutcome } from '../terminal-review-handoff.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -67,6 +68,30 @@ function waivedEvidence(policy, snapshot) {
   };
 }
 
+async function hasCurrentTerminalWaiver(context, snapshot, evidence) {
+  const capabilities = context?.review;
+  const comments = Array.isArray(snapshot?.reviewComments)
+    ? snapshot.reviewComments
+    : typeof capabilities?.readComments === 'function'
+      ? await capabilities.readComments({
+          issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
+          snapshot,
+        })
+      : [];
+  const timingComments = Array.isArray(comments)
+    ? comments.filter(({ body }) => String(valueOf(body) || '').includes('⏱ Timing Log'))
+    : [];
+  if (timingComments.length !== 1) return false;
+  const terminal = terminalReviewHandoffOutcome(valueOf(timingComments[0].body));
+  return (
+    terminal?.outcome === 'waived' &&
+    terminal.evidence?.requirementId === evidence.requirementId &&
+    terminal.evidence?.acceptedSha === evidence.acceptedSha &&
+    terminal.evidence?.authority?.recordId === evidence.authority?.recordId &&
+    terminal.evidence?.authority?.revision === evidence.authority?.revision
+  );
+}
+
 export const reviewAgentValidationAction = Object.freeze({
   id: 'review-agent-validation',
   serialization: 'issue-lock',
@@ -82,7 +107,11 @@ export const reviewAgentValidationAction = Object.freeze({
           // active failure carrier still needs the waived self-loop to run so
           // onWaived can retire that obsolete blocker.
           if (reason === 'review-failed') return { status: 'incomplete', reason };
-          return { status: 'waived', evidence: waivedEvidence(policy, snapshot) };
+          const evidence = waivedEvidence(policy, snapshot);
+          if (!(await hasCurrentTerminalWaiver(context, snapshot, evidence))) {
+            return { status: 'incomplete', reason: 'stale-waiver-evidence' };
+          }
+          return { status: 'waived', evidence };
         }
       }
       return { status: 'incomplete', reason };
