@@ -257,19 +257,15 @@ test('install --link-mode stub writes skill, settings, templates and is idempote
   assert.equal(r2.status, 0, r2.stderr); // second run exercises the "unchanged" branches
 });
 
-test('install --link-mode symlink links the skill dirs', () => {
+test('install --link-mode symlink refuses a package source outside the target project', () => {
   const target = scratch('cli-symlink-');
   const home = scratch('cli-home-');
   const r = run(['install', '--target', target, '--link-mode', 'symlink'], {
     env: { ...process.env, HOME: home },
   });
-  assert.equal(r.status, 0, r.stderr);
-  assert.ok(existsSync(join(target, '.claude', 'skills', 'task')), 'claude skill symlink present');
-  const removed = run(['uninstall', '--target', target]);
-  assert.equal(removed.status, 0, removed.stderr);
-  assert.equal(existsSync(join(target, '.claude', 'skills', 'task')), false);
-  assert.equal(existsSync(join(target, '.agents', 'skills', 'task')), false);
-  assert.equal(existsSync(join(target, '.grok', 'skills', 'task')), false);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /requires the installed package to resolve inside the target project/);
+  assert.equal(existsSync(join(target, '.ai-task-manager', 'install-manifest.json')), false);
 });
 
 test('uninstall removes Codex integrations while preserving user hooks and durable data', () => {

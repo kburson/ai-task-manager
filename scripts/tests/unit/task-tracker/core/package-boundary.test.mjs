@@ -135,7 +135,10 @@ function repoRoot() {
 // The measured package surface grows by exactly that maintained runtime entry.
 // #1630 ships the ratified workflow-exception design as the package's governing
 // specification. That one deliberate document is the complete surface growth.
-const ENTRY_CEILING = 784;
+// #1692 ships the four install-contract/manifest runtime modules consumed by
+// the installer. The doctor observer/CLI additions and their explicit package
+// assertions remain owned by the later child.
+const ENTRY_CEILING = 788;
 
 let packedFileCache = null;
 function packedFiles() {
