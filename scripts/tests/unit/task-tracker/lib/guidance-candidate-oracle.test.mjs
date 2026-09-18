@@ -161,6 +161,67 @@ test('closed decision validation rejects missing values, unknown members and inc
   );
 });
 
+test('candidate decisions model skipped collection reads and stable legacy refusals', async () => {
+  const { buildCandidateDecision, renderCandidateExplanation, validateCandidateDecision } =
+    await oracle();
+
+  const skipped = buildCandidateDecision({
+    fixture: fixture('resume'),
+    scenario: 'indeterminate',
+  });
+  skipped.blockers[0] = {
+    guardId: 'authority-collection',
+    code: 'authority-read-skipped',
+    args: { source: 'issue-comment' },
+    noAutomaticRemediation: { reason: 'authority-investigation-required' },
+  };
+  skipped.humanDecision.requests[0].args.code = 'authority-read-skipped';
+  assert.equal(validateCandidateDecision(skipped), skipped);
+  assert.equal(
+    renderCandidateExplanation({ decision: skipped }).result.blockers[0].args.source,
+    'issue-comment'
+  );
+
+  const legacy = buildCandidateDecision({ fixture: fixture('resume'), scenario: 'blocked' });
+  legacy.blockers = [
+    {
+      guardId: 'registered-legacy-guard',
+      code: 'unclassified-refusal',
+      args: {},
+      noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
+    },
+  ];
+  legacy.humanDecision = {
+    requests: [
+      {
+        kind: 'manual-investigation',
+        actor: 'human-operator',
+        subject: { issue: legacy.issue, actionId: legacy.actionId },
+        args: { guardId: 'registered-legacy-guard', code: 'unclassified-refusal' },
+      },
+    ],
+  };
+  assert.equal(validateCandidateDecision(legacy), legacy);
+  assert.deepEqual(
+    renderCandidateExplanation({ decision: legacy }).result.blockers[0],
+    legacy.blockers[0]
+  );
+});
+
+test('replacement observations retain distinct provenance identities', async () => {
+  const { buildCandidateDecision, validateCandidateDecision } = await oracle();
+  const value = buildCandidateDecision({
+    fixture: fixture('promote'),
+    scenario: 'ready',
+    evidenceCopies: 3,
+  });
+  value.snapshot.observations[1].identity = value.snapshot.observations[0].identity;
+  assert.throws(
+    () => validateCandidateDecision(value),
+    /guidance-candidate:observation-identity-duplicate/
+  );
+});
+
 test('terminal decisions reject blocked state before presentation guidance is derived', async () => {
   const { buildTerminalCandidateDecision, validateCandidateDecision } = await oracle();
   const value = buildTerminalCandidateDecision({ fixture: fixture('close') });
