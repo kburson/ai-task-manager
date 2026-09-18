@@ -258,6 +258,63 @@ test('routine consumer rejects malformed operational values independently of the
     mutate(candidate);
     assert.throws(() => validateCandidateExplanation(candidate), /guidance-candidate:/);
   }
+
+  const approvalEnvelope = renderCandidateExplanation({
+    decision: buildCandidateDecision({
+      fixture: fixture('deliver'),
+      scenario: 'effective-policy-human-request',
+    }),
+  });
+  for (const mutate of [
+    (value) => (value.result.blockers[0].guardId = 'action-navigation'),
+    (value) => (value.result.blockers[0].remediation.args = {}),
+    (value) => (value.result.humanDecision.requests[0].args.head = 'f'.repeat(40)),
+    (value) => (value.result.humanDecision.requests[0].subject.actionId = 'bind'),
+    (value) => (value.result.humanDecision = null),
+  ]) {
+    const candidate = clone(approvalEnvelope);
+    mutate(candidate);
+    assert.throws(() => validateCandidateExplanation(candidate), /guidance-candidate:/);
+  }
+});
+
+test('closed sources and snapshot digest bind normalization inputs', async () => {
+  const { buildCandidateDecision, validateCandidateDecision } = await oracle();
+  const source = buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' });
+  source.blockers[0].args.source = 'free-text-source';
+  assert.throws(() => validateCandidateDecision(source), /guidance-candidate:blocker-source/);
+
+  const normalization = buildCandidateDecision({
+    fixture: fixture('close'),
+    scenario: 'normalization',
+  });
+  normalization.normalizations[0].inputDigest = `sha256:${'0'.repeat(64)}`;
+  assert.throws(
+    () => validateCandidateDecision(normalization),
+    /guidance-candidate:snapshot-digest/
+  );
+});
+
+test('cross-issue request is typed and followed by a fresh target evaluation', async () => {
+  const { buildCandidateDecision, buildCrossIssueCandidateDecision, validateCandidateDecision } =
+    await oracle();
+  const parent = buildCrossIssueCandidateDecision({
+    fixture: fixture('close'),
+    targetFixture: fixture('promote'),
+  });
+  const child = buildCandidateDecision({ fixture: fixture('promote'), scenario: 'ready' });
+  assert.equal(parent.blockers[0].args.issue, child.issue);
+  assert.equal(parent.humanDecision.requests[0].subject.actionId, child.actionId);
+  assert.notEqual(parent.snapshot.digest, child.snapshot.digest);
+  for (const mutate of [
+    (value) => (value.blockers[0].args.repository = 'other/repository'),
+    (value) => (value.humanDecision.requests[0].subject.issue += 1),
+    (value) => (value.humanDecision.requests[0].subject.actionId = 'bind'),
+  ]) {
+    const candidate = clone(parent);
+    mutate(candidate);
+    assert.throws(() => validateCandidateDecision(candidate), /guidance-candidate:/);
+  }
 });
 
 test('diagnostic equivalence includes composed admission warnings', async () => {
@@ -317,6 +374,27 @@ test('project override annotation occurs only after a valid successful first mut
       .warningEmitted,
     true
   );
+  const active = projectOverrideProtocol({ ...common, receiptDigest: null, contextReset: false });
+  assert.equal(active.warningText, candidateConstants.PROJECT_OVERRIDE_WARNING);
+  assert.equal(
+    active.sourceReceipt,
+    `aitm-guidance-source:project-owned-diverged:${candidateConstants.SOURCE_DIGEST}`
+  );
+  const suppressed = projectOverrideProtocol({
+    ...common,
+    receiptDigest: common.digest,
+    contextReset: false,
+  });
+  assert.equal(suppressed.warningText, null);
+  assert.equal(suppressed.sourceReceipt, active.sourceReceipt);
+  const inactive = projectOverrideProtocol({
+    ...common,
+    diverged: false,
+    receiptDigest: null,
+    contextReset: false,
+  });
+  assert.equal(inactive.warningText, null);
+  assert.equal(inactive.sourceReceipt, null);
   assert.equal(
     projectOverrideProtocol({
       ...common,
