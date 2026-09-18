@@ -152,6 +152,46 @@ function validateBlocker(blocker) {
   validateDisposition(blocker);
 }
 
+function validateRemediationCoupling(blocker, decision) {
+  const remediation = blocker.remediation;
+  if (blocker.code === 'precondition-missing') {
+    if (
+      remediation?.id !== 'satisfy-precondition' ||
+      remediation.args.issue !== decision.issue ||
+      remediation.args.actionId !== decision.actionId
+    ) {
+      fail('remediation-coupling');
+    }
+  } else if (
+    blocker.code === 'plan-approval-missing' ||
+    blocker.code === 'cross-issue-plan-approval-missing'
+  ) {
+    const issue =
+      blocker.code === 'cross-issue-plan-approval-missing' ? blocker.args.issue : decision.issue;
+    if (remediation?.id !== 'record-plan-approval' || remediation.args.issue !== issue) {
+      fail('remediation-coupling');
+    }
+  } else if (blocker.code === 'review-approval-missing') {
+    if (
+      remediation?.id !== 'request-review-approval' ||
+      remediation.args.issue !== decision.issue ||
+      remediation.args.head !== blocker.args.head ||
+      remediation.args.head !== decision.snapshot.head
+    ) {
+      fail('remediation-coupling');
+    }
+  } else {
+    const expectedReason = new Map([
+      ['authority-read-failed', 'authority-investigation-required'],
+      ['state-unavailable', 'state-investigation-required'],
+      ['guard-result-invalid', 'result-investigation-required'],
+    ]).get(blocker.code);
+    if (expectedReason && blocker.noAutomaticRemediation?.reason !== expectedReason) {
+      fail('remediation-coupling');
+    }
+  }
+}
+
 function validateNormalization(value) {
   exact(
     value,
@@ -287,6 +327,7 @@ export function validateCandidateDecision(decision) {
   if (!STATUSES.has(decision.status)) fail('decision-status');
   if (!Array.isArray(decision.blockers)) fail('blockers');
   decision.blockers.forEach(validateBlocker);
+  decision.blockers.forEach((blocker) => validateRemediationCoupling(blocker, decision));
   if (decision.status === 'ready' && decision.blockers.length !== 0) fail('ready-blockers');
   if (decision.status !== 'ready' && decision.blockers.length === 0) fail('not-ready-blockers');
   if (!Array.isArray(decision.normalizations)) fail('normalizations');
