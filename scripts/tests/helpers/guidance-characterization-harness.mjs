@@ -432,12 +432,9 @@ const probes = {
       value.humanDecision = null;
     }),
   'human.blocker-order': () => {
-    const value = decision('deliver', 'effective-policy-human-request');
-    value.humanDecision.requests.unshift(clone(value.humanDecision.requests[0]));
-    assert.throws(
-      () => validateCandidateDecision(value),
-      /remediation-coupling|human-request-coupling/
-    );
+    const value = twoBlockerDecision();
+    value.humanDecision.requests.reverse();
+    assert.throws(() => validateCandidateDecision(value), /human-request-coupling/);
   },
   'navigation.cross-issue-mapping': () => {
     const value = clone(decision('close', 'effective-policy-human-request'));
@@ -799,8 +796,11 @@ const positiveCounters = {
     assert.equal(value.humanDecision.requests[0].kind, 'plan-approval');
   },
   'human.blocker-order': () => {
-    const value = validateCandidateDecision(decision('deliver', 'effective-policy-human-request'));
-    assert.equal(value.humanDecision.requests[0].args.head, value.blockers[0].args.head);
+    const value = twoBlockerDecision();
+    assert.deepEqual(
+      value.humanDecision.requests.map(({ args }) => [args.guardId, args.code]),
+      value.blockers.map(({ guardId, code }) => [guardId, code])
+    );
   },
   'navigation.cross-issue-mapping': () => {
     const value = crossIssueDecision();
