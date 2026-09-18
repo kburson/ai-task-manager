@@ -48,6 +48,11 @@ function args(value, reason) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail(reason);
 }
 
+function authoritySubject(value) {
+  exact(value, ['issue'], 'blocker-subject');
+  positiveInteger(value.issue, 'blocker-subject');
+}
+
 function blocker(value) {
   const disposition = Object.hasOwn(value ?? {}, 'remediation')
     ? 'remediation'
@@ -57,7 +62,10 @@ function blocker(value) {
   args(value.args, 'blocker-args');
   if (value.code === 'authority-read-failed') {
     if (value.guardId !== 'authority-collection') fail('producer-code-pair');
-    exact(value.args, ['reason', 'source'], 'blocker-args');
+    const keys = Object.hasOwn(value.args, 'subject')
+      ? ['reason', 'source', 'subject']
+      : ['reason', 'source'];
+    exact(value.args, keys, 'blocker-args');
     if (!SOURCES.has(value.args.source)) fail('blocker-source');
     if (
       !new Set(['timeout', 'rate-limited', 'unavailable', 'incomplete', 'invalid']).has(
@@ -66,10 +74,13 @@ function blocker(value) {
     ) {
       fail('blocker-reason');
     }
+    if (value.args.subject) authoritySubject(value.args.subject);
   } else if (value.code === 'authority-read-skipped') {
     if (value.guardId !== 'authority-collection') fail('producer-code-pair');
-    exact(value.args, ['source'], 'blocker-args');
+    const keys = Object.hasOwn(value.args, 'subject') ? ['source', 'subject'] : ['source'];
+    exact(value.args, keys, 'blocker-args');
     if (!SOURCES.has(value.args.source)) fail('blocker-source');
+    if (value.args.subject) authoritySubject(value.args.subject);
   } else if (value.code === 'unclassified-refusal') {
     if (value.guardId !== 'registered-legacy-guard') fail('producer-code-pair');
     exact(value.args, [], 'blocker-args');
@@ -127,6 +138,26 @@ function blocker(value) {
       ]).has(value.noAutomaticRemediation.reason)
     ) {
       fail('no-remediation-reason');
+    }
+  }
+}
+
+function authoritySubjects(blockers) {
+  const bySource = new Map();
+  for (const value of blockers) {
+    if (!new Set(['authority-read-failed', 'authority-read-skipped']).has(value.code)) continue;
+    const group = bySource.get(value.args.source) ?? [];
+    group.push(value);
+    bySource.set(value.args.source, group);
+  }
+  for (const group of bySource.values()) {
+    if (group.length < 2) continue;
+    const subjects = new Set();
+    for (const value of group) {
+      if (!value.args.subject) fail('blocker-subject-required');
+      const identity = JSON.stringify(value.args.subject);
+      if (subjects.has(identity)) fail('blocker-subject-duplicate');
+      subjects.add(identity);
     }
   }
 }
@@ -306,6 +337,7 @@ export function validateCandidatePresentation(result) {
   if (!STATUSES.has(result.status)) fail('status');
   if (!Array.isArray(result.blockers)) fail('blockers');
   result.blockers.forEach(blocker);
+  authoritySubjects(result.blockers);
   result.blockers.forEach((value) => remediationCoupling(value, result));
   if (result.status === 'ready' && result.blockers.length !== 0) fail('ready-blockers');
   if (result.status !== 'ready' && result.blockers.length === 0) fail('not-ready-blockers');

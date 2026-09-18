@@ -915,10 +915,16 @@ const adversarialCounters = {
     ),
   'warnings.duplicates': () => {
     const value = decision('review', 'warning');
-    const expected = renderCandidateExplanation({ decision: value }).result.warnings;
-    const truncated = clone(expected);
-    truncated.pop();
-    assert.throws(() => assert.deepEqual(truncated, value.warnings));
+    const envelope = renderCandidateExplanation({ decision: value, diagnostic: true });
+    envelope.result.warnings = envelope.result.warnings.filter(
+      (warning, index, warnings) =>
+        warnings.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(warning)) ===
+        index
+    );
+    assert.throws(
+      () => validateCandidateExplanation(envelope),
+      /diagnostic-operational-equivalence/
+    );
   },
   'warnings.domain-separation': () =>
     rejectsDecision(
@@ -1016,9 +1022,9 @@ const adversarialCounters = {
     const value = decision('bind', 'blocked');
     const response = renderCandidateExplanation({
       decision: value,
-      knownGuidance: [{ id: 'action.bind', digest: candidateConstants.GUIDANCE_DIGEST }],
+      knownGuidance: [{ id: 'action.bind', digest: value.snapshot.digest }],
     });
-    assert.equal(response.guidance[0].status, 'not-modified');
+    assert.equal(response.guidance[0].status, 'expanded');
     assert.equal(response.result.status, 'blocked');
     assert.equal(response.result.blockers.length, 1);
   },
