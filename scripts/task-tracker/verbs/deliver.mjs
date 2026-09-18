@@ -38,6 +38,7 @@ import {
   renderDeliveryReceiptComment,
 } from '../lib/delivery-records.mjs';
 import {
+  resolveLiveDeliveryReviewAuthority,
   validateDeliveryPreflight,
   validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
@@ -582,21 +583,19 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   }
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
   const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
-  const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
-  const resolveAgentReviewPassed =
-    typeof deps.resolveAgentReviewPassed === 'function'
-      ? deps.resolveAgentReviewPassed
-      : async () => issue.agentReviewPassed === true;
   const [localHeadSha, testReceiptSha] = await Promise.all([
     getLocalHeadSha(),
     resolveTestReceiptSha({ issue, issueNumber }),
   ]);
-  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
-    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
-    resolveAgentReviewPassed({ issue, issueNumber }),
-  ]);
+  const reviewAuthority = await resolveLiveDeliveryReviewAuthority({
+    deps,
+    cfg,
+    issue,
+    issueNumber,
+    testReceiptSha,
+  });
+  const acceptedReviewSha = reviewAuthority.acceptedSha;
   if (
-    agentReviewPassed !== true ||
     !SHA_RE.test(localHeadSha || '') ||
     !SHA_RE.test(testReceiptSha || '') ||
     testReceiptSha !== acceptedReviewSha
@@ -750,11 +749,6 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
 
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
   const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
-  const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
-  const resolveAgentReviewPassed =
-    typeof deps.resolveAgentReviewPassed === 'function'
-      ? deps.resolveAgentReviewPassed
-      : async () => issue.agentReviewPassed === true;
   const fetchPullRequest = requiredDependency(deps, 'fetchPullRequest');
   const fetchRequiredChecks = requiredDependency(deps, 'fetchRequiredChecks');
   const fetchRepositoryMergeMethods = requiredDependency(deps, 'fetchRepositoryMergeMethods');
@@ -767,13 +761,15 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
 
   const localHeadSha = await getLocalHeadSha();
   const testReceiptSha = await resolveTestReceiptSha({ issue, issueNumber });
-  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
-    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
-    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
-  ]);
-  if (agentReviewPassed !== true) {
-    throw new TypeError('delivery-preflight:agent-review-evidence');
-  }
+  const reviewAuthority = await resolveLiveDeliveryReviewAuthority({
+    deps,
+    cfg,
+    issue,
+    issueNumber,
+    testReceiptSha,
+  });
+  const acceptedReviewSha = reviewAuthority.acceptedSha;
+  const agentReviewPassed = reviewAuthority.outcome === 'passed';
   const pullRequests = await Promise.all(
     pullRequestRefs.map(({ number }) =>
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
@@ -788,6 +784,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       testReceiptSha,
       reviewReceiptSha: acceptedReviewSha,
       agentReviewPassed,
+      reviewAuthority,
       pullRequests,
     });
   } catch (error) {
@@ -841,7 +838,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         deps.inspectSourceCommit
       );
   const preflightInput = {
-    issue: { ...issue, agentReviewPassed, reviewAuthorization },
+    issue: { ...issue, agentReviewPassed, reviewAuthority, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
     pullRequests,

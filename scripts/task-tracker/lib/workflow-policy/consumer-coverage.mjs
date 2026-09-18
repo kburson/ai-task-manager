@@ -14,6 +14,7 @@ export const CONSUMER_DECLARATIONS = Object.freeze({
     'review.peer',
     'review.semantic-resident',
   ]),
+  'delivery-review-authority': Object.freeze(['review.semantic-resident']),
   completion: Object.freeze(['approval.human-completion']),
   verification: Object.freeze(['delivery.tests', 'delivery.verification-evidence']),
   ownership: Object.freeze(['delivery.ownership']),

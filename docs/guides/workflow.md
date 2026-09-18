@@ -26,6 +26,12 @@ provider. Every later affected boundary reloads the current records and
 revalidates repository, issue, scope identity, expiry, revision, authority, and
 live evidence.
 
+When Review records a semantic-review waiver, delivery and close consume the
+same typed `waived` authority for the exact accepted Test SHA. Both boundaries
+reload the current exception record; neither synthesizes an Agent Review Passed
+claim, and a revoked, revised, malformed, ambiguous, or wrong-head authority is
+refused.
+
 Create, inspect, revise, or revoke records only through the supported command:
 
 ```bash
