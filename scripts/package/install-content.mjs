@@ -3,6 +3,7 @@
 
 import { codexBootstrapBlock } from '../task-tracker/codex-superpowers.mjs';
 import { getProvider } from '../providers/index.mjs';
+import { RUNTIME_REL } from '../task-tracker/paths.mjs';
 import {
   failClosedHookBootstrapCommand,
   guardBootstrapCommand,
@@ -234,7 +235,7 @@ export function renderProviderSkillStub(providerName) {
     '',
     `- \`${codex ? 'codex-adapter' : 'adapter'}\` — \`${adapterPath}\``,
     `- \`shared\` — \`${sharedSkillPath}\``,
-    `- \`pickup\` — \`.ai-task-manager/templates/pickup-directive.md\` (loaded on ${codex ? 'issue' : 'sub-issue'} pickup)`,
+    `- \`pickup\` — \`${RUNTIME_REL.pickupDirective}\` (loaded on ${codex ? 'issue' : 'sub-issue'} pickup)`,
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
     'After `npm update ai-task-manager`, the marker version changes and reload is forced.',

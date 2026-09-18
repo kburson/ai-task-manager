@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { isAbsolute, posix } from 'node:path';
 
 import { listProviders } from '../providers/index.mjs';
+import { RUNTIME_REL } from '../task-tracker/paths.mjs';
 import { renderClaudeCommandStub, renderProviderSkillStub } from './install-content.mjs';
 
 export const INSTALL_MANIFEST_PATH = '.ai-task-manager/install-manifest.json';
@@ -167,7 +168,7 @@ export function createInstallContract({ intent: rawIntent, adapters = [], invent
     artifacts.push(item);
   artifacts.push({
     id: 'config.task-tracker',
-    path: '.ai-task-manager/task-tracker.json',
+    path: RUNTIME_REL.config,
     kind: 'json-fragment',
     ownership: 'managed-fragment',
     required: true,
