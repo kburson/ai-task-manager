@@ -36,13 +36,17 @@ function digest(value) {
   return `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
 }
 
-function snapshotDigest(value) {
+function snapshotDigest(value, normalizations = []) {
   return digest({
     state: value.state,
     head: value.head,
     startedAt: value.startedAt,
     completedAt: value.completedAt,
     observations: value.observations,
+    normalizationInputs: normalizations.map(({ inputDigest, normalizerId }) => ({
+      normalizerId,
+      inputDigest,
+    })),
   });
 }
 
@@ -116,7 +120,7 @@ function validateBlocker(blocker) {
   if (blocker.code === 'authority-read-failed') {
     if (blocker.guardId !== 'authority-collection') fail('producer-code-pair');
     validateArgs(blocker.args, ['reason', 'source'], 'blocker-args');
-    string(blocker.args.source, 'blocker-source');
+    if (!SOURCES.has(blocker.args.source)) fail('blocker-source');
     if (!REASONS.has(blocker.args.reason)) fail('blocker-reason');
   } else if (blocker.code === 'state-unavailable') {
     if (blocker.guardId !== 'action-navigation') fail('producer-code-pair');
@@ -134,7 +138,7 @@ function validateBlocker(blocker) {
     validateArgs(blocker.args, ['actionId', 'issue', 'repository'], 'blocker-args');
     positiveInteger(blocker.args.issue, 'blocker-subject');
     action(blocker.args.actionId, 'blocker-action');
-    string(blocker.args.repository, 'blocker-repository');
+    if (blocker.args.repository !== 'kburson/ai-task-manager') fail('blocker-repository');
   } else if (blocker.code === 'plan-approval-missing') {
     if (blocker.guardId !== 'candidate-precondition') fail('producer-code-pair');
     validateArgs(blocker.args, [], 'blocker-args');
@@ -194,6 +198,14 @@ function validateWarning(value) {
   }
 }
 
+function validateWarningOrder(values) {
+  let sawLegacy = false;
+  for (const value of values) {
+    if (value.code === 'legacy-guard-warning') sawLegacy = true;
+    if (value.code === 'guidance-source-diverged' && sawLegacy) fail('warning-order');
+  }
+}
+
 function validateHumanDecision(value, decision) {
   if (value === null) return;
   exact(value, ['requests'], 'human-decision-shape');
@@ -227,7 +239,7 @@ function validateHumanDecision(value, decision) {
   }
 }
 
-function validateSnapshot(value) {
+function validateSnapshot(value, normalizations) {
   exact(
     value,
     ['completedAt', 'digest', 'head', 'observations', 'startedAt', 'state'],
@@ -249,7 +261,7 @@ function validateSnapshot(value) {
     instant(observation.observedAt, 'observation-time');
     digestValue(observation.digest, 'observation-digest');
   }
-  if (value.digest !== snapshotDigest(value)) fail('snapshot-digest');
+  if (value.digest !== snapshotDigest(value, normalizations)) fail('snapshot-digest');
 }
 
 export function validateCandidateDecision(decision) {
@@ -273,15 +285,16 @@ export function validateCandidateDecision(decision) {
   positiveInteger(decision.issue, 'decision-issue');
   action(decision.actionId, 'decision-action', { nullable: true });
   if (!STATUSES.has(decision.status)) fail('decision-status');
-  validateSnapshot(decision.snapshot);
   if (!Array.isArray(decision.blockers)) fail('blockers');
   decision.blockers.forEach(validateBlocker);
   if (decision.status === 'ready' && decision.blockers.length !== 0) fail('ready-blockers');
   if (decision.status !== 'ready' && decision.blockers.length === 0) fail('not-ready-blockers');
   if (!Array.isArray(decision.normalizations)) fail('normalizations');
   decision.normalizations.forEach(validateNormalization);
+  validateSnapshot(decision.snapshot, decision.normalizations);
   if (!Array.isArray(decision.warnings)) fail('warnings');
   decision.warnings.forEach(validateWarning);
+  validateWarningOrder(decision.warnings);
   validateHumanDecision(decision.humanDecision, decision);
   assertHumanRequestCoupling(decision);
   if (decision.status === 'ready' && decision.humanDecision !== null) fail('ready-human-decision');
@@ -289,6 +302,12 @@ export function validateCandidateDecision(decision) {
     fail('guidance-ids');
   }
   for (const id of decision.guidanceIds) string(id, 'guidance-id');
+  const unresolvedNavigation = decision.blockers.some(({ code }) => code === 'state-unavailable');
+  if (decision.snapshot.state === 'done' && decision.actionId !== null) fail('terminal-action');
+  if (unresolvedNavigation && decision.actionId !== null) fail('navigation-action');
+  if (decision.actionId === null && decision.snapshot.state !== 'done' && !unresolvedNavigation) {
+    fail('null-action');
+  }
   return decision;
 }
 
@@ -412,6 +431,7 @@ export function buildCandidateDecision({ fixture, scenario, evidenceCopies = 1 }
         disposition: 'persist-on-execute',
       },
     ];
+    decision.snapshot.digest = snapshotDigest(decision.snapshot, decision.normalizations);
   } else if (scenario === 'effective-policy-human-request') {
     if (fixture.policyRequest === 'manual-investigation') {
       decision.status = 'indeterminate';
@@ -485,8 +505,37 @@ export function buildTerminalCandidateDecision({ fixture }) {
   const decision = buildCandidateDecision({ fixture, scenario: 'ready' });
   decision.actionId = null;
   decision.snapshot.state = 'done';
-  decision.snapshot.digest = snapshotDigest(decision.snapshot);
+  decision.snapshot.digest = snapshotDigest(decision.snapshot, decision.normalizations);
   decision.guidanceIds = ['state.done'];
+  return validateCandidateDecision(decision);
+}
+
+export function buildCrossIssueCandidateDecision({ fixture, targetFixture }) {
+  const decision = buildCandidateDecision({ fixture, scenario: 'ready' });
+  if (fixture.issue === targetFixture.issue) fail('cross-issue-target');
+  decision.status = 'blocked';
+  decision.blockers = [
+    {
+      guardId: 'candidate-cross-issue',
+      code: 'cross-issue-plan-approval-missing',
+      args: {
+        repository: 'kburson/ai-task-manager',
+        issue: targetFixture.issue,
+        actionId: targetFixture.actionId,
+      },
+      remediation: { id: 'record-plan-approval', args: { issue: targetFixture.issue } },
+    },
+  ];
+  decision.humanDecision = {
+    requests: [
+      {
+        kind: 'plan-approval',
+        actor: 'configured-approver',
+        subject: { issue: targetFixture.issue, actionId: targetFixture.actionId },
+        args: {},
+      },
+    ],
+  };
   return validateCandidateDecision(decision);
 }
 
@@ -608,7 +657,7 @@ export function validateCandidateExplanation(envelope) {
 }
 
 export function projectOverrideMutationEffect({ valid, mutationSucceeded, alreadyAnnotated }) {
-  return projectOverrideProtocol({
+  const { mutationAllowed, warningEmitted, annotationWritten } = projectOverrideProtocol({
     diverged: true,
     valid,
     mutationSucceeded,
@@ -617,7 +666,10 @@ export function projectOverrideMutationEffect({ valid, mutationSucceeded, alread
     receiptDigest: null,
     contextReset: false,
   });
+  return { mutationAllowed, warningEmitted, annotationWritten };
 }
+
+const PROJECT_OVERRIDE_WARNING = `AITM project guidance override active.\nSource: .ai-task-manager/aitm-guidance.yml\nThe guidance differs from the installed published catalog. Executable guards\nremain authoritative; this repository owns and reviews the local guidance.`;
 
 export function projectOverrideProtocol({
   diverged,
@@ -631,12 +683,20 @@ export function projectOverrideProtocol({
   digestValue(digest, 'override-digest');
   if (receiptDigest !== null) digestValue(receiptDigest, 'override-receipt-digest');
   const active = diverged === true && valid === true;
+  const warningEmitted =
+    active && (contextReset === true || receiptDigest === null || receiptDigest !== digest);
   return {
     mutationAllowed: valid === true,
-    warningEmitted:
-      active && (contextReset === true || receiptDigest === null || receiptDigest !== digest),
+    warningEmitted,
+    warningText: warningEmitted ? PROJECT_OVERRIDE_WARNING : null,
+    sourceReceipt: active ? `aitm-guidance-source:project-owned-diverged:${digest}` : null,
     annotationWritten: active && mutationSucceeded === true && alreadyAnnotated !== true,
   };
 }
 
-export const candidateConstants = Object.freeze({ FULL_HEAD, GUIDANCE_DIGEST, SOURCE_DIGEST });
+export const candidateConstants = Object.freeze({
+  FULL_HEAD,
+  GUIDANCE_DIGEST,
+  PROJECT_OVERRIDE_WARNING,
+  SOURCE_DIGEST,
+});

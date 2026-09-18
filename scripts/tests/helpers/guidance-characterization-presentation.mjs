@@ -53,6 +53,7 @@ function blocker(value) {
   if (!GUARDS.has(value.guardId) || !BLOCKER_CODES.has(value.code)) fail('blocker-code');
   args(value.args, 'blocker-args');
   if (value.code === 'authority-read-failed') {
+    if (value.guardId !== 'authority-collection') fail('producer-code-pair');
     exact(value.args, ['reason', 'source'], 'blocker-args');
     if (!SOURCES.has(value.args.source)) fail('blocker-source');
     if (
@@ -63,13 +64,25 @@ function blocker(value) {
       fail('blocker-reason');
     }
   } else if (value.code === 'state-unavailable') {
+    if (value.guardId !== 'action-navigation') fail('producer-code-pair');
     exact(value.args, ['reason'], 'blocker-args');
     if (!new Set(['unknown', 'conflicting']).has(value.args.reason)) fail('blocker-reason');
   } else if (value.code === 'guard-result-invalid' || value.code === 'plan-approval-missing') {
+    const expectedGuard =
+      value.code === 'guard-result-invalid' ? 'action-result-validation' : 'candidate-precondition';
+    if (value.guardId !== expectedGuard) fail('producer-code-pair');
     exact(value.args, [], 'blocker-args');
   } else if (value.code === 'precondition-missing') {
+    if (value.guardId !== 'candidate-precondition') fail('producer-code-pair');
     exact(value.args, ['requirement'], 'blocker-args');
+  } else if (value.code === 'cross-issue-plan-approval-missing') {
+    if (value.guardId !== 'candidate-cross-issue') fail('producer-code-pair');
+    exact(value.args, ['actionId', 'issue', 'repository'], 'blocker-args');
+    positiveInteger(value.args.issue, 'blocker-issue');
+    action(value.args.actionId, 'blocker-action');
+    if (value.args.repository !== 'kburson/ai-task-manager') fail('blocker-repository');
   } else if (value.code === 'review-approval-missing') {
+    if (value.guardId !== 'candidate-precondition') fail('producer-code-pair');
     exact(value.args, ['head'], 'blocker-args');
     if (!/^[0-9a-f]{40}$/.test(value.args.head)) fail('blocker-head');
   }
@@ -79,11 +92,18 @@ function blocker(value) {
   if (hasRemediation) {
     exact(value.remediation, ['args', 'id'], 'remediation-shape');
     args(value.remediation.args, 'remediation-args');
-    if (
-      !new Set(['satisfy-precondition', 'record-plan-approval', 'request-review-approval']).has(
-        value.remediation.id
-      )
-    ) {
+    if (value.remediation.id === 'satisfy-precondition') {
+      exact(value.remediation.args, ['actionId', 'issue'], 'remediation-args');
+      positiveInteger(value.remediation.args.issue, 'remediation-issue');
+      action(value.remediation.args.actionId, 'remediation-action');
+    } else if (value.remediation.id === 'record-plan-approval') {
+      exact(value.remediation.args, ['issue'], 'remediation-args');
+      positiveInteger(value.remediation.args.issue, 'remediation-issue');
+    } else if (value.remediation.id === 'request-review-approval') {
+      exact(value.remediation.args, ['head', 'issue'], 'remediation-args');
+      positiveInteger(value.remediation.args.issue, 'remediation-issue');
+      if (!/^[0-9a-f]{40}$/.test(value.remediation.args.head)) fail('remediation-head');
+    } else {
       fail('remediation-id');
     }
   } else {
@@ -139,8 +159,49 @@ function warning(value) {
   }
 }
 
+function warningOrder(values) {
+  let sawLegacy = false;
+  for (const value of values) {
+    if (value.code === 'legacy-guard-warning') sawLegacy = true;
+    if (value.code === 'guidance-source-diverged' && sawLegacy) fail('warning-order');
+  }
+}
+
 function humanDecision(value, result) {
-  if (value === null) return;
+  const required = [];
+  for (const returnedBlocker of result.blockers) {
+    if (returnedBlocker.code === 'cross-issue-plan-approval-missing') {
+      required.push({
+        kind: 'plan-approval',
+        issue: returnedBlocker.args.issue,
+        actionId: returnedBlocker.args.actionId,
+        args: {},
+      });
+    } else if (returnedBlocker.code === 'plan-approval-missing') {
+      required.push({ kind: 'plan-approval', issue: result.issue, actionId: 'promote', args: {} });
+    } else if (returnedBlocker.code === 'review-approval-missing') {
+      required.push({
+        kind: 'review-approval',
+        issue: result.issue,
+        actionId: result.actionId,
+        args: { head: returnedBlocker.args.head },
+      });
+    } else if (
+      returnedBlocker.code === 'authority-read-failed' ||
+      returnedBlocker.code === 'state-unavailable'
+    ) {
+      required.push({
+        kind: 'manual-investigation',
+        issue: result.issue,
+        actionId: result.actionId,
+        args: { guardId: returnedBlocker.guardId, code: returnedBlocker.code },
+      });
+    }
+  }
+  if (value === null) {
+    if (required.length !== 0) fail('human-coupling');
+    return;
+  }
   exact(value, ['requests'], 'human-decision-shape');
   if (!Array.isArray(value.requests) || value.requests.length === 0) fail('human-requests');
   for (const request of value.requests) {
@@ -166,6 +227,18 @@ function humanDecision(value, result) {
     }
   }
   if (result.status === 'ready') fail('ready-human');
+  if (value.requests.length !== required.length) fail('human-coupling');
+  required.forEach((expected, index) => {
+    const actual = value.requests[index];
+    if (
+      actual.kind !== expected.kind ||
+      actual.subject.issue !== expected.issue ||
+      actual.subject.actionId !== expected.actionId ||
+      JSON.stringify(actual.args) !== JSON.stringify(expected.args)
+    ) {
+      fail('human-coupling');
+    }
+  });
 }
 
 export function validateCandidatePresentation(result) {
@@ -185,6 +258,7 @@ export function validateCandidatePresentation(result) {
   result.normalizations.forEach(normalization);
   if (!Array.isArray(result.warnings)) fail('warnings');
   result.warnings.forEach(warning);
+  warningOrder(result.warnings);
   humanDecision(result.humanDecision, result);
   return result;
 }
