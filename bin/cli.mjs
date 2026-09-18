@@ -4,7 +4,7 @@
 
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, join, resolve, relative } from 'node:path';
+import { dirname, isAbsolute, join, resolve, relative } from 'node:path';
 // (getProvider import added below; dirname already imported for adapter dir resolution)
 import { createInterface } from 'node:readline';
 import {
@@ -46,6 +46,20 @@ import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 import { ISSUE_TEMPLATES } from '../scripts/task-tracker/lib/config-init/issue-templates.mjs';
 import { getProvider, listProviders } from '../scripts/providers/index.mjs';
+import {
+  applyManagedHookContract,
+  INSTALL_GITIGNORE_ENTRIES,
+  renderClaudeCommandStub,
+  renderProviderSkillStub,
+} from '../scripts/package/install-content.mjs';
+import { collectPackageInventory } from '../scripts/package/install-inventory.mjs';
+import {
+  INSTALL_MANIFEST_PATH,
+  createInstallContract,
+  createInstallManifest,
+  normalizeInstallIntent,
+} from '../scripts/package/install-contract.mjs';
+import { writeInstallManifest } from '../scripts/package/install-manifest-store.mjs';
 import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
@@ -63,7 +77,6 @@ const pkg = require('../package.json');
 const PKG_NAME = 'ai-task-manager';
 const INSTALLED_PACKAGE_ROOT = 'node_modules/@kburson/ai-task-manager';
 const LEGACY_INSTALLED_PACKAGE_ROOT = 'node_modules/ai-task-manager';
-const installedPackagePath = (repoRelPath) => `${INSTALLED_PACKAGE_ROOT}/${repoRelPath}`;
 
 // TTY gate: return raw string when stdout is not a TTY (pipe, file, CI log) so
 // downstream consumers don't see raw escape sequences as garbage characters.
@@ -488,6 +501,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
     if (!settings.permissions.allow.includes(entry)) settings.permissions.allow.push(entry);
   }
 
+  settings = applyManagedHookContract('claude', settings, { memoryIndexHook });
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
 }
@@ -572,6 +586,7 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
   add('UserPromptSubmit', null, ON_USER_PROMPT_HOOK_CMD, { timeout: 30 });
   add('UserPromptSubmit', null, CODEX_PROMPT_TIMESTAMP_HOOK_CMD, { timeout: 30 });
 
+  config = applyManagedHookContract('codex', config, { memoryIndexHook });
   mkdirSync(dirname(hooksPath), { recursive: true });
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
@@ -708,25 +723,14 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
 
   for (const spec of specs) add(...spec);
 
+  config = applyManagedHookContract('grok', config, { memoryIndexHook });
   mkdirSync(dirname(hooksPath), { recursive: true });
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
 
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
-  const entries = [
-    // Machine-local/transient runtime state lives under `.tmp/aitm/`, with
-    // project-local caches under `.ai-task-manager/.cache/`. Stable install
-    // artifacts in `.ai-task-manager/`, `.claude/`, `.codex/`, and `.agents/`
-    // are intentionally trackable so cloud clones inherit the AITM contract.
-    '.ai-task-manager/.cache/',
-    '.ai-task-manager/templates/*.bak',
-    '.ai-task-manager/templates/references/*.bak',
-    '.claude/worktrees/',
-    '.claude/settings.local.json',
-    '.claude/scheduled_tasks.lock',
-    '.tmp/',
-  ];
+  const entries = INSTALL_GITIGNORE_ENTRIES;
   const COMMENT = '# ai-task-manager — local edit backups (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
@@ -747,7 +751,22 @@ function installStub(file, content, label) {
   ok(`${label} ${dim(relative(process.cwd(), file))}${written ? '' : ` ${dim('(unchanged)')}`}`);
 }
 
-function replaceWithSymlink(dest, src, label) {
+export function assertSymlinkSourceContained(targetDir, src) {
+  const contained = relative(resolve(targetDir), resolve(src));
+  if (
+    !contained ||
+    contained === '..' ||
+    contained.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) ||
+    isAbsolute(contained)
+  ) {
+    throw new Error(
+      '--link-mode symlink requires the installed package to resolve inside the target project; use --link-mode stub'
+    );
+  }
+}
+
+export function replaceWithSymlink(dest, src, label, targetDir) {
+  assertSymlinkSourceContained(targetDir, src);
   mkdirSync(dirname(dest), { recursive: true });
   let existing = null;
   try {
@@ -762,134 +781,25 @@ function replaceWithSymlink(dest, src, label) {
         `${dest} exists and is not a symlink; rerun with --link-mode stub or remove it manually`
       );
   }
-  symlinkSync(src, dest, 'dir');
-  ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
+  const linkTarget = relative(dirname(dest), src);
+  symlinkSync(linkTarget, dest, 'dir');
+  ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(linkTarget)}`);
 }
 
 export function claudeStub() {
-  const adapterPath = installedPackagePath(getProvider('claude').skillAdapterPath);
-  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
-  const scriptsPath = installedPackagePath('scripts/');
-  return [
-    '---',
-    'name: task',
-    'description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, close, log, check, fleet, or config.',
-    '---',
-    '',
-    '# Task',
-    '',
-    '## Load-Once Procedure',
-    '',
-    'Frequently-loaded skill files carry an `<!-- aitm-skill-version: X.Y.Z -->` marker.',
-    'To avoid re-reading them every invocation:',
-    '',
-    '1. Read just the first ~10 lines of each file below to extract its marker version.',
-    '2. Grep your current context for `aitm-skill-loaded:<id>:<version>`. If found, skip step 3 for that file.',
-    '3. Read the full file. Then emit a single line in your reply: `aitm-skill-loaded:<id>:<version>` so future invocations in this conversation can detect the load.',
-    '',
-    'Files (id — path):',
-    '',
-    `- \`adapter\` — \`${adapterPath}\``,
-    `- \`shared\` — \`${sharedSkillPath}\``,
-    '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on sub-issue pickup)',
-    '',
-    'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
-    'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
-    '',
-    '## Canonical Source',
-    '',
-    'Load and follow the canonical Claude adapter instructions from:',
-    '',
-    `\`${adapterPath}\``,
-    '',
-    'Use executable scripts from:',
-    '',
-    `\`${scriptsPath}\``,
-    '',
-  ].join('\n');
+  return renderProviderSkillStub('claude');
 }
 
 export function codexStub() {
-  const adapterPath = installedPackagePath(getProvider('codex').skillAdapterPath);
-  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
-  const scriptsPath = installedPackagePath('scripts/');
-  return [
-    '---',
-    'name: task',
-    'description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user asks to manage a task, start or close issue work, run /task commands, create backlog issues, track active work, log time, update task status, or inspect the active task fleet.',
-    '---',
-    '',
-    '# Task',
-    '',
-    '## Load-Once Procedure',
-    '',
-    'Frequently-loaded skill files carry an `<!-- aitm-skill-version: X.Y.Z -->` marker.',
-    'To avoid re-reading them every invocation:',
-    '',
-    '1. Read just the first ~10 lines of each file below to extract its marker version.',
-    '2. Grep your current context for `aitm-skill-loaded:<id>:<version>`. If found, skip step 3 for that file.',
-    '3. Read the full file. Then emit a single line in your reply: `aitm-skill-loaded:<id>:<version>` so future invocations in this conversation can detect the load.',
-    '',
-    'Files (id — path):',
-    '',
-    `- \`codex-adapter\` — \`${adapterPath}\``,
-    `- \`shared\` — \`${sharedSkillPath}\``,
-    '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on issue pickup)',
-    '',
-    'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
-    'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
-    '',
-    '## Canonical Source',
-    '',
-    'Load and follow the canonical Codex adapter instructions from:',
-    '',
-    `\`${adapterPath}\``,
-    '',
-    'Use executable scripts from:',
-    '',
-    `\`${scriptsPath}\``,
-    '',
-  ].join('\n');
+  return renderProviderSkillStub('codex');
 }
 
 function grokStub() {
-  const adapterPath = installedPackagePath(getProvider('grok').skillAdapterPath);
-  return [
-    '---',
-    'name: task',
-    'description: Bind Grok work sessions to GitHub issues and track governed delivery.',
-    'user-invocable: true',
-    '---',
-    '',
-    '# Task',
-    '',
-    'Load and follow the canonical Grok adapter instructions from:',
-    '',
-    `\`${adapterPath}\``,
-    '',
-  ].join('\n');
+  return renderProviderSkillStub('grok');
 }
 
 function claudeCommandStub() {
-  return [
-    'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS',
-    '',
-    '<!-- Canonical source: skill/shared/SKILL.md (State Transition Verb Map). Mirrored here for the verb-uniqueness verification grep. -->',
-    '',
-    '### State Transition Verb Map (8-state model)',
-    '',
-    'States: `Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done`.',
-    '',
-    '- `/task refine #N --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2|p3> --reason "<text>"` — Backlog → Refine with required fields.',
-    '- `/task plan #N` — Ready for Planning → Plan (JIT sprint-planning entry).',
-    '- `/task promote` (or `/task next`) — advance one state generically.',
-    '- `/task test #N` — Develop → Test (sandbox verification).',
-    '- `/task approve #N` — write Plan-approval and review-approval markers.',
-    '- `/task close` — Review → Done.',
-    '',
-    'Test → Review is automatic on verification pass — no dedicated CLI verb.',
-    '',
-  ].join('\n');
+  return renderClaudeCommandStub();
 }
 
 const LEGACY_WORKTREE_SEED_BLOCK = [
@@ -971,11 +881,20 @@ function knownCodexBootstrapBlocks() {
   return new Set([current, currentJit, assigned, onDeck]);
 }
 
-function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installClaude(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Claude Code files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
+      'Skill',
+      targetDir
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
@@ -991,11 +910,20 @@ function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter }
   }
 }
 
-function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installCodex(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Codex files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
+      'Skill',
+      targetDir
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
   }
@@ -1005,11 +933,20 @@ function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } 
   }
 }
 
-function installGrok(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installGrok(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Grok files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
+      'Skill',
+      targetDir
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), grokStub(), 'Skill');
   }
@@ -1346,6 +1283,10 @@ async function cmdUninstall(args) {
     planUninstallProvider(getProvider(providerName), targetDir)
   );
   if (selectedNames.includes('codex')) actions.push(...planBootstrapCleanup(targetDir));
+  const manifestPath = join(targetDir, INSTALL_MANIFEST_PATH);
+  if (existsSync(manifestPath)) {
+    actions.push({ kind: 'remove', path: manifestPath, recursive: false });
+  }
   if (purge) actions.push(...planPurge(targetDir));
   for (const action of actions) {
     const verb = action.kind === 'write' ? 'UPDATE' : 'REMOVE';
@@ -1595,7 +1536,7 @@ async function installMemorySeed(targetDir, args) {
 
     if (mode === 'none') {
       ok(`Memory seed ${dim('(skipped — none)')}`);
-      return 0;
+      return { count: 0, files: [] };
     }
 
     let selectedFiles;
@@ -1614,16 +1555,88 @@ async function installMemorySeed(targetDir, args) {
       }
     }
 
-    const { count } = writeMemorySeed({ seedDir, memoryDir, selectedFiles });
+    const { accepted, count } = writeMemorySeed({ seedDir, memoryDir, selectedFiles });
     ok(
       count > 0
         ? `Memory seed ${dim(`${count} fact(s) → .ai-task-manager/memory/`)}`
         : `Memory seed ${dim('(nothing selected)')}`
     );
-    return count;
+    return {
+      count,
+      files: accepted.map((file) => `.ai-task-manager/memory/${file}`).sort(),
+    };
   } finally {
     if (rl) rl.close();
   }
+}
+
+export async function runInstall(options, deps = {}) {
+  const {
+    targetDir,
+    args = [],
+    selectedNames,
+    linkMode,
+    enableCodexSuperpowers,
+    globalCodexSuperpowers,
+  } = options;
+  const installMemory = deps.installMemorySeed || installMemorySeed;
+  const installOne = deps.installProvider || installProvider;
+  const setupCodex = deps.setupCodexSuperpowers || setupCodexSuperpowers;
+  const installShared = deps.installTemplates || installTemplates;
+  const inventoryFor = deps.collectPackageInventory || collectPackageInventory;
+  const publish = deps.writeInstallManifest || writeInstallManifest;
+  const packageRoot = deps.packageRoot || PKG_ROOT;
+
+  const baseIntent = normalizeInstallIntent({
+    providers: selectedNames,
+    linkMode,
+    features: {
+      memoryIndex: false,
+      codexSuperpowers: enableCodexSuperpowers,
+      codexSuperpowersGlobal: globalCodexSuperpowers,
+    },
+    memoryFiles: [],
+  });
+  if (baseIntent.linkMode === 'symlink') {
+    for (const providerName of baseIntent.providers) {
+      const adapter = getProvider(providerName);
+      assertSymlinkSourceContained(targetDir, join(packageRoot, dirname(adapter.skillAdapterPath)));
+    }
+  }
+
+  const memorySeed = await installMemory(targetDir, args);
+  const memoryIndexHook = memorySeed.count > 0;
+  for (const providerName of selectedNames) {
+    installOne(getProvider(providerName), targetDir, linkMode, { memoryIndexHook, packageRoot });
+  }
+  const codexSelected = selectedNames.includes('codex');
+  if (codexSelected && enableCodexSuperpowers) {
+    setupCodex(targetDir, { globalAgents: globalCodexSuperpowers });
+  }
+  installShared(targetDir);
+
+  const intent = normalizeInstallIntent({
+    providers: baseIntent.providers,
+    linkMode: baseIntent.linkMode,
+    features: {
+      memoryIndex: memoryIndexHook,
+      codexSuperpowers: baseIntent.features.codexSuperpowers,
+      codexSuperpowersGlobal: baseIntent.features.codexSuperpowersGlobal,
+    },
+    memoryFiles: memorySeed.files,
+  });
+  const contract = createInstallContract({
+    intent,
+    adapters: selectedNames.map(getProvider),
+    inventory: inventoryFor(packageRoot),
+  });
+  const manifest = createInstallManifest({
+    packageName: pkg.name,
+    packageVersion: pkg.version,
+    contract,
+  });
+  publish(targetDir, manifest);
+  return { manifest };
 }
 
 async function cmdInstall(args) {
@@ -1675,19 +1688,15 @@ async function cmdInstall(args) {
     }
   }
 
-  // #728 — resolve the memory-seed opt-in BEFORE installing Claude files so the
-  // always-loaded index hook is registered only when ≥1 seed file was accepted.
-  const memorySeedCount = await installMemorySeed(targetDir, args);
-  const memoryIndexHook = memorySeedCount > 0;
-
-  for (const providerName of selectedNames) {
-    installProvider(getProvider(providerName), targetDir, linkMode, { memoryIndexHook });
-  }
   const codexSelected = selectedNames.includes('codex');
-  if (codexSelected && enableCodexSuperpowers) {
-    setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
-  }
-  installTemplates(targetDir);
+  await runInstall({
+    targetDir,
+    args,
+    selectedNames,
+    linkMode,
+    enableCodexSuperpowers,
+    globalCodexSuperpowers,
+  });
 
   console.log('');
   console.log(bgGreen(bold('  Install complete                                          ')));

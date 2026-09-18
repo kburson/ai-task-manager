@@ -257,19 +257,15 @@ test('install --link-mode stub writes skill, settings, templates and is idempote
   assert.equal(r2.status, 0, r2.stderr); // second run exercises the "unchanged" branches
 });
 
-test('install --link-mode symlink links the skill dirs', () => {
+test('install --link-mode symlink refuses a package source outside the target project', () => {
   const target = scratch('cli-symlink-');
   const home = scratch('cli-home-');
   const r = run(['install', '--target', target, '--link-mode', 'symlink'], {
     env: { ...process.env, HOME: home },
   });
-  assert.equal(r.status, 0, r.stderr);
-  assert.ok(existsSync(join(target, '.claude', 'skills', 'task')), 'claude skill symlink present');
-  const removed = run(['uninstall', '--target', target]);
-  assert.equal(removed.status, 0, removed.stderr);
-  assert.equal(existsSync(join(target, '.claude', 'skills', 'task')), false);
-  assert.equal(existsSync(join(target, '.agents', 'skills', 'task')), false);
-  assert.equal(existsSync(join(target, '.grok', 'skills', 'task')), false);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /requires the installed package to resolve inside the target project/);
+  assert.equal(existsSync(join(target, '.ai-task-manager', 'install-manifest.json')), false);
 });
 
 test('uninstall removes Codex integrations while preserving user hooks and durable data', () => {
@@ -281,6 +277,8 @@ test('uninstall removes Codex integrations while preserving user hooks and durab
     { env }
   );
   assert.equal(installed.status, 0, installed.stderr);
+  const manifestPath = join(target, '.ai-task-manager', 'install-manifest.json');
+  assert.equal(existsSync(manifestPath), true, 'install manifest published');
 
   const hooksPath = join(target, '.codex', 'hooks.json');
   const hooks = JSON.parse(readFileSync(hooksPath, 'utf8'));
@@ -332,6 +330,7 @@ test('uninstall removes Codex integrations while preserving user hooks and durab
     'durable\n',
     'durable project data preserved'
   );
+  assert.equal(existsSync(manifestPath), false, 'stale install manifest removed');
   const repeated = run(['uninstall', '--target', target, '--agent', 'codex'], { env });
   assert.equal(repeated.status, 0, repeated.stderr);
   assert.deepEqual(JSON.parse(readFileSync(hooksPath, 'utf8')), after);
