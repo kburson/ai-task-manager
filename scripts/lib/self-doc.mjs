@@ -39,6 +39,13 @@ export function isDirectInvocation(moduleUrl, argv1) {
 // states who should call it (and via what), `usage` is the invocation line
 // shown as `aitm <name> ...` (never a node_modules filepath).
 const ROUTABLE_SELF_DOC = {
+  doctor: {
+    group: 'Diagnostics',
+    path: 'scripts/package/doctor.mjs',
+    synopsis: 'Report read-only bootstrap health for the installed AITM project contract.',
+    audience: 'Maintainer or CI validating committed AITM bootstrap artifacts before tests.',
+    usage: 'aitm doctor [--json]',
+  },
   'create-issue': {
     group: 'GitHub',
     path: 'scripts/gh/create-issue.mjs',
@@ -205,6 +212,7 @@ const STANDARD_EXIT_CODES = Object.freeze([
 ]);
 
 const ROUTABLE_ARGUMENTS = Object.freeze({
+  doctor: [argument('--json', 'Emit exactly one aitm.doctor/v1 JSON document.')],
   'create-issue': [
     argument('--title <text>', 'Issue title.'),
     argument('--body-file <path>', 'Use an already assembled canonical issue body.'),
@@ -402,6 +410,18 @@ const routableContract = ({
   });
 
 const ROUTABLE_CONTRACTS = Object.freeze({
+  doctor: routableContract({
+    preconditions: ['Run inside the Git worktree whose committed AITM installation is inspected.'],
+    effects: ['Reads package, project files, and local Git metadata; writes nothing.'],
+    output: ['Prints equivalent human or aitm.doctor/v1 JSON health rows.'],
+    exitCodes: [
+      exitCode(0, 'every required installation check is healthy'),
+      exitCode(1, 'a complete report contains one or more unhealthy required checks'),
+      exitCode(2, 'invalid invocation syntax'),
+    ],
+    examples: ['npx aitm doctor', 'npx aitm doctor --json'],
+    relatedCommands: ['ai-task-manager install', 'aitm help'],
+  }),
   'create-issue': routableContract({
     output: [
       'Prints the created issue URL, or the validated dry-run payload.',

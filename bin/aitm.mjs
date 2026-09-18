@@ -45,6 +45,15 @@ const HELP_FLAGS = new Set(['--help', '-h', '?']);
 // NOT a flag, so task-tracker would otherwise swallow it as verb positional
 // data; the verb router below normalizes it to `--help`.
 const isHelpWord = (a) => a === 'help';
+const scriptDelegateOptions = (name) =>
+  name === 'doctor'
+    ? {
+        command: name,
+        // Doctor is deliberately independent of task/session state. Preserve the
+        // caller environment without consulting action-capture configuration.
+        prepareEnv: ({ env }) => env,
+      }
+    : { command: name };
 
 function printListing(write = (s) => process.stdout.write(s)) {
   const { verbs, scriptGroups } = groupedListing();
@@ -120,7 +129,11 @@ export function run(argv = process.argv.slice(2)) {
     if (target) {
       // `aitm help <command>` → that command self-documents.
       if (kind(target) === 'script') {
-        return delegate(path.join(REPO_ROOT, SCRIPTS[target].path), ['help'], { command: target });
+        return delegate(
+          path.join(REPO_ROOT, SCRIPTS[target].path),
+          ['help'],
+          scriptDelegateOptions(target)
+        );
       }
       // A verb (or an unknown token → verbHelp falls back to the top-level
       // listing) routes through task-tracker's help renderer.
@@ -143,7 +156,7 @@ export function run(argv = process.argv.slice(2)) {
   }
   if (k === 'script') {
     const target = path.join(REPO_ROOT, SCRIPTS[name].path);
-    return delegate(target, rest, { command: name });
+    return delegate(target, rest, scriptDelegateOptions(name));
   }
 
   process.stderr.write(`aitm: unknown command "${name}"\n\n`);
