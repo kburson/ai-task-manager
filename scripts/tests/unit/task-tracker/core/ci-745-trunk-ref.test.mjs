@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #745
+// @story #745 #1685
 // Content assertions for the current CI contract: #745 materializes a local
 // `refs/heads/trunk` on `pull_request` checkouts so real-git close-gate tests
 // (#733) resolve trunk in a detached merge ref. The Fast checkout also retains
@@ -30,7 +30,7 @@ const STEP_NAME = 'Materialize local trunk ref for real-git tests (#745)';
 const MATERIALIZE_RUN = 'git fetch --no-tags origin trunk:trunk';
 const PR_GUARD = "if: github.event_name == 'pull_request'";
 const DOCS_ONLY_DIFF = 'git diff --name-only trunk...HEAD';
-const FAST_JOB = ci.slice(ci.indexOf('  fast:'), ci.indexOf('\n  slow:'));
+const FAST_JOB = ci.slice(ci.indexOf('  fast:'), ci.indexOf('\n  npm-pack-compatibility:'));
 const SLOW_JOB = ci.slice(ci.indexOf('  slow:'));
 
 test('AC1: both Fast and Slow lanes materialize a local trunk ref', () => {
