@@ -95,8 +95,8 @@ git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/
 git commit -m "chore: add ai-task-manager"
 ```
 
-Maintainer setup is intent-changing. Run `install` and `init` in a maintainer
-environment, review the diff, and commit
+Run `install` and `init` once in a maintainer environment. This setup is
+intent-changing: review the diff and commit
 `.ai-task-manager/install-manifest.json` together with the project-portable
 outputs:
 
@@ -107,6 +107,9 @@ npx ai-task-manager install [selected options]
 Fresh checkouts and cloud CI consume that recorded intent. They do not rerun the
 installer or initialize project board metadata; they verify the committed
 integration before the normal test suite:
+
+Ephemeral cloud environments should clone the repository and use this read-only
+verification sequence:
 
 ```bash
 npm ci && npx aitm doctor && npm test
