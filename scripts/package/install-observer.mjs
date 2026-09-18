@@ -2,8 +2,9 @@
 // Read-only observation and evaluation for the installed AITM bootstrap contract.
 
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { lstatSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -74,6 +75,59 @@ function tracked(projectRoot, artifactPath, exec) {
   } catch {
     return false;
   }
+}
+
+function inspectContainedPath(root, candidate, { allowFinalSymlink = false, deps = {} } = {}) {
+  const stat = deps.lstatSync || lstatSync;
+  const readlink = deps.readlinkSync || readlinkSync;
+  const realpath = deps.realpathSync || realpathSync;
+  const logicalRoot = resolve(root);
+  const absolute = resolve(candidate);
+  if (!inside(logicalRoot, absolute)) {
+    return { exists: false, safety: 'unsafe', details: 'Path escapes the allowed root.' };
+  }
+  const realRoot = realpath(logicalRoot);
+  const parts = relative(logicalRoot, absolute).split(/[\\/]/).filter(Boolean);
+  let current = logicalRoot;
+  for (let index = 0; index < parts.length; index += 1) {
+    current = join(current, parts[index]);
+    let info;
+    try {
+      info = stat(current);
+    } catch (error) {
+      if (error?.code === 'ELOOP') {
+        return { exists: false, safety: 'unsafe', details: 'Path contains a cyclic symlink.' };
+      }
+      return { exists: false, safety: 'safe' };
+    }
+    if (!info.isSymbolicLink()) {
+      if (index === parts.length - 1) return { exists: true, safety: 'safe', info };
+      continue;
+    }
+    const final = index === parts.length - 1;
+    if (final && allowFinalSymlink) return { exists: true, safety: 'safe', info };
+    const target = readlink(current);
+    if (isAbsolute(target)) {
+      return { exists: true, safety: 'unsafe', details: 'Path contains an absolute symlink.' };
+    }
+    let resolved;
+    try {
+      resolved = realpath(resolve(dirname(current), target));
+    } catch (error) {
+      return {
+        exists: true,
+        safety: 'unsafe',
+        details:
+          error?.code === 'ELOOP'
+            ? 'Path contains a cyclic symlink.'
+            : 'Path contains a broken symlink.',
+      };
+    }
+    if (!inside(realRoot, resolved)) {
+      return { exists: true, safety: 'unsafe', details: 'Path escapes the allowed root.' };
+    }
+  }
+  return { exists: true, safety: 'safe', info: stat(absolute) };
 }
 
 function safeSymlink(projectRoot, path, expected) {
@@ -166,21 +220,27 @@ function contentMatches(artifact, path, manifest) {
 
 export function observeInstallation({ projectRoot, packageRoot, manifest, contract, deps = {} }) {
   const exec = deps.execFileSync || execFileSync;
-  const stat = deps.lstatSync || lstatSync;
   const byId = {};
   for (const artifact of contract.artifacts) {
     const absolute = resolve(projectRoot, artifact.path);
-    if (!inside(resolve(projectRoot), absolute)) {
-      byId[artifact.id] = Object.freeze({ exists: false, tracked: false, pathSafety: 'unsafe' });
+    const pathResult = inspectContainedPath(projectRoot, absolute, {
+      allowFinalSymlink: artifact.kind === 'symlink',
+      deps,
+    });
+    if (pathResult.safety === 'unsafe') {
+      byId[artifact.id] = Object.freeze({
+        exists: pathResult.exists,
+        tracked: false,
+        pathSafety: 'unsafe',
+        details: pathResult.details,
+      });
       continue;
     }
-    let info;
-    try {
-      info = stat(absolute);
-    } catch {
+    if (!pathResult.exists) {
       byId[artifact.id] = Object.freeze({ exists: false, tracked: false, pathSafety: 'safe' });
       continue;
     }
+    const info = pathResult.info;
     const observation = {
       exists: true,
       tracked: tracked(projectRoot, artifact.path, exec),
@@ -234,6 +294,7 @@ export function evaluateInstallation({
   manifestResult,
   contractResult,
   observations,
+  hostObservations = [],
 }) {
   const checks = [
     row({ id: 'package.runtime', status: 'ok', details: 'AITM doctor runtime is available.' }),
@@ -286,18 +347,18 @@ export function evaluateInstallation({
       let status = 'ok';
       let details = `${artifact.path} matches its declared contract.`;
       let recovery;
-      if (!seen?.exists) {
-        status = 'missing';
-        details = `${artifact.path} is missing.`;
-        recovery = reinstall;
-      } else if (seen.pathSafety === 'unsafe' || seen.symlinkSafety === 'unsafe') {
+      if (seen?.pathSafety === 'unsafe' || seen?.symlinkSafety === 'unsafe') {
         status = 'unsafe';
         details = seen.details || `${artifact.path} is unsafe.`;
         recovery =
           'Reinstall in portable stub mode or correct the selected portable symlink arrangement.';
-      } else if (seen.invalid) {
+      } else if (seen?.invalid || seen?.symlinkSafety === 'invalid') {
         status = 'invalid';
         details = seen.details;
+        recovery = reinstall;
+      } else if (!seen?.exists) {
+        status = 'missing';
+        details = `${artifact.path} is missing.`;
         recovery = reinstall;
       } else if (!seen.tracked) {
         status = 'untracked';
@@ -310,6 +371,9 @@ export function evaluateInstallation({
       }
       checks.push(row({ id: artifact.id, status, required: artifact.required, details, recovery }));
     }
+  }
+  for (const observation of hostObservations) {
+    checks.push(row({ ...observation, required: false }));
   }
   const optional = checks.filter((item) => !item.required && item.status !== 'ok').length;
   const unhealthy = checks.filter((item) => item.required && item.status !== 'ok').length;
@@ -326,6 +390,50 @@ export function evaluateInstallation({
   });
 }
 
+function observeCodexHost(manifest, deps = {}) {
+  if (!manifest.intent.features.codexSuperpowers) return [];
+  const home = (deps.homedir || homedir)();
+  const observations = [];
+  const skillPath = join(home, '.codex', 'skills', 'using-superpowers', 'SKILL.md');
+  const skill = inspectContainedPath(home, skillPath, { deps });
+  observations.push({
+    id: 'host.codex.superpowers.skills',
+    status: skill.safety === 'unsafe' ? 'unsafe' : skill.exists ? 'ok' : 'missing',
+    details:
+      skill.safety === 'unsafe'
+        ? skill.details
+        : skill.exists
+          ? 'Mirrored Codex Superpowers skills are visible on this host.'
+          : 'Mirrored Codex Superpowers skills are not visible on this host.',
+  });
+  if (manifest.intent.features.codexSuperpowersGlobal) {
+    const agentsPath = join(home, '.codex', 'AGENTS.md');
+    const agents = inspectContainedPath(home, agentsPath, { deps });
+    let status = agents.safety === 'unsafe' ? 'unsafe' : agents.exists ? 'ok' : 'missing';
+    let details = agents.details;
+    if (status === 'ok') {
+      try {
+        const matches = matchesCodexBootstrapBlock(readFileSync(agentsPath, 'utf8'), {
+          scope: 'global',
+        });
+        status = matches ? 'ok' : 'modified';
+        details = matches
+          ? 'The global Codex bootstrap block matches the installed contract.'
+          : 'The global Codex bootstrap block differs from the installed contract.';
+      } catch (error) {
+        status = 'invalid';
+        details = `The global Codex bootstrap cannot be interpreted: ${error.message}`;
+      }
+    }
+    observations.push({
+      id: 'host.codex.superpowers.agents',
+      status,
+      details: details || 'The global Codex AGENTS bootstrap is not visible on this host.',
+    });
+  }
+  return observations;
+}
+
 export function diagnoseInstallation({ cwd = process.cwd(), packageRoot, deps = {} } = {}) {
   const rootResult = resolveDoctorProjectRoot(cwd, deps);
   if (!rootResult.ok) {
@@ -337,7 +445,19 @@ export function diagnoseInstallation({ cwd = process.cwd(), packageRoot, deps = 
   const projectRoot = rootResult.root;
   const runtimeRoot = packageRoot || resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const manifestPath = join(projectRoot, INSTALL_MANIFEST_PATH);
-  if (!existsSync(manifestPath)) {
+  const manifestPathResult = inspectContainedPath(projectRoot, manifestPath, { deps });
+  if (manifestPathResult.safety === 'unsafe' || manifestPathResult.info?.isSymbolicLink()) {
+    return evaluateInstallation({
+      projectRoot,
+      manifestResult: {
+        ok: false,
+        status: 'unsafe',
+        details:
+          manifestPathResult.details || 'Install manifest must not be read through a symlink.',
+      },
+    });
+  }
+  if (!manifestPathResult.exists) {
     return evaluateInstallation({ projectRoot, manifestResult: { ok: false, status: 'missing' } });
   }
   let manifest;
@@ -363,7 +483,7 @@ export function diagnoseInstallation({ cwd = process.cwd(), packageRoot, deps = 
     projectRoot,
     packageRoot: runtimeRoot,
     manifest,
-    contract: current,
+    contract: { artifacts: manifest.artifacts },
     deps,
   });
   return evaluateInstallation({
@@ -375,5 +495,6 @@ export function diagnoseInstallation({ cwd = process.cwd(), packageRoot, deps = 
     },
     contractResult,
     observations,
+    hostObservations: observeCodexHost(manifest, deps),
   });
 }

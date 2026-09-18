@@ -73,6 +73,13 @@ test('observer is read-only and distinguishes modified, untracked, and unsafe ar
     packageRoot,
     manifest: { intent: { features: {} } },
     contract: { artifacts },
+    deps: {
+      execFileSync(command, args, options) {
+        assert.equal(command, 'git');
+        assert.equal(args[0], 'ls-files');
+        return execFileSync(command, args, options);
+      },
+    },
   });
   assert.equal(observed.byId['a.modified'].contentMatches, false);
   assert.equal(observed.byId['b.untracked'].tracked, false);
@@ -84,4 +91,65 @@ test('observer is read-only and distinguishes modified, untracked, and unsafe ar
     beforeStatus
   );
   assert.equal(relative(projectRoot, packageRoot).startsWith('..'), false);
+});
+
+test('observer classifies a cyclic parent symlink as unsafe instead of missing', () => {
+  const projectRoot = join(scratch, 'cyclic-parent');
+  mkdirSync(projectRoot, { recursive: true });
+  git(projectRoot, ['init']);
+  symlinkSync('loop', join(projectRoot, 'loop'));
+
+  const observed = observeInstallation({
+    projectRoot,
+    packageRoot: projectRoot,
+    manifest: { intent: { features: {} } },
+    contract: {
+      artifacts: [
+        {
+          id: 'cyclic.parent',
+          path: 'loop/file.txt',
+          kind: 'file',
+          ownership: 'reference',
+          required: true,
+          contract: 'reference',
+        },
+      ],
+    },
+  });
+
+  assert.equal(observed.byId['cyclic.parent'].pathSafety, 'unsafe');
+});
+
+test('observer accepts a healthy relative symlink to the declared in-project package target', () => {
+  const projectRoot = join(scratch, 'healthy-symlink');
+  const packageRoot = join(projectRoot, 'node_modules', '@kburson', 'ai-task-manager');
+  const target = join(packageRoot, 'skill', 'adapters', 'codex');
+  const link = join(projectRoot, '.agents', 'skills', 'task');
+  mkdirSync(target, { recursive: true });
+  mkdirSync(join(projectRoot, '.agents', 'skills'), { recursive: true });
+  symlinkSync(relative(join(projectRoot, '.agents', 'skills'), target), link);
+  git(projectRoot, ['init']);
+  git(projectRoot, ['add', '.agents/skills/task']);
+
+  const observed = observeInstallation({
+    projectRoot,
+    packageRoot,
+    manifest: { intent: { features: {} } },
+    contract: {
+      artifacts: [
+        {
+          id: 'provider.codex.skill',
+          path: '.agents/skills/task',
+          kind: 'symlink',
+          ownership: 'generated',
+          required: true,
+          contract: 'codex-skill',
+        },
+      ],
+    },
+  });
+
+  assert.equal(observed.byId['provider.codex.skill'].symlinkSafety, 'safe');
+  assert.equal(observed.byId['provider.codex.skill'].contentMatches, true);
+  assert.equal(observed.byId['provider.codex.skill'].tracked, true);
 });

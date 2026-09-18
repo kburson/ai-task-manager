@@ -57,6 +57,55 @@ test('evaluator exposes a closed status matrix with deterministic recovery', () 
   assert.match(report.checks.find(({ id }) => id === 'b.untracked').recovery, /commit b/);
 });
 
+test('unsafe path facts take precedence over missing and invalid symlinks stay invalid', () => {
+  const artifacts = [
+    { id: 'a.escape', path: '../escape', required: true },
+    { id: 'b.not-link', path: 'not-link', required: true },
+  ];
+  const report = evaluateInstallation({
+    projectRoot: '/repo',
+    manifestResult: { ok: true, tracked: true, manifest: { artifacts } },
+    contractResult: { compatible: true },
+    observations: {
+      byId: {
+        'a.escape': { exists: false, tracked: false, pathSafety: 'unsafe' },
+        'b.not-link': {
+          exists: true,
+          tracked: true,
+          symlinkSafety: 'invalid',
+          contentMatches: false,
+          details: 'Declared symlink is not a symlink.',
+        },
+      },
+    },
+  });
+
+  assert.equal(report.checks.find(({ id }) => id === 'a.escape').status, 'unsafe');
+  assert.equal(report.checks.find(({ id }) => id === 'b.not-link').status, 'invalid');
+});
+
+test('optional host observations are explicit but do not make installation unhealthy', () => {
+  const report = evaluateInstallation({
+    projectRoot: '/repo',
+    manifestResult: { ok: true, tracked: true, manifest: { artifacts: [] } },
+    contractResult: { compatible: true },
+    observations: { byId: {} },
+    hostObservations: [
+      {
+        id: 'host.codex.superpowers.skills',
+        status: 'missing',
+        details: 'Mirrored Codex Superpowers skills are not visible.',
+      },
+    ],
+  });
+
+  const host = report.checks.at(-1);
+  assert.equal(host.id, 'host.codex.superpowers.skills');
+  assert.equal(host.required, false);
+  assert.equal(report.healthy, true);
+  assert.equal(report.summary.optional, 1);
+});
+
 test('missing or invalid manifests do not infer provider artifacts', () => {
   for (const status of ['missing', 'invalid']) {
     const report = evaluateInstallation({
