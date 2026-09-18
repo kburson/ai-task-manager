@@ -76,17 +76,20 @@ test('clause index is independently pinned to the spec and decomposes every requ
   );
 });
 
-test('traceability names every clause without claiming the pending WBS 6 executions passed', () => {
+test('traceability names every clause and requires completed WBS 6 execution evidence', () => {
   const index = json('spec-clause-index.json');
   const traceability = json('oracle-traceability.json');
-  const result = assertOracleTraceability({ index, traceability });
+  const result = assertOracleTraceability({ index, traceability, requireAllExecuted: true });
 
   assert.equal(result.mappingCount, index.clauses.length);
-  assert.equal(result.executedCount > 0, true, 'WBS 5 integrity probes must execute');
-  assert.equal(result.pendingCount > 0, true, 'complete semantic execution belongs to WBS 6');
+  assert.equal(result.executedCount, index.clauses.length);
+  assert.equal(result.pendingCount, 0);
   assert.equal(traceability.clauseIndexSha256, digestJson(index));
+
+  const pending = clone(traceability);
+  pending.mappings[0].executionStatus = 'pending-wbs-6';
   assert.throws(
-    () => assertOracleTraceability({ index, traceability, requireAllExecuted: true }),
+    () => assertOracleTraceability({ index, traceability: pending, requireAllExecuted: true }),
     /oracle-traceability:unexecuted-identity/
   );
 });
