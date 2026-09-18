@@ -275,7 +275,12 @@ test('candidate decisions reject observations outside their window or bound to a
 });
 
 test('multiple required subjects from one authority source require distinct typed subjects', async () => {
-  const { buildCandidateDecision, validateCandidateDecision } = await oracle();
+  const {
+    buildCandidateDecision,
+    renderCandidateExplanation,
+    validateCandidateDecision,
+    validateCandidateExplanation,
+  } = await oracle();
   const value = buildCandidateDecision({ fixture: fixture('resume'), scenario: 'indeterminate' });
   value.blockers.push(clone(value.blockers[0]));
   value.humanDecision.requests.push(clone(value.humanDecision.requests[0]));
@@ -288,6 +293,18 @@ test('multiple required subjects from one authority source require distinct type
   value.blockers[0].args.subject = { issue: value.issue };
   value.blockers[1].args.subject = { issue: value.issue + 1 };
   assert.equal(validateCandidateDecision(value), value);
+
+  const envelope = renderCandidateExplanation({ decision: value });
+  assert.deepEqual(
+    envelope.result.blockers.map(({ args }) => args.subject.issue),
+    [value.issue, value.issue + 1]
+  );
+
+  delete envelope.result.blockers[1].args.subject;
+  assert.throws(
+    () => validateCandidateExplanation(envelope),
+    /guidance-candidate:presentation-blocker-subject-required/
+  );
 
   value.blockers[1].args.subject.issue = value.issue;
   assert.throws(
