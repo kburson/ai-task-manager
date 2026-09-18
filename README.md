@@ -179,6 +179,32 @@ The installer writes stable skill stubs by default:
 
 Grok projects must be trusted before project hooks run. See the [Grok provider guide](docs/guides/grok-provider.md) for hook trust, session identity, and transcript behavior.
 
+## Uninstall From a Project
+
+Remove project integrations before uninstalling the npm package:
+
+```bash
+npx ai-task-manager uninstall --dry-run
+npx ai-task-manager uninstall
+npm uninstall -D @kburson/ai-task-manager
+```
+
+The default cleanup removes AITM-owned skill stubs or symlinks, hook entries,
+package-specific Claude permissions, the generated Claude task command, and the
+project-local Codex bootstrap block. It preserves unrelated settings plus durable
+`.ai-task-manager/` configuration, memory, templates, and GitHub issue templates.
+Modified generated files are left in place and stop the cleanup before any file
+is changed.
+
+Use `--agent claude|codex|grok|all` to limit provider cleanup. To also delete
+durable AITM data, transient `.tmp/aitm/` state, and unmodified AITM issue
+templates, preview and explicitly confirm purge mode:
+
+```bash
+npx ai-task-manager uninstall --purge --dry-run
+npx ai-task-manager uninstall --purge --yes
+```
+
 ### Optional Codex Superpowers Bootstrap
 
 AITM can optionally mirror existing Claude Code Superpowers skills into Codex and add bootstrap instructions for new Codex sessions:
