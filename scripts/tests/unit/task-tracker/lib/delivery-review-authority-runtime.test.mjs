@@ -54,7 +54,7 @@ test('runtime consumes genuine workflow records and projects exact waiver author
     '## ⏱ Timing Log',
     '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
     '|---|---|---|---|---|---|---|---|',
-    `| 2026-09-17 20:00:00 -05:00 | review:waived |  |  |  | 100 | semantic resident action waived — requirement review.semantic-resident; authority record ${recordId}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${recordId}" revision="1" --> | <!-- row-sec: a=0 i=0 -->`,
+    `| 2026-09-17 20:00:00 -05:00 | review:waived |  |  |  | 100 | semantic resident action waived — requirement review.semantic-resident; authority record ${recordId}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${recordId}" revision="1" accepted-sha="${head}" --> | <!-- row-sec: a=0 i=0 -->`,
   ].join('\n');
 
   const result = await resolveLiveDeliveryReviewAuthority({

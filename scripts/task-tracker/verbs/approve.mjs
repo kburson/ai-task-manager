@@ -54,6 +54,9 @@ import {
   hasAcceptedReviewEvidence,
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
+import { resolveDeliveryReviewAuthority } from '../lib/delivery-authority.mjs';
+import { terminalReviewHandoffOutcome } from '../lib/terminal-review-handoff.mjs';
+import { computeScopeIdentity } from '../lib/workflow-policy/scope-identity.mjs';
 
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
@@ -68,7 +71,21 @@ function removeStaleApprovalCarriers(body) {
   return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
 }
 
-async function isSemanticReviewWaived({ body, issueNumber, repo, now, deps }) {
+async function resolveSemanticReviewWaiverAuthority({
+  body,
+  issueNumber,
+  repo,
+  now,
+  approvedSha,
+  comments,
+  deps,
+}) {
+  const timingComments = Array.isArray(comments)
+    ? comments.filter(({ body: commentBody }) => String(commentBody || '').includes('⏱ Timing Log'))
+    : [];
+  if (timingComments.length !== 1) return null;
+  const terminalReviewOutcome = terminalReviewHandoffOutcome(timingComments[0].body);
+  if (terminalReviewOutcome?.outcome !== 'waived') return null;
   const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
   const policy = await loadBoundary({
     repository: repo,
@@ -81,7 +98,19 @@ async function isSemanticReviewWaived({ body, issueNumber, repo, now, deps }) {
     runtime:
       deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: repo }),
   });
-  return policy?.isWaived('review.semantic-resident') === true;
+  try {
+    const reviewAuthority = resolveDeliveryReviewAuthority({
+      agentReviewPassed: false,
+      terminalReviewOutcome,
+      testReceiptSha: approvedSha,
+      acceptedReviewSha: null,
+      workflowPolicy: policy,
+    });
+    if (typeof policy.scopeIdentity !== 'string' || policy.scopeIdentity.length === 0) return null;
+    return Object.freeze({ reviewAuthority, scopeIdentity: policy.scopeIdentity });
+  } catch {
+    return null;
+  }
 }
 
 // Re-exports for back-compat with existing tests/callers that imported the
@@ -106,13 +135,20 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — closure-form body write; mutate is reapplied against the FRESH base
 // on every push attempt, preserving concurrent writes.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate, allowUnverifiedTicks }) {
+async function defaultMutateIssueBody({
+  issueNumber,
+  repo,
+  mutate,
+  allowUnverifiedTicks,
+  validateFreshBase,
+}) {
   return mutateIssueBody({
     issueNumber,
     repo,
     mutate,
     deps: { pexec },
     allowUnverifiedTicks,
+    validateFreshBase,
   });
 }
 
@@ -245,19 +281,22 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-      const semanticReviewWaived = isAgentReviewComplete(body)
-        ? false
-        : await isSemanticReviewWaived({
-            body,
-            issueNumber,
-            repo: cfg.repo,
-            now: nowIso(),
-            deps,
-          });
       const approvedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
       if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
       }
+      const semanticReviewWaiverAuthority = isAgentReviewComplete(body)
+        ? null
+        : await resolveSemanticReviewWaiverAuthority({
+            body,
+            issueNumber,
+            repo: cfg.repo,
+            now: nowIso(),
+            approvedSha,
+            comments: await fetchComments({ issueNumber, repo: cfg.repo }),
+            deps,
+          });
+      const semanticReviewWaived = semanticReviewWaiverAuthority !== null;
       const preTickedByHuman = lifecycleItemState({
         body,
         key: 'passed-final-review',
@@ -464,6 +503,28 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         repo: cfg.repo,
         mutate: stamp,
         allowUnverifiedTicks: true,
+        validateFreshBase: (freshBase) => {
+          if (!semanticReviewWaiverAuthority) {
+            if (isAgentReviewComplete(freshBase)) return;
+            throw new Error(
+              `approve: semantic review waiver authority changed before approval write`
+            );
+          }
+          const freshScopeIdentity = computeScopeIdentity({
+            repository: cfg.repo,
+            issue: Number(issueNumber),
+            body: freshBase,
+          });
+          const freshReason = agentReviewIncompleteReason(freshBase);
+          if (
+            freshReason === 'review-failed' ||
+            freshScopeIdentity !== semanticReviewWaiverAuthority.scopeIdentity
+          ) {
+            throw new Error(
+              `approve: semantic review waiver authority changed before approval write`
+            );
+          }
+        },
       });
       // #655 — read-back verification. The write call not throwing is NOT proof
       // the `aitm-review-approved` marker persisted (the #652 silent-success

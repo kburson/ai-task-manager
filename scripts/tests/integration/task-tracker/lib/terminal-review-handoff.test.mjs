@@ -53,14 +53,15 @@ test('terminal review outcome distinguishes passed and waived authority', () => 
         .replace('review:passed', 'review:waived')
         .replace(
           'agent review passed',
-          'semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived'
+          `semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="01M2H000000000000000000001" revision="2" accepted-sha="${'a'.repeat(40)}" -->`
         )
     ),
     {
       outcome: 'waived',
       evidence: {
         requirementId: 'review.semantic-resident',
-        authority: { recordId: '01M2H000000000000000000001' },
+        authority: { recordId: '01M2H000000000000000000001', revision: 2 },
+        acceptedSha: 'a'.repeat(40),
       },
     }
   );
@@ -77,6 +78,7 @@ test('Review waiver emitter and terminal parser preserve structured authority re
     evidence: {
       requirementId: 'review.semantic-resident',
       authority: { recordId: '01M2H000000000000000000001', revision: 3 },
+      acceptedSha: 'a'.repeat(40),
     },
     deps: {
       safePostTiming: async (_target, row) => rows.push(row),
@@ -94,6 +96,7 @@ test('Review waiver emitter and terminal parser preserve structured authority re
     evidence: {
       requirementId: 'review.semantic-resident',
       authority: { recordId: '01M2H000000000000000000001', revision: 3 },
+      acceptedSha: 'a'.repeat(40),
     },
   });
 });

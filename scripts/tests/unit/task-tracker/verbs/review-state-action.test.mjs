@@ -189,6 +189,7 @@ test('a current semantic-review waiver returns waived without running validators
     {
       issue: { value: 1629 },
       body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+      headSha: { value: 'a'.repeat(40) },
       stateVisitId: 'review:1',
     },
     { correlation: { key: 'review:1' } }
@@ -198,6 +199,7 @@ test('a current semantic-review waiver returns waived without running validators
     status: 'waived',
     evidence: {
       authority,
+      acceptedSha: 'a'.repeat(40),
       requirementId: 'review.semantic-resident',
     },
   });
@@ -207,6 +209,7 @@ test('a current semantic-review waiver returns waived without running validators
   );
   assert.deepEqual(calls[1][1].evidence, {
     authority,
+    acceptedSha: 'a'.repeat(40),
     requirementId: 'review.semantic-resident',
   });
 });
@@ -221,6 +224,7 @@ test('waived semantic review emits a truthful durable timeline row', async () =>
     fullWordMarker: 20,
     evidence: {
       authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+      acceptedSha: 'a'.repeat(40),
       requirementId: 'review.semantic-resident',
     },
     deps: {
@@ -235,13 +239,57 @@ test('waived semantic review emits a truthful durable timeline row', async () =>
   );
   assert.match(rows[0].description, /review\.semantic-resident/);
   assert.match(rows[0].description, /01M2H000000000000000000001/);
+  assert.match(rows[0].description, new RegExp(`accepted-sha="${'a'.repeat(40)}"`));
   assert.doesNotMatch(rows[0].description, /passed|REVIEW_COMPLETE/i);
+});
+
+test('waived semantic review retires the active failure carrier without stamping pass evidence', async () => {
+  let body = [
+    '- [ ] Agent Review Passed',
+    '<!-- aitm-review-failed:start -->',
+    '<!-- aitm-review-failed-meta ts="2026-09-15T00:30:00.000Z" -->',
+    '**Agent Review Gate failed.**',
+    '- historical objection',
+    '<!-- aitm-review-failed:end -->',
+  ].join('\n');
+  const rows = [];
+
+  await emitReviewGateWaivedTimeline({
+    target: '#1629',
+    issueNumber: 1629,
+    repo: 'kburson/ai-task-manager',
+    ts: '2026-09-15T01:00:00.000Z',
+    delta: { activeSec: 7, idleSec: 3 },
+    wordMarker: 10,
+    fullWordMarker: 20,
+    evidence: {
+      authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+      acceptedSha: 'a'.repeat(40),
+      requirementId: 'review.semantic-resident',
+    },
+    deps: {
+      mutateBodyFn: async ({ mutate }) => {
+        body = mutate(body);
+        return { body };
+      },
+      safePostTiming: async (_target, row) => rows.push(row),
+      buildRow: (row) => row,
+    },
+  });
+
+  assert.doesNotMatch(body, /aitm-review-failed/);
+  assert.doesNotMatch(body, /gate="agent-review"[^>]*result="pass"/);
+  assert.deepEqual(
+    rows.map(({ event }) => event),
+    ['review:waived']
+  );
 });
 
 test('verify revalidates a durable waiver and treats revocation as incomplete', async () => {
   const snapshot = {
     issue: { value: 1629 },
     body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+    headSha: { value: 'a'.repeat(40) },
     stateVisitId: 'review:1',
     actionLedger: {
       status: 'clean',
@@ -261,12 +309,53 @@ test('verify revalidates a durable waiver and treats revocation as incomplete', 
 
   assert.deepEqual(await reviewAgentValidationAction.verify(context(true), snapshot), {
     status: 'waived',
-    evidence: { authority, requirementId: 'review.semantic-resident' },
+    evidence: {
+      authority,
+      acceptedSha: 'a'.repeat(40),
+      requirementId: 'review.semantic-resident',
+    },
   });
   assert.deepEqual(await reviewAgentValidationAction.verify(context(false), snapshot), {
     status: 'incomplete',
     reason: 'not-run',
   });
+});
+
+test('verify re-runs a durable waiver when a stale failure carrier still needs retirement', async () => {
+  const snapshot = {
+    issue: { value: 1629 },
+    body: {
+      value: [
+        '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->',
+        '<!-- aitm-review-failed:start -->',
+        '**Agent Review Gate failed.**',
+        '<!-- aitm-review-failed:end -->',
+      ].join('\n'),
+    },
+    headSha: { value: 'a'.repeat(40) },
+    stateVisitId: 'review:1',
+    actionLedger: {
+      status: 'clean',
+      events: [{ phase: 'waived', correlation: { key: 'review:1' } }],
+    },
+  };
+
+  const result = await reviewAgentValidationAction.verify(
+    {
+      review: {
+        repo: 'kburson/ai-task-manager',
+        loadWorkflowBoundary: async () => ({
+          isWaived: () => true,
+          decision: () => ({
+            authority: { recordId: 'record-1', revision: 1 },
+          }),
+        }),
+      },
+    },
+    snapshot
+  );
+
+  assert.deepEqual(result, { status: 'incomplete', reason: 'review-failed' });
 });
 
 test('Review entry is forward while an in-Review retry is actions-only', () => {

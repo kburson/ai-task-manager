@@ -43,7 +43,11 @@ import { isAcWaived } from '../lib/issue-kind.mjs';
 // action runs the gate; this verb supplies its command-level mutation/timing
 // capabilities while the Cursor owns entry and actions-only retry ordering.
 import '../lib/agent-review/bootstrap.mjs';
-import { runAgentReviewGate } from '../lib/agent-review/review-gate.mjs';
+import {
+  clearReviewFailed,
+  hasReviewFailed,
+  runAgentReviewGate,
+} from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
 import {
   classifyReviewCursorResult,
@@ -694,6 +698,8 @@ export async function emitReviewGatePassTimeline({
 
 export async function emitReviewGateWaivedTimeline({
   target,
+  issueNumber,
+  repo,
   ts,
   delta,
   wordMarker,
@@ -701,13 +707,32 @@ export async function emitReviewGateWaivedTimeline({
   evidence,
   deps,
 }) {
-  const { safePostTiming, buildRow: buildRowFn = buildRow } = deps;
+  const {
+    mutateBodyFn,
+    safePostTiming,
+    buildRow: buildRowFn = buildRow,
+    pexec = reviewPexec,
+  } = deps;
   const requirementId = evidence?.requirementId || 'review.semantic-resident';
   const authorityId = evidence?.authority?.recordId || 'unknown';
   const authorityRevision = evidence?.authority?.revision;
-  const authorityMarker = Number.isSafeInteger(authorityRevision)
-    ? ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" -->`
-    : '';
+  const acceptedSha = evidence?.acceptedSha;
+  const authorityMarker =
+    Number.isSafeInteger(authorityRevision) && /^[0-9a-f]{40}$/.test(acceptedSha || '')
+      ? ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" accepted-sha="${acceptedSha}" -->`
+      : '';
+  if (typeof mutateBodyFn === 'function') {
+    const result = await mutateBodyFn({
+      issueNumber,
+      repo,
+      mutate: clearReviewFailed,
+      timeout: GH_API_TIMEOUT_MS,
+      deps: { pexec },
+    });
+    if (hasReviewFailed(result?.body)) {
+      throw new Error('review: waived outcome could not retire aitm-review-failed');
+    }
+  }
   await safePostTiming(
     target,
     buildRowFn({
@@ -1531,12 +1556,14 @@ export async function verbReview(ctx) {
         onWaived: async ({ ts, evidence }) => {
           await emitReviewGateWaivedTimeline({
             target,
+            issueNumber: issueNum,
+            repo: cfg.repo,
             ts,
             delta: deriveStateMoveDelta(rawBody, ts),
             wordMarker: s.lastWordMarker ?? 0,
             fullWordMarker: stateFullWordMarker(s),
             evidence,
-            deps: { safePostTiming, buildRow },
+            deps: { mutateBodyFn, safePostTiming, buildRow, pexec },
           });
         },
       },

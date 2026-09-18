@@ -5,7 +5,7 @@ import { closesTerminalReviewHandoff } from './timing-events/index.mjs';
 const WAIVER_DESCRIPTION_RE =
   /requirement ([a-z0-9._-]+); authority record ([A-Z0-9]+); result=waived/i;
 const WAIVER_AUTHORITY_MARKER_RE =
-  /<!--\s*aitm-review-waiver\s+requirement="([a-z0-9._-]+)"\s+record-id="([0-9A-HJKMNP-TV-Z]{26})"\s+revision="([1-9][0-9]*)"\s*-->/i;
+  /<!--\s*aitm-review-waiver\s+requirement="([a-z0-9._-]+)"\s+record-id="([0-9A-HJKMNP-TV-Z]{26})"\s+revision="([1-9][0-9]*)"\s+accepted-sha="([0-9a-f]{40})"\s*-->/i;
 
 export function terminalReviewHandoffOutcome(body) {
   let outcome = null;
@@ -27,6 +27,7 @@ export function terminalReviewHandoffOutcome(body) {
                 recordId: structured[2],
                 revision: Number(structured[3]),
               }),
+              acceptedSha: structured[4],
             })
           : legacy
             ? Object.freeze({

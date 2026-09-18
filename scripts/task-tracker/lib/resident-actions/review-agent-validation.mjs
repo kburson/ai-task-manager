@@ -59,9 +59,10 @@ async function loadSemanticReviewPolicy(context, snapshot) {
   });
 }
 
-function waivedEvidence(policy) {
+function waivedEvidence(policy, snapshot) {
   return {
     authority: policy.decision(SEMANTIC_REVIEW_REQUIREMENT)?.authority,
+    acceptedSha: valueOf(snapshot?.headSha),
     requirementId: SEMANTIC_REVIEW_REQUIREMENT,
   };
 }
@@ -77,7 +78,11 @@ export const reviewAgentValidationAction = Object.freeze({
       if (currentEvent(snapshot)?.phase === 'waived') {
         const policy = await loadSemanticReviewPolicy(context, snapshot);
         if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
-          return { status: 'waived', evidence: waivedEvidence(policy) };
+          // A durable waived ledger event proves the action decision, but an
+          // active failure carrier still needs the waived self-loop to run so
+          // onWaived can retire that obsolete blocker.
+          if (reason === 'review-failed') return { status: 'incomplete', reason };
+          return { status: 'waived', evidence: waivedEvidence(policy, snapshot) };
         }
       }
       return { status: 'incomplete', reason };
@@ -111,7 +116,7 @@ export const reviewAgentValidationAction = Object.freeze({
 
     const policy = await loadSemanticReviewPolicy(context, snapshot);
     if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
-      const evidence = waivedEvidence(policy);
+      const evidence = waivedEvidence(policy, snapshot);
       if (typeof capabilities.onWaived === 'function') {
         await capabilities.onWaived({
           issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
