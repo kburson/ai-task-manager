@@ -96,6 +96,33 @@ test('single-conflict retry: race-lose once on a non-overlapping section, then s
   assert.ok(srv.current.includes('B-theirs'));
 });
 
+test('async fresh-base validation reruns against every retry base', async () => {
+  const base = ['header', 'A', 'middle', 'B', 'footer'].join('\n');
+  const srv = makeServer(stampBodyVersion(base, 5));
+  const seen = [];
+  let firstPushSeen = false;
+  const wrappedPush = async (repo, issue, body) => {
+    await srv.pushBody(repo, issue, body);
+    if (!firstPushSeen) {
+      firstPushSeen = true;
+      srv.inject(stampBodyVersion(base.replace('B', 'B-theirs'), 7));
+    }
+  };
+
+  const result = await versionedWriteBody({
+    issueNumber: 10,
+    repo: 'o/r',
+    mutate: (body) => body.replace('A', 'A-ours'),
+    validateFreshBaseAsync: async (freshBase) => seen.push(freshBase),
+    deps: { fetchBody: srv.fetchBody, pushBody: wrappedPush },
+  });
+
+  assert.equal(result.status, 'ok');
+  assert.equal(seen.length, 2);
+  assert.doesNotMatch(seen[0], /B-theirs/);
+  assert.match(seen[1], /B-theirs/);
+});
+
 // ── overlapping-diff refusal ─────────────────────────────────────────────────
 
 test('overlapping-diff refusal: both edits hit the same lines', async () => {

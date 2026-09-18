@@ -99,6 +99,7 @@ export async function mutateIssueBody({
   allowLargeShrink = false,
   allowMarkerAdvance = [],
   validateFreshBase,
+  validateFreshBaseAsync,
   expectedVersion,
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
@@ -201,5 +202,6 @@ export async function mutateIssueBody({
     maxRetries,
     expectedVersion,
     validateMutation,
+    validateFreshBaseAsync,
   });
 }

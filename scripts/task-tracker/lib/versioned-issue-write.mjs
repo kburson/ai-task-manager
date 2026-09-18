@@ -305,6 +305,7 @@ export async function versionedWriteBody({
   maxRetries = DEFAULT_MAX_RETRIES,
   expectedVersion,
   validateMutation,
+  validateFreshBaseAsync,
 } = {}) {
   if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
@@ -356,6 +357,9 @@ export async function versionedWriteBody({
       ourLocal = await mutate(ourBase);
       assertMutateReturnedString({ ourLocal, issueNumber });
       checkStaleInput({ ourLocal, remoteVersion, issueNumber });
+      if (typeof validateFreshBaseAsync === 'function') {
+        await validateFreshBaseAsync(ourBase, ourLocal);
+      }
       // #697 — no-op short-circuit, first attempt. The retry path already
       // returns 'no-op' when the previous mutate changed nothing; without this
       // mirror check an unchanged first-attempt result still pushed a pure
@@ -386,11 +390,17 @@ export async function versionedWriteBody({
         // (#655) as the verified live body so callers can read-back the marker
         // they expected to persist — no extra GitHub round-trip: `remote` was
         // already fetched at the top of this iteration (line ~279).
+        if (typeof validateFreshBaseAsync === 'function') {
+          await validateFreshBaseAsync(remoteBase, remoteBase);
+        }
         return { status: 'no-op', attempts, version: remoteVersion, body: remote };
       }
       ourBase = remoteBase;
       ourLocal = rebaseOnto({ ourEdit, theirEdit, remote: remoteBase });
       if (typeof validateMutation === 'function') validateMutation(ourBase, ourLocal);
+      if (typeof validateFreshBaseAsync === 'function') {
+        await validateFreshBaseAsync(ourBase, ourLocal);
+      }
     }
 
     const targetVersion = remoteVersion + 1;

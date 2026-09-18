@@ -222,7 +222,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
   const recoveryEntryAllowance = 1;
-  const effectiveCeiling = ENTRY_CEILING + recoveryEntryAllowance;
+  // #1693 adds the standalone doctor entry point and its read-only observer.
+  const doctorRuntimeAllowance = 2;
+  const effectiveCeiling = ENTRY_CEILING + recoveryEntryAllowance + doctorRuntimeAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

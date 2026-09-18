@@ -143,7 +143,7 @@ function runDirectoryDeliver({ projection, body = 'directory body without approv
     resolveLineage: async () => ({ parentIssueNumber: null, deliveryTarget: 'trunk' }),
     getCurrentBranch: async () => 'codex/1144-directory-delivery',
     getLocalHeadSha: async () => SHA,
-    resolveTestReceiptSha: async () => SHA,
+    resolveTestReceiptSha: () => SHA,
     listPullRequests: async () => [{ number: 1400 }],
     fetchPullRequest: async () => ({
       number: 1400,

@@ -93,6 +93,9 @@ export function resolveDeliveryReviewAuthority({
   if (!isObject(recorded) || recorded.requirementId !== SEMANTIC_REVIEW_REQUIREMENT) {
     failReviewAuthority('requirement');
   }
+  if (!SHA_RE.test(recorded.acceptedSha || '') || recorded.acceptedSha !== testReceiptSha) {
+    failReviewAuthority('accepted-head');
+  }
   if (
     typeof recorded.authority?.recordId !== 'string' ||
     !RECORD_ID_RE.test(recorded.authority.recordId) ||
