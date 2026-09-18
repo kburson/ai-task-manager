@@ -92,6 +92,29 @@ test('Incorporated review evidence is strict, exact-SHA, and resolved against cu
   assert.equal(resolverInput.humanApprovalEvidence, null);
 });
 
+test('Incorporated review evidence accepts typed waiver authority without a review receipt', () => {
+  const withoutReviewReceipt = verificationBody()
+    .replace(/\n?<!-- aitm-verification-receipt stage="review"[^>]+-->/, '')
+    .replace('result="pass"', 'result="waived"');
+  const result = resolveIncorporatedReviewEvidence({
+    body: withoutReviewReceipt,
+    issueNumber: 1403,
+    expectedSha: HEAD,
+    reviewAuthority: {
+      outcome: 'waived',
+      acceptedSha: HEAD,
+      authority: { recordId: '01M2H000000000000000000001', revision: 2 },
+    },
+    reviewAuthorizationResolver: () => ({
+      mode: 'full-auto',
+      standing: true,
+      source: 'session',
+    }),
+  });
+
+  assert.equal(result.acceptedSha, HEAD);
+});
+
 test('Incorporated review evidence rejects malformed claims, red commands, and ambiguous tips', () => {
   const minimal = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
     'base64url'

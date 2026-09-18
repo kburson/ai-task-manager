@@ -17,6 +17,17 @@ export const INTENT_IDS = [
   '01ARZ3NDEKTSV4RRFFQ69G5FAW',
   '01ARZ3NDEKTSV4RRFFQ69G5FAX',
 ];
+export const WAIVER_RECORD_ID = '01M2H000000000000000000001';
+export const WAIVED_TIMING_COMMENT = {
+  id: 'timing-comment',
+  createdAt: '2026-08-22T13:58:00.000Z',
+  body: [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-08-22 08:59:00 -05:00 | review:waived |  |  |  | 100 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n'),
+};
 
 export function cfg() {
   return {
@@ -103,6 +114,16 @@ export function makeHarness(options = {}) {
     fetchFailure: options.fetchFailure ?? false,
     historyMergeMethod: options.historyMergeMethod ?? 'squash',
     agentReviewPassed: options.agentReviewPassed ?? true,
+    workflowPolicy:
+      options.workflowPolicy ??
+      Object.freeze({
+        status: 'policy-compatible',
+        isWaived: (id) => id === 'review.semantic-resident',
+        decision: () => ({
+          outcome: 'waived',
+          authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+        }),
+      }),
     reviewAuthorization:
       options.reviewAuthorization ??
       Object.freeze({ mode: 'full-auto', standing: true, source: 'test' }),
@@ -144,6 +165,9 @@ export function makeHarness(options = {}) {
     },
     async resolveAgentReviewPassed() {
       return data.agentReviewPassed;
+    },
+    async loadWorkflowBoundary() {
+      return data.workflowPolicy;
     },
     async listPullRequests({ headRef }) {
       calls.listPullRequests += 1;

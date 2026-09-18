@@ -118,6 +118,45 @@ test('preflight returns the exact frozen delivery plan for one accepted head', (
   assert.equal(Object.isFrozen(result.commitText), true);
 });
 
+test('preflight preserves typed waived review authority without a passed marker', () => {
+  const input = snapshot();
+  input.issue.agentReviewPassed = false;
+  input.issue.reviewAuthority = {
+    outcome: 'waived',
+    acceptedSha: HEAD,
+    authority: { recordId: '01M2H000000000000000000001', revision: 2 },
+  };
+
+  const result = validateDeliveryPreflight(input);
+
+  assert.equal(result.issue.agentReviewPassed, false);
+  assert.deepEqual(result.issue.reviewAuthority, input.issue.reviewAuthority);
+  assert.equal(result.expectedHeadSha, HEAD);
+});
+
+test('preflight rejects malformed typed review authority', () => {
+  for (const reviewAuthority of [
+    { outcome: 'waived', acceptedSha: HEAD, authority: { recordId: 'record-1' } },
+    { outcome: 'missing', acceptedSha: HEAD, authority: null },
+  ]) {
+    const input = snapshot();
+    input.issue.agentReviewPassed = false;
+    input.issue.reviewAuthority = reviewAuthority;
+    expectPreflightCategory(input, 'agent-review-evidence');
+  }
+});
+
+test('preflight rejects a well-formed waived authority at the wrong head', () => {
+  const input = snapshot();
+  input.issue.agentReviewPassed = false;
+  input.issue.reviewAuthority = {
+    outcome: 'waived',
+    acceptedSha: OTHER_HEAD,
+    authority: { recordId: '01M2H000000000000000000001', revision: 2 },
+  };
+  expectPreflightCategory(input, 'head-mismatch');
+});
+
 test('preflight requires every named snapshot field explicitly', () => {
   for (const key of [
     'issue',

@@ -704,6 +704,10 @@ export async function emitReviewGateWaivedTimeline({
   const { safePostTiming, buildRow: buildRowFn = buildRow } = deps;
   const requirementId = evidence?.requirementId || 'review.semantic-resident';
   const authorityId = evidence?.authority?.recordId || 'unknown';
+  const authorityRevision = evidence?.authority?.revision;
+  const authorityMarker = Number.isSafeInteger(authorityRevision)
+    ? ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" -->`
+    : '';
   await safePostTiming(
     target,
     buildRowFn({
@@ -714,7 +718,7 @@ export async function emitReviewGateWaivedTimeline({
       deltaWords: 0,
       wordMarker,
       fullWordMarker,
-      description: `semantic resident action waived — requirement ${requirementId}; authority record ${authorityId}; result=waived`,
+      description: `semantic resident action waived — requirement ${requirementId}; authority record ${authorityId}; result=waived${authorityMarker}`,
     })
   );
 }
