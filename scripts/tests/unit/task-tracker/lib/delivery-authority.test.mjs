@@ -7,6 +7,7 @@ import {
   DeliveryAuthorityError,
   resolveAcceptedDeliveryAuthority,
   resolveAcceptedDeliveryHead,
+  resolveDeliveryReviewAuthority,
 } from '../../../../task-tracker/lib/delivery-authority.mjs';
 
 const ACCEPTED = 'a'.repeat(40);
@@ -36,6 +37,104 @@ function input(overrides = {}) {
     ...overrides,
   };
 }
+
+const WAIVER_RECORD_ID = '01M2H000000000000000000001';
+
+function waivedReviewInput(overrides = {}) {
+  const authority = { recordId: WAIVER_RECORD_ID, revision: 2 };
+  return {
+    agentReviewPassed: false,
+    terminalReviewOutcome: {
+      outcome: 'waived',
+      evidence: {
+        requirementId: 'review.semantic-resident',
+        authority: { recordId: WAIVER_RECORD_ID },
+      },
+    },
+    testReceiptSha: ACCEPTED,
+    acceptedReviewSha: null,
+    workflowPolicy: {
+      status: 'policy-compatible',
+      isWaived: (id) => id === 'review.semantic-resident',
+      decision: () => ({ outcome: 'waived', authority }),
+    },
+    ...overrides,
+  };
+}
+
+test('resolves ordinary passed and current waived review authority without conflating outcomes', () => {
+  const passed = resolveDeliveryReviewAuthority({
+    agentReviewPassed: true,
+    terminalReviewOutcome: { outcome: 'passed', evidence: null },
+    testReceiptSha: ACCEPTED,
+    acceptedReviewSha: ACCEPTED,
+    workflowPolicy: null,
+  });
+  assert.deepEqual(passed, { outcome: 'passed', acceptedSha: ACCEPTED, authority: null });
+
+  const waived = resolveDeliveryReviewAuthority(waivedReviewInput());
+  assert.deepEqual(waived, {
+    outcome: 'waived',
+    acceptedSha: ACCEPTED,
+    authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+  });
+  assert.ok(Object.isFrozen(waived));
+  assert.ok(Object.isFrozen(waived.authority));
+});
+
+test('waived review authority fails closed on missing, stale, mismatched, or unavailable authority', () => {
+  const cases = [
+    ['terminal-outcome', { terminalReviewOutcome: null }],
+    ['terminal-outcome', { terminalReviewOutcome: { outcome: 'passed', evidence: null } }],
+    ['policy', { workflowPolicy: { status: 'blocked', isWaived: () => false } }],
+    [
+      'requirement',
+      {
+        terminalReviewOutcome: {
+          outcome: 'waived',
+          evidence: {
+            requirementId: 'review.peer',
+            authority: { recordId: WAIVER_RECORD_ID },
+          },
+        },
+      },
+    ],
+    [
+      'authority',
+      {
+        workflowPolicy: {
+          status: 'policy-compatible',
+          isWaived: () => true,
+          decision: () => ({
+            outcome: 'waived',
+            authority: { recordId: '01M2H000000000000000000099', revision: 2 },
+          }),
+        },
+      },
+    ],
+    ['accepted-head', { testReceiptSha: 'short' }],
+    ['accepted-head', { acceptedReviewSha: LATER }],
+  ];
+
+  for (const [category, overrides] of cases) {
+    assert.throws(
+      () => resolveDeliveryReviewAuthority(waivedReviewInput(overrides)),
+      new RegExp(`delivery-review-authority:${category}`)
+    );
+  }
+});
+
+test('accepted delivery authority consumes typed waived authority without a passed boolean', () => {
+  const reviewAuthority = resolveDeliveryReviewAuthority(waivedReviewInput());
+  const authority = resolveAcceptedDeliveryAuthority(
+    input({
+      agentReviewPassed: false,
+      reviewAuthority,
+    })
+  );
+  assert.equal(authority.acceptedSha, ACCEPTED);
+  assert.equal(reviewAuthority.outcome, 'waived');
+});
 
 test('resolves immutable accepted authority after the reused branch advances', () => {
   for (const pullRequests of [

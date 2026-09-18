@@ -25,7 +25,6 @@
 
 **Files:**
 
-- Create: `scripts/task-tracker/lib/delivery-review-authority.mjs`
 - Modify: `scripts/task-tracker/lib/terminal-review-handoff.mjs`
 - Modify: `scripts/task-tracker/lib/delivery-authority.mjs`
 - Modify: `scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs`
@@ -34,7 +33,7 @@
 **Interfaces:**
 
 - Consumes: Test receipt SHA, accepted Review SHA, ordinary Agent Review pass boolean, latest open terminal review outcome, and a live workflow-boundary decision for `review.semantic-resident`.
-- Produces: `resolveDeliveryReviewAuthority(input)` returning a frozen `{ outcome, acceptedSha, authority }`, where `outcome` is exactly `passed` or `waived`; `terminalReviewHandoffOutcome(body)` returning `passed`, `waived`, or `null`; and `resolveAcceptedDeliveryAuthority` consuming the typed result rather than inferring waiver truth from a pass boolean.
+- Produces from `delivery-authority.mjs`: `resolveDeliveryReviewAuthority(input)` returning a frozen `{ outcome, acceptedSha, authority }`, where `outcome` is exactly `passed` or `waived`; `terminalReviewHandoffOutcome(body)` returning `passed`, `waived`, or `null`; and `resolveAcceptedDeliveryAuthority` consuming the typed result rather than inferring waiver truth from a pass boolean. Keeping the resolver in the existing module preserves the exact published-package entry ceiling.
 
 - [ ] **Step 1: Write failing terminal-outcome tests**
 
@@ -102,6 +101,7 @@ Expected: all focused tests pass and no waiver is represented as `agentReviewPas
 - Modify: `scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver-test-harness.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
+- Create: `scripts/tests/unit/task-tracker/verbs/deliver-review-waiver.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs`
 
 **Interfaces:**
@@ -115,7 +115,7 @@ In `delivery-provider-action.test.mjs`, replace fixture-only review booleans wit
 
 - [ ] **Step 2: Write failing PR orchestration tests**
 
-Extend the harness with terminal outcome, recorded waiver evidence, and injected workflow policy. Prove a matching current waiver reaches the normal provider-action result while absent, revoked, unavailable, wrong-requirement, mismatched-record, mismatched-revision, and wrong-head cases reject before an intent comment or provider action is emitted.
+Add the waiver cases to `deliver-review-waiver.test.mjs` so the established `deliver.test.mjs` remains under the repository line cap. Extend the harness with terminal outcome, recorded waiver evidence, and injected workflow policy. Prove a matching current waiver reaches the normal provider-action result while absent, revoked, unavailable, wrong-requirement, mismatched-record, mismatched-revision, and wrong-head cases reject before an intent comment or provider action is emitted.
 
 - [ ] **Step 3: Write failing no-commit tests**
 
@@ -147,7 +147,7 @@ Update ordinary open/merged delivery, advanced-head historical recovery, histori
 - [ ] **Step 6: Run focused delivery tests and verify GREEN**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-review-waiver.test.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
 ```
 
 Expected: all valid passed/waived cases pass, every invalid waiver fails before mutation, and ordinary delivery regressions remain green.
@@ -168,14 +168,14 @@ Expected: all valid passed/waived cases pass, every invalid waiver fails before 
 
 ```bash
 node --test scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs
-node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+node --test scripts/tests/unit/task-tracker/verbs/deliver-review-waiver.test.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
 node --test scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs
 ```
 
 - [ ] **Step 2: Run repository verification**
 
 ```bash
-npm run precommit
+node scripts/dev-env/verify-local-worktree.mjs && git diff --check
 npm test
 npm run test:slow
 npm run lint

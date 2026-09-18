@@ -25,7 +25,7 @@ const { appendRow, buildInitialComment } =
 const { parseTimingRow } = await import('../../../../task-tracker/lib/timing-row-reader.mjs');
 const { DeliveryPreflightError, validateDeliveryPreflight } =
   await import('../../../../task-tracker/lib/delivery-preflight.mjs');
-const { isTerminalReviewHandoffOpen } =
+const { isTerminalReviewHandoffOpen, terminalReviewHandoffOutcome } =
   await import('../../../../task-tracker/lib/terminal-review-handoff.mjs');
 
 const terminalTimingBody = [
@@ -39,6 +39,36 @@ test('review waiver opens the same approval handoff as a completed semantic revi
     isTerminalReviewHandoffOpen(terminalTimingBody.replace('review:passed', 'review:waived')),
     true
   );
+});
+
+test('terminal review outcome distinguishes passed and waived authority', () => {
+  assert.deepEqual(terminalReviewHandoffOutcome(terminalTimingBody), {
+    outcome: 'passed',
+    evidence: null,
+  });
+  assert.deepEqual(
+    terminalReviewHandoffOutcome(
+      terminalTimingBody
+        .replace('review:passed', 'review:waived')
+        .replace(
+          'agent review passed',
+          'semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived'
+        )
+    ),
+    {
+      outcome: 'waived',
+      evidence: {
+        requirementId: 'review.semantic-resident',
+        authority: { recordId: '01M2H000000000000000000001' },
+      },
+    }
+  );
+});
+
+test('a later lifecycle event closes the typed terminal review outcome', () => {
+  const closed = `${terminalTimingBody}\n| 2026-08-04 07:22:43 -05:00 | demoted:develop |  |  |  | 101,167 | rework | <!-- row-sec: a=0 i=0 -->`;
+  assert.equal(terminalReviewHandoffOutcome(closed), null);
+  assert.equal(isTerminalReviewHandoffOpen(closed), false);
 });
 
 function captureLog(fn) {

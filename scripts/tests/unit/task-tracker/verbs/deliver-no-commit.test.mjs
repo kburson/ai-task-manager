@@ -12,9 +12,20 @@ const BODY = `## AITM Progress Markers
 
 <!-- aitm-issue-kind kind="audit" -->
 <!-- aitm-deliverable-posted url="${DELIVERABLE_URL}" ts="2026-08-30T15:49:04.000Z" -->`;
+const WAIVER_RECORD_ID = '01M2H000000000000000000001';
+const WAIVED_TIMING_COMMENT = {
+  id: 'timing-comment',
+  createdAt: '2026-08-30T16:00:00.000Z',
+  body: [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-08-30 11:00:00 -05:00 | review:waived |  |  |  | 100 | semantic resident action waived — requirement review.semantic-resident; authority record ${WAIVER_RECORD_ID}; result=waived | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n'),
+};
 
 function makeHarness(overrides = {}) {
-  const comments = [];
+  const comments = structuredClone(overrides.comments ?? []);
   const calls = { commentsCreated: 0, pullRequestsListed: 0 };
   const issue = {
     number: 1407,
@@ -42,10 +53,22 @@ function makeHarness(overrides = {}) {
       return HEAD;
     },
     async resolveAcceptedReviewSha() {
-      return HEAD;
+      return overrides.acceptedReviewSha === undefined ? HEAD : overrides.acceptedReviewSha;
     },
     async resolveAgentReviewPassed() {
-      return true;
+      return overrides.agentReviewPassed ?? true;
+    },
+    async loadWorkflowBoundary() {
+      return (
+        overrides.workflowPolicy ?? {
+          status: 'policy-compatible',
+          isWaived: (id) => id === 'review.semantic-resident',
+          decision: () => ({
+            outcome: 'waived',
+            authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
+          }),
+        }
+      );
     },
     async resolveReviewAuthorization() {
       return Object.freeze({ mode: 'full-auto', standing: true, source: 'test' });
@@ -124,6 +147,27 @@ test('reviewed audit records action-free delivery and reuses exact readback', as
   assert.equal(repeated.action, null);
   assert.equal(harness.calls.commentsCreated, 1);
   assert.equal(harness.calls.pullRequestsListed, 2);
+});
+
+test('review-waived audit records action-free delivery without pass evidence', async () => {
+  const harness = makeHarness({
+    localHeadSha: ADVANCED_HEAD,
+    agentReviewPassed: false,
+    acceptedReviewSha: null,
+    comments: [WAIVED_TIMING_COMMENT],
+  });
+
+  const result = await runDeliver({
+    issueNumber: 1407,
+    cfg: { repo: 'kburson/ai-task-manager', assignee: 'kburson', trunkRef: 'origin/trunk' },
+    state: { active: '#1407', entryStartTs: '2026-08-30T16:00:00.000Z' },
+    deps: harness.deps,
+  });
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.receipt.acceptedSha, HEAD);
+  assert.equal(harness.issue.agentReviewPassed, true, 'fixture body remains unchanged');
+  assert.equal(harness.calls.commentsCreated, 1);
 });
 
 test('code-kind issue never enters the no-commit delivery path', async () => {

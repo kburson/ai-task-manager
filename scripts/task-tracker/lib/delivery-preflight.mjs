@@ -134,7 +134,17 @@ function validateIssueAndBinding(issue, binding, config) {
   ) {
     fail('issue-owner');
   }
-  if (issue.agentReviewPassed !== true) fail('agent-review-evidence');
+  const reviewAuthority = issue.reviewAuthority;
+  const typedReviewAuthority =
+    isPlainObject(reviewAuthority) &&
+    ['passed', 'waived'].includes(reviewAuthority.outcome) &&
+    isSha(reviewAuthority.acceptedSha) &&
+    (reviewAuthority.outcome === 'passed' ||
+      (isPlainObject(reviewAuthority.authority) &&
+        typeof reviewAuthority.authority.recordId === 'string' &&
+        reviewAuthority.authority.recordId.length > 0 &&
+        isPositiveInteger(reviewAuthority.authority.revision)));
+  if (issue.agentReviewPassed !== true && !typedReviewAuthority) fail('agent-review-evidence');
   const authorization = issue.reviewAuthorization;
   const authorizedByDecision =
     isPlainObject(authorization) &&
@@ -232,6 +242,7 @@ function validatePreflight(input, { merged = false } = {}) {
       testReceiptSha: input.testReceiptSha,
       reviewReceiptSha: input.acceptedReviewSha,
       agentReviewPassed: input.issue.agentReviewPassed,
+      reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
     });
   } catch (error) {
@@ -307,6 +318,7 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
       testReceiptSha: input.testReceiptSha,
       reviewReceiptSha: input.acceptedReviewSha,
       agentReviewPassed: input.issue.agentReviewPassed,
+      reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
     });
   } catch (error) {
@@ -394,6 +406,7 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
       testReceiptSha: input.testReceiptSha,
       reviewReceiptSha: input.acceptedReviewSha,
       agentReviewPassed: input.issue.agentReviewPassed,
+      reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
     });
   } catch (error) {

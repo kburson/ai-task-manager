@@ -2,18 +2,37 @@
 import { isTableTimingTimestamp, parseTimingRow } from './timing-row-reader.mjs';
 import { closesTerminalReviewHandoff } from './timing-events/index.mjs';
 
-export function isTerminalReviewHandoffOpen(body) {
-  let open = false;
+const WAIVER_DESCRIPTION_RE =
+  /requirement ([a-z0-9._-]+); authority record ([A-Z0-9]+); result=waived/i;
+
+export function terminalReviewHandoffOutcome(body) {
+  let outcome = null;
   for (const line of String(body ?? '').split('\n')) {
-    const event = parseTimingRow(line)?.event;
+    const row = parseTimingRow(line);
+    const event = row?.event;
     if (!event) continue;
-    if (event === 'review:passed' || event === 'review:waived') {
-      open = true;
+    if (event === 'review:passed') {
+      outcome = Object.freeze({ outcome: 'passed', evidence: null });
+    } else if (event === 'review:waived') {
+      const match = WAIVER_DESCRIPTION_RE.exec(row.description);
+      outcome = Object.freeze({
+        outcome: 'waived',
+        evidence: match
+          ? Object.freeze({
+              requirementId: match[1],
+              authority: Object.freeze({ recordId: match[2] }),
+            })
+          : null,
+      });
     } else if (closesTerminalReviewHandoff(event)) {
-      open = false;
+      outcome = null;
     }
   }
-  return open;
+  return outcome;
+}
+
+export function isTerminalReviewHandoffOpen(body) {
+  return terminalReviewHandoffOutcome(body) !== null;
 }
 
 export function hasTerminalTimingSeal(body) {
