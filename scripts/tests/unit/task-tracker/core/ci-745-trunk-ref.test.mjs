@@ -2,9 +2,9 @@
 // @story #745
 // Content assertions for the current CI contract: #745 materializes a local
 // `refs/heads/trunk` on `pull_request` checkouts so real-git close-gate tests
-// (#733) resolve trunk in a detached merge ref. Fast checkout depth 2 also
-// retains the PR merge parents needed for current `trunk...HEAD` docs-only
-// diff classification; it is not a historical-provenance requirement. Backs
+// (#733) resolve trunk in a detached merge ref. The Fast checkout also retains
+// complete ancestry so `trunk...HEAD` docs-only diff classification works for
+// stacked epic-child pull requests, not only direct-to-trunk PRs. Backs
 // AC1 (both lanes materialize the ref), AC2 (pull_request-only), and AC4
 // (trunk resolution + gate assertions intact — #927 relocated that logic into
 // shared `lib/trunk-ref.mjs`, which close-gates delegates to).
@@ -55,16 +55,16 @@ test('AC2: the materialize step is scoped to pull_request events only', () => {
   }
 });
 
-test('AC3: Fast checkout retains the PR merge base for docs-only classification', () => {
+test('AC3: Fast checkout retains complete ancestry for stacked-PR classification', () => {
   assert.equal(
-    ci.split('fetch-depth: 2').length - 1,
+    ci.split('fetch-depth: 0').length - 1,
     1,
-    'only the Fast checkout uses depth 2 for the current PR merge base'
+    'only the Fast checkout uses full history for stacked PR merge-base discovery'
   );
-  assert.equal(ci.split('fetch-depth: 0').length - 1, 0, 'no full-history checkout remains');
+  assert.equal(ci.split('fetch-depth: 2').length - 1, 0, 'shallow depth 2 is not sufficient');
   assert.ok(
-    FAST_JOB.indexOf('fetch-depth: 2') > FAST_JOB.indexOf('- uses: actions/checkout@v5'),
-    'Fast checkout declares depth 2'
+    FAST_JOB.indexOf('fetch-depth: 0') > FAST_JOB.indexOf('- uses: actions/checkout@v5'),
+    'Fast checkout declares full history'
   );
   assert.ok(!SLOW_JOB.includes('fetch-depth:'), 'Slow checkout keeps its default depth 1');
   assert.ok(FAST_JOB.includes(DOCS_ONLY_DIFF), 'docs-only classifier keeps its trunk...HEAD diff');
