@@ -15,11 +15,6 @@ import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
-import {
-  createGithubWorkflowBoundaryRuntime,
-  loadWorkflowBoundary,
-} from '../lib/workflow-policy/enforcement.mjs';
-import { terminalReviewHandoffOutcome } from '../lib/terminal-review-handoff.mjs';
 import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import {
   evaluateManualCodeReview,
@@ -43,6 +38,7 @@ import {
   renderDeliveryReceiptComment,
 } from '../lib/delivery-records.mjs';
 import {
+  resolveLiveDeliveryReviewAuthority,
   validateDeliveryPreflight,
   validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
@@ -51,7 +47,6 @@ import {
 import {
   DeliveryAuthorityError,
   resolveAcceptedDeliveryAuthority,
-  resolveDeliveryReviewAuthority as resolveTypedReviewAuthority,
 } from '../lib/delivery-authority.mjs';
 import {
   buildProviderAction,
@@ -546,85 +541,6 @@ function requiredDependency(deps, name) {
   const dependency = deps?.[name];
   if (typeof dependency !== 'function') throw deliverError(`missing-dependency:${name}`);
   return dependency;
-}
-
-function reviewAuthorityFailure(error) {
-  const match = /^delivery-review-authority:([a-z-]+)$/.exec(String(error?.message || ''));
-  if (!match) throw error;
-  throw new TypeError(`delivery-preflight:review-authority-${match[1]}`, { cause: error });
-}
-
-async function resolveLiveDeliveryReviewAuthority({
-  deps,
-  cfg,
-  issue,
-  issueNumber,
-  testReceiptSha,
-}) {
-  const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
-  const resolveAgentReviewPassed =
-    typeof deps.resolveAgentReviewPassed === 'function'
-      ? deps.resolveAgentReviewPassed
-      : async () => issue.agentReviewPassed === true;
-  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
-    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
-    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
-  ]);
-  if (agentReviewPassed === true) {
-    try {
-      return resolveTypedReviewAuthority({
-        agentReviewPassed,
-        terminalReviewOutcome: null,
-        testReceiptSha,
-        acceptedReviewSha,
-        workflowPolicy: null,
-      });
-    } catch (error) {
-      if (error?.message === 'delivery-review-authority:accepted-head') {
-        throw new TypeError('delivery-preflight:head-mismatch', { cause: error });
-      }
-      return reviewAuthorityFailure(error);
-    }
-  }
-
-  const comments = await requiredDependency(
-    deps,
-    'listIssueComments'
-  )({
-    issueNumber,
-    repository: cfg.repo,
-  });
-  const timingComments = Array.isArray(comments)
-    ? comments.filter(({ body }) => /⏱\s*Timing Log/.test(String(body || '')))
-    : [];
-  const terminalOutcome =
-    timingComments.length === 1 ? terminalReviewHandoffOutcome(timingComments[0].body) : null;
-  if (terminalOutcome === null) {
-    throw new TypeError('delivery-preflight:agent-review-evidence');
-  }
-  const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
-  const workflowPolicy = await loadBoundary({
-    repository: cfg.repo,
-    issue: issueNumber,
-    body: issue.body,
-    requirementIds: ['review.semantic-resident'],
-    activity: 'delivery:review-authority',
-    state: 'review',
-    now: requiredDependency(deps, 'now')(),
-    runtime:
-      deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
-  });
-  try {
-    return resolveTypedReviewAuthority({
-      agentReviewPassed,
-      terminalReviewOutcome: terminalOutcome,
-      testReceiptSha,
-      acceptedReviewSha,
-      workflowPolicy,
-    });
-  } catch (error) {
-    return reviewAuthorityFailure(error);
-  }
 }
 
 async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, merged }) {

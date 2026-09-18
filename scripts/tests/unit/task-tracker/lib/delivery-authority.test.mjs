@@ -48,7 +48,7 @@ function waivedReviewInput(overrides = {}) {
       outcome: 'waived',
       evidence: {
         requirementId: 'review.semantic-resident',
-        authority: { recordId: WAIVER_RECORD_ID },
+        authority: { recordId: WAIVER_RECORD_ID, revision: 2 },
       },
     },
     testReceiptSha: ACCEPTED,
@@ -112,6 +112,18 @@ test('waived review authority fails closed on missing, stale, mismatched, or una
         },
       },
     ],
+    [
+      'authority',
+      {
+        terminalReviewOutcome: {
+          outcome: 'waived',
+          evidence: {
+            requirementId: 'review.semantic-resident',
+            authority: { recordId: WAIVER_RECORD_ID, revision: 1 },
+          },
+        },
+      },
+    ],
     ['accepted-head', { testReceiptSha: 'short' }],
     ['accepted-head', { acceptedReviewSha: LATER }],
   ];
@@ -122,6 +134,32 @@ test('waived review authority fails closed on missing, stale, mismatched, or una
       new RegExp(`delivery-review-authority:${category}`)
     );
   }
+});
+
+test('accepted head rejects malformed typed authority and inconsistent review receipts', () => {
+  assert.throws(
+    () =>
+      resolveAcceptedDeliveryHead({
+        localHeadSha: ACCEPTED,
+        testReceiptSha: ACCEPTED,
+        reviewReceiptSha: null,
+        agentReviewPassed: false,
+        reviewAuthority: { outcome: 'waived', acceptedSha: ACCEPTED },
+      }),
+    /delivery-authority:accepted-evidence/
+  );
+
+  assert.throws(
+    () =>
+      resolveAcceptedDeliveryHead({
+        localHeadSha: ACCEPTED,
+        testReceiptSha: ACCEPTED,
+        reviewReceiptSha: LATER,
+        agentReviewPassed: false,
+        reviewAuthority: resolveDeliveryReviewAuthority(waivedReviewInput()),
+      }),
+    /delivery-authority:accepted-evidence/
+  );
 });
 
 test('accepted delivery authority consumes typed waived authority without a passed boolean', () => {

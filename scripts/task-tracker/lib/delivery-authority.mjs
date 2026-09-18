@@ -5,6 +5,7 @@
 import { resolveDeliveryIntent } from './evidence-v2/delivery.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
+const RECORD_ID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 const SEMANTIC_REVIEW_REQUIREMENT = 'review.semantic-resident';
 
 export class DeliveryAuthorityError extends TypeError {
@@ -23,6 +24,19 @@ function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isPlainObject(value) {
+  if (!isObject(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function hasExactKeys(value, keys) {
+  if (!isPlainObject(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
 function deepFreeze(value) {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
   for (const child of Object.values(value)) deepFreeze(child);
@@ -31,6 +45,24 @@ function deepFreeze(value) {
 
 function failReviewAuthority(category) {
   throw new TypeError(`delivery-review-authority:${category}`);
+}
+
+export function isValidDeliveryReviewAuthority(reviewAuthority, { testReceiptSha } = {}) {
+  if (
+    !hasExactKeys(reviewAuthority, ['outcome', 'acceptedSha', 'authority']) ||
+    !['passed', 'waived'].includes(reviewAuthority.outcome) ||
+    !SHA_RE.test(reviewAuthority.acceptedSha || '') ||
+    (testReceiptSha !== undefined && reviewAuthority.acceptedSha !== testReceiptSha)
+  ) {
+    return false;
+  }
+  if (reviewAuthority.outcome === 'passed') return reviewAuthority.authority === null;
+  return (
+    hasExactKeys(reviewAuthority.authority, ['recordId', 'revision']) &&
+    RECORD_ID_RE.test(reviewAuthority.authority.recordId || '') &&
+    Number.isSafeInteger(reviewAuthority.authority.revision) &&
+    reviewAuthority.authority.revision > 0
+  );
 }
 
 export function resolveDeliveryReviewAuthority({
@@ -63,7 +95,10 @@ export function resolveDeliveryReviewAuthority({
   }
   if (
     typeof recorded.authority?.recordId !== 'string' ||
-    recorded.authority.recordId.length === 0
+    !RECORD_ID_RE.test(recorded.authority.recordId) ||
+    !['undefined', 'number'].includes(typeof recorded.authority.revision) ||
+    (recorded.authority.revision !== undefined &&
+      (!Number.isSafeInteger(recorded.authority.revision) || recorded.authority.revision <= 0))
   ) {
     failReviewAuthority('authority');
   }
@@ -82,12 +117,18 @@ export function resolveDeliveryReviewAuthority({
     decision?.outcome !== 'waived' ||
     !isObject(authority) ||
     authority.recordId !== recorded.authority.recordId ||
+    (recorded.authority.revision !== undefined &&
+      authority.revision !== recorded.authority.revision) ||
     !Number.isSafeInteger(authority.revision) ||
     authority.revision <= 0
   ) {
     failReviewAuthority('authority');
   }
-  return deepFreeze({ outcome: 'waived', acceptedSha: testReceiptSha, authority });
+  return deepFreeze({
+    outcome: 'waived',
+    acceptedSha: testReceiptSha,
+    authority: { recordId: authority.recordId, revision: authority.revision },
+  });
 }
 
 export function resolveAcceptedDeliveryHead({
@@ -97,17 +138,12 @@ export function resolveAcceptedDeliveryHead({
   agentReviewPassed,
   reviewAuthority = null,
 } = {}) {
-  const typedAuthorityValid =
-    isObject(reviewAuthority) &&
-    ['passed', 'waived'].includes(reviewAuthority.outcome) &&
-    SHA_RE.test(reviewAuthority.acceptedSha || '') &&
-    reviewAuthority.acceptedSha === testReceiptSha;
+  const typedAuthorityValid = isValidDeliveryReviewAuthority(reviewAuthority, { testReceiptSha });
   if (
     !SHA_RE.test(localHeadSha || '') ||
     !SHA_RE.test(testReceiptSha || '') ||
     (!typedAuthorityValid && agentReviewPassed !== true) ||
-    (!typedAuthorityValid &&
-      reviewReceiptSha !== null &&
+    (reviewReceiptSha !== null &&
       (!SHA_RE.test(reviewReceiptSha || '') || reviewReceiptSha !== testReceiptSha))
   ) {
     fail('accepted-evidence');

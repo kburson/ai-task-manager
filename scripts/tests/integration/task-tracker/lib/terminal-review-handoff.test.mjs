@@ -27,6 +27,7 @@ const { DeliveryPreflightError, validateDeliveryPreflight } =
   await import('../../../../task-tracker/lib/delivery-preflight.mjs');
 const { isTerminalReviewHandoffOpen, terminalReviewHandoffOutcome } =
   await import('../../../../task-tracker/lib/terminal-review-handoff.mjs');
+const { emitReviewGateWaivedTimeline } = await import('../../../../task-tracker/verbs/review.mjs');
 
 const terminalTimingBody = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
@@ -63,6 +64,38 @@ test('terminal review outcome distinguishes passed and waived authority', () => 
       },
     }
   );
+});
+
+test('Review waiver emitter and terminal parser preserve structured authority revision', async () => {
+  const rows = [];
+  await emitReviewGateWaivedTimeline({
+    target: '#1683',
+    ts: new Date().toISOString(),
+    delta: { activeSec: 0, idleSec: 0 },
+    wordMarker: 100,
+    fullWordMarker: 200,
+    evidence: {
+      requirementId: 'review.semantic-resident',
+      authority: { recordId: '01M2H000000000000000000001', revision: 3 },
+    },
+    deps: {
+      safePostTiming: async (_target, row) => rows.push(row),
+      buildRow,
+    },
+  });
+
+  const body = [
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    rows[0],
+  ].join('\n');
+  assert.deepEqual(terminalReviewHandoffOutcome(body), {
+    outcome: 'waived',
+    evidence: {
+      requirementId: 'review.semantic-resident',
+      authority: { recordId: '01M2H000000000000000000001', revision: 3 },
+    },
+  });
 });
 
 test('a later lifecycle event closes the typed terminal review outcome', () => {

@@ -63,3 +63,17 @@ test('semantic-review waiver fails closed before delivery mutation when live aut
     assert.equal(harness.calls.createIssueComment, 0);
   }
 });
+
+test('semantic-review waiver refuses an ambiguous Timing Log authority source', async () => {
+  const harness = makeHarness({
+    agentReviewPassed: false,
+    acceptedReviewSha: null,
+    comments: [WAIVED_TIMING_COMMENT, { ...WAIVED_TIMING_COMMENT, id: 'timing-comment-2' }],
+  });
+
+  await assert.rejects(
+    () => deliver(harness),
+    /delivery-preflight:review-authority-timing-ambiguous/
+  );
+  assert.equal(harness.calls.createIssueComment, 0);
+});

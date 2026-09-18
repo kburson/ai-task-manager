@@ -170,6 +170,55 @@ test('review-waived audit records action-free delivery without pass evidence', a
   assert.equal(harness.calls.commentsCreated, 1);
 });
 
+test('no-commit delivery refuses invalid semantic-review waiver authority before mutation', async () => {
+  const cases = [
+    ['agent-review-evidence', { comments: [] }],
+    [
+      'review-authority-policy',
+      {
+        comments: [WAIVED_TIMING_COMMENT],
+        workflowPolicy: { status: 'blocked', isWaived: () => false },
+      },
+    ],
+    [
+      'review-authority-authority',
+      {
+        comments: [WAIVED_TIMING_COMMENT],
+        workflowPolicy: {
+          status: 'policy-compatible',
+          isWaived: () => true,
+          decision: () => ({
+            outcome: 'waived',
+            authority: { recordId: '01M2H000000000000000000099', revision: 2 },
+          }),
+        },
+      },
+    ],
+    [
+      'review-authority-accepted-head',
+      { comments: [WAIVED_TIMING_COMMENT], acceptedReviewSha: ADVANCED_HEAD },
+    ],
+  ];
+
+  for (const [category, overrides] of cases) {
+    const harness = makeHarness({
+      agentReviewPassed: false,
+      acceptedReviewSha: null,
+      ...overrides,
+    });
+    await assert.rejects(
+      runDeliver({
+        issueNumber: 1407,
+        cfg: { repo: 'kburson/ai-task-manager', assignee: 'kburson', trunkRef: 'origin/trunk' },
+        state: { active: '#1407', entryStartTs: '2026-08-30T16:00:00.000Z' },
+        deps: harness.deps,
+      }),
+      new RegExp(`delivery-preflight:${category}`)
+    );
+    assert.equal(harness.calls.commentsCreated, 0);
+  }
+});
+
 test('code-kind issue never enters the no-commit delivery path', async () => {
   const harness = makeHarness({
     issue: { body: BODY.replace('<!-- aitm-issue-kind kind="audit" -->\n', '') },
