@@ -1,5 +1,6 @@
 // @story #1658
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -197,6 +198,23 @@ const probes = {
     const first = decision('close', 'normalization');
     const second = clone(first);
     second.snapshot.startedAt = '2026-09-17T18:00:00.100Z';
+    second.snapshot.head = 'f'.repeat(40);
+    second.snapshot.digest = `sha256:${createHash('sha256')
+      .update(
+        JSON.stringify({
+          state: second.snapshot.state,
+          head: second.snapshot.head,
+          startedAt: second.snapshot.startedAt,
+          completedAt: second.snapshot.completedAt,
+          observations: second.snapshot.observations,
+          normalizationInputs: second.normalizations.map(({ inputDigest, normalizerId }) => ({
+            normalizerId,
+            inputDigest,
+          })),
+        })
+      )
+      .digest('hex')}`;
+    validateCandidateDecision(second);
     assert.equal(first.normalizations[0].decisionDigest, second.normalizations[0].decisionDigest);
   },
   'evidence.digest-not-authority': () => {
@@ -475,7 +493,6 @@ const probes = {
   'diagnostics.no-archive': () => {
     const value = renderCandidateExplanation({ decision: decision('test'), diagnostic: true });
     assert.deepEqual(Object.keys(value).sort(), [
-      'admissionWarningCount',
       'diagnosticMessages',
       'fullDecision',
       'guidance',
