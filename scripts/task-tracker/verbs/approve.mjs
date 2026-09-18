@@ -20,6 +20,7 @@ import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
   parseReviewApprovedMarker,
+  parseDodVerifiedMarker,
   removeReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
@@ -70,6 +71,20 @@ async function defaultGetHeadSha({ projectDir }) {
 
 function removeStaleApprovalCarriers(body) {
   return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
+}
+
+function defaultResolveTestReceiptSha(body, approvedSha) {
+  const receiptSha = parseVerificationReceipt(body, 'test')?.commitSha;
+  if (/^[0-9a-f]{40}$/.test(receiptSha || '')) return receiptSha;
+  const legacySha = parseDodVerifiedMarker(body)?.sha;
+  if (
+    /^[0-9a-f]{7,40}$/.test(legacySha || '') &&
+    /^[0-9a-f]{40}$/.test(approvedSha || '') &&
+    approvedSha.startsWith(legacySha)
+  ) {
+    return approvedSha;
+  }
+  return null;
 }
 
 async function resolveSemanticReviewWaiverAuthority({
@@ -125,6 +140,14 @@ async function resolveSemanticReviewWaiverAuthority({
       { cause: error }
     );
   }
+}
+
+function sameSemanticReviewWaiverAuthority(left, right) {
+  return (
+    left?.scopeIdentity === right?.scopeIdentity &&
+    left?.reviewAuthority?.authority?.recordId === right?.reviewAuthority?.authority?.recordId &&
+    left?.reviewAuthority?.authority?.revision === right?.reviewAuthority?.authority?.revision
+  );
 }
 
 // Re-exports for back-compat with existing tests/callers that imported the
@@ -300,10 +323,10 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
       }
       const agentReviewComplete = isAgentReviewComplete(body);
-      const resolveTestReceiptSha =
-        deps.resolveTestReceiptSha ||
-        ((source) => parseVerificationReceipt(source, 'test')?.commitSha ?? null);
-      const testReceiptSha = agentReviewComplete ? null : await resolveTestReceiptSha(body);
+      const resolveTestReceiptSha = deps.resolveTestReceiptSha || defaultResolveTestReceiptSha;
+      const testReceiptSha = agentReviewComplete
+        ? null
+        : await resolveTestReceiptSha(body, approvedSha);
       const semanticReviewWaiverAuthority = agentReviewComplete
         ? null
         : await resolveSemanticReviewWaiverAuthority({
@@ -427,6 +450,31 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         }
       } catch (err) {
         process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
+      }
+
+      // Driver collection can include an unbounded human prompt. Re-read the
+      // policy and its durable terminal evidence after that window so a waiver
+      // revoked while approval was waiting cannot authorize the body write.
+      if (semanticReviewWaiverAuthority) {
+        const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+        const freshTestReceiptSha = await resolveTestReceiptSha(freshBody, approvedSha);
+        const freshWaiverAuthority = await resolveSemanticReviewWaiverAuthority({
+          body: freshBody,
+          issueNumber,
+          repo: cfg.repo,
+          now: nowIso(),
+          approvedSha,
+          testReceiptSha: freshTestReceiptSha,
+          comments: await fetchComments({ issueNumber, repo: cfg.repo }),
+          deps,
+        });
+        if (
+          !sameSemanticReviewWaiverAuthority(semanticReviewWaiverAuthority, freshWaiverAuthority)
+        ) {
+          throw new Error(
+            `approve: semantic review waiver authority changed before approval write`
+          );
+        }
       }
 
       // #295 — re-derive everything inside the closure on the FRESH base so

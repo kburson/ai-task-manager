@@ -85,6 +85,15 @@ test('Review waiver emitter and terminal parser preserve structured authority re
         rows.push(row);
         return { ok: true };
       },
+      readTimingCommentBodyFn: async () => ({
+        status: 'found',
+        body: terminalTimingBody
+          .replace('review:passed', 'review:waived')
+          .replace(
+            'agent review passed',
+            `semantic resident action waived — requirement review.semantic-resident; authority record 01M2H000000000000000000001; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="01M2H000000000000000000001" revision="3" accepted-sha="${'a'.repeat(40)}" -->`
+          ),
+      }),
       buildRow,
     },
   });

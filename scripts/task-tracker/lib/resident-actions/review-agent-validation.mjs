@@ -70,26 +70,32 @@ function waivedEvidence(policy, snapshot) {
 
 async function hasCurrentTerminalWaiver(context, snapshot, evidence) {
   const capabilities = context?.review;
-  const comments = Array.isArray(snapshot?.reviewComments)
-    ? snapshot.reviewComments
-    : typeof capabilities?.readComments === 'function'
-      ? await capabilities.readComments({
-          issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
-          snapshot,
-        })
-      : [];
+  if (snapshot?.reviewCommentsStatus === 'error') return 'error';
+  let comments;
+  try {
+    comments = Array.isArray(snapshot?.reviewComments)
+      ? snapshot.reviewComments
+      : typeof capabilities?.readComments === 'function'
+        ? await capabilities.readComments({
+            issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
+            snapshot,
+          })
+        : [];
+  } catch {
+    return 'error';
+  }
   const timingComments = Array.isArray(comments)
     ? comments.filter(({ body }) => String(valueOf(body) || '').includes('⏱ Timing Log'))
     : [];
-  if (timingComments.length !== 1) return false;
+  if (timingComments.length !== 1) return 'stale';
   const terminal = terminalReviewHandoffOutcome(valueOf(timingComments[0].body));
-  return (
-    terminal?.outcome === 'waived' &&
+  return terminal?.outcome === 'waived' &&
     terminal.evidence?.requirementId === evidence.requirementId &&
     terminal.evidence?.acceptedSha === evidence.acceptedSha &&
     terminal.evidence?.authority?.recordId === evidence.authority?.recordId &&
     terminal.evidence?.authority?.revision === evidence.authority?.revision
-  );
+    ? 'current'
+    : 'stale';
 }
 
 export const reviewAgentValidationAction = Object.freeze({
@@ -108,7 +114,11 @@ export const reviewAgentValidationAction = Object.freeze({
           // onWaived can retire that obsolete blocker.
           if (reason === 'review-failed') return { status: 'incomplete', reason };
           const evidence = waivedEvidence(policy, snapshot);
-          if (!(await hasCurrentTerminalWaiver(context, snapshot, evidence))) {
+          const terminalStatus = await hasCurrentTerminalWaiver(context, snapshot, evidence);
+          if (terminalStatus === 'error') {
+            return { status: 'paused', reason: 'review-comments-unavailable' };
+          }
+          if (terminalStatus !== 'current') {
             return { status: 'incomplete', reason: 'stale-waiver-evidence' };
           }
           return { status: 'waived', evidence };

@@ -59,6 +59,19 @@ const trackerSrc = readFileSync(
   'utf8'
 );
 
+function waiverTimingBody({
+  recordId = '01M2H000000000000000000001',
+  revision = 1,
+  acceptedSha = 'a'.repeat(40),
+} = {}) {
+  return [
+    '## ⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-09-15 01:00:00 +00:00 | review:waived |  |  |  | 10 | semantic resident action waived — requirement review.semantic-resident; authority record ${recordId}; result=waived <!-- aitm-review-waiver requirement="review.semantic-resident" record-id="${recordId}" revision="${revision}" accepted-sha="${acceptedSha}" --> | <!-- row-sec: a=0 i=0 -->`,
+  ].join('\n');
+}
+
 test('Review installs the agent-validation resident action by direct reference', () => {
   assert.deepEqual(
     reviewState.residentActions.map(({ id }) => id),
@@ -232,6 +245,10 @@ test('waived semantic review emits a truthful durable timeline row', async () =>
         rows.push(row);
         return { ok: true };
       },
+      readTimingCommentBodyFn: async () => ({
+        status: 'found',
+        body: waiverTimingBody(),
+      }),
       buildRow: (row) => row,
     },
   });
@@ -282,6 +299,10 @@ test('waived semantic review retires the active failure carrier without stamping
         rows.push(row);
         return { ok: true };
       },
+      readTimingCommentBodyFn: async () => ({
+        status: 'found',
+        body: waiverTimingBody(),
+      }),
       buildRow: (row) => row,
     },
   });
@@ -382,6 +403,32 @@ test('verify re-runs a durable waiver whose terminal row lacks exact-head author
   assert.deepEqual(result, { status: 'incomplete', reason: 'stale-waiver-evidence' });
 });
 
+test('verify pauses when Review comments cannot be read', async () => {
+  const result = await reviewAgentValidationAction.verify(
+    {
+      review: {
+        repo: 'kburson/ai-task-manager',
+        loadWorkflowBoundary: async () => ({
+          isWaived: () => true,
+          decision: () => ({
+            outcome: 'waived',
+            authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+          }),
+        }),
+      },
+    },
+    {
+      issue: { value: 1629 },
+      body: { value: '<!-- aitm-entered-review ts="2026-09-15T00:00:00.000Z" -->' },
+      headSha: { value: 'a'.repeat(40) },
+      reviewCommentsStatus: 'error',
+      actionLedger: { status: 'clean', events: [{ phase: 'waived' }] },
+    }
+  );
+
+  assert.deepEqual(result, { status: 'paused', reason: 'review-comments-unavailable' });
+});
+
 test('waived semantic review refuses unusable authority before clearing a failure carrier', async () => {
   let mutated = false;
   let posted = false;
@@ -443,6 +490,41 @@ test('waived semantic review preserves the failure carrier when the terminal row
       },
     }),
     /terminal waiver row was not posted/
+  );
+
+  assert.equal(mutated, false);
+});
+
+test('waived semantic review preserves the failure carrier when posted evidence fails readback', async () => {
+  let mutated = false;
+
+  await assert.rejects(
+    emitReviewGateWaivedTimeline({
+      target: '#1629',
+      issueNumber: 1629,
+      repo: 'kburson/ai-task-manager',
+      ts: '2026-09-15T01:00:00.000Z',
+      delta: { activeSec: 7, idleSec: 3 },
+      wordMarker: 10,
+      fullWordMarker: 20,
+      evidence: {
+        authority: { recordId: '01M2H000000000000000000001', revision: 1 },
+        acceptedSha: 'a'.repeat(40),
+        requirementId: 'review.semantic-resident',
+      },
+      deps: {
+        mutateBodyFn: async () => {
+          mutated = true;
+        },
+        safePostTiming: async () => ({ ok: true }),
+        readTimingCommentBodyFn: async () => ({
+          status: 'found',
+          body: waiverTimingBody().replace('review:waived', 'issue:closed'),
+        }),
+        buildRow: (row) => row,
+      },
+    }),
+    /failed readback verification/
   );
 
   assert.equal(mutated, false);

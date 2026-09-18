@@ -28,8 +28,10 @@ import {
   postTimingEvent,
   buildRow,
   buildFlushRow,
+  readTimingCommentBody,
   readLastKnownState,
 } from '../gh-timing-comment.mjs';
+import { terminalReviewHandoffOutcome } from '../lib/terminal-review-handoff.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
@@ -710,6 +712,7 @@ export async function emitReviewGateWaivedTimeline({
   const {
     mutateBodyFn,
     safePostTiming,
+    readTimingCommentBodyFn,
     buildRow: buildRowFn = buildRow,
     pexec = reviewPexec,
   } = deps;
@@ -742,6 +745,21 @@ export async function emitReviewGateWaivedTimeline({
   );
   if (posted?.ok !== true || posted.skipped === true) {
     throw new Error('review: terminal waiver row was not posted');
+  }
+  if (typeof readTimingCommentBodyFn !== 'function') {
+    throw new Error('review: timing readback capability unavailable');
+  }
+  const readback = await readTimingCommentBodyFn({ issueNumber, repo });
+  const terminal =
+    readback?.status === 'found' ? terminalReviewHandoffOutcome(readback.body) : null;
+  if (
+    terminal?.outcome !== 'waived' ||
+    terminal.evidence?.requirementId !== requirementId ||
+    terminal.evidence?.authority?.recordId !== authorityId ||
+    terminal.evidence?.authority?.revision !== authorityRevision ||
+    terminal.evidence?.acceptedSha !== acceptedSha
+  ) {
+    throw new Error('review: terminal waiver row failed readback verification');
   }
   if (typeof mutateBodyFn === 'function') {
     const result = await mutateBodyFn({
@@ -1577,7 +1595,13 @@ export async function verbReview(ctx) {
             wordMarker: s.lastWordMarker ?? 0,
             fullWordMarker: stateFullWordMarker(s),
             evidence,
-            deps: { mutateBodyFn, safePostTiming, buildRow, pexec },
+            deps: {
+              mutateBodyFn,
+              safePostTiming,
+              readTimingCommentBodyFn: ctx.readTimingCommentBody || readTimingCommentBody,
+              buildRow,
+              pexec,
+            },
           });
         },
       },
@@ -1591,6 +1615,7 @@ export async function verbReview(ctx) {
       async hydrateTask() {
         let body = fallbackBody;
         let comments = [];
+        let reviewCommentsStatus = 'found';
         try {
           const { stdout: snapshotJson } = await pexec(
             'gh',
@@ -1602,6 +1627,7 @@ export async function verbReview(ctx) {
           if (typeof parsed.body === 'string' && parsed.body.trim()) body = parsed.body;
         } catch {
           comments = [];
+          reviewCommentsStatus = 'error';
         }
         fallbackBody = body;
         const state = readLastKnownState(body).state || cursorFallbackState;
@@ -1615,6 +1641,7 @@ export async function verbReview(ctx) {
           body: { value: body },
           headSha: { value: acceptedTestHeadSha },
           reviewComments: comments,
+          reviewCommentsStatus,
           invocation: { issue: Number(issueNum), cwd: projectDir },
         };
       },
