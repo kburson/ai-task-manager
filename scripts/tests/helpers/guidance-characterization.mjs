@@ -15,6 +15,11 @@ const GUARDS = new Set([
   'action-navigation',
   'action-result-validation',
 ]);
+const GUIDANCE_IDS = new Set([
+  ...[...ACTIONS].map((actionId) => `action.${actionId}`),
+  'navigation.unresolved',
+  'state.done',
+]);
 const GUIDANCE_DIGEST = `sha256:${'7'.repeat(64)}`;
 const SOURCE_DIGEST = `sha256:${'8'.repeat(64)}`;
 const FULL_HEAD = '1234567890abcdef1234567890abcdef12345678';
@@ -342,12 +347,23 @@ export function validateCandidateDecision(decision) {
   if (!Array.isArray(decision.guidanceIds) || decision.guidanceIds.length === 0) {
     fail('guidance-ids');
   }
-  for (const id of decision.guidanceIds) string(id, 'guidance-id');
+  for (const id of decision.guidanceIds) {
+    if (!GUIDANCE_IDS.has(id)) fail('guidance-id');
+  }
   const unresolvedNavigation = decision.blockers.some(({ code }) => code === 'state-unavailable');
   if (decision.snapshot.state === 'done' && decision.actionId !== null) fail('terminal-action');
   if (unresolvedNavigation && decision.actionId !== null) fail('navigation-action');
   if (decision.actionId === null && decision.snapshot.state !== 'done' && !unresolvedNavigation) {
     fail('null-action');
+  }
+  const expectedGuidanceId =
+    decision.actionId !== null
+      ? `action.${decision.actionId}`
+      : decision.snapshot.state === 'done'
+        ? 'state.done'
+        : 'navigation.unresolved';
+  if (decision.guidanceIds.length !== 1 || decision.guidanceIds[0] !== expectedGuidanceId) {
+    fail('guidance-coupling');
   }
   return decision;
 }
@@ -605,21 +621,62 @@ function guidance(decision, knownGuidance) {
     if (receipt?.digest === GUIDANCE_DIGEST) {
       return { id, digest: GUIDANCE_DIGEST, status: 'not-modified' };
     }
+    const instruction =
+      decision.actionId === null
+        ? decision.snapshot.state === 'done'
+          ? [{ terminal_state: 'done' }, { recommendation: null }]
+          : [
+              { navigation: 'unresolved' },
+              { recommendation: null },
+              { if_blocked: 'use_returned_remediation_ids' },
+            ]
+        : [
+            { query: decision.actionId },
+            { require_status: 'ready' },
+            { if_blocked: 'use_returned_remediation_ids' },
+            { execute: decision.actionId },
+            { execution_revalidates: true },
+          ];
     return {
       id,
       digest: GUIDANCE_DIGEST,
       status: 'expanded',
       agent: {
-        instruction: [
-          { query: decision.actionId },
-          { require_status: 'ready' },
-          { if_blocked: 'use_returned_remediation_ids' },
-          { execute: decision.actionId },
-          { execution_revalidates: true },
-        ],
+        instruction,
       },
     };
   });
+}
+
+function validateGuidanceInstruction(entry, result) {
+  const expectedId =
+    result.actionId !== null
+      ? `action.${result.actionId}`
+      : result.status === 'ready'
+        ? 'state.done'
+        : 'navigation.unresolved';
+  if (entry.id !== expectedId) fail('guidance-coupling');
+  if (entry.digest !== GUIDANCE_DIGEST) fail('guidance-digest');
+  if (entry.status === 'not-modified') return;
+  const expected =
+    result.actionId !== null
+      ? [
+          { query: result.actionId },
+          { require_status: 'ready' },
+          { if_blocked: 'use_returned_remediation_ids' },
+          { execute: result.actionId },
+          { execution_revalidates: true },
+        ]
+      : result.status === 'ready'
+        ? [{ terminal_state: 'done' }, { recommendation: null }]
+        : [
+            { navigation: 'unresolved' },
+            { recommendation: null },
+            { if_blocked: 'use_returned_remediation_ids' },
+          ];
+  if (JSON.stringify(entry.agent.instruction) !== JSON.stringify(expected)) {
+    fail('guidance-instruction');
+  }
 }
 
 export function renderCandidateExplanation({
@@ -658,7 +715,7 @@ export function validateCandidateExplanation(envelope) {
     'presentation-shape'
   );
   validateCandidatePresentation(envelope.result);
-  if (!Array.isArray(envelope.guidance) || envelope.guidance.length === 0) fail('guidance');
+  if (!Array.isArray(envelope.guidance) || envelope.guidance.length !== 1) fail('guidance');
   for (const entry of envelope.guidance) {
     if (entry.status === 'expanded') {
       exact(entry, ['agent', 'digest', 'id', 'status'], 'guidance-shape');
@@ -672,6 +729,7 @@ export function validateCandidateExplanation(envelope) {
       fail('guidance-status');
     }
     digestValue(entry.digest, 'guidance-digest');
+    validateGuidanceInstruction(entry, envelope.result);
   }
   if (diagnostic) {
     validateCandidateDecision(envelope.fullDecision);
