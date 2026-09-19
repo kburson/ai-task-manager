@@ -199,9 +199,53 @@ test('#1381: shared router discovers the provider-neutral incident-ledger rule',
 });
 
 function activeInstructionParagraphs(markdown) {
-  return String(markdown)
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
+  const activeLines = [];
+  let fenceMarker = null;
+  let inComment = false;
+
+  for (const line of String(markdown).split('\n')) {
+    const fence = !inComment && line.match(/^[ \t]*(`{3,}|~{3,})/);
+    if (fence) {
+      const marker = fence[1][0];
+      if (fenceMarker === null) fenceMarker = marker;
+      else if (fenceMarker === marker) fenceMarker = null;
+      activeLines.push('');
+      continue;
+    }
+    if (fenceMarker !== null) {
+      activeLines.push('');
+      continue;
+    }
+
+    let remaining = line;
+    let active = '';
+    while (remaining.length > 0) {
+      if (inComment) {
+        const end = remaining.indexOf('-->');
+        if (end === -1) {
+          remaining = '';
+          break;
+        }
+        remaining = remaining.slice(end + 3);
+        inComment = false;
+        active += ' ';
+        continue;
+      }
+      const start = remaining.indexOf('<!--');
+      if (start === -1) {
+        active += remaining;
+        remaining = '';
+      } else {
+        active += `${remaining.slice(0, start)} `;
+        remaining = remaining.slice(start + 4);
+        inComment = true;
+      }
+    }
+    activeLines.push(active);
+  }
+
+  return activeLines
+    .join('\n')
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
@@ -282,6 +326,25 @@ test('#1713: active-mandate detector rejects both historical forms even beside o
     0,
     'quoted negative examples are not active instructions'
   );
+});
+
+test('#1703: active-instruction scanning cannot recreate an HTML comment opener', () => {
+  const markdown = [
+    '<!<!-- hidden comment -->-->',
+    '',
+    '<!--',
+    'Non-stub shapes require user-story.md.',
+    '-->',
+    '',
+    'User Story input is optional before Plan approval.',
+  ].join('\n');
+  const paragraphs = activeInstructionParagraphs(markdown);
+  assert.equal(
+    paragraphs.some((paragraph) => paragraph.includes('<!--')),
+    false,
+    JSON.stringify(paragraphs)
+  );
+  assert.deepEqual(obsoleteStoryMandates(markdown), []);
 });
 
 test('#1713: shared and CLI authoring guidance treats intake story prose as optional', () => {
