@@ -26,7 +26,14 @@ import {
   hasPlanApprovedMarker,
   readPlanApprovedForecastRecordId,
   readPlanApprovedMode,
+  parsePlanApprovedMarker,
 } from '../../../../task-tracker/lib/markers.mjs';
+import { createWorkflowExceptionEnvelope } from '../../../../task-tracker/lib/workflow-policy/exception-record.mjs';
+import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
+import {
+  buildPlanApprovalAuditComment,
+  isCanonicalPlanApprovalAuditComment,
+} from '../../../../task-tracker/lib/plan-approval-audit.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '../../../..');
@@ -64,6 +71,7 @@ function makeDeps(overrides = {}) {
         calls.stateLookups++;
         return overrides.state ?? 'plan';
       },
+      resolveTrunkSha: async () => 'a'.repeat(40),
       nowIso: () => FIXED_TS,
       env: overrides.env ?? {},
       listComments: async () => {
@@ -74,13 +82,127 @@ function makeDeps(overrides = {}) {
         calls.comments.push(commentBody);
         comments.push(commentBody);
       },
+      listWorkflowExceptionRecords: async () => overrides.workflowRecords ?? [],
+      listIssueBodyHistory: async () => overrides.issueBodyHistory ?? [body],
       ...overrides.deps,
     },
     getBody: () => body,
   };
 }
 
-async function captureVerbStdout(issueNumber, deps) {
+function makeEvidenceRepairFixture() {
+  const initialBody = [
+    '## User Story',
+    '',
+    'As a maintainer I want approved planning provenance so that review can trust the record.',
+    '',
+    '## Scope',
+    '',
+    'Repair the missing automated Plan approval from durable evidence.',
+    '',
+    '## Plan Metadata',
+    '',
+    '- Implementation authority: Scope and Deep-Dive Analysis.',
+    '',
+    '## Deep-Dive Analysis (2026-09-19)',
+    '',
+    'The implementation path and risks were examined before development.',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [x] Repair is evidence-derived. <!-- aitm-verified exit="0" sha="abcdef0" key="repair" vc-list="vc:1" -->',
+    '',
+    '## Plan Adjustment',
+    '',
+    'Keep this exact adjustment byte-for-byte.',
+    '',
+    '<!-- aitm-entered-plan ts="2026-09-19T15:20:24.739Z" -->',
+    '<!-- aitm-entered-ready-for-plan ts="2026-09-19T15:19:55.540Z" -->',
+    '<!-- aitm-entered-develop ts="2026-09-19T15:22:16.645Z" -->',
+    '<!-- aitm-deep-dive-complete ts="2026-09-19T15:21:00.000Z" -->',
+    '',
+  ].join('\n');
+  const historicalBody = initialBody.replace(
+    '- [x] Repair is evidence-derived. <!-- aitm-verified exit="0" sha="abcdef0" key="repair" vc-list="vc:1" -->',
+    '- [ ] Repair is evidence-derived. <!-- aitm-verified key="repair" vc-list="vc:1" -->'
+  );
+  const scopeIdentity = computeScopeIdentity({
+    repository: cfg.repo,
+    issue: 1716,
+    body: historicalBody,
+  });
+  const authorization = {
+    reference: 'codex://sessions/repair/messages/approval',
+    statement: 'Revoke the workflow exception including every waiver.',
+    principal: 'github-user:maintainer',
+    recordingActor: 'codex/session:repair',
+    origin: 'codex-session-transcript',
+    verificationLevel: 'host-verified-user-message',
+  };
+  const first = createWorkflowExceptionEnvelope({
+    repository: cfg.repo,
+    issue: 1716,
+    exceptionId: 'historical-plan-waiver',
+    revision: 1,
+    scopeIdentity,
+    requirementIds: ['approval.plan'],
+    constraints: [],
+    reason: 'The earlier workflow interpretation waived Plan approval.',
+    authorization,
+    operationId: `sha256:${'1'.repeat(64)}`,
+    createdAt: '2026-09-19T15:21:00.000Z',
+    recordId: '01M2Y000000000000000000001',
+    grantId: '01M2Y000000000000000000091',
+  });
+  const revoked = createWorkflowExceptionEnvelope({
+    repository: cfg.repo,
+    issue: 1716,
+    exceptionId: 'historical-plan-waiver',
+    revision: 2,
+    status: 'revoked',
+    scopeIdentity,
+    requirementIds: ['approval.plan'],
+    constraints: [],
+    reason: 'The prior Plan-approval waiver was revoked.',
+    authorization,
+    operationId: `sha256:${'2'.repeat(64)}`,
+    predecessor: first.recordId,
+    supersedes: first.recordId,
+    createdAt: '2026-09-19T17:25:45.930Z',
+    recordId: '01M2Y000000000000000000002',
+    grantId: '01M2Y000000000000000000092',
+  });
+  const comments = [
+    [
+      'Timing Log',
+      '| Timestamp | Event |',
+      '|---|---|',
+      '| 2026-09-19 10:20:24 -05:00 | plan:started |',
+      '| 2026-09-19 10:22:13 -05:00 | plan:completed |',
+      '| 2026-09-19 10:22:13 -05:00 | develop:started |',
+    ].join('\n'),
+    [
+      '<!-- aitm-refined-estimate: 1716 -->',
+      '### Planned Estimate',
+      '| Field | Refine | Plan | Delta |',
+      '|---|---|---|---|',
+      '| Size | M | L | M to L |',
+      '| Estimate (h) | 4 | 9.5 | +5.5 |',
+    ].join('\n'),
+  ];
+  return {
+    initialBody,
+    comments,
+    workflowRecords: [
+      { commentNodeId: 'IC_first', envelope: first },
+      { commentNodeId: 'IC_revoked', envelope: revoked },
+    ],
+    issueBodyHistory: [historicalBody],
+    revokedRecordId: revoked.recordId,
+  };
+}
+
+async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   const write = process.stdout.write;
   const chunks = [];
   process.stdout.write = (chunk) => {
@@ -88,11 +210,24 @@ async function captureVerbStdout(issueNumber, deps) {
     return true;
   };
   try {
-    await verbPlanApprove([String(issueNumber)], cfg, deps);
+    await verbPlanApprove([String(issueNumber), ...extraArgs], cfg, deps);
   } finally {
     process.stdout.write = write;
   }
   return chunks.join('');
+}
+
+// #1716: the public CLI flag reaches the evidence-repair branch.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const { deps } = makeDeps({
+    state: 'review',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+  });
+  const output = await captureVerbStdout(1716, deps, ['--repair-from-evidence']);
+  assert.match(output, /Reconstructed Full-Auto Plan approval/);
+  assert.match(output, new RegExp(fixture.revokedRecordId));
 }
 
 // 1. wrong-state when in review (plan-approve cannot approve Review)
@@ -103,6 +238,161 @@ async function captureVerbStdout(issueNumber, deps) {
   assert.match(r.message, /review/);
   assert.match(r.message, /plan-approve only applies to issues in Plan/);
   assert.equal(calls.writes.length, 0);
+}
+
+// #1716: an explicit Full-Auto repair reconstructs approval only from a
+// complete later-stage evidence bundle and preserves Plan Adjustment bytes.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const adjustment = '## Plan Adjustment\n\nKeep this exact adjustment byte-for-byte.';
+  const { deps, calls, getBody } = makeDeps({
+    state: 'review',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+  });
+  const r = await runPlanApprove({
+    issueNumber: 1716,
+    cfg,
+    repairFromEvidence: true,
+    deps,
+  });
+  assert.equal(r.status, 'repaired-from-evidence');
+  assert.equal(r.mode, 'full-auto');
+  assert.equal(readPlanApprovedMode(getBody()), 'full-auto');
+  assert.equal(parsePlanApprovedMarker(getBody()).trunkSha, 'a'.repeat(40));
+  assert.equal(calls.comments.length, 1);
+  assert.match(calls.comments.at(-1), /^### Full-Auto Plan-Approval Audit — #1716/m);
+  assert.match(calls.comments.at(-1), new RegExp(fixture.revokedRecordId));
+  assert.equal(getBody().includes(adjustment), true);
+}
+
+// #1716: the repair audit remains part of Agent Review's exact canonical
+// comment contract while naming the revoked record that justified repair.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const audit = buildPlanApprovalAuditComment({
+    issueNumber: 1716,
+    ts: FIXED_TS,
+    repairEvidence: { revokedRecordId: fixture.revokedRecordId },
+  });
+  assert.equal(
+    isCanonicalPlanApprovalAuditComment(audit, { issueNumber: 1716, ts: FIXED_TS }),
+    true
+  );
+  assert.equal(
+    isCanonicalPlanApprovalAuditComment(audit.replace('approval.plan', 'review.peer'), {
+      issueNumber: 1716,
+      ts: FIXED_TS,
+    }),
+    false
+  );
+}
+
+// #1716: partial marker/audit writes are safely retryable without duplicate
+// provenance or loss of the separate Plan Adjustment record.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const { deps, calls, getBody } = makeDeps({
+    state: 'review',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+  });
+  await runPlanApprove({ issueNumber: 1716, cfg, repairFromEvidence: true, deps });
+  const afterFirst = getBody();
+  const r = await runPlanApprove({ issueNumber: 1716, cfg, repairFromEvidence: true, deps });
+  assert.equal(r.status, 'repaired-from-evidence');
+  assert.equal(getBody(), afterFirst);
+  assert.equal(calls.writes.length, 1);
+  assert.equal(calls.comments.length, 1);
+}
+
+// #1716: each missing or contradictory authority predicate fails closed.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const originalActive = fixture.workflowRecords[0].envelope;
+  const currentActive = createWorkflowExceptionEnvelope({
+    repository: cfg.repo,
+    issue: 1716,
+    exceptionId: originalActive.payload.exceptionId,
+    revision: 1,
+    scopeIdentity: computeScopeIdentity({
+      repository: cfg.repo,
+      issue: 1716,
+      body: fixture.initialBody,
+    }),
+    requirementIds: originalActive.payload.requirementIds,
+    constraints: originalActive.payload.constraints,
+    reason: originalActive.payload.reason,
+    authorization: originalActive.payload.approvalEvidence,
+    operationId: originalActive.payload.operationId,
+    createdAt: originalActive.createdAt,
+    recordId: originalActive.recordId,
+    grantId: originalActive.authority.grantId,
+  });
+  const scenarios = [
+    {
+      name: 'interactive invocation',
+      env: {},
+      want: 'full-auto-authority-missing',
+    },
+    {
+      name: 'active exception',
+      env: { TT_FULL_AUTO: '1' },
+      workflowRecords: [{ commentNodeId: 'IC_active', envelope: currentActive }],
+      issueBodyHistory: [fixture.initialBody],
+      want: 'workflow-exception-active',
+    },
+    {
+      name: 'missing Plan completion sequence',
+      env: { TT_FULL_AUTO: '1' },
+      comments: fixture.comments.slice(1),
+      want: 'plan-completion-sequence-missing',
+    },
+    {
+      name: 'missing matching scope history',
+      env: { TT_FULL_AUTO: '1' },
+      issueBodyHistory: [],
+      want: 'workflow-exception-scope-history-missing',
+    },
+    {
+      name: 'cancelled Plan',
+      env: { TT_FULL_AUTO: '1' },
+      initialBody: `${fixture.initialBody}\n<!-- aitm-plan-cancelled ts="2026-09-19T15:21:30.000Z" -->\n`,
+      want: 'plan-cancelled-or-rejected',
+    },
+    {
+      name: 'stale scope',
+      env: { TT_FULL_AUTO: '1' },
+      initialBody: fixture.initialBody.replace(
+        'Repair the missing automated Plan approval from durable evidence.',
+        'Changed scope that was never covered by the exception.'
+      ),
+      want: 'workflow-exception-semantic-scope-drift',
+    },
+    {
+      name: 'existing human approval',
+      env: { TT_FULL_AUTO: '1' },
+      initialBody: `${fixture.initialBody}\n<!-- aitm-plan-approved ts="2026-09-19T15:21:30Z" mode="human" -->\n`,
+      want: 'existing-approval-not-full-auto',
+    },
+  ];
+  for (const scenario of scenarios) {
+    const { deps, calls } = makeDeps({
+      state: 'review',
+      ...fixture,
+      ...scenario,
+    });
+    const r = await runPlanApprove({
+      issueNumber: 1716,
+      cfg,
+      repairFromEvidence: true,
+      deps,
+    });
+    assert.equal(r.status, 'evidence-repair-refused', scenario.name);
+    assert.ok(r.blockers.includes(scenario.want), `${scenario.name}: ${r.blockers.join(', ')}`);
+    assert.equal(calls.writes.length, 0, scenario.name);
+    assert.equal(calls.comments.length, 0, scenario.name);
+  }
 }
 
 // 2. wrong-state when in develop
