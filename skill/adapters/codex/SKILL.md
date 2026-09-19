@@ -56,12 +56,17 @@ restate their prose here. Each rule file carries an `<!-- aitm-rule-id: … -->`
 anchor so a reviewer can name the single authoritative source:
 
 - **Creating issues** (`issue-create`) → `rules/create-issue.md`.
-  The shape menu (`stub|epic|sub-issue|solo|defect`), the required `./.scratch/plan/`
-  fragments (including `user-story.md` for non-stub shapes), the deterministic
+  User Story input is optional before Plan approval. The shape menu
+  (`stub|epic|sub-issue|solo|defect`), required Scope/Acceptance Criteria/Story
+  Origin fragments, optional early `user-story.md`, and deterministic
   refusal contracts, binding each Acceptance Criterion to an
   `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification
 Commands`, and the never-promote-untracked-work rule all live there. Loads JIT
   on `/task new`.
+- **Story quality and Plan scaffold** (`user-story-quality`) →
+  `rules/user-story-quality.md`. Load it for issue creation, story authoring,
+  Plan, Plan approval, and splitting. It is the only copy of the seven-question
+  rubric and points to the installed or canonical plan scaffold.
 - **Review & approve** (`review`) → `rules/review.md`. Field units
   (board `Estimate` in hours, timing fields in minutes — normalize before any
   comparison), the Full-Auto approve footnote, and the Review-Notes → Drivers

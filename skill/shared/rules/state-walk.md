@@ -71,6 +71,11 @@ No CLI verb. Agent self-reports `REVIEW_COMPLETE`. The orchestrator confirms the
 
 `/task promote` from Plan refuses unless `<!-- aitm-plan-approved: <ts> -->` is in the issue body. Record approval first with `/task plan-approve #N` (idempotent; valid only while issue is in Plan). Toggled by `gateAnalysisToDevelopment` (legacy name retained).
 
+Before Plan approval, load `rules/user-story-quality.md`, resolve the current
+authoritative Story Intent, apply all seven semantic review questions, and
+repair unsupported claims. Promotion revalidates the persisted story binding;
+it never refreshes approval implicitly.
+
 ## Estimation comment surfaces
 
 See [`docs/guides/workflow.md`](../../../docs/guides/workflow.md) → Three-stage estimation for the comment-emitting verbs (`/task promote` from Plan, `/task close`) and their bypass envs.

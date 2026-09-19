@@ -57,9 +57,11 @@ Every created epic, sub-issue, and solo task must be tethered via `project-tethe
 
 ## Epic creation
 
-Stage the creation fragments under `./.scratch/plan/`; Plan Metadata is optional when planning output is not yet known:
+Load `rules/user-story-quality.md`. Stage the creation fragments under
+`./.scratch/plan/`; both early User Story input and Plan Metadata are optional
+when planning output is not yet known:
 
-- `./.scratch/plan/user-story.md` — exactly three complete Connextra lines (`As a ...`, `I want to ...`, `So that ...`)
+- `./.scratch/plan/user-story.md` — optional; when present, the canonical template or three source-grounded Connextra lines
 - `./.scratch/plan/scope.md` — Epic Scope prose
 - `./.scratch/plan/acs.md` — Acceptance Criteria as `- [ ]` checkboxes (closes-gate parser requires the bracket-space-bracket format)
 - `./.scratch/plan/story-origin.md` — create-time provenance such as `**kind:**`, `**discovered-during:**`, and relationships
@@ -73,7 +75,6 @@ npx aitm create-issue \
   --title "<title>" \
   # The epic title prefix `🧑‍🧒‍🧒 [Epic] ` is stamped automatically when the
   # epic gains its first child (sub-issue link); do not hand-type a prefix.
-  --user-story-file ./.scratch/plan/user-story.md \
   --scope-file ./.scratch/plan/scope.md \
   --ac-file ./.scratch/plan/acs.md \
   --story-origin-file ./.scratch/plan/story-origin.md \
@@ -98,14 +99,13 @@ If the helper exits non-zero, STOP. Either the issue was never created (gh failu
 For each sub-issue in document order:
 
 1. Infer purpose labels from scope.
-2. Stage `./.scratch/plan/user-story.md`, `./.scratch/plan/scope.md`, `./.scratch/plan/acs.md`, `./.scratch/plan/story-origin.md`, and optional `./.scratch/plan/plan-meta.md`.
+2. Stage `./.scratch/plan/scope.md`, `./.scratch/plan/acs.md`, and `./.scratch/plan/story-origin.md`; add optional `./.scratch/plan/user-story.md` only when source-grounded draft prose exists, and optional `./.scratch/plan/plan-meta.md` when planning output exists.
 3. Create + tether:
 
 ```bash
 npx aitm create-issue \
   --shape sub-issue \
   --title "<title>" \
-  --user-story-file ./.scratch/plan/user-story.md \
   --scope-file ./.scratch/plan/scope.md \
   --ac-file ./.scratch/plan/acs.md \
   --story-origin-file ./.scratch/plan/story-origin.md \

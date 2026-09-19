@@ -63,15 +63,16 @@ Load a rule JIT unless its versioned sentinel is already live.
 | evidence / reopen                                                       | `rules/evidence.md`                                                       |
 | `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
-| `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                                   |
-| `/task new` while `active=="plan"`                                       | `rules/plan-mode-backlog.md`                                              |
+| `/task new` | `rules/create-issue.md` + `rules/user-story-quality.md` |
+| `/task new` while Plan | `rules/plan-mode-backlog.md` + `rules/user-story-quality.md` |
+| `/task user-story` `/task plan` `/task plan-approve` `/task split-plan` | `rules/user-story-quality.md` (+ `rules/state-walk.md`) |
 | `/task config init`                                                      | `rules/config-init.md`                                                    |
 | Parallel fan-out (≥2 candidate children, any worktree dispatch)          | `rules/parallel.md`                                                       |
 | Session start (preferences detail beyond key names)                      | `rules/preferences.md`                                                    |
 | `Full-Auto`, `manual plan review`, `manual code review`, `manual task review` | `rules/full-auto.md`                                                   |
 | First commit in session, commit-trail troubleshooting                    | `rules/commit-trail.md`                                                   |
 | Hook-output diagnosis (rare)                                             | `rules/hooks.md`                                                          |
-| `/task plan-approve`, `/task approve`, `/task reject`                    | `rules/state-walk.md` (gate verbs; covered there)                         |
+| `/task approve`, `/task reject`                                          | `rules/state-walk.md` (gate verbs; covered there)                         |
 | Scratch writes; `/task issue-body` or `comment`                          | `rules/scratch-dirs.md`; `rules/issue-records.md`                         |
 | `/task block`, `/task unblock`, spawning a defect mid-task               | `rules/block.md`                                                          |
 | Skill script blocks you (hook `block`, or `aitm-defect-hint:` on stderr) | `rules/report-on-block.md`                                                |

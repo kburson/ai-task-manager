@@ -256,7 +256,7 @@ describe('current-schema public authoring contract', () => {
     }
   });
 
-  test('shared and provider guidance require story fragments and vc-list AC citations', () => {
+  test('shared and provider guidance makes story input optional and retains vc-list AC citations', () => {
     const shared = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/create-issue.md'), 'utf8');
     assert.match(shared, /user-story\.md/);
     assert.match(shared, /aitm-verified vc-list="vc:N"/);
@@ -268,6 +268,7 @@ describe('current-schema public authoring contract', () => {
         'utf8'
       );
       assert.match(adapter, /user-story\.md/, provider);
+      assert.match(adapter, /User Story input is optional before Plan approval\./, provider);
       assert.match(adapter, /aitm-verified vc-list="vc:N"/, provider);
       assert.doesNotMatch(adapter, /Acceptance Criterion[\s\S]{0,160}aitm-verified cmd=/);
     }

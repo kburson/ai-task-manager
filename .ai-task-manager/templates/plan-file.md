@@ -19,3 +19,49 @@
 - Size: <XS|S|M|L|XL>
 - Estimate: <N hours>
 - Labels: <label1>, <label2>
+
+## Story Intent
+
+- **Beneficiary:** [who wants to accomplish something]
+- **Capability:** [what they want to accomplish]
+- **Need:** [what gap or failure makes it necessary]
+- **Value or failure prevented:** [why they want to accomplish that thing]
+
+### Task 1: <task title>
+
+#### Story Intent
+
+- **Beneficiary:** [who wants to accomplish something]
+- **Capability:** [what they want to accomplish]
+- **Need:** [what gap or failure makes it necessary]
+- **Value or failure prevented:** [why they want to accomplish that thing]
+
+#### Files
+
+<task scope and implementation notes>
+
+**Verification Commands:**
+
+```sh
+# <replace with an executable verifier>
+```
+
+## Worked example guide
+
+The fenced example is guidance only. Copy and adapt it; fenced headings are not
+live decomposition tasks.
+
+```markdown
+### Task 2: Prevent partial publication
+
+#### Story Intent
+
+- **Beneficiary:** release operator
+- **Capability:** stop publication when registry checks fail
+- **Need:** publication can otherwise expose an incomplete package
+- **Value or failure prevented:** consumers receive only complete releases
+
+**Verification Commands:**
+
+    node --test scripts/tests/unit/release.test.mjs
+```

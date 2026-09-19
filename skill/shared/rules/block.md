@@ -16,9 +16,11 @@ If the sentinel is already present in context, do not re-read.
 
 Full-Auto does not leave a newly discovered local defect untracked. Before applying the parent blocker protocol, create the defect through the sanctioned shape and capture its issue number:
 
+Load `rules/user-story-quality.md`. Early User Story input is optional; include
+`--user-story-file` below only when source-grounded draft prose already exists.
+
 ```bash
 npx aitm create-issue --shape defect \
-  --user-story-file ./.scratch/plan/user-story.md \
   --scope-file ./.scratch/plan/scope.md \
   --ac-file ./.scratch/plan/acs.md \
   --story-origin-file ./.scratch/plan/story-origin.md \

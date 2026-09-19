@@ -33,4 +33,4 @@ Grok-specific host facts:
 
 ## Creating issues
 
-Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. Non-stub shapes require the `./.scratch/plan/user-story.md` fragment alongside Scope, Acceptance Criteria, and Story Origin. Bind each Acceptance Criterion to an `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification Commands`; the complete contract lives in `rules/create-issue.md` and loads JIT on `/task new`.
+Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. User Story input is optional before Plan approval. Optional early prose may use `user-story.md`. Scope, Acceptance Criteria, and Story Origin remain required for non-stub shapes. Bind ACs to root Verification Commands with `aitm-verified vc-list="vc:N"`. The creation contract lives in `rules/create-issue.md`; load `rules/user-story-quality.md` for creation, story authoring, Plan, approval, splitting, and the installed or canonical Plan scaffold. The shared rule owns the seven-question rubric; do not copy it here.
