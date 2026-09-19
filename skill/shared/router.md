@@ -58,14 +58,14 @@ Load a rule JIT unless its versioned sentinel is already live.
 | --- | --- |
 | `/task #N`, `/task resume #N`                                            | `rules/bind.md` (+ load `.ai-task-manager/templates/pickup-directive.md`) |
 | `/task review #N`                                                        | `rules/review.md`                                                         |
-| `/task deliver #N`                                                       | `rules/deliver.md`                                                        |
+| `/task deliver #N` | `rules/deliver.md` |
 | `/task incident-ledger #1381`                                           | `rules/incident-ledger.md`                                                |
 | evidence / reopen                                                       | `rules/evidence.md`                                                       |
 | `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
-| `/task new`                                                              | `rules/create-issue.md` + `rules/user-story-quality.md`                   |
-| `/task new` while `active === "plan"`                                    | `rules/plan-mode-backlog.md` + `rules/user-story-quality.md`              |
-| `/task user-story`, `/task plan`, `/task plan-approve`, `/task split-plan` | `rules/user-story-quality.md` (+ `rules/state-walk.md`)                   |
+| `/task new` | `rules/create-issue.md` + `rules/user-story-quality.md` |
+| `/task new` when `active=plan` | `rules/plan-mode-backlog.md` + `rules/user-story-quality.md` |
+| `/task user-story`, `/task plan`, `/task plan-approve`, `/task split-plan` | `rules/user-story-quality.md` (+ `rules/state-walk.md`) |
 | `/task config init`                                                      | `rules/config-init.md`                                                    |
 | Parallel fan-out (≥2 candidate children, any worktree dispatch)          | `rules/parallel.md`                                                       |
 | Session start (preferences detail beyond key names)                      | `rules/preferences.md`                                                    |
