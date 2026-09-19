@@ -1,6 +1,6 @@
-// @story #1382
-// Non-stub issue creation must author a complete Connextra User Story and use
-// the same required fragment contract at the create-issue and preflight seams.
+// @story #1382 #1710
+// Non-stub creation permits unfinished intake while retaining substantive
+// quality and the same fragment contract at the creator/preflight seams.
 
 import { execFile } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -13,6 +13,7 @@ import { describe, test } from 'node:test';
 
 import { buildShapeFlags } from '../../../../gh/create-issue.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
 
 const pexec = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -74,12 +75,13 @@ async function preflight(args) {
 
 describe('current-schema User Story authoring', () => {
   for (const shape of ['epic', 'sub-issue', 'solo', 'defect']) {
-    test(`${shape} requires --user-story-file`, async () => {
+    test(`${shape} omission renders an empty leading User Story section`, async () => {
       const files = fixture();
       try {
         const result = await preflight(shapeArgs(shape, files, { includeStory: false }));
-        assert.equal(result.code, 2);
-        assert.match(result.stderr, /--user-story-file required with --shape/);
+        assert.equal(result.code, 0, result.stderr);
+        assert.match(result.stdout, /^## User Story\s*\n\s*## Scope/m);
+        assert.equal(result.stdout.match(/^## (.+)$/m)[1], 'User Story');
       } finally {
         rmSync(files.dir, { recursive: true, force: true });
       }
@@ -107,13 +109,31 @@ describe('current-schema User Story authoring', () => {
     assert.doesNotMatch(result.stdout, /^## User Story$/m);
   });
 
-  test('malformed and placeholder story fragments fail before rendering', async () => {
+  test('exact canonical template survives intake unchanged', async () => {
+    const files = fixture();
+    try {
+      writeFileSync(files.story, CANONICAL_USER_STORY_TEMPLATE);
+      const result = await preflight(shapeArgs('solo', files));
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(
+        result.stdout.match(/^## User Story\s*\n([\s\S]*?)(?=^## Scope)/m)[1].trim(),
+        CANONICAL_USER_STORY_TEMPLATE
+      );
+    } finally {
+      rmSync(files.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('malformed and partially filled story fragments fail before rendering', async () => {
     const files = fixture();
     const invalidStories = [
       'As a task author\nI want to create an issue\n',
       'As a task author\nI want to create an issue\nSo that it is complete\nUnexpected fourth line\n',
       '## User Story\n\nAs a task author\nI want to create an issue\nSo that it is complete\n',
-      'As a [who wants to accomplish something]\nI want to [what they want to accomplish]\nSo that [why they want to accomplish that thing]\n',
+      CANONICAL_USER_STORY_TEMPLATE.replace(
+        'As a [who wants to accomplish something]',
+        'As a requester'
+      ),
       'developer\nfeature\nbenefit\n',
       'As a task author\nI want feature\nSo that it is complete\n',
       'As a\nI want to create an issue\nSo that it is complete\n',

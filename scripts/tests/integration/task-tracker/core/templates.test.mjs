@@ -23,7 +23,14 @@ const runtimePickupDirective = existsSync(runtimePickupDirectivePath)
   ? readFileSync(runtimePickupDirectivePath, 'utf8')
   : null;
 
-for (const name of ['epic-body.md', 'solo-issue-body.md', 'sub-issue-body.md']) {
+// @story #1710
+for (const name of [
+  'epic-body.md',
+  'solo-issue-body.md',
+  'sub-issue-body.md',
+  'defect-body.md',
+  'plan-file.md',
+]) {
   assert.equal(
     readFileSync(path.join(root, '.ai-task-manager', 'templates', name), 'utf8'),
     readFileSync(path.join(root, 'templates', name), 'utf8'),

@@ -1,4 +1,4 @@
-// @story #1052
+// @story #1052 #1710
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
@@ -142,6 +142,10 @@ test('sanctioned dry-run body preserves exact task verifiers behind AC citations
   const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-body-test-'));
   try {
     const [proposal] = buildSplitProposals(input());
+    // This test isolates verifier preservation; Task 4 replaces the legacy
+    // administrative story generator, which intake now refuses separately.
+    proposal.userStory =
+      'As a release operator\nI want to stop partial publication because registry checks can fail\nSo that consumers receive complete releases';
     const paths = await writeProposalFragments({ proposal, scratchDir });
     const { stdout } = await pexec(
       process.execPath,
@@ -158,6 +162,32 @@ test('sanctioned dry-run body preserves exact task verifiers behind AC citations
       [{ id: 1, command: 'node --test classifier.test.mjs' }]
     );
     assert.match(stdout, /aitm-verified vc-list="vc:1"/);
+  } finally {
+    rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
+test('sanctioned creator refuses the legacy administrative split fallback until Task 4', async () => {
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-refusal-test-'));
+  try {
+    const [proposal] = buildSplitProposals(input());
+    const paths = await writeProposalFragments({ proposal, scratchDir });
+    await assert.rejects(
+      pexec(
+        process.execPath,
+        [path.join(process.cwd(), 'bin/aitm.mjs'), ...paths.creatorArgs, '--dry-run'],
+        { cwd: process.cwd(), maxBuffer: 10 * 1024 * 1024 }
+      ),
+      (error) => {
+        assert.equal(error.code, 2);
+        assert.match(error.stderr, /--user-story-file story-administrative-beneficiary:/);
+        assert.match(error.stderr, /story-task-as-capability:/);
+        assert.match(error.stderr, /story-workflow-progress-value:/);
+        assert.match(error.stderr, /story-traceability-only-value:/);
+        assert.equal(error.stdout, '');
+        return true;
+      }
+    );
   } finally {
     rmSync(scratchDir, { recursive: true, force: true });
   }

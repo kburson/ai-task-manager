@@ -518,6 +518,25 @@ try {
   );
 
   // scripts NOT copied to project
+  // @story #1710: default installation manages both artifacts and preserves edits.
+  for (const name of ['defect-body.md', 'plan-file.md']) {
+    const installed = path.join(target, '.ai-task-manager', 'templates', name);
+    assert.equal(
+      readFileSync(installed, 'utf8'),
+      readFileSync(path.join(ROOT, 'templates', name), 'utf8')
+    );
+    writeFileSync(installed, `local edits to ${name}\n`);
+  }
+  await pexec('node', [CLI, 'install', '--target', target]);
+  for (const name of ['defect-body.md', 'plan-file.md']) {
+    const installed = path.join(target, '.ai-task-manager', 'templates', name);
+    assert.equal(
+      readFileSync(installed, 'utf8'),
+      readFileSync(path.join(ROOT, 'templates', name), 'utf8')
+    );
+    assert.equal(readFileSync(`${installed}.bak`, 'utf8'), `local edits to ${name}\n`);
+  }
+
   assert.ok(
     !existsSync(path.join(target, 'scripts', 'task-tracker')),
     'scripts/task-tracker must NOT be copied'

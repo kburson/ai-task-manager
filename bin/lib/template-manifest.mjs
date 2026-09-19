@@ -17,6 +17,8 @@ export const TEMPLATE_FILES = [
   'epic-body.md',
   'sub-issue-body.md',
   'solo-issue-body.md',
+  'defect-body.md',
+  'plan-file.md',
   'session-boot.md',
   'session-state-template.md',
   'worker-report.md',

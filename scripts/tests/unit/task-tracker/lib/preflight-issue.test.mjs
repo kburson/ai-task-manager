@@ -17,6 +17,7 @@ import { normalizePlanMetadata } from '../../../../task-tracker/preflight-issue.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditEvidenceMarkers } from '../../../../task-tracker/lib/evidence-markers.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
 
 const pexec = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -55,7 +56,12 @@ async function runPreflight(args, options = {}) {
   const forwarded = [...args];
   const shapeIndex = forwarded.indexOf('--shape');
   const shape = shapeIndex >= 0 ? forwarded[shapeIndex + 1] : null;
-  if (shape && shape !== 'stub' && !forwarded.includes('--user-story-file')) {
+  if (
+    shape &&
+    shape !== 'stub' &&
+    !forwarded.includes('--user-story-file') &&
+    options.supplyStory !== false
+  ) {
     const scopeIndex = forwarded.indexOf('--scope-file');
     const fixtureDir = path.dirname(forwarded[scopeIndex + 1]);
     const story = path.join(fixtureDir, 'story.md');
@@ -63,10 +69,64 @@ async function runPreflight(args, options = {}) {
     forwarded.push('--verification-commands-file', path.join(fixtureDir, 'vc.md'));
   }
   try {
-    const { stdout, stderr } = await pexec('node', [SCRIPT, ...forwarded], options);
+    const { supplyStory: _supplyStory, ...execOptions } = options;
+    const { stdout, stderr } = await pexec('node', [SCRIPT, ...forwarded], execOptions);
     return { code: 0, stdout, stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
+  }
+}
+
+// @story #1710
+for (const shape of ['epic', 'solo', 'sub-issue', 'defect']) {
+  for (const [kind, prose, code] of [
+    ['omitted', undefined, 0],
+    ['blank', ' \n\n', 0],
+    ['template', CANONICAL_USER_STORY_TEMPLATE, 0],
+    [
+      'valid',
+      'As a release operator\nI want to stop partial publication because registry checks can fail\nSo that consumers receive complete releases',
+      0,
+    ],
+    ['malformed', 'As a requester\nI want a feature\nSo that work improves', 2],
+    [
+      'administrative',
+      'As a governed delivery agent\nI want to deliver Task 2 from the pinned source plan\nSo that issue #1703 advances through traceable execution',
+      2,
+    ],
+  ]) {
+    it(`${shape} preflight handles ${kind} story intake`, async () => {
+      const fx = makeFixture('- [ ] Works\n');
+      try {
+        const args = [
+          '--shape',
+          shape,
+          '--title',
+          'Intake',
+          '--scope-file',
+          fx.scope,
+          '--ac-file',
+          fx.ac,
+          '--story-origin-file',
+          fx.origin,
+          '--parent',
+          '1',
+        ];
+        if (prose !== undefined) {
+          writeFileSync(fx.story, prose);
+          args.push('--user-story-file', fx.story);
+        }
+        const result = await runPreflight(args, { supplyStory: false });
+        assert.equal(result.code, code, result.stderr);
+        if (code === 0) {
+          assert.match(result.stdout, /^## User Story\n/m);
+          const rendered = result.stdout.match(/^## User Story\s*\n([\s\S]*?)(?=^## )/m)[1].trim();
+          assert.equal(rendered, prose?.trim() || '');
+        } else assert.match(result.stderr, /--user-story-file/);
+      } finally {
+        rmSync(fx.dir, { recursive: true, force: true });
+      }
+    });
   }
 }
 
