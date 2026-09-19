@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #1631
+// @story #1631 #1694
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -137,6 +137,37 @@ function assertDocsDoNotDescribeLegacyHookStubs() {
       /\.claude\/hooks\/commit-trail\.sh/,
       `${rel} names legacy commit-trail stub`
     );
+  }
+}
+
+function assertDocsDescribeReadOnlyCloudBootstrap() {
+  for (const rel of [
+    'README.md',
+    'docs/introduction/install-and-setup.md',
+    'docs/guides/settings-guide.md',
+    'skill/shared/router.md',
+  ]) {
+    const text = readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.match(text, /npx ai-task-manager install/, `${rel} names maintainer install`);
+    assert.match(text, /npm ci && npx aitm doctor && npm test/, `${rel} has cloud sequence`);
+    assert.doesNotMatch(
+      text,
+      /doctor\s+--fix|postinstall.*ai-task-manager install/i,
+      `${rel} does not describe implicit repair`
+    );
+  }
+  const setupGuide = readFileSync(
+    path.join(ROOT, 'docs/introduction/install-and-setup.md'),
+    'utf8'
+  );
+  assert.match(
+    setupGuide,
+    /`\.ai-task-manager\/install-manifest\.json`/,
+    'setup generated-path table names the install manifest'
+  );
+  for (const rel of ['README.md', 'docs/introduction/install-and-setup.md']) {
+    const text = readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.match(text, /git add [^\n]*\.gitignore/, `${rel} stages the managed gitignore`);
   }
 }
 
@@ -641,6 +672,7 @@ try {
   assert.match(agents, /\/task test #N/, 'AGENTS.md bootstrap must name the test verb');
 
   assertDocsDoNotDescribeLegacyHookStubs();
+  assertDocsDescribeReadOnlyCloudBootstrap();
 
   console.log('install.test.mjs: all assertions passed');
 } finally {

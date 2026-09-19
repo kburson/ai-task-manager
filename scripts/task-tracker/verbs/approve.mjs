@@ -301,7 +301,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getBoardState = deps.getBoardState || defaultGetBoardState;
-  const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
+  const nowIso = deps.nowIso || (() => new Date().toISOString());
   const detect = deps.detectFullAuto || detectFullAuto;
   const postComment = deps.postComment || defaultPostComment;
   const fetchComments = deps.fetchComments || defaultFetchComments;

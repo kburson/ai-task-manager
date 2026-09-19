@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// @story #309
+// @story #309 #1694
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { renderStampedSkillVersion } from '../../../../../bin/lib/stamp-skill-version.mjs';
+
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '../../../..');
+const packageVersion = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 const body = readFileSync(path.join(root, 'templates', 'definition-of-done.md'), 'utf8');
 const pickupDirective = readFileSync(path.join(root, 'templates', 'pickup-directive.md'), 'utf8');
 const runtimePickupDirectivePath = path.join(
@@ -304,8 +307,8 @@ if (runtimePickupDirective !== null) {
 if (runtimePickupDirective !== null) {
   assert.equal(
     runtimePickupDirective,
-    pickupDirective,
-    '.ai-task-manager/templates/pickup-directive.md drifted from templates/pickup-directive.md — run `npm run sync:templates` to refresh the runtime mirror'
+    renderStampedSkillVersion(pickupDirective, packageVersion),
+    '.ai-task-manager/templates/pickup-directive.md drifted from the version-stamped template — run `npm run sync:templates` to refresh the runtime mirror'
   );
 }
 

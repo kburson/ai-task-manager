@@ -29,7 +29,7 @@ import {
   codexBootstrapBlock,
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
-import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
+import { renderStampedSkillVersion, stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
 import { parseProviderSelection } from './lib/provider-selection.mjs';
 import { TEMPLATE_FILES, memorySeedFiles } from './lib/template-manifest.mjs';
 import {
@@ -1371,10 +1371,12 @@ function installTemplates(targetDir) {
   for (const name of TEMPLATE_FILES) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(mdTemplatesDest, name);
+    const source = readFileSync(src, 'utf8');
+    const bundled =
+      name === 'pickup-directive.md' ? renderStampedSkillVersion(source, pkg.version) : source;
     let suffix = '';
     if (existsSync(out)) {
       const existing = readFileSync(out, 'utf8');
-      const bundled = readFileSync(src, 'utf8');
       if (existing !== bundled) {
         writeFileSync(out + '.bak', existing, 'utf8');
         suffix = ` ${yellow('(overwrote; previous saved as .bak)')}`;
@@ -1382,7 +1384,7 @@ function installTemplates(targetDir) {
         suffix = ` ${dim('(unchanged)')}`;
       }
     }
-    copyFileSync(src, out);
+    writeFileSync(out, bundled, 'utf8');
     ok(`Template ${dim('.ai-task-manager/templates/' + name)}${suffix}`);
   }
   for (const name of ['project-fields.json', 'project-field-events.json']) {

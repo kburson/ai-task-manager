@@ -46,9 +46,27 @@ npx ai-task-manager init
 
 # 4. Commit the generated config — install/init outputs are project-portable,
 #    so ephemeral clones (cloud workstations, fresh worktrees) inherit them
-git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
+git add .gitignore .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
+
+The install step is maintainer-owned and intent-changing. Run it with the
+providers and options the repository intends to support, review the generated
+diff, and commit `.ai-task-manager/install-manifest.json` together with the
+portable project outputs.
+
+Fresh checkouts and cloud CI do not guess those options or rerun the installer.
+They restore dependencies and verify the committed integration read-only:
+
+```bash
+npm ci && npx aitm doctor && npm test
+```
+
+Doctor never repairs the checkout. A missing or stale manifest means a
+maintainer must explicitly rerun `npx ai-task-manager install` with the intended
+options, review the diff, and commit the refreshed manifest and portable
+outputs. Repository `AGENTS.md` is portable when selected during install;
+artifacts under `~/.codex` are optional host-local state.
 
 ### The Public API You Actually Need
 

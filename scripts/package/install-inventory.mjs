@@ -1,12 +1,17 @@
-// @story #1692
+// @story #1692 #1694
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 
 import { TEMPLATE_FILES, referenceTemplateFiles } from '../../bin/lib/template-manifest.mjs';
+import { renderStampedSkillVersion } from '../../bin/lib/stamp-skill-version.mjs';
+
+function digestContent(content) {
+  return createHash('sha256').update(content).digest('hex');
+}
 
 function digestFile(path) {
-  return createHash('sha256').update(readFileSync(path)).digest('hex');
+  return digestContent(readFileSync(path));
 }
 
 function exactFile(id, path, source) {
@@ -28,15 +33,31 @@ const CONFIGS = Object.freeze([
 ]);
 
 export function collectPackageInventory(packageRoot, { templateFiles = TEMPLATE_FILES } = {}) {
+  let packageVersion;
+  try {
+    packageVersion = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')).version;
+  } catch {
+    packageVersion = null;
+  }
   const templates = templateFiles
     .filter((name) => existsSync(join(packageRoot, 'templates', name)))
-    .map((name) =>
-      exactFile(
+    .map((name) => {
+      const source = join(packageRoot, 'templates', name);
+      const item = exactFile(
         `template.${name}`,
         posix.join('.ai-task-manager/templates', name),
-        join(packageRoot, 'templates', name)
-      )
-    );
+        source
+      );
+      if (name === 'pickup-directive.md' && packageVersion) {
+        return Object.freeze({
+          ...item,
+          digest: digestContent(
+            renderStampedSkillVersion(readFileSync(source, 'utf8'), packageVersion)
+          ),
+        });
+      }
+      return item;
+    });
   const references = referenceTemplateFiles(join(packageRoot, 'templates', 'references')).map(
     (name) =>
       exactFile(
