@@ -558,4 +558,40 @@ function verificationReceipt(stage, receiptId, supersedes = null) {
 // markers-progress-cluster.test.mjs — split out to keep this file under the
 // 400-line cap.
 
+// @story #1711 — approval must retain validated content identity.
+{
+  const { parsePlanApprovedMarker } = await import('../../../../task-tracker/lib/markers.mjs');
+  const binding = {
+    storyDigest: 'a'.repeat(64),
+    storyIntentDigest: 'b'.repeat(64),
+    storyIntentSource: 'deep-dive',
+  };
+  const marker = buildPlanApprovedMarker(TS, binding);
+  assert.match(marker, /story-digest="a{64}"/);
+  assert.match(marker, /story-intent-digest="b{64}"/);
+  assert.match(marker, /story-intent-source="deep-dive"/);
+  for (const [key, value] of Object.entries(binding))
+    assert.equal(parsePlanApprovedMarker(marker)[key], value);
+  for (const legacy of [`<!-- aitm-plan-approved: ${TS} -->`, buildPlanApprovedMarker(TS)]) {
+    for (const key of Object.keys(binding))
+      assert.equal(parsePlanApprovedMarker(legacy)[key], null);
+  }
+  for (const value of ['A'.repeat(64), 'a'.repeat(63), '', 123]) {
+    assert.throws(() => buildPlanApprovedMarker(TS, { storyDigest: value }), /storyDigest/);
+    assert.throws(
+      () => buildPlanApprovedMarker(TS, { storyIntentDigest: value }),
+      /storyIntentDigest/
+    );
+  }
+  assert.throws(
+    () => buildPlanApprovedMarker(TS, { storyIntentSource: 'other' }),
+    /storyIntentSource/
+  );
+  const malformed = parsePlanApprovedMarker(
+    `<!-- aitm-plan-approved ts="${TS}" story-digest="${'A'.repeat(64)}" story-intent-source="other" -->`
+  );
+  assert.equal(malformed.storyDigest, null);
+  assert.equal(malformed.storyIntentDigest, null);
+  assert.equal(malformed.storyIntentSource, null);
+}
 console.log('markers.test.mjs: all passed');

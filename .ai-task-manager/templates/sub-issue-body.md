@@ -13,7 +13,7 @@ Canonical heading order (the parity test enforces this):
 
 Placeholders (substituted by preflight-issue.mjs --shape sub-issue):
 {{title}} Sub-issue title (verbatim)
-{{user_story}} Complete three-line Connextra User Story (verbatim)
+{{user_story}} Empty, canonical template, or validated three-line User Story (verbatim)
 {{scope}} Sub-issue Scope text from the spec (verbatim)
 {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
 {{story_origin}} Story Origin block (kind, provenance, relationships, size guess, parent)

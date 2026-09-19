@@ -4,8 +4,21 @@
 // body is inspected at its approval boundary.
 
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
 
 import { linkedPlanReference, resolvePlanPath } from './decomposition-policy.mjs';
+
+const validatedReads = new WeakMap();
+function retainRead(result, body, projectDir) {
+  const frozen = Object.freeze(result);
+  validatedReads.set(frozen, { body, projectDir: path.resolve(projectDir) });
+  return frozen;
+}
+export function isGovernedPlanObservation(result, { body, projectDir }) {
+  const read = validatedReads.get(result);
+  return Boolean(read && read.body === body && read.projectDir === path.resolve(projectDir));
+}
 
 const LINE_RULES = Object.freeze([
   Object.freeze({
@@ -51,7 +64,7 @@ export function validateGovernedLinkedPlan({ body = '', projectDir, deps = {} } 
   const findReference = deps.linkedPlanReference || linkedPlanReference;
   const reference = findReference(body);
   if (!reference) {
-    return Object.freeze({ ok: true, status: 'not-applicable', violations: [] });
+    return retainRead({ ok: true, status: 'not-applicable', violations: [] }, body, projectDir);
   }
 
   const resolve = deps.resolvePlanPath || resolvePlanPath;
@@ -91,11 +104,23 @@ export function validateGovernedLinkedPlan({ body = '', projectDir, deps = {} } 
   }
 
   const result = validateGovernedPlanContent(content);
-  return Object.freeze({
-    ...result,
-    status: result.ok ? 'valid' : 'invalid',
-    planPath: reference.path,
-  });
+  return retainRead(
+    {
+      ...result,
+      status: result.ok ? 'valid' : 'invalid',
+      planPath: reference.path,
+      observation: Object.freeze({
+        body,
+        projectDir: path.resolve(projectDir),
+        key: reference.key,
+        path: reference.path,
+        text: content,
+        contentSha256: createHash('sha256').update(content).digest('hex'),
+      }),
+    },
+    body,
+    projectDir
+  );
 }
 
 export function formatGovernedPlanPolicyRefusal(result = {}) {

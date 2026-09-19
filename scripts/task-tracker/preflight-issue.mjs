@@ -22,7 +22,7 @@
 //   node preflight-issue.mjs                    # tail block only
 //   node preflight-issue.mjs --check-only       # verify templates, no stdout
 //   node preflight-issue.mjs --shape <shape> \
-//        --user-story-file <p> --scope-file <p> --ac-file <p> --story-origin-file <p> \
+//        [--user-story-file <p>] --scope-file <p> --ac-file <p> --story-origin-file <p> \
 //        [--plan-metadata-file <p>] \
 //        [--verification-commands-file <p>] \
 //        [--parent <N>] [--sub-issue-list-file <p>]
@@ -204,7 +204,7 @@ export function normalizeAcceptanceCriteria(value) {
 }
 
 export function normalizeUserStoryFragment(value) {
-  return validateExactUserStoryLines(value).join('\n');
+  return validateExactUserStoryLines(value, { mode: 'draft' }).join('\n');
 }
 
 // Plan Metadata label emphasis (#416, fixed in #488). Delegates to the shared
@@ -377,14 +377,14 @@ function emitShape(args, dodPath, root) {
       plan_metadata: '',
     };
   } else {
-    const required = ['user-story-file', 'scope-file', 'ac-file', 'story-origin-file'];
+    const required = ['scope-file', 'ac-file', 'story-origin-file'];
     for (const flag of required) {
       if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
     }
     let userStory;
     try {
       userStory = normalizeUserStoryFragment(
-        readFileOrDie(args['user-story-file'], '--user-story-file')
+        args['user-story-file'] ? readFileOrDie(args['user-story-file'], '--user-story-file') : ''
       );
     } catch (err) {
       die(`--user-story-file ${err.message}`);
@@ -569,7 +569,7 @@ function emitShape(args, dodPath, root) {
     finalBody = setIssueKindMarker(finalBody, kind);
   }
   if (shape !== 'stub') {
-    const bodyVerification = verifyIssueBody(finalBody);
+    const bodyVerification = verifyIssueBody(finalBody, { expectedUserStory: fills.user_story });
     if (!bodyVerification.ok) {
       die(
         `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`

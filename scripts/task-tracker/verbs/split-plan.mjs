@@ -172,7 +172,10 @@ export async function runSplitPlan({
     mkdtempSync(path.join(projectScratchDir('plan', projectDir), `split-${sourceIssue}-`));
   const drafts = [];
   for (const proposal of proposals) {
-    const fragments = await writeProposalFragments({ proposal, scratchDir });
+    const fragments = await (deps.writeProposalFragments ?? writeProposalFragments)({
+      proposal,
+      scratchDir,
+    });
     drafts.push({ proposal, fragments, creatorArgs: fragments.creatorArgs });
   }
 

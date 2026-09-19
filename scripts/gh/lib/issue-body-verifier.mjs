@@ -32,6 +32,8 @@ import {
   findAcsWithoutVerifierOrInvalidTag,
 } from '../../task-tracker/lib/body-invariants.mjs';
 import { validateExactUserStoryLines } from '../../task-tracker/lib/user-story-author.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from '../../task-tracker/lib/user-story-author.mjs';
+import { evaluateStoryBody, firstH2Heading } from '../../task-tracker/lib/user-story-quality.mjs';
 
 const USER_STORY_REGEX = /^##\s+User Story\s*$/m;
 const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
@@ -61,7 +63,7 @@ const SECTION_CHECKS = [
 
 const PICKUP_FOLLOW_LINE = '> Follow: `.ai-task-manager/templates/pickup-directive.md`';
 
-export function verifyIssueBody(body) {
+export function verifyIssueBody(body, { expectedUserStory } = {}) {
   const missing = [];
   if (typeof body !== 'string' || body.length === 0) {
     return {
@@ -78,21 +80,23 @@ export function verifyIssueBody(body) {
     if (!check.regex.test(body)) missing.push(check.name);
   }
 
-  const firstH2 = body.match(/^##\s+\S.*$/m);
-  if (USER_STORY_REGEX.test(body) && firstH2 && !USER_STORY_REGEX.test(firstH2[0])) {
+  if (USER_STORY_REGEX.test(body) && firstH2Heading(body) !== 'User Story') {
     missing.push('## User Story must be the first H2 section');
   }
 
   if (USER_STORY_REGEX.test(body)) {
-    const match = body.match(USER_STORY_REGEX);
-    const start = match.index + match[0].length;
-    const after = body.slice(start);
-    const nextHeading = after.search(/^##\s+/m);
-    const story = nextHeading === -1 ? after : after.slice(0, nextHeading);
-    try {
-      validateExactUserStoryLines(story);
-    } catch {
-      missing.push('## User Story must contain exactly three complete Connextra lines');
+    const result = evaluateStoryBody(body, {
+      mode: 'draft',
+      canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE,
+    });
+    if (!result.ok) {
+      missing.push(`## User Story: ${result.violations.map(({ code }) => code).join(', ')}`);
+    }
+    if (expectedUserStory !== undefined) {
+      const expected = validateExactUserStoryLines(expectedUserStory, { mode: 'draft' });
+      if (result.lines.join('\n') !== expected.join('\n')) {
+        missing.push('## User Story does not match the supplied story payload');
+      }
     }
   }
 

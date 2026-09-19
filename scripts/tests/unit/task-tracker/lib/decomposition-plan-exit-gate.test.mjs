@@ -423,7 +423,8 @@ test('decompose-check reports one task for a valid bounded source child', async 
   assert.equal(checked.exitCode, 0);
 });
 
-test('decompose-check keeps whole-plan classification for overrides and Plan metadata', async () => {
+// @story #1709
+test('decompose-check keeps whole-plan overrides and applies exact Plan metadata selectors', async () => {
   const overrideContext = sourceChildContext();
   const explicitOverride = await runDecomposeCheck({
     issueNumber: overrideContext.issueNumber,
@@ -452,9 +453,10 @@ test('decompose-check keeps whole-plan classification for overrides and Plan met
       decomposition: planMetadataContext.deps.decomposition,
     },
   });
-  assert.equal(planMetadata.classification.status, 'must-split');
-  assert.equal(planMetadata.classification.taskCount, 6);
-  assert.equal(planMetadata.planSelection.applied, false);
+  assert.equal(planMetadata.classification.status, 'story-ok');
+  assert.equal(planMetadata.classification.taskCount, 1);
+  assert.equal(planMetadata.planSelection.applied, true);
+  assert.equal(planMetadata.planSelection.heading, '### Task 1: Part 1');
 });
 
 test('plan exit fails closed when epic WBS evidence cannot be read', async () => {

@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1714 #1716
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -224,7 +224,22 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const recoveryEntryAllowance = 1;
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
-  const effectiveCeiling = ENTRY_CEILING + recoveryEntryAllowance + doctorRuntimeAllowance;
+  // #1709 ships the pure story contract and shared Markdown views.
+  const storyContractAllowance = 2;
+  // #1711 ships the contained intent adapter and independent binding guard.
+  const storyBindingAllowance = 2;
+  // #1714 ships the operator-facing story-quality adoption and repair guide.
+  const storyQualityGuideAllowance = 1;
+  // #1709 ships the shared provider rule alongside the two runtime modules.
+  const storyQualityRuleAllowance = 1;
+  const effectiveCeiling =
+    ENTRY_CEILING +
+    recoveryEntryAllowance +
+    doctorRuntimeAllowance +
+    storyContractAllowance +
+    storyBindingAllowance +
+    storyQualityGuideAllowance +
+    storyQualityRuleAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

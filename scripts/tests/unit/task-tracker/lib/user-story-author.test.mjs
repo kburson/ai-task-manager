@@ -19,6 +19,9 @@ import path from 'node:path';
 import {
   setUserStory,
   buildUserStoryLines,
+  validateExactUserStoryLines,
+  CANONICAL_USER_STORY_TEMPLATE,
+  CANONICAL_USER_STORY_LINES,
 } from '../../../../task-tracker/lib/user-story-author.mjs';
 import { validateUserStory, PLACEHOLDERS } from '../../../../task-tracker/lib/user-story-guard.mjs';
 import {
@@ -32,6 +35,39 @@ const STORY = {
   iWant: 'repair the User Story section in-workflow',
   soThat: 'a refine→plan transition is no longer wedged on hand-editing',
 };
+
+// @story #1710
+test('draft validation accepts only unfinished drafts or quality substantive prose', () => {
+  assert.deepEqual(validateExactUserStoryLines('', { mode: 'draft' }), []);
+  assert.deepEqual(
+    validateExactUserStoryLines(CANONICAL_USER_STORY_TEMPLATE, { mode: 'draft' }),
+    CANONICAL_USER_STORY_LINES
+  );
+  assert.throws(
+    () =>
+      validateExactUserStoryLines(
+        'As a governed delivery agent\nI want to deliver Task 2 from the pinned source plan\nSo that issue #1703 advances through traceable execution',
+        { mode: 'draft' }
+      ),
+    /story-administrative-beneficiary/
+  );
+  assert.throws(() => validateExactUserStoryLines(''), /story-required-at-plan-approval/);
+  assert.throws(
+    () => validateExactUserStoryLines(CANONICAL_USER_STORY_TEMPLATE),
+    /story-required-at-plan-approval/
+  );
+});
+
+test('substantive authoring rejects administrative prose without erasing stories', () => {
+  const story = {
+    asA: 'governed delivery agent',
+    iWant: 'deliver Task 2 from the pinned source plan',
+    soThat: 'issue #1703 advances through traceable execution',
+  };
+  assert.throws(() => buildUserStoryLines(story), /story-administrative-beneficiary/);
+  assert.throws(() => setUserStory('## User Story\n', story), /story-administrative-beneficiary/);
+  assert.throws(() => setUserStory('## User Story\n', {}), /required/);
+});
 
 // ---------------------------------------------------------------------------
 // AC1 — three non-placeholder Connextra lines

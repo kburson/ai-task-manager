@@ -20,6 +20,8 @@ import assert from 'node:assert/strict';
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { STATES } from '../../../../task-tracker/states/index.mjs';
 import '../../../../task-tracker/lib/guard-bootstrap.mjs';
+import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
+import { upsertPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
 
 const CFG = {
   repo: 'owner/name',
@@ -59,9 +61,11 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
     toState: 'develop',
     body,
     cfg: CFG,
+    projectDir: process.cwd(),
     readDependencies: async () => ({ blockedBy: [] }),
     reconcileDisposition: async () => ({ status: 'idempotent', disposition: '' }),
     deps: {
+      resolveStoryIntent: resolveStoryIntentSource,
       epicChildren: { fetchSiblings: async () => epicChildren },
       // #1052 — the newly registered decomposition guard must receive the
       // same offline board values through both parity paths.
@@ -100,7 +104,11 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
   };
 }
 
-const APPROVED_BODY = [
+let APPROVED_BODY = [
+  '## User Story',
+  'As a release operator',
+  'I want to stop partial publication',
+  'So that consumers receive complete releases',
   '## Scope',
   '',
   // #355 — contiguity guard now fires on every forward transition; the
@@ -126,6 +134,12 @@ const APPROVED_BODY = [
   '',
   '## Deep-Dive Analysis',
   '',
+  '### Story Intent',
+  '- **Beneficiary:** release operator',
+  '- **Capability:** stop partial publication',
+  '- **Need:** registry checks can fail',
+  '- **Value or failure prevented:** consumers receive complete releases',
+  '### Analysis',
   // #358 — planDeepDiveGate now enforces a size-bucketed substantive-chars
   // floor (XS=1200, default=2000). Tag the body as XS and pad the section.
   ...Array.from(
@@ -143,9 +157,37 @@ const APPROVED_BODY = [
   `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
 ].join('\n');
+APPROVED_BODY = upsertPlanApprovedMarker(
+  APPROVED_BODY,
+  '2026-06-07T06:00:00Z',
+  resolveStoryIntentSource({ body: APPROVED_BODY, projectDir: process.cwd() }).binding
+);
 const BARE_BODY = '## Scope\n\nno marker here\n';
 
 describe('guard-parity-plan-develop: registry == state-object walk', () => {
+  it('present stale bindings cannot be waived in either registry walk', async () => {
+    const ctx = makeCtx({
+      body: APPROVED_BODY.replace('As a release operator', 'As a registry operator'),
+    });
+    ctx.workflowPolicy = { isWaived: () => true };
+    for (const result of [
+      await runGuards('plan', 'develop', ctx),
+      await runStateObjectGuards('plan', 'develop', ctx),
+    ]) {
+      assert.ok(result.refusals.some((r) => r.id === 'plan-exit-story-approval-binding'));
+    }
+  });
+  it('Test to Develop never runs story binding gate', async () => {
+    const ctx = {
+      ...makeCtx({
+        body: APPROVED_BODY.replace('As a release operator', 'As a registry operator'),
+      }),
+      fromState: 'test',
+    };
+    ctx.deps.resolveStoryIntent = () => assert.fail('must not read intent');
+    const result = await runGuards('test', 'develop', ctx);
+    assert.ok(!result.refusals.some((r) => r.id === 'plan-exit-story-approval-binding'));
+  });
   it('accept: solo issue with plan-approved marker passes both paths', async () => {
     const ctx = makeCtx({ body: APPROVED_BODY, epicChildren: [] });
     const reg = await runGuards('plan', 'develop', ctx);

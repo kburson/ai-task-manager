@@ -126,7 +126,7 @@ resolveStoryIntentSource({ body, projectDir, governedPlan, deps }); // -> Resolu
 - **Need:** structural Connextra validation currently accepts stories that explain task completion without explaining a stakeholder benefit
 - **Value or failure prevented:** meaningless stories are rejected consistently while legitimate operational and security outcomes remain expressible
 
-**Files:**
+#### Files
 
 - Create: `scripts/task-tracker/lib/user-story-quality.mjs` and `scripts/task-tracker/lib/plan-markdown-views.mjs`.
 - Modify: `scripts/task-tracker/lib/decomposition-policy.mjs`, `scripts/task-tracker/lib/user-story-author.mjs`, `scripts/task-tracker/lib/user-story-guard.mjs`.
@@ -245,7 +245,7 @@ node --test scripts/tests/unit/task-tracker/lib/user-story-quality.test.mjs scri
 - **Need:** intake currently demands polished prose before planning has established the evidence for value
 - **Value or failure prevented:** useful requests enter planning without invented filler or lost issue-body safeguards
 
-**Files:**
+#### Files
 
 - Modify: `scripts/task-tracker/states/refine.mjs`, `scripts/task-tracker/lib/user-story-author.mjs`, `scripts/task-tracker/lib/user-story-guard.mjs`.
 - Modify: `scripts/task-tracker/preflight-issue.mjs`, `scripts/gh/create-issue.mjs`, `scripts/gh/lib/issue-body-verifier.mjs`.
@@ -321,7 +321,7 @@ node --test scripts/tests/integration/task-tracker/core/templates.test.mjs
 - **Need:** existing approval markers can survive edits to the content that justified approval
 - **Value or failure prevented:** development cannot proceed on stale or missing stakeholder-value evidence represented as current approval
 
-**Files:**
+#### Files
 
 - Create: `scripts/task-tracker/lib/story-intent-source.mjs`, `scripts/task-tracker/lib/story-approval-binding-guard.mjs`.
 - Modify: `scripts/task-tracker/verbs/plan-approve.mjs`, `scripts/task-tracker/verbs/user-story.mjs`, `scripts/task-tracker/lib/markers.mjs`, `scripts/task-tracker/lib/plan-approval-audit.mjs`, `scripts/task-tracker/states/plan.mjs`.
@@ -431,7 +431,7 @@ node --test scripts/tests/unit/task-tracker/verbs/user-story.test.mjs
 - **Need:** the splitter currently assigns every child the same administrative delivery story
 - **Value or failure prevented:** reviewers can distinguish each child's contribution and malformed intent cannot create a partial sibling set
 
-**Files:**
+#### Files
 
 - Modify: `scripts/task-tracker/lib/decomposition-policy.mjs`, `scripts/task-tracker/lib/split-plan.mjs`, `scripts/task-tracker/verbs/split-plan.mjs`.
 - Test: `scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs`, `scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs`, `scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs`.
@@ -499,7 +499,7 @@ node --test scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs sc
 - **Need:** objective validation cannot determine whether a plausible story states the most important source-supported benefit
 - **Value or failure prevented:** switching providers does not lower story quality or encourage invented value to satisfy early workflow gates
 
-**Files:**
+#### Files
 
 - Create: `skill/shared/rules/user-story-quality.md`.
 - Modify: `skill/shared/router.md`, `skill/shared/rules/create-issue.md`, `skill/shared/rules/plan-mode-backlog.md`, `skill/shared/rules/block.md`, `skill/shared/rules/state-walk.md`.
@@ -576,7 +576,7 @@ node --test scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs 
 - **Need:** old approvals and plans lack story bindings while active development must remain undisturbed
 - **Value or failure prevented:** upgrades prevent stale approvals without reopening delivered work or stranding operators behind unexplained refusals
 
-**Files:**
+#### Files
 
 - Modify: `scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs`.
 - Extend `scripts/tests/unit/task-tracker/lib/guard-parity-early-stages.test.mjs` with positive production-registry and warning assertions. Existing guard-parity fixtures contain no story-based refusals; do not replace unrelated negative cases. Inspect Plan→Develop fixtures for any additional valid-binding setup the new guard requires.

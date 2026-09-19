@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // @story #309 #1694
 import { strict as assert } from 'node:assert';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { renderStampedSkillVersion } from '../../../../../bin/lib/stamp-skill-version.mjs';
+import { runInstall } from '../../../../../bin/cli.mjs';
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '../../../..');
@@ -23,11 +25,57 @@ const runtimePickupDirective = existsSync(runtimePickupDirectivePath)
   ? readFileSync(runtimePickupDirectivePath, 'utf8')
   : null;
 
-for (const name of ['epic-body.md', 'solo-issue-body.md', 'sub-issue-body.md']) {
+// @story #1710
+for (const name of [
+  'epic-body.md',
+  'solo-issue-body.md',
+  'sub-issue-body.md',
+  'defect-body.md',
+  'plan-file.md',
+]) {
   assert.equal(
     readFileSync(path.join(root, '.ai-task-manager', 'templates', name), 'utf8'),
     readFileSync(path.join(root, 'templates', name), 'utf8'),
     `.ai-task-manager/templates/${name} must mirror templates/${name}`
+  );
+}
+
+// @story #1713 — exercise the real installer in a contained consumer fixture.
+{
+  const fixture = mkdtempProjectIsolated('provider-story-install-');
+  const packageRoot = path.join(fixture, 'node_modules', '@kburson', 'ai-task-manager');
+  mkdirSync(packageRoot, { recursive: true });
+  cpSync(path.join(root, 'skill'), path.join(packageRoot, 'skill'), { recursive: true });
+  await runInstall(
+    {
+      targetDir: fixture,
+      args: ['--memory-seed', 'none'],
+      selectedNames: ['claude', 'codex', 'grok'],
+      linkMode: 'symlink',
+      enableCodexSuperpowers: false,
+      globalCodexSuperpowers: false,
+    },
+    { packageRoot }
+  );
+  const sharedRule = readFileSync(
+    path.join(packageRoot, 'skill', 'shared', 'rules', 'user-story-quality.md'),
+    'utf8'
+  );
+  assert.match(sharedRule, /^### 1\. Stakeholder$/m);
+  for (const installedAdapter of [
+    '.claude/skills/task/SKILL.md',
+    '.agents/skills/task/SKILL.md',
+    '.grok/skills/task/SKILL.md',
+  ]) {
+    assert.match(
+      readFileSync(path.join(fixture, installedAdapter), 'utf8'),
+      /rules\/user-story-quality\.md/,
+      installedAdapter
+    );
+  }
+  assert.equal(
+    readFileSync(path.join(fixture, '.ai-task-manager', 'templates', 'plan-file.md'), 'utf8'),
+    readFileSync(path.join(root, 'templates', 'plan-file.md'), 'utf8')
   );
 }
 const codexAdapter = readFileSync(

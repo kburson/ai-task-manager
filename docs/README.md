@@ -52,6 +52,7 @@ Start here if you are adopting the package:
 | [guides/characterization-harness.md](./guides/characterization-harness.md)                 | Characterization-test harness protecting the state-machine orchestrators during refactors.                                                                             |
 | [guides/test-authoring.md](./guides/test-authoring.md)                                     | Conventions for slow/integration tests that shim `gh`/`git` and invoke a verb end-to-end.                                                                              |
 | [guides/test-lane-taxonomy.md](./guides/test-lane-taxonomy.md)                             | The contract assigning every test file to exactly one execution lane.                                                                                                  |
+| [guides/user-story-quality.md](./guides/user-story-quality.md)                             | Plan-stage Story Intent authority, story-quality approval, adoption boundaries, and operator repair procedures.                                                        |
 
 ## Technical Reference
 

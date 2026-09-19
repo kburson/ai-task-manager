@@ -4,6 +4,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { parsePlanApprovedMarker } from './markers.mjs';
@@ -181,4 +182,73 @@ export async function ensureFullAutoPlanApprovalAudit({
   const body = buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence });
   await postComment({ issueNumber, repo, body });
   return { mode: 'full-auto', auditPosted: true, alreadyPresent: false };
+}
+
+function repairEvidenceKey({ issueNumber, approved }) {
+  if (!issueNumber || !approved?.ts || !approved.storyDigest || !approved.storyIntentDigest) {
+    throw new TypeError('story-binding repair requires issue, timestamp and complete digests');
+  }
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        Number(issueNumber),
+        approved.ts,
+        approved.storyDigest,
+        approved.storyIntentDigest,
+      ])
+    )
+    .digest('hex');
+}
+
+export function buildStoryBindingRepairAudit({ issueNumber, previousApproval, approved } = {}) {
+  const key = repairEvidenceKey({ issueNumber, approved });
+  const prior = previousApproval
+    ? JSON.stringify(previousApproval)
+    : 'Prior evidence unavailable; this marker cannot establish whether a repair occurred.';
+  return [
+    `### Story-Binding Repair Audit — #${issueNumber}`,
+    '',
+    `<!-- aitm-story-binding-repair key="${key}" -->`,
+    `- Previous approval: ${prior}`,
+    `- Approval actor: ${approved.mode === 'full-auto' ? 'AI agent operating in Full-Auto mode' : approved.mode === 'human' ? 'human approval' : 'unknown'}`,
+    ...['mode', 'ts', 'trunkSha', 'storyIntentSource', 'storyDigest', 'storyIntentDigest'].map(
+      (field) => `- ${field}: ${approved[field] ?? 'unavailable'}`
+    ),
+  ].join('\n');
+}
+
+export async function ensureStoryBindingRepairAudit({
+  issueNumber,
+  repo,
+  previousApproval,
+  approved,
+  listComments = defaultListComments,
+  postComment = defaultPostComment,
+} = {}) {
+  const body = buildStoryBindingRepairAudit({ issueNumber, previousApproval, approved });
+  const withoutPrior = (value) =>
+    String(value)
+      .trim()
+      .replace(/^- Previous approval: .*$/m, '- Previous approval: [retained separately]');
+  try {
+    const comments = await listComments({ issueNumber, repo });
+    if (
+      comments.some((comment) =>
+        previousApproval
+          ? String(comment?.body).trim() === body
+          : withoutPrior(comment?.body) === withoutPrior(body)
+      )
+    )
+      return { alreadyPresent: true, auditPosted: false };
+    await postComment({ issueNumber, repo, body });
+  } catch (error) {
+    error.storyBindingRepair = {
+      issueNumber,
+      previousApproval: previousApproval ?? null,
+      approved,
+      body,
+    };
+    throw error;
+  }
+  return { alreadyPresent: false, auditPosted: true };
 }

@@ -1,9 +1,7 @@
 // User Story authoring (#662).
 //
 // Pure, total, idempotent body transform that authors or repairs the
-// `## User Story` section so a refine→plan transition blocked by
-// `userStoryBlockGuard` (lib/user-story-guard.mjs) can be unblocked in-workflow
-// rather than by hand-editing the body in the GitHub web UI.
+// `## User Story` section with substantive prose for Plan approval.
 //
 // `setUserStory(body, { asA, iWant, soThat })`:
 //   - Composes three Connextra lines, prepending the canonical prefix
@@ -17,11 +15,17 @@
 //   - Idempotent: re-running with identical inputs reproduces the same bytes,
 //     so `mutateIssueBody` short-circuits to a no-op.
 //
-// The composed lines are validated against the same PLACEHOLDERS set the block
-// guard rejects, so a body written by this function always passes
-// `validateUserStory`.
+// Substantive writes share the objective approval-mode prose evaluator.
 
-import { PLACEHOLDERS } from './user-story-guard.mjs';
+import { evaluateStoryProse } from './user-story-quality.mjs';
+
+export const CANONICAL_USER_STORY_LINES = Object.freeze([
+  'As a [who wants to accomplish something]',
+  'I want to [what they want to accomplish]',
+  'So that [why they want to accomplish that thing]',
+]);
+export const CANONICAL_USER_STORY_TEMPLATE = CANONICAL_USER_STORY_LINES.join('\n');
+const PLACEHOLDERS = new Set(CANONICAL_USER_STORY_LINES);
 
 const HEADING = '## User Story';
 
@@ -52,33 +56,28 @@ function composeClause(spec, raw) {
 
 // Build the canonical three-line story block (no heading).
 export function buildUserStoryLines({ asA, iWant, soThat } = {}) {
-  return [
+  const lines = [
     composeClause(CLAUSE_SPECS.asA, asA),
     composeClause(CLAUSE_SPECS.iWant, iWant),
     composeClause(CLAUSE_SPECS.soThat, soThat),
   ];
+  return validateExactUserStoryLines(lines.join('\n'));
 }
 
 // Public issue-creation file inputs are already complete story artifacts, not
 // conversational clauses. Validate their exact Connextra form rather than
 // passing them through the prefix-repair behavior used by `setUserStory`.
-export function validateExactUserStoryLines(value) {
-  const lines = String(value || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const patterns = [/^As an? \S.*$/, /^I want to \S.*$/, /^So that \S.*$/];
-  if (
-    lines.length !== 3 ||
-    lines.some((line) => /^#{1,6}\s+/.test(line)) ||
-    lines.some((line, index) => !patterns[index].test(line)) ||
-    lines.some((line) => PLACEHOLDERS.has(line))
-  ) {
+export function validateExactUserStoryLines(value, { mode = 'approval' } = {}) {
+  const result = evaluateStoryProse(value, {
+    mode,
+    canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE,
+  });
+  if (!result.ok) {
     throw new TypeError(
-      'expected exactly three complete heading-free Connextra lines: `As a ...`, `I want to ...`, `So that ...`'
+      result.violations.map(({ code, message }) => `${code}: ${message}`).join('; ')
     );
   }
-  return lines;
+  return result.lines;
 }
 
 export function setUserStory(body, story = {}) {

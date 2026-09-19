@@ -34,6 +34,7 @@ import { appendAuditMarker } from '../lib/markers.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
+import { resolveStoryIntentSource } from '../lib/story-intent-source.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
@@ -411,7 +412,7 @@ export async function runPromote({
     toState: target,
     body,
     cfg,
-    deps,
+    deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
     projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
     sessionPolicy:
       deps.sessionPolicy ||

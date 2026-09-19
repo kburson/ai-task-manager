@@ -1,7 +1,7 @@
 # Task Tracker Skill — Design
 
 **Date:** 2026-04-24
-**Updated:** 2026-08-07
+**Updated:** 2026-09-19
 **Status:** Living — rewritten to describe the current ~50-verb dispatch surface and the 8-state kanban workflow (state machine + guard-registry). The v1 spec this superseded is preserved verbatim in git history.
 
 ## Problem
@@ -229,6 +229,38 @@ Backlog → Refine → Ready for Planning → Plan → Develop → Test → Revi
 Review back to Develop. `refine`, `park`, `plan`, `plan-approve`, `pull-next`,
 and `reconcile` are the other verbs that move or realign an issue's state (see
 the Board-verb table above).
+
+### User Story value contract
+
+User Story completeness is a Plan-stage authority contract, not an intake
+prerequisite. Backlog, Refine, and Ready for Planning accept a missing, blank,
+or canonical template story. If substantive prose is supplied early, the
+shared deterministic evaluator still refuses malformed and known
+workflow-administrative forms.
+
+At Plan approval, AITM resolves exactly one four-field Story Intent source. A
+linked task selector chooses that task's nested intent; a linked plan without a
+selector chooses the root intent; an unlinked issue chooses the deep-dive
+intent. Linked authority fails closed and never falls back to a convenient
+deep-dive block. Approval evaluates the current working-tree plan and binds
+the story digest, intent digest, source kind, and current-trunk provenance.
+The plan's recorded generation commit remains provenance rather than becoming
+the approval read source.
+
+Plan→Develop re-resolves those values. A story, intent, source-kind, or trunk
+change requires source review and explicit renewal through
+`npx aitm plan-approve <issue>` before immediate promotion. Legacy approvals
+without bindings follow the same renewal path. The gate is scoped to Plan exit:
+Develop-or-later work and Test/Review bounce-backs are not retroactively
+blocked. An approval waiver can retain existing missing-marker semantics but
+cannot waive a present stale binding.
+
+Directory-backed issue authority does not yet support story-bound Plan
+approval. It refuses before seal, projection, body, or audit writes. Historical
+plans must add Story Intent to every splittable task; `split-plan` has no generic
+story fallback. Exact diagnostics and the supported operator repair procedure
+are documented in
+[`guides/user-story-quality.md`](./guides/user-story-quality.md).
 
 ### The state-object contract
 
