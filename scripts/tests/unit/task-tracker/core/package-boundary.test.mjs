@@ -226,8 +226,14 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const doctorRuntimeAllowance = 2;
   // #1709 ships the pure story contract and shared Markdown views.
   const storyContractAllowance = 2;
+  // #1711 ships the contained intent adapter and independent binding guard.
+  const storyBindingAllowance = 2;
   const effectiveCeiling =
-    ENTRY_CEILING + recoveryEntryAllowance + doctorRuntimeAllowance + storyContractAllowance;
+    ENTRY_CEILING +
+    recoveryEntryAllowance +
+    doctorRuntimeAllowance +
+    storyContractAllowance +
+    storyBindingAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

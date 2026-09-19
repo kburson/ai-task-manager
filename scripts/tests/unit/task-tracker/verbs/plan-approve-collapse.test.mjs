@@ -11,6 +11,9 @@
 
 import { strict as assert } from 'node:assert';
 import { runPlanApprove } from '../../../../task-tracker/verbs/plan-approve.mjs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import path from 'node:path';
 import {
   DEEP_DIVE_DETAILS_SUMMARY,
   wrapDeepDiveInDetails,
@@ -18,10 +21,14 @@ import {
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-16T00:00:00Z';
+const STORY =
+  '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n';
+const INTENT =
+  '- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** registry checks can fail\n- **Value or failure prevented:** consumers receive complete releases\n';
 
 function makeDeps(initialBody, state = 'plan') {
   const calls = { writes: [] };
-  let body = initialBody;
+  let body = STORY + initialBody;
   return {
     calls,
     deps: {
@@ -59,6 +66,9 @@ Body content.
 
 ## Deep-Dive Analysis (Refine stage)
 <!-- aitm-deep-dive-complete: 2026-05-16T00:00:00Z -->
+
+### Story Intent
+${INTENT}
 
 ### Current state
 
@@ -113,8 +123,15 @@ Plain body.
 
 // 3. No-op when no Deep-Dive Analysis section.
 {
-  const { deps, getBody } = makeDeps(BODY_WITHOUT_DEEP_DIVE);
-  const r = await runPlanApprove({ issueNumber: 121, cfg, deps });
+  const projectDir = mkdtempSync(
+    path.join(projectScratchDir('test', process.cwd()), 'plan-collapse-')
+  );
+  writeFileSync(path.join(projectDir, 'plan.md'), `## Story Intent\n${INTENT}`);
+  const { deps, getBody } = makeDeps(
+    `${BODY_WITHOUT_DEEP_DIVE}\n## Plan Metadata\n- **Implementation-plan**: plan.md\n`
+  );
+  const r = await runPlanApprove({ issueNumber: 121, cfg, deps, projectDir });
+  rmSync(projectDir, { recursive: true, force: true });
   assert.equal(r.status, 'approved');
   const out = getBody();
   assert.ok(!out.includes('<details>'), 'no <details> added when no deep-dive');

@@ -13,7 +13,9 @@
 //   8. CLI help text (verb module) documents /task plan-approve #N.
 
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { test } from 'node:test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -26,13 +28,23 @@ import {
   hasPlanApprovedMarker,
   readPlanApprovedForecastRecordId,
   readPlanApprovedMode,
+  parsePlanApprovedMarker,
+  upsertPlanApprovedMarker,
 } from '../../../../task-tracker/lib/markers.mjs';
+import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
+import {
+  renderIssueDirectory,
+  createIssueDirectory,
+} from '../../../../task-tracker/lib/github-records/issue-directory.mjs';
+import { storyApprovalBindingGuard } from '../../../../task-tracker/lib/story-approval-binding-guard.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '../../../..');
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-16T00:00:00Z';
+const STORY_BODY =
+  '## User Story\n\nAs a release operator\nI want to stop partial publication because registry checks can fail\nSo that consumers receive complete releases\n\n## Scope\n\n## Deep-Dive Analysis\n\n### Story Intent\n- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** registry checks can fail\n- **Value or failure prevented:** consumers receive complete releases\n\n';
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [], commentReads: 0 };
@@ -40,7 +52,14 @@ function makeDeps(overrides = {}) {
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  let body = initialBody;
+  let body = overrides.rawBody ?? `${STORY_BODY}${initialBody}`;
+  if (overrides.currentApproval) {
+    const prior = parsePlanApprovedMarker(body);
+    body = upsertPlanApprovedMarker(body, prior.ts, {
+      ...resolveStoryIntentSource({ body, projectDir: root }).binding,
+      mode: prior.mode === 'unknown' ? null : prior.mode,
+    });
+  }
   return {
     calls,
     deps: {
@@ -78,6 +97,92 @@ function makeDeps(overrides = {}) {
     },
     getBody: () => body,
   };
+}
+
+// @story #1711 — malformed content must never gain approval or audit evidence.
+{
+  const rawBody = STORY_BODY.replace('## Scope\n\n', '');
+  const { deps, getBody } = makeDeps({ rawBody });
+  const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+  assert.equal(result.status, 'approved');
+  assert.equal(
+    getBody().slice(0, getBody().indexOf('## Deep-Dive Analysis')),
+    rawBody.slice(0, rawBody.indexOf('## Deep-Dive Analysis'))
+  );
+  assert.doesNotMatch(getBody(), /<details>/);
+  assert.equal(resolveStoryIntentSource({ body: getBody(), projectDir: root }).ok, true);
+}
+for (const rawBody of [
+  '## Scope\n',
+  STORY_BODY.replace('As a release operator', 'As a governed agent'),
+  STORY_BODY.replace('**Need:** registry checks can fail', '**Need:**'),
+]) {
+  const { deps, calls } = makeDeps({ rawBody, env: { TT_FULL_AUTO: '1' } });
+  const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+  assert.equal(result.status, 'story-approval-binding-invalid');
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.comments.length, 0);
+}
+for (const entry of ['', '<!-- aitm-entered-plan ts="2026-01-01T00:00:00Z" -->']) {
+  const { deps, calls, getBody } = makeDeps({
+    initialBody: `## Scope\n${entry}\n<!-- aitm-plan-approved ts="2026-01-01T00:00:00Z" mode="human" -->`,
+    env: { TT_FULL_AUTO: '1' },
+  });
+  const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+  assert.equal(
+    result.status,
+    'repaired-story-binding',
+    JSON.stringify({
+      result,
+      resolved: resolveStoryIntentSource({ body: getBody(), projectDir: root }),
+      body: getBody(),
+    })
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.keys(resolveStoryIntentSource({ body: getBody(), projectDir: root }).binding).map(
+        (k) => [k, parsePlanApprovedMarker(getBody())[k]]
+      )
+    ),
+    resolveStoryIntentSource({ body: getBody(), projectDir: root }).binding
+  );
+  assert.equal(parsePlanApprovedMarker(getBody()).mode, 'full-auto');
+  assert.ok(calls.comments.some((b) => /Story-Binding Repair Audit/.test(b)));
+}
+for (const beforeMutate of [
+  (body) => body.replace('As a release operator', 'As a registry operator'),
+  (body) => body.replace('**Need:** registry checks can fail', '**Need:** publication can fail'),
+]) {
+  const { deps, calls } = makeDeps({ beforeMutate });
+  await assert.rejects(
+    () => runPlanApprove({ issueNumber: 1711, cfg, deps }),
+    /story-approval.*changed/
+  );
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.comments.length, 0);
+}
+{
+  const { deps, calls } = makeDeps({
+    deps: { mutateIssueBody: async () => ({ body: STORY_BODY }) },
+  });
+  assert.equal(
+    (await runPlanApprove({ issueNumber: 1711, cfg, deps })).status,
+    'story-approval-binding-persistence-mismatch'
+  );
+  assert.equal(calls.comments.length, 0);
+}
+for (const readDirectoryContract of [
+  async () => ({ contract: {} }),
+  async () => {
+    throw new Error('transport '.repeat(100));
+  },
+]) {
+  const { deps, calls } = makeDeps({ deps: { readDirectoryContract } });
+  const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+  assert.equal(result.status, 'story-approval-binding-unsupported');
+  assert.ok(result.message.length < 400);
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.comments.length, 0);
 }
 
 async function captureVerbStdout(issueNumber, deps) {
@@ -127,7 +232,7 @@ async function captureVerbStdout(issueNumber, deps) {
     alreadyPresent: false,
   });
   assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" mode="human" -->/);
+  assert.equal(parsePlanApprovedMarker(getBody()).mode, 'human');
 }
 
 // Adaptive approval durably binds the frozen forecast record ID.
@@ -203,9 +308,9 @@ async function captureVerbStdout(issueNumber, deps) {
     cfg: { ...cfg, estimationRubricIssue: 1091 },
     deps,
   });
-  assert.equal(r.status, 'repaired-approval');
+  assert.equal(r.status, 'repaired-story-binding');
   assert.equal(readPlanApprovedForecastRecordId(getBody()), fresh);
-  assert.equal(readPlanApprovedMode(getBody()), 'unknown');
+  assert.equal(readPlanApprovedMode(getBody()), 'human');
 }
 
 // A legacy adaptive issue already in Develop can backfill the forecast ID onto
@@ -266,7 +371,7 @@ async function captureVerbStdout(issueNumber, deps) {
   const { deps, getBody } = makeDeps({ initialBody: bodyNoFields });
   await runPlanApprove({ issueNumber: 122, cfg, deps });
   const result = getBody();
-  assert.match(result, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" mode="human" -->/);
+  assert.equal(parsePlanApprovedMarker(result).mode, 'human');
 }
 
 // 7. pure helpers
@@ -353,7 +458,7 @@ async function captureVerbStdout(issueNumber, deps) {
     '## Scope\n\nSome scope.\n\n<!-- aitm-plan-approved: 2026-05-01T00:00:00Z -->\n';
   const { deps, calls, getBody } = makeDeps({ initialBody: bodyApprovedNoEntry });
   const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
-  assert.equal(r.status, 're-stamped-entry');
+  assert.equal(r.status, 'repaired-story-binding');
   assert.equal(r.ts, FIXED_TS);
   assert.equal(calls.writes.length, 1);
   const out = getBody();
@@ -367,7 +472,7 @@ async function captureVerbStdout(issueNumber, deps) {
 {
   const bodyBoth =
     '## Scope\n\n<!-- aitm-entered-plan: 2026-05-01T00:00:00Z -->\n\n<!-- aitm-plan-approved: 2026-05-01T00:00:00Z -->\n';
-  const { deps, calls } = makeDeps({ initialBody: bodyBoth });
+  const { deps, calls } = makeDeps({ initialBody: bodyBoth, currentApproval: true });
   const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 0, 'no-op must not rewrite body');
@@ -381,7 +486,7 @@ async function captureVerbStdout(issueNumber, deps) {
   assert.equal(r.status, 'approved');
   const out = getBody();
   assert.match(out, /<!-- aitm-entered-plan ts="2026-05-16T00:00:00Z" -->/);
-  assert.match(out, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" mode="human" -->/);
+  assert.equal(parsePlanApprovedMarker(out).mode, 'human');
 }
 
 // 12. visit-suffix safe: if aitm-entered-plan-2 exists (legitimate re-entry)
@@ -389,7 +494,7 @@ async function captureVerbStdout(issueNumber, deps) {
 {
   const bodyReentry =
     '## Scope\n\n<!-- aitm-entered-plan-2: 2026-05-10T00:00:00Z -->\n\n<!-- aitm-plan-approved: 2026-05-01T00:00:00Z -->\n';
-  const { deps, getBody } = makeDeps({ initialBody: bodyReentry });
+  const { deps, getBody } = makeDeps({ initialBody: bodyReentry, currentApproval: true });
   const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
   assert.equal(r.status, 'already-approved');
   const out = getBody();
@@ -431,8 +536,9 @@ async function captureVerbStdout(issueNumber, deps) {
   const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 1);
-  assert.equal(calls.comments.length, 1);
-  assert.equal(calls.commentReads, 2);
+  assert.equal(calls.comments.length, 2);
+  assert.equal(calls.comments.filter((b) => /Full-Auto Plan-Approval Audit/.test(b)).length, 1);
+  assert.equal(calls.commentReads, 3);
 }
 
 // #1109: durable human provenance wins over a later Full-Auto environment;
@@ -443,13 +549,15 @@ async function captureVerbStdout(issueNumber, deps) {
     '<!-- aitm-plan-approved ts="2026-05-01T00:00:00Z" mode="human" -->\n';
   const { deps, calls } = makeDeps({
     initialBody,
+    currentApproval: true,
     env: { TT_FULL_AUTO: '1' },
   });
   const r = await runPlanApprove({ issueNumber: 1109, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(r.mode, 'human');
   assert.equal(r.audit.mode, 'human');
-  assert.equal(calls.comments.length, 0);
+  assert.equal(calls.comments.length, 1);
+  assert.doesNotMatch(calls.comments[0], /Full-Auto Plan-Approval Audit/);
 }
 
 // #1021: a prior marker with no audit is a repairable partial success, not an
@@ -460,12 +568,13 @@ async function captureVerbStdout(issueNumber, deps) {
     '<!-- aitm-plan-approved ts="2026-05-01T00:00:00Z" -->\n';
   const { deps, calls } = makeDeps({
     initialBody,
+    currentApproval: true,
     env: { TT_FULL_AUTO: '1' },
   });
   const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 0);
-  assert.equal(calls.comments.length, 1);
+  assert.equal(calls.comments.length, 2);
   assert.match(calls.comments[0], /2026-05-01T00:00:00Z/);
 }
 
@@ -478,7 +587,7 @@ async function captureVerbStdout(issueNumber, deps) {
     env: { TT_FULL_AUTO: '1' },
     beforeMutate: (body) =>
       `${body}\n<!-- aitm-entered-plan ts="${concurrentTs}" -->\n` +
-      `<!-- aitm-plan-approved ts="${concurrentTs}" -->\n`,
+      `${buildPlanApprovedMarker(concurrentTs, { ...resolveStoryIntentSource({ body, projectDir: root }).binding, mode: 'full-auto' })}\n`,
   });
   await runPlanApprove({ issueNumber: 1021, cfg, deps });
   assert.equal(calls.comments.length, 1);
@@ -487,3 +596,214 @@ async function captureVerbStdout(issueNumber, deps) {
 }
 
 console.log('plan-approve.test.mjs: all passed');
+
+const INTENT_BLOCK = STORY_BODY.slice(STORY_BODY.indexOf('- **Beneficiary:**')).trim();
+function planFixture(t) {
+  const projectDir = mkdtempSync(
+    path.join(projectScratchDir('test', process.cwd()), 'story-approval-')
+  );
+  t.after(() => rmSync(projectDir, { recursive: true, force: true }));
+  const content = `## Story Intent\n${INTENT_BLOCK}\n\n## Implementation\n### Task 3: Publish\n#### Story Intent\n${INTENT_BLOCK}\n`;
+  writeFileSync(path.join(projectDir, 'plan.md'), content);
+  writeFileSync(path.join(projectDir, 'other.md'), content);
+  return { projectDir, content };
+}
+for (const task of [false, true])
+  test(`approval persists ${task ? 'task' : 'root'} linked intent and revalidates each observation once`, async (t) => {
+    const { projectDir } = planFixture(t);
+    let reads = 0;
+    const { deps, getBody } = makeDeps({
+      initialBody: `## Plan Metadata\n- **Source-plan**: plan.md\n${task ? '- **Source-plan-section**: ### Task 3: Publish\n' : ''}`,
+      deps: {
+        governedPlanPolicy: {
+          readFile: (file) => {
+            reads++;
+            return readFileSync(file, 'utf8');
+          },
+        },
+      },
+    });
+    const result = await runPlanApprove({ issueNumber: 1711, cfg, projectDir, deps });
+    assert.equal(result.status, 'approved');
+    assert.equal(reads, 3);
+    assert.equal(
+      parsePlanApprovedMarker(getBody()).storyIntentSource,
+      task ? 'linked-plan-task' : 'linked-plan'
+    );
+    assert.equal(
+      (
+        await storyApprovalBindingGuard.run({
+          issueNumber: 1711,
+          toState: 'develop',
+          body: getBody(),
+          projectDir,
+          deps: { resolveStoryIntent: resolveStoryIntentSource },
+        })
+      ).ok,
+      true
+    );
+  });
+for (const race of ['path', 'selector', 'duplicate', 'file', 'key'])
+  test(`approval refuses fresh ${race} changes with zero writes`, async (t) => {
+    const { projectDir, content } = planFixture(t);
+    const { deps, calls } = makeDeps({
+      initialBody:
+        '## Plan Metadata\n- **Source-plan**: plan.md\n- **Source-plan-section**: ### Task 3: Publish\n',
+      beforeMutate: (body) => {
+        if (race === 'path')
+          return body.replace('**Source-plan**: plan.md', '**Source-plan**: other.md');
+        if (race === 'selector') return body.replace('### Task 3: Publish', '### Task 9: Missing');
+        if (race === 'duplicate') return body + '- **Source-plan-section**: ### Task 3: Publish\n';
+        if (race === 'key') return body.replace('**Source-plan**:', '**Implementation-plan**:');
+        writeFileSync(path.join(projectDir, 'plan.md'), content + '\nchanged plan bytes\n');
+        return body;
+      },
+    });
+    await assert.rejects(
+      () => runPlanApprove({ issueNumber: 1711, cfg, projectDir, deps }),
+      /story-approval-binding-changed/
+    );
+    assert.equal(calls.writes.length, 0);
+    assert.equal(calls.comments.length, 0);
+  });
+const DIRECTORY = renderIssueDirectory(
+  createIssueDirectory({
+    issueNodeId: 'I_1711',
+    singletons: {
+      'delivery-contract': 'C_contract',
+      coordination: 'C_coord',
+      'evidence-projection': 'C_evidence',
+      timing: 'C_timing',
+    },
+  })
+);
+for (const kind of ['missing', 'invalid', 'transport', 'syntax'])
+  test(`directory ${kind} inspection fails without mutation`, async () => {
+    let inspected = 0;
+    const { deps, calls } = makeDeps({
+      initialBody: kind === 'syntax' ? '<!-- aitm-directory invalid -->' : DIRECTORY,
+      deps: {
+        contractWrite: {
+          readContractRecord: async () => {
+            inspected++;
+            if (kind === 'transport') throw new Error('offline');
+            return kind === 'missing' ? undefined : { envelope: { payload: {} } };
+          },
+        },
+      },
+    });
+    const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+    assert.equal(result.status, 'story-approval-binding-unsupported');
+    assert.equal(result.reason, 'directory-inspection-failed');
+    assert.equal(inspected, kind === 'syntax' ? 0 : 1);
+    assert.equal(calls.writes.length, 0);
+    assert.equal(calls.comments.length, 0);
+  });
+for (const fresh of [DIRECTORY, '<!-- aitm-directory invalid -->'])
+  test('directory introduced in fresh transaction is refused without a write', async () => {
+    const { deps, calls } = makeDeps({ beforeMutate: (body) => `${body}\n${fresh}` });
+    await assert.rejects(
+      () => runPlanApprove({ issueNumber: 1711, cfg, deps }),
+      /story-approval-binding-unsupported: directory-inspection-failed/
+    );
+    assert.equal(calls.writes.length, 0);
+    assert.equal(calls.comments.length, 0);
+  });
+test('failed repair audit retains prior payload and exact retry repairs once', async () => {
+  const comments = [];
+  let fail = true;
+  const { deps, getBody, calls } = makeDeps({
+    initialBody: '## Scope\n<!-- aitm-plan-approved ts="2026-01-01T00:00:00Z" mode="human" -->',
+    deps: {
+      listComments: async () => comments,
+      postComment: async ({ body }) => {
+        if (fail) throw new Error('audit offline');
+        comments.push({ body });
+      },
+    },
+  });
+  let payload;
+  await assert.rejects(
+    () => runPlanApprove({ issueNumber: 1711, cfg, deps }),
+    (error) => {
+      payload = error.storyBindingRepair;
+      return error.message === 'audit offline';
+    }
+  );
+  assert.equal(payload.previousApproval.ts, '2026-01-01T00:00:00Z');
+  assert.equal(parsePlanApprovedMarker(getBody()).storyIntentSource, 'deep-dive');
+  fail = false;
+  const result = await runPlanApprove({
+    issueNumber: 1711,
+    cfg,
+    deps: { ...deps, previousApproval: payload.previousApproval },
+  });
+  assert.equal(result.status, 'already-approved');
+  await runPlanApprove({ issueNumber: 1711, cfg, deps });
+  assert.equal(comments.length, 1);
+  assert.match(comments[0].body, /2026-01-01T00:00:00Z/);
+  assert.equal(calls.writes.length, 1);
+});
+
+test('complete no-op refuses persisted marker or Plan-entry drift before audit', async () => {
+  for (const change of [
+    (body) => body.replace(/<!-- aitm-entered-plan[^>]*-->/, ''),
+    (body) => body.replace('mode="human"', `mode="human" trunk-sha="${'e'.repeat(40)}"`),
+  ]) {
+    const current = upsertPlanApprovedMarker(
+      `${STORY_BODY}\n## Markers\n<!-- aitm-entered-plan ts="${FIXED_TS}" -->`,
+      FIXED_TS,
+      { ...resolveStoryIntentSource({ body: STORY_BODY, projectDir: root }).binding, mode: 'human' }
+    );
+    let reads = 0;
+    const { deps, calls } = makeDeps({
+      deps: { fetchIssueBody: async () => (++reads === 1 ? current : change(current)) },
+    });
+    const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+    assert.equal(result.status, 'story-approval-binding-persistence-mismatch');
+    assert.equal(calls.comments.length, 0);
+  }
+});
+
+test('stale complete bindings renew actor and timestamp even in the same clock tick', async () => {
+  for (const stale of [
+    { storyDigest: 'a'.repeat(64) },
+    { storyIntentDigest: 'b'.repeat(64) },
+    { storyIntentSource: 'linked-plan' },
+  ]) {
+    const rawBody = upsertPlanApprovedMarker(
+      `${STORY_BODY}\n## Markers\n<!-- aitm-entered-plan ts="${FIXED_TS}" -->`,
+      FIXED_TS,
+      {
+        ...resolveStoryIntentSource({ body: STORY_BODY, projectDir: root }).binding,
+        ...stale,
+        mode: 'human',
+      }
+    );
+    const { deps, getBody } = makeDeps({ rawBody, env: { TT_FULL_AUTO: '1' } });
+    const result = await runPlanApprove({ issueNumber: 1711, cfg, deps });
+    assert.equal(result.status, 'repaired-story-binding');
+    assert.notEqual(parsePlanApprovedMarker(getBody()).ts, FIXED_TS);
+    assert.equal(parsePlanApprovedMarker(getBody()).mode, 'full-auto');
+  }
+});
+
+test('a failed canonical Full-Auto audit retains the original binding repair payload', async () => {
+  const { deps } = makeDeps({
+    initialBody: '## Markers\n<!-- aitm-plan-approved ts="2026-01-01T00:00:00Z" mode="human" -->',
+    env: { TT_FULL_AUTO: '1' },
+    deps: {
+      postComment: async () => {
+        throw new Error('audit transport');
+      },
+    },
+  });
+  await assert.rejects(
+    () => runPlanApprove({ issueNumber: 1711, cfg, deps }),
+    (error) => {
+      assert.equal(error.storyBindingRepair?.previousApproval?.ts, '2026-01-01T00:00:00Z');
+      assert.equal(error.storyBindingRepair.approved.mode, 'full-auto');
+      return error.message === 'audit transport';
+    }
+  );
+});

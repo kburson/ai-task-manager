@@ -33,11 +33,17 @@ import {
   renderAitmRecord,
 } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 import '../../../../task-tracker/lib/guard-bootstrap.mjs';
+import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
+import { upsertPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
 
 // #336 — APPROVED_BODY now also carries deep-dive signals so the
 // planExitDeepDiveGuard (newly wired into STATES.plan.exitGuards) passes in
 // integration tests below. Per-guard unit tests above use minimal bodies.
-const APPROVED_BODY = [
+let APPROVED_BODY = [
+  '## User Story',
+  'As a release operator',
+  'I want to stop partial publication',
+  'So that consumers receive complete releases',
   '## Scope',
   '',
   // #355 — contiguity guard now fires on every forward transition; the
@@ -58,6 +64,12 @@ const APPROVED_BODY = [
   '',
   '## Deep-Dive Analysis',
   '',
+  '### Story Intent',
+  '- **Beneficiary:** release operator',
+  '- **Capability:** stop partial publication',
+  '- **Need:** registry checks can fail',
+  '- **Value or failure prevented:** consumers receive complete releases',
+  '### Analysis',
   // #358 — substantive-chars floor folded into planDeepDiveGate; pad section.
   ...Array.from(
     { length: 20 },
@@ -75,12 +87,18 @@ const APPROVED_BODY = [
   `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
 ].join('\n');
+APPROVED_BODY = upsertPlanApprovedMarker(
+  APPROVED_BODY,
+  '2026-06-07T06:00:00Z',
+  resolveStoryIntentSource({ body: APPROVED_BODY, projectDir: process.cwd() }).binding
+);
 const BARE_BODY = '## Scope\n\nno marker here\n';
 
 // #336 — stub deps for the planned-estimate guard (newly wired into
 // STATES.plan.exitGuards). Returns a refine-estimate comment whose
 // `### Planned Estimate` appendix satisfies the gate.
 const PLANNED_ESTIMATE_OK_DEPS = {
+  resolveStoryIntent: (args) => resolveStoryIntentSource({ ...args, projectDir: process.cwd() }),
   observeDependencyReadiness: async () => ({
     blockedBy: [],
     states: new Map(),

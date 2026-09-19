@@ -9,6 +9,8 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { runPlanApprove, verbPlanApprove } from '../../../../task-tracker/verbs/plan-approve.mjs';
+import { upsertPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
+import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
 
 const CFG = { repo: 'o/r' };
 const TS = '2026-06-29T00:00:00Z';
@@ -29,15 +31,26 @@ const FORBIDDEN_BODY = [
 ].join('\n');
 
 function deps({ body = CLEAN_BODY, state = 'plan', onMutate } = {}) {
+  body =
+    '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n## Scope\n\n## Deep-Dive Analysis\n### Story Intent\n- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** registry checks can fail\n- **Value or failure prevented:** consumers receive complete releases\n\n' +
+    body;
+  if (state === 'plan' && body.includes('aitm-plan-approved'))
+    body = upsertPlanApprovedMarker(body, '2026-06-01T00:00:00Z', {
+      ...resolveStoryIntentSource({ body, projectDir: '.' }).binding,
+      mode: 'human',
+    });
   return {
     env: {},
+    listComments: async () => [],
+    postComment: async () => {},
     getBoardState: async () => state,
     fetchIssueBody: async () => body,
     fetchEpicChildren: async () => [],
     nowIso: () => TS,
     mutateIssueBody: async ({ mutate }) => {
-      if (onMutate) onMutate(mutate(body));
-      return { status: 'ok' };
+      body = mutate(body);
+      if (onMutate) onMutate(body);
+      return { status: 'ok', body };
     },
   };
 }
@@ -217,3 +230,46 @@ test('verbPlanApprove: runPlanApprove throws → stderr, exit 1', async () => {
 // it would require fabricating an impossible result. Left uncovered honestly.
 
 console.log('coverage-plan-approve.test.mjs: defined');
+
+// @story #1711 — refusals remain nonzero and cannot print approval success.
+for (const failure of ['story', 'directory', 'persistence', 'fresh-directory']) {
+  test(`verbPlanApprove: ${failure} binding refusal has stable diagnostics and nonzero exit`, async () => {
+    const injected = deps();
+    let writes = 0;
+    injected.postComment = async () => assert.fail('no audit on refusal');
+    if (failure === 'story') injected.fetchIssueBody = async () => '## Scope\n';
+    if (failure === 'directory')
+      injected.readDirectoryContract = async () => {
+        throw new Error('transport offline');
+      };
+    if (failure === 'persistence')
+      injected.mutateIssueBody = async () => ({ body: await injected.fetchIssueBody() });
+    if (failure === 'fresh-directory')
+      injected.mutateIssueBody = async ({ mutate }) => {
+        const body = mutate(
+          (await injected.fetchIssueBody()) + '\n<!-- aitm-directory malformed -->'
+        );
+        writes++;
+        return { body };
+      };
+    const result = await runVerb(['1711'], { deps: injected });
+    assert.ok(result.exitCode > 0);
+    assert.equal(result.stdout, '');
+    assert.match(
+      result.stderr,
+      /story-approval-binding-(?:invalid|unsupported|persistence-mismatch)/
+    );
+    if (failure.includes('directory')) assert.match(result.stderr, /directory-inspection-failed/);
+    assert.equal(writes, 0);
+  });
+}
+test('verbPlanApprove: legacy binding repair reports renewal', async () => {
+  const injected = deps();
+  let body =
+    (await injected.fetchIssueBody()) + '\n<!-- aitm-plan-approved ts="2026-01-01T00:00:00Z" -->';
+  injected.fetchIssueBody = async () => body;
+  injected.mutateIssueBody = async ({ mutate }) => ({ body: (body = mutate(body)) });
+  const result = await runVerb(['1711'], { deps: injected });
+  assert.equal(result.exitCode, null);
+  assert.match(result.stdout, /story binding renewed/);
+});

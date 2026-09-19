@@ -21,6 +21,7 @@
 // registry is populated even if this module is exercised in isolation.
 
 import { runGuards } from '../guard-registry.mjs';
+import { resolveStoryIntentSource } from '../story-intent-source.mjs';
 import '../guard-bootstrap.mjs';
 import { decideBodyFetchFailure } from '../body-fetch-gate.mjs';
 import { parseIssueFieldDb } from '../../issue-field-db.mjs';
@@ -202,7 +203,7 @@ export async function runGuardExecution(ctx) {
       body: guardBody,
       fetchBlockerState,
       cfg,
-      deps,
+      deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
       projectDir,
       lifecycleEvidence,
       sessionPolicy:
