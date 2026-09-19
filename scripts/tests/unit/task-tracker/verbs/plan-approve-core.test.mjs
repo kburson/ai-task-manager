@@ -3,8 +3,7 @@
 // Unit tests for scripts/task-tracker/verbs/plan-approve.mjs.
 //
 // Covers:
-//   1. Refuses when issue is in `review` (wrong-state — plan-approve cannot approve Review).
-//   2. Refuses when issue is in `develop` (wrong-state — only valid from plan).
+//   1. Refuses when issue is in `develop` (wrong-state — only valid from plan).
 //   3. First call inserts the marker and returns 'approved' with ts.
 //   4. Second call is a no-op ('already-approved'); body is not rewritten.
 //   5. Marker is inserted before the fields-block when present.
@@ -252,6 +251,37 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   assert.equal(readPlanApprovedForecastRecordId(getBody()), ready);
   assert.equal(readPlanApprovedMode(getBody()), 'unknown');
   assert.match(getBody(), new RegExp(`ts="${originalTs}"`));
+}
+
+// @story #1703 #1716 — adaptive late repair must retain reconstructed approval
+// provenance together with the story binding while freezing the forecast.
+{
+  const ready = '01J00000000000000000000935';
+  const originalTs = '2026-05-01T00:00:00Z';
+  const repairRecordId = '01M2Y000000000000000000002';
+  const binding = resolveStoryIntentSource({ body: STORY_BODY, projectDir: root }).binding;
+  const { deps, getBody } = makeDeps({
+    state: 'develop',
+    initialBody: [
+      '<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->',
+      buildPlanApprovedMarker(originalTs, {
+        ...binding,
+        mode: 'full-auto',
+        repairRecordId,
+      }),
+      `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+    ].join('\n'),
+  });
+  const result = await runPlanApprove({
+    issueNumber: 1703,
+    cfg: { ...cfg, estimationRubricIssue: 1703 },
+    deps,
+  });
+  const approval = parsePlanApprovedMarker(getBody());
+  assert.equal(result.status, 'repaired-approval');
+  assert.equal(approval.repairRecordId, repairRecordId);
+  assert.equal(approval.forecastRecordId, ready);
+  for (const [key, value] of Object.entries(binding)) assert.equal(approval[key], value);
 }
 
 // 4. second call is idempotent
@@ -517,7 +547,7 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   assert.doesNotMatch(calls.comments[0], new RegExp(FIXED_TS));
 }
 
-console.log('plan-approve.test.mjs: all passed');
+console.log('plan-approve-core.test.mjs: all passed');
 
 const INTENT_BLOCK = STORY_BODY.slice(STORY_BODY.indexOf('- **Beneficiary:**')).trim();
 function planFixture(t) {

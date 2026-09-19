@@ -230,8 +230,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const storyBindingAllowance = 2;
   // #1714 ships the operator-facing story-quality adoption and repair guide.
   const storyQualityGuideAllowance = 1;
-  // #1716 ships the durable Plan-approval evidence repair evaluator.
-  const planApprovalRepairAllowance = 1;
+  // #1709 ships the shared provider rule alongside the two runtime modules.
+  const storyQualityRuleAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -239,7 +239,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     storyContractAllowance +
     storyBindingAllowance +
     storyQualityGuideAllowance +
-    planApprovalRepairAllowance;
+    storyQualityRuleAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

@@ -364,6 +364,7 @@ export async function runPlanApprove({
           storyDigest: parsePlanApprovedMarker(base)?.storyDigest ?? null,
           storyIntentDigest: parsePlanApprovedMarker(base)?.storyIntentDigest ?? null,
           storyIntentSource: parsePlanApprovedMarker(base)?.storyIntentSource ?? null,
+          repairRecordId: parsePlanApprovedMarker(base)?.repairRecordId ?? null,
           forecastRecordId: freshReady,
           mode: existingMode === 'unknown' ? null : existingMode,
           trunkSha,
