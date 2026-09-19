@@ -1,7 +1,7 @@
 import { accessSync, constants, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { markdownViews, openingFenceFor, isClosingFence } from './plan-markdown-views.mjs';
-import { selectStoryIntentTask } from './user-story-quality.mjs';
+import { parseStoryIntent, selectStoryIntentTask } from './user-story-quality.mjs';
 
 import {
   isSubstantiveMetadataValue,
@@ -84,6 +84,17 @@ export function extractPlanTasks(planText = '') {
     while (end < structuralLines.length && !SECTION_HEADING_RE.test(structuralLines[end])) end += 1;
     const body = originalLines.slice(index + 1, end).join('\n');
     const commandBody = commandLines.slice(index + 1, end).join('\n');
+    const parsedIntent = parseStoryIntent(planText, {
+      headingLevel: 4,
+      startLine: index + 1,
+      endLine: end,
+    });
+    const scopeBody = parsedIntent.range
+      ? [
+          ...originalLines.slice(index + 1, parsedIntent.range.start - 1),
+          ...originalLines.slice(parsedIntent.range.end, end),
+        ].join('\n')
+      : body;
     tasks.push({
       number,
       sourceLine: index + 1,
@@ -91,6 +102,10 @@ export function extractPlanTasks(planText = '') {
       title,
       heading: `### ${match[1][0].toUpperCase()}${match[1].slice(1).toLowerCase()} ${number}: ${title}`,
       body,
+      storyIntent: parsedIntent.intent,
+      storyIntentViolations: parsedIntent.violations,
+      storyIntentRange: parsedIntent.range,
+      scopeBody,
       commands: commandsFromTaskBody(commandBody),
     });
   }
