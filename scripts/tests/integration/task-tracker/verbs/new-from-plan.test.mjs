@@ -11,6 +11,7 @@
 //   Branch legacy — not discover, plain title arg → returns title
 
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -24,11 +25,15 @@ import {
   savePlanFile,
   loadPlanFile,
 } from '../../../../task-tracker/lib/plan-file.mjs';
-import { classifyDecomposition } from '../../../../task-tracker/lib/decomposition-policy.mjs';
+import {
+  classifyDecomposition,
+  extractPlanTasks,
+} from '../../../../task-tracker/lib/decomposition-policy.mjs';
 import {
   evaluateStoryProse,
   parseStoryIntent,
   renderStoryFromIntent,
+  resolveStoryIntent,
 } from '../../../../task-tracker/lib/user-story-quality.mjs';
 import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
 
@@ -93,6 +98,26 @@ function populatedPlan(template) {
   );
 
   const populated = populatedPlan(canonical);
+  const workedExample = canonical.match(/````markdown\n([\s\S]*?)\n````/u)?.[1];
+  assert.ok(workedExample, 'scaffold must contain a fenced worked example');
+  const copiedExample = classifyDecomposition({ planText: workedExample });
+  assert.equal(copiedExample.taskCount, 1);
+  assert.equal(copiedExample.verificationGroupCount, 1);
+
+  const planObservation = {
+    key: 'Source-plan',
+    path: 'docs/plan.md',
+    text: populated,
+    contentSha256: createHash('sha256').update(populated).digest('hex'),
+    tasks: extractPlanTasks(populated),
+  };
+  const rootResolution = resolveStoryIntent({
+    body: '## Plan Metadata\n- **Source-plan**: docs/plan.md',
+    plan: planObservation,
+  });
+  assert.equal(rootResolution.ok, true, JSON.stringify(rootResolution));
+  assert.equal(rootResolution.source, 'linked-plan');
+
   const ready = classifyDecomposition({ planText: populated });
   assert.equal(ready.taskCount, 1, 'fenced worked example cannot become a live task');
   assert.equal(ready.verificationGroupCount, 1);

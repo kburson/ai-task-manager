@@ -22,10 +22,17 @@
 
 ## Story Intent
 
+<!--
+The bracketed field values below deliberately reuse AITM's canonical story
+placeholders so an untouched scaffold remains a draft at Plan approval.
+-->
+
 - **Beneficiary:** [who wants to accomplish something]
 - **Capability:** [what they want to accomplish]
 - **Need:** [what gap or failure makes it necessary]
 - **Value or failure prevented:** [why they want to accomplish that thing]
+
+## Implementation Tasks
 
 ### Task 1: <task title>
 
@@ -51,7 +58,7 @@
 The fenced example is guidance only. Copy and adapt it; fenced headings are not
 live decomposition tasks.
 
-```markdown
+````markdown
 ### Task 2: Prevent partial publication
 
 #### Story Intent
@@ -63,5 +70,7 @@ live decomposition tasks.
 
 **Verification Commands:**
 
-    node --test scripts/tests/unit/release.test.mjs
+```sh
+node --test scripts/tests/unit/release.test.mjs
 ```
+````

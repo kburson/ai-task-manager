@@ -58,17 +58,17 @@ Every created epic, sub-issue, and solo task must be tethered via `project-tethe
 ## Epic creation
 
 Load `rules/user-story-quality.md`. Stage the creation fragments under
-`./.scratch/plan/`; both early User Story input and Plan Metadata are optional
-when planning output is not yet known:
-
-When source-grounded draft prose exists, add
-`--user-story-file ./.scratch/plan/user-story.md` to the creation command.
+`./.scratch/plan/`. Early User Story input is optional until Plan approval;
+Plan Metadata is independently optional while planning output is not yet known:
 
 - `./.scratch/plan/user-story.md` — optional; when present, the canonical template or three source-grounded Connextra lines
 - `./.scratch/plan/scope.md` — Epic Scope prose
 - `./.scratch/plan/acs.md` — Acceptance Criteria as `- [ ]` checkboxes (closes-gate parser requires the bracket-space-bracket format)
 - `./.scratch/plan/story-origin.md` — create-time provenance such as `**kind:**`, `**discovered-during:**`, and relationships
 - `./.scratch/plan/plan-meta.md` — `**Size:**`, `**Estimate:**`, `**Priority:**`, `**Sequence:**`
+
+When source-grounded draft prose exists, add
+`--user-story-file ./.scratch/plan/user-story.md` to the creation command.
 
 Create + tether atomically:
 

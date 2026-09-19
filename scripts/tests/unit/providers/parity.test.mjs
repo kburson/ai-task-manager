@@ -211,6 +211,8 @@ function obsoleteStoryMandates(markdown) {
   return activeInstructionParagraphs(markdown).filter(
     (paragraph) =>
       /non-stub shapes require[\s\S]{0,240}?user-story\.md/i.test(paragraph) ||
+      /requires\s+`?--user-story-file/i.test(paragraph) ||
+      /same required User Story/i.test(paragraph) ||
       /required[\s\S]{0,240}?fragments[\s\S]{0,240}?user-story\.md[\s\S]{0,120}?non-stub shapes/i.test(
         paragraph
       )
@@ -244,11 +246,13 @@ test('#1713: provider adapters route one shared story-quality contract without s
     assert.match(
       router,
       new RegExp(
-        `${route.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}[^\\n]*rules/user-story-quality\\.md`
+        `${route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*rules/user-story-quality\\.md`
       ),
       route
     );
   }
+  assert.match(rule, /\.ai-task-manager\/templates\/plan-file\.md/);
+  assert.match(rule, /templates\/plan-file\.md/);
   for (const provider of ['claude', 'codex', 'grok']) {
     const adapter = readFileSync(
       path.join(REPO_ROOT, getProvider(provider).skillAdapterPath),
@@ -265,6 +269,8 @@ test('#1713: active-mandate detector rejects both historical forms even beside o
   for (const fixture of [
     'Non-stub shapes require the ./.scratch/plan/user-story.md fragment alongside Scope.',
     'The required ./.scratch/plan/ fragments (including user-story.md for non-stub shapes) live here.',
+    'Full ceremony up front. Requires `--user-story-file`, `--scope-file`, and `--ac-file`.',
+    'Use the same required User Story and Story Origin fragments as solo.',
     'User Story input is optional before Plan approval.\n\nNon-stub shapes require user-story.md.',
   ]) {
     assert.equal(obsoleteStoryMandates(fixture).length, 1, fixture);
@@ -284,6 +290,8 @@ test('#1713: shared and CLI authoring guidance treats intake story prose as opti
     'skill/shared/rules/plan-mode-backlog.md',
     'skill/shared/rules/block.md',
     'skill/shared/rules/state-walk.md',
+    'skill/shared/rules/user-story-quality.md',
+    'docs/guides/workflow.md',
   ]) {
     const contents = readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
     assert.match(contents, /rules\/user-story-quality\.md/, relativePath);

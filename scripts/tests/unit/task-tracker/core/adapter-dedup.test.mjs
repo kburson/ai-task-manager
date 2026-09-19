@@ -30,6 +30,7 @@ const RULE_IDS = [
   { id: 'review', file: 'skill/shared/rules/review.md' },
   { id: 'state-movement', file: 'skill/shared/rules/state-walk.md' },
   { id: 'project-preferences', file: 'skill/shared/rules/preferences.md' },
+  { id: 'user-story-quality', file: 'skill/shared/rules/user-story-quality.md' },
 ];
 
 // Cross-cutting rules: `home` is the single authoritative file; `homeAnchor`
