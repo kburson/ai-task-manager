@@ -1,5 +1,7 @@
 import { accessSync, constants, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { markdownViews, openingFenceFor, isClosingFence } from './plan-markdown-views.mjs';
+import { parseStoryIntent, selectStoryIntentTask } from './user-story-quality.mjs';
 
 import {
   isSubstantiveMetadataValue,
@@ -20,7 +22,6 @@ export const DECOMPOSITION_THRESHOLDS = Object.freeze({
 const TASK_HEADING_RE = /^###\s+(Task|Milestone)\s+(\d+):\s*(.*?)\s*$/i;
 const SECTION_HEADING_RE = /^#{1,3}\s+/;
 const RUN_COMMAND_RE = /^\s*Run:\s*`([^`]+)`\s*$/i;
-const VERIFICATION_LABEL_RE = /^\s*\*\*Verification Commands:\*\*\s*$/i;
 const PLAN_METADATA_KEYS = ['Implementation-plan', 'Source-plan', 'Plan'];
 const WAIVER_HEADING = 'Decomposition Waiver';
 const WAIVER_FIELDS = [
@@ -40,17 +41,6 @@ function uniqueCommands(commands) {
     seen.add(normalized);
     return true;
   });
-}
-
-function openingFenceFor(line) {
-  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
-  if (!match || (match[1][0] === '`' && match[2].includes('`'))) return null;
-  return { character: match[1][0], length: match[1].length };
-}
-
-function isClosingFence(line, fence) {
-  const match = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line);
-  return Boolean(match && match[1][0] === fence.character && match[1].length >= fence.length);
 }
 
 function commandsFromTaskBody(body) {
@@ -77,141 +67,12 @@ function commandsFromTaskBody(body) {
   return uniqueCommands(commands);
 }
 
-function stripLineMarkdown(line, lines, lineIndex, state) {
-  let visible = '';
-  let structural = '';
-  let index = 0;
-  while (index < line.length) {
-    if (state.inComment) {
-      const end = line.indexOf('-->', index);
-      const stop = end === -1 ? line.length : end + 3;
-      visible += ' '.repeat(stop - index);
-      structural += ' '.repeat(stop - index);
-      index = stop;
-      if (end !== -1) state.inComment = false;
-      continue;
-    }
-    const ticks = /^`+/.exec(line.slice(index));
-    if (ticks) {
-      const length = ticks[0].length;
-      let backslashes = 0;
-      for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1) {
-        backslashes += 1;
-      }
-      const escaped = backslashes % 2 === 1;
-      if (state.inlineTicks === 0) {
-        if (!escaped && hasClosingBacktickRun(lines, lineIndex, index + length, length)) {
-          state.inlineTicks = length;
-          structural += ' '.repeat(length);
-        } else {
-          structural += ticks[0];
-        }
-      } else {
-        structural += ' '.repeat(length);
-        if (length === state.inlineTicks) state.inlineTicks = 0;
-      }
-      visible += ticks[0];
-      index += length;
-      continue;
-    }
-    if (state.inlineTicks === 0 && line.startsWith('<!--', index)) {
-      state.inComment = true;
-      visible += '    ';
-      structural += '    ';
-      index += 4;
-      continue;
-    }
-    visible += line[index];
-    structural += state.inlineTicks === 0 ? line[index] : ' ';
-    index += 1;
-  }
-  return { visible, structural };
-}
-
-function hasClosingBacktickRun(lines, lineIndex, start, expectedLength) {
-  for (let currentLine = lineIndex; currentLine < lines.length; currentLine += 1) {
-    const line = lines[currentLine];
-    if (currentLine > lineIndex && interruptsInlineBlock(line)) return false;
-    let index = currentLine === lineIndex ? start : 0;
-    while (index < line.length) {
-      if (line[index] !== '`') {
-        index += 1;
-        continue;
-      }
-      let end = index + 1;
-      while (end < line.length && line[end] === '`') end += 1;
-      if (end - index === expectedLength) return true;
-      index = end;
-    }
-  }
-  return false;
-}
-
-function interruptsInlineBlock(line) {
-  return (
-    /^\s*$/.test(line) ||
-    /^ {0,3}(?:#{1,6}(?:[ \t]+|$)|>|`{3,}|~{3,}|<!--|(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$))/.test(line)
-  );
-}
-
-function markdownViews(value) {
-  const lines = String(value).split('\n');
-  const state = {
-    inComment: false,
-    fence: null,
-    inlineTicks: 0,
-    verificationFenceEligible: false,
-  };
-  const structuralLines = [];
-  const commandLines = [];
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex];
-    if (state.fence) {
-      const verificationFence = state.fence.verification;
-      if (isClosingFence(line, state.fence)) {
-        state.fence = null;
-      }
-      structuralLines.push('');
-      commandLines.push(verificationFence ? line : '');
-      continue;
-    }
-    const inlineTicksAtStart = state.inlineTicks;
-    const { visible, structural } = stripLineMarkdown(line, lines, lineIndex, state);
-    const openingFence = !state.inComment && openingFenceFor(visible);
-    let verificationFence = false;
-    if (inlineTicksAtStart === 0 && openingFence) {
-      verificationFence = state.verificationFenceEligible;
-      state.fence = {
-        ...openingFence,
-        verification: verificationFence,
-      };
-      state.inlineTicks = 0;
-      state.verificationFenceEligible = false;
-    } else if (visible.trim()) {
-      state.verificationFenceEligible = VERIFICATION_LABEL_RE.test(structural);
-    }
-    structuralLines.push(openingFence && inlineTicksAtStart === 0 ? '' : structural);
-    const insideMultilineSpan = inlineTicksAtStart !== 0 || state.inlineTicks !== 0;
-    commandLines.push(
-      openingFence && inlineTicksAtStart === 0
-        ? verificationFence
-          ? visible
-          : ''
-        : insideMultilineSpan
-          ? ''
-          : visible
-    );
-  }
-  return { structuralLines, commandLines };
-}
-
 function visibleStructuralLines(value) {
   return markdownViews(value).structuralLines;
 }
 
 export function extractPlanTasks(planText = '') {
-  const originalLines = String(planText).split('\n');
-  const { commandLines, structuralLines } = markdownViews(planText);
+  const { originalLines, commandLines, structuralLines } = markdownViews(planText);
   const tasks = [];
   for (let index = 0; index < structuralLines.length; index += 1) {
     const match = TASK_HEADING_RE.exec(structuralLines[index]);
@@ -223,12 +84,28 @@ export function extractPlanTasks(planText = '') {
     while (end < structuralLines.length && !SECTION_HEADING_RE.test(structuralLines[end])) end += 1;
     const body = originalLines.slice(index + 1, end).join('\n');
     const commandBody = commandLines.slice(index + 1, end).join('\n');
+    const parsedIntent = parseStoryIntent(planText, {
+      headingLevel: 4,
+      startLine: index + 1,
+      endLine: end,
+    });
+    const scopeBody = parsedIntent.range
+      ? [
+          ...originalLines.slice(index + 1, parsedIntent.range.start - 1),
+          ...originalLines.slice(parsedIntent.range.end, end),
+        ].join('\n')
+      : body;
     tasks.push({
       number,
+      sourceLine: index + 1,
       kind: match[1].toLowerCase(),
       title,
       heading: `### ${match[1][0].toUpperCase()}${match[1].slice(1).toLowerCase()} ${number}: ${title}`,
       body,
+      storyIntent: parsedIntent.intent,
+      storyIntentViolations: parsedIntent.violations,
+      storyIntentRange: parsedIntent.range,
+      scopeBody,
       commands: commandsFromTaskBody(commandBody),
     });
   }
@@ -350,45 +227,23 @@ export function selectDecompositionPlanSection({
     heading: null,
     diagnostic: null,
   };
-  if (activePlanKey !== 'Source-plan') return inactive;
-
-  const values = visibleMetadataFieldValues(body, 'Plan Metadata', 'Source-plan-section');
-  if (values.length === 0) return inactive;
-  if (values.length !== 1) {
+  const selection = selectStoryIntentTask({
+    body,
+    tasks: extractPlanTasks(planText),
+    activePlanKey,
+  });
+  if (!selection.applied) return inactive;
+  if (!selection.ok) {
     return {
       ...inactive,
       ok: false,
       applied: true,
-      diagnostic: 'duplicate Source-plan-section fields',
+      heading: selection.heading,
+      diagnostic: selection.diagnostic,
     };
   }
+  const { task, heading } = selection;
 
-  const heading = values[0];
-  if (!isSubstantiveMetadataValue(heading)) {
-    return {
-      ...inactive,
-      ok: false,
-      applied: true,
-      heading,
-      diagnostic: 'Source-plan-section is empty',
-    };
-  }
-
-  const matches = extractPlanTasks(planText).filter((task) => task.heading === heading);
-  if (matches.length !== 1) {
-    return {
-      ...inactive,
-      ok: false,
-      applied: true,
-      heading,
-      diagnostic:
-        matches.length === 0
-          ? `Source-plan-section not found: ${heading}`
-          : `Source-plan-section is ambiguous: ${heading}`,
-    };
-  }
-
-  const [task] = matches;
   return {
     ok: true,
     applied: true,

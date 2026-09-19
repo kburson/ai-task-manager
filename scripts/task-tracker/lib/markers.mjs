@@ -118,12 +118,37 @@ export const PLAN_APPROVAL_MODES = Object.freeze({
   FULL_AUTO: 'full-auto',
   UNKNOWN: 'unknown',
 });
+const STORY_INTENT_SOURCES = ['deep-dive', 'linked-plan', 'linked-plan-task'];
+const STORY_BINDING_FIELDS = {
+  storyDigest: 'story-digest',
+  storyIntentDigest: 'story-intent-digest',
+  storyIntentSource: 'story-intent-source',
+};
+function validStoryBindingValue(key, value) {
+  return key === 'storyIntentSource'
+    ? STORY_INTENT_SOURCES.includes(value)
+    : typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+}
 
 export function buildPlanApprovedMarker(
   ts,
-  { forecastRecordId = null, mode = null, trunkSha = null } = {}
+  {
+    forecastRecordId = null,
+    mode = null,
+    trunkSha = null,
+    storyDigest = null,
+    storyIntentDigest = null,
+    storyIntentSource = null,
+  } = {}
 ) {
   const properties = { ts };
+  const binding = { storyDigest, storyIntentDigest, storyIntentSource };
+  for (const [key, attribute] of Object.entries(STORY_BINDING_FIELDS)) {
+    if (binding[key] === null) continue;
+    if (!validStoryBindingValue(key, binding[key]))
+      throw new TypeError(`buildPlanApprovedMarker: invalid ${key}`);
+    properties[attribute] = binding[key];
+  }
   if (forecastRecordId !== null) properties['forecast-record-id'] = forecastRecordId;
   if (trunkSha !== null) {
     if (!/^[0-9a-f]{40}$/i.test(String(trunkSha))) {
@@ -160,6 +185,9 @@ export function parsePlanApprovedMarker(body) {
       forecastRecordId: null,
       mode: PLAN_APPROVAL_MODES.UNKNOWN,
       trunkSha: null,
+      storyDigest: null,
+      storyIntentDigest: null,
+      storyIntentSource: null,
     };
   }
 
@@ -176,7 +204,13 @@ export function parsePlanApprovedMarker(body) {
   const trunkSha = /^[0-9a-f]{40}$/i.test(props['trunk-sha'] || '')
     ? props['trunk-sha'].toLowerCase()
     : null;
-  return { ts: props.ts || '', forecastRecordId, mode, trunkSha };
+  const binding = Object.fromEntries(
+    Object.entries(STORY_BINDING_FIELDS).map(([key, attribute]) => [
+      key,
+      validStoryBindingValue(key, props[attribute]) ? props[attribute] : null,
+    ])
+  );
+  return { ts: props.ts || '', forecastRecordId, mode, trunkSha, ...binding };
 }
 
 export function readPlanApprovedMode(body) {
@@ -710,6 +744,10 @@ export function wrapDeepDiveInDetails(body) {
     }
   }
   if (headingIdx === -1) return src;
+
+  // #1711: wrapper prose would otherwise become part of an adjacent story.
+  const precedingSection = lines.slice(0, headingIdx).findLast((line) => /^##\s+/.test(line));
+  if (/^## User Story\s*$/.test(precedingSection ?? '')) return src;
 
   for (let i = headingIdx - 1; i >= 0; i--) {
     const t = lines[i].trim();

@@ -42,7 +42,7 @@ Run from the project root, or set `AI_TASK_MANAGER_PROJECT_DIR` first.
 
 ## Creating issues
 
-Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. The shape menu, required `./.scratch/plan/` fragments (including `user-story.md` for non-stub shapes), the deterministic refusal contracts (`assignee-required`, `priority-required-at-groom`), binding each Acceptance Criterion to an `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification Commands`, and the never-promote-a-"suggested task"-chip rule all live in `rules/create-issue.md` (loads JIT on `/task new`).
+Create only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect`; never `gh issue create`. User Story input is optional before Plan approval. Optional prose may use `user-story.md`; Scope, Acceptance Criteria, and Story Origin remain required. Bind ACs to root Verification Commands with `aitm-verified vc-list="vc:N"`. Load `rules/create-issue.md` and `rules/user-story-quality.md` on `/task new`; the quality rule also governs story authoring, Plan, approval, and splitting.
 
 ## Review & approve details
 
@@ -60,7 +60,7 @@ The full Rank rules (the `child-cannot-lead-epic` invariant, the Refine WIP gate
 
 When the user says "save the plan", "generate the plan", "write up the plan", or similar during an active `/task discover` session:
 
-1. Compose the discovery findings into a markdown file at `.scratch/plan/<draft>.md` using the template at `templates/plan-file.md` (H1 title + `## Scope` required).
+1. Load `rules/user-story-quality.md`, then compose the discovery findings into `.scratch/plan/<draft>.md` using `.ai-task-manager/templates/plan-file.md` in an installed project or `templates/plan-file.md` in this package repository.
 2. Run `/task save-plan --from-file .scratch/plan/<draft>.md` — this validates the file, saves it to `docs/plans/YYYYMMDD-<slug>.md`, and stamps `savedPlanFile` into the discover bucket.
 3. Confirm the saved path to the user.
 

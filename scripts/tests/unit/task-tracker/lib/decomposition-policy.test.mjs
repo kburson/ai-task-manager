@@ -1,4 +1,4 @@
-// @story #1052 #1281
+// @story #1052 #1281 #1712
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -23,6 +23,50 @@ function taskPlan(taskCount, verifiedCount) {
     return `### Task ${number}: Deliver part ${number}${verifier}`;
   }).join('\n\n');
 }
+
+test('attaches bounded intent and absolute locations while stripping only live intent', () => {
+  const before = [
+    'Unchanged scope.',
+    '```markdown',
+    '#### Story Intent',
+    'example only',
+    '```',
+    '',
+  ];
+  const intent = [
+    '#### Story Intent',
+    '',
+    '- **Beneficiary:** release operator',
+    '- **Capability:** preserve `package.json` evidence',
+    '- **Need:** registry checks can fail',
+    '- **Value or failure prevented:** consumers receive complete releases',
+    '',
+  ];
+  const after = ['#### Files', 'Depends on Task 2.', 'Run: `node check.mjs`', ''];
+  const body = [...before, ...intent, ...after].join('\n');
+  const plan =
+    '# Plan\n\n### Task 1: Check `pkg`  evidence\n' + body + '\n## End\n#### Story Intent\n';
+  const [task] = extractPlanTasks(plan);
+  assert.equal(task.sourceLine, 3);
+  assert.equal(task.body, body);
+  assert.equal(task.scopeBody, [...before, ...after].join('\n'));
+  assert.equal(task.storyIntent.capability, 'preserve `package.json` evidence');
+  assert.deepEqual(task.storyIntentRange, { start: 10, end: 16 });
+  assert.deepEqual(task.storyIntentViolations, []);
+  assert.deepEqual(task.commands, ['node check.mjs']);
+});
+
+test('missing and invalid task intent are diagnostic metadata for historical readers', () => {
+  const plan =
+    '# Plan\n### Task 1: Old\nRun: `node old.mjs`\n### Task 2: Invalid\n#### Story Intent\n- **Beneficiary:** release operator\n- **Unknown:** value\n';
+  const [old, invalid] = extractPlanTasks(plan);
+  assert.equal(old.storyIntent, null);
+  assert.equal(old.scopeBody, old.body);
+  assert.equal(old.storyIntentViolations[0].code, 'story-intent-missing');
+  assert.equal(invalid.storyIntent, null);
+  assert.equal(invalid.storyIntentViolations[0].line, 7);
+  assert.equal(classifyDecomposition({ planText: plan }).taskCount, 2);
+});
 
 test('classifies fixed decomposition thresholds with must-split precedence', () => {
   const cases = [
@@ -319,7 +363,8 @@ test('fails closed for duplicate fields, unknown headings, and duplicate tasks',
   assert.match(ambiguous.diagnostic, /ambiguous/);
 });
 
-test('keeps whole-plan text when source-section scoping is inactive', () => {
+// @story #1709
+test('refuses conflicting inherited selectors and keeps whole-plan text without a selector', () => {
   const planText = taskPlan(4, 4);
   const withSection = [
     '## Plan Metadata',
@@ -335,7 +380,9 @@ test('keeps whole-plan text when source-section scoping is inactive', () => {
     planText,
     activePlanKey: reference.key,
   });
-  assert.equal(implementationPlan.applied, false);
+  assert.equal(implementationPlan.ok, false);
+  assert.equal(implementationPlan.applied, true);
+  assert.match(implementationPlan.diagnostic, /conflicts/);
   assert.equal(implementationPlan.planText, planText);
 
   const absentSection = selectDecompositionPlanSection({

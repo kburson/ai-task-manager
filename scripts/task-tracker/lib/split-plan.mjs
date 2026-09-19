@@ -3,6 +3,8 @@ import { writeFile as writeFileDefault } from 'node:fs/promises';
 import path from 'node:path';
 
 import { extractPlanTasks } from './decomposition-policy.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from './user-story-author.mjs';
+import { evaluateStoryProse, renderStoryFromIntent } from './user-story-quality.mjs';
 
 function taskLabel(task) {
   const kind = task.kind === 'milestone' ? 'Milestone' : 'Task';
@@ -11,25 +13,75 @@ function taskLabel(task) {
 
 export function validateSplitTasks(tasks) {
   const errors = [];
+  const violations = [];
+  const add = (task, code, message, line = null) => {
+    violations.push(taskViolation(task, { code, message, line }));
+    errors.push(message);
+  };
   const seen = new Set();
   for (const task of Array.isArray(tasks) ? tasks : []) {
     const number = Number(task?.number);
     if (!Number.isInteger(number) || number <= 0) {
-      errors.push(`invalid task number: ${String(task?.number ?? '')}`);
+      add(task, 'split-task-number-invalid', `invalid task number: ${String(task?.number ?? '')}`);
     } else if (seen.has(number)) {
-      errors.push(`duplicate task number: ${number}`);
+      add(task, 'split-task-number-duplicate', `duplicate task number: ${number}`);
     } else {
       seen.add(number);
     }
     if (!String(task?.title || '').trim()) {
-      errors.push(`task ${Number.isInteger(number) ? number : '?'} has an empty title`);
+      add(
+        task,
+        'split-task-title-missing',
+        `task ${Number.isInteger(number) ? number : '?'} has an empty title`
+      );
     }
     if (!Array.isArray(task?.commands) || task.commands.length === 0) {
-      errors.push(`task ${Number.isInteger(number) ? number : '?'} has no executable verifier`);
+      add(
+        task,
+        'split-task-verifier-missing',
+        `task ${Number.isInteger(number) ? number : '?'} has no executable verifier`
+      );
+    }
+    const intentViolations = task?.storyIntentViolations?.length
+      ? task.storyIntentViolations
+      : !task?.storyIntent
+        ? [
+            {
+              code: 'story-intent-missing',
+              line: task?.sourceLine,
+              message: 'Add one valid #### Story Intent block before splitting',
+            },
+          ]
+        : [];
+    for (const violation of intentViolations) {
+      const detail = taskViolation(task, {
+        ...violation,
+        code:
+          violation.code === 'story-intent-missing'
+            ? 'split-task-story-intent-missing'
+            : violation.code,
+      });
+      violations.push(detail);
+      errors.push(formatViolation(detail));
     }
   }
-  if (!Array.isArray(tasks) || tasks.length === 0) errors.push('plan has no numbered tasks');
-  return { ok: errors.length === 0, errors };
+  if (!Array.isArray(tasks) || tasks.length === 0)
+    add(null, 'split-tasks-missing', 'plan has no numbered tasks');
+  return { ok: errors.length === 0, errors, violations };
+}
+
+function taskViolation(task, violation) {
+  return {
+    ...violation,
+    taskNumber: task?.number ?? null,
+    title: String(task?.title ?? '').slice(0, 240),
+    kind: task?.kind ?? 'task',
+    sourceLine: task?.sourceLine ?? null,
+  };
+}
+
+function formatViolation(violation) {
+  return `${violation.code}: ${taskLabel({ kind: violation.kind, number: violation.taskNumber, title: violation.title })} (source line ${violation.sourceLine ?? '?'}, line ${violation.line ?? violation.sourceLine ?? '?'}): ${violation.message}`;
 }
 
 function renderScope(input, task) {
@@ -38,18 +90,10 @@ function renderScope(input, task) {
     '',
     `Bounded source section (${taskLabel(task)}):`,
     '',
-    String(task.body || '').trim(),
+    String(task.scopeBody || '').trim(),
   ]
     .join('\n')
     .trim();
-}
-
-function renderUserStory(input, task) {
-  return [
-    'As a governed delivery agent',
-    `I want to deliver ${taskLabel(task)} from the pinned source plan`,
-    `So that issue #${input.sourceIssue} advances through traceable execution`,
-  ].join('\n');
 }
 
 function renderAcceptanceCriteria(task) {
@@ -98,15 +142,31 @@ export function buildSplitProposals(input = {}) {
   }
   const tasks = extractPlanTasks(input.planText || '');
   const validation = validateSplitTasks(tasks);
-  if (!validation.ok) throw new Error(`split-plan: ${validation.errors.join('; ')}`);
-  return tasks.map((task) => ({
+  const violations = [...validation.violations];
+  const rendered = tasks.map((task) => {
+    const story = task.storyIntent ? renderStoryFromIntent(task.storyIntent) : null;
+    if (story !== null) {
+      const quality = evaluateStoryProse(story, {
+        mode: 'approval',
+        canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE,
+      });
+      violations.push(...quality.violations.map((violation) => taskViolation(task, violation)));
+    }
+    return { task, story };
+  });
+  if (violations.length) {
+    const error = new Error(`split-plan: ${violations.map(formatViolation).join('; ')}`);
+    error.violations = violations;
+    throw error;
+  }
+  return rendered.map(({ task, story }) => ({
     title: String(task.title).trim(),
     task: {
       number: task.number,
       kind: task.kind,
       heading: task.heading,
     },
-    userStory: renderUserStory(input, task),
+    userStory: story,
     scope: renderScope(input, task),
     acceptanceCriteria: renderAcceptanceCriteria(task),
     storyOrigin: renderStoryOrigin(input, task),

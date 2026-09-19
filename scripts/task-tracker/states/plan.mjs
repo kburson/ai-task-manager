@@ -15,6 +15,7 @@
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { planApprovedGuard } from '../lib/plan-approved-guard.mjs';
+import { storyApprovalBindingGuard } from '../lib/story-approval-binding-guard.mjs';
 import { planEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
 import { planExitPlannedEstimateGuard } from '../lib/plan-exit-planned-estimate-guard.mjs';
 import { planExitDeepDiveGuard } from '../lib/plan-exit-deep-dive-guard.mjs';
@@ -32,6 +33,7 @@ export default Object.freeze({
   exitGuards: Object.freeze([
     blockedByGuard,
     planApprovedGuard,
+    storyApprovalBindingGuard,
     planExitPlannedEstimateGuard,
     planExitDeepDiveGuard,
     planExitPlanMetadataGuard,

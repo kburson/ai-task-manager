@@ -13,6 +13,16 @@ import {
   GUARD_ID_BLOCK,
 } from '../../../../task-tracker/lib/user-story-guard.mjs';
 
+// @story #1710
+test('compatibility guards use shared objective quality evaluation', () => {
+  const body =
+    '## User Story\n\nAs a governed delivery agent\nI want to deliver Task 2 from the pinned source plan\nSo that issue #1703 advances through traceable execution\n';
+  const result = validateUserStory(body);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /story-administrative-beneficiary/);
+  assert.equal(userStoryBlockGuard.run({ body, toState: 'ready-for-plan' }).ok, false);
+});
+
 // ---------------------------------------------------------------------------
 // validateUserStory
 // ---------------------------------------------------------------------------
@@ -51,7 +61,7 @@ test('validateUserStory: returns ok:true for a complete, non-placeholder story',
     '## User Story',
     '',
     'As a repo author',
-    'I want issue bodies to start with a user story',
+    'I want to start issue bodies with a user story',
     'So that the value being delivered is always explicit',
     '',
     '## Scope',
@@ -68,7 +78,7 @@ test('validateUserStory: ignores HTML comment lines within the section', () => {
     '',
     '<!-- aitm-note: stub -->',
     'As a developer',
-    'I want something useful',
+    'I want to build something useful',
     'So that my team saves time',
     '',
     '## Scope',
@@ -84,7 +94,7 @@ test('validateUserStory: section without a following ## heading is still parsed'
     '## User Story',
     '',
     'As a developer',
-    'I want something useful',
+    'I want to build something useful',
     'So that my team saves time',
   ].join('\n');
   const result = validateUserStory(body);
@@ -108,7 +118,7 @@ test('validateUserStory: returns ok:false when a complete story is not the first
     '## User Story',
     '',
     'As a repo author',
-    'I want issue bodies to start with a user story',
+    'I want to start issue bodies with a user story',
     'So that the value being delivered is always explicit',
   ].join('\n');
   const result = validateUserStory(body);
@@ -123,7 +133,7 @@ test('validateUserStory: ok:true when User Story is first despite a leading mark
     '## User Story',
     '',
     'As a repo author',
-    'I want issue bodies to start with a user story',
+    'I want to start issue bodies with a user story',
     'So that the value being delivered is always explicit',
     '',
     '## Scope',
@@ -142,7 +152,7 @@ test('userStoryBlockGuard: returns ok:false when User Story is not the first sec
     '## User Story',
     '',
     'As a repo author',
-    'I want issue bodies to start with a user story',
+    'I want to start issue bodies with a user story',
     'So that the value being delivered is always explicit',
   ].join('\n');
   const result = userStoryBlockGuard.run({ toState: 'ready-for-plan', body });
@@ -168,7 +178,7 @@ test('userStoryWarnGuard: warns when User Story is not the first section', () =>
         '## User Story',
         '',
         'As a repo author',
-        'I want issue bodies to start with a user story',
+        'I want to start issue bodies with a user story',
         'So that the value being delivered is always explicit',
       ].join('\n'),
     });
@@ -236,7 +246,7 @@ test('userStoryWarnGuard: does NOT write to stderr when story is complete', () =
         '## User Story',
         '',
         'As a developer',
-        'I want something useful',
+        'I want to build something useful',
         'So that my team saves time',
         '',
         '## Scope',
@@ -297,7 +307,7 @@ test('userStoryBlockGuard: returns ok:true when R4P target + story complete', ()
     '## User Story',
     '',
     'As a repo author',
-    'I want issue bodies to start with a user story',
+    'I want to start issue bodies with a user story',
     'So that the value being delivered is always explicit',
     '',
     '## Scope',

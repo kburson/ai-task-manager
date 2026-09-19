@@ -29,6 +29,9 @@ import { defaultRunMoveState as dispatchSeam } from '../../../../gh/dispatch-pre
 import { runMoveStateInProcess } from '../../../../task-tracker/runtime.mjs';
 import { buildCommandCursorRequest } from '../../../../task-tracker/lib/state-cursor.mjs';
 import { CURSOR_TRIGGER_BY_COMMAND } from '../../../../task-tracker/lib/command-surface/catalog.mjs';
+import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
+import { runGuardExecution } from '../../../../task-tracker/lib/move-state/guard-execution.mjs';
+import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
 
 const COMMAND_TRIGGERS = Object.freeze({
   promote: 'advance-forward',
@@ -52,6 +55,49 @@ const COMMAND_TRIGGERS = Object.freeze({
   bind: 'actions-only',
   rebind: 'actions-only',
   callback: 'actions-only',
+});
+
+// @story #1711 — both callers supply the same real adapter and explicit target.
+test('both promotion paths provide the production intent adapter and Develop target', async () => {
+  const inspect = async (from, to, ctx) => {
+    assert.equal(from, 'plan');
+    assert.equal(to, 'develop');
+    assert.equal(ctx.toState, 'develop');
+    assert.equal(ctx.deps.resolveStoryIntent, resolveStoryIntentSource);
+    throw new Error('observed guard boundary');
+  };
+  await assert.rejects(
+    () =>
+      runPromote({
+        issueNumber: 1711,
+        cfg: { repo: 'o/r' },
+        deps: {
+          assertBound: () => {},
+          fetchIssueBody: async () => ({
+            body: '<!-- aitm-last-known-state state="plan" ts="2026-09-19T12:00:00Z" -->',
+          }),
+          getLiveState: async () => 'plan',
+          sessionPolicy: {},
+          resolveProjectDir: () => '/repo',
+          runGuards: inspect,
+        },
+      }),
+    /observed guard boundary/
+  );
+  await assert.rejects(
+    () =>
+      runGuardExecution({
+        issueArg: '1711',
+        stateArg: 'develop',
+        resolvedFromState: 'plan',
+        plan: { runGuardPipeline: true },
+        cfg: { repo: 'o/r' },
+        boundarySnapshot: { body: { value: 'body' } },
+        sessionPolicy: {},
+        _runGuards: inspect,
+      }),
+    /observed guard boundary/
+  );
 });
 
 test('every lifecycle command maps to one explicit Cursor trigger and target contract', () => {

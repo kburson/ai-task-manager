@@ -3,6 +3,24 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildShapeFlags, formatCreatedIssueToken } from '../../../gh/create-issue.mjs';
 
+// @story #1710
+for (const shape of ['epic', 'solo', 'sub-issue', 'defect']) {
+  test(`${shape} omits an absent story argument and preserves a supplied file`, () => {
+    const args = {
+      shape,
+      title: 'intake',
+      'scope-file': 's.md',
+      'ac-file': 'a.md',
+      'story-origin-file': 'o.md',
+    };
+    const flags = buildShapeFlags(args);
+    assert.equal(flags.includes('--user-story-file'), false);
+    assert.equal(flags.includes(undefined), false);
+    const supplied = buildShapeFlags({ ...args, 'user-story-file': 'story.md' });
+    assert.equal(supplied[supplied.indexOf('--user-story-file') + 1], 'story.md');
+  });
+}
+
 // #687 — `buildShapeFlags` is the pure seam that assembles the argv forwarded to
 // `preflight-issue.mjs`. These tests pin the `--kind` forwarding contract without
 // spawning preflight/gh.

@@ -43,6 +43,81 @@ import { validateBody, DEFAULT_GATES } from '../../../../task-tracker/lib/body-g
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import '../../../../task-tracker/lib/guard-bootstrap.mjs';
 import { STATES } from '../../../../task-tracker/states/index.mjs';
+import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
+
+// @story #1710: removing draft acceptance or restoring either story registration
+// must break these production-registry assertions.
+describe('unfinished stories through the production early registry', () => {
+  for (const [name, story] of [
+    ['missing heading', ''],
+    ['blank', '## User Story\n\n'],
+    ['template', `## User Story\n\n${CANONICAL_USER_STORY_TEMPLATE}\n\n`],
+  ]) {
+    const fields = { priority: 'P2', size: 'M', estimate: 4, rank: 100 };
+    const labels = ['refactor'];
+    const body = stampRefinementSnapshot(
+      [
+        '<!-- aitm-entered-backlog ts="2026-09-18T00:00:00Z" -->',
+        '<!-- aitm-entered-refine ts="2026-09-18T00:01:00Z" -->',
+        '<!-- aitm-refine-complete ts="2026-09-18T00:02:00Z" -->',
+        '<!-- aitm-refinement-rationale: {"size":"M","estimate":"4","priority":"P2","rationale":"test"} -->',
+        story,
+        '## Scope\n\nWell-formed intake for an early request.',
+        '## Story Origin\n\n- **kind**: code',
+        '## Plan Metadata\n',
+        '## Acceptance Criteria\n\n- [ ] Works <!-- aitm-non-demonstrable -->',
+        '## Pickup Directive — MANDATORY, DO NOT SKIP\n\n> Follow: `.ai-task-manager/templates/pickup-directive.md`',
+        `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: fields })} -->`,
+      ].join('\n\n'),
+      { labels }
+    );
+    const deps = makeRefineDeps({
+      body,
+      labels,
+      projectValues: { ...fields, startTime: '2026-09-18 00:00 -0500' },
+    });
+    const context = () => ({
+      cfg: CFG,
+      issueNumber: 1710,
+      body,
+      deps: {
+        fetchParentIssue: async () => null,
+        refinementEstimate: deps,
+        refineToPlanGateDeps: deps,
+        refinementSnapshot: {
+          fetchLabels: async () => labels,
+          fetchBoardFields: async () => fields,
+        },
+      },
+    });
+    it(`${name} passes Refine exit with every unrelated guard enabled`, async () => {
+      const result = await runGuards('refine', 'ready-for-plan', {
+        ...context(),
+        fromState: 'refine',
+        toState: 'ready-for-plan',
+      });
+      assert.equal(result.ok, true, JSON.stringify(result.refusals));
+    });
+    it(`${name} emits no story warning at Refine entry`, async (t) => {
+      const writes = [];
+      t.mock.method(process.stderr, 'write', (value) => {
+        writes.push(String(value));
+        return true;
+      });
+      const result = await runGuards('backlog', 'refine', {
+        ...context(),
+        fromState: 'backlog',
+        toState: 'refine',
+      });
+      assert.equal(result.ok, true, JSON.stringify(result.refusals));
+      assert.deepEqual(
+        writes.filter((value) => /user.story/i.test(value)),
+        []
+      );
+    });
+  }
+});
 
 // Walk STATES[from].exitGuards followed by STATES[to].entryGuards directly,
 // bypassing the flat guard-registry. Returns the same `{ ok, refusals }`

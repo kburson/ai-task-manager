@@ -53,7 +53,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'AI/operator creating a new issue. Prefer `aitm preflight-issue` to stamp the body first.',
     usage:
-      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --user-story-file <path> --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
+      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect [--user-story-file <path>] --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
   },
   'preflight-issue': {
     group: 'GitHub',
@@ -219,7 +219,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--shape epic|sub-issue|solo|defect|stub', 'Assemble a sanctioned issue shape.'),
     argument(
       '--user-story-file <path>',
-      'Complete three-line Connextra story required for non-stub shape assembly.'
+      'Optional three-line Connextra story for non-stub shape assembly; omission preserves an empty draft section.'
     ),
     argument('--scope-file <path>', 'Scope section required for non-stub shape assembly.'),
     argument('--ac-file <path>', 'Acceptance Criteria required for non-stub shape assembly.'),
@@ -256,7 +256,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--shape epic|sub-issue|solo|defect|stub', 'Optional full-body template shape.'),
     argument(
       '--user-story-file <path>',
-      'Complete three-line Connextra story source for non-stub rendering.'
+      'Optional three-line Connextra story source for non-stub rendering; omission preserves an empty draft section.'
     ),
     argument('--scope-file <path>', 'Scope section source for full-body rendering.'),
     argument('--ac-file <path>', 'Acceptance Criteria source for full-body rendering.'),

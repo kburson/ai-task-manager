@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #1084
+// @story #1084 #1714
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,6 +15,7 @@ import {
   renderIssueDirectory,
 } from '../../../../task-tracker/lib/github-records/issue-directory.mjs';
 import { parseAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { runPlanApprove } from '../../../../task-tracker/verbs/plan-approve.mjs';
 
 const IDS = {
   contract: '01KZ0000000000000000000001',
@@ -112,6 +113,35 @@ test('legacy bodies stay on their body lane while directory checks only update r
   assert.equal(store.records.length, 1);
   assert.equal(store.contract.lifecycleProjection.acceptanceCriteria['ac-1'], true);
   assert.equal(store.projectionWrites, 1);
+});
+
+test('directory-backed Plan approval refuses before seal, projection, body, or audit writes', async () => {
+  const store = fakeDirectoryStore();
+  let bodyWrites = 0;
+  let auditWrites = 0;
+  const result = await runPlanApprove({
+    issueNumber: 1084,
+    cfg: { repo: 'owner/repo' },
+    deps: {
+      getBoardState: async () => 'plan',
+      fetchIssueBody: async () => directoryBody(),
+      contractWrite: store.deps,
+      mutateIssueBody: async () => {
+        bodyWrites += 1;
+        throw new Error('body mutation must not be reached');
+      },
+      postComment: async () => {
+        auditWrites += 1;
+      },
+    },
+  });
+
+  assert.equal(result.status, 'story-approval-binding-unsupported');
+  assert.equal(result.reason, 'directory-authority-unsupported');
+  assert.equal(store.records.length, 0, 'approval must not append a seal record');
+  assert.equal(store.projectionWrites, 0, 'approval must not project a sealed contract');
+  assert.equal(bodyWrites, 0, 'approval must not fall back to legacy body mutation');
+  assert.equal(auditWrites, 0, 'refused approval must not claim audit evidence');
 });
 
 test('an interrupted append replays by repairing projection without a duplicate capsule', async () => {

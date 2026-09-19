@@ -13,6 +13,17 @@ import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 import { verifyIssueBody, REQUIRED_SECTIONS } from '../../../../gh/lib/issue-body-verifier.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
+
+// @story #1710
+for (const prose of ['', CANONICAL_USER_STORY_TEMPLATE]) {
+  test(`body verifier accepts draft prose while retaining the heading: ${prose ? 'template' : 'blank'}`, () => {
+    const body = CANONICAL_BODY.replace(/As a task author[\s\S]*?(?=## Scope)/, `${prose}\n\n`);
+    assert.deepEqual(verifyIssueBody(body), { ok: true, missing: [] });
+    assert.equal(verifyIssueBody(body.replace('## User Story\n', '')).ok, false);
+    assert.equal(verifyIssueBody(`\`\`\`md\n## Example\n\`\`\`\n${body}`).ok, false);
+  });
+}
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;
 const createIssueScript = join(repoRoot, 'scripts/gh/create-issue.mjs');
@@ -65,6 +76,17 @@ const CANONICAL_BODY = [
 ].join('\n');
 
 // ── pure verifier tests ────────────────────────────────────────────────────
+
+// @story #1710
+test('body verifier compares the expected story payload, including empty drafts', () => {
+  assert.equal(verifyIssueBody(CANONICAL_BODY, { expectedUserStory: '' }).ok, false);
+  const empty = CANONICAL_BODY.replace(/As a task author[\s\S]*?(?=## Scope)/, '\n');
+  assert.equal(verifyIssueBody(empty, { expectedUserStory: '' }).ok, true);
+  assert.equal(
+    verifyIssueBody(empty, { expectedUserStory: CANONICAL_USER_STORY_TEMPLATE }).ok,
+    false
+  );
+});
 
 test('verifyIssueBody: canonical body passes', () => {
   const res = verifyIssueBody(CANONICAL_BODY);
@@ -369,6 +391,70 @@ process.exit(0);
 function readLines(file) {
   if (!existsSync(file)) return [];
   return readFileSync(file, 'utf8').trim().split('\n').filter(Boolean);
+}
+
+// @story #1710
+for (const shape of ['epic', 'solo', 'sub-issue', 'defect']) {
+  for (const [kind, prose, valid] of [
+    ['omitted', undefined, true],
+    ['blank', '\n  \n', true],
+    ['template', CANONICAL_USER_STORY_TEMPLATE, true],
+    [
+      'valid',
+      'As a release operator\nI want to stop partial publication because registry checks can fail\nSo that consumers receive complete releases',
+      true,
+    ],
+    ['malformed', 'As a requester\nI want a feature\nSo that work improves', false],
+    [
+      'administrative',
+      'As a governed delivery agent\nI want to deliver Task 2 from the pinned source plan\nSo that issue #1703 advances through traceable execution',
+      false,
+    ],
+  ]) {
+    test(`${shape} creator handles ${kind} story before external writes`, () => {
+      const ctx = setupSandbox();
+      const args = [createIssueScript, '--title', 'Intake', '--shape', shape, '--priority', 'p2'];
+      if (valid && shape === 'sub-issue') args.push('--parent', '1');
+      if (!valid && shape === 'sub-issue') args.push('--parent', '1', '--allow-duplicate-child');
+      for (const [flag, content] of [
+        ['scope', 'A useful change for operators.'],
+        ['ac', '- [ ] Works <!-- aitm-non-demonstrable -->'],
+        ['story-origin', '- **kind**: code'],
+        ['user-story', prose],
+      ]) {
+        if (content === undefined) continue;
+        const file = join(ctx.temp, `${flag}.md`);
+        writeFileSync(file, content);
+        args.push(`--${flag}-file`, file);
+      }
+      if (valid) args.push('--dry-run');
+      const result = spawnSync(process.execPath, args, {
+        encoding: 'utf8',
+        cwd: ctx.temp,
+        env: {
+          ...process.env,
+          AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
+          PATH: `${ctx.binDir}:${process.env.PATH}`,
+          AITM_GH_TEST_DOUBLE_BIN: ctx.binDir,
+          CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
+          AITM_CREATE_ISSUE_INTERNAL: '',
+          // Parent admission is covered separately; isolate the story write boundary.
+          AITM_SKIP_PARENT_STATE_GATE: '1',
+          AITM_DUP_CHILD_SIBLINGS_JSON: '[]',
+        },
+      });
+      assert.equal(result.status, valid ? 0 : 2, result.stderr);
+      if (valid) {
+        assert.equal(verifyIssueBody(result.stdout).ok, true, result.stdout);
+        const rendered = result.stdout.match(/^## User Story\s*\n([\s\S]*?)(?=^## )/m)[1].trim();
+        assert.equal(rendered, prose?.trim() || '');
+        assert.match(result.stdout, /aitm-fields:/);
+        assert.match(result.stdout, /aitm-body-version/);
+      } else assert.match(result.stderr, /--user-story-file/);
+      assert.deepEqual(readLines(ctx.ghCallsLog), [], 'no GitHub creation or comment calls');
+      assert.deepEqual(readLines(ctx.tetherLog), [], 'no project tether calls');
+    });
+  }
 }
 
 test('create-issue --body-file: refuses non-canonical body with exit 4', () => {
