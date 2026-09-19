@@ -59,14 +59,64 @@ test('AITM exposes neither legacy review command nor a package wrapper', () => {
   });
   assert.equal(retired.status, 2, retired.stderr);
   assert.match(retired.stderr, /aitm: unknown command "co-review"/);
+});
 
-  const peerReview = path.join(repoRoot, 'node_modules/ai-peer-review/bin/peer-review.mjs');
-  const supported = spawnSync(process.execPath, [peerReview, '--help'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  });
+test('task CLI starts when the extracted review package cannot be imported', () => {
+  const tracker = path.join(repoRoot, 'scripts/task-tracker/task-tracker.mjs');
+  const supported = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+    import { registerHooks } from 'node:module';
+    import { pathToFileURL } from 'node:url';
+    registerHooks({ resolve(specifier, context, nextResolve) {
+      if (specifier === 'ai-peer-review' || specifier.startsWith('ai-peer-review/')) {
+        throw new Error('Extracted review package must not be loaded by AITM');
+      }
+      return nextResolve(specifier, context);
+    }});
+    process.argv = [process.execPath, ${JSON.stringify(tracker)}, '--help'];
+    await import(pathToFileURL(${JSON.stringify(tracker)}));
+  `,
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    }
+  );
   assert.equal(supported.status, 0, supported.stderr);
-  assert.match(supported.stdout, /Commands:/);
+  assert.match(supported.stdout, /Usage:|Commands:|\/task/);
+});
+
+test('published dependency graph and production sources are independent of the extracted package', () => {
+  const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const lock = JSON.parse(readFileSync(path.join(repoRoot, 'package-lock.json'), 'utf8'));
+  for (const field of [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ]) {
+    assert.equal(manifest[field]?.['ai-peer-review'], undefined, field);
+  }
+  assert.ok(!Object.keys(lock.packages).some((key) => /(?:^|\/)ai-peer-review(?:\/|$)/.test(key)));
+  assert.equal(
+    existsSync(path.join(repoRoot, 'scripts/task-tracker/lib/peer-review-adapter.mjs')),
+    false
+  );
+  for (const [relative, source] of readFiles(
+    [...filesBelow('bin'), ...filesBelow('scripts')].filter(
+      (relative) => !relative.startsWith('scripts/tests/') && /\.(?:mjs|json)$/.test(relative)
+    )
+  )) {
+    assert.doesNotMatch(
+      source,
+      /ai-peer-review|peer-review-adapter|cachePeerReviewStatus/,
+      relative
+    );
+  }
 });
 
 test('production source contains no legacy runtime path or owned protocol schema', () => {
@@ -78,25 +128,32 @@ test('production source contains no legacy runtime path or owned protocol schema
   ].filter((relative) => /\.(?:mjs|json|md)$/.test(relative));
 
   for (const [relative, source] of readFiles(sourceFiles)) {
-    assert.doesNotMatch(source, /scripts\/review|\bco-review\b|aitm\.co-review\//, relative);
+    assert.doesNotMatch(source, /scripts\/review|\bco-review\b|aitm\.co-review\//i, relative);
   }
 });
 
-test('current operator documentation names only the peer-review package command', () => {
+test('current operator documentation leaves artifact review independent of AITM', () => {
   const currentDocs = [
     'README.md',
     'docs/DESIGN.md',
     'docs/guides/github-native-coordination.md',
     'docs/guides/grok-provider.md',
     'docs/guides/settings-guide.md',
+    'docs/guides/workflow.md',
     'skill/shared/rules/review.md',
+    'skill/shared/rules/incident-ledger.md',
   ];
   for (const [relative, source] of readFiles(currentDocs)) {
-    assert.doesNotMatch(source, /\bco-review\b|npx aitm peer-review/, relative);
+    assert.doesNotMatch(source, /\bco-review\b|npx aitm peer-review/i, relative);
+    assert.doesNotMatch(
+      source,
+      /ai-peer-review|installed `peer-review`|sole supported artifact-review command/i,
+      relative
+    );
   }
   assert.match(
     readFileSync(path.join(repoRoot, 'skill/shared/rules/review.md'), 'utf8'),
-    /`peer-review` is the sole supported artifact-review command/
+    /Artifact review is independent of AITM/
   );
 });
 

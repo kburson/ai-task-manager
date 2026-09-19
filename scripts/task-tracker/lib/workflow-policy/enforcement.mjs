@@ -132,7 +132,7 @@ export async function loadWorkflowBoundary(input = {}) {
 }
 
 export async function evaluateManagedProviderBoundary(input = {}) {
-  const activity = input.activity || 'managed-provider:peer-review';
+  const activity = input.activity || 'managed-provider:execution';
   if (!String(activity).startsWith('managed-provider:')) {
     throw new TypeError('workflow-policy:managed-provider-activity');
   }

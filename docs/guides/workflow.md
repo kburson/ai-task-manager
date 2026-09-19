@@ -1351,7 +1351,7 @@ Ignored paths in every tool include `node_modules/`, `.tmp/`, `.worktrees/`, `.c
 
 Markdownlint also excludes canonical immutable reviewer evidence matching
 `docs/superpowers/reviews/**/*-reviewer-*-review.md` and terminal
-`ai-peer-review` response envelopes matching
+historical external-review response envelopes matching
 `docs/superpowers/reviews/**/*-review-*-author-response-*.md` or
 `docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md`. These boundaries
 preserve externally authored bytes and protocol-sealed response digests without a

@@ -10,8 +10,8 @@ pull-request, merge, approval, comment, and trunk evidence. Recording is an
 observation action; it does not approve the ledger or close anything.
 
 Use `/task incident-ledger #1381 --approve <ledger-id> --digest <digest>` only
-after the human explicitly approves those exact immutable values. Co-review,
-Full-Auto authorization, or approval of another issue is not ledger approval.
+after the human explicitly approves those exact immutable values. Artifact
+review, Full-Auto authorization, or approval of another issue is not ledger approval.
 The command must authenticate the current GitHub user, append and read back the
 approval, then append and read back the exact owner pointer on #939.
 

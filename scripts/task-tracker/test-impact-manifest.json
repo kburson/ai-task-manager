@@ -41,16 +41,13 @@
       "reason": "global test sandbox helper change"
     },
     {
-      "sources": [
-        "scripts/task-tracker/lib/peer-review-adapter.mjs",
-        "scripts/task-tracker/lib/occupancy.mjs"
-      ],
+      "sources": ["scripts/task-tracker/lib/occupancy.mjs"],
       "tests": [
-        "scripts/tests/integration/review/peer-review-package-parity.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/occupancy.test.mjs",
         "scripts/tests/integration/review/peer-review-migration-guard.test.mjs",
         "scripts/tests/integration/review/peer-review-decommission.test.mjs"
       ],
-      "reason": "published peer-review boundary, advisory occupancy cache, and terminal migration guard"
+      "reason": "task occupancy authority and extracted review runtime isolation"
     },
     {
       "sources": [
