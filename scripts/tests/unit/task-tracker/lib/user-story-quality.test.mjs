@@ -1,4 +1,4 @@
-// @story #1709
+// @story #1709 #1714
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -176,6 +176,13 @@ test('all body validation surfaces retain raw first-H2 semantics around fenced d
 test('the evaluator recognizes a tab-separated raw H2 before the User Story', () => {
   const result = evaluateStoryBody(`##\tScope\ntext\n## User Story\n${good}`, approval);
   assert.ok(codes(result).includes('story-section-position-invalid'));
+});
+
+test('an empty raw H2 marker cannot consume the next line as its heading', () => {
+  const body = `##\nnot a heading\n## User Story\n${good}`;
+  assert.equal(evaluateStoryBody(body, approval).ok, true);
+  assert.equal(validateUserStory(body).ok, true);
+  assert.ok(!verifyIssueBody(body).missing.includes('## User Story must be the first H2 section'));
 });
 
 test('the issue-body verifier retains tab-separated raw H2 position enforcement', () => {

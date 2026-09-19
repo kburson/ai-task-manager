@@ -20,7 +20,7 @@ const normalizedPhrase = (value) =>
 
 // #503 intentionally scans raw source, including headings inside examples.
 export function firstH2Heading(body) {
-  const match = String(body ?? '').match(/^##\s+(\S.*)$/m);
+  const match = String(body ?? '').match(/^##[ \t]+(\S.*)$/m);
   return match ? match[1].trim() : null;
 }
 

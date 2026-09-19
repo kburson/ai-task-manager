@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #122
+// @story #122 #1714
 // Unit tests for scripts/task-tracker/verbs/plan-approve.mjs.
 //
 // Covers:
@@ -347,6 +347,12 @@ async function captureVerbStdout(issueNumber, deps) {
   const r = await runPlanApprove({ issueNumber: 122, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 1, 'second call must not rewrite the body');
+  assert.equal(r.repairAudit, null, 'an ordinary complete no-op has no repair evidence');
+  assert.equal(
+    calls.comments.filter((body) => /Story-Binding Repair Audit/.test(body)).length,
+    0,
+    'an ordinary complete no-op must not fabricate a repair audit'
+  );
 }
 
 // 5. marker inserted before fields-block when present; legacy block normalized to new encoding
@@ -530,21 +536,22 @@ async function captureVerbStdout(issueNumber, deps) {
   assert.equal(calls.commentReads, 0);
 }
 
-// #1021: re-running Full-Auto approval neither rewrites the marker nor
-// duplicates the audit comment.
+// #1021/#1714: re-running Full-Auto approval neither rewrites the marker nor
+// duplicates the approval audit or fabricates a story-binding repair audit.
 {
   const { deps, calls } = makeDeps({ env: { TT_FULL_AUTO: '1' } });
   await runPlanApprove({ issueNumber: 1021, cfg, deps });
   const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 1);
-  assert.equal(calls.comments.length, 2);
+  assert.equal(calls.comments.length, 1);
   assert.equal(calls.comments.filter((b) => /Full-Auto Plan-Approval Audit/.test(b)).length, 1);
-  assert.equal(calls.commentReads, 3);
+  assert.equal(calls.commentReads, 2);
 }
 
-// #1109: durable human provenance wins over a later Full-Auto environment;
-// an idempotent run must not post an audit that falsely denies human review.
+// #1109/#1714: durable human provenance wins over a later Full-Auto
+// environment; an idempotent run posts neither a false Full-Auto attestation
+// nor fabricated repair evidence.
 {
   const initialBody =
     '## Scope\n\n<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->\n\n' +
@@ -558,8 +565,7 @@ async function captureVerbStdout(issueNumber, deps) {
   assert.equal(r.status, 'already-approved');
   assert.equal(r.mode, 'human');
   assert.equal(r.audit.mode, 'human');
-  assert.equal(calls.comments.length, 1);
-  assert.doesNotMatch(calls.comments[0], /Full-Auto Plan-Approval Audit/);
+  assert.equal(calls.comments.length, 0);
 }
 
 // #1021: a prior marker with no audit is a repairable partial success, not an
@@ -576,7 +582,7 @@ async function captureVerbStdout(issueNumber, deps) {
   const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 0);
-  assert.equal(calls.comments.length, 2);
+  assert.equal(calls.comments.length, 1);
   assert.match(calls.comments[0], /2026-05-01T00:00:00Z/);
 }
 

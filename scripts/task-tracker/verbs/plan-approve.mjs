@@ -344,15 +344,15 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
       env,
       ...auditDeps,
     });
-    const repairAudit = await (deps.ensureStoryBindingRepairAudit || ensureStoryBindingRepairAudit)(
-      {
-        issueNumber,
-        repo: cfg.repo,
-        approved: persisted,
-        previousApproval: deps.previousApproval,
-        ...auditDeps,
-      }
-    );
+    const repairAudit = deps.previousApproval
+      ? await (deps.ensureStoryBindingRepairAudit || ensureStoryBindingRepairAudit)({
+          issueNumber,
+          repo: cfg.repo,
+          approved: persisted,
+          previousApproval: deps.previousApproval,
+          ...auditDeps,
+        })
+      : null;
     return {
       status: 'already-approved',
       mode: readPlanApprovedMode(body),
