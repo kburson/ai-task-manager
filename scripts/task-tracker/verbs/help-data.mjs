@@ -381,7 +381,7 @@ export const VERB_REFERENCE = {
   review: {
     topic: 'board',
     summary:
-      'Move an issue through Test to Review, flush timing, and pause. Artifact peer review uses the installed peer-review CLI directly.',
+      'Move an issue through Test to Review, flush timing, and pause. Artifact review is independent of AITM.',
     usage: '/task review #N [--duration-minutes N --words N] [--probe "command"]',
     flags: [
       { flag: '--duration-minutes <N>', desc: 'agent-reported active minutes (skips JSONL read)' },

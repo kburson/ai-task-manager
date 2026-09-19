@@ -63,18 +63,8 @@ test('architecture docs declare Grok adapter, hooks, transcript layout, and requ
   assert.match(design, /GROK_SESSION_ID/);
 });
 
-test('occupancy and peer-review package boundaries ship with operator guidance', () => {
-  for (const relPath of [
-    'scripts/task-tracker/lib/occupancy.mjs',
-    'scripts/task-tracker/lib/peer-review-adapter.mjs',
-  ]) {
-    assert.ok(existsSync(path.join(PROJECT_ROOT, relPath)), `${relPath} must ship`);
-  }
-  const adapter = readFileSync(
-    path.join(PROJECT_ROOT, 'scripts/task-tracker/lib/peer-review-adapter.mjs'),
-    'utf8'
-  );
-  assert.match(adapter, /from 'ai-peer-review'/);
+test('occupancy ships independently with operator guidance', () => {
+  assert.ok(existsSync(path.join(PROJECT_ROOT, 'scripts/task-tracker/lib/occupancy.mjs')));
   const coordination = readFileSync(
     path.join(PROJECT_ROOT, 'docs/guides/github-native-coordination.md'),
     'utf8'
@@ -83,8 +73,6 @@ test('occupancy and peer-review package boundaries ship with operator guidance',
   assert.match(coordination, /pause.*retain/is);
   assert.match(coordination, /stop.*release/is);
   assert.match(coordination, /occupancy --release #N/i);
-  assert.match(coordination, /peer-review.*does not bind.*AITM/is);
+  assert.match(coordination, /Artifact review is independent of AITM/);
   assert.match(coordination, /separate.*worktree/is);
-  assert.match(coordination, /SHA-bound|immutable.*commit/is);
-  assert.match(coordination, /public CLI|public API/is);
 });

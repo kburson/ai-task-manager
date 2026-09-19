@@ -540,9 +540,9 @@ The fleet command shows all active tasks across parallel worktrees:
 
 Binding also claims local authoritative occupancy: one issue per session and
 one editing provider per worktree. Pause retains the claim; successful stop or
-close releases it. There is no TTL or steal operation. Co-review is the only
-same-worktree exception, and its reviewer stays unbound with write access only
-to the exact session-bound pending review artifact.
+close releases it. There is no TTL or steal operation. Parallel editing sessions
+use separate seeded worktrees; external artifact review does not grant AITM
+task or worktree occupancy.
 
 ### Orchestration Directive (add to `CLAUDE.md`)
 
@@ -689,8 +689,8 @@ Default to `/compact`. It summarizes your session, keeps hooks active, and costs
 AITM stores authoritative local occupancy at the main worktree. A second session
 cannot bind the same issue, and a second editing provider cannot share the
 physical worktree. Pause holds occupancy; stop and close release it. Artifact
-review uses the installed `peer-review` package through its public CLI or API;
-review participants do not bind AITM and use separate seeded worktrees.
+review is independent of AITM and does not grant task occupancy. Use separate
+seeded worktrees for parallel editing sessions.
 
 This is machine-local authority. [#1048](https://github.com/kburson/ai-task-manager/issues/1048)
 continues to track the separate cross-clone/GitHub lease gap; local occupancy

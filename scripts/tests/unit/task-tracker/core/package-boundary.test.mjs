@@ -240,7 +240,6 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
-    'scripts/task-tracker/lib/peer-review-adapter.mjs',
     'scripts/task-tracker/lib/graph-node-authority.mjs',
     'scripts/task-tracker/lib/governed-plan-policy.mjs',
     'scripts/gh/move-state.mjs',

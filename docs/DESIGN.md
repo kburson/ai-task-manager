@@ -417,10 +417,9 @@ session cannot bind the held issue or share its physical worktree. Pause retains
 occupancy, while successful stop and close release it. Recovery is explicit
 `/task occupancy --release #N`; there is no TTL reap or steal.
 
-Artifact review belongs to the installed `ai-peer-review` package. AITM uses
-only its documented public API for configuration and read-only status. Cached
-review status is explicitly non-authoritative and never changes task occupancy;
-review participants do not bind AITM and operate in separate seeded worktrees.
+Artifact review is independent of AITM. AITM neither loads a review runtime nor
+caches external review status. External review activity does not grant or
+release task occupancy; parallel editing sessions use separate seeded worktrees.
 
 ## Timing Comment Structure
 

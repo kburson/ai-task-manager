@@ -58,6 +58,20 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # npm ci caches tarballs, but offline consumer installs also need registry
+      # metadata. Seed it explicitly instead of depending on a warm CI cache.
+      - name: Prepare runtime dependency cache for offline package tests
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          for (const [location, pkg] of Object.entries(lock.packages)) {
+            if (!location || pkg.dev || pkg.link) continue;
+            const name = pkg.name ?? location.split('node_modules/').at(-1);
+            execFileSync('npm', ['cache', 'add', `${name}@${pkg.version}`], { stdio: 'inherit' });
+          }
+          NODE
       - run: npm run format:check
       # `npm run lint` includes the fail-closed canonical-layout, package-wide
       # story-tag, and package-wide line-cap gates. Unit + integration tests

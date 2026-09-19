@@ -108,7 +108,6 @@
     "puppeteer": "^25.11.0"
   },
   "dependencies": {
-    "ai-peer-review": "0.2.2",
     "espree": "^11.2.0"
   },
   "overrides": {
