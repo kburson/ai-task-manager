@@ -16,16 +16,16 @@
 // non-comment lines before the next `##` heading, none equal to a placeholder
 // string (trimmed comparison).
 
+import { CANONICAL_USER_STORY_LINES } from './user-story-author.mjs';
+import { firstH2Heading } from './user-story-quality.mjs';
+export { firstH2Heading } from './user-story-quality.mjs';
+
 export const GUARD_ID_WARN = 'user-story-warn';
 export const GUARD_ID_BLOCK = 'user-story-block';
 
 // #662 — exported so `lib/user-story-author.mjs` rejects the same placeholder
 // strings the block guard rejects (single source of truth for the contract).
-export const PLACEHOLDERS = new Set([
-  'As a [who wants to accomplish something]',
-  'I want to [what they want to accomplish]',
-  'So that [why they want to accomplish that thing]',
-]);
+export const PLACEHOLDERS = new Set(CANONICAL_USER_STORY_LINES);
 
 const WARN_REASON =
   'User Story section missing or incomplete — add `## User Story` with three non-placeholder lines before promoting to Refine';
@@ -45,11 +45,6 @@ const POSITION_REASON =
 // not `## ` headings, so a plain line-anchored scan is sufficient.
 // #662 — exported so the author lib can position `## User Story` as the first
 // `## ` heading using the same detection the guard validates against.
-export function firstH2Heading(body) {
-  const m = body.match(/^## (.+?)\s*$/m);
-  return m ? m[1].trim() : null;
-}
-
 export function validateUserStory(body) {
   if (typeof body !== 'string') return { ok: false, reason: BLOCK_REASON };
   const headingIdx = body.search(/^## User Story\s*$/m);

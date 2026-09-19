@@ -1,0 +1,475 @@
+{
+  "schema": "aitm.user-story-quality-corpus/v1",
+  "stories": [
+    {
+      "issue": 749,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/749",
+      "weakStory": "As a [who wants to accomplish something]\nI want to [what they want to accomplish]\nSo that [why they want to accomplish that thing]",
+      "repairedStory": "As an AITM maintainer\nI want to use one lane-aware `test:ci` entry point for both CI and Test-stage validation\nSo that a green Test phase and a green PR mean the same thing, without paying slow-lane cost on every push",
+      "expectedViolationCodes": ["story-required-at-plan-approval"],
+      "provenance": {
+        "weakKind": "canonical-template",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/749; canonical placeholders in baseline user-story-guard.mjs",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.589Z",
+        "repairedSha256": "a848e8f6102c14cbae97b2d034e0caad6f8980124c65bfd2dd1ba52e53cf63bd"
+      }
+    },
+    {
+      "issue": 750,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/750",
+      "weakStory": "As a [who wants to accomplish something]\nI want to [what they want to accomplish]\nSo that [why they want to accomplish that thing]",
+      "repairedStory": "As an AITM maintainer\nI want to run Test-stage validation through the actual CI workflow in a runner-faithful Linux container when available\nSo that macOS, Node-version, and CI-environment drift is caught before a branch reaches cloud CI",
+      "expectedViolationCodes": ["story-required-at-plan-approval"],
+      "provenance": {
+        "weakKind": "canonical-template",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/750; canonical placeholders in baseline user-story-guard.mjs",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "6b568e1ac9447d3978959c11f73fa7c68756a5b7be982481887bd4ddf35958b9"
+      }
+    },
+    {
+      "issue": 1462,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1462",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 13: Move final hydration, complete gate, and transition under one boundary lock from the pinned source plan\nSo that issue #1117 advances through traceable execution",
+      "repairedStory": "As an AITM operator\nI want to run final hydration, complete gates, damage carry, and state transition under one boundary lock\nSo that stale snapshots or concurrent movement cannot let a lifecycle transition pass checks against the wrong issue state",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1462 live Plan Metadata: Parent-epic #1117; Source-plan-section ### Task 13: Move final hydration, complete gate, and transition under one boundary lock",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "7169953985dbd396a1119b008be1c33e7c49737e42065c14437bfe21ae39e4da"
+      }
+    },
+    {
+      "issue": 1463,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1463",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 14: Route all command triggers, document recovery, and prove complete parity from the pinned source plan\nSo that issue #1117 advances through traceable execution",
+      "repairedStory": "As an AITM operator\nI want to route every state-movement command through the stateless cursor with documented recovery semantics\nSo that command aliases, resumes, callbacks, and crash recovery preserve the same safety gates instead of drifting into parallel implementations",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1463 live Plan Metadata: Parent-epic #1117; Source-plan-section ### Task 14: Route all command triggers, document recovery, and prove complete parity",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "0a29dc47a23e1a394479679271050783c6c35ab5391fb6748d02f34ec6ff1211"
+      }
+    },
+    {
+      "issue": 1532,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1532",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 1: Extract History and Establish the License Boundary from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a package maintainer\nI want to extract ai-peer-review with a verified history, retained-path manifest, secret scan, and relicensing record\nSo that the standalone package can be published without leaking unrelated AITM history, private material, or unclear license authority",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1532 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 1: Extract History and Establish the License Boundary",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "d3ee6d5a71410e520fe2c5726d6d47bb894e057d2bbffb083295c466d12bbd64"
+      }
+    },
+    {
+      "issue": 1533,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1533",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 2: Create the Standalone Package and Stable Error Surface from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a package consumer\nI want to ship a standalone ai-peer-review package with a stable CLI parser and machine-readable errors\nSo that hosts can invoke reviews and recover from failures without depending on AITM internals or brittle text parsing",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1533 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 2: Create the Standalone Package and Stable Error Surface",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "bbf15d573aa806c3dde5062f814e00dcf74a32e300e75582709c2dc308cf2775"
+      }
+    },
+    {
+      "issue": 1534,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1534",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 3: Implement Repository, Path, and Atomic-Write Boundaries from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a review participant\nI want to enforce repository, path containment, locking, and atomic-write boundaries around review artifacts\nSo that peer-review state cannot escape the repository, corrupt concurrent writes, or silently review untracked or unsafe files",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1534 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 3: Implement Repository, Path, and Atomic-Write Boundaries",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "aff0ec45d8c4c1b89e35aaa8b744272e2a4a79ed06cae7c5f060afa78c4f164a"
+      }
+    },
+    {
+      "issue": 1535,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1535",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 4: Define Event Authority, Projections, and Lifecycle from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a review workflow owner\nI want to rebuild review lifecycle state from validated append-only events and projections\nSo that interrupted, recovered, or disputed reviews have one durable authority instead of mutable state that can drift",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1535 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 4: Define Event Authority, Projections, and Lifecycle",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "65a27b80262b299f125a46a2ec1b6ad9ea6754be57d3a145199e535d84bd9234"
+      }
+    },
+    {
+      "issue": 1536,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1536",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 5: Add Provider-Neutral Identity and Claim Recovery from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a review participant\nI want to recover participant claims through provider-neutral session fingerprints rather than raw provider IDs\nSo that distinct agents can safely resume roles without leaking session secrets or letting one identity occupy both sides",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1536 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 5: Add Provider-Neutral Identity and Claim Recovery",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "6567add3ff8446b6149136e010b4c19e51bc5357a2ce5c8352ef243f662cdafa"
+      }
+    },
+    {
+      "issue": 1537,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1537",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 6: Implement Graded Human Authority from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a human reviewer\nI want to require canonical, graded Human Authority grants for protected actions\nSo that continuation, overrides, supplements, and verifier changes cannot be forged or applied to the wrong review context",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1537 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 6: Implement Graded Human Authority",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "1546c8617d2c24f148563920a6c7bd2b47d19dd37b196ecb73153471d815a09c"
+      }
+    },
+    {
+      "issue": 1538,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1538",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 7: Generate Safe Collateral, Templates, and Finding IDs from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a review participant\nI want to generate sealed and sanitized prompts, response drafts, templates, and finding IDs\nSo that reviewers and authors can exchange usable artifacts without exposing tokens, session paths, or ambiguous finding references",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1538 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 7: Generate Safe Collateral, Templates, and Finding IDs",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "72d35f25bb3f40cc20f3268a5215c998ad368e8ccdb0277ee5a8e84b178ac2c7"
+      }
+    },
+    {
+      "issue": 1539,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1539",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 8: Connect Start, Join, Status, Resume, and Offline Help from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a developer using ai-peer-review\nI want to launch and recover reviews through standalone start, join, status, resume, help, and error explanation commands\nSo that reviews can be launched and recovered from the CLI without prior knowledge of internal state files",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1539 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 8: Connect Start, Join, Status, Resume, and Offline Help",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "3f41fdd2744da0ed778687aa6cc4576d985b684bada17ab22c95ca5d90778e72"
+      }
+    },
+    {
+      "issue": 1540,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1540",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 9: Enforce Reviewer Submission and Author-Only Git Transactions from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As an author\nI want to prevent reviewer submissions from changing artifacts or Git history while author turns own exact commits\nSo that peer review preserves separation of duties and cannot smuggle code changes through a reviewer response",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1540 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 9: Enforce Reviewer Submission and Author-Only Git Transactions",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "f53944a37bb53591d2cc81f3aca6d7e39a090877407005ba1be73e5baf2619eb"
+      }
+    },
+    {
+      "issue": 1541,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1541",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 10: Add Budgets, Intervention, Supplements, and Recovery from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a review owner\nI want to handle turn budgets, supplements, intervention states, and grant-backed recovery commands\nSo that stalled, exhausted, or participant-loss reviews fail into explicit recoverable states instead of continuing ambiguously",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1541 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 10: Add Budgets, Intervention, Supplements, and Recovery",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "f4d270765745bb506e5d0fba9100073148e572176cbfd01841f25d2f76439f6c"
+      }
+    },
+    {
+      "issue": 1542,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1542",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 11: Implement Isolated No-Commit Test Mode from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a package tester\nI want to seal no-commit review outcomes against immutable snapshots\nSo that protocol behavior and human-authority paths can be tested without mutating Git history or pretending the result is production evidence",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1542 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 11: Implement Isolated No-Commit Test Mode",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "106538a5d811b22b1ca79ecb15681956b366ab3d4a36c63239c7baa5be94e69f"
+      }
+    },
+    {
+      "issue": 1543,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1543",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 12: Render Manifests and Finalize Consensus or Human Override from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a release or merge reviewer\nI want to render final manifests, sealed decisions, trailers, and final messages from complete review evidence\nSo that accepted reviews and human overrides leave auditable artifacts without raw sessions, tokens, or private paths",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1543 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 12: Render Manifests and Finalize Consensus or Human Override",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "65e00fd7a3aa7c73b62ccfeb61b43ef3d390fdd142f262ed3f9837521d5180af"
+      }
+    },
+    {
+      "issue": 1544,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1544",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 13: Add Setup, Doctor, Resume Adapters, and the Installable Skill from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a host-project maintainer\nI want to install reversible setup, doctor checks, transport adapters, and an installable skill for ai-peer-review\nSo that teams can install, diagnose, and operate reviews across providers without hidden config edits or unsupported enforcement claims",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1544 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 13: Add Setup, Doctor, Resume Adapters, and the Installable Skill",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "116a0443809c3dcd4eabd21d2dbc93cfbcb7dcc300dede9cf215fb34272758ee"
+      }
+    },
+    {
+      "issue": 1545,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1545",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 14: Package, Cross-Platform Test, and Release Phase 1 from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a package maintainer\nI want to package, cross-platform test, and release-verify Phase 1 with provenance evidence\nSo that the public tarball can be trusted to contain only reviewed runtime assets and to work outside the source repository",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1545 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 14: Package, Cross-Platform Test, and Release Phase 1",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "2811e76d27f3ec5132c73d3d00a1ac2236cfe79ca43c95148613f8cd92266262"
+      }
+    },
+    {
+      "issue": 1546,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1546",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 15: Migrate AITM Through the Published Package Boundary from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As an AITM maintainer\nI want to consume ai-peer-review through the published package boundary with legacy-runtime guards\nSo that AITM stops owning duplicate review internals without losing active reviews, archives, or host-specific occupancy policy",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1546 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 15: Migrate AITM Through the Published Package Boundary",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "4de00691f5178850d742aa3d3ffad81793b0ff808c00eba0ab2068508e30d088"
+      }
+    },
+    {
+      "issue": 1547,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1547",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 16: Add Race-Safe MCP Waiting in Phase 2 from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As a live review participant\nI want to wait for MCP handoffs by subscribing race-safely to durable delivery records\nSo that unattended sessions can wake on exactly one sealed delivery without token-burning polling or missed handoffs",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1547 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 16: Add Race-Safe MCP Waiting in Phase 2",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "5a58e7b2da28370d6c0ddbbb6aa2ee0258ccd559fa3d318cdbf87f2cc98cda06"
+      }
+    },
+    {
+      "issue": 1548,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1548",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 17: Add Resident Liveness, Automatic Policy, and the Phase 2 Release from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As an automatic-review operator\nI want to validate resident liveness, native-push transport, and automatic-required negotiation through adapters\nSo that fully automatic reviews run only when both participants can prove healthy live delivery and fall back clearly when they cannot",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1548 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 17: Add Resident Liveness, Automatic Policy, and the Phase 2 Release",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "04cc1496d89cb0241f01d56624a4ced2e120f4897a90e7a41c5ab5132ae0531f"
+      }
+    },
+    {
+      "issue": 1549,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1549",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 18: Upgrade AITM to the Verified Phase 2 Release from the pinned source plan\nSo that issue #1531 advances through traceable execution",
+      "repairedStory": "As an AITM maintainer\nI want to upgrade AITM to the verified ai-peer-review Phase 2 package without schema or manual-recovery regressions\nSo that optional live-wait capabilities become available while existing Phase 1 reviews remain compatible",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1549 live Plan Metadata: Parent-epic #1531; Source-plan-section ### Task 18: Upgrade AITM to the Verified Phase 2 Release",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "55f82912100943e76b12dece162dd4c7582eb5f804f5c1c37d366c05d5916ed5"
+      }
+    },
+    {
+      "issue": 1692,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1692",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 1: Build Shared Install Contract and Publish Manifest from the pinned source plan\nSo that issue #1689 advances through traceable execution",
+      "repairedStory": "As an AITM installer user\nI want to capture installer outputs, managed fragments, templates, symlinks, and selected features in a validated install manifest\nSo that doctor tooling can detect drift or unsafe installs without overwriting local configuration or blessing partial installation",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1692 live Plan Metadata: Parent-epic #1689; Source-plan-section ### Task 1: Build Shared Install Contract and Publish Manifest",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "86632f14139ab121dded1b9218cc9c42452ed0dc2e0314979f09c3ae12c949dc"
+      }
+    },
+    {
+      "issue": 1693,
+      "issueUrl": "https://github.com/kburson/ai-task-manager/issues/1693",
+      "weakStory": "As a governed delivery agent\nI want to deliver Task 2: Build Read-Only Doctor Engine and Standalone CLI from the pinned source plan\nSo that issue #1689 advances through traceable execution",
+      "repairedStory": "As a project maintainer diagnosing an AITM install\nI want to diagnose install artifacts with a standalone read-only doctor that reports human and JSON health results\nSo that bootstrap problems can be found safely without touching task state, GitHub, timers, or workflow locks",
+      "expectedViolationCodes": [
+        "story-administrative-beneficiary",
+        "story-task-as-capability",
+        "story-workflow-progress-value",
+        "story-traceability-only-value"
+      ],
+      "provenance": {
+        "weakKind": "reconstructed-renderer",
+        "rendererCommit": "4663a2fa103d0311e06fdcef73edff7a625bbcce",
+        "metadataSource": "https://github.com/kburson/ai-task-manager/issues/1693 live Plan Metadata: Parent-epic #1689; Source-plan-section ### Task 2: Build Read-Only Doctor Engine and Standalone CLI",
+        "repairedSource": "live-body",
+        "capturedAt": "2026-09-19T12:00:45.591Z",
+        "repairedSha256": "fe3604d151164a443a45a0375b4c33fe28f5eda528d0175097f17442bc087904"
+      }
+    }
+  ]
+}

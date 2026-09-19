@@ -32,6 +32,7 @@ import {
   findAcsWithoutVerifierOrInvalidTag,
 } from '../../task-tracker/lib/body-invariants.mjs';
 import { validateExactUserStoryLines } from '../../task-tracker/lib/user-story-author.mjs';
+import { firstH2Heading } from '../../task-tracker/lib/user-story-quality.mjs';
 
 const USER_STORY_REGEX = /^##\s+User Story\s*$/m;
 const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
@@ -78,8 +79,7 @@ export function verifyIssueBody(body) {
     if (!check.regex.test(body)) missing.push(check.name);
   }
 
-  const firstH2 = body.match(/^##\s+\S.*$/m);
-  if (USER_STORY_REGEX.test(body) && firstH2 && !USER_STORY_REGEX.test(firstH2[0])) {
+  if (USER_STORY_REGEX.test(body) && firstH2Heading(body) !== 'User Story') {
     missing.push('## User Story must be the first H2 section');
   }
 

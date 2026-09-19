@@ -224,7 +224,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const recoveryEntryAllowance = 1;
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
-  const effectiveCeiling = ENTRY_CEILING + recoveryEntryAllowance + doctorRuntimeAllowance;
+  // #1709 ships the pure story contract and shared Markdown views.
+  const storyContractAllowance = 2;
+  const effectiveCeiling =
+    ENTRY_CEILING + recoveryEntryAllowance + doctorRuntimeAllowance + storyContractAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

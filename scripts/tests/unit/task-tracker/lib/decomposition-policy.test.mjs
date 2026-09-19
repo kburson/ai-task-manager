@@ -319,7 +319,8 @@ test('fails closed for duplicate fields, unknown headings, and duplicate tasks',
   assert.match(ambiguous.diagnostic, /ambiguous/);
 });
 
-test('keeps whole-plan text when source-section scoping is inactive', () => {
+// @story #1709
+test('refuses conflicting inherited selectors and keeps whole-plan text without a selector', () => {
   const planText = taskPlan(4, 4);
   const withSection = [
     '## Plan Metadata',
@@ -335,7 +336,9 @@ test('keeps whole-plan text when source-section scoping is inactive', () => {
     planText,
     activePlanKey: reference.key,
   });
-  assert.equal(implementationPlan.applied, false);
+  assert.equal(implementationPlan.ok, false);
+  assert.equal(implementationPlan.applied, true);
+  assert.match(implementationPlan.diagnostic, /conflicts/);
   assert.equal(implementationPlan.planText, planText);
 
   const absentSection = selectDecompositionPlanSection({

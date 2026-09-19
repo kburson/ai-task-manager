@@ -21,7 +21,13 @@
 // guard rejects, so a body written by this function always passes
 // `validateUserStory`.
 
-import { PLACEHOLDERS } from './user-story-guard.mjs';
+export const CANONICAL_USER_STORY_LINES = Object.freeze([
+  'As a [who wants to accomplish something]',
+  'I want to [what they want to accomplish]',
+  'So that [why they want to accomplish that thing]',
+]);
+export const CANONICAL_USER_STORY_TEMPLATE = CANONICAL_USER_STORY_LINES.join('\n');
+const PLACEHOLDERS = new Set(CANONICAL_USER_STORY_LINES);
 
 const HEADING = '## User Story';
 
