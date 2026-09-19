@@ -39,6 +39,13 @@ export function isDirectInvocation(moduleUrl, argv1) {
 // states who should call it (and via what), `usage` is the invocation line
 // shown as `aitm <name> ...` (never a node_modules filepath).
 const ROUTABLE_SELF_DOC = {
+  doctor: {
+    group: 'Diagnostics',
+    path: 'scripts/package/doctor.mjs',
+    synopsis: 'Report read-only bootstrap health for the installed AITM project contract.',
+    audience: 'Maintainer or CI validating committed AITM bootstrap artifacts before tests.',
+    usage: 'aitm doctor [--json]',
+  },
   'create-issue': {
     group: 'GitHub',
     path: 'scripts/gh/create-issue.mjs',
@@ -46,7 +53,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'AI/operator creating a new issue. Prefer `aitm preflight-issue` to stamp the body first.',
     usage:
-      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --user-story-file <path> --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
+      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect [--user-story-file <path>] --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
   },
   'preflight-issue': {
     group: 'GitHub',
@@ -205,13 +212,14 @@ const STANDARD_EXIT_CODES = Object.freeze([
 ]);
 
 const ROUTABLE_ARGUMENTS = Object.freeze({
+  doctor: [argument('--json', 'Emit exactly one aitm.doctor/v1 JSON document.')],
   'create-issue': [
     argument('--title <text>', 'Issue title.'),
     argument('--body-file <path>', 'Use an already assembled canonical issue body.'),
     argument('--shape epic|sub-issue|solo|defect|stub', 'Assemble a sanctioned issue shape.'),
     argument(
       '--user-story-file <path>',
-      'Complete three-line Connextra story required for non-stub shape assembly.'
+      'Optional three-line Connextra story for non-stub shape assembly; omission preserves an empty draft section.'
     ),
     argument('--scope-file <path>', 'Scope section required for non-stub shape assembly.'),
     argument('--ac-file <path>', 'Acceptance Criteria required for non-stub shape assembly.'),
@@ -248,7 +256,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--shape epic|sub-issue|solo|defect|stub', 'Optional full-body template shape.'),
     argument(
       '--user-story-file <path>',
-      'Complete three-line Connextra story source for non-stub rendering.'
+      'Optional three-line Connextra story source for non-stub rendering; omission preserves an empty draft section.'
     ),
     argument('--scope-file <path>', 'Scope section source for full-body rendering.'),
     argument('--ac-file <path>', 'Acceptance Criteria source for full-body rendering.'),
@@ -402,6 +410,18 @@ const routableContract = ({
   });
 
 const ROUTABLE_CONTRACTS = Object.freeze({
+  doctor: routableContract({
+    preconditions: ['Run inside the Git worktree whose committed AITM installation is inspected.'],
+    effects: ['Reads package, project files, and local Git metadata; writes nothing.'],
+    output: ['Prints equivalent human or aitm.doctor/v1 JSON health rows.'],
+    exitCodes: [
+      exitCode(0, 'every required installation check is healthy'),
+      exitCode(1, 'a complete report contains one or more unhealthy required checks'),
+      exitCode(2, 'invalid invocation syntax'),
+    ],
+    examples: ['npx aitm doctor', 'npx aitm doctor --json'],
+    relatedCommands: ['ai-task-manager install', 'aitm help'],
+  }),
   'create-issue': routableContract({
     output: [
       'Prints the created issue URL, or the validated dry-run payload.',
@@ -718,20 +738,27 @@ const DIRECT_SELF_DOC = Object.freeze({
     group: 'Package lifecycle',
     path: 'bin/cli.mjs',
     classification: 'agent-callable-standalone',
-    synopsis: 'Install, initialize, repair, configure, and inspect the AITM package.',
+    synopsis: 'Install, uninstall, initialize, repair, configure, and inspect the AITM package.',
     routable: true,
     usage:
-      'ai-task-manager <install|init|repair|statusline|configure preferences|memory-resync|version> [subcommand options]',
+      'ai-task-manager <install|uninstall|init|repair|statusline|configure preferences|memory-resync|version> [subcommand options]',
     arguments: [
       argument('install', 'Install agent files, hooks, templates, and optional memory seed.'),
+      argument(
+        'uninstall',
+        'Remove AITM-owned project integrations before uninstalling the npm package.'
+      ),
       argument('init', 'Initialize GitHub Project configuration.'),
       argument('repair', 'Repair missing task-tracker configuration fields.'),
       argument('statusline', 'Install the Claude status-line integration.'),
       argument('configure preferences', 'Run the team-workflow preferences editor.'),
       argument('memory-resync', 'Classify and resync installed operational memory.'),
       argument('version', 'Print the installed package version.'),
-      argument('--target <path>', 'Install, init, repair, configure, or resync target directory.'),
-      argument('--agent claude|codex|both', 'Install target agents; install only.'),
+      argument(
+        '--target <path>',
+        'Install, uninstall, init, repair, configure, or resync target directory.'
+      ),
+      argument('--agent claude|codex|grok|all', 'Install or uninstall selected agents.'),
       argument('--link-mode stub|symlink', 'Installed skill link mode; install only.'),
       argument('--codex-superpowers', 'Install project-scoped Codex Superpowers bootstrap.'),
       argument('--codex-superpowers-global', 'Also update the global Codex AGENTS bootstrap.'),
@@ -741,14 +768,22 @@ const DIRECT_SELF_DOC = Object.freeze({
       ),
       argument('--project <url|owner:number>', 'GitHub Project selection; init only.'),
       argument('--project-url <url>', 'Legacy GitHub Project URL alias; init only.'),
-      argument('--dry-run', 'Classify memory resync without writing.'),
+      argument('--dry-run', 'Preview uninstall cleanup or classify memory resync without writing.'),
+      argument('--purge', 'Also remove durable AITM project data and owned issue templates.'),
+      argument('--yes', 'Confirm destructive --purge cleanup in non-interactive use.'),
       argument('--list', 'List memory resync classifications without writing.'),
     ],
-    preconditions: ['Normal execution requires a writable target for mutating package commands.'],
-    effects: ['May install or repair AITM files; help and version are read-only.'],
+    preconditions: [
+      'Normal execution requires a writable target; run AITM uninstall before npm uninstall removes the package.',
+    ],
+    effects: [
+      'May install, conservatively remove, or repair AITM files; help, version, and uninstall --dry-run are read-only.',
+    ],
     output: ['Prints lifecycle progress, configuration diagnostics, or package help.'],
     examples: [
       'npx ai-task-manager install --agent codex --link-mode stub --memory-seed none',
+      'npx ai-task-manager uninstall --dry-run',
+      'npx ai-task-manager uninstall --purge --yes',
       'npx ai-task-manager init --project owner:1',
       'npx ai-task-manager memory-resync --list',
       'npx ai-task-manager install --help',

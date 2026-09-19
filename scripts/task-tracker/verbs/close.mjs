@@ -61,6 +61,7 @@ import {
 } from '../lib/close-delivery-receipt.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
 import { resolveAcceptedDeliveryAuthority } from '../lib/delivery-authority.mjs';
+import { resolveLiveDeliveryReviewAuthority } from '../lib/delivery-preflight.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -246,6 +247,7 @@ export function resolveIncorporatedReviewEvidence({
   session = loadSession(currentSessionId()),
   projectConfig = rawProjectConfig(),
   durableReviewAuthority = null,
+  reviewAuthority = null,
   reviewAuthorizationResolver = resolveReviewAuthorization,
   projectDir = process.cwd(),
 } = {}) {
@@ -258,7 +260,11 @@ export function resolveIncorporatedReviewEvidence({
   const byStage = (stage) => receipts.filter((receipt) => receipt.stage === stage);
   const testReceipts = byStage('test');
   const reviewReceipts = byStage('review');
-  if (testReceipts.length !== 1 || reviewReceipts.length !== 1) {
+  if (
+    testReceipts.length !== 1 ||
+    reviewReceipts.length > 1 ||
+    (reviewReceipts.length === 0 && reviewAuthority === null)
+  ) {
     throw new Error('incorporated-close:accepted-evidence');
   }
   let verificationCommands;
@@ -285,7 +291,7 @@ export function resolveIncorporatedReviewEvidence({
   };
   if (
     !validateExact(testReceipts[0], 'test', requiredTestReceiptClassifications(testReceipts[0])) ||
-    !validateExact(reviewReceipts[0], 'review')
+    (reviewReceipts.length === 1 && !validateExact(reviewReceipts[0], 'review'))
   ) {
     throw new Error('incorporated-close:accepted-evidence');
   }
@@ -294,8 +300,9 @@ export function resolveIncorporatedReviewEvidence({
     acceptedSha = resolveAcceptedDeliveryHead({
       localHeadSha: expectedSha,
       testReceiptSha: testReceipts[0].commitSha,
-      reviewReceiptSha: reviewReceipts[0].commitSha,
+      reviewReceiptSha: reviewReceipts[0]?.commitSha ?? null,
       agentReviewPassed: isAgentReviewComplete(body || ''),
+      reviewAuthority,
     });
   } catch {
     throw new Error('incorporated-close:accepted-evidence');
@@ -691,6 +698,39 @@ export async function loadCloseDeliveryGateInput({
       mergeCommitSha: pr.mergeCommit?.oid ?? null,
     };
   });
+  let comments = null;
+  const listIssueComments = async () => {
+    if (comments !== null) return comments;
+    const { stdout: commentsOut } = await pexec(
+      'gh',
+      ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const pages = JSON.parse(String(commentsOut || '[]'));
+    comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
+      const createdAt = normalizeGitHubInstant(comment.created_at);
+      if (createdAt === null) throw new TypeError('close-delivery-comment-created-at');
+      return { id: String(comment.id), body: comment.body, createdAt };
+    });
+    return comments;
+  };
+  const reviewAuthority = await (
+    ctx.resolveLiveDeliveryReviewAuthority ?? resolveLiveDeliveryReviewAuthority
+  )({
+    deps: {
+      resolveAcceptedReviewSha: async () =>
+        reviewReceiptSha ?? (agentReviewPassed ? testReceiptSha : null),
+      resolveAgentReviewPassed: async () => agentReviewPassed,
+      listIssueComments,
+      loadWorkflowBoundary: ctx.loadWorkflowBoundary,
+      workflowPolicyRuntime: ctx.workflowPolicyRuntime,
+      now: ctx.now ?? (() => new Date().toISOString()),
+    },
+    cfg,
+    issue: { number: issueNumber, body, agentReviewPassed },
+    issueNumber,
+    testReceiptSha,
+  });
   const baseRef = closeBaseRef(cfg);
   const lineage = {
     parentIssueNumber,
@@ -708,6 +748,7 @@ export async function loadCloseDeliveryGateInput({
           testReceiptSha,
           reviewReceiptSha,
           agentReviewPassed,
+          reviewAuthority,
           pullRequests,
         })
       : null;
@@ -718,28 +759,14 @@ export async function loadCloseDeliveryGateInput({
       testReceiptSha,
       reviewReceiptSha,
       agentReviewPassed,
+      reviewAuthority,
     });
   let selectedPullRequest = authority?.pullRequest ?? null;
   let records = null;
   let noCommitRecords = null;
   const noCommitKind = isNoCommitKind(body);
-  let comments = null;
   if (parentIssueNumber === null && (pullRequests.length > 0 || noCommitKind)) {
-    const { stdout: commentsOut } = await pexec(
-      'gh',
-      ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
-      { timeout: GH_API_TIMEOUT_MS }
-    );
-    const pages = JSON.parse(String(commentsOut || '[]'));
-    comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
-      const createdAt = normalizeGitHubInstant(comment.created_at);
-      if (createdAt === null) throw new TypeError('close-delivery-comment-created-at');
-      return {
-        id: String(comment.id),
-        body: comment.body,
-        createdAt,
-      };
-    });
+    await listIssueComments();
   }
   if (parentIssueNumber === null && pullRequests.length > 0) {
     const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
@@ -783,6 +810,7 @@ export async function loadCloseDeliveryGateInput({
     lineage,
     branch,
     acceptedSha,
+    reviewAuthority,
     observedLocalHeadSha: authority?.observedLocalHeadSha ?? localHeadSha,
     headRelation: authority?.headRelation ?? 'current',
     pullRequest: selectedPullRequest,

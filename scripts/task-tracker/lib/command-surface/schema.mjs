@@ -35,6 +35,7 @@ const GROUPS = new Set([
   'discovery',
   'meta',
   'CLI',
+  'Diagnostics',
   'Epic Branching',
   'GitHub',
   'Maintenance',

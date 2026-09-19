@@ -21,12 +21,13 @@ import { fileURLToPath } from 'node:url';
 import { runReconcile } from '../../../../task-tracker/verbs/reconcile.mjs';
 import { runUnblock } from '../../../../task-tracker/verbs/unblock.mjs';
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
+import { SCRIPTS, kind } from '../../../../../bin/aitm-registry.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const VERBS_DIR = path.resolve(__dir, '../../../task-tracker/verbs');
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
-test('AC5: a non-manual drift-escape verb (reconcile) exists; no doctor verb', () => {
+test('AC5: doctor is standalone and never a task-tracker verb', () => {
   assert.equal(typeof runReconcile, 'function', 'reconcile must export a runnable core');
   assert.ok(
     existsSync(path.join(VERBS_DIR, 'reconcile.mjs')),
@@ -36,6 +37,8 @@ test('AC5: a non-manual drift-escape verb (reconcile) exists; no doctor verb', (
     !existsSync(path.join(VERBS_DIR, 'doctor.mjs')),
     'there is no doctor verb — reconcile is the escape (pin the actual surface)'
   );
+  assert.equal(kind('doctor'), 'script');
+  assert.equal(SCRIPTS.doctor.path, 'scripts/package/doctor.mjs');
 });
 
 test('AC5: reconcile rejects a missing/unknown mode without touching the network', async () => {

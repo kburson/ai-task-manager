@@ -24,14 +24,7 @@ Stop. Do not run `/task close`. Do not infer human approval from passing tests o
 
 ## Artifact peer-review boundary
 
-`/task review` governs an AITM issue's Test-to-Review transition. Specification
-and plan peer review is a separate package workflow: invoke the installed
-`peer-review` CLI directly and use its generated commands. AITM exposes no
-peer-review compatibility subcommand.
-
-`peer-review` is the sole supported artifact-review command. AITM does not
-expose a compatibility wrapper or own review protocol schemas. Historical
-legacy archives remain byte-immutable and are not upgraded.
+`/task review` governs an AITM issue's Test-to-Review transition. Artifact review is independent of AITM: follow the user's chosen specification or plan review process. AITM does not install, invoke, or prescribe an external review package, expose a compatibility wrapper, or own review protocol schemas. Historical legacy archives remain byte-immutable and are not upgraded.
 
 For an AITM issue with a linked implementation plan, `npx aitm plan-approve`
 validates the current linked plan before it can stamp approval authority.

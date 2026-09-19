@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1714 #1716
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -135,7 +135,10 @@ function repoRoot() {
 // The measured package surface grows by exactly that maintained runtime entry.
 // #1630 ships the ratified workflow-exception design as the package's governing
 // specification. That one deliberate document is the complete surface growth.
-const ENTRY_CEILING = 784;
+// #1692 ships the four install-contract/manifest runtime modules consumed by
+// the installer. The doctor observer/CLI additions and their explicit package
+// assertions remain owned by the later child.
+const ENTRY_CEILING = 788;
 
 let packedFileCache = null;
 function packedFiles() {
@@ -219,7 +222,24 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
   const recoveryEntryAllowance = 1;
-  const effectiveCeiling = ENTRY_CEILING + recoveryEntryAllowance;
+  // #1693 adds the standalone doctor entry point and its read-only observer.
+  const doctorRuntimeAllowance = 2;
+  // #1709 ships the pure story contract and shared Markdown views.
+  const storyContractAllowance = 2;
+  // #1711 ships the contained intent adapter and independent binding guard.
+  const storyBindingAllowance = 2;
+  // #1714 ships the operator-facing story-quality adoption and repair guide.
+  const storyQualityGuideAllowance = 1;
+  // #1709 ships the shared provider rule alongside the two runtime modules.
+  const storyQualityRuleAllowance = 1;
+  const effectiveCeiling =
+    ENTRY_CEILING +
+    recoveryEntryAllowance +
+    doctorRuntimeAllowance +
+    storyContractAllowance +
+    storyBindingAllowance +
+    storyQualityGuideAllowance +
+    storyQualityRuleAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -235,7 +255,6 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
-    'scripts/task-tracker/lib/peer-review-adapter.mjs',
     'scripts/task-tracker/lib/graph-node-authority.mjs',
     'scripts/task-tracker/lib/governed-plan-policy.mjs',
     'scripts/gh/move-state.mjs',

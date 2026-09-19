@@ -224,15 +224,18 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'plan-approve': contract(
     [
-      'The target must be in Plan, pass assignee and drift checks, and have the required plan evidence.',
+      'Ordinary approval requires Plan; explicit evidence repair requires Develop, Test, or Review, TT_FULL_AUTO=1, complete planning/lifecycle evidence, a revoked exception chain that covered approval.plan, and GitHub edit history proving no semantic scope drift.',
     ],
-    ['Records the human or Full-Auto plan-approval marker used by the Plan-to-Develop gate.'],
+    [
+      'Records the human or Full-Auto plan-approval marker used by the Plan-to-Develop gate; evidence repair additionally posts a canonical audit naming its revoked exception record.',
+    ],
     ['Prints approval provenance or a prompt explaining the missing approval prerequisite.'],
     [
       exit(3, 'issue is not in Plan'),
       ...PREFLIGHT_TARGET_EXITS,
       exit(12, 'plan evidence preflight failed'),
       exit(14, 'linked plan violates governed issue-record or scratch policy'),
+      exit(15, 'evidence-derived Full-Auto repair predicates were not satisfied'),
     ]
   ),
   'plan-estimate': contract(
@@ -318,7 +321,7 @@ export const VERB_CONTRACTS = Object.freeze({
     [
       'Record mode appends only an observation ledger; approval mode appends the human approval and exact #939 owner pointer.',
       'That exact human ledger approval authorizes fresh Incorporated terminal disposition; durable issue-local authority governs retries.',
-      'Co-review and Full-Auto standing policy do not approve a later ledger ID or digest.',
+      'Only explicit human approval of the exact ledger ID and digest grants ledger approval; Full-Auto standing policy does not.',
       'Neither mode closes an issue, changes lifecycle state, or manufactures delivery evidence.',
       'The standalone read-only verifier accepts --phase pre-close before mutations or --phase terminal after closure; terminal is the default.',
     ],

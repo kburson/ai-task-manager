@@ -93,7 +93,7 @@ function pullRequest(number, headRefOid, mergeCommitSha = MERGE) {
 
 async function load(
   pullRequests,
-  { comments = deliveryComments(), localHeadSha = HEAD, ctx = {} } = {}
+  { comments = deliveryComments(), localHeadSha = HEAD, issueBody = body(), ctx = {} } = {}
 ) {
   let commentReads = 0;
   const pexec = async (command, args) => {
@@ -111,12 +111,32 @@ async function load(
     cfg: { repo: 'kburson/ai-task-manager', trunkRef: 'origin/trunk' },
     projectDir: '/injected/project',
     pexec,
-    body: body(),
+    body: issueBody,
     lifecycleEvidence: null,
     ctx: { resolveCloseParentIssue: async () => null, ...ctx },
   });
   return { result, commentReads };
 }
+
+test('close consumes typed waived review authority without pass evidence', async () => {
+  const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
+    'base64url'
+  );
+  const reviewAuthority = Object.freeze({
+    outcome: 'waived',
+    acceptedSha: HEAD,
+    authority: Object.freeze({ recordId: '01M2H000000000000000000001', revision: 2 }),
+  });
+  const { result } = await load([pullRequest(1400, HEAD)], {
+    issueBody: `<!-- aitm-verification-receipt stage="test" data="${data}" -->`,
+    ctx: {
+      resolveLiveDeliveryReviewAuthority: async () => reviewAuthority,
+    },
+  });
+
+  assert.equal(result.acceptedSha, HEAD);
+  assert.deepEqual(result.reviewAuthority, reviewAuthority);
+});
 
 test('#1470 close loads source proof for an external recovery receipt', async () => {
   const evidence = [

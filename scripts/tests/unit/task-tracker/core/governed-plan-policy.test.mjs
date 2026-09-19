@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createHash } from 'node:crypto';
 
 import {
   validateGovernedLinkedPlan,
@@ -96,4 +97,32 @@ test('fails closed when linked Plan Metadata does not resolve to a readable file
   assert.equal(result.status, 'invalid');
   assert.equal(result.violations[0].rule, 'governed-plan-unreadable');
   assert.match(result.violations[0].excerpt, /not a readable file/);
+});
+
+// @story #1711
+test('retains exactly the policy-validated bytes and body in an immutable observation', () => {
+  const body = linkedBody('docs/plan.md');
+  const content = '# Current plan\n';
+  let reads = 0;
+  const result = validateGovernedLinkedPlan({
+    body,
+    projectDir: '/repo',
+    deps: {
+      resolvePlanPath: () => ({ path: '/repo/docs/plan.md' }),
+      readFile: () => {
+        reads++;
+        return content;
+      },
+    },
+  });
+  assert.equal(reads, 1);
+  assert.deepEqual(result.observation, {
+    body,
+    projectDir: '/repo',
+    key: 'Implementation-plan',
+    path: 'docs/plan.md',
+    text: content,
+    contentSha256: createHash('sha256').update(content).digest('hex'),
+  });
+  assert.ok(Object.isFrozen(result.observation));
 });

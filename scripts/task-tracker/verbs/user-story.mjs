@@ -15,6 +15,22 @@ import { pexec } from '../../gh/lib/gh-client.mjs';
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { setUserStory } from '../lib/user-story-author.mjs';
+import { resolveStoryIntentSource } from '../lib/story-intent-source.mjs';
+import { getProjectDir } from '../paths.mjs';
+import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
+
+async function defaultReadIssueState({ issueNumber }) {
+  const { getIssueBoardState } = await import('../task-tracker.mjs');
+  return getIssueBoardState(String(issueNumber));
+}
+async function defaultFetchIssueBody({ issueNumber, repo }) {
+  const { owner, repoName } = splitRepo(repo);
+  const data = await gql(
+    'query($owner: String!, $repo: String!, $issue: Int!) { repository(owner: $owner, name: $repo) { issue(number: $issue) { body } } }',
+    { owner, repo: repoName, issue: issueNumber }
+  );
+  return data?.repository?.issue?.body ?? '';
+}
 
 // Resolve the target issue: explicit positional `#N` / `N` wins, else the
 // bound active issue. Returns a positive integer or null.
@@ -69,7 +85,13 @@ async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
  *
  * @returns {Promise<{status:'written'|'no-op', target:number}>}
  */
-export async function runUserStory({ target, story, cfg, deps = {} } = {}) {
+export async function runUserStory({
+  target,
+  story,
+  cfg,
+  projectDir = getProjectDir(),
+  deps = {},
+} = {}) {
   if (!Number.isInteger(target) || target <= 0) {
     throw new Error('user-story: no target issue (bind via /task #N or pass a positional)');
   }
@@ -82,10 +104,43 @@ export async function runUserStory({ target, story, cfg, deps = {} } = {}) {
     repo: cfg.repo,
     mutate: (base) => setUserStory(base, story),
   });
-  if (writeRes?.status === 'no-op') {
-    return { status: 'no-op', target };
+  const result = { status: writeRes?.status === 'no-op' ? 'no-op' : 'written', target };
+  try {
+    const state = await (deps.readIssueState || defaultReadIssueState)({
+      issueNumber: target,
+      repo: cfg.repo,
+      projectDir,
+    });
+    if (state !== 'plan') return result;
+    const body =
+      typeof writeRes?.body === 'string'
+        ? writeRes.body
+        : await (deps.fetchIssueBody || defaultFetchIssueBody)({
+            issueNumber: target,
+            repo: cfg.repo,
+          });
+    const intent = await (deps.resolveStoryIntent || resolveStoryIntentSource)({
+      body,
+      projectDir,
+    });
+    result.advisory = intent.ok
+      ? {
+          ok: true,
+          source: intent.source,
+          message: `Plan Story Intent source: ${intent.source}; approval binds the final story. Review the source, then npx aitm plan-approve #${target}.`,
+        }
+      : {
+          ok: false,
+          violations: intent.violations,
+          message: `Story saved; Plan intent needs review: ${(intent.violations || []).map((v) => `${v.code}: ${v.message}`).join('; ')}`,
+        };
+  } catch (error) {
+    result.advisory = {
+      ok: false,
+      message: `Story saved; Plan feedback unavailable: ${String(error.message).slice(0, 240)}`,
+    };
   }
-  return { status: 'written', target };
+  return result;
 }
 
 export async function verbUserStory(ctx) {
@@ -104,12 +159,13 @@ export async function verbUserStory(ctx) {
     process.exit(2);
   }
   try {
-    const res = await runUserStory({ target, story, cfg });
+    const res = await runUserStory({ target, story, cfg, projectDir: ctx.projectDir });
     if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ #${target} User Story already current — no change`);
     } else {
       console.log(`[task-tracker] ✓ #${target} User Story written`);
     }
+    if (res.advisory) console.log(res.advisory.message);
   } catch (err) {
     console.error(err.message);
     process.exit(1);

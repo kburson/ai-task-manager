@@ -28,8 +28,10 @@ import {
   postTimingEvent,
   buildRow,
   buildFlushRow,
+  readTimingCommentBody,
   readLastKnownState,
 } from '../gh-timing-comment.mjs';
+import { terminalReviewHandoffOutcome } from '../lib/terminal-review-handoff.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
@@ -43,7 +45,11 @@ import { isAcWaived } from '../lib/issue-kind.mjs';
 // action runs the gate; this verb supplies its command-level mutation/timing
 // capabilities while the Cursor owns entry and actions-only retry ordering.
 import '../lib/agent-review/bootstrap.mjs';
-import { runAgentReviewGate } from '../lib/agent-review/review-gate.mjs';
+import {
+  clearReviewFailed,
+  hasReviewFailed,
+  runAgentReviewGate,
+} from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
 import {
   classifyReviewCursorResult,
@@ -294,6 +300,19 @@ export async function resolveReviewVerificationEvidence({
     reasons,
     remediation: 'Return to Develop, run Develop finalization, then complete one new Test pass.',
   };
+}
+
+export function resolveAcceptedReviewHead(reviewEvidence, currentHead, { exact = false } = {}) {
+  const evidenceSha = reviewEvidence?.fingerprint?.commitSha || reviewEvidence?.receipt?.commitSha;
+  if (/^[0-9a-f]{40}$/.test(evidenceSha || '')) return evidenceSha;
+  if (
+    /^[0-9a-f]{40}$/.test(currentHead || '') &&
+    (reviewEvidence?.mode === 'github-records-v1' ||
+      (!exact && reviewEvidence?.mode === 'legacy-marker'))
+  ) {
+    return currentHead;
+  }
+  return null;
 }
 
 export function appendReviewProbeEvidence({
@@ -694,6 +713,8 @@ export async function emitReviewGatePassTimeline({
 
 export async function emitReviewGateWaivedTimeline({
   target,
+  issueNumber,
+  repo,
   ts,
   delta,
   wordMarker,
@@ -701,10 +722,31 @@ export async function emitReviewGateWaivedTimeline({
   evidence,
   deps,
 }) {
-  const { safePostTiming, buildRow: buildRowFn = buildRow } = deps;
+  const {
+    mutateBodyFn,
+    safePostTiming,
+    readTimingCommentBodyFn,
+    buildRow: buildRowFn = buildRow,
+    pexec = reviewPexec,
+  } = deps;
   const requirementId = evidence?.requirementId || 'review.semantic-resident';
   const authorityId = evidence?.authority?.recordId || 'unknown';
-  await safePostTiming(
+  const authorityRevision = evidence?.authority?.revision;
+  const acceptedSha = evidence?.acceptedSha;
+  if (
+    requirementId !== 'review.semantic-resident' ||
+    !/^[0-9A-HJKMNP-TV-Z]{26}$/.test(authorityId) ||
+    !Number.isSafeInteger(authorityRevision) ||
+    authorityRevision <= 0 ||
+    !/^[0-9a-f]{40}$/.test(acceptedSha || '')
+  ) {
+    throw new Error('review: unusable waiver authority');
+  }
+  if (typeof mutateBodyFn !== 'function') {
+    throw new Error('review: failure retirement capability unavailable');
+  }
+  const authorityMarker = ` <!-- aitm-review-waiver requirement="${requirementId}" record-id="${authorityId}" revision="${authorityRevision}" accepted-sha="${acceptedSha}" -->`;
+  const posted = await safePostTiming(
     target,
     buildRowFn({
       ts,
@@ -714,9 +756,37 @@ export async function emitReviewGateWaivedTimeline({
       deltaWords: 0,
       wordMarker,
       fullWordMarker,
-      description: `semantic resident action waived — requirement ${requirementId}; authority record ${authorityId}; result=waived`,
+      description: `semantic resident action waived — requirement ${requirementId}; authority record ${authorityId}; result=waived${authorityMarker}`,
     })
   );
+  if (posted?.ok !== true || posted.skipped === true) {
+    throw new Error('review: terminal waiver row was not posted');
+  }
+  if (typeof readTimingCommentBodyFn !== 'function') {
+    throw new Error('review: timing readback capability unavailable');
+  }
+  const readback = await readTimingCommentBodyFn({ issueNumber, repo });
+  const terminal =
+    readback?.status === 'found' ? terminalReviewHandoffOutcome(readback.body) : null;
+  if (
+    terminal?.outcome !== 'waived' ||
+    terminal.evidence?.requirementId !== requirementId ||
+    terminal.evidence?.authority?.recordId !== authorityId ||
+    terminal.evidence?.authority?.revision !== authorityRevision ||
+    terminal.evidence?.acceptedSha !== acceptedSha
+  ) {
+    throw new Error('review: terminal waiver row failed readback verification');
+  }
+  const result = await mutateBodyFn({
+    issueNumber,
+    repo,
+    mutate: clearReviewFailed,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
+  if (typeof result?.body !== 'string' || hasReviewFailed(result.body)) {
+    throw new Error('review: waived outcome could not retire aitm-review-failed');
+  }
 }
 
 // #844 (D6) — the SANDBOX-VERIFICATION-FAILURE demote path. Distinct from the
@@ -1464,11 +1534,17 @@ export async function verbReview(ctx) {
     // gating on this result is the only correct check. A re-run while already in
     // Review is a satisfied no-op (#882) and passes here, which is what makes the
     // state action re-runnable in place.
-    const acceptedTestHeadSha =
-      reviewEvidence.fingerprint?.commitSha ||
-      reviewEvidence.receipt?.commitSha ||
-      parseDodVerifiedMarker(rawBody)?.sha ||
-      'accepted-test-evidence';
+    const currentReviewHeadSha = await getReviewHeadSha({ projectDir });
+    const acceptedTestHeadSha = resolveAcceptedReviewHead(reviewEvidence, currentReviewHeadSha);
+    const exactWaiverHeadSha = resolveAcceptedReviewHead(reviewEvidence, currentReviewHeadSha, {
+      exact: true,
+    });
+    if (!/^[0-9a-f]{40}$/.test(acceptedTestHeadSha || '')) {
+      process.stderr.write(
+        `⛔ Refusing /task review for ${target}: exact accepted Test head is unavailable.\n`
+      );
+      process.exit(4);
+    }
     const reviewActionContext = {
       now: () => Date.parse(nowIso()),
       // Review preflight above already validated the exact-head Test evidence.
@@ -1525,14 +1601,25 @@ export async function verbReview(ctx) {
           });
         },
         onWaived: async ({ ts, evidence }) => {
+          if (exactWaiverHeadSha === null || evidence.acceptedSha !== exactWaiverHeadSha) {
+            throw new Error('review: exact accepted Test head is unavailable for waiver authority');
+          }
           await emitReviewGateWaivedTimeline({
             target,
+            issueNumber: issueNum,
+            repo: cfg.repo,
             ts,
             delta: deriveStateMoveDelta(rawBody, ts),
             wordMarker: s.lastWordMarker ?? 0,
             fullWordMarker: stateFullWordMarker(s),
             evidence,
-            deps: { safePostTiming, buildRow },
+            deps: {
+              mutateBodyFn,
+              safePostTiming,
+              readTimingCommentBodyFn: ctx.readTimingCommentBody || readTimingCommentBody,
+              buildRow,
+              pexec,
+            },
           });
         },
       },
@@ -1546,6 +1633,7 @@ export async function verbReview(ctx) {
       async hydrateTask() {
         let body = fallbackBody;
         let comments = [];
+        let reviewCommentsStatus = 'found';
         try {
           const { stdout: snapshotJson } = await pexec(
             'gh',
@@ -1557,6 +1645,7 @@ export async function verbReview(ctx) {
           if (typeof parsed.body === 'string' && parsed.body.trim()) body = parsed.body;
         } catch {
           comments = [];
+          reviewCommentsStatus = 'error';
         }
         fallbackBody = body;
         const state = readLastKnownState(body).state || cursorFallbackState;
@@ -1570,6 +1659,7 @@ export async function verbReview(ctx) {
           body: { value: body },
           headSha: { value: acceptedTestHeadSha },
           reviewComments: comments,
+          reviewCommentsStatus,
           invocation: { issue: Number(issueNum), cwd: projectDir },
         };
       },

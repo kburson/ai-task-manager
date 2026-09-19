@@ -1,3 +1,4 @@
+// @story #85 #1694
 // Helpers for stamping the <!-- aitm-skill-version: X.Y.Z --> marker into
 // frequently-loaded skill detail files at install time. See issue #85.
 //
@@ -24,22 +25,20 @@ export const SKILL_DETAIL_FILES = [
 
 const MARKER_RE = /^<!-- aitm-skill-version:[^\n]*-->\n/m;
 
+export function renderStampedSkillVersion(src, version) {
+  const marker = `<!-- aitm-skill-version: ${version} -->\n`;
+  if (MARKER_RE.test(src)) {
+    return src.replace(MARKER_RE, marker);
+  }
+  const fm = src.match(/^---\n[\s\S]*?\n---\n/);
+  if (fm) return src.slice(0, fm[0].length) + '\n' + marker + src.slice(fm[0].length);
+  return marker + '\n' + src;
+}
+
 export function stampSkillVersion(absPath, version) {
   if (!existsSync(absPath)) return { changed: false, reason: 'missing' };
   const src = readFileSync(absPath, 'utf8');
-  const marker = `<!-- aitm-skill-version: ${version} -->\n`;
-
-  let next;
-  if (MARKER_RE.test(src)) {
-    next = src.replace(MARKER_RE, marker);
-  } else {
-    const fm = src.match(/^---\n[\s\S]*?\n---\n/);
-    if (fm) {
-      next = src.slice(0, fm[0].length) + '\n' + marker + src.slice(fm[0].length);
-    } else {
-      next = marker + '\n' + src;
-    }
-  }
+  const next = renderStampedSkillVersion(src, version);
 
   if (next === src) return { changed: false, reason: 'unchanged' };
   writeFileSync(absPath, next, 'utf8');

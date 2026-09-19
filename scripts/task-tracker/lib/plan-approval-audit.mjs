@@ -4,6 +4,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { parsePlanApprovedMarker } from './markers.mjs';
@@ -21,12 +22,38 @@ export function readPlanApprovedTimestamp(body) {
   return parsePlanApprovedMarker(body)?.ts || null;
 }
 
-export function buildPlanApprovalAuditComment({ issueNumber, ts } = {}) {
+export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence = null } = {}) {
   if (!issueNumber) {
     throw new Error('buildPlanApprovalAuditComment: issueNumber is required');
   }
   if (!ts) {
     throw new Error('buildPlanApprovalAuditComment: approval timestamp is required');
+  }
+  if (repairEvidence !== null) {
+    const approvalPlanRecordId = repairEvidence?.approvalPlanRecordId;
+    const revokedRecordId = repairEvidence?.revokedRecordId;
+    if (
+      !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(approvalPlanRecordId ?? '') ||
+      !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(revokedRecordId ?? '')
+    ) {
+      throw new Error(
+        'buildPlanApprovalAuditComment: repair evidence requires approval-plan and revoked record IDs'
+      );
+    }
+    return [
+      `### ${PLAN_APPROVAL_AUDIT_HEADING} — #${issueNumber}`,
+      '',
+      `Plan approval was reconstructed at \`${ts}\` under explicit \`TT_FULL_AUTO=1\` from durable evidence.`,
+      '',
+      '- Approval actor: AI agent operating in Full-Auto mode',
+      '- Human reviewer: none — no human reviewer approved this plan',
+      `- Waiver evidence: workflow-exception record \`${approvalPlanRecordId}\` covered \`approval.plan\``,
+      `- Revocation evidence: workflow-exception chain head \`${revokedRecordId}\` is revoked`,
+      '- Planning evidence: Plan entry and completion before Develop; Deep-Dive Analysis; Plan Metadata; Planned Estimate',
+      `- Evidence: \`<!-- aitm-plan-approved ts="${ts}" mode="full-auto" -->\``,
+      '',
+      'This audit records evidence-derived automated Plan approval. It is neither a human approval nor a workflow waiver.',
+    ].join('\n');
   }
   return [
     `### ${PLAN_APPROVAL_AUDIT_HEADING} — #${issueNumber}`,
@@ -41,7 +68,10 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts } = {}) {
   ].join('\n');
 }
 
-export function isCanonicalPlanApprovalAuditComment(body, { issueNumber, ts } = {}) {
+export function isCanonicalPlanApprovalAuditComment(
+  body,
+  { issueNumber, ts, repairEvidence = null } = {}
+) {
   const src = typeof body === 'string' ? body.trim() : '';
   const heading = src.match(PLAN_APPROVAL_AUDIT_RE);
   if (!heading) return false;
@@ -49,11 +79,42 @@ export function isCanonicalPlanApprovalAuditComment(body, { issueNumber, ts } = 
   const recordedIssueNumber = Number(heading[1]);
   if (issueNumber != null && recordedIssueNumber !== Number(issueNumber)) return false;
 
-  const recordedTs = src.match(
+  const standardTs = src.match(
     /Plan approval was recorded at `([^`]+)` under explicit `TT_FULL_AUTO=1`\./
   )?.[1];
+  const repairTs = src.match(
+    /Plan approval was reconstructed at `([^`]+)` under explicit `TT_FULL_AUTO=1` from durable evidence\./
+  )?.[1];
+  const recordedTs = standardTs ?? repairTs;
   if (!recordedTs || (ts != null && recordedTs !== ts)) return false;
 
+  if (repairTs) {
+    const approvalPlanRecordId = src.match(
+      /Waiver evidence: workflow-exception record `([0-7][0-9A-HJKMNP-TV-Z]{25})` covered `approval\.plan`/
+    )?.[1];
+    const revokedRecordId = src.match(
+      /Revocation evidence: workflow-exception chain head `([0-7][0-9A-HJKMNP-TV-Z]{25})` is revoked/
+    )?.[1];
+    if (!approvalPlanRecordId || !revokedRecordId) return false;
+    if (
+      repairEvidence?.approvalPlanRecordId &&
+      approvalPlanRecordId !== repairEvidence.approvalPlanRecordId
+    ) {
+      return false;
+    }
+    if (repairEvidence?.revokedRecordId && revokedRecordId !== repairEvidence.revokedRecordId) {
+      return false;
+    }
+    return (
+      src ===
+      buildPlanApprovalAuditComment({
+        issueNumber: recordedIssueNumber,
+        ts: recordedTs,
+        repairEvidence: { approvalPlanRecordId, revokedRecordId },
+      })
+    );
+  }
+  if (repairEvidence !== null) return false;
   return (
     src === buildPlanApprovalAuditComment({ issueNumber: recordedIssueNumber, ts: recordedTs })
   );
@@ -81,6 +142,7 @@ export async function ensureFullAutoPlanApprovalAudit({
   ts,
   mode = null,
   env = process.env,
+  repairEvidence = null,
   listComments = defaultListComments,
   postComment = defaultPostComment,
 } = {}) {
@@ -111,13 +173,82 @@ export async function ensureFullAutoPlanApprovalAudit({
 
   const comments = await listComments({ issueNumber, repo });
   const alreadyPresent = comments.some((comment) =>
-    isCanonicalPlanApprovalAuditComment(comment?.body, { issueNumber, ts })
+    isCanonicalPlanApprovalAuditComment(comment?.body, { issueNumber, ts, repairEvidence })
   );
   if (alreadyPresent) {
     return { mode: 'full-auto', auditPosted: false, alreadyPresent: true };
   }
 
-  const body = buildPlanApprovalAuditComment({ issueNumber, ts });
+  const body = buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence });
   await postComment({ issueNumber, repo, body });
   return { mode: 'full-auto', auditPosted: true, alreadyPresent: false };
+}
+
+function repairEvidenceKey({ issueNumber, approved }) {
+  if (!issueNumber || !approved?.ts || !approved.storyDigest || !approved.storyIntentDigest) {
+    throw new TypeError('story-binding repair requires issue, timestamp and complete digests');
+  }
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        Number(issueNumber),
+        approved.ts,
+        approved.storyDigest,
+        approved.storyIntentDigest,
+      ])
+    )
+    .digest('hex');
+}
+
+export function buildStoryBindingRepairAudit({ issueNumber, previousApproval, approved } = {}) {
+  const key = repairEvidenceKey({ issueNumber, approved });
+  const prior = previousApproval
+    ? JSON.stringify(previousApproval)
+    : 'Prior evidence unavailable; this marker cannot establish whether a repair occurred.';
+  return [
+    `### Story-Binding Repair Audit — #${issueNumber}`,
+    '',
+    `<!-- aitm-story-binding-repair key="${key}" -->`,
+    `- Previous approval: ${prior}`,
+    `- Approval actor: ${approved.mode === 'full-auto' ? 'AI agent operating in Full-Auto mode' : approved.mode === 'human' ? 'human approval' : 'unknown'}`,
+    ...['mode', 'ts', 'trunkSha', 'storyIntentSource', 'storyDigest', 'storyIntentDigest'].map(
+      (field) => `- ${field}: ${approved[field] ?? 'unavailable'}`
+    ),
+  ].join('\n');
+}
+
+export async function ensureStoryBindingRepairAudit({
+  issueNumber,
+  repo,
+  previousApproval,
+  approved,
+  listComments = defaultListComments,
+  postComment = defaultPostComment,
+} = {}) {
+  const body = buildStoryBindingRepairAudit({ issueNumber, previousApproval, approved });
+  const withoutPrior = (value) =>
+    String(value)
+      .trim()
+      .replace(/^- Previous approval: .*$/m, '- Previous approval: [retained separately]');
+  try {
+    const comments = await listComments({ issueNumber, repo });
+    if (
+      comments.some((comment) =>
+        previousApproval
+          ? String(comment?.body).trim() === body
+          : withoutPrior(comment?.body) === withoutPrior(body)
+      )
+    )
+      return { alreadyPresent: true, auditPosted: false };
+    await postComment({ issueNumber, repo, body });
+  } catch (error) {
+    error.storyBindingRepair = {
+      issueNumber,
+      previousApproval: previousApproval ?? null,
+      approved,
+      body,
+    };
+    throw error;
+  }
+  return { alreadyPresent: false, auditPosted: true };
 }

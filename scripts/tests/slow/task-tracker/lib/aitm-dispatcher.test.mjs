@@ -85,6 +85,15 @@ test('AC3: `aitm <script-name>` routes to the exposed standalone script', () => 
   assert.match(unknown.stderr, /unknown command/);
 });
 
+test('doctor is a standalone script and never a task-tracker verb', () => {
+  assert.equal(kind('doctor'), 'script');
+  assert.equal(SCRIPTS.doctor.path, 'scripts/package/doctor.mjs');
+  assert.ok(!VERBS.has('doctor'));
+  const r = aitm(['doctor', 'help']);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /read-only bootstrap health/i);
+});
+
 test('dispatcher delegates with the action-capture environment for the selected command', () => {
   let observed;
   const status = delegate('/package/target.mjs', ['arg'], {

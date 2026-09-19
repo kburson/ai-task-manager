@@ -2,8 +2,18 @@ import {
   buildDeliveryCommitText,
   buildExternalRecoveryCommitText,
 } from './delivery-attribution.mjs';
-import { DeliveryAuthorityError, resolveAcceptedDeliveryAuthority } from './delivery-authority.mjs';
+import {
+  DeliveryAuthorityError,
+  isValidDeliveryReviewAuthority,
+  resolveAcceptedDeliveryAuthority,
+  resolveDeliveryReviewAuthority,
+} from './delivery-authority.mjs';
 import { resolveMergeMechanism } from './full-auto-merge.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from './workflow-policy/enforcement.mjs';
+import { deliveryReviewHandoffOutcome } from './terminal-review-handoff.mjs';
 
 const INPUT_KEYS = [
   'acceptedReviewSha',
@@ -39,6 +49,96 @@ const PREFLIGHT_DIAGNOSTICS = Object.freeze({
     recoveryAction: 'rerun the required hosted check on the accepted head and retry delivery',
   },
 });
+
+function requiredRuntimeDependency(deps, name) {
+  const dependency = deps?.[name];
+  if (typeof dependency !== 'function') {
+    throw new TypeError(`delivery-preflight:missing-dependency:${name}`);
+  }
+  return dependency;
+}
+
+function reviewAuthorityFailure(error) {
+  const match = /^delivery-review-authority:([a-z-]+)$/.exec(String(error?.message || ''));
+  if (!match) throw error;
+  throw new TypeError(`delivery-preflight:review-authority-${match[1]}`, { cause: error });
+}
+
+export async function resolveLiveDeliveryReviewAuthority({
+  deps,
+  cfg,
+  issue,
+  issueNumber,
+  testReceiptSha,
+}) {
+  const resolveAcceptedReviewSha = requiredRuntimeDependency(deps, 'resolveAcceptedReviewSha');
+  const resolveAgentReviewPassed =
+    typeof deps.resolveAgentReviewPassed === 'function'
+      ? deps.resolveAgentReviewPassed
+      : async () => issue.agentReviewPassed === true;
+  const [acceptedReviewSha, agentReviewPassed] = await Promise.all([
+    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: testReceiptSha }),
+  ]);
+  if (agentReviewPassed === true) {
+    try {
+      return resolveDeliveryReviewAuthority({
+        agentReviewPassed,
+        terminalReviewOutcome: null,
+        testReceiptSha,
+        acceptedReviewSha,
+        workflowPolicy: null,
+      });
+    } catch (error) {
+      if (error?.message === 'delivery-review-authority:accepted-head') {
+        throw new TypeError('delivery-preflight:head-mismatch', { cause: error });
+      }
+      return reviewAuthorityFailure(error);
+    }
+  }
+
+  const comments = await requiredRuntimeDependency(
+    deps,
+    'listIssueComments'
+  )({
+    issueNumber,
+    repository: cfg.repo,
+  });
+  const timingComments = Array.isArray(comments)
+    ? comments.filter(({ body }) => String(body || '').includes('⏱ Timing Log'))
+    : [];
+  if (timingComments.length > 1) {
+    throw new TypeError('delivery-preflight:review-authority-timing-ambiguous');
+  }
+  const terminalOutcome =
+    timingComments.length === 1 ? deliveryReviewHandoffOutcome(timingComments[0].body) : null;
+  if (terminalOutcome === null) {
+    throw new TypeError('delivery-preflight:agent-review-evidence');
+  }
+  const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+  const workflowPolicy = await loadBoundary({
+    repository: cfg.repo,
+    issue: issueNumber,
+    body: issue.body,
+    requirementIds: ['review.semantic-resident'],
+    activity: 'delivery:review-authority',
+    state: 'review',
+    now: requiredRuntimeDependency(deps, 'now')(),
+    runtime:
+      deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+  });
+  try {
+    return resolveDeliveryReviewAuthority({
+      agentReviewPassed,
+      terminalReviewOutcome: terminalOutcome,
+      testReceiptSha,
+      acceptedReviewSha,
+      workflowPolicy,
+    });
+  } catch (error) {
+    return reviewAuthorityFailure(error);
+  }
+}
 
 export class DeliveryPreflightError extends TypeError {
   constructor(category, cause, details = {}) {
@@ -134,7 +234,8 @@ function validateIssueAndBinding(issue, binding, config) {
   ) {
     fail('issue-owner');
   }
-  if (issue.agentReviewPassed !== true) fail('agent-review-evidence');
+  const typedReviewAuthority = isValidDeliveryReviewAuthority(issue.reviewAuthority);
+  if (issue.agentReviewPassed !== true && !typedReviewAuthority) fail('agent-review-evidence');
   const authorization = issue.reviewAuthorization;
   const authorizedByDecision =
     isPlainObject(authorization) &&
@@ -232,6 +333,7 @@ function validatePreflight(input, { merged = false } = {}) {
       testReceiptSha: input.testReceiptSha,
       reviewReceiptSha: input.acceptedReviewSha,
       agentReviewPassed: input.issue.agentReviewPassed,
+      reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
     });
   } catch (error) {
@@ -307,6 +409,7 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
       testReceiptSha: input.testReceiptSha,
       reviewReceiptSha: input.acceptedReviewSha,
       agentReviewPassed: input.issue.agentReviewPassed,
+      reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
     });
   } catch (error) {
@@ -394,6 +497,7 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
       testReceiptSha: input.testReceiptSha,
       reviewReceiptSha: input.acceptedReviewSha,
       agentReviewPassed: input.issue.agentReviewPassed,
+      reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
     });
   } catch (error) {

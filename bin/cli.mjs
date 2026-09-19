@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // npx ai-task-manager <command> [options]
-// Commands: install, init, statusline, version
+// Commands: install, uninstall, init, statusline, version
 
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, join, resolve, relative } from 'node:path';
+import { dirname, isAbsolute, join, resolve, relative } from 'node:path';
 // (getProvider import added below; dirname already imported for adapter dir resolution)
 import { createInterface } from 'node:readline';
 import {
@@ -19,6 +19,7 @@ import {
   lstatSync,
   statSync,
   realpathSync,
+  readlinkSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -28,7 +29,7 @@ import {
   codexBootstrapBlock,
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
-import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
+import { renderStampedSkillVersion, stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
 import { parseProviderSelection } from './lib/provider-selection.mjs';
 import { TEMPLATE_FILES, memorySeedFiles } from './lib/template-manifest.mjs';
 import {
@@ -43,7 +44,22 @@ import { runInteractive, STATUS_ORDER, STATUS_LABELS } from './lib/memory-resync
 import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
+import { ISSUE_TEMPLATES } from '../scripts/task-tracker/lib/config-init/issue-templates.mjs';
 import { getProvider, listProviders } from '../scripts/providers/index.mjs';
+import {
+  applyManagedHookContract,
+  INSTALL_GITIGNORE_ENTRIES,
+  renderClaudeCommandStub,
+  renderProviderSkillStub,
+} from '../scripts/package/install-content.mjs';
+import { collectPackageInventory } from '../scripts/package/install-inventory.mjs';
+import {
+  INSTALL_MANIFEST_PATH,
+  createInstallContract,
+  createInstallManifest,
+  normalizeInstallIntent,
+} from '../scripts/package/install-contract.mjs';
+import { writeInstallManifest } from '../scripts/package/install-manifest-store.mjs';
 import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
@@ -60,7 +76,7 @@ const pkg = require('../package.json');
 
 const PKG_NAME = 'ai-task-manager';
 const INSTALLED_PACKAGE_ROOT = 'node_modules/@kburson/ai-task-manager';
-const installedPackagePath = (repoRelPath) => `${INSTALLED_PACKAGE_ROOT}/${repoRelPath}`;
+const LEGACY_INSTALLED_PACKAGE_ROOT = 'node_modules/ai-task-manager';
 
 // TTY gate: return raw string when stdout is not a TTY (pipe, file, CI log) so
 // downstream consumers don't see raw escape sequences as garbage characters.
@@ -485,6 +501,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
     if (!settings.permissions.allow.includes(entry)) settings.permissions.allow.push(entry);
   }
 
+  settings = applyManagedHookContract('claude', settings, { memoryIndexHook });
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
 }
@@ -569,6 +586,7 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
   add('UserPromptSubmit', null, ON_USER_PROMPT_HOOK_CMD, { timeout: 30 });
   add('UserPromptSubmit', null, CODEX_PROMPT_TIMESTAMP_HOOK_CMD, { timeout: 30 });
 
+  config = applyManagedHookContract('codex', config, { memoryIndexHook });
   mkdirSync(dirname(hooksPath), { recursive: true });
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
@@ -705,25 +723,14 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
 
   for (const spec of specs) add(...spec);
 
+  config = applyManagedHookContract('grok', config, { memoryIndexHook });
   mkdirSync(dirname(hooksPath), { recursive: true });
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
 
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
-  const entries = [
-    // Machine-local/transient runtime state lives under `.tmp/aitm/`, with
-    // project-local caches under `.ai-task-manager/.cache/`. Stable install
-    // artifacts in `.ai-task-manager/`, `.claude/`, `.codex/`, and `.agents/`
-    // are intentionally trackable so cloud clones inherit the AITM contract.
-    '.ai-task-manager/.cache/',
-    '.ai-task-manager/templates/*.bak',
-    '.ai-task-manager/templates/references/*.bak',
-    '.claude/worktrees/',
-    '.claude/settings.local.json',
-    '.claude/scheduled_tasks.lock',
-    '.tmp/',
-  ];
+  const entries = INSTALL_GITIGNORE_ENTRIES;
   const COMMENT = '# ai-task-manager — local edit backups (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
@@ -744,7 +751,22 @@ function installStub(file, content, label) {
   ok(`${label} ${dim(relative(process.cwd(), file))}${written ? '' : ` ${dim('(unchanged)')}`}`);
 }
 
-function replaceWithSymlink(dest, src, label) {
+export function assertSymlinkSourceContained(targetDir, src) {
+  const contained = relative(resolve(targetDir), resolve(src));
+  if (
+    !contained ||
+    contained === '..' ||
+    contained.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) ||
+    isAbsolute(contained)
+  ) {
+    throw new Error(
+      '--link-mode symlink requires the installed package to resolve inside the target project; use --link-mode stub'
+    );
+  }
+}
+
+export function replaceWithSymlink(dest, src, label, targetDir) {
+  assertSymlinkSourceContained(targetDir, src);
   mkdirSync(dirname(dest), { recursive: true });
   let existing = null;
   try {
@@ -759,146 +781,125 @@ function replaceWithSymlink(dest, src, label) {
         `${dest} exists and is not a symlink; rerun with --link-mode stub or remove it manually`
       );
   }
-  symlinkSync(src, dest, 'dir');
-  ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
+  const linkTarget = relative(dirname(dest), src);
+  symlinkSync(linkTarget, dest, 'dir');
+  ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(linkTarget)}`);
 }
 
 export function claudeStub() {
-  const adapterPath = installedPackagePath(getProvider('claude').skillAdapterPath);
-  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
-  const scriptsPath = installedPackagePath('scripts/');
-  return [
-    '---',
-    'name: task',
-    'description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, close, log, check, fleet, or config.',
-    '---',
-    '',
-    '# Task',
-    '',
-    '## Load-Once Procedure',
-    '',
-    'Frequently-loaded skill files carry an `<!-- aitm-skill-version: X.Y.Z -->` marker.',
-    'To avoid re-reading them every invocation:',
-    '',
-    '1. Read just the first ~10 lines of each file below to extract its marker version.',
-    '2. Grep your current context for `aitm-skill-loaded:<id>:<version>`. If found, skip step 3 for that file.',
-    '3. Read the full file. Then emit a single line in your reply: `aitm-skill-loaded:<id>:<version>` so future invocations in this conversation can detect the load.',
-    '',
-    'Files (id — path):',
-    '',
-    `- \`adapter\` — \`${adapterPath}\``,
-    `- \`shared\` — \`${sharedSkillPath}\``,
-    '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on sub-issue pickup)',
-    '',
-    'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
-    'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
-    '',
-    '## Canonical Source',
-    '',
-    'Load and follow the canonical Claude adapter instructions from:',
-    '',
-    `\`${adapterPath}\``,
-    '',
-    'Use executable scripts from:',
-    '',
-    `\`${scriptsPath}\``,
-    '',
-  ].join('\n');
+  return renderProviderSkillStub('claude');
 }
 
 export function codexStub() {
-  const adapterPath = installedPackagePath(getProvider('codex').skillAdapterPath);
-  const sharedSkillPath = installedPackagePath('skill/shared/SKILL.md');
-  const scriptsPath = installedPackagePath('scripts/');
-  return [
-    '---',
-    'name: task',
-    'description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user asks to manage a task, start or close issue work, run /task commands, create backlog issues, track active work, log time, update task status, or inspect the active task fleet.',
-    '---',
-    '',
-    '# Task',
-    '',
-    '## Load-Once Procedure',
-    '',
-    'Frequently-loaded skill files carry an `<!-- aitm-skill-version: X.Y.Z -->` marker.',
-    'To avoid re-reading them every invocation:',
-    '',
-    '1. Read just the first ~10 lines of each file below to extract its marker version.',
-    '2. Grep your current context for `aitm-skill-loaded:<id>:<version>`. If found, skip step 3 for that file.',
-    '3. Read the full file. Then emit a single line in your reply: `aitm-skill-loaded:<id>:<version>` so future invocations in this conversation can detect the load.',
-    '',
-    'Files (id — path):',
-    '',
-    `- \`codex-adapter\` — \`${adapterPath}\``,
-    `- \`shared\` — \`${sharedSkillPath}\``,
-    '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on issue pickup)',
-    '',
-    'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
-    'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
-    '',
-    '## Canonical Source',
-    '',
-    'Load and follow the canonical Codex adapter instructions from:',
-    '',
-    `\`${adapterPath}\``,
-    '',
-    'Use executable scripts from:',
-    '',
-    `\`${scriptsPath}\``,
-    '',
-  ].join('\n');
+  return renderProviderSkillStub('codex');
 }
 
 function grokStub() {
-  const adapterPath = installedPackagePath(getProvider('grok').skillAdapterPath);
-  return [
-    '---',
-    'name: task',
-    'description: Bind Grok work sessions to GitHub issues and track governed delivery.',
-    'user-invocable: true',
-    '---',
-    '',
-    '# Task',
-    '',
-    'Load and follow the canonical Grok adapter instructions from:',
-    '',
-    `\`${adapterPath}\``,
-    '',
-  ].join('\n');
+  return renderProviderSkillStub('grok');
 }
 
-function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function claudeCommandStub() {
+  return renderClaudeCommandStub();
+}
+
+const LEGACY_WORKTREE_SEED_BLOCK = [
+  '## Step 0 — Verify worktree seeding (run before anything else)',
+  '',
+  'If this session runs in a git worktree, its `node_modules` may be absent, which',
+  'breaks the skill reads below and silently redirects module resolution to the',
+  'parent checkout. The SessionStart hook heals this automatically; if you have any',
+  'doubt it ran, verify and self-heal before loading the skill:',
+  '',
+  '```bash',
+  "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
+  '```',
+  '',
+  'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
+  '',
+].join('\n');
+
+function previousUnscopedSkillStub(current, { includedSeedBlock = false } = {}) {
+  let previous = current.replaceAll(INSTALLED_PACKAGE_ROOT, LEGACY_INSTALLED_PACKAGE_ROOT);
+  if (includedSeedBlock) {
+    previous = previous.replace(
+      '## Load-Once Procedure',
+      `${LEGACY_WORKTREE_SEED_BLOCK}## Load-Once Procedure`
+    );
+  }
+  return previous;
+}
+
+function knownSkillStubs(providerName, current) {
+  return [
+    current,
+    previousUnscopedSkillStub(current, {
+      includedSeedBlock: providerName === 'claude' || providerName === 'codex',
+    }),
+  ];
+}
+
+function knownClaudeCommandStubs() {
+  const current = claudeCommandStub();
+  const assigned = current
+    .replace('Backlog → Refine → Ready for Planning → Plan', 'Backlog → Assigned → Refine → Plan')
+    .replace(
+      'Backlog → Refine with required fields.',
+      'Backlog/Assigned → Refine with required fields.'
+    )
+    .replace(
+      'Ready for Planning → Plan (JIT sprint-planning entry).',
+      'Refine → Plan (sprint-planning entry).'
+    );
+  const onDeck = assigned
+    .replace('Backlog → Assigned → Refine → Plan', 'Backlog → On Deck → Refine → Plan')
+    .replace(
+      'Backlog/Assigned → Refine with required fields.',
+      'Backlog/On Deck → Refine with required fields.'
+    );
+  return [current, assigned, onDeck];
+}
+
+function knownCodexBootstrapBlocks() {
+  const current = codexBootstrapBlock().trimEnd();
+  const currentJit = current.replace('for Sprint-Planning entry', 'for JIT Sprint-Planning entry');
+  const assigned = current
+    .replace('Backlog → Refine → Ready for Planning → Plan', 'Backlog → Assigned → Refine → Plan')
+    .replace(
+      'Backlog → Refine with required fields.',
+      'Backlog/Assigned → Refine with required fields.'
+    )
+    .replace(
+      'Ready for Planning → Plan for Sprint-Planning entry',
+      'Refine → Plan for Sprint-Planning entry'
+    );
+  const onDeck = assigned
+    .replace('Backlog → Assigned → Refine → Plan', 'Backlog → On Deck → Refine → Plan')
+    .replace(
+      'Backlog/Assigned → Refine with required fields.',
+      'Backlog/On Deck → Refine with required fields.'
+    );
+  return new Set([current, currentJit, assigned, onDeck]);
+}
+
+function installClaude(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Claude Code files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
+      'Skill',
+      targetDir
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
 
-  installStub(
-    join(targetDir, adapter.installRecipe.commandTarget),
-    [
-      'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS',
-      '',
-      '<!-- Canonical source: skill/shared/SKILL.md (State Transition Verb Map). Mirrored here for the verb-uniqueness verification grep. -->',
-      '',
-      '### State Transition Verb Map (8-state model)',
-      '',
-      'States: `Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done`.',
-      '',
-      '- `/task refine #N --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2|p3> --reason "<text>"` — Backlog → Refine with required fields.',
-      '- `/task plan #N` — Ready for Planning → Plan (JIT sprint-planning entry).',
-      '- `/task promote` (or `/task next`) — advance one state generically.',
-      '- `/task test #N` — Develop → Test (sandbox verification).',
-      '- `/task approve #N` — write Plan-approval and review-approval markers.',
-      '- `/task close` — Review → Done.',
-      '',
-      'Test → Review is automatic on verification pass — no dedicated CLI verb.',
-      '',
-    ].join('\n'),
-    'Command'
-  );
+  installStub(join(targetDir, adapter.installRecipe.commandTarget), claudeCommandStub(), 'Command');
 
   // Lifecycle hooks are only installed when the active provider supports them.
   // Routed through `adapter.hookCapability` to remove the prior hard-coded
@@ -909,11 +910,20 @@ function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter }
   }
 }
 
-function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installCodex(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Codex files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
+      'Skill',
+      targetDir
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
   }
@@ -923,11 +933,20 @@ function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } 
   }
 }
 
-function installGrok(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+function installGrok(
+  targetDir,
+  linkMode,
+  { memoryIndexHook = false, adapter, packageRoot = PKG_ROOT } = {}
+) {
   step('Grok files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(packageRoot, dirname(adapter.skillAdapterPath)),
+      'Skill',
+      targetDir
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), grokStub(), 'Skill');
   }
@@ -947,6 +966,356 @@ export function installProvider(adapter, targetDir, linkMode, options = {}) {
   const writer = INSTALL_WRITERS[adapter.installRecipe.writer];
   if (!writer) throw new Error(`Unsupported install writer: ${adapter.installRecipe.writer}`);
   writer(targetDir, linkMode, { ...options, adapter });
+}
+
+const MANAGED_HOOK_COMMANDS = new Set([
+  TIMING_HOOK_CMD,
+  COMMIT_TRAIL_HOOK_CMD,
+  ON_STOP_HOOK_CMD,
+  ON_USER_PROMPT_HOOK_CMD,
+  ON_ASK_PAUSE_HOOK_CMD,
+  ON_ASK_RESUME_HOOK_CMD,
+  STOP_AUDIT_HOOK_CMD,
+  MEMORY_INDEX_HOOK_CMD,
+  CODEX_PROMPT_TIMESTAMP_HOOK_CMD,
+  ...LEGACY_HOOK_COMMANDS,
+  ...LEGACY_TIMING_HOOK_COMMANDS,
+  ...LEGACY_COMMIT_TRAIL_HOOK_COMMANDS,
+  ...LEGACY_GUARD_HOOK_COMMANDS,
+  ...GUARD_NAMES.map((name) => guardBootstrapCommand(name)),
+  ...LEGACY_GROK_HOOK_COMMANDS,
+  ...[
+    'seed',
+    'timing',
+    'bash-guard',
+    'activity-guard',
+    'source-edit-gate',
+    'agent-guard',
+    'memory-index',
+  ].map((name) => grokHookCommand(name)),
+]);
+
+function isManagedHookCommand(command) {
+  return typeof command === 'string' && MANAGED_HOOK_COMMANDS.has(command);
+}
+
+const MANAGED_PERMISSION_ENTRIES = new Set([
+  'Bash(node node_modules/@kburson/ai-task-manager/scripts/**)',
+  'Bash(node node_modules/ai-task-manager/scripts/**)',
+  'Bash(npx aitm:*)',
+  'Bash(node_modules/.bin/aitm:*)',
+  'Bash(./node_modules/.bin/aitm:*)',
+]);
+
+function withoutManagedHookCommands(entries) {
+  return entries.flatMap((entry) => {
+    if (typeof entry === 'string') return isManagedHookCommand(entry) ? [] : [entry];
+    if (!entry || typeof entry !== 'object') return [entry];
+    if (isManagedHookCommand(entry.command)) return [];
+    if (!Array.isArray(entry.hooks)) return [entry];
+    const hooks = entry.hooks.filter((hook) => !isManagedHookCommand(hook?.command));
+    return hooks.length > 0 ? [{ ...entry, hooks }] : [];
+  });
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function planManagedHooks(hooksPath, { removeClaudePermissions = false } = {}) {
+  if (!existsSync(hooksPath)) return [];
+  const original = readFileSync(hooksPath, 'utf8');
+  let config;
+  try {
+    config = JSON.parse(original);
+  } catch {
+    throw new Error(`Refusing to modify malformed hooks file: ${hooksPath}`);
+  }
+  if (!isPlainObject(config)) {
+    throw new Error(`Refusing to modify malformed hooks file: ${hooksPath}`);
+  }
+  const semanticBefore = JSON.stringify(config);
+  if (config.hooks !== undefined && !isPlainObject(config.hooks)) {
+    throw new Error(`Refusing to modify malformed hooks file: ${hooksPath}`);
+  }
+  for (const event of Object.keys(config.hooks ?? {})) {
+    if (!Array.isArray(config.hooks[event])) {
+      throw new Error(`Refusing to modify malformed hooks file: ${hooksPath}`);
+    }
+    const remaining = withoutManagedHookCommands(config.hooks[event]);
+    if (remaining.length > 0) config.hooks[event] = remaining;
+    else delete config.hooks[event];
+  }
+  if (removeClaudePermissions && config.permissions !== undefined) {
+    if (!isPlainObject(config.permissions)) {
+      throw new Error(`Refusing to modify malformed permissions in hooks file: ${hooksPath}`);
+    }
+    if (config.permissions.allow !== undefined && !Array.isArray(config.permissions.allow)) {
+      throw new Error(`Refusing to modify malformed permissions in hooks file: ${hooksPath}`);
+    }
+  }
+  if (removeClaudePermissions && Array.isArray(config.permissions?.allow)) {
+    config.permissions.allow = config.permissions.allow.filter(
+      (entry) => !MANAGED_PERMISSION_ENTRIES.has(entry)
+    );
+  }
+  if (JSON.stringify(config) === semanticBefore) return [];
+  const content = JSON.stringify(config, null, 2) + '\n';
+  return [{ kind: 'write', path: hooksPath, content }];
+}
+
+function planManagedSkill(skillDir, expectedContents, expectedSymlinkTarget) {
+  let stat;
+  try {
+    stat = lstatSync(skillDir);
+  } catch {
+    return [];
+  }
+  if (stat.isSymbolicLink()) {
+    let actualTarget;
+    try {
+      actualTarget = realpathSync(resolve(dirname(skillDir), readlinkSync(skillDir)));
+    } catch {
+      throw new Error(`Refusing to remove modified AITM skill: ${skillDir}`);
+    }
+    if (actualTarget !== realpathSync(expectedSymlinkTarget)) {
+      throw new Error(`Refusing to remove modified AITM skill: ${skillDir}`);
+    }
+    return [{ kind: 'remove', path: skillDir, recursive: false }];
+  }
+  const skillFile = join(skillDir, 'SKILL.md');
+  const entries = stat.isDirectory() ? readdirSync(skillDir) : [];
+  let skillStat;
+  try {
+    skillStat = lstatSync(skillFile);
+  } catch {
+    skillStat = null;
+  }
+  if (
+    !stat.isDirectory() ||
+    entries.length !== 1 ||
+    entries[0] !== 'SKILL.md' ||
+    !skillStat?.isFile() ||
+    !expectedContents.includes(readFileSync(skillFile, 'utf8'))
+  ) {
+    throw new Error(`Refusing to remove modified AITM skill: ${skillDir}`);
+  }
+  return [{ kind: 'remove', path: skillDir, recursive: true }];
+}
+
+function planManagedFile(file, expectedContents) {
+  if (!existsSync(file)) return [];
+  const allowedContents = Array.isArray(expectedContents) ? expectedContents : [expectedContents];
+  if (!allowedContents.includes(readFileSync(file, 'utf8'))) {
+    throw new Error(`Refusing to remove modified AITM file: ${file}`);
+  }
+  return [{ kind: 'remove', path: file, recursive: false }];
+}
+
+function planRemovePath(path, { recursive = true } = {}) {
+  try {
+    lstatSync(path);
+  } catch {
+    return [];
+  }
+  return [{ kind: 'remove', path, recursive }];
+}
+
+function planPurge(targetDir) {
+  const actions = [
+    ...planRemovePath(join(targetDir, '.ai-task-manager')),
+    ...planRemovePath(join(targetDir, '.tmp', 'aitm')),
+  ];
+  const issueTemplateDir = join(targetDir, '.github', 'ISSUE_TEMPLATE');
+  for (const { filename, content } of ISSUE_TEMPLATES) {
+    actions.push(...planManagedFile(join(issueTemplateDir, filename), content));
+  }
+  return actions;
+}
+
+function planBootstrapCleanup(targetDir) {
+  const agentsPath = join(targetDir, 'AGENTS.md');
+  if (!existsSync(agentsPath)) return [];
+  const content = readFileSync(agentsPath, 'utf8');
+  const start = '<!-- ai-task-manager:codex-superpowers:start -->';
+  const end = '<!-- ai-task-manager:codex-superpowers:end -->';
+  if (!content.includes(start) && !content.includes(end)) return [];
+
+  const lines = content.split('\n');
+  const startLines = lines.flatMap((line, index) => (line === start ? [index] : []));
+  const endLines = lines.flatMap((line, index) => (line === end ? [index] : []));
+  if (
+    startLines.length !== 1 ||
+    endLines.length !== 1 ||
+    startLines[0] >= endLines[0] ||
+    content.split(start).length !== 2 ||
+    content.split(end).length !== 2
+  ) {
+    throw new Error(`Malformed AITM bootstrap block in ${agentsPath}`);
+  }
+  const blockStart = content.indexOf(start);
+  const markerEnd = content.indexOf(end, blockStart) + end.length;
+  const managedBlock = content.slice(blockStart, markerEnd);
+  if (!knownCodexBootstrapBlocks().has(managedBlock)) {
+    throw new Error(`Refusing to remove modified AITM bootstrap block: ${agentsPath}`);
+  }
+  const afterBlock = content[markerEnd] === '\n' ? markerEnd + 1 : markerEnd;
+  const next = content.slice(0, blockStart) + content.slice(afterBlock);
+  return next.trim()
+    ? [{ kind: 'write', path: agentsPath, content: next }]
+    : [{ kind: 'remove', path: agentsPath, recursive: false }];
+}
+
+function planUninstallProvider(adapter, targetDir) {
+  const expectedSkill = {
+    claude: claudeStub,
+    codex: codexStub,
+    grok: grokStub,
+  }[adapter.name];
+  const actions = planManagedSkill(
+    join(targetDir, adapter.installTarget),
+    knownSkillStubs(adapter.name, expectedSkill()),
+    join(PKG_ROOT, dirname(adapter.skillAdapterPath))
+  );
+  if (adapter.installRecipe.commandTarget) {
+    actions.push(
+      ...planManagedFile(
+        join(targetDir, adapter.installRecipe.commandTarget),
+        knownClaudeCommandStubs()
+      )
+    );
+  }
+  if (adapter.installRecipe.hookTarget) {
+    actions.push(
+      ...planManagedHooks(join(targetDir, adapter.installRecipe.hookTarget), {
+        removeClaudePermissions: adapter.name === 'claude',
+      })
+    );
+  }
+  return actions;
+}
+
+function parseUninstallArgs(args) {
+  const seen = new Set();
+  const providerArgs = [];
+  let targetDir = process.cwd();
+  let dryRun = false;
+  let purge = false;
+  let confirmed = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--agent') {
+      const value = args[index + 1];
+      if (!value || value.startsWith('-')) throw new Error('Missing value for --agent');
+      providerArgs.push(arg, value);
+      index += 1;
+      continue;
+    }
+    if (arg === '--target') {
+      if (seen.has(arg)) throw new Error('Duplicate option: --target');
+      const value = args[index + 1];
+      if (!value || value.startsWith('-')) throw new Error('Missing value for --target');
+      seen.add(arg);
+      targetDir = resolve(value);
+      index += 1;
+      continue;
+    }
+    if (['--dry-run', '--purge', '--yes'].includes(arg)) {
+      if (seen.has(arg)) throw new Error(`Duplicate option: ${arg}`);
+      seen.add(arg);
+      if (arg === '--dry-run') dryRun = true;
+      if (arg === '--purge') purge = true;
+      if (arg === '--yes') confirmed = true;
+      continue;
+    }
+    throw new Error(`Unknown uninstall option: ${arg}`);
+  }
+  if (confirmed && !purge) throw new Error('--yes requires --purge');
+  return { targetDir, dryRun, purge, confirmed, providerArgs };
+}
+
+function applyCleanupActions(actions, { dryRun = false } = {}) {
+  if (dryRun) return;
+  for (const action of actions) {
+    if (action.kind === 'remove') {
+      rmSync(action.path, { recursive: action.recursive, force: true });
+    } else if (action.kind === 'write') {
+      writeIfChanged(action.path, action.content);
+    }
+  }
+}
+
+async function confirmPurge({ targetDir, confirmed, dryRun }) {
+  if (confirmed || dryRun) return;
+  if (!process.stdin.isTTY) {
+    throw new Error('Refusing --purge without explicit confirmation; rerun with --purge --yes.');
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await new Promise((resolveAnswer) =>
+      rl.question(`Type "purge" to remove durable AITM data from ${targetDir}: `, resolveAnswer)
+    );
+    if (answer.trim().toLowerCase() !== 'purge') {
+      throw new Error('Purge cancelled; no files were changed.');
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+async function cmdUninstall(args) {
+  const { targetDir, dryRun, purge, confirmed, providerArgs } = parseUninstallArgs(args);
+
+  let selectedNames;
+  try {
+    selectedNames = parseProviderSelection(providerArgs, listProviders());
+  } catch (error) {
+    err(error.message);
+    process.exit(1);
+  }
+
+  banner(
+    `${dryRun ? 'Previewing' : 'Uninstalling'} ${PKG_NAME} project integrations`,
+    `target: ${targetDir}${dryRun ? ' (dry run)' : ''}`
+  );
+  const actions = selectedNames.flatMap((providerName) =>
+    planUninstallProvider(getProvider(providerName), targetDir)
+  );
+  if (selectedNames.includes('codex')) actions.push(...planBootstrapCleanup(targetDir));
+  const manifestPath = join(targetDir, INSTALL_MANIFEST_PATH);
+  if (existsSync(manifestPath)) {
+    actions.push({ kind: 'remove', path: manifestPath, recursive: false });
+  }
+  if (purge) actions.push(...planPurge(targetDir));
+  for (const action of actions) {
+    const verb = action.kind === 'write' ? 'UPDATE' : 'REMOVE';
+    console.log(`  ${dryRun ? 'WOULD ' : ''}${verb} ${relative(targetDir, action.path)}`);
+  }
+  if (purge) {
+    await confirmPurge({
+      targetDir,
+      confirmed,
+      dryRun,
+    });
+  }
+  applyCleanupActions(actions, { dryRun });
+  console.log('');
+  console.log(
+    bgGreen(
+      bold(
+        dryRun
+          ? '  Dry run complete; no files changed                         '
+          : '  Project integration cleanup complete                      '
+      )
+    )
+  );
+  if (dryRun) return;
+  console.log('');
+  console.log(`  ${bold('Next step')} ${dim('- remove the npm package:')}`);
+  console.log('');
+  console.log(`     ${cyan(bold('npm uninstall -D @kburson/ai-task-manager'))}`);
+  console.log('');
 }
 
 function setupCodexSuperpowers(targetDir, { globalAgents = false } = {}) {
@@ -1002,10 +1371,12 @@ function installTemplates(targetDir) {
   for (const name of TEMPLATE_FILES) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(mdTemplatesDest, name);
+    const source = readFileSync(src, 'utf8');
+    const bundled =
+      name === 'pickup-directive.md' ? renderStampedSkillVersion(source, pkg.version) : source;
     let suffix = '';
     if (existsSync(out)) {
       const existing = readFileSync(out, 'utf8');
-      const bundled = readFileSync(src, 'utf8');
       if (existing !== bundled) {
         writeFileSync(out + '.bak', existing, 'utf8');
         suffix = ` ${yellow('(overwrote; previous saved as .bak)')}`;
@@ -1013,7 +1384,7 @@ function installTemplates(targetDir) {
         suffix = ` ${dim('(unchanged)')}`;
       }
     }
-    copyFileSync(src, out);
+    writeFileSync(out, bundled, 'utf8');
     ok(`Template ${dim('.ai-task-manager/templates/' + name)}${suffix}`);
   }
   for (const name of ['project-fields.json', 'project-field-events.json']) {
@@ -1167,7 +1538,7 @@ async function installMemorySeed(targetDir, args) {
 
     if (mode === 'none') {
       ok(`Memory seed ${dim('(skipped — none)')}`);
-      return 0;
+      return { count: 0, files: [] };
     }
 
     let selectedFiles;
@@ -1186,16 +1557,88 @@ async function installMemorySeed(targetDir, args) {
       }
     }
 
-    const { count } = writeMemorySeed({ seedDir, memoryDir, selectedFiles });
+    const { accepted, count } = writeMemorySeed({ seedDir, memoryDir, selectedFiles });
     ok(
       count > 0
         ? `Memory seed ${dim(`${count} fact(s) → .ai-task-manager/memory/`)}`
         : `Memory seed ${dim('(nothing selected)')}`
     );
-    return count;
+    return {
+      count,
+      files: accepted.map((file) => `.ai-task-manager/memory/${file}`).sort(),
+    };
   } finally {
     if (rl) rl.close();
   }
+}
+
+export async function runInstall(options, deps = {}) {
+  const {
+    targetDir,
+    args = [],
+    selectedNames,
+    linkMode,
+    enableCodexSuperpowers,
+    globalCodexSuperpowers,
+  } = options;
+  const installMemory = deps.installMemorySeed || installMemorySeed;
+  const installOne = deps.installProvider || installProvider;
+  const setupCodex = deps.setupCodexSuperpowers || setupCodexSuperpowers;
+  const installShared = deps.installTemplates || installTemplates;
+  const inventoryFor = deps.collectPackageInventory || collectPackageInventory;
+  const publish = deps.writeInstallManifest || writeInstallManifest;
+  const packageRoot = deps.packageRoot || PKG_ROOT;
+
+  const baseIntent = normalizeInstallIntent({
+    providers: selectedNames,
+    linkMode,
+    features: {
+      memoryIndex: false,
+      codexSuperpowers: enableCodexSuperpowers,
+      codexSuperpowersGlobal: globalCodexSuperpowers,
+    },
+    memoryFiles: [],
+  });
+  if (baseIntent.linkMode === 'symlink') {
+    for (const providerName of baseIntent.providers) {
+      const adapter = getProvider(providerName);
+      assertSymlinkSourceContained(targetDir, join(packageRoot, dirname(adapter.skillAdapterPath)));
+    }
+  }
+
+  const memorySeed = await installMemory(targetDir, args);
+  const memoryIndexHook = memorySeed.count > 0;
+  for (const providerName of selectedNames) {
+    installOne(getProvider(providerName), targetDir, linkMode, { memoryIndexHook, packageRoot });
+  }
+  const codexSelected = selectedNames.includes('codex');
+  if (codexSelected && enableCodexSuperpowers) {
+    setupCodex(targetDir, { globalAgents: globalCodexSuperpowers });
+  }
+  installShared(targetDir);
+
+  const intent = normalizeInstallIntent({
+    providers: baseIntent.providers,
+    linkMode: baseIntent.linkMode,
+    features: {
+      memoryIndex: memoryIndexHook,
+      codexSuperpowers: baseIntent.features.codexSuperpowers,
+      codexSuperpowersGlobal: baseIntent.features.codexSuperpowersGlobal,
+    },
+    memoryFiles: memorySeed.files,
+  });
+  const contract = createInstallContract({
+    intent,
+    adapters: selectedNames.map(getProvider),
+    inventory: inventoryFor(packageRoot),
+  });
+  const manifest = createInstallManifest({
+    packageName: pkg.name,
+    packageVersion: pkg.version,
+    contract,
+  });
+  publish(targetDir, manifest);
+  return { manifest };
 }
 
 async function cmdInstall(args) {
@@ -1247,19 +1690,15 @@ async function cmdInstall(args) {
     }
   }
 
-  // #728 — resolve the memory-seed opt-in BEFORE installing Claude files so the
-  // always-loaded index hook is registered only when ≥1 seed file was accepted.
-  const memorySeedCount = await installMemorySeed(targetDir, args);
-  const memoryIndexHook = memorySeedCount > 0;
-
-  for (const providerName of selectedNames) {
-    installProvider(getProvider(providerName), targetDir, linkMode, { memoryIndexHook });
-  }
   const codexSelected = selectedNames.includes('codex');
-  if (codexSelected && enableCodexSuperpowers) {
-    setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
-  }
-  installTemplates(targetDir);
+  await runInstall({
+    targetDir,
+    args,
+    selectedNames,
+    linkMode,
+    enableCodexSuperpowers,
+    globalCodexSuperpowers,
+  });
 
   console.log('');
   console.log(bgGreen(bold('  Install complete                                          ')));
@@ -1563,6 +2002,7 @@ const PACKAGE_COMMANDS = new Set([
   '-v',
   '--version',
   'install',
+  'uninstall',
   'init',
   'repair',
   'statusline',
@@ -1576,7 +2016,7 @@ const packageSubcommandHelp =
 
 if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
   process.stderr.write(
-    `ai-task-manager: unknown command "${command}"\nUsage: npx ai-task-manager <install|init|repair|statusline|configure|memory-resync|version>\n`
+    `ai-task-manager: unknown command "${command}"\nUsage: npx ai-task-manager <install|uninstall|init|repair|statusline|configure|memory-resync|version>\n`
   );
   process.exitCode = 2;
 } else if (invokedDirectly && packageSubcommandHelp) {
@@ -1591,6 +2031,12 @@ if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
     case 'install':
       cmdInstall(rest).catch((e) => {
         err(e.message);
+        process.exit(1);
+      });
+      break;
+    case 'uninstall':
+      cmdUninstall(rest).catch((error) => {
+        err(error.message);
         process.exit(1);
       });
       break;

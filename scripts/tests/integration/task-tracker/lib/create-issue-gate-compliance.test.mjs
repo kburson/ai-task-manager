@@ -53,7 +53,7 @@ const SEED = {
 };
 const SEED_LABELS = ['test', 'demo'];
 
-function runDryRun() {
+function runDryRun({ omitStory = false } = {}) {
   const args = [
     path.join(repoRoot, 'scripts', 'gh', 'create-issue.mjs'),
     '--title',
@@ -86,6 +86,7 @@ function runDryRun() {
     SEED.startTime,
     '--dry-run',
   ];
+  if (omitStory) args.splice(args.indexOf('--user-story-file'), 2);
   const r = spawnSync(process.execPath, args, { cwd: repoRoot, encoding: 'utf8' });
   if (r.status !== 0) {
     throw new Error(`create-issue.mjs --dry-run failed (exit ${r.status}):\n${r.stderr}`);
@@ -111,6 +112,26 @@ function fakeFieldDefs() {
 function valuesReader(values) {
   return async () => values;
 }
+
+// @story #1710
+test('omitted creator story keeps body, fields and Refine completion gates intact', async () => {
+  const body = runDryRun({ omitStory: true });
+  assert.match(body, /^## User Story\s*\n\s*## Scope/m);
+  assert.deepEqual(checkRequiredBodySections(body), []);
+  const values = parseFieldsBlock(body);
+  assert.deepEqual(checkRequiredFields(values, SEED_LABELS), []);
+  const result = await gateRefineToPlan({
+    cfg: CFG,
+    issueNumber: 1,
+    deps: {
+      loadProjectFieldDefs: fakeFieldDefs,
+      projectValuesForIssue: valuesReader(values),
+      fetchLabels: async () => SEED_LABELS,
+      fetchBody: async () => body,
+    },
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.blockers));
+});
 
 test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
   const body = runDryRun();

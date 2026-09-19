@@ -11,11 +11,13 @@
 //   Branch legacy — not discover, plain title arg → returns title
 
 import { strict as assert } from 'node:assert';
-import { writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   extractTitle,
+  PLAN_FILE_TEMPLATE,
   validatePlanContent,
   planFileName,
   titleToSlug,
@@ -23,6 +25,111 @@ import {
   savePlanFile,
   loadPlanFile,
 } from '../../../../task-tracker/lib/plan-file.mjs';
+import {
+  classifyDecomposition,
+  extractPlanTasks,
+} from '../../../../task-tracker/lib/decomposition-policy.mjs';
+import {
+  evaluateStoryProse,
+  parseStoryIntent,
+  renderStoryFromIntent,
+  resolveStoryIntent,
+} from '../../../../task-tracker/lib/user-story-quality.mjs';
+import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
+
+const REPO_ROOT = path.resolve(import.meta.dirname, '../../../../..');
+
+function normalizeTemplate(value) {
+  return String(value)
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function populatedPlan(template) {
+  return template
+    .replaceAll('<title>', 'Provider-safe story plan')
+    .replaceAll('<what is being built and why; what is out of scope>', 'Shared guidance.')
+    .replaceAll('<background, constraints, key decisions made during discovery>', 'Evidence.')
+    .replaceAll('<criterion 1>', 'All providers share one rule')
+    .replaceAll('<criterion 2>', 'Installed templates stay aligned')
+    .replaceAll('<P0|P1|P2|P3>', 'P1')
+    .replaceAll('<XS|S|M|L|XL>', 'M')
+    .replaceAll('<N hours>', '6 hours')
+    .replaceAll('<label1>, <label2>', 'backend')
+    .replaceAll('[who wants to accomplish something]', 'team lead coordinating provider work')
+    .replaceAll('[what they want to accomplish]', 'review the same source-grounded story evidence')
+    .replaceAll('[what gap or failure makes it necessary]', 'provider-specific guidance can drift')
+    .replaceAll(
+      '[why they want to accomplish that thing]',
+      'provider switching preserves story quality'
+    )
+    .replaceAll('<task title>', 'Publish shared story guidance')
+    .replaceAll(
+      '<task scope and implementation notes>',
+      'Route every adapter through the shared rule.'
+    )
+    .replaceAll(
+      '# <replace with an executable verifier>',
+      'node --test scripts/tests/unit/providers/parity.test.mjs'
+    );
+}
+
+// #1713 — the live Markdown scaffold and retained export describe one semantic plan.
+{
+  const canonical = readFileSync(path.join(REPO_ROOT, 'templates', 'plan-file.md'), 'utf8');
+  assert.equal(normalizeTemplate(PLAN_FILE_TEMPLATE), normalizeTemplate(canonical));
+  const firstTaskLine = canonical.split('\n').findIndex((line) => /^### Task 1:/.test(line)) + 1;
+  assert.equal(
+    parseStoryIntent(canonical, { headingLevel: 2, endLine: firstTaskLine - 1 }).ok,
+    true
+  );
+  const draft = classifyDecomposition({ planText: canonical });
+  assert.equal(draft.taskCount, 1);
+  assert.equal(draft.tasks[0].storyIntentViolations.length, 0);
+  assert.equal(
+    evaluateStoryProse(renderStoryFromIntent(draft.tasks[0].storyIntent), {
+      mode: 'approval',
+      canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE,
+    }).ok,
+    false,
+    'untouched scaffold intent must not become approval-ready prose'
+  );
+
+  const populated = populatedPlan(canonical);
+  const workedExample = canonical.match(/````markdown\n([\s\S]*?)\n````/u)?.[1];
+  assert.ok(workedExample, 'scaffold must contain a fenced worked example');
+  const copiedExample = classifyDecomposition({ planText: workedExample });
+  assert.equal(copiedExample.taskCount, 1);
+  assert.equal(copiedExample.verificationGroupCount, 1);
+
+  const planObservation = {
+    key: 'Source-plan',
+    path: 'docs/plan.md',
+    text: populated,
+    contentSha256: createHash('sha256').update(populated).digest('hex'),
+    tasks: extractPlanTasks(populated),
+  };
+  const rootResolution = resolveStoryIntent({
+    body: '## Plan Metadata\n- **Source-plan**: docs/plan.md',
+    plan: planObservation,
+  });
+  assert.equal(rootResolution.ok, true, JSON.stringify(rootResolution));
+  assert.equal(rootResolution.source, 'linked-plan');
+
+  const ready = classifyDecomposition({ planText: populated });
+  assert.equal(ready.taskCount, 1, 'fenced worked example cannot become a live task');
+  assert.equal(ready.verificationGroupCount, 1);
+  assert.equal(ready.tasks[0].storyIntentViolations.length, 0);
+  assert.equal(
+    evaluateStoryProse(renderStoryFromIntent(ready.tasks[0].storyIntent), {
+      mode: 'approval',
+      canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE,
+    }).ok,
+    true
+  );
+}
 
 // ---- plan-file.mjs unit coverage -------------------------------------------
 

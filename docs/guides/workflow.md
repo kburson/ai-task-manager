@@ -26,6 +26,12 @@ provider. Every later affected boundary reloads the current records and
 revalidates repository, issue, scope identity, expiry, revision, authority, and
 live evidence.
 
+When Review records a semantic-review waiver, delivery and close consume the
+same typed `waived` authority for the exact accepted Test SHA. Both boundaries
+reload the current exception record; neither synthesizes an Agent Review Passed
+claim, and a revoked, revised, malformed, ambiguous, or wrong-head authority is
+refused.
+
 Create, inspect, revise, or revoke records only through the supported command:
 
 ```bash
@@ -749,11 +755,13 @@ Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the ed
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
 
+The source-grounded story lifecycle and Plan-stage quality review are defined once in `skill/shared/rules/user-story-quality.md`.
+
 - **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope and Acceptance Criteria remain Refine placeholders, and no User Story section is emitted; Story Origin records the resolved kind immediately, and Plan Metadata stays empty until planning. **Do not** set Size or Estimate on a stub — those are planning fields, not creation-time provenance.
-- **`solo`** — full ceremony up front. Requires `--user-story-file`, `--scope-file`, `--ac-file`, and `--story-origin-file`; `--plan-metadata-file` is optional when planning output is already known.
-- **`defect`** — governed local bug-story intake. Invoke `npx aitm create-issue --shape defect` with the same required User Story, Scope, Acceptance Criteria, and Story Origin fragments as `solo`; diagnostic reproduction, root-cause, fix-direction, and out-of-scope fragments are optional. The wrapper adds the `bug` label and canonical `🐞 [BUG]` prefix idempotently. A GitHub web form submission carrying the `bug` label is normalized through this same renderer when its body is not already canonical.
-- **`epic`** — a parent/XL story; same User Story and Story Origin requirements as solo.
-- **`sub-issue`** — a child story; same User Story and Story Origin requirements plus `--parent <N>`, recorded inside Story Origin.
+- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--story-origin-file`; `--user-story-file` is optional before Plan approval, and `--plan-metadata-file` is optional when planning output is not yet known.
+- **`defect`** — governed local bug-story intake. Invoke `npx aitm create-issue --shape defect` with the same required Scope, Acceptance Criteria, and Story Origin fragments as `solo`; early User Story input and diagnostic reproduction, root-cause, fix-direction, and out-of-scope fragments are optional. The wrapper adds the `bug` label and canonical `🐞 [BUG]` prefix idempotently. A GitHub web form submission carrying the `bug` label is normalized through this same renderer when its body is not already canonical.
+- **`epic`** — a parent/XL story with the same required Scope, Acceptance Criteria, and Story Origin fragments as `solo`; early User Story input is optional before Plan approval.
+- **`sub-issue`** — a child story with the same required Scope, Acceptance Criteria, and Story Origin fragments as `solo`, plus `--parent <N>` recorded inside Story Origin; early User Story input is optional before Plan approval.
 
 A stub deliberately fails the Refine→Ready for Planning gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
 
@@ -1345,7 +1353,7 @@ Ignored paths in every tool include `node_modules/`, `.tmp/`, `.worktrees/`, `.c
 
 Markdownlint also excludes canonical immutable reviewer evidence matching
 `docs/superpowers/reviews/**/*-reviewer-*-review.md` and terminal
-`ai-peer-review` response envelopes matching
+historical external-review response envelopes matching
 `docs/superpowers/reviews/**/*-review-*-author-response-*.md` or
 `docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md`. These boundaries
 preserve externally authored bytes and protocol-sealed response digests without a

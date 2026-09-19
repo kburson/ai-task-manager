@@ -21,8 +21,11 @@ export const codexAdapter = {
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
   installRecipe: {
     writer: 'codex-hooks',
+    skillContract: 'codex-skill',
     hookTarget: '.codex/hooks.json',
+    hookContract: 'codex-hooks',
     commandTarget: null,
+    commandContract: null,
   },
   externalActions: {
     'github.merge-pull-request': {

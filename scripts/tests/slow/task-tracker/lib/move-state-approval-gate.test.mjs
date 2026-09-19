@@ -23,6 +23,8 @@ import {
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
+import { buildPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -73,6 +75,15 @@ function deepDiveAdequate() {
 }
 
 const PROJECT_ID = 'PVT_x';
+function currentApprovedBody() {
+  const body =
+    '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n## Acceptance Criteria\n- [ ] AC\n\n' +
+    deepDiveAdequate().replace(
+      '## Deep-Dive Analysis (2026-05-09)\n',
+      '## Deep-Dive Analysis (2026-05-09)\n### Story Intent\n- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** registry checks can fail\n- **Value or failure prevented:** consumers receive complete releases\n### Analysis\n'
+    );
+  return `${body}\n${buildPlanApprovedMarker('2026-05-11T00:00:00.000Z', resolveStoryIntentSource({ body, projectDir: process.cwd() }).binding)}\n`;
+}
 
 function makeSandbox(body, { currentState = 'Analyze' } = {}) {
   const sandbox = mkdtempProjectIsolated('tt-approval-gate-');
@@ -282,7 +293,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 2. Body WITH approval marker -> success
 {
-  const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
+  const body = currentApprovedBody();
   const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
@@ -366,7 +377,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 7. Both markers present + adequate section -> success
 {
-  const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
+  const body = currentApprovedBody();
   const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);

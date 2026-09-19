@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import { selectAffectedTests } from '../../../task-tracker/lib/test-impact-selector.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
-const occupancyPath = path.join(repoRoot, 'scripts/task-tracker/lib/occupancy.mjs');
 const archiveManifest = JSON.parse(
   readFileSync(
     path.join(repoRoot, 'scripts/tests/fixtures/legacy-review-archive-sha256.json'),
@@ -28,39 +27,11 @@ test('the completed migration leaves every pre-migration archive byte-identical'
   }
 });
 
-test('AITM caches package status only as a non-authoritative occupancy observation', async () => {
-  const { cachePeerReviewStatus } = await import(occupancyPath);
-  const cache = new Map();
-  const observation = cachePeerReviewStatus({
-    workspace: '/worktree/.scratch/peer-review/review-1546',
-    cache,
-    api: {
-      statusReview: () => ({
-        review_id: 'review-1546',
-        state: 'author-revision',
-        paths: { workspace: '/worktree/.scratch/peer-review/review-1546' },
-      }),
-    },
-  });
-
-  assert.deepEqual(observation, {
-    reviewId: 'review-1546',
-    state: 'author-revision',
-    worktree: '/worktree/.scratch/peer-review/review-1546',
-    authoritative: false,
-  });
-  assert.equal(cache.get(observation.worktree), observation);
-  assert.ok(Object.isFrozen(observation));
-});
-
-test('test-impact authority selects terminal package and migration coverage', () => {
-  for (const changedPath of [
-    'scripts/task-tracker/lib/peer-review-adapter.mjs',
-    'scripts/task-tracker/lib/occupancy.mjs',
-  ]) {
+test('test-impact authority selects occupancy and extraction coverage', () => {
+  for (const changedPath of ['scripts/task-tracker/lib/occupancy.mjs']) {
     const selected = selectAffectedTests({ projectDir: repoRoot, changedPaths: [changedPath] });
     for (const expected of [
-      'scripts/tests/integration/review/peer-review-package-parity.test.mjs',
+      'scripts/tests/unit/task-tracker/lib/occupancy.test.mjs',
       'scripts/tests/integration/review/peer-review-migration-guard.test.mjs',
       'scripts/tests/integration/review/peer-review-decommission.test.mjs',
     ]) {

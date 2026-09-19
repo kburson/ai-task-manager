@@ -1,5 +1,5 @@
-// @story #1052
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+// @story #1052 #1710 #1712
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -18,10 +18,24 @@ import {
   runSplitPlan,
 } from '../../../../task-tracker/verbs/split-plan.mjs';
 import { parseVerificationCommands } from '../../../../task-tracker/lib/verification-commands.mjs';
+import { extractPlanTasks } from '../../../../task-tracker/lib/decomposition-policy.mjs';
+import { parseStoryIntent } from '../../../../task-tracker/lib/user-story-quality.mjs';
 
 const PLAN_PATH = 'docs/superpowers/plans/example.md';
 const SPEC_PATH = 'docs/superpowers/specs/example-design.md';
 const pexec = promisify(execFile);
+const INTENT = [
+  '#### Story Intent',
+  '- **Beneficiary:** release operator',
+  '- **Capability:** stop partial publication',
+  '- **Need:** registry checks can fail',
+  '- **Value or failure prevented:** consumers receive complete releases',
+  '#### Scope',
+].join('\n');
+const SECOND_INTENT = INTENT.replace('release operator', 'security auditor')
+  .replace('stop partial publication', 'identify unauthorized changes')
+  .replace('registry checks can fail', 'incident evidence is scattered')
+  .replace('consumers receive complete releases', 'investigations can prevent recurrence');
 
 function input(overrides = {}) {
   return {
@@ -32,11 +46,13 @@ function input(overrides = {}) {
     governingSpec: SPEC_PATH,
     planText: [
       '### Task 1: Classifier',
+      INTENT,
       'Build only the classification policy.',
       'Run: `node --test classifier.test.mjs`',
       'Run: `node --test classifier.test.mjs`',
       '',
       '### Milestone 2: CLI',
+      SECOND_INTENT,
       'Expose the split workflow.',
       '**Verification Commands:**',
       '```sh',
@@ -52,8 +68,16 @@ test('builds one deterministic child proposal per numbered task', () => {
   const proposals = buildSplitProposals(input());
   assert.equal(proposals.length, 2);
   assert.equal(proposals[0].title, 'Classifier');
-  assert.match(proposals[0].userStory, /^As a governed delivery agent$/m);
-  assert.match(proposals[0].userStory, /Task 1: Classifier/);
+  assert.equal(
+    proposals[0].userStory,
+    'As a release operator\nI want to stop partial publication because registry checks can fail\nSo that consumers receive complete releases'
+  );
+  assert.equal(
+    proposals[1].userStory,
+    'As a security auditor\nI want to identify unauthorized changes because incident evidence is scattered\nSo that investigations can prevent recurrence'
+  );
+  assert.notEqual(proposals[0].userStory, proposals[1].userStory);
+  assert.doesNotMatch(proposals[0].scope, /^#### Story Intent$/m);
   assert.deepEqual(proposals[0].verificationCommands, ['node --test classifier.test.mjs']);
   assert.match(proposals[0].planMetadata, /\*\*Parent-epic\*\*: #1048/);
   assert.match(proposals[0].planMetadata, /\*\*Nested-epic\*\*: #1052/);
@@ -90,12 +114,23 @@ test('records a root source as both parent and nested epic', () => {
 });
 
 test('refuses duplicate numbers, empty titles, and missing verifiers', () => {
-  const result = validateSplitTasks([
-    { number: 1, title: 'First', heading: 'Task 1: First', commands: ['node a.mjs'] },
-    { number: 1, title: 'Duplicate', heading: 'Task 1: Duplicate', commands: ['node b.mjs'] },
-    { number: 2, title: '  ', heading: 'Task 2:', commands: ['node c.mjs'] },
-    { number: 3, title: 'No verifier', heading: 'Task 3: No verifier', commands: [] },
-  ]);
+  const result = validateSplitTasks(
+    [
+      { number: 1, title: 'First', heading: 'Task 1: First', commands: ['node a.mjs'] },
+      { number: 1, title: 'Duplicate', heading: 'Task 1: Duplicate', commands: ['node b.mjs'] },
+      { number: 2, title: '  ', heading: 'Task 2:', commands: ['node c.mjs'] },
+      { number: 3, title: 'No verifier', heading: 'Task 3: No verifier', commands: [] },
+    ].map((task) => ({
+      ...task,
+      storyIntent: {
+        beneficiary: 'release operator',
+        capability: 'stop partial publication',
+        need: 'registry checks can fail',
+        value: 'consumers receive complete releases',
+      },
+      storyIntentViolations: [],
+    }))
+  );
   assert.equal(result.ok, false);
   assert.deepEqual(result.errors, [
     'duplicate task number: 1',
@@ -163,6 +198,34 @@ test('sanctioned dry-run body preserves exact task verifiers behind AC citations
   }
 });
 
+test('sanctioned creator still refuses explicitly supplied administrative prose', async () => {
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-refusal-test-'));
+  try {
+    const [proposal] = buildSplitProposals(input());
+    proposal.userStory =
+      'As a governed delivery agent\nI want to deliver Task 1 from the pinned source plan\nSo that issue #1052 advances through traceable execution';
+    const paths = await writeProposalFragments({ proposal, scratchDir });
+    await assert.rejects(
+      pexec(
+        process.execPath,
+        [path.join(process.cwd(), 'bin/aitm.mjs'), ...paths.creatorArgs, '--dry-run'],
+        { cwd: process.cwd(), maxBuffer: 10 * 1024 * 1024 }
+      ),
+      (error) => {
+        assert.equal(error.code, 2);
+        assert.match(error.stderr, /--user-story-file story-administrative-beneficiary:/);
+        assert.match(error.stderr, /story-task-as-capability:/);
+        assert.match(error.stderr, /story-workflow-progress-value:/);
+        assert.match(error.stderr, /story-traceability-only-value:/);
+        assert.equal(error.stdout, '');
+        return true;
+      }
+    );
+  } finally {
+    rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
 function orchestrationInput(overrides = {}) {
   const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-run-test-'));
   return {
@@ -191,6 +254,112 @@ function orchestrationInput(overrides = {}) {
     cleanup: () => rmSync(scratchDir, { recursive: true, force: true }),
   };
 }
+
+test('historical tasks remain readable but cannot produce split proposals', () => {
+  const planText = '### Task 1: Historical\nRun: `node check.mjs`';
+  assert.equal(extractPlanTasks(planText).length, 1);
+  assert.throws(
+    () => buildSplitProposals(input({ planText })),
+    /split-task-story-intent-missing.*Task 1: Historical.*line 1/
+  );
+});
+
+test('aggregates rendered quality and malformed intent across all tasks', () => {
+  const planText = input()
+    .planText.replace('release operator', 'governed delivery agent')
+    .replace(
+      '- **Need:** incident evidence is scattered',
+      '- **Unknown:** incident evidence is scattered'
+    );
+  assert.throws(
+    () => buildSplitProposals(input({ planText })),
+    (error) => {
+      assert.match(error.message, /story-administrative-beneficiary/);
+      assert.match(error.message, /story-intent-invalid/);
+      assert.match(error.message, /Task 1: Classifier/);
+      assert.match(error.message, /Milestone 2: CLI/);
+      assert.equal(error.violations.length, 2);
+      return true;
+    }
+  );
+});
+
+test('bad final task causes zero fragment, preflight, and create calls', async () => {
+  const malformed = [
+    '',
+    SECOND_INTENT.replace('- **Need:** incident evidence is scattered\n', ''),
+    SECOND_INTENT.replace('#### Scope', '- **Need:** duplicate\n#### Scope'),
+    SECOND_INTENT.replace('**Need:**', '**Unknown:**'),
+    SECOND_INTENT.replace('#### Scope', '  continuation\n#### Scope'),
+    SECOND_INTENT.replace('#### Scope', '#### Story Intent\n#### Scope'),
+    '```markdown\n' + SECOND_INTENT + '\n```',
+    '<!--\n' + SECOND_INTENT + '\n-->',
+    SECOND_INTENT.replace('#### Story Intent', '#### `Story Intent`'),
+    SECOND_INTENT.replace('security auditor', 'governed delivery agent'),
+  ];
+  for (const intent of malformed) {
+    const args = orchestrationInput({ mode: 'confirm' });
+    const calls = { fragments: 0, preflight: 0, create: 0 };
+    args.deps.readPlanAtCommit = async () => input().planText.replace(SECOND_INTENT, intent);
+    args.deps.writeProposalFragments = async () => {
+      calls.fragments += 1;
+      throw new Error('unexpected fragment write');
+    };
+    args.deps.runCreator = async (argv) => {
+      calls[argv.includes('--dry-run') ? 'preflight' : 'create'] += 1;
+      return { exitCode: 0, stdout: 'rendered', stderr: '' };
+    };
+    try {
+      await assert.rejects(
+        () => runSplitPlan(args),
+        /(?:story-intent|story-administrative-beneficiary)/
+      );
+      assert.deepEqual(calls, { fragments: 0, preflight: 0, create: 0 });
+      assert.deepEqual(readdirSync(args.deps.scratchDir), []);
+    } finally {
+      args.cleanup();
+    }
+  }
+});
+
+test('production scripts contain no generic split-story renderer phrases', () => {
+  const root = path.resolve('scripts');
+  for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = path.join(entry.parentPath, entry.name);
+    if (path.relative(root, file).startsWith(`tests${path.sep}`)) continue;
+    assert.doesNotMatch(
+      readFileSync(file, 'utf8'),
+      /As a governed delivery agent|from the pinned source plan|advances through traceable execution/,
+      file
+    );
+  }
+});
+
+test('accepted plan previews six distinct stories with exact normalized selectors', () => {
+  const planPath = 'docs/superpowers/plans/2026-09-18-1703-user-story-value-quality.md';
+  const planText = readFileSync(planPath, 'utf8');
+  const tasks = extractPlanTasks(planText);
+  assert.equal(tasks.length, 6);
+  assert.ok(tasks.every((task) => task.storyIntent && task.storyIntentViolations.length === 0));
+  assert.equal(
+    parseStoryIntent(planText, {
+      headingLevel: 2,
+      endLine: planText
+        .split('\n')
+        .findIndex((line) => line === '## Execution and Review Boundaries'),
+    }).ok,
+    true
+  );
+  const proposals = buildSplitProposals(input({ planPath, planText, sourceIssue: 1703 }));
+  assert.equal(new Set(proposals.map((proposal) => proposal.userStory)).size, 6);
+  for (let index = 0; index < 6; index += 1) {
+    assert.ok(
+      proposals[index].planMetadata.includes(`- **Source-plan-section**: ${tasks[index].heading}`)
+    );
+    assert.doesNotMatch(proposals[index].scope, /^#### Story Intent$/m);
+  }
+});
 
 test('dry-run preflights every child and performs no live create', async () => {
   const calls = [];
@@ -243,8 +412,10 @@ test('default plan reader ignores uncommitted working-tree plan changes', async 
   mkdirSync(path.dirname(planFile), { recursive: true });
   const committedPlan = [
     '### Task 1: Committed classifier',
+    INTENT,
     'Run: `node --test classifier.test.mjs`',
     '### Task 2: Committed CLI',
+    SECOND_INTENT,
     'Run: `node --test cli.test.mjs`',
   ].join('\n');
   writeFileSync(planFile, committedPlan, 'utf8');

@@ -1,10 +1,30 @@
-// @story #501
+// @story #501 #1694
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { syncTemplates } from '../../../../sync-templates.mjs';
+
+// @story #1710
+test('default manifest creates and refreshes defect and plan templates', () => {
+  const { root, srcDir, destDir } = fixture();
+  try {
+    cpSync(new URL('../../../../../templates/', import.meta.url), srcDir, { recursive: true });
+    for (const name of ['defect-body.md', 'plan-file.md'])
+      writeFileSync(join(srcDir, name), `canonical ${name}\n`);
+    syncTemplates({ srcDir, destDir });
+    for (const name of ['defect-body.md', 'plan-file.md']) {
+      assert.equal(readFileSync(join(destDir, name), 'utf8'), `canonical ${name}\n`);
+      writeFileSync(join(destDir, name), 'stale consumer bytes\n');
+    }
+    syncTemplates({ srcDir, destDir });
+    for (const name of ['defect-body.md', 'plan-file.md'])
+      assert.equal(readFileSync(join(destDir, name), 'utf8'), `canonical ${name}\n`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function fixture() {
   const root = mkdtempSync(join(projectScratchDir('test'), 'aitm-sync-'));
@@ -73,6 +93,31 @@ test('syncTemplates: creates the mirror file when absent', () => {
 
     assert.equal(readFileSync(join(destDir, 'definition-of-done.md'), 'utf8'), 'dod body\n');
     assert.deepEqual(results, [{ name: 'definition-of-done.md', status: 'synced' }]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('syncTemplates: stamps the pickup directive when a package version is supplied', () => {
+  const { root, srcDir, destDir } = fixture();
+  try {
+    writeFileSync(
+      join(srcDir, 'pickup-directive.md'),
+      '<!-- aitm-skill-version: 0.0.0 -->\n# Pickup\n',
+      'utf8'
+    );
+
+    syncTemplates({
+      srcDir,
+      destDir,
+      files: ['pickup-directive.md'],
+      version: '1.2.3',
+    });
+
+    assert.equal(
+      readFileSync(join(destDir, 'pickup-directive.md'), 'utf8'),
+      '<!-- aitm-skill-version: 1.2.3 -->\n# Pickup\n'
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -13,6 +13,8 @@ import { runPlanApprove } from '../../../../task-tracker/verbs/plan-approve.mjs'
 
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
+const STORY_EVIDENCE =
+  '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n## Deep-Dive Analysis\n### Story Intent\n- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** registry checks can fail\n- **Value or failure prevented:** consumers receive complete releases\n\n';
 
 const children = [
   {
@@ -132,6 +134,7 @@ test('epic Plan exit requires a durable graph matching live children and trunk',
 
 test('plan approval stamps trunk and complete epic orchestration provenance', async () => {
   let body = [
+    STORY_EVIDENCE,
     '## Acceptance Criteria',
     '',
     '- [x] planned',
@@ -168,6 +171,7 @@ test('plan approval stamps trunk and complete epic orchestration provenance', as
 
 test('plan approval discovers children for an implicit epic before stamping approval', async () => {
   let body = [
+    STORY_EVIDENCE,
     '## Acceptance Criteria',
     '',
     '- [x] planned',
@@ -202,7 +206,7 @@ test('plan approval discovers children for an implicit epic before stamping appr
 });
 
 test('legacy Plan epic without kind or R4P markers still freezes children and trunk', async () => {
-  let body = ['## Acceptance Criteria', '', '- [x] planned'].join('\n');
+  let body = [STORY_EVIDENCE, '## Acceptance Criteria', '', '- [x] planned'].join('\n');
   const result = await runPlanApprove({
     issueNumber: 1209,
     cfg: { repo: 'o/r', projectId: 'PVT_1', trunkRef: 'origin/trunk' },

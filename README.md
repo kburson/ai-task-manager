@@ -46,9 +46,27 @@ npx ai-task-manager init
 
 # 4. Commit the generated config — install/init outputs are project-portable,
 #    so ephemeral clones (cloud workstations, fresh worktrees) inherit them
-git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
+git add .gitignore .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
+
+The install step is maintainer-owned and intent-changing. Run it with the
+providers and options the repository intends to support, review the generated
+diff, and commit `.ai-task-manager/install-manifest.json` together with the
+portable project outputs.
+
+Fresh checkouts and cloud CI do not guess those options or rerun the installer.
+They restore dependencies and verify the committed integration read-only:
+
+```bash
+npm ci && npx aitm doctor && npm test
+```
+
+Doctor never repairs the checkout. A missing or stale manifest means a
+maintainer must explicitly rerun `npx ai-task-manager install` with the intended
+options, review the diff, and commit the refreshed manifest and portable
+outputs. Repository `AGENTS.md` is portable when selected during install;
+artifacts under `~/.codex` are optional host-local state.
 
 ### The Public API You Actually Need
 
@@ -178,6 +196,32 @@ The installer writes stable skill stubs by default:
 - Shared templates and runtime state: `.ai-task-manager/`
 
 Grok projects must be trusted before project hooks run. See the [Grok provider guide](docs/guides/grok-provider.md) for hook trust, session identity, and transcript behavior.
+
+## Uninstall From a Project
+
+Remove project integrations before uninstalling the npm package:
+
+```bash
+npx ai-task-manager uninstall --dry-run
+npx ai-task-manager uninstall
+npm uninstall -D @kburson/ai-task-manager
+```
+
+The default cleanup removes AITM-owned skill stubs or symlinks, hook entries,
+package-specific Claude permissions, the generated Claude task command, and the
+project-local Codex bootstrap block. It preserves unrelated settings plus durable
+`.ai-task-manager/` configuration, memory, templates, and GitHub issue templates.
+Modified generated files are left in place and stop the cleanup before any file
+is changed.
+
+Use `--agent claude|codex|grok|all` to limit provider cleanup. To also delete
+durable AITM data, transient `.tmp/aitm/` state, and unmodified AITM issue
+templates, preview and explicitly confirm purge mode:
+
+```bash
+npx ai-task-manager uninstall --purge --dry-run
+npx ai-task-manager uninstall --purge --yes
+```
 
 ### Optional Codex Superpowers Bootstrap
 
@@ -496,9 +540,9 @@ The fleet command shows all active tasks across parallel worktrees:
 
 Binding also claims local authoritative occupancy: one issue per session and
 one editing provider per worktree. Pause retains the claim; successful stop or
-close releases it. There is no TTL or steal operation. Co-review is the only
-same-worktree exception, and its reviewer stays unbound with write access only
-to the exact session-bound pending review artifact.
+close releases it. There is no TTL or steal operation. Parallel editing sessions
+use separate seeded worktrees; external artifact review does not grant AITM
+task or worktree occupancy.
 
 ### Orchestration Directive (add to `CLAUDE.md`)
 
@@ -645,8 +689,8 @@ Default to `/compact`. It summarizes your session, keeps hooks active, and costs
 AITM stores authoritative local occupancy at the main worktree. A second session
 cannot bind the same issue, and a second editing provider cannot share the
 physical worktree. Pause holds occupancy; stop and close release it. Artifact
-review uses the installed `peer-review` package through its public CLI or API;
-review participants do not bind AITM and use separate seeded worktrees.
+review is independent of AITM and does not grant task occupancy. Use separate
+seeded worktrees for parallel editing sessions.
 
 This is machine-local authority. [#1048](https://github.com/kburson/ai-task-manager/issues/1048)
 continues to track the separate cross-clone/GitHub lease gap; local occupancy

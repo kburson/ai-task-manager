@@ -59,12 +59,9 @@ AITM enforces one editing provider per worktree with local authoritative occupan
 
 Grok's native Bash, edit, and agent hooks share the same AITM guards as Claude and Codex after envelope normalization. A missing bridge or named handler denies the operation because policy could not run; a crash inside an existing shared handler preserves the package's documented diagnostic fail-open behavior.
 
-Artifact review uses the installed `peer-review` package through its public CLI
-or documented public API. Peer-review participants do not bind AITM tasks and
-use separate seeded worktrees. The package validates immutable SHA-bound
-authority, artifact commits, digests, role separation, and handoff evidence.
-AITM may cache package status only as a non-authoritative observation; the cache
-does not grant or remove task or worktree occupancy.
+Artifact review is independent of AITM. Follow the chosen review process and
+use separate seeded worktrees for parallel editing sessions. External review
+activity does not grant or remove AITM task or worktree occupancy.
 
 Session routing, continuation, and automated handoffs are operational actions,
 not human semantic approval; they never create an approval marker.

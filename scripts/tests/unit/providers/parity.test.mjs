@@ -56,8 +56,11 @@ const EXPECTED_CLAUDE = Object.freeze({
   skillAdapterPath: 'skill/adapters/claude/SKILL.md',
   installRecipe: {
     writer: 'claude-settings',
+    skillContract: 'claude-skill',
     hookTarget: '.claude/settings.json',
+    hookContract: 'claude-settings',
     commandTarget: '.claude/commands/task.md',
+    commandContract: 'claude-command',
   },
   externalActions: {
     'github.merge-pull-request': {
@@ -83,8 +86,11 @@ const EXPECTED_CODEX = Object.freeze({
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
   installRecipe: {
     writer: 'codex-hooks',
+    skillContract: 'codex-skill',
     hookTarget: '.codex/hooks.json',
+    hookContract: 'codex-hooks',
     commandTarget: null,
+    commandContract: null,
   },
   externalActions: {
     'github.merge-pull-request': {
@@ -190,6 +196,176 @@ test('#1381: shared router discovers the provider-neutral incident-ledger rule',
   assert.match(rule, /does not approve the ledger or close anything/i);
   assert.match(rule, /human explicitly approves those exact immutable values/i);
   assert.match(rule, /Never use either mode to create delivery intent, delivery receipt/i);
+});
+
+function activeInstructionParagraphs(markdown) {
+  const activeLines = [];
+  let fenceMarker = null;
+  let inComment = false;
+
+  for (const line of String(markdown).split('\n')) {
+    const fence = !inComment && line.match(/^[ \t]*(`{3,}|~{3,})/);
+    if (fence) {
+      const marker = fence[1][0];
+      if (fenceMarker === null) fenceMarker = marker;
+      else if (fenceMarker === marker) fenceMarker = null;
+      activeLines.push('');
+      continue;
+    }
+    if (fenceMarker !== null) {
+      activeLines.push('');
+      continue;
+    }
+
+    let remaining = line;
+    let active = '';
+    while (remaining.length > 0) {
+      if (inComment) {
+        const end = remaining.indexOf('-->');
+        if (end === -1) {
+          remaining = '';
+          break;
+        }
+        remaining = remaining.slice(end + 3);
+        inComment = false;
+        active += ' ';
+        continue;
+      }
+      const start = remaining.indexOf('<!--');
+      if (start === -1) {
+        active += remaining;
+        remaining = '';
+      } else {
+        active += `${remaining.slice(0, start)} `;
+        remaining = remaining.slice(start + 4);
+        inComment = true;
+      }
+    }
+    activeLines.push(active);
+  }
+
+  return activeLines
+    .join('\n')
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function obsoleteStoryMandates(markdown) {
+  return activeInstructionParagraphs(markdown).filter(
+    (paragraph) =>
+      /non-stub shapes require[\s\S]{0,240}?user-story\.md/i.test(paragraph) ||
+      /requires\s+`?--user-story-file/i.test(paragraph) ||
+      /same required User Story/i.test(paragraph) ||
+      /required[\s\S]{0,240}?fragments[\s\S]{0,240}?user-story\.md[\s\S]{0,120}?non-stub shapes/i.test(
+        paragraph
+      )
+  );
+}
+
+test('#1713: provider adapters route one shared story-quality contract without stale mandates', () => {
+  const router = readFileSync(path.join(REPO_ROOT, 'skill/shared/router.md'), 'utf8');
+  const rule = readFileSync(
+    path.join(REPO_ROOT, 'skill/shared/rules/user-story-quality.md'),
+    'utf8'
+  );
+  for (const question of [
+    'Stakeholder',
+    'Capability',
+    'Need',
+    'Counterfactual value',
+    'Source grounding',
+    'Sibling distinctness',
+    'Standalone readability',
+  ]) {
+    assert.match(rule, new RegExp(`^### \\d+\\. ${question}$`, 'm'), question);
+  }
+  for (const route of [
+    '/task new',
+    '/task user-story',
+    '/task plan',
+    '/task plan-approve',
+    '/task split-plan',
+  ]) {
+    assert.match(
+      router,
+      new RegExp(
+        `${route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*rules/user-story-quality\\.md`
+      ),
+      route
+    );
+  }
+  assert.match(rule, /\.ai-task-manager\/templates\/plan-file\.md/);
+  assert.match(rule, /templates\/plan-file\.md/);
+  for (const provider of ['claude', 'codex', 'grok']) {
+    const adapter = readFileSync(
+      path.join(REPO_ROOT, getProvider(provider).skillAdapterPath),
+      'utf8'
+    );
+    assert.match(adapter, /skill\/shared\/router\.md/);
+    assert.match(adapter, /rules\/user-story-quality\.md/);
+    assert.ok(adapter.includes('User Story input is optional before Plan approval.'));
+    assert.deepEqual(obsoleteStoryMandates(adapter), [], provider);
+  }
+});
+
+test('#1713: active-mandate detector rejects both historical forms even beside optional prose', () => {
+  for (const fixture of [
+    'Non-stub shapes require the ./.scratch/plan/user-story.md fragment alongside Scope.',
+    'The required ./.scratch/plan/ fragments (including user-story.md for non-stub shapes) live here.',
+    'Full ceremony up front. Requires `--user-story-file`, `--scope-file`, and `--ac-file`.',
+    'Use the same required User Story and Story Origin fragments as solo.',
+    'User Story input is optional before Plan approval.\n\nNon-stub shapes require user-story.md.',
+  ]) {
+    assert.equal(obsoleteStoryMandates(fixture).length, 1, fixture);
+  }
+  assert.equal(
+    obsoleteStoryMandates(
+      '```text\nNon-stub shapes require user-story.md.\n```\n\nUser Story input is optional before Plan approval.'
+    ).length,
+    0,
+    'quoted negative examples are not active instructions'
+  );
+});
+
+test('#1703: active-instruction scanning cannot recreate an HTML comment opener', () => {
+  const markdown = [
+    '<!<!-- hidden comment -->-->',
+    '',
+    '<!--',
+    'Non-stub shapes require user-story.md.',
+    '-->',
+    '',
+    'User Story input is optional before Plan approval.',
+  ].join('\n');
+  const paragraphs = activeInstructionParagraphs(markdown);
+  assert.equal(
+    paragraphs.some((paragraph) => paragraph.includes('<!--')),
+    false,
+    JSON.stringify(paragraphs)
+  );
+  assert.deepEqual(obsoleteStoryMandates(markdown), []);
+});
+
+test('#1713: shared and CLI authoring guidance treats intake story prose as optional', () => {
+  for (const relativePath of [
+    'skill/shared/rules/create-issue.md',
+    'skill/shared/rules/plan-mode-backlog.md',
+    'skill/shared/rules/block.md',
+    'skill/shared/rules/state-walk.md',
+    'skill/shared/rules/user-story-quality.md',
+    'docs/guides/workflow.md',
+  ]) {
+    const contents = readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+    assert.match(contents, /rules\/user-story-quality\.md/, relativePath);
+    assert.deepEqual(obsoleteStoryMandates(contents), [], relativePath);
+  }
+  const selfDoc = readFileSync(path.join(REPO_ROOT, 'scripts/lib/self-doc.mjs'), 'utf8');
+  assert.match(
+    selfDoc,
+    /--user-story-file <path>[\s\S]{0,180}Optional three-line Connextra story/i
+  );
+  assert.doesNotMatch(selfDoc, /Complete three-line Connextra story required for non-stub/i);
 });
 
 test('#1631: generated consumer stubs use scoped package paths', () => {

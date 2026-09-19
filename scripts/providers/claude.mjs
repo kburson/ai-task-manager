@@ -21,8 +21,11 @@ export const claudeAdapter = {
   skillAdapterPath: 'skill/adapters/claude/SKILL.md',
   installRecipe: {
     writer: 'claude-settings',
+    skillContract: 'claude-skill',
     hookTarget: '.claude/settings.json',
+    hookContract: 'claude-settings',
     commandTarget: '.claude/commands/task.md',
+    commandContract: 'claude-command',
   },
   externalActions: {
     'github.merge-pull-request': {
