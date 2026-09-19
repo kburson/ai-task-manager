@@ -24,6 +24,7 @@
     "output/**",
     "docs/postmortems/**",
     "docs/ai-memory/**",
+    "docs/peer-reviews/**",
     "docs/superpowers/reviews/**/*-reviewer-*-review.md",
     "docs/superpowers/reviews/**/*-review-*-author-response-*.md",
     "docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md",

@@ -10,6 +10,7 @@ package-lock.json
 docs/postmortems/
 docs/ai-memory/
 docs/superpowers/reviews/
+docs/peer-reviews/
 docs/superpowers/specs/2026-09-14-1624-workflow-exceptions-design.md
 .ai-task-manager/memory/
 .superpowers/

@@ -12,6 +12,8 @@ const IMMUTABLE_REVIEW_ARCHIVE =
   'docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md';
 const IMMUTABLE_REVIEW_SHA256 = 'dd6b5bd49b1f8f01aacb9ce0cc278b758c598b64a2d2bb74afd45d9925a19a86';
 const IMMUTABLE_REVIEW_DIRECTORY = 'docs/superpowers/reviews/';
+const PEER_REVIEW_DIRECTORY = 'docs/peer-reviews/';
+const PEER_REVIEW_GLOB = 'docs/peer-reviews/**';
 const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
   'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
@@ -88,6 +90,18 @@ assert.ok(
 assert.ok(
   prettierIgnore.includes(IMMUTABLE_REVIEW_DIRECTORY),
   'Prettier must preserve every immutable governed review archive'
+);
+assert.ok(
+  prettierIgnore.includes(PEER_REVIEW_DIRECTORY),
+  'Prettier must preserve integrity-bound peer-review collateral'
+);
+assert.ok(
+  markdownlintConfig.ignores.includes(PEER_REVIEW_GLOB),
+  'markdownlint must preserve integrity-bound peer-review collateral'
+);
+assert.ok(
+  cspell.ignorePaths.includes(PEER_REVIEW_GLOB),
+  'cspell must preserve integrity-bound peer-review collateral'
 );
 assert.ok(
   !markdownlintConfig.ignores.includes('docs/superpowers/reviews/**'),

@@ -49,6 +49,7 @@ callsite
 callsites
 cands
 capitalised
+canonicalizer
 carveout
 catchable
 chaptr
@@ -259,6 +260,7 @@ postconditions
 Pramida
 prebody
 precedented
+prevalidated
 preflighted
 preflights
 prefs
@@ -353,6 +355,7 @@ Skank
 smol
 spawnable
 speccing
+splittable
 splitcmd
 stampable
 Stampable
@@ -451,6 +454,7 @@ unticking
 unticks
 untrackable
 unvalidated
+unwaivable
 unvetted
 Unvetted
 upquote
