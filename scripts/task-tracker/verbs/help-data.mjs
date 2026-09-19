@@ -304,10 +304,22 @@ export const VERB_REFERENCE = {
   'plan-approve': {
     topic: 'board',
     summary:
-      'Record plan approval with durable human or Full-Auto provenance (stamps the `aitm-plan-approved` marker Plan→Develop needs).',
-    usage: '/task plan-approve #N',
-    exitCodes: [{ code: 3, meaning: 'issue is not in Plan' }],
-    examples: ['/task plan-approve 667'],
+      'Record Plan approval with durable human or Full-Auto provenance, or reconstruct skipped Full-Auto provenance from strict later-stage evidence.',
+    usage: '/task plan-approve #N [--repair-from-evidence]',
+    flags: [
+      {
+        flag: '--repair-from-evidence',
+        desc: 'Develop/Test/Review only: reconstruct Full-Auto approval after a revoked approval.plan exception',
+      },
+    ],
+    exitCodes: [
+      { code: 3, meaning: 'issue is not in Plan for ordinary approval' },
+      { code: 15, meaning: 'evidence-derived Full-Auto repair predicates were not satisfied' },
+    ],
+    examples: [
+      '/task plan-approve 667',
+      'TT_FULL_AUTO=1 /task plan-approve 667 --repair-from-evidence',
+    ],
   },
   'plan-estimate': {
     topic: 'board',

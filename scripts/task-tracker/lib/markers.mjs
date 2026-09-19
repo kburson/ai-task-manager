@@ -135,6 +135,7 @@ export function buildPlanApprovedMarker(
   {
     forecastRecordId = null,
     mode = null,
+    repairRecordId = null,
     trunkSha = null,
     storyDigest = null,
     storyIntentDigest = null,
@@ -150,6 +151,12 @@ export function buildPlanApprovedMarker(
     properties[attribute] = binding[key];
   }
   if (forecastRecordId !== null) properties['forecast-record-id'] = forecastRecordId;
+  if (repairRecordId !== null) {
+    if (!/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(String(repairRecordId))) {
+      throw new TypeError('buildPlanApprovedMarker: repairRecordId must be a ULID');
+    }
+    properties['repair-record-id'] = String(repairRecordId);
+  }
   if (trunkSha !== null) {
     if (!/^[0-9a-f]{40}$/i.test(String(trunkSha))) {
       throw new TypeError('buildPlanApprovedMarker: trunkSha must be a 40-character SHA');
@@ -184,6 +191,7 @@ export function parsePlanApprovedMarker(body) {
       ts: legacy[1].trim(),
       forecastRecordId: null,
       mode: PLAN_APPROVAL_MODES.UNKNOWN,
+      repairRecordId: null,
       trunkSha: null,
       storyDigest: null,
       storyIntentDigest: null,
@@ -201,6 +209,9 @@ export function parsePlanApprovedMarker(body) {
   const forecastRecordId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(props['forecast-record-id'] || '')
     ? props['forecast-record-id']
     : null;
+  const repairRecordId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(props['repair-record-id'] || '')
+    ? props['repair-record-id']
+    : null;
   const trunkSha = /^[0-9a-f]{40}$/i.test(props['trunk-sha'] || '')
     ? props['trunk-sha'].toLowerCase()
     : null;
@@ -210,7 +221,7 @@ export function parsePlanApprovedMarker(body) {
       validStoryBindingValue(key, props[attribute]) ? props[attribute] : null,
     ])
   );
-  return { ts: props.ts || '', forecastRecordId, mode, trunkSha, ...binding };
+  return { ts: props.ts || '', forecastRecordId, mode, repairRecordId, trunkSha, ...binding };
 }
 
 export function readPlanApprovedMode(body) {
