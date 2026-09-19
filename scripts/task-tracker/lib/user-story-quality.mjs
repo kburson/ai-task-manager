@@ -20,7 +20,7 @@ const normalizedPhrase = (value) =>
 
 // #503 intentionally scans raw source, including headings inside examples.
 export function firstH2Heading(body) {
-  const match = String(body ?? '').match(/^## (.+?)\s*$/m);
+  const match = String(body ?? '').match(/^##\s+(\S.*)$/m);
   return match ? match[1].trim() : null;
 }
 
@@ -328,6 +328,8 @@ export function selectStoryIntentTask({ body = '', tasks = [], activePlanKey = n
   const active = planReference(fields);
   if (active && fields.filter((field) => field.key === active.key.toLowerCase()).length !== 1)
     return refuse('Linked plan metadata has duplicate active references');
+  if (fields.filter((field) => field.key === 'source-plan').length > 1)
+    return refuse('Linked plan metadata has duplicate Source-plan references');
   const source = fields.find(
     (field) => field.key === 'source-plan' && substantive(withoutCommit(field.value))
   );

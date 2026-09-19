@@ -173,6 +173,20 @@ test('all body validation surfaces retain raw first-H2 semantics around fenced d
   assert.ok(!verifyIssueBody(body).missing.includes('## User Story must be the first H2 section'));
 });
 
+test('the evaluator recognizes a tab-separated raw H2 before the User Story', () => {
+  const result = evaluateStoryBody(`##\tScope\ntext\n## User Story\n${good}`, approval);
+  assert.ok(codes(result).includes('story-section-position-invalid'));
+});
+
+test('the issue-body verifier retains tab-separated raw H2 position enforcement', () => {
+  const result = verifyIssueBody(`##\tScope\ntext\n## User Story\n${good}`);
+  assert.ok(result.missing.includes('## User Story must be the first H2 section'));
+});
+
+test('the historical guard shares tab-separated raw H2 position enforcement', () => {
+  assert.equal(validateUserStory(`##\tScope\ntext\n## User Story\n${good}`).ok, false);
+});
+
 test('anchored phrase families accept meaningful delivery, agent and traceability roles', () => {
   for (const actor of ['delivery operator', 'agent platform operator', 'security auditor']) {
     const prose = good
@@ -507,6 +521,31 @@ test('duplicate linked references cannot disagree between decomposition and inte
     false
   );
 });
+
+for (const sourcePaths of [
+  ['docs/plan.md', 'docs/conflict.md'],
+  ['docs/conflict.md', 'docs/plan.md'],
+]) {
+  const body = metadata(
+    '### Task 1: Release safely',
+    '- **Implementation-plan**: docs/plan.md\n' +
+      sourcePaths.map((path) => `- **Source-plan**: ${path}`).join('\n')
+  );
+  test(`intent authority rejects conflicting duplicate Source-plan references: ${sourcePaths.join(', ')}`, () => {
+    const result = resolveStoryIntent({ body, plan: observation(planText, 'Implementation-plan') });
+    assert.equal(result.ok, false);
+    assert.equal(result.intent, null);
+    assert.equal(result.digest, null);
+  });
+  test(`decomposition rejects conflicting duplicate Source-plan references: ${sourcePaths.join(', ')}`, () => {
+    const result = selectDecompositionPlanSection({
+      body,
+      planText,
+      activePlanKey: 'Implementation-plan',
+    });
+    assert.equal(result.ok, false);
+  });
+}
 
 test('multiline inline code cannot hide a nonempty continuation after the four fields', () => {
   assert.equal(parseStoryIntent(block() + '\n`continued\nvalue`', { headingLevel: 2 }).ok, false);
