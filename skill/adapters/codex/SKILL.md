@@ -56,8 +56,8 @@ restate their prose here. Each rule file carries an `<!-- aitm-rule-id: … -->`
 anchor so a reviewer can name the single authoritative source:
 
 - **Creating issues** (`issue-create`) → `rules/create-issue.md`.
-  User Story input is optional before Plan approval. The shape menu
-  (`stub|epic|sub-issue|solo|defect`), required Scope/Acceptance Criteria/Story
+  User Story input is optional before Plan approval. The shape menu (`stub|epic|sub-issue|solo|defect`),
+  required Scope/Acceptance Criteria/Story
   Origin fragments, optional early `user-story.md`, and deterministic
   refusal contracts, binding each Acceptance Criterion to an
   `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification
