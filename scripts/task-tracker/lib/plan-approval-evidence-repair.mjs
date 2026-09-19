@@ -159,7 +159,9 @@ export function evaluatePlanApprovalRepairEvidence({
   } catch {
     blockers.push('scope-evidence-invalid');
   }
-  if (!scopeIdentity) return { blockers, revokedRecordId: null };
+  if (!scopeIdentity) {
+    return { blockers, approvalPlanRecordId: null, revokedRecordId: null };
+  }
 
   let exception;
   try {
@@ -174,18 +176,34 @@ export function evaluatePlanApprovalRepairEvidence({
     exception = { status: 'invalid', head: null };
   }
   if (exception.status !== 'revoked') blockers.push(`workflow-exception-${exception.status}`);
+  const resolvedRecordIds = new Set((exception.history || []).map((item) => item.recordId));
+  const approvalPlanRecord = Array.isArray(records)
+    ? (records
+        .filter(
+          (record) =>
+            resolvedRecordIds.has(record?.envelope?.recordId) &&
+            record.envelope.payload?.requirementIds?.includes('approval.plan')
+        )
+        .sort(
+          (left, right) => right.envelope.payload.revision - left.envelope.payload.revision
+        )[0] ?? null)
+    : null;
+  if (!approvalPlanRecord) blockers.push('approval-plan-waiver-history-missing');
+
   let historicalScopeBody = null;
-  if (exception.head?.scopeIdentity) {
-    for (const candidate of [body, ...(issueBodyHistory || [])]) {
+  const approvalPlanScopeIdentity = approvalPlanRecord?.envelope?.payload?.scopeIdentity ?? null;
+  if (approvalPlanScopeIdentity) {
+    for (const candidate of [...(issueBodyHistory || []), body]) {
+      const candidateBody = typeof candidate === 'string' ? candidate : candidate?.body;
       try {
         if (
           computeScopeIdentity({
             repository: repo,
             issue: Number(issueNumber),
-            body: candidate,
-          }) === exception.head.scopeIdentity
+            body: candidateBody,
+          }) === approvalPlanScopeIdentity
         ) {
-          historicalScopeBody = candidate;
+          historicalScopeBody = candidateBody;
           break;
         }
       } catch {
@@ -214,27 +232,14 @@ export function evaluatePlanApprovalRepairEvidence({
       blockers.push('workflow-exception-semantic-scope-invalid');
     }
   }
-  const coveredPlanApproval = Array.isArray(records)
-    ? records.some(
-        (record) =>
-          record?.envelope?.recordType === 'workflow-exception' &&
-          record.envelope.payload?.requirementIds?.includes('approval.plan')
-      )
-    : false;
-  if (!coveredPlanApproval) blockers.push('approval-plan-waiver-history-missing');
   return {
     blockers,
+    approvalPlanRecordId: approvalPlanRecord?.envelope?.recordId ?? null,
     revokedRecordId: exception.status === 'revoked' ? (exception.head?.recordId ?? null) : null,
   };
 }
 
-export async function collectPlanApprovalRepairEvidence({
-  body,
-  issueNumber,
-  repo,
-  now,
-  deps = {},
-}) {
+export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, deps = {} }) {
   const listEvidenceComments =
     deps.listEvidenceComments || deps.listComments || defaultListEvidenceComments;
   const listWorkflowRecords =
@@ -249,14 +254,5 @@ export async function collectPlanApprovalRepairEvidence({
     comments,
     records,
     issueBodyHistory,
-    evaluation: evaluatePlanApprovalRepairEvidence({
-      body,
-      comments,
-      records,
-      issueBodyHistory,
-      issueNumber,
-      repo,
-      now,
-    }),
   };
 }

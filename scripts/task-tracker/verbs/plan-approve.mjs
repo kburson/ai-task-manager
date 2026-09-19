@@ -149,28 +149,69 @@ export async function runPlanApprove({
         blockers: ['full-auto-authority-missing'],
       };
     }
-    const existingMode = readPlanApprovedMode(body);
-    if (hasPlanApprovedMarker(body) && existingMode !== 'full-auto') {
+    const existingApproval = parsePlanApprovedMarker(body);
+    const existingMode = existingApproval?.mode ?? readPlanApprovedMode(body);
+    if (existingApproval && existingMode !== 'full-auto') {
       return {
         status: 'evidence-repair-refused',
         message: `#${issueNumber} already has '${existingMode}' Plan-approval provenance; evidence repair cannot replace it.`,
         blockers: ['existing-approval-not-full-auto'],
       };
     }
-    const repairTs = hasPlanApprovedMarker(body) ? readPlanApprovedTimestamp(body) : nowIso();
-    const repairEvidence = await collectPlanApprovalRepairEvidence({
+    if (existingApproval && !existingApproval.repairRecordId) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} already has ordinary Full-Auto Plan approval; evidence repair cannot relabel it as reconstructed.`,
+        blockers: ['existing-approval-not-evidence-repair'],
+      };
+    }
+    let repairEvidence;
+    try {
+      repairEvidence = await collectPlanApprovalRepairEvidence({
+        issueNumber,
+        repo: cfg.repo,
+        deps,
+      });
+    } catch (error) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} evidence repair could not read complete durable evidence: ${error.message}`,
+        blockers: ['evidence-read-failed'],
+      };
+    }
+    // The approval time follows the complete evidence snapshot. Later comments
+    // or exception revisions are subsequent lifecycle events, not a race that
+    // can retroactively change what was approved at this instant.
+    const repairTs = existingApproval?.ts || nowIso();
+    const { comments, records, issueBodyHistory } = repairEvidence;
+    const evidence = evaluatePlanApprovalRepairEvidence({
       body,
+      comments,
+      records,
+      issueBodyHistory,
       issueNumber,
       repo: cfg.repo,
       now: new Date(repairTs).toISOString(),
-      deps,
     });
-    const { comments, records, issueBodyHistory, evaluation: evidence } = repairEvidence;
-    if (evidence.blockers.length > 0 || !evidence.revokedRecordId) {
+    if (
+      evidence.blockers.length > 0 ||
+      !evidence.approvalPlanRecordId ||
+      !evidence.revokedRecordId
+    ) {
       return {
         status: 'evidence-repair-refused',
         message: `#${issueNumber} evidence repair refused: ${evidence.blockers.join('; ')}`,
         blockers: evidence.blockers,
+      };
+    }
+    if (
+      existingApproval?.repairRecordId &&
+      existingApproval.repairRecordId !== evidence.revokedRecordId
+    ) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} existing evidence-repair marker names a different revoked record.`,
+        blockers: ['existing-repair-record-mismatch'],
       };
     }
     const resolveTrunkSha = deps.resolveTrunkSha || defaultResolveTrunkSha;
@@ -195,14 +236,21 @@ export async function runPlanApprove({
             `plan-approve: evidence changed before repair: ${freshEvidence.blockers.join('; ')}`
           );
         }
-        const freshMode = readPlanApprovedMode(base);
-        if (hasPlanApprovedMarker(base)) {
-          if (freshMode !== 'full-auto') {
+        const freshApproval = parsePlanApprovedMarker(base);
+        if (freshApproval) {
+          if (
+            freshApproval.mode !== 'full-auto' ||
+            freshApproval.repairRecordId !== evidence.revokedRecordId
+          ) {
             throw new Error('plan-approve: incompatible approval appeared during evidence repair');
           }
           return base;
         }
-        return insertPlanApprovedMarker(base, repairTs, { mode: 'full-auto', trunkSha });
+        return insertPlanApprovedMarker(base, repairTs, {
+          mode: 'full-auto',
+          repairRecordId: evidence.revokedRecordId,
+          trunkSha,
+        });
       },
     });
     const persistedBody =
@@ -215,7 +263,10 @@ export async function runPlanApprove({
       ts: readPlanApprovedTimestamp(persistedBody),
       mode: readPlanApprovedMode(persistedBody),
       env,
-      repairEvidence: { revokedRecordId: evidence.revokedRecordId },
+      repairEvidence: {
+        approvalPlanRecordId: evidence.approvalPlanRecordId,
+        revokedRecordId: evidence.revokedRecordId,
+      },
       ...auditDeps,
     });
     return {
@@ -223,6 +274,7 @@ export async function runPlanApprove({
       ts: repairTs,
       mode: readPlanApprovedMode(persistedBody),
       audit,
+      approvalPlanRecordId: evidence.approvalPlanRecordId,
       revokedRecordId: evidence.revokedRecordId,
     };
   }

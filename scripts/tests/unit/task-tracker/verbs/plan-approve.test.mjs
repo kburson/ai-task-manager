@@ -198,6 +198,7 @@ function makeEvidenceRepairFixture() {
       { commentNodeId: 'IC_revoked', envelope: revoked },
     ],
     issueBodyHistory: [historicalBody],
+    approvalPlanRecordId: first.recordId,
     revokedRecordId: revoked.recordId,
   };
 }
@@ -260,6 +261,7 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   assert.equal(r.mode, 'full-auto');
   assert.equal(readPlanApprovedMode(getBody()), 'full-auto');
   assert.equal(parsePlanApprovedMarker(getBody()).trunkSha, 'a'.repeat(40));
+  assert.equal(parsePlanApprovedMarker(getBody()).repairRecordId, fixture.revokedRecordId);
   assert.equal(calls.comments.length, 1);
   assert.match(calls.comments.at(-1), /^### Full-Auto Plan-Approval Audit — #1716/m);
   assert.match(calls.comments.at(-1), new RegExp(fixture.revokedRecordId));
@@ -273,7 +275,10 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   const audit = buildPlanApprovalAuditComment({
     issueNumber: 1716,
     ts: FIXED_TS,
-    repairEvidence: { revokedRecordId: fixture.revokedRecordId },
+    repairEvidence: {
+      approvalPlanRecordId: fixture.approvalPlanRecordId,
+      revokedRecordId: fixture.revokedRecordId,
+    },
   });
   assert.equal(
     isCanonicalPlanApprovalAuditComment(audit, { issueNumber: 1716, ts: FIXED_TS }),
@@ -304,6 +309,107 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   assert.equal(getBody(), afterFirst);
   assert.equal(calls.writes.length, 1);
   assert.equal(calls.comments.length, 1);
+}
+
+// #1716: the reconstruction timestamp is chosen only after the complete
+// authority snapshot has been read, so later events are subsequent history.
+{
+  const fixture = makeEvidenceRepairFixture();
+  let snapshotComplete = false;
+  const { deps } = makeDeps({
+    state: 'review',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+    deps: {
+      listIssueBodyHistory: async () => {
+        snapshotComplete = true;
+        return fixture.issueBodyHistory;
+      },
+      nowIso: () => {
+        assert.equal(snapshotComplete, true);
+        return FIXED_TS;
+      },
+    },
+  });
+  const result = await runPlanApprove({
+    issueNumber: 1716,
+    cfg,
+    repairFromEvidence: true,
+    deps,
+  });
+  assert.equal(result.status, 'repaired-from-evidence');
+}
+
+// #1716: incomplete GitHub edit history is a typed evidence refusal, not an
+// uncatalogued generic CLI failure.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const { deps } = makeDeps({
+    state: 'review',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+    deps: {
+      listIssueBodyHistory: async () => {
+        throw new Error('issue edit history is incomplete');
+      },
+    },
+  });
+  const result = await runPlanApprove({
+    issueNumber: 1716,
+    cfg,
+    repairFromEvidence: true,
+    deps,
+  });
+  assert.equal(result.status, 'evidence-repair-refused');
+  assert.deepEqual(result.blockers, ['evidence-read-failed']);
+}
+
+// #1716: when the revoked head no longer lists approval.plan, the audit names
+// the historical record that did cover it instead of wrongly attributing the head.
+{
+  const fixture = makeEvidenceRepairFixture();
+  const first = fixture.workflowRecords[0].envelope;
+  const revoked = fixture.workflowRecords[1].envelope;
+  const replacedHead = createWorkflowExceptionEnvelope({
+    repository: cfg.repo,
+    issue: 1716,
+    exceptionId: revoked.payload.exceptionId,
+    revision: 2,
+    status: 'revoked',
+    scopeIdentity: revoked.payload.scopeIdentity,
+    requirementIds: ['review.peer'],
+    constraints: [],
+    reason: revoked.payload.reason,
+    authorization: revoked.payload.approvalEvidence,
+    operationId: revoked.payload.operationId,
+    predecessor: first.recordId,
+    supersedes: first.recordId,
+    createdAt: revoked.createdAt,
+    recordId: revoked.recordId,
+    grantId: revoked.authority.grantId,
+  });
+  const { deps, calls } = makeDeps({
+    state: 'review',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+    workflowRecords: [
+      fixture.workflowRecords[0],
+      { commentNodeId: 'IC_revoked_replaced', envelope: replacedHead },
+    ],
+  });
+  const result = await runPlanApprove({
+    issueNumber: 1716,
+    cfg,
+    repairFromEvidence: true,
+    deps,
+  });
+  assert.equal(result.status, 'repaired-from-evidence');
+  assert.equal(result.approvalPlanRecordId, first.recordId);
+  assert.equal(calls.comments.at(-1).includes(`record \`${first.recordId}\` covered`), true);
+  assert.equal(
+    calls.comments.at(-1).includes(`chain head \`${revoked.recordId}\` is revoked`),
+    true
+  );
 }
 
 // #1716: each missing or contradictory authority predicate fails closed.
@@ -374,6 +480,12 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
       env: { TT_FULL_AUTO: '1' },
       initialBody: `${fixture.initialBody}\n<!-- aitm-plan-approved ts="2026-09-19T15:21:30Z" mode="human" -->\n`,
       want: 'existing-approval-not-full-auto',
+    },
+    {
+      name: 'existing ordinary Full-Auto approval',
+      env: { TT_FULL_AUTO: '1' },
+      initialBody: `${fixture.initialBody}\n<!-- aitm-plan-approved ts="2026-09-19T15:21:30Z" mode="full-auto" -->\n`,
+      want: 'existing-approval-not-evidence-repair',
     },
   ];
   for (const scenario of scenarios) {

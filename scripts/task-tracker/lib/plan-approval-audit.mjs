@@ -29,10 +29,14 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence 
     throw new Error('buildPlanApprovalAuditComment: approval timestamp is required');
   }
   if (repairEvidence !== null) {
+    const approvalPlanRecordId = repairEvidence?.approvalPlanRecordId;
     const revokedRecordId = repairEvidence?.revokedRecordId;
-    if (!/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(revokedRecordId ?? '')) {
+    if (
+      !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(approvalPlanRecordId ?? '') ||
+      !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(revokedRecordId ?? '')
+    ) {
       throw new Error(
-        'buildPlanApprovalAuditComment: repair evidence requires a revoked record ID'
+        'buildPlanApprovalAuditComment: repair evidence requires approval-plan and revoked record IDs'
       );
     }
     return [
@@ -42,7 +46,8 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence 
       '',
       '- Approval actor: AI agent operating in Full-Auto mode',
       '- Human reviewer: none — no human reviewer approved this plan',
-      `- Repair basis: revoked workflow-exception record \`${revokedRecordId}\` previously covered \`approval.plan\``,
+      `- Waiver evidence: workflow-exception record \`${approvalPlanRecordId}\` covered \`approval.plan\``,
+      `- Revocation evidence: workflow-exception chain head \`${revokedRecordId}\` is revoked`,
       '- Planning evidence: Plan entry and completion before Develop; Deep-Dive Analysis; Plan Metadata; Planned Estimate',
       `- Evidence: \`<!-- aitm-plan-approved ts="${ts}" mode="full-auto" -->\``,
       '',
@@ -83,10 +88,19 @@ export function isCanonicalPlanApprovalAuditComment(
   if (!recordedTs || (ts != null && recordedTs !== ts)) return false;
 
   if (repairTs) {
-    const revokedRecordId = src.match(
-      /Repair basis: revoked workflow-exception record `([0-7][0-9A-HJKMNP-TV-Z]{25})` previously covered `approval\.plan`/
+    const approvalPlanRecordId = src.match(
+      /Waiver evidence: workflow-exception record `([0-7][0-9A-HJKMNP-TV-Z]{25})` covered `approval\.plan`/
     )?.[1];
-    if (!revokedRecordId) return false;
+    const revokedRecordId = src.match(
+      /Revocation evidence: workflow-exception chain head `([0-7][0-9A-HJKMNP-TV-Z]{25})` is revoked/
+    )?.[1];
+    if (!approvalPlanRecordId || !revokedRecordId) return false;
+    if (
+      repairEvidence?.approvalPlanRecordId &&
+      approvalPlanRecordId !== repairEvidence.approvalPlanRecordId
+    ) {
+      return false;
+    }
     if (repairEvidence?.revokedRecordId && revokedRecordId !== repairEvidence.revokedRecordId) {
       return false;
     }
@@ -95,7 +109,7 @@ export function isCanonicalPlanApprovalAuditComment(
       buildPlanApprovalAuditComment({
         issueNumber: recordedIssueNumber,
         ts: recordedTs,
-        repairEvidence: { revokedRecordId },
+        repairEvidence: { approvalPlanRecordId, revokedRecordId },
       })
     );
   }
