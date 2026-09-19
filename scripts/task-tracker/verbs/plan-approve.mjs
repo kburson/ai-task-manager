@@ -43,6 +43,10 @@ import {
   formatGovernedPlanPolicyRefusal,
   validateGovernedLinkedPlan,
 } from '../lib/governed-plan-policy.mjs';
+import {
+  collectPlanApprovalRepairEvidence,
+  evaluatePlanApprovalRepairEvidence,
+} from '../lib/plan-approval-evidence-repair.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -82,7 +86,13 @@ async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
   return mod.getIssueBoardState(String(issueNumber).replace(/^#/, ''));
 }
 
-export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} } = {}) {
+export async function runPlanApprove({
+  issueNumber,
+  cfg,
+  projectDir,
+  repairFromEvidence = false,
+  deps = {},
+} = {}) {
   if (!issueNumber) throw new Error('plan-approve: issueNumber is required');
   if (!cfg) throw new Error('plan-approve: cfg is required');
 
@@ -101,7 +111,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
 
   const state = await getBoardState({ issueNumber, projectDir });
-  if (state !== 'plan' && !adaptiveConfigured) {
+  if (state !== 'plan' && !adaptiveConfigured && !repairFromEvidence) {
     return {
       status: 'wrong-state',
       message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
@@ -122,6 +132,150 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
         `#${issueNumber} linked plan violates governed plan policy — refusing to approve.\n` +
         formatGovernedPlanPolicyRefusal(governedPlan),
       violations: governedPlan.violations,
+    };
+  }
+  if (repairFromEvidence) {
+    if (!['develop', 'test', 'review'].includes(state)) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} is in '${state ?? 'unknown'}'; evidence repair requires Develop, Test, or Review.`,
+        blockers: ['unsupported-state'],
+      };
+    }
+    if (requestedMode !== 'full-auto') {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} evidence repair requires explicit TT_FULL_AUTO=1 authority.`,
+        blockers: ['full-auto-authority-missing'],
+      };
+    }
+    const existingApproval = parsePlanApprovedMarker(body);
+    const existingMode = existingApproval?.mode ?? readPlanApprovedMode(body);
+    if (existingApproval && existingMode !== 'full-auto') {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} already has '${existingMode}' Plan-approval provenance; evidence repair cannot replace it.`,
+        blockers: ['existing-approval-not-full-auto'],
+      };
+    }
+    if (existingApproval && !existingApproval.repairRecordId) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} already has ordinary Full-Auto Plan approval; evidence repair cannot relabel it as reconstructed.`,
+        blockers: ['existing-approval-not-evidence-repair'],
+      };
+    }
+    let repairEvidence;
+    try {
+      repairEvidence = await collectPlanApprovalRepairEvidence({
+        issueNumber,
+        repo: cfg.repo,
+        deps,
+      });
+    } catch (error) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} evidence repair could not read complete durable evidence: ${error.message}`,
+        blockers: ['evidence-read-failed'],
+      };
+    }
+    // The approval time follows the complete evidence snapshot. Later comments
+    // or exception revisions are subsequent lifecycle events, not a race that
+    // can retroactively change what was approved at this instant.
+    const repairTs = existingApproval?.ts || nowIso();
+    const { comments, records, issueBodyHistory } = repairEvidence;
+    const evidence = evaluatePlanApprovalRepairEvidence({
+      body,
+      comments,
+      records,
+      issueBodyHistory,
+      issueNumber,
+      repo: cfg.repo,
+      now: new Date(repairTs).toISOString(),
+    });
+    if (
+      evidence.blockers.length > 0 ||
+      !evidence.approvalPlanRecordId ||
+      !evidence.revokedRecordId
+    ) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} evidence repair refused: ${evidence.blockers.join('; ')}`,
+        blockers: evidence.blockers,
+      };
+    }
+    if (
+      existingApproval?.repairRecordId &&
+      existingApproval.repairRecordId !== evidence.revokedRecordId
+    ) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} existing evidence-repair marker names a different revoked record.`,
+        blockers: ['existing-repair-record-mismatch'],
+      };
+    }
+    const resolveTrunkSha = deps.resolveTrunkSha || defaultResolveTrunkSha;
+    const trunkSha = hasEntry(body, 'ready-for-plan')
+      ? await resolveTrunkSha({ cfg, projectDir: projectDir || getProjectDir() })
+      : null;
+    const writeResult = await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => {
+        const freshEvidence = evaluatePlanApprovalRepairEvidence({
+          body: base,
+          comments,
+          records,
+          issueBodyHistory,
+          issueNumber,
+          repo: cfg.repo,
+          now: new Date(repairTs).toISOString(),
+        });
+        if (freshEvidence.blockers.length > 0) {
+          throw new Error(
+            `plan-approve: evidence changed before repair: ${freshEvidence.blockers.join('; ')}`
+          );
+        }
+        const freshApproval = parsePlanApprovedMarker(base);
+        if (freshApproval) {
+          if (
+            freshApproval.mode !== 'full-auto' ||
+            freshApproval.repairRecordId !== evidence.revokedRecordId
+          ) {
+            throw new Error('plan-approve: incompatible approval appeared during evidence repair');
+          }
+          return base;
+        }
+        return insertPlanApprovedMarker(base, repairTs, {
+          mode: 'full-auto',
+          repairRecordId: evidence.revokedRecordId,
+          trunkSha,
+        });
+      },
+    });
+    const persistedBody =
+      typeof writeResult?.body === 'string'
+        ? writeResult.body
+        : await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    const audit = await ensureAudit({
+      issueNumber,
+      repo: cfg.repo,
+      ts: readPlanApprovedTimestamp(persistedBody),
+      mode: readPlanApprovedMode(persistedBody),
+      env,
+      repairEvidence: {
+        approvalPlanRecordId: evidence.approvalPlanRecordId,
+        revokedRecordId: evidence.revokedRecordId,
+      },
+      ...auditDeps,
+    });
+    return {
+      status: 'repaired-from-evidence',
+      ts: repairTs,
+      mode: readPlanApprovedMode(persistedBody),
+      audit,
+      approvalPlanRecordId: evidence.approvalPlanRecordId,
+      revokedRecordId: evidence.revokedRecordId,
     };
   }
   const requiresTrunkProvenance = hasEntry(body, 'ready-for-plan');
@@ -360,14 +514,20 @@ export function formatPlanApproveOutcome(issueNumber, result) {
       return `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present; ${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
     case 'repaired-approval':
       return `✓ Repaired adaptive Plan approval lineage for #${issueNumber} at ${result.ts}; the existing approval now freezes its forecast record (${detail}).`;
+    case 'repaired-from-evidence':
+      return `✓ Reconstructed Full-Auto Plan approval for #${issueNumber} at ${result.ts} from durable evidence (revoked exception ${result.revokedRecordId}; ${detail}).`;
     default:
       return null;
   }
 }
 
 function parseArgs(rest) {
-  const out = { issueNumber: null };
+  const out = { issueNumber: null, repairFromEvidence: false };
   for (const a of rest) {
+    if (a === '--repair-from-evidence') {
+      out.repairFromEvidence = true;
+      continue;
+    }
     const m = String(a).match(/^#?(\d+)$/);
     if (m && out.issueNumber === null) out.issueNumber = Number(m[1]);
   }
@@ -375,9 +535,9 @@ function parseArgs(rest) {
 }
 
 export async function verbPlanApprove(rest, cfg, deps = {}) {
-  const { issueNumber } = parseArgs(rest);
+  const { issueNumber, repairFromEvidence } = parseArgs(rest);
   if (!issueNumber) {
-    process.stderr.write('Usage: /task plan-approve #N\n');
+    process.stderr.write('Usage: /task plan-approve #N [--repair-from-evidence]\n');
     process.exit(1);
   }
   if (process.env.TT_SKIP_NETWORK === '1') {
@@ -387,7 +547,7 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
   const projectDir = getProjectDir();
   let result;
   try {
-    result = await runPlanApprove({ issueNumber, cfg, projectDir, deps });
+    result = await runPlanApprove({ issueNumber, cfg, projectDir, repairFromEvidence, deps });
   } catch (err) {
     process.stderr.write(`plan-approve: ${err.message}\n`);
     process.exit(1);
@@ -398,6 +558,7 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     case 'already-approved':
     case 're-stamped-entry':
     case 'repaired-approval':
+    case 'repaired-from-evidence':
       process.stdout.write(`${formatPlanApproveOutcome(issueNumber, result)}\n`);
       return;
     case 'wrong-state':
@@ -412,6 +573,9 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     case 'governed-plan-policy':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(14);
+    case 'evidence-repair-refused':
+      process.stderr.write(`⛔ ${result.message}\n`);
+      process.exit(15);
     default:
       process.stderr.write(`plan-approve: unknown result: ${result.status}\n`);
       process.exit(1);
