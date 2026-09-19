@@ -463,6 +463,25 @@ export function resolveStoryIntent({ body = '', plan = null } = {}) {
     const start = sections[0];
     let end = start + 1;
     while (end < structuralLines.length && !/^#{1,2}\s+/.test(structuralLines[end])) end += 1;
+    // Plan approval collapses the mirrored section. Only its enclosing structural
+    // wrapper is exempt from intent continuation checks; source prose is not.
+    let preceding = start - 1;
+    while (preceding >= 0 && !structuralLines[preceding].trim()) preceding -= 1;
+    if (/^\s*<summary>.*<\/summary>\s*$/.test(structuralLines[preceding] ?? '')) preceding -= 1;
+    while (preceding >= 0 && !structuralLines[preceding].trim()) preceding -= 1;
+    if (/^\s*<details>\s*$/.test(structuralLines[preceding] ?? '')) {
+      const closing = structuralLines.findIndex(
+        (line, index) => index > start && index < end && /^\s*<\/details>\s*$/.test(line)
+      );
+      if (closing < 0) return refuse('Mirrored Deep-Dive Analysis wrapper is not closed');
+      const trailing = String(body)
+        .split('\n')
+        .slice(closing + 1, end)
+        .join('\n')
+        .replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+      if (trailing.trim()) return refuse('Unexpected continuation after deep-dive wrapper');
+      end = closing;
+    }
     parsed = parseStoryIntent(body, { headingLevel: 3, startLine: start + 1, endLine: end });
     source = 'deep-dive';
     location = { path: null, heading: '### Story Intent', line: parsed.range?.start ?? start + 1 };

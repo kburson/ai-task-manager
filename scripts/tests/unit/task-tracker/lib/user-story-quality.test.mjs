@@ -20,6 +20,7 @@ import {
 } from '../../../../task-tracker/lib/decomposition-policy.mjs';
 import { validateUserStory } from '../../../../task-tracker/lib/user-story-guard.mjs';
 import { verifyIssueBody } from '../../../../gh/lib/issue-body-verifier.mjs';
+import { wrapDeepDiveInDetails } from '../../../../task-tracker/lib/markers.mjs';
 
 const draft = { mode: 'draft', canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE };
 const approval = { ...draft, mode: 'approval' };
@@ -340,6 +341,41 @@ test('linked authority never falls back on absent, unreadable, mismatched or mal
   assert.equal(resolveStoryIntent({ body: deepDive, plan: observation() }).ok, false);
   assert.equal(resolveStoryIntent({ body: deepDive + '\n' + deepDive, plan: null }).ok, false);
   assert.equal(resolveStoryIntent({ body: '## Other\n' + block(3), plan: null }).ok, false);
+});
+
+test('the actual mirrored details wrapper preserves deep-dive intent authority and digest', () => {
+  const body = wrapDeepDiveInDetails(`${deepDive}\n\n## Scope\nUnrelated scope`);
+  assert.match(body, /<details>\n<summary>Deep-Dive Analysis/);
+  assert.match(body, /\n<\/details>\n/);
+  const result = resolveStoryIntent({ body, plan: null });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.source, 'deep-dive');
+  assert.deepEqual(result.intent, intent);
+  assert.equal(result.digest, intentDigest(intent));
+  assert.equal(result.digest, resolveStoryIntent({ body: deepDive }).digest);
+});
+
+test('a mirrored closing wrapper does not excuse missing fields or arbitrary continuations', () => {
+  const wrapped = wrapDeepDiveInDetails(deepDive);
+  for (const body of [
+    wrapped.replace('- **Need:** checks can fail\n', ''),
+    wrapped.replace('</details>', 'arbitrary continuation\n</details>'),
+    wrapped.replace('</details>', '</details>\narbitrary continuation'),
+    wrapped.replace('</details>', '`continued value`\n</details>'),
+    wrapped.replace('- **Need:**', '</details>\n- **Need:**'),
+    wrapped.replace('</details>', ''),
+    `${deepDive}\n</details>`,
+  ]) {
+    assert.equal(resolveStoryIntent({ body }).ok, false, body);
+  }
+  assert.equal(parseStoryIntent(`${block()}\n</details>`).ok, false);
+});
+
+test('hidden closing wrapper decoys do not establish the structural deep-dive boundary', () => {
+  const wrapped = wrapDeepDiveInDetails(deepDive);
+  for (const closing of ['`</details>`', '<!-- </details> -->', '```html\n</details>\n```']) {
+    assert.equal(resolveStoryIntent({ body: wrapped.replace('</details>', closing) }).ok, false);
+  }
 });
 
 test('selector conflicts and same-path aliases have identical decomposition and intent decisions', () => {
