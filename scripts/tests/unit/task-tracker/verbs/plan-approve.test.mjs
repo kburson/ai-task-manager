@@ -37,6 +37,7 @@ import {
   createIssueDirectory,
 } from '../../../../task-tracker/lib/github-records/issue-directory.mjs';
 import { storyApprovalBindingGuard } from '../../../../task-tracker/lib/story-approval-binding-guard.mjs';
+import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '../../../..');
@@ -70,10 +71,11 @@ function makeDeps(overrides = {}) {
       },
       // #295 — verb now writes via mutateIssueBody({mutate}); closure runs on
       // the FRESH base. Old `writeIssueBody({body})` signature retired.
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, validateFreshBase }) => {
         if (overrides.beforeMutate) body = overrides.beforeMutate(body);
         const before = body;
         const next = mutate(before);
+        validateFreshBase?.(before, next);
         if (next === before) return { status: 'no-op', attempts: 1, body };
         calls.writes.push(next);
         body = next;
@@ -744,6 +746,48 @@ test('failed repair audit retains prior payload and exact retry repairs once', a
   assert.match(comments[0].body, /2026-01-01T00:00:00Z/);
   assert.equal(calls.writes.length, 1);
 });
+
+for (const race of ['story', 'directory'])
+  test(`real versioned writer refuses ${race} authority drift before a retry push`, async () => {
+    const initial = `${STORY_BODY}## Notes\nKeep this section.\n`;
+    const changed =
+      race === 'story'
+        ? initial.replace('As a release operator', 'As a deployment reviewer')
+        : `${DIRECTORY}\n${initial}`;
+    let remote = initial;
+    const pushes = [];
+    const { deps, calls } = makeDeps({
+      deps: {
+        fetchIssueBody: async () => remote,
+        mutateIssueBody: (args) =>
+          mutateIssueBody({
+            ...args,
+            deps: {
+              fetchBody: async () => remote,
+              pushBody: async (_repo, _issue, next) => {
+                pushes.push(next);
+                // The first push loses to an independent non-overlapping edit.
+                remote = pushes.length === 1 ? changed : next;
+              },
+            },
+          }),
+      },
+    });
+    let failure;
+    try {
+      await runPlanApprove({ issueNumber: 1711, cfg, projectDir: root, deps });
+    } catch (error) {
+      failure = error;
+    }
+    assert.equal(pushes.length, 1, 'no stale approval may be pushed on the changed retry base');
+    assert.match(
+      failure?.message ?? '',
+      race === 'story' ? /story-approval-binding-changed/ : /story-approval-binding-unsupported/
+    );
+    assert.equal(remote, changed);
+    assert.equal(hasPlanApprovedMarker(remote), false);
+    assert.equal(calls.comments.length, 0);
+  });
 
 test('complete no-op refuses persisted marker or Plan-entry drift before audit', async () => {
   for (const change of [

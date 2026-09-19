@@ -74,6 +74,16 @@ test('a malformed present approval cannot masquerade as an absent marker', async
   assert.equal(result.ok, false);
   assert.equal(result.code, 'story-approval-binding-missing');
 });
+test('case-insensitive legacy and malformed approvals cannot bypass the binding guard', async () => {
+  for (const marker of [
+    '<!-- AITM-PLAN-APPROVED: 2026-09-19T12:00:00Z -->',
+    '<!-- AITM-PLAN-APPROVED mode="human" -->',
+  ]) {
+    const result = await storyApprovalBindingGuard.run({ toState: 'develop', body: marker });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'story-approval-binding-missing');
+  }
+});
 test('invalid prose precedes intent reads and async resolver failures are repairable refusals', async () => {
   const marker = buildPlanApprovedMarker(ts, binding);
   const invalid = await storyApprovalBindingGuard.run({

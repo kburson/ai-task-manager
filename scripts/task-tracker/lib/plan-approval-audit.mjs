@@ -143,7 +143,7 @@ export function buildStoryBindingRepairAudit({ issueNumber, previousApproval, ap
   const key = repairEvidenceKey({ issueNumber, approved });
   const prior = previousApproval
     ? JSON.stringify(previousApproval)
-    : 'Prior evidence unavailable; this retry cannot recover the superseded approval.';
+    : 'Prior evidence unavailable; this marker cannot establish whether a repair occurred.';
   return [
     `### Story-Binding Repair Audit — #${issueNumber}`,
     '',
@@ -169,10 +169,16 @@ export async function ensureStoryBindingRepairAudit({
     String(value)
       .trim()
       .replace(/^- Previous approval: .*$/m, '- Previous approval: [retained separately]');
-  const comments = await listComments({ issueNumber, repo });
-  if (comments.some((comment) => withoutPrior(comment?.body) === withoutPrior(body)))
-    return { alreadyPresent: true, auditPosted: false };
   try {
+    const comments = await listComments({ issueNumber, repo });
+    if (
+      comments.some((comment) =>
+        previousApproval
+          ? String(comment?.body).trim() === body
+          : withoutPrior(comment?.body) === withoutPrior(body)
+      )
+    )
+      return { alreadyPresent: true, auditPosted: false };
     await postComment({ issueNumber, repo, body });
   } catch (error) {
     error.storyBindingRepair = {

@@ -8,7 +8,7 @@ export const storyApprovalBindingGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     const body = ctx?.body ?? '';
-    if (!/<!--\s*aitm-plan-approved(?=[:\s>])/.test(stripFencedCodeBlocks(body)))
+    if (!/<!--\s*aitm-plan-approved(?=[:\s>])/i.test(stripFencedCodeBlocks(body)))
       return { ok: true };
     const refuse = (code, message) => ({
       ok: false,

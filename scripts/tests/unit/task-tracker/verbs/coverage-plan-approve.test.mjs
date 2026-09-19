@@ -47,8 +47,10 @@ function deps({ body = CLEAN_BODY, state = 'plan', onMutate } = {}) {
     fetchIssueBody: async () => body,
     fetchEpicChildren: async () => [],
     nowIso: () => TS,
-    mutateIssueBody: async ({ mutate }) => {
-      body = mutate(body);
+    mutateIssueBody: async ({ mutate, validateFreshBase }) => {
+      const next = mutate(body);
+      validateFreshBase?.(body, next);
+      body = next;
       if (onMutate) onMutate(body);
       return { status: 'ok', body };
     },
@@ -245,10 +247,10 @@ for (const failure of ['story', 'directory', 'persistence', 'fresh-directory']) 
     if (failure === 'persistence')
       injected.mutateIssueBody = async () => ({ body: await injected.fetchIssueBody() });
     if (failure === 'fresh-directory')
-      injected.mutateIssueBody = async ({ mutate }) => {
-        const body = mutate(
-          (await injected.fetchIssueBody()) + '\n<!-- aitm-directory malformed -->'
-        );
+      injected.mutateIssueBody = async ({ mutate, validateFreshBase }) => {
+        const base = (await injected.fetchIssueBody()) + '\n<!-- aitm-directory malformed -->';
+        const body = mutate(base);
+        validateFreshBase?.(base, body);
         writes++;
         return { body };
       };
@@ -268,7 +270,11 @@ test('verbPlanApprove: legacy binding repair reports renewal', async () => {
   let body =
     (await injected.fetchIssueBody()) + '\n<!-- aitm-plan-approved ts="2026-01-01T00:00:00Z" -->';
   injected.fetchIssueBody = async () => body;
-  injected.mutateIssueBody = async ({ mutate }) => ({ body: (body = mutate(body)) });
+  injected.mutateIssueBody = async ({ mutate, validateFreshBase }) => {
+    const next = mutate(body);
+    validateFreshBase?.(body, next);
+    return { body: (body = next) };
+  };
   const result = await runVerb(['1711'], { deps: injected });
   assert.equal(result.exitCode, null);
   assert.match(result.stdout, /story binding renewed/);

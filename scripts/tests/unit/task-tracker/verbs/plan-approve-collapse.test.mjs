@@ -36,9 +36,10 @@ function makeDeps(initialBody, state = 'plan') {
       fetchEpicChildren: async () => [],
       fetchIssueBody: async () => body,
       // #295 — closure form.
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, validateFreshBase }) => {
         const before = body;
         const next = mutate(before);
+        validateFreshBase?.(before, next);
         if (next === before) return { status: 'no-op', attempts: 1 };
         calls.writes.push(next);
         body = next;

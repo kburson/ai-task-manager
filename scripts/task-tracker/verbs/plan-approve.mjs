@@ -92,10 +92,10 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
   return data?.repository?.issue?.body ?? '';
 }
 
-// #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
-// runs on the FRESH base each push attempt.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
-  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+// #295 — body writes use the governed writer; the validation hook also runs
+// on fresh retry bases when the writer rebases rather than rerunning mutate.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, validateFreshBase }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, validateFreshBase, deps: { pexec } });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
@@ -365,16 +365,16 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   let previousApproval = parsedApproval;
   let expectedApproval = null;
   let repairedBinding = false;
-  // #295 — closure re-derives the next body from the FRESH base on every
-  // push attempt. The diagnostic flags above set the return shape; the
-  // closure independently checks markers so a concurrent writer that
-  // landed approval / entry between our pre-fetch and the push is
-  // honored (returns base unchanged → no-op).
+  // The first mutation derives the next body from the fresh base and honors
+  // concurrent approval/entry markers. Retry rebases are checked separately
+  // by validateFreshBase before the governed writer pushes.
   const writeResult = await mutateBody({
     issueNumber,
     repo: cfg.repo,
+    // The versioned writer rebases edits on retry without rerunning mutate.
+    // Its validation hook must therefore certify every fresh base before push.
+    validateFreshBase: observeFresh,
     mutate: (base) => {
-      observeFresh(base);
       let n = base;
       if (!hasEntry(n, 'plan')) {
         n = stampEntryMarker(n, 'plan', ts);
