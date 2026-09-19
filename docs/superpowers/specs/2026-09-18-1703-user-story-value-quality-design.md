@@ -197,30 +197,43 @@ Plan task blocks use the same fields beneath a level-four heading:
 For no-plan issues, the deep-dive appendix uses a level-three `### Story Intent`
 heading because the appendix itself is a root-level issue section.
 
-The parser is structural rather than based on substring searches. It consumes
-the fence-masked structural view used for plan heading discovery, so examples
-inside fenced code blocks cannot become live intent. It requires the exact
-heading at the expected scope, each known field exactly once, no unknown fields,
-and a non-empty single-line value after trimming. Duplicate blocks, duplicate
-fields, multiline continuation values, and ambiguous heading scope are
-refusals.
+The parser is structural rather than based on substring searches. Heading and
+block-boundary discovery consume the fence-, comment-, and inline-code-masked
+structural view used for plan heading discovery, so examples inside fenced code
+blocks cannot become live intent. After locating a field, the parser reads its
+value from the corresponding original source line, preserving inline code and
+ordinary Markdown exactly. Plan and deep-dive parsing use this same two-view
+rule so identical intent canonicalizes identically regardless of source kind.
+The parser requires the exact heading at the expected scope, each known field
+exactly once, no unknown fields, and a non-empty single-line value after
+trimming. Duplicate blocks, duplicate fields, multiline continuation values,
+and ambiguous heading scope are refusals.
 
 ### 7.2 Authority resolution
 
 `resolveStoryIntent` follows this closed decision tree:
 
-1. If `Plan Metadata` links a governed implementation plan, resolve that file
-   with the existing repository-bound plan-path policy and parse exactly one
-   root `## Story Intent` block. Missing or malformed plan intent is an error.
-2. If no implementation plan is linked, parse exactly one `### Story Intent`
+1. If `Plan Metadata` links a governed implementation plan and contains exactly
+   one substantive `Source-plan-section`, resolve the plan with the existing
+   repository-bound plan-path policy, locate the one task or milestone whose full
+   heading exactly matches that metadata value, and parse that task's exactly
+   one `#### Story Intent` block. A missing, duplicate, or no-longer-matching
+   task section fails closed as `story-intent-source-unresolvable`; it never
+   falls back to root plan intent.
+2. If `Plan Metadata` links a governed implementation plan without a
+   `Source-plan-section`, resolve that file and parse exactly one root
+   `## Story Intent` block. Missing or malformed root plan intent is an error.
+3. If no implementation plan is linked, parse exactly one `### Story Intent`
    block inside the root `## Deep-Dive Analysis (...)` section of the live issue
    body. Missing, malformed, or duplicate deep-dive intent is an error.
-3. Never fall back from a linked plan to deep-dive intent. The linked plan must
-   be repaired and reviewed so its authority remains complete.
+4. Never fall back from either linked-plan branch to deep-dive intent. The linked
+   plan or its task-section metadata must be repaired and reviewed so its
+   authority remains complete.
 
-The resolver returns the normalized intent, source kind (`linked-plan` or
-`deep-dive`), source location, and canonical digest. Diagnostics name the source
-and violated field without dumping unrelated issue or plan content.
+The resolver returns the normalized intent, source kind (`linked-plan-task`,
+`linked-plan`, or `deep-dive`), source location, and canonical digest.
+Diagnostics name the source and violated field without dumping unrelated issue
+or plan content.
 
 ### 7.3 Plan review responsibility
 
@@ -268,15 +281,25 @@ requirements means absent prose, not an issue body with arbitrary missing
 sections. Creation templates should render an empty section by default when no
 story file is supplied. Existing canonical template text remains accepted.
 
-### 8.3 Approval states
+### 8.3 Validation entry points
 
-Approval-mode validation requires the `## User Story` section to exist and
-remain the first level-two heading, substantive prose, exact three-line shape,
-the exact `As a` or `As an`, `I want to`, and `So that` prefixes, no template
-tokens, and no objective quality violations. It returns normalized story lines
-and all violations in a stable order so callers can report every repairable
-problem in one pass. This preserves the existing #503 section-position
-invariant after the Refine guards are retired.
+The quality module exposes two explicit validation layers:
+
+- the prose-scoped evaluator accepts extracted story prose plus
+  `mode: 'draft' | 'approval'`; and
+- the body-scoped entry point accepts a complete issue body, requires the
+  `## User Story` section to exist and remain the first level-two heading,
+  extracts its prose, and delegates to the prose evaluator.
+
+Both entry points exclude HTML-comment-led in-section marker lines before shape
+validation, normalization, or hashing. In approval mode the prose evaluator
+requires substantive prose, exact three-line shape, the exact `As a` or `As an`,
+`I want to`, and `So that` prefixes, no template tokens, and no objective quality
+violations. It returns normalized story lines and all violations in stable order
+so callers can report every repairable problem in one pass. `plan-approve` and
+the Plan-exit binding guard use the body-scoped entry point, preserving the
+existing #503 section-position invariant. `split-plan` uses the prose-scoped
+approval evaluator because its child body does not exist until preflight.
 
 ### 8.4 Objective violation codes
 
@@ -358,7 +381,7 @@ The existing `aitm-plan-approved` marker gains three attributes:
 ```text
 story-digest="<64 lowercase hex>"
 story-intent-digest="<64 lowercase hex>"
-story-intent-source="linked-plan|deep-dive"
+story-intent-source="linked-plan-task|linked-plan|deep-dive"
 ```
 
 Marker builders validate all digest and enum values. Parsers accept legacy
@@ -372,7 +395,7 @@ Before any marker or audit mutation, `plan-approve`:
 1. fetches the live issue body;
 2. validates the governed linked plan when present;
 3. resolves authoritative Story Intent;
-4. validates the live story in approval mode;
+4. validates the live issue body through the body-scoped approval entry point;
 5. applies the provider self-review obligation;
 6. computes both canonical digests;
 7. performs the existing checklist, forecast, provenance, and epic checks;
@@ -390,23 +413,27 @@ the planner to repair the story or its authoritative intent source.
 
 ### 9.5 Plan to Develop revalidation
 
-A separate `storyApprovalBindingGuard` runs on every Plan to Develop transition
-as a content-integrity guard. It is independent of the existing
-`approval.plan` workflow waiver, the `analysisToDevelopment` gate, and the
-presence of a Ready for Planning entry marker. Those controls may alter human
-approval or trunk-provenance policy, but they cannot waive the requirement that
-the live story and intent still match what `plan-approve` bound. An issue that
-entered Plan through a legacy or alternate route receives the same content
-check.
+A separate `storyApprovalBindingGuard` runs on Plan to Develop as a
+content-integrity guard whenever an `aitm-plan-approved` marker is present. A
+missing marker remains the existing `planApprovedGuard`'s responsibility: when
+`approval.plan` is waived, both guards return successfully without requiring a
+marker; otherwise that guard retains its current missing-approval diagnostic.
+Once a marker exists, story binding is independent of the `approval.plan`
+workflow waiver, the `analysisToDevelopment` gate, and the presence of a Ready
+for Planning entry marker. Those controls may alter whether approval is
+required, but they cannot let an existing approval carry stale or incomplete
+content bindings into Develop.
 
 The guard:
 
-1. require all three story-binding attributes;
-2. validate the live story in approval mode;
-3. resolve the current authoritative intent source;
-4. require the source kind to match the marker;
-5. recompute story and intent digests; and
-6. compare them to the marker in constant, deterministic order.
+1. return successfully when no approval marker exists and `approval.plan` is
+   waived, otherwise defer the missing-marker refusal to `planApprovedGuard`;
+2. when a marker exists, require all three story-binding attributes;
+3. validate the live issue body through the body-scoped approval entry point;
+4. resolve the current authoritative intent source;
+5. require the source kind to match the marker;
+6. recompute story and intent digests; and
+7. compare them to the marker in constant, deterministic order.
 
 Any mismatch refuses promotion with a diagnostic that distinguishes missing
 legacy binding, changed story, changed intent, changed source, and now-invalid
@@ -429,17 +456,20 @@ responsibilities and may retain their current waiver semantics.
 exactly one `#### Story Intent` block when that plan is used for splitting.
 
 The parser returns `storyIntent`, source line information, and a scope body with
-the live intent block removed from each task. Intent is parsed from the same
-fence-masked structural lines used for task boundaries, while ordinary prose is
-preserved from the original lines. A plan may still be read for non-splitting
-purposes without task intent, but `validateSplitTasks` refuses any attempted
-split unless every task extracted from the plan has valid intent.
+the live intent block removed from each task. Heading and block boundaries come
+from the masked structural lines; field values come from the corresponding
+original lines, preserving inline code and ordinary Markdown. A plan may still
+be read for non-splitting purposes without task intent, but
+`validateSplitTasks` refuses any attempted split unless every task extracted
+from the plan has valid intent.
 
 ### 10.2 Child story rendering
 
 `split-plan` renders each child User Story only from that task's intent using the
-canonical renderer in section 8.1. It then runs approval-mode objective quality
-validation on the rendered result before any issue preflight or mutation.
+canonical renderer in section 8.1. It then runs the prose-scoped approval
+evaluator on the rendered result before any issue preflight or mutation. The
+child's `Source-plan-section` metadata makes `linked-plan-task` the authority
+that later Plan approval resolves and binds.
 
 The current hard-coded `renderUserStory(input, task)` behavior is deleted. There
 is no fallback to parent issue prose, task title, task ordinal, plan path,
@@ -545,6 +575,11 @@ any known legacy attributes rather than presenting old time with newly observed
 provenance. The repair is read back exactly and reported as
 `repaired-story-binding`.
 
+Because the existing approval guard binds approval to current trunk, operators
+perform this repair immediately before Plan to Develop promotion. A later trunk
+change intentionally makes the renewed approval stale and requires another JIT
+repair.
+
 If intent is unavailable, the repair refuses and tells the planner to enrich the
 linked plan or no-plan deep dive. It never stamps digests over unknown content.
 
@@ -568,8 +603,9 @@ from task titles or old generic stories.
 
 `scripts/task-tracker/lib/user-story-quality.mjs` owns:
 
-- story extraction and canonicalization;
-- draft and approval validation modes;
+- body-scoped story extraction and section-position validation;
+- prose-scoped draft and approval validation;
+- canonicalization shared by both entry points after comment-line exclusion;
 - objective anti-pattern detection;
 - Story Intent Markdown parsing;
 - intent authority resolution over supplied observations;
@@ -584,8 +620,9 @@ keeps the corpus tests fast and provider-independent.
 
 - `user-story-author.mjs` owns canonical templates and governed replacement.
 - `user-story-guard.mjs` adapts quality results into lifecycle diagnostics.
-- `decomposition-policy.mjs` supplies plan/task boundaries, exposes the
-  fence-masked structural view, attaches intent parsed from that view, and
+- `decomposition-policy.mjs` supplies plan/task boundaries, exposes aligned
+  original and masked structural views, attaches intent whose boundaries come
+  from the masked view and whose field values come from original lines, and
   returns intent-stripped task scope.
 - `split-plan.mjs` validates all tasks, renders child stories, and orchestrates
   existing preflight/create behavior.
@@ -594,7 +631,7 @@ keeps the corpus tests fast and provider-independent.
 - `markers.mjs` serializes and parses backward-compatible approval attributes.
 - `plan-approved-guard.mjs` retains approval and trunk-provenance checks; the
   new content-integrity guard performs unwaivable Plan-exit story freshness
-  checks through an injected intent resolver.
+  checks through an injected intent resolver whenever an approval marker exists.
 - creation and verifier modules render and compare the accepted draft form.
 
 No provider adapter receives a separate semantic implementation.
@@ -614,6 +651,7 @@ story-section-missing: issue body has no ## User Story section
 story-section-position-invalid: ## User Story is not the first level-two section
 story-administrative-beneficiary: line 1 names the delivery agent instead of the beneficiary
 story-intent-missing: linked plan has no root ## Story Intent block
+story-intent-source-unresolvable: Source-plan-section does not identify exactly one plan task
 story-intent-ambiguous: deep dive contains 2 Story Intent blocks; expected exactly 1
 story-approval-binding-missing: legacy Plan approval has no story digests; rerun plan-approve
 story-approval-stale-story: live User Story differs from the approved digest
@@ -637,7 +675,8 @@ those safeguards.
 - each objective violation code independently and in aggregation;
 - legitimate operational and traceability stakeholders that must not be false
   positives;
-- linked-plan and deep-dive intent parsing, precedence, and ambiguity;
+- task-scoped linked-plan, root linked-plan, and deep-dive intent parsing,
+  precedence, source resolution, and ambiguity;
 - the 24 audited weak-pattern instances as negative fixtures; and
 - their repaired stories as positive fixtures.
 
@@ -661,17 +700,18 @@ for Planning, required at approval, and freshness-bound before Develop.
 
 ### 16.3 Approval tests
 
-Plan approval tests cover both authority sources, fresh-base races, marker
-serialization and parsing, no-op completeness, stale story/intent repair,
-legacy approval repair, forecast/provenance coexistence, and read-back failure.
+Plan approval tests cover all three authority sources, task-section resolution,
+fresh-base races, marker serialization and parsing, no-op completeness, stale
+story/intent repair, a missing-marker `approval.plan` waiver, legacy approval
+repair, forecast/provenance coexistence, and read-back failure.
 
 ### 16.4 Decomposition tests
 
 Split-plan tests cover valid multi-task rendering, task-local source lines,
 missing and duplicate fields, grammatical canonical output, preflight-before-
 creation atomicity, historical-plan refusal, and proof that the old generic
-fallback text is absent from production code. The existing positive assertion
-for `As a governed delivery agent` in
+fallback text is absent from non-test source files under `scripts/`. The
+existing positive assertion for `As a governed delivery agent` in
 `scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs` is replaced as part
 of this task; production-code absence checks exclude the negative corpus.
 
@@ -716,15 +756,18 @@ reviewable tasks in this order:
 6. Cross-surface integration tests and documentation consolidation.
 
 The implementation plan must give every task its own `#### Story Intent` block
-so this feature's first real split exercises the contract it introduces.
+so this feature's first real split exercises the contract it introduces. Each
+generated child's `Source-plan-section` must identify that task block, making
+task-scoped linked intent the child's later Plan-approval authority.
 
 ## 19. Resolved Decisions
 
 - Substantive prose is optional until Plan approval, not until Refine.
 - Story Intent has four fields: beneficiary, capability, need, and value or
   failure prevented.
-- A linked implementation plan is authoritative; deep dive is authoritative
-  only when no plan is linked.
+- A linked implementation plan is authoritative; split children bind the task
+  selected by `Source-plan-section`, root issues bind the plan's root intent,
+  and deep dive is authoritative only when no plan is linked.
 - Deterministic objective failures block approval; nuanced semantic judgment is
   enforced through shared provider guidance and review.
 - Plan approval records both story and intent digests, and Plan exit revalidates
