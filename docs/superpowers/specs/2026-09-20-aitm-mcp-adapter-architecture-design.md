@@ -129,6 +129,11 @@ Each exclusive role has one active writable binding. In particular, a project
 has exactly one writable `work-items` authority. Supporting providers may be
 configured for read-only observations when an action explicitly names them.
 
+Identity observations are scoped to the provider instance and account. A shared
+display name across providers does not establish the same actor. The kernel
+keeps the initiating actor, each provider execution principal, and any approver
+distinct; explicit verified delegation or account mappings relate them.
+
 ### Provider targets
 
 The current provider targets are:
@@ -241,6 +246,20 @@ Node plugin executes with the permissions of the AITM process.
 The selected plugins are committed in project configuration and restored by the
 package lock. Cloud consumers load only the committed selection; they neither
 scan nor prompt.
+
+Portable selection requires either a pinned package retrievable by the target
+environment or a repository-contained, tracked package. A workspace or relative
+filesystem adapter must include its runtime artifacts or reproducibly generate
+them during the declared `npm ci` step. Its resolved entry and required assets
+cannot depend on files outside the clone, escaping symlinks, or an uncommitted
+build. Registry credentials, when needed, are runtime prerequisites supplied
+through the environment rather than tracked secrets.
+
+An external filesystem selection remains available for local experimentation,
+but setup reports `adapter-local-required` and cannot certify that installation
+as portable. The maintainer must publish or vendor the package, normalize the
+dependency and lockfile, and pass isolated-clone verification before portability
+is claimed. A package-lock entry alone is not proof of reproducibility.
 
 ## Action registry and capability graph
 
@@ -512,6 +531,10 @@ tracked project-local MCP configuration. Setup reports a host that requires
 uncommitted machine-global registration as `host-local-required`; AITM does not
 pretend that integration is portable.
 
+The same claim requires every selected adapter to satisfy portable selection.
+An `adapter-local-required` installation must report that limitation even when
+its host configuration is portable.
+
 Credentials come from provider-native authentication, cloud secret stores, or
 workload identity. They are not tracked.
 
@@ -526,9 +549,14 @@ Setup writes a content-addressed install manifest containing:
 - selected host bridges and enforcement-policy fingerprints; and
 - generated artifact paths and content hashes.
 
-MCP startup performs a fast read-only comparison against installed packages and
-tracked files. It runs again before the first governed action and whenever an
-adapter reports that an external assumption no longer holds.
+CLI and MCP startup perform a fast read-only comparison against installed
+packages and tracked files. Each mutation admission validates the active
+configuration generation and installation fingerprints; a long-lived server
+cannot rely on its first successful check. Dispatch remains bound to that
+validated generation under execution ownership. Drift before dispatch blocks
+new effects, and an adapter report that an external assumption changed triggers
+fresh compatibility resolution. Implementations may cache immutable data by
+fingerprint, but a cache cannot establish that its generation is still active.
 
 Staleness is classified rather than flattened:
 
@@ -638,6 +666,37 @@ itself prevent a provider administrator from replacing an entire history;
 provider audit controls and future optional signatures address stronger threat
 models without making signature infrastructure a version-one dependency.
 
+### Evidence append recovery
+
+Evidence append is an internal protocol primitive, not a domain action that
+recursively requires another `action.requested` record. This is a layering
+boundary, not an exemption from execution ownership, authorization, integrity,
+or read-back verification. Only the kernel's authorized protocol path may use
+it; neither generic invoker exposes arbitrary journal writes.
+
+Before submission, each logical append has a stable event identity and a fixed
+canonical envelope, including its predecessor and content hash. The adapter
+must provide lookup and retry semantics for that identity. The request key and
+principal scope must locate an uncertain initial request from a fresh process;
+subsequent appends are recoverable by action and event identity. A retry cannot
+invent a new event ID or predecessor to hide an uncertain prior append.
+
+If creation or read-back loses its response, the adapter reports an unknown
+append outcome. Recovery verifies the stored envelope under current ownership
+before treating the append as committed. Resubmission requires safe native
+idempotency or proof that the earlier append did not commit and cannot still
+complete. Search absence alone is insufficient. Conflicting contents, duplicate
+physical records, or competing predecessors block dependent effects and require
+explicit reconciliation; they are not silently removed or counted twice.
+
+No business effect may dispatch until its request record is verified. If an
+outcome append is uncertain after business effects occurred, recovery observes
+those effects and completes the evidence protocol without repeating completed
+effects. Success requires a verified durable outcome. Unresolved evidence writes
+remain visible as recovery work and block conflicting successors. Conformance
+must prove this protocol for request, outcome, and reconciliation records,
+including restart without local append state.
+
 ### Relation to ADR 0002
 
 ADR 0002 made GitHub Issues and comments the sole durable authority. This design
@@ -706,6 +765,15 @@ process. An input hash alone is insufficient. Credentials are reacquired at
 runtime and are never journaled. If required input cannot be recovered, the
 action requires intervention rather than guessing it from local cache.
 
+The request also preserves its non-secret resolved execution context: the
+active configuration generation and hash, selected port bindings, canonical
+provider instances and target references, adapter identities and versions,
+recovery-contract versions, and expected target revisions. An effect whose
+target does not exist yet records the destination container and its stable
+creation key. Implicitly selected forge or CI destinations must be recorded as
+explicitly as the work-item authority. Secrets are referenced by runtime
+credential requirements, never copied into this snapshot.
+
 Each external effect has a stable key derived from the action ID and effect
 identity. The adapter maps that key to native idempotency or a durable searchable
 marker and defines observation guarantees. Multiple adapter effects in one
@@ -732,6 +800,66 @@ effect was not applied and no earlier attempt remains in flight. Otherwise the
 result explicitly reports unknown effects and requires intervention. Recovery
 retains the original action and effect keys, runs under current execution
 ownership, and revalidates policy before any newly authorized provider mutation.
+
+### Recovery across configuration changes
+
+Recovery uses the recorded destinations and effect identities, not the current
+default port bindings. Current policy and permissions still apply; an old
+execution snapshot is evidence of intent, not a continuing authorization grant.
+An installed adapter may recover an older action only when it is selected and
+trusted and its conformance contract supports the recorded recovery version.
+Missing credentials, an unavailable adapter, or incompatible semantics require
+intervention. A record naming an old package never authorizes automatically
+installing or executing it.
+
+Setup inventories pending actions before changing a binding or recovery
+contract. It must either settle them or verify a continuing, authorized
+recovery path to their original targets. An incompatible replacement is blocked.
+Binding changes serialize with admission and dispatch, record a new active
+configuration generation in the control stream, and fence dispatch under the
+retired generation. Historical targets may remain available for observation;
+any required recovery mutation needs an explicit scoped grant under current
+ownership, without creating a second writable backlog authority.
+
+Changing a target or the meaning of an effect is not a retry. It requires a new,
+separately authorized action linked to the resolved or explicitly disposed
+original action. Outstanding ambiguous effects continue to block conflicting
+successors. Reacquiring credentials or resuming through another transport never
+silently changes the recorded initiating identity or destination.
+
+### Approval authority and provenance
+
+Provider authentication proves access by an execution principal; it does not
+prove that a human reviewed or approved an action. The kernel records the
+initiating actor, execution principals, approver, and any delegation separately.
+An approval must have verifiable provenance from a trusted human interaction or
+an authenticated approval source supported by the project. An agent-supplied
+actor name, `approved: true`, environment label, or access to a human's provider
+credential is not sufficient proof of a human decision.
+
+Approval records identify the governed requirement, authority and work scope,
+approved subject and revision or digest, decision, approval mode, actor,
+provenance reference, and any expiry or revocation. Subject binding follows the
+action's schema: for example, a plan approval binds its plan and relevant story
+intent, while delivery authority binds the repository, PR, and expected commit.
+Admission and dispatch reject missing, stale, revoked, or mismatched evidence.
+A prior approval cannot authorize changed content merely because it concerns
+the same work item.
+
+Host permission to invoke a tool and workflow approval are separate checks.
+One human interaction may satisfy both only when its verified evidence covers
+the resolved action, payload, subject, and required approval scope. A blanket
+permission for `aitm_invoke_action` or `aitm_invoke_extension` is insufficient.
+Bridges that cannot establish the required provenance must direct the user to a
+supported approval path; the kernel must not manufacture that evidence.
+
+Authorized Full-Auto decisions retain their automated mode and policy authority.
+Workflow exceptions retain their distinct disposition and scope. Neither is
+relabeled as human approval or satisfies a requirement reserved for an explicit
+human decision. Legacy evidence retains its original provenance, including
+unknown provenance; migration cannot upgrade an unverified assertion into a
+verified human decision. Phase-specific schemas and conformance tests must
+preserve the existing approval and content-binding guards.
 
 ### Concurrent execution and authority fencing
 
@@ -826,11 +954,18 @@ Required adversarial cases include:
   between the final ownership check and provider dispatch;
 - takeover while an earlier provider request is still in flight;
 - policy or approval changes between discovery and action admission;
+- forged approver fields, a shared human/agent provider credential, tool
+  permission without workflow approval, changed approved content, and automated
+  evidence offered for an explicit human gate;
 - a successful effect whose response is lost, followed by the same request key
   from a fresh process through the other transport;
 - simultaneous retries using one key, conflicting payloads under one key, and
   intentionally distinct keys with identical payloads;
 - recovery using only external authority after local state is deleted;
+- lost append responses and interrupted read-back for request, outcome, and
+  reconciliation records, including delayed visibility and conflicting copies;
+- recovery after a binding change, adapter upgrade or removal, and a runtime
+  configuration change after the first successful action;
 - incomplete observations that must not authorize duplicate effects; and
 - fork reconciliation that preserves competing evidence and blocks conflicting
   execution until every outstanding effect is resolved.
@@ -857,6 +992,18 @@ Search visibility delays must produce intervention when absence cannot be
 established. A manifest declaration without a passing proof does not enable the
 corresponding mutation capability.
 
+Evidence-port certification separately proves stable event lookup, uncertain
+append recovery, and exact-envelope read-back. A successful business mutation
+followed by an uncertain outcome append must never lead to repeating that
+mutation or reporting an unverified success.
+
+Recovery compatibility tests use recorded execution contexts from supported
+older adapter versions. Composed-port fixtures change the forge binding while
+retaining the backlog authority and verify observation at the original target,
+stable effect keys, and refusal of unsupported recovery or redirected dispatch.
+Passing each adapter's standalone suite does not replace these composition
+checks.
+
 ### Transport parity
 
 Invoke common actions through CLI and MCP and assert identical domain requests,
@@ -870,11 +1017,27 @@ Reject unknown actions, namespace mismatches, invalid schemas, and
 `orchestrator-only` invocations through every public dispatcher. Verify that host
 approval applies to the resolved generic action and payload.
 
+Both transports must reject forged or stale workflow approval evidence and an
+inactive configuration generation, including after their initial startup checks.
+
 ### Portable-install test
 
 An isolated fixture runs setup, commits the generated integration, clones the
 fixture, runs `npm ci`, starts the MCP server, and performs read-only discovery.
 The fresh clone must not run setup, install, init, or tracked-file generation.
+
+Run the fixture with a pinned published plugin and a tracked workspace plugin.
+Reject a portable-install claim for an external filesystem dependency, an
+escaping symlink, or a runtime entry requiring an undeclared build step. The
+fixture has no access to the maintainer's checkout or local plugin directories.
+
+### Migration cutover tests
+
+Exercise an older CLI racing checkpoint capture, an in-flight legacy effect,
+crashes on both sides of durable activation, and recovery from another clone.
+Restoring pre-migration generated files after a new action must not resume old
+authority writes. Verify that an unprovable old-writer barrier blocks activation,
+unresolved effects remain visible, and exactly one authority is writable.
 
 ### Host-policy tests
 
@@ -882,6 +1045,10 @@ Each bridge proves that governed mutations remain available, known raw provider
 mutations are blocked at the declared assurance level, configured reads remain
 available, reported assurance matches actual enforcement, and behavioral-only
 hosts cannot activate Full-Auto.
+
+Verify separately that host tool permissions cannot fabricate workflow approval
+and that approval provenance distinguishes human decisions from automated ones,
+even when both use the same provider account.
 
 ### Live provider certification
 
@@ -896,11 +1063,16 @@ Release gates reject:
 - actions without input and output schemas;
 - mutations without declared effects and recovery semantics;
 - mutations without certified execution ownership and durable request identity;
+- mutations that omit required approval provenance or subject bindings;
+- pending-action recovery that redirects targets or lacks adapter compatibility;
+- evidence appends without stable identity and certified response-loss recovery;
 - automatic authority bootstrap without verified genesis and safe recovery;
+- migration activation without a verified old-writer barrier and durable cutover;
 - CLI and MCP behavioral divergence;
 - generated-file changes absent from the install manifest;
 - adapters that fail their declared-port conformance suite; and
-- cloud fixtures that require setup after `npm ci`.
+- cloud fixtures that require setup after `npm ci` or depend on local adapter
+  files unavailable in the clone.
 
 ## Migration and rollout
 
@@ -913,11 +1085,18 @@ implementation-sized specifications and plans.
 - Define canonical action, result, error, effect, and evidence schemas.
 - Establish durable request keys, scoped execution ownership, and bootstrap
   recovery before enabling the new mutation path.
+- Certify evidence-append recovery and the shared migration cutover before
+  activating the new authority path in an existing project.
+- Preserve approval provenance and content bindings, and persist resolved
+  execution context for recovery across configuration changes.
 - Route the current CLI through application services and policy.
 - Move GitHub behavior behind the public adapter contract.
 
 Exit when the existing CLI suite passes through the kernel without MCP and the
-new admission, response-loss, stale-owner, and bootstrap failure cases pass.
+new admission, response-loss, evidence-append, stale-owner, bootstrap, and
+migration-cutover failure cases pass.
+Approval-provenance, stale-subject, and changed-binding recovery cases are also
+required before replacing the corresponding existing guards or mutation paths.
 
 ### Phase 2: Discovery and self-help
 
@@ -946,6 +1125,9 @@ exit gate.
 - Generate tracked project, adapter, capability, host, and learning config.
 - Add staleness detection and diagnostic-only mode.
 - Prove fresh-clone operation after only `npm ci`.
+- Distinguish local adapter experiments from reproducible portable selections.
+- Gate configuration activation on pending-action recovery compatibility and
+  verify generation checks in long-lived runtimes.
 
 ### Phase 5: Public plugin SDK
 
@@ -985,14 +1167,37 @@ migration. It:
 - leaves external GitHub state unchanged unless the reviewed setup plan names a
   required compatible mutation.
 
-A failed migration does not activate partially generated integration files or
-claim success. The previous installation remains selected; compatible external
-effects already committed are preserved and reported in the control stream with
-recovery instructions. First-container provisioning uses the bootstrap recovery
-contract when that stream is not yet verified. If an unresolved effect makes
-continued mutation unsafe, affected actions are blocked until reconciliation;
-rollback never promises to erase an external effect or to keep unsafe actions
-operational.
+Migration separates staging from durable authority activation. Before capturing
+the final checkpoint, it obtains exclusive migration ownership, fences or
+verifiably stops all old writers, and settles their in-flight effects. The
+barrier covers other clones, unattended commands, and legacy Full-Auto entry
+paths. A new local configuration file or a marker that old binaries ignore is
+not a writer fence. Where old writers cannot honor the protocol, their write
+access must be isolated or revoked, or their dispatchers verifiably stopped;
+otherwise activation is blocked.
+
+Under that barrier, migration verifies checkpoint parity and writes and reads
+back a durable activation record naming the migration identity, selected
+authority locator, epoch, checkpoint hash, and minimum compatible writer
+protocol. New CLI and MCP writers check this shared authority selection before
+dispatch. A partially written or ambiguous activation blocks both paths until
+reconciled. Compatibility aliases are supported entry points in the new kernel;
+they do not authorize old binaries to continue writing obsolete authority.
+
+Before durable activation, a failed migration leaves the previous installation
+selected and does not activate partially generated integration files or claim
+success. Compatible external effects already committed are preserved and
+reported in the control stream with recovery instructions. First-container
+provisioning uses the bootstrap recovery contract when that stream is not yet
+verified. If an unresolved effect makes continued mutation unsafe, affected
+actions remain blocked until reconciliation.
+
+After durable activation, failure recovery retains the new authority selection
+even when local file activation failed. Restoring old generated files cannot
+roll back that selection or resume legacy writes. Any reverse cutover requires
+an explicitly reviewed migration that fences current writers, reconciles all
+effects and evidence, and records a new activation epoch. Rollback never erases
+external effects or promises to keep unsafe actions operational.
 
 Existing CLI verbs remain supported for at least one major-version transition.
 Compatibility aliases use the same request-key contract. The migration preview
@@ -1022,7 +1227,8 @@ evidence.
 6. Agent-facing instructions and results are schema-validated minified JSON;
    human output is rendered from the same canonical model.
 7. `aitm setup` writes reviewable tracked integration files; a committed clone
-   becomes usable after only `npm ci`.
+   becomes usable after only `npm ci`. Local-only adapter selections are
+   explicitly classified and cannot pass portable-install certification.
 8. A stale clone enters diagnostic-only mode and provides exact maintainer
    remediation without modifying tracked files.
 9. Durable journals, approvals, receipts, and recovery records live in the
@@ -1035,7 +1241,8 @@ evidence.
 12. Full-Auto is unavailable under behavioral-only enforcement and records its
     actual guarded or strict assurance level.
 13. Existing GitHub projects migrate without bulk evidence rewrites or silent
-    external mutation.
+    external mutation. A shared, verified cutover fences old writers before the
+    final checkpoint; restoring local files cannot reactivate obsolete authority.
 14. Each delivery phase has its own bounded specification, plan, tests, and
     approval before implementation.
 15. Concurrent execution uses certified scoped ownership and fencing or
@@ -1044,6 +1251,16 @@ evidence.
 16. First authority bootstrap verifies a durable genesis and reconciles lost
     responses or duplicate roots before enabling workflows. Unsupported safe
     provisioning requires explicit binding, and partial effects remain visible.
+17. Journal append failures have stable event identity and explicit recovery.
+    Unverified requests cannot authorize business effects; uncertain outcome
+    writes cannot justify repeating completed effects or reporting success.
+18. Workflow approvals have verified provenance and bind the exact governed
+    subject. Human, automated, and exception authority remain distinguishable;
+    provider credentials and blanket tool permissions cannot substitute for a
+    required human decision.
+19. Pending actions retain their resolved targets and recovery contracts across
+    configuration changes. Incompatible recovery or retired configuration
+    generations block dispatch; retries never redirect effects to new defaults.
 
 ## Consequences
 

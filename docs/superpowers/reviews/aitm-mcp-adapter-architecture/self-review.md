@@ -1,3 +1,13 @@
+---
+model: gpt-6-astra
+effort: high
+filepath: docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md
+commit_sha: c2e33f4d0ae704900437a0659119bad6eb30dc01
+uncommitted_changes: false
+turn_ordinal: SAR r1
+turn_description: Single Agent Review revision 1
+---
+
 # AITM MCP adapter architecture self-review
 
 **Date:** 2026-09-20
