@@ -26,6 +26,10 @@ import { parseTimingRows } from '../timing-ladder.mjs';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
 import { resolveTailProfile } from './tail-profiles.mjs';
 import { resolveReviewAuthority } from '../human-reviewer-audit.mjs';
+import {
+  PLAN_TRANSITION_AUTHORITY_EXIT,
+  writePlanTransitionAuthority as defaultWritePlanTransitionAuthority,
+} from '../plan-transition-authority.mjs';
 
 // A timing row whose event closes a phase: any canonical `<state>:complete`
 // slug (`refine:completed`, `test:passed`, `review:approved`, `issue:closed`)
@@ -181,11 +185,19 @@ export async function moveState(ctx) {
   const writeSentinel = ctx._writeSentinel || defaultWriteSentinel;
   const runPostCommitTail = ctx._runPostCommitTail || defaultRunPostCommitTail;
   const createTransitionId = ctx._createTransitionId || defaultCreateTransitionId;
+  const writePlanTransitionAuthority =
+    ctx._writePlanTransitionAuthority || defaultWritePlanTransitionAuthority;
   const writeTransitionCommit = ctx._writeTransitionCommit || defaultWriteTransitionCommit;
   const repairTransitionCommit = ctx._repairTransitionCommit || defaultRepairTransitionCommit;
   const rollbackRecordedState = ctx._rollbackRecordedState || defaultRollbackRecordedState;
   const assertBoardMarkerConsistent =
     ctx._assertBoardMarkerConsistent || defaultAssertBoardMarkerConsistent;
+
+  // The guard decision, authority record, entry marker, sentinel, and commit
+  // provenance all describe one move. Allocate their shared identity before
+  // the guard so the successful decision can be captured without re-querying
+  // policy at write time.
+  ctx.transitionId = ctx.transitionId || createTransitionId();
 
   const guard = await runGuardExecution(ctx);
   if (guard.exit !== null && guard.exit !== undefined) {
@@ -225,7 +237,26 @@ export async function moveState(ctx) {
     };
   }
 
-  ctx.transitionId = ctx.transitionId || createTransitionId();
+  if (ctx.resolvedFromState === 'plan' && ctx.stateArg === 'develop') {
+    try {
+      ctx.planTransitionAuthority = await writePlanTransitionAuthority(ctx);
+      if (ctx.planTransitionAuthority?.verified !== true) {
+        throw new Error('plan-transition-authority:readback-unverified');
+      }
+    } catch (error) {
+      process.stderr.write(
+        `⛔ #${ctx.issueArg} plan→develop authority was not durably verified: ${error.message}\n`
+      );
+      return {
+        exit: PLAN_TRANSITION_AUTHORITY_EXIT,
+        itemId: '',
+        tail: { failures: [] },
+        phase: 'authority',
+        sentinelPresent: false,
+        boardMoved: false,
+      };
+    }
+  }
 
   // Pre-Status evidence: exit-flush the departing row + entry row, then the
   // entry markers. Both are individually idempotent and re-read-verified.
