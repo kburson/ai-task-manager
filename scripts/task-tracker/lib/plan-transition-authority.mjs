@@ -224,7 +224,13 @@ export function parsePlanTransitionAuthorityComment(body) {
 }
 
 export function readPlanTransitionAuthorityWrapperId(body) {
-  return WRAPPER_ID_RE.exec(String(body || ''))?.[1] ?? null;
+  return readPlanTransitionAuthorityWrapperIds(body)[0] ?? null;
+}
+
+export function readPlanTransitionAuthorityWrapperIds(body) {
+  const source = String(body || '');
+  const re = new RegExp(WRAPPER_ID_RE.source, 'gi');
+  return Object.freeze([...source.matchAll(re)].map((match) => match[1]));
 }
 
 export function classifyCompletedPlanTransitionAuthority({ record, issueBody = '' } = {}) {

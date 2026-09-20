@@ -302,18 +302,6 @@ export async function runMoveStateHost({
     return 5;
   }
 
-  // #882 — satisfied no-op: the issue is already in the requested state. Return
-  // BEFORE the ctx below so nothing downstream runs — no guard pipeline, no body
-  // mutation, no entry marker, no timing row, no board write. Re-entering a state
-  // would double-stamp `aitm-entered-<stage>` and open a duplicate stage-timing
-  // row, corrupting the stage table. The machine token is what
-  // `runMoveStateInProcess` matches to set `noop` on its structured result.
-  if (plan.noop) {
-    process.stdout.write(`↻ #${issueArg} is already in ${stateArg} — no state change\n`);
-    process.stdout.write(`aitm-move-noop state=${stateArg}\n`);
-    return 0;
-  }
-
   // #559 — the shared context the extracted move-state concern modules consume.
   // Runtime values + cfg + the I/O primitives (`gh`/`pexec`) and the cross-tree
   // helpers (`projectItemForIssue`, dirty-workspace, backlog-warning) plus the
@@ -352,6 +340,7 @@ export async function runMoveStateHost({
     tailProfile: resolvedTailProfile,
     reviewAuthority,
     lifecycleEvidence,
+    repairOnly: plan.noop,
     _observeGuardPhasePolicy,
   };
 
@@ -376,7 +365,7 @@ export async function runMoveStateHost({
   // re-acquisition.
   const runMutation = async () => {
     ctx.transitionId = createTransitionId();
-    const guardOutcome = await runGuardExecution(ctx);
+    const guardOutcome = plan.noop ? { exit: null } : await runGuardExecution(ctx);
     if (guardOutcome.exit !== null) return guardOutcome.exit;
 
     if (ctx.planExitOwnershipClaim) {
@@ -420,6 +409,11 @@ export async function runMoveStateHost({
     // runStatusWrite / runPostCommitTail and are preserved verbatim by the core.
     ctx.runGuardExecution = async () => guardOutcome;
     const result = await moveState(ctx);
+    if (result.noop) {
+      process.stdout.write(`↻ #${issueArg} is already in ${stateArg} — no state change\n`);
+      process.stdout.write(`aitm-move-noop state=${stateArg}\n`);
+      return 0;
+    }
     // #757 — the per-element move readout (Design §9 success / §12 failure).
     // Rendered purely from the enriched result the saga already verified-as-
     // stored; suppressed under SKIP_NETWORK where nothing was written, so we

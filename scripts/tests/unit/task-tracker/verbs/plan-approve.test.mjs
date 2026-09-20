@@ -368,6 +368,7 @@ function makeModernTransitionAuthorityFixture({
     id: 'IC_transition_authority',
     body: renderPlanTransitionAuthorityComment(record),
     authorLogin: 'maintainer',
+    authorAssociation: 'MEMBER',
     createdAt: '2026-09-19T15:22:14.000Z',
     updatedAt: '2026-09-19T15:22:14.000Z',
   });
@@ -411,6 +412,20 @@ test('modern transition authority does not auto-converge in human mode', async (
   assert.equal(result.status, 'wrong-state');
   assert.equal(calls.writes.length, 0);
   assert.equal(calls.comments.length, 0);
+});
+
+test('modern transition authority remains durable across authenticated operators', async () => {
+  const fixture = makeModernTransitionAuthorityFixture();
+  const { deps } = makeDeps({
+    state: 'develop',
+    env: { TT_FULL_AUTO: '1' },
+    authenticatedLogin: 'different-maintainer',
+    ...fixture,
+  });
+
+  const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+
+  assert.equal(result.status, 'repaired-from-transition-authority', JSON.stringify(result));
 });
 
 test('modern transition authority retains all legacy planning evidence gates', async () => {
@@ -463,8 +478,12 @@ test('modern transition authority refuses stale scope and orphan records', async
 test('modern transition authority requires authenticated immutable pre-transition provenance', async () => {
   const scenarios = [
     {
-      name: 'forged author',
-      mutate: (comment) => ({ ...comment, authorLogin: 'attacker' }),
+      name: 'untrusted author',
+      mutate: (comment) => ({
+        ...comment,
+        authorLogin: 'outside-contributor',
+        authorAssociation: 'NONE',
+      }),
       blocker: 'plan-transition-authority-author',
     },
     {
@@ -502,13 +521,9 @@ test('modern transition authority requires authenticated immutable pre-transitio
 
 test('malformed authority wrapper colliding with a completed transition fails closed', async () => {
   const fixture = makeModernTransitionAuthorityFixture();
-  fixture.comments.push({
-    id: 'IC_transition_collision',
-    body: `<!-- aitm-plan-transition-authority id="${fixture.transitionId}" -->`,
-    authorLogin: 'maintainer',
-    createdAt: '2026-09-19T15:22:15.000Z',
-    updatedAt: '2026-09-19T15:22:15.000Z',
-  });
+  const index = fixture.comments.findIndex((comment) => typeof comment === 'object');
+  fixture.comments[index].body +=
+    `\n<!-- aitm-plan-transition-authority id="${fixture.transitionId}" -->`;
   const { deps, calls } = makeDeps({
     state: 'develop',
     env: { TT_FULL_AUTO: '1' },

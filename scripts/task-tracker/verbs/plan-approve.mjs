@@ -197,7 +197,6 @@ export async function runPlanApprove({
       body,
       authorityRecords: collectedRepairEvidence.authorityRecords,
       authorityDiagnostics: collectedRepairEvidence.authorityDiagnostics,
-      authenticatedLogin: collectedRepairEvidence.authenticatedLogin,
       repository: cfg.repo,
       issue: issueNumber,
     });
@@ -267,14 +266,8 @@ export async function runPlanApprove({
     // or exception revisions are subsequent lifecycle events, not a race that
     // can retroactively change what was approved at this instant.
     const repairTs = existingApproval?.ts || nowIso();
-    const {
-      comments,
-      records,
-      issueBodyHistory,
-      authorityRecords,
-      authorityDiagnostics,
-      authenticatedLogin,
-    } = repairEvidence;
+    const { comments, records, issueBodyHistory, authorityRecords, authorityDiagnostics } =
+      repairEvidence;
     const evidence = evaluatePlanApprovalRepairEvidence({
       body,
       comments,
@@ -344,7 +337,6 @@ export async function runPlanApprove({
             body: base,
             authorityRecords,
             authorityDiagnostics,
-            authenticatedLogin,
             repository: cfg.repo,
             issue: issueNumber,
           });

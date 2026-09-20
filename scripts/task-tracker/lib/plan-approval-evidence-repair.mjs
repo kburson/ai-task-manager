@@ -14,7 +14,7 @@ import { computeScopeIdentity, scopeProjection } from './workflow-policy/scope-i
 import {
   classifyCompletedPlanTransitionAuthority,
   parsePlanTransitionAuthorityComment,
-  readPlanTransitionAuthorityWrapperId,
+  readPlanTransitionAuthorityWrapperIds,
 } from './plan-transition-authority.mjs';
 import { readMoveCompleteMarker } from './move-state/sentinel.mjs';
 
@@ -31,11 +31,6 @@ async function defaultListEvidenceComments({ issueNumber, repo }) {
     { maxBuffer: 10 * 1024 * 1024 }
   );
   return JSON.parse(stdout || '[]').flat();
-}
-
-async function defaultFetchAuthenticatedLogin() {
-  const { stdout } = await pexec('gh', ['api', 'user', '--jq', '.login']);
-  return String(stdout).trim();
 }
 
 async function defaultListWorkflowExceptionRecords({ issueNumber, repo }) {
@@ -253,7 +248,6 @@ export function evaluateModernPlanTransitionEvidence({
   body,
   authorityRecords = [],
   authorityDiagnostics = [],
-  authenticatedLogin = null,
   repository,
   issue,
 } = {}) {
@@ -270,7 +264,8 @@ export function evaluateModernPlanTransitionEvidence({
   );
   if (
     authorityDiagnostics.some(
-      ({ transitionId, code }) => code === 'malformed' && completedTransitionIds.has(transitionId)
+      ({ transitionId, code }) =>
+        ['malformed', 'duplicate'].includes(code) && completedTransitionIds.has(transitionId)
     )
   ) {
     return Object.freeze({
@@ -295,10 +290,11 @@ export function evaluateModernPlanTransitionEvidence({
   }
   const [{ observation, classification }] = completed;
   const { record } = classification;
+  const trustedAssociations = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
   if (
-    typeof authenticatedLogin !== 'string' ||
-    authenticatedLogin.length === 0 ||
-    observation.authorLogin?.toLowerCase() !== authenticatedLogin.toLowerCase()
+    typeof observation.authorLogin !== 'string' ||
+    observation.authorLogin.length === 0 ||
+    !trustedAssociations.has(observation.authorAssociation)
   ) {
     return Object.freeze({
       status: 'unavailable',
@@ -382,6 +378,11 @@ function authorityObservation(comment, record) {
     record,
     commentId: String(comment?.id ?? comment?.databaseId ?? ''),
     authorLogin: comment?.authorLogin ?? comment?.author?.login ?? comment?.user?.login ?? null,
+    authorAssociation:
+      comment?.authorAssociation ??
+      comment?.author_association ??
+      comment?.author?.association ??
+      null,
     createdAt: normalizeInstant(comment?.createdAt ?? comment?.created_at),
     updatedAt: normalizeInstant(comment?.updatedAt ?? comment?.updated_at),
   });
@@ -402,8 +403,15 @@ export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, dep
   const authorityDiagnostics = [];
   for (const comment of comments || []) {
     const body = typeof comment === 'string' ? comment : String(comment?.body ?? '');
-    const transitionId = readPlanTransitionAuthorityWrapperId(body);
-    if (transitionId === null) continue;
+    const transitionIds = readPlanTransitionAuthorityWrapperIds(body);
+    if (transitionIds.length === 0) continue;
+    if (transitionIds.length !== 1) {
+      for (const transitionId of transitionIds) {
+        authorityDiagnostics.push(Object.freeze({ transitionId, code: 'duplicate' }));
+      }
+      continue;
+    }
+    const [transitionId] = transitionIds;
     try {
       authorityRecords.push(
         authorityObservation(comment, parsePlanTransitionAuthorityComment(body))
@@ -412,16 +420,11 @@ export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, dep
       authorityDiagnostics.push(Object.freeze({ transitionId, code: 'malformed' }));
     }
   }
-  let authenticatedLogin = null;
-  if (authorityRecords.length > 0 || authorityDiagnostics.length > 0) {
-    authenticatedLogin = await (deps.fetchAuthenticatedLogin || defaultFetchAuthenticatedLogin)();
-  }
   return {
     comments,
     records,
     issueBodyHistory,
     authorityRecords: Object.freeze(authorityRecords),
     authorityDiagnostics: Object.freeze(authorityDiagnostics),
-    authenticatedLogin,
   };
 }

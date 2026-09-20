@@ -22,6 +22,7 @@ import {
   verifyChainIntegrity,
 } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { writeLastKnownState } from '../../../../task-tracker/gh-timing-comment.mjs';
+import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import { runReconcile } from '../../../../task-tracker/verbs/reconcile.mjs';
 import {
   stampEntryMarkers,
@@ -78,27 +79,64 @@ test('AC2: reconcile accept-live returns no-drift-refused when board == recorded
 
 test('AC3: stampEntryMarkers posts a failure-audit comment on stamp failure', async () => {
   const posted = [];
-  await stampEntryMarkers({
-    issueArg: '544',
-    stateArg: 'develop',
-    cfg: CFG,
-    SKIP_NETWORK: false,
-    // Force the body fetch to throw → drives the catch path.
-    pexec: async () => {
-      throw new Error('gh view exploded');
-    },
-    gh: async () => {
-      throw new Error('gh should not be the audit poster in this test');
-    },
-    postComment: async ({ issueNumber, repo, body }) => {
-      posted.push({ issueNumber, repo, body });
-    },
-  });
+  await assert.rejects(
+    stampEntryMarkers({
+      issueArg: '544',
+      stateArg: 'develop',
+      cfg: CFG,
+      SKIP_NETWORK: false,
+      // Force the fresh-base mutation to throw → drives the catch path.
+      _mutateBody: async () => {
+        throw new Error('gh view exploded');
+      },
+      gh: async () => {
+        throw new Error('gh should not be the audit poster in this test');
+      },
+      postComment: async ({ issueNumber, repo, body }) => {
+        posted.push({ issueNumber, repo, body });
+      },
+    }),
+    /gh view exploded/
+  );
   assert.equal(posted.length, 1, 'exactly one audit comment posted');
   assert.equal(posted[0].issueNumber, '544');
   assert.match(posted[0].body, /Entry-marker stamp FAILED/);
-  assert.match(posted[0].body, /reconcile backfill #544/);
+  assert.match(posted[0].body, /aitm promote #544/);
   assert.match(posted[0].body, /aitm-stamp-failure stage="develop"/);
+});
+
+test('Plan → Develop scope drift from the real marker writer is never swallowed', async () => {
+  const original =
+    '## User Story\n\nAs a maintainer\nI want durable authority\nSo that transitions are auditable\n\n## Scope\n\nOriginal scope.\n\n## Acceptance Criteria\n\n- [ ] Evidence persists.\n';
+  const drifted = original.replace('Original scope.', 'Changed scope.');
+  const posted = [];
+
+  await assert.rejects(
+    stampEntryMarkers({
+      issueArg: '1720',
+      stateArg: 'develop',
+      resolvedFromState: 'plan',
+      transitionId: 'move:11111111-1111-4111-8111-111111111111',
+      cfg: CFG,
+      SKIP_NETWORK: false,
+      planTransitionAuthority: {
+        record: {
+          scopeIdentity: computeScopeIdentity({
+            repository: CFG.repo,
+            issue: 1720,
+            body: original,
+          }),
+        },
+      },
+      _mutateBody: async ({ mutate }) => {
+        mutate(drifted);
+        throw new Error('mutation must not reach persistence');
+      },
+      postComment: async (comment) => posted.push(comment),
+    }),
+    /plan-transition-authority:scope-drift-before-entry/
+  );
+  assert.equal(posted.length, 0, 'authority refusal is not downgraded to a recovery audit');
 });
 
 test('AC3: failure-comment body names the stage, error and recovery command', () => {
@@ -107,9 +145,9 @@ test('AC3: failure-comment body names the stage, error and recovery command', ()
     stage: 'plan',
     error: 'timeout after 30s',
   });
-  assert.match(body, /into `plan`/);
+  assert.match(body, /into `plan` was refused before Status/);
   assert.match(body, /timeout after 30s/);
-  assert.match(body, /npx aitm reconcile backfill #99/);
+  assert.match(body, /npx aitm promote #99/);
 });
 
 test('AC3: postStampFailureAudit degrades (no throw) when the post itself fails', async () => {

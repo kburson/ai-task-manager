@@ -176,75 +176,60 @@ export async function runStatusWrite(ctx) {
 // Centralized stage-entry + recorded-state marker stamping. Every successful
 // Status write stamps `<!-- aitm-entered-<stage>: <ts> -->` AND updates
 // `<!-- aitm-last-known-state -->` in the issue body. Both markers are
-// written in a single body update so drift detection cannot fire phantom
-// `external-mutation` rows on legitimate non-promote transitions
+// written in a single fresh-base body mutation so drift detection cannot fire
+// phantom `external-mutation` rows on legitimate non-promote transitions
 // (#170). This is the single source of truth for the audit-trail chain —
-// verbs must NOT stamp these markers themselves. Failures surface via
-// `writeIssueBodyWithRetry`'s audit-comment path (#168).
+// verbs must NOT stamp these markers themselves. Any failure is surfaced and
+// re-thrown so the later Status write remains unreachable.
 export async function stampEntryMarkers(ctx) {
-  const { issueArg, stateArg, transitionId, cfg, SKIP_NETWORK, gh, pexec } = ctx;
+  const { issueArg, stateArg, transitionId, cfg, SKIP_NETWORK, gh } = ctx;
   if (!(!SKIP_NETWORK && STAGES.includes(stateArg))) return { priorState: undefined };
   try {
-    const [{ writeIssueBodyWithRetry }, { writeLastKnownState, readLastKnownState }] =
-      await Promise.all([import('../state-recording.mjs'), import('../../gh-timing-comment.mjs')]);
-    const { stdout } = await pexec(
-      'gh',
-      ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-      { timeout: GH_API_TIMEOUT_MS }
-    );
-    const beforeBody = JSON.parse(stdout).body ?? '';
-    if (
-      ctx.resolvedFromState === 'plan' &&
-      stateArg === 'develop' &&
-      ctx.planTransitionAuthority?.record
-    ) {
-      const freshScopeIdentity = computeScopeIdentity({
-        repository: cfg.repo,
-        issue: Number(issueArg),
-        body: beforeBody,
+    const { writeLastKnownState, readLastKnownState } = await import('../../gh-timing-comment.mjs');
+    const mutateBody =
+      ctx._mutateBody ||
+      (async (args) => {
+        const { mutateIssueBody } = await import('../issue-body-mutate.mjs');
+        return mutateIssueBody(args);
       });
-      if (freshScopeIdentity !== ctx.planTransitionAuthority.record.scopeIdentity) {
-        throw new Error('plan-transition-authority:scope-drift-before-entry');
-      }
-    }
+    let priorState = null;
+    let priorVisitCount = 0;
+    let nextVisitCount = 0;
+    const stampTs = new Date().toISOString();
+    await mutateBody({
+      issueNumber: issueArg,
+      repo: cfg.repo,
+      maxRetries: 2,
+      mutate: (beforeBody) => {
+        if (
+          ctx.resolvedFromState === 'plan' &&
+          stateArg === 'develop' &&
+          ctx.planTransitionAuthority?.record
+        ) {
+          const freshScopeIdentity = computeScopeIdentity({
+            repository: cfg.repo,
+            issue: Number(issueArg),
+            body: beforeBody,
+          });
+          if (freshScopeIdentity !== ctx.planTransitionAuthority.record.scopeIdentity) {
+            throw new Error('plan-transition-authority:scope-drift-before-entry');
+          }
+        }
+        priorState = readLastKnownState(beforeBody).state;
+        priorVisitCount = getStageVisitCount(beforeBody, stateArg);
+        let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs, transitionId);
+        nextBody = writeLastKnownState(nextBody, stateArg);
+        nextVisitCount = getStageVisitCount(nextBody, stateArg);
+        return nextBody;
+      },
+    });
     // #741 — the stage the authoritative `aitm-last-known-state` marker points at
     // BEFORE this stamp advances it. Returned to the saga so a subsequent failed
     // board write can compensate by rolling the marker back to this value,
     // keeping marker == board instead of leaving marker-ahead-of-board drift.
-    const priorState = readLastKnownState(beforeBody).state;
-    const stampTs = new Date().toISOString();
-    const priorVisitCount = getStageVisitCount(beforeBody, stateArg);
-    let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs, transitionId);
-    nextBody = writeLastKnownState(nextBody, stateArg);
     // Visit number this stamp produced. If stampEntryMarker treated the call
-    // as a no-op (same ts re-stamp), the count is unchanged and we should
-    // not post an audit comment.
-    const nextVisitCount = getStageVisitCount(nextBody, stateArg);
-    if (nextBody !== beforeBody) {
-      const tmp = path.join(
-        projectTmpDir(getProjectDir()),
-        `aitm-entry-${issueArg}-${Date.now()}.md`
-      );
-      await writeIssueBodyWithRetry({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        body: nextBody,
-        bodyBefore: beforeBody,
-        target: stateArg,
-        writeIssueBody: async ({ body }) => {
-          try {
-            writeFileSync(tmp, body, 'utf8');
-            await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
-          } finally {
-            try {
-              unlinkSync(tmp);
-            } catch {
-              /* best-effort */
-            }
-          }
-        },
-      });
-    }
+    // as a no-op (same transition identity), the count is unchanged and we
+    // should not post an audit comment.
     // #184 — When the body stamp produced a visit-numbered re-entry marker
     // (visit >= 2), post a backfill audit comment so the body change is
     // observable in the issue timeline. Idempotent on the (stage, visit)
@@ -272,12 +257,9 @@ export async function stampEntryMarkers(ctx) {
       transitionId: transitionId ?? null,
     };
   } catch (err) {
-    // #544 — a stamp failure here is non-atomic with the already-committed
-    // board move (runStatusWrite ran first): the board now shows `stateArg`
-    // with no `aitm-entered-<stage>` marker, a silent contiguity hole that can
-    // later block a forward promotion with no recovery trail. Surface it as a
-    // DURABLE audit comment (not just stderr) naming the one-command recovery,
-    // so every such hole is observable in the timeline and recoverable.
+    if (String(err?.message || '').startsWith('plan-transition-authority:')) throw err;
+    // Entry evidence is written before Status. Surface a durable diagnostic,
+    // then re-throw so the board cannot advance without its entry marker.
     process.stderr.write(`[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`);
     await postStampFailureAudit({
       issueNumber: issueArg,
@@ -290,6 +272,7 @@ export async function stampEntryMarkers(ctx) {
           await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
         }),
     });
+    throw err;
   }
 }
 
@@ -299,19 +282,17 @@ export function buildStampFailureCommentBody({ issueNumber, stage, error }) {
   return [
     `### ⚠ Entry-marker stamp FAILED — \`${stage}\``,
     '',
-    `The board move for #${issueNumber} into \`${stage}\` succeeded, but writing the ` +
+    `The board move for #${issueNumber} into \`${stage}\` was refused before Status because writing the ` +
       `\`aitm-entered-${stage}\` body marker FAILED:`,
     '',
     '```',
     String(error || 'unknown error'),
     '```',
     '',
-    'The board now shows this stage with no recorded entry marker. That is a ' +
-      'contiguity hole — a later forward promotion can refuse with a missing ' +
-      'prior-stage marker. Recover with:',
+    'The board remains at the prior stage. Resolve the write failure, then retry the governed transition:',
     '',
     '```',
-    `npx aitm reconcile backfill #${issueNumber}`,
+    `npx aitm promote #${issueNumber}`,
     '```',
     '',
     `<!-- aitm-stamp-failure stage="${stage}" -->`,
