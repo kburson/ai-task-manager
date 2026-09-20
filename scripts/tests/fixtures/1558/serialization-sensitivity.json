@@ -1,0 +1,313 @@
+{
+  "schema": "aitm.guidance-serialization-sensitivity/v1",
+  "captureKind": "candidate-model-not-actual-cli",
+  "evidenceOnlyGrowth": {
+    "inputObservations": {
+      "first": 1,
+      "expanded": 12
+    },
+    "routine": {
+      "first": {
+        "characters": 680,
+        "bytes": 680,
+        "proxyTokens": 170
+      },
+      "expanded": {
+        "characters": 680,
+        "bytes": 680,
+        "proxyTokens": 170
+      },
+      "charactersDelta": 0
+    }
+  },
+  "operationalGrowth": {
+    "blocked": {
+      "ready": {
+        "characters": 482,
+        "bytes": 482,
+        "proxyTokens": 121
+      },
+      "blocked": {
+        "characters": 680,
+        "bytes": 680,
+        "proxyTokens": 170
+      },
+      "charactersDelta": 198
+    }
+  },
+  "boundaries": {
+    "claude": [
+      {
+        "boundary": "first-expanded",
+        "measurement": {
+          "characters": 619,
+          "bytes": 619,
+          "proxyTokens": 155
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 811,
+          "bytes": 811,
+          "proxyTokens": 203
+        }
+      },
+      {
+        "boundary": "repeat-matching-receipt",
+        "measurement": {
+          "characters": 549,
+          "bytes": 549,
+          "proxyTokens": 138
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 631,
+          "bytes": 631,
+          "proxyTokens": 158
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 827,
+          "bytes": 827,
+          "proxyTokens": 207
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 637,
+          "bytes": 637,
+          "proxyTokens": 160
+        }
+      },
+      {
+        "boundary": "changed-stale-receipt",
+        "measurement": {
+          "characters": 1038,
+          "bytes": 1038,
+          "proxyTokens": 260
+        }
+      },
+      {
+        "boundary": "post-compaction",
+        "measurement": {
+          "characters": 637,
+          "bytes": 637,
+          "proxyTokens": 160
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 619,
+          "bytes": 619,
+          "proxyTokens": 155
+        }
+      },
+      {
+        "boundary": "explicit-diagnostic",
+        "measurement": {
+          "characters": 3000,
+          "bytes": 3000,
+          "proxyTokens": 750
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 631,
+          "bytes": 631,
+          "proxyTokens": 158
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 827,
+          "bytes": 827,
+          "proxyTokens": 207
+        }
+      },
+      {
+        "boundary": "external-approval-after",
+        "measurement": {
+          "characters": 637,
+          "bytes": 637,
+          "proxyTokens": 160
+        }
+      },
+      {
+        "boundary": "external-approval-before",
+        "measurement": {
+          "characters": 1058,
+          "bytes": 1058,
+          "proxyTokens": 265
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 625,
+          "bytes": 625,
+          "proxyTokens": 157
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 819,
+          "bytes": 819,
+          "proxyTokens": 205
+        }
+      }
+    ],
+    "codex": [
+      {
+        "boundary": "first-expanded",
+        "measurement": {
+          "characters": 619,
+          "bytes": 619,
+          "proxyTokens": 155
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 811,
+          "bytes": 811,
+          "proxyTokens": 203
+        }
+      },
+      {
+        "boundary": "repeat-matching-receipt",
+        "measurement": {
+          "characters": 549,
+          "bytes": 549,
+          "proxyTokens": 138
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 631,
+          "bytes": 631,
+          "proxyTokens": 158
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 827,
+          "bytes": 827,
+          "proxyTokens": 207
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 637,
+          "bytes": 637,
+          "proxyTokens": 160
+        }
+      },
+      {
+        "boundary": "changed-stale-receipt",
+        "measurement": {
+          "characters": 1038,
+          "bytes": 1038,
+          "proxyTokens": 260
+        }
+      },
+      {
+        "boundary": "post-compaction",
+        "measurement": {
+          "characters": 637,
+          "bytes": 637,
+          "proxyTokens": 160
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 619,
+          "bytes": 619,
+          "proxyTokens": 155
+        }
+      },
+      {
+        "boundary": "explicit-diagnostic",
+        "measurement": {
+          "characters": 3000,
+          "bytes": 3000,
+          "proxyTokens": 750
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 631,
+          "bytes": 631,
+          "proxyTokens": 158
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 827,
+          "bytes": 827,
+          "proxyTokens": 207
+        }
+      },
+      {
+        "boundary": "external-approval-after",
+        "measurement": {
+          "characters": 637,
+          "bytes": 637,
+          "proxyTokens": 160
+        }
+      },
+      {
+        "boundary": "external-approval-before",
+        "measurement": {
+          "characters": 1058,
+          "bytes": 1058,
+          "proxyTokens": 265
+        }
+      },
+      {
+        "boundary": "routine",
+        "measurement": {
+          "characters": 625,
+          "bytes": 625,
+          "proxyTokens": 157
+        }
+      },
+      {
+        "boundary": "refusal-remediation",
+        "measurement": {
+          "characters": 819,
+          "bytes": 819,
+          "proxyTokens": 205
+        }
+      }
+    ]
+  },
+  "heavyCase": {
+    "inputs": {
+      "action": "close",
+      "attempts": 2,
+      "blockersPerAttempt": 7,
+      "observationsPerAttempt": 8
+    },
+    "measurement": {
+      "characters": 3682,
+      "bytes": 3682,
+      "proxyTokens": 921
+    }
+  }
+}

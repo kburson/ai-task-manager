@@ -1,0 +1,596 @@
+{
+  "schema": "aitm.guidance-context-comparison/v1",
+  "comparisonKind": "early-candidate-characterization-not-feasibility-authority",
+  "identities": {
+    "legacy": {
+      "sourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+      "scenarioSha256": "sha256:1364fa38a7710471349de771cdb8929b2c68456993c9acf2e545e6e4d07daed9",
+      "authorityFixtureSha256": "sha256:d2b67c1e1da3afa7ed05750160090a5fc405c5538ac22918851c87e2eae2324b",
+      "transcriptSha256": {
+        "claude": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
+        "codex": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec"
+      }
+    },
+    "candidate": {
+      "oracle": {
+        "sourcePath": "scripts/tests/helpers/guidance-characterization.mjs",
+        "sourceCommit": "3579a72100642e42e3268e3dcf7de63aa691a3ac",
+        "sha256": "sha256:e54fa1229cb919a4dafc7395dfeda2461f3500e7b849f3fcd441bc2ac19e7538"
+      },
+      "plan": {
+        "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+        "sourceSection": "Appendix A.1 Candidate protocol and illustrative traffic",
+        "sourceCommit": "9589337aaf7cd6b13c1f69e28095af82e9df2ecd",
+        "sha256": "sha256:6810a378cc1ba3fff051fcf72032278efc955af053eb76b8b059de9e033e79f1"
+      },
+      "fixtureSourceCommit": "627907fb43fd2ee1dd8fc6718bcb3499d068b775",
+      "fixtureSetSha256": "sha256:5878deaa0307fd79e71f2827a9566952747cfd6c4e289ae058d8e9abc790ecf0",
+      "serializer": "guidance-characterization/candidate-workflow-v1",
+      "runtime": {
+        "node": "v26.8.1",
+        "platform": "darwin",
+        "architecture": "arm64"
+      }
+    }
+  },
+  "assumptions": {
+    "captureKind": "candidate-model-not-actual-cli",
+    "staticObligations": "Provisional exact Appendix A.1 proposed text; this is not a certified complete retained-obligation map.",
+    "replacementOwner": "WBS 24 must replace this provisional static assumption with the reviewed obligation map before release evidence.",
+    "latency": "No service latency is inferred from deterministic fixture traffic."
+  },
+  "fixedBudgets": {
+    "routerPlusPickup": {
+      "absolute": 5000,
+      "working": 4000
+    },
+    "clean": {
+      "absolute": 300,
+      "working": 240
+    },
+    "blocked": {
+      "absolute": 500,
+      "working": 400
+    },
+    "fullLifecycle": {
+      "absolute": 7000,
+      "working": 5600
+    }
+  },
+  "adapters": {
+    "claude": {
+      "legacy": {
+        "static": {
+          "files": [
+            {
+              "id": "shim",
+              "sourcePath": ".claude/skills/task/SKILL.md",
+              "characters": 2282,
+              "bytes": 2292,
+              "proxyTokens": 571,
+              "sha256": "sha256:716bfe36eb7de88146874e98530d05e661ca81e11f6fd90f2cd2d26fa9f73332"
+            },
+            {
+              "id": "adapter",
+              "sourcePath": "skill/adapters/claude/SKILL.md",
+              "characters": 5399,
+              "bytes": 5427,
+              "proxyTokens": 1350,
+              "sha256": "sha256:5b0bab9e8ceae985c1d17b9c55e621abc8ac2ef7d1839e661f39ea8afe700361"
+            },
+            {
+              "id": "shared",
+              "sourcePath": "skill/shared/SKILL.md",
+              "characters": 848,
+              "bytes": 848,
+              "proxyTokens": 212,
+              "sha256": "sha256:9e0676d1533ce4c53eef9cb9a126caa0dd65ace3294bb2cbecc7a3ac491204a1"
+            },
+            {
+              "id": "router",
+              "sourcePath": "skill/shared/router.md",
+              "characters": 8598,
+              "bytes": 8622,
+              "proxyTokens": 2150,
+              "sha256": "sha256:44c4bd58802bd50458eafd067688c990cd1df950a69757f225809292ba7e07b0"
+            },
+            {
+              "id": "pickup",
+              "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+              "characters": 5599,
+              "bytes": 5647,
+              "proxyTokens": 1400,
+              "sha256": "sha256:d773378bee19f52023ff18a41d53e06f21d7df13cf4405d0f4540e7ff99547df"
+            },
+            {
+              "id": "bind-rule",
+              "sourcePath": "skill/shared/rules/bind.md",
+              "characters": 5466,
+              "bytes": 5499,
+              "proxyTokens": 1367,
+              "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+            },
+            {
+              "id": "state-walk-rule",
+              "sourcePath": "skill/shared/rules/state-walk.md",
+              "characters": 7189,
+              "bytes": 7235,
+              "proxyTokens": 1798,
+              "sha256": "sha256:979c25c1ed9130f760b5240f53a97c1e43ff0e74c8224d4f386964a6a0d88623"
+            },
+            {
+              "id": "functional-dod-rule",
+              "sourcePath": "skill/shared/rules/functional-dod.md",
+              "characters": 7777,
+              "bytes": 7815,
+              "proxyTokens": 1945,
+              "sha256": "sha256:3b1f96b850df76f7af436c0a0968103364cdb4496dd4f70bab14fd4d7651fefd"
+            },
+            {
+              "id": "review-rule",
+              "sourcePath": "skill/shared/rules/review.md",
+              "characters": 8767,
+              "bytes": 8802,
+              "proxyTokens": 2192,
+              "sha256": "sha256:47437c5e0eed93a36dfe7710ee526d83be32a26f15aa7198f9b6e6b02784e31f"
+            },
+            {
+              "id": "delivery-rule",
+              "sourcePath": "skill/shared/rules/deliver.md",
+              "characters": 5202,
+              "bytes": 5202,
+              "proxyTokens": 1301,
+              "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+            },
+            {
+              "id": "close-rule",
+              "sourcePath": "skill/shared/rules/close.md",
+              "characters": 10433,
+              "bytes": 10469,
+              "proxyTokens": 2609,
+              "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+            },
+            {
+              "id": "full-auto-rule",
+              "sourcePath": "skill/shared/rules/full-auto.md",
+              "characters": 2986,
+              "bytes": 2990,
+              "proxyTokens": 747,
+              "sha256": "sha256:6fea87e1369dad9efca356c9f967f0e002e1f766bb039da0c5cb4b1256966bcd"
+            }
+          ],
+          "totals": {
+            "characters": 70546,
+            "bytes": 70848,
+            "proxyTokens": 17642
+          }
+        },
+        "traffic": {
+          "categories": [
+            {
+              "category": "command-input",
+              "characters": 1508,
+              "bytes": 1508
+            },
+            {
+              "category": "operational-stdout",
+              "characters": 336,
+              "bytes": 336
+            },
+            {
+              "category": "operational-stderr",
+              "characters": 262,
+              "bytes": 262
+            }
+          ],
+          "totals": {
+            "characters": 2106,
+            "bytes": 2106,
+            "proxyTokens": 527
+          }
+        },
+        "total": {
+          "characters": 72652,
+          "bytes": 72954,
+          "proxyTokens": 18169
+        }
+      },
+      "candidate": {
+        "captureKind": "candidate-model-not-actual-cli",
+        "transcriptPath": "scripts/tests/fixtures/1558/candidate-workflow/claude.json",
+        "transcriptSha256": "sha256:ddf030573c783d800b62ba8c96617a192707669cfb26e5152dd0eef938a0d510",
+        "static": {
+          "files": [
+            {
+              "id": "shim",
+              "characters": 946,
+              "bytes": 946,
+              "proxyTokens": 237,
+              "sourcePath": "skill/SKILL.md",
+              "sourceSection": "complete-file",
+              "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+            },
+            {
+              "id": "router-proposal",
+              "characters": 1435,
+              "bytes": 1435,
+              "proxyTokens": 359,
+              "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+              "sourceSection": "Appendix A.1 router",
+              "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+            },
+            {
+              "id": "pickup-proposal",
+              "characters": 564,
+              "bytes": 564,
+              "proxyTokens": 141,
+              "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+              "sourceSection": "Appendix A.1 pickup",
+              "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+            },
+            {
+              "id": "adapter-proposal",
+              "characters": 410,
+              "bytes": 410,
+              "proxyTokens": 103,
+              "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+              "sourceSection": "Appendix A.1 adapter.claude",
+              "sha256": "sha256:99beb2a4d5ce6acaa002b8af6fcf943b35afeed02a2ec963539581a258818faa"
+            }
+          ],
+          "totals": {
+            "characters": 3355,
+            "bytes": 3355,
+            "proxyTokens": 840
+          }
+        },
+        "responses": {
+          "clean": {
+            "characters": 482,
+            "bytes": 482,
+            "proxyTokens": 121
+          },
+          "blocked": {
+            "characters": 680,
+            "bytes": 680,
+            "proxyTokens": 170
+          }
+        },
+        "traffic": {
+          "categories": [
+            {
+              "category": "command-input",
+              "characters": 1089,
+              "bytes": 1089
+            },
+            {
+              "category": "receipt-input",
+              "characters": 213,
+              "bytes": 213
+            },
+            {
+              "category": "operational-stdout",
+              "characters": 9515,
+              "bytes": 9515
+            },
+            {
+              "category": "operational-stderr",
+              "characters": 0,
+              "bytes": 0
+            },
+            {
+              "category": "receipt-output",
+              "characters": 1600,
+              "bytes": 1600
+            },
+            {
+              "category": "explicit-diagnostics",
+              "characters": 2004,
+              "bytes": 2004
+            }
+          ],
+          "totals": {
+            "characters": 14421,
+            "bytes": 14421,
+            "proxyTokens": 3606
+          }
+        },
+        "total": {
+          "characters": 17776,
+          "bytes": 17776,
+          "proxyTokens": 4446
+        }
+      },
+      "delta": {
+        "characters": -54876,
+        "bytes": -55178,
+        "proxyTokens": -13723
+      },
+      "remainingMargins": {
+        "routerPlusPickup": {
+          "absolute": 4160,
+          "working": 3160
+        },
+        "clean": {
+          "absolute": 179,
+          "working": 119
+        },
+        "blocked": {
+          "absolute": 330,
+          "working": 230
+        },
+        "fullLifecycle": {
+          "absolute": 2554,
+          "working": 1154
+        }
+      }
+    },
+    "codex": {
+      "legacy": {
+        "static": {
+          "files": [
+            {
+              "id": "shim",
+              "sourcePath": ".agents/skills/task/SKILL.md",
+              "characters": 2342,
+              "bytes": 2352,
+              "proxyTokens": 586,
+              "sha256": "sha256:4ece8b159746e4f75b89836e528f6826fb58598789466ed13347fff4ae0da10c"
+            },
+            {
+              "id": "adapter",
+              "sourcePath": "skill/adapters/codex/SKILL.md",
+              "characters": 4996,
+              "bytes": 5024,
+              "proxyTokens": 1249,
+              "sha256": "sha256:5b75552dca1ff1235f010f370b287ada18a104c7e3436bf69a9aa8abe22e35ff"
+            },
+            {
+              "id": "shared",
+              "sourcePath": "skill/shared/SKILL.md",
+              "characters": 848,
+              "bytes": 848,
+              "proxyTokens": 212,
+              "sha256": "sha256:9e0676d1533ce4c53eef9cb9a126caa0dd65ace3294bb2cbecc7a3ac491204a1"
+            },
+            {
+              "id": "router",
+              "sourcePath": "skill/shared/router.md",
+              "characters": 8598,
+              "bytes": 8622,
+              "proxyTokens": 2150,
+              "sha256": "sha256:44c4bd58802bd50458eafd067688c990cd1df950a69757f225809292ba7e07b0"
+            },
+            {
+              "id": "pickup",
+              "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+              "characters": 5599,
+              "bytes": 5647,
+              "proxyTokens": 1400,
+              "sha256": "sha256:d773378bee19f52023ff18a41d53e06f21d7df13cf4405d0f4540e7ff99547df"
+            },
+            {
+              "id": "bind-rule",
+              "sourcePath": "skill/shared/rules/bind.md",
+              "characters": 5466,
+              "bytes": 5499,
+              "proxyTokens": 1367,
+              "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+            },
+            {
+              "id": "state-walk-rule",
+              "sourcePath": "skill/shared/rules/state-walk.md",
+              "characters": 7189,
+              "bytes": 7235,
+              "proxyTokens": 1798,
+              "sha256": "sha256:979c25c1ed9130f760b5240f53a97c1e43ff0e74c8224d4f386964a6a0d88623"
+            },
+            {
+              "id": "functional-dod-rule",
+              "sourcePath": "skill/shared/rules/functional-dod.md",
+              "characters": 7777,
+              "bytes": 7815,
+              "proxyTokens": 1945,
+              "sha256": "sha256:3b1f96b850df76f7af436c0a0968103364cdb4496dd4f70bab14fd4d7651fefd"
+            },
+            {
+              "id": "review-rule",
+              "sourcePath": "skill/shared/rules/review.md",
+              "characters": 8767,
+              "bytes": 8802,
+              "proxyTokens": 2192,
+              "sha256": "sha256:47437c5e0eed93a36dfe7710ee526d83be32a26f15aa7198f9b6e6b02784e31f"
+            },
+            {
+              "id": "delivery-rule",
+              "sourcePath": "skill/shared/rules/deliver.md",
+              "characters": 5202,
+              "bytes": 5202,
+              "proxyTokens": 1301,
+              "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+            },
+            {
+              "id": "close-rule",
+              "sourcePath": "skill/shared/rules/close.md",
+              "characters": 10433,
+              "bytes": 10469,
+              "proxyTokens": 2609,
+              "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+            },
+            {
+              "id": "full-auto-rule",
+              "sourcePath": "skill/shared/rules/full-auto.md",
+              "characters": 2986,
+              "bytes": 2990,
+              "proxyTokens": 747,
+              "sha256": "sha256:6fea87e1369dad9efca356c9f967f0e002e1f766bb039da0c5cb4b1256966bcd"
+            }
+          ],
+          "totals": {
+            "characters": 70203,
+            "bytes": 70505,
+            "proxyTokens": 17556
+          }
+        },
+        "traffic": {
+          "categories": [
+            {
+              "category": "command-input",
+              "characters": 1508,
+              "bytes": 1508
+            },
+            {
+              "category": "operational-stdout",
+              "characters": 336,
+              "bytes": 336
+            },
+            {
+              "category": "operational-stderr",
+              "characters": 262,
+              "bytes": 262
+            }
+          ],
+          "totals": {
+            "characters": 2106,
+            "bytes": 2106,
+            "proxyTokens": 527
+          }
+        },
+        "total": {
+          "characters": 72309,
+          "bytes": 72611,
+          "proxyTokens": 18083
+        }
+      },
+      "candidate": {
+        "captureKind": "candidate-model-not-actual-cli",
+        "transcriptPath": "scripts/tests/fixtures/1558/candidate-workflow/codex.json",
+        "transcriptSha256": "sha256:59e4888e4e1044954a90b85f89fcd8c21763d4f1dc1f46980edd61523c229f45",
+        "static": {
+          "files": [
+            {
+              "id": "shim",
+              "characters": 946,
+              "bytes": 946,
+              "proxyTokens": 237,
+              "sourcePath": "skill/SKILL.md",
+              "sourceSection": "complete-file",
+              "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+            },
+            {
+              "id": "router-proposal",
+              "characters": 1435,
+              "bytes": 1435,
+              "proxyTokens": 359,
+              "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+              "sourceSection": "Appendix A.1 router",
+              "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+            },
+            {
+              "id": "pickup-proposal",
+              "characters": 564,
+              "bytes": 564,
+              "proxyTokens": 141,
+              "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+              "sourceSection": "Appendix A.1 pickup",
+              "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+            },
+            {
+              "id": "adapter-proposal",
+              "characters": 383,
+              "bytes": 383,
+              "proxyTokens": 96,
+              "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+              "sourceSection": "Appendix A.1 adapter.codex",
+              "sha256": "sha256:ef20067ef6bb8bcd2bbcfa4a2bc6c2e5712ac410d4e920c67f84ee6f55e78674"
+            }
+          ],
+          "totals": {
+            "characters": 3328,
+            "bytes": 3328,
+            "proxyTokens": 833
+          }
+        },
+        "responses": {
+          "clean": {
+            "characters": 482,
+            "bytes": 482,
+            "proxyTokens": 121
+          },
+          "blocked": {
+            "characters": 680,
+            "bytes": 680,
+            "proxyTokens": 170
+          }
+        },
+        "traffic": {
+          "categories": [
+            {
+              "category": "command-input",
+              "characters": 1089,
+              "bytes": 1089
+            },
+            {
+              "category": "receipt-input",
+              "characters": 213,
+              "bytes": 213
+            },
+            {
+              "category": "operational-stdout",
+              "characters": 9515,
+              "bytes": 9515
+            },
+            {
+              "category": "operational-stderr",
+              "characters": 0,
+              "bytes": 0
+            },
+            {
+              "category": "receipt-output",
+              "characters": 1600,
+              "bytes": 1600
+            },
+            {
+              "category": "explicit-diagnostics",
+              "characters": 2004,
+              "bytes": 2004
+            }
+          ],
+          "totals": {
+            "characters": 14421,
+            "bytes": 14421,
+            "proxyTokens": 3606
+          }
+        },
+        "total": {
+          "characters": 17749,
+          "bytes": 17749,
+          "proxyTokens": 4439
+        }
+      },
+      "delta": {
+        "characters": -54560,
+        "bytes": -54862,
+        "proxyTokens": -13644
+      },
+      "remainingMargins": {
+        "routerPlusPickup": {
+          "absolute": 4167,
+          "working": 3167
+        },
+        "clean": {
+          "absolute": 179,
+          "working": 119
+        },
+        "blocked": {
+          "absolute": 330,
+          "working": 230
+        },
+        "fullLifecycle": {
+          "absolute": 2561,
+          "working": 1161
+        }
+      }
+    }
+  }
+}

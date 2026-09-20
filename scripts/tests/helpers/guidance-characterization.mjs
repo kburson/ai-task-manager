@@ -1,5 +1,7 @@
 // @story #1658
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { assertHumanRequestCoupling } from './guidance-characterization-coupling.mjs';
 import { validateCandidatePresentation } from './guidance-characterization-presentation.mjs';
@@ -813,6 +815,660 @@ export function projectOverrideMutationEffect({ valid, mutationSucceeded, alread
     contextReset: false,
   });
   return { mutationAllowed, warningEmitted, annotationWritten };
+}
+
+function measureText(text) {
+  return {
+    characters: text.length,
+    bytes: Buffer.byteLength(text, 'utf8'),
+  };
+}
+
+export function measureStaticFiles(files) {
+  const measured = files.map(({ id, text }) => {
+    const counts = measureText(text);
+    return { id, ...counts, proxyTokens: Math.ceil(counts.characters / 4) };
+  });
+  return {
+    files: measured,
+    totals: measured.reduce(
+      (total, file) => ({
+        characters: total.characters + file.characters,
+        bytes: total.bytes + file.bytes,
+        proxyTokens: total.proxyTokens + file.proxyTokens,
+      }),
+      { characters: 0, bytes: 0, proxyTokens: 0 }
+    ),
+  };
+}
+
+export function measureTrafficParts(parts) {
+  const measured = parts.map(({ category, text }) => ({ category, ...measureText(text) }));
+  const totals = measured.reduce(
+    (total, part) => ({
+      characters: total.characters + part.characters,
+      bytes: total.bytes + part.bytes,
+    }),
+    { characters: 0, bytes: 0 }
+  );
+  return {
+    parts: measured,
+    totals: { ...totals, proxyTokens: Math.ceil(totals.characters / 4) },
+  };
+}
+
+const CANDIDATE_WORKFLOW_SCHEDULE = Object.freeze([
+  {
+    legacyScenarioId: 'bind-success',
+    action: 'bind',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'first-expanded',
+  },
+  {
+    legacyScenarioId: 'bind-refusal',
+    action: 'bind',
+    outcome: 'refusal',
+    scenario: 'blocked',
+    boundary: 'refusal-remediation',
+  },
+  {
+    legacyScenarioId: 'bind-success',
+    action: 'bind',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'repeat-matching-receipt',
+    receiptDigest: GUIDANCE_DIGEST,
+    comparableLane: false,
+    execute: false,
+  },
+  {
+    legacyScenarioId: 'resume-success',
+    action: 'resume',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'routine',
+  },
+  {
+    legacyScenarioId: 'resume-refusal',
+    action: 'resume',
+    outcome: 'refusal',
+    scenario: 'blocked',
+    boundary: 'refusal-remediation',
+  },
+  {
+    legacyScenarioId: 'promote-success',
+    action: 'promote',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'routine',
+  },
+  {
+    legacyScenarioId: 'promote-refusal',
+    action: 'promote',
+    outcome: 'refusal',
+    scenario: 'blocked',
+    boundary: 'changed-stale-receipt',
+    receiptDigest: `sha256:${'0'.repeat(64)}`,
+  },
+  {
+    legacyScenarioId: 'promote-success',
+    action: 'promote',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'post-compaction',
+    comparableLane: false,
+    execute: false,
+  },
+  {
+    legacyScenarioId: 'test-success',
+    action: 'test',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'routine',
+  },
+  {
+    legacyScenarioId: 'test-refusal',
+    action: 'test',
+    outcome: 'refusal',
+    scenario: 'indeterminate',
+    boundary: 'explicit-diagnostic',
+    diagnostic: true,
+  },
+  {
+    legacyScenarioId: 'review-success',
+    action: 'review',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'routine',
+  },
+  {
+    legacyScenarioId: 'review-refusal',
+    action: 'review',
+    outcome: 'refusal',
+    scenario: 'blocked',
+    boundary: 'refusal-remediation',
+  },
+  {
+    legacyScenarioId: 'deliver-success',
+    action: 'deliver',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'external-approval-after',
+  },
+  {
+    legacyScenarioId: 'deliver-refusal',
+    action: 'deliver',
+    outcome: 'refusal',
+    scenario: 'effective-policy-human-request',
+    boundary: 'external-approval-before',
+  },
+  {
+    legacyScenarioId: 'close-success',
+    action: 'close',
+    outcome: 'success',
+    scenario: 'ready',
+    boundary: 'routine',
+  },
+  {
+    legacyScenarioId: 'close-refusal',
+    action: 'close',
+    outcome: 'refusal',
+    scenario: 'blocked',
+    boundary: 'refusal-remediation',
+  },
+]);
+
+export function buildCandidateWorkflow({ adapter, fixtures, legacyTranscript }) {
+  if (!new Set(['claude', 'codex']).has(adapter)) fail('measurement-adapter');
+  const legacyByScenario = new Map(
+    legacyTranscript.entries.map((entry) => [entry.scenarioId, entry])
+  );
+  const entries = CANDIDATE_WORKFLOW_SCHEDULE.map((step, index) => {
+    const fixture = fixtures[step.action];
+    const legacy = legacyByScenario.get(step.legacyScenarioId);
+    if (!fixture || !legacy) fail('measurement-schedule-source');
+    const decision = buildCandidateDecision({ fixture, scenario: step.scenario });
+    const knownGuidance = step.receiptDigest
+      ? [{ id: `action.${step.action}`, digest: step.receiptDigest }]
+      : [];
+    const routine = renderCandidateExplanation({ decision, knownGuidance });
+    const diagnostic = step.diagnostic
+      ? renderCandidateExplanation({
+          decision,
+          knownGuidance,
+          diagnostic: true,
+          diagnosticMessages: [
+            {
+              guardId: 'authority-collection',
+              text: 'deterministic authority fixture requires explicit investigation',
+              untrusted: true,
+            },
+          ],
+        })
+      : null;
+    const guidance = routine.guidance[0];
+    const receiptInput = step.receiptDigest
+      ? `aitm-guidance-loaded:action.${step.action}:${step.receiptDigest}\n`
+      : '';
+    const receiptOutput =
+      guidance.status === 'expanded'
+        ? `aitm-guidance-loaded:${guidance.id}:${guidance.digest}\n`
+        : '';
+    const shouldExecute =
+      step.execute !== false && step.outcome === 'success' && decision.status === 'ready';
+    return {
+      sequence: index + 1,
+      scenarioId:
+        step.comparableLane === false
+          ? `${step.legacyScenarioId}:${step.boundary}`
+          : step.legacyScenarioId,
+      legacyScenarioId: step.legacyScenarioId,
+      comparableLane: step.comparableLane !== false,
+      boundary: step.boundary,
+      action: step.action,
+      outcome: step.outcome,
+      commandInput: `npx aitm explain ${fixture.issue} --action ${step.action}${
+        step.receiptDigest ? ` --known action.${step.action}@${step.receiptDigest}` : ''
+      } --json\n`,
+      receiptInput,
+      stdout: `${JSON.stringify(routine)}\n`,
+      stderr: '',
+      receiptOutput,
+      diagnosticOutput: diagnostic ? `${JSON.stringify(diagnostic)}\n` : '',
+      execution: shouldExecute
+        ? {
+            commandInput: `${legacy.command.executable} ${legacy.command.argv.join(' ')}\n`,
+            stdout: legacy.stdout,
+            stderr: legacy.stderr,
+          }
+        : null,
+    };
+  });
+  return {
+    schema: 'aitm.guidance-candidate-transcript/v1',
+    captureKind: 'candidate-model-not-actual-cli',
+    adapter,
+    sourceCommit: legacyTranscript.sourceCommit,
+    authorityFixtureSha256: legacyTranscript.authorityFixtureSha256,
+    scenarioSha256: legacyTranscript.scenarioSha256,
+    entries,
+  };
+}
+
+function sha256Text(text) {
+  return `sha256:${createHash('sha256').update(text).digest('hex')}`;
+}
+
+function readJson(projectRoot, relativePath) {
+  return JSON.parse(readFileSync(path.join(projectRoot, relativePath), 'utf8'));
+}
+
+function candidateStaticSource(projectRoot, adapter) {
+  const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md';
+  const plan = readFileSync(path.join(projectRoot, planPath), 'utf8');
+  const extract = (pattern, id) => {
+    const match = pattern.exec(plan);
+    if (!match) fail(`measurement-static-source-${id}`);
+    return match[1];
+  };
+  const values = [
+    {
+      id: 'shim',
+      sourcePath: 'skill/SKILL.md',
+      sourceSection: 'complete-file',
+      text: readFileSync(path.join(projectRoot, 'skill/SKILL.md'), 'utf8'),
+    },
+    {
+      id: 'router-proposal',
+      sourcePath: planPath,
+      sourceSection: 'Appendix A.1 router',
+      text: extract(/const router = `([\s\S]*?)`;/, 'router'),
+    },
+    {
+      id: 'pickup-proposal',
+      sourcePath: planPath,
+      sourceSection: 'Appendix A.1 pickup',
+      text: extract(/const pickup = `([\s\S]*?)`;/, 'pickup'),
+    },
+    {
+      id: 'adapter-proposal',
+      sourcePath: planPath,
+      sourceSection: `Appendix A.1 adapter.${adapter}`,
+      text: extract(new RegExp(adapter + ': `([\\s\\S]*?)`,'), `adapter-${adapter}`),
+    },
+  ];
+  const measured = measureStaticFiles(values);
+  return {
+    files: measured.files.map((file, index) => ({
+      ...file,
+      sourcePath: values[index].sourcePath,
+      sourceSection: values[index].sourceSection,
+      sha256: sha256Text(values[index].text),
+    })),
+    totals: measured.totals,
+  };
+}
+
+function candidateTraffic(transcript) {
+  const text = (selector) => transcript.entries.map(selector).join('');
+  const measurement = measureTrafficParts([
+    {
+      category: 'command-input',
+      text: text((entry) => entry.commandInput + (entry.execution?.commandInput ?? '')),
+    },
+    { category: 'receipt-input', text: text((entry) => entry.receiptInput) },
+    {
+      category: 'operational-stdout',
+      text: text((entry) => entry.stdout + (entry.execution?.stdout ?? '')),
+    },
+    {
+      category: 'operational-stderr',
+      text: text((entry) => entry.stderr + (entry.execution?.stderr ?? '')),
+    },
+    { category: 'receipt-output', text: text((entry) => entry.receiptOutput) },
+    { category: 'explicit-diagnostics', text: text((entry) => entry.diagnosticOutput) },
+  ]);
+  return { categories: measurement.parts, totals: measurement.totals };
+}
+
+function legacyTraffic(candidateTranscript, legacyTranscript) {
+  const byScenario = new Map(legacyTranscript.entries.map((entry) => [entry.scenarioId, entry]));
+  const comparable = candidateTranscript.entries.filter(({ comparableLane }) => comparableLane);
+  const text = (selector) =>
+    comparable.map(({ legacyScenarioId }) => selector(byScenario.get(legacyScenarioId))).join('');
+  const measurement = measureTrafficParts([
+    {
+      category: 'command-input',
+      text: text((entry) => `${JSON.stringify(entry.command)}\n`),
+    },
+    { category: 'operational-stdout', text: text((entry) => entry.stdout) },
+    { category: 'operational-stderr', text: text((entry) => entry.stderr) },
+  ]);
+  return { categories: measurement.parts, totals: measurement.totals };
+}
+
+function totalContext(staticMeasurement, trafficMeasurement) {
+  return {
+    characters: staticMeasurement.totals.characters + trafficMeasurement.totals.characters,
+    bytes: staticMeasurement.totals.bytes + trafficMeasurement.totals.bytes,
+    proxyTokens: staticMeasurement.totals.proxyTokens + trafficMeasurement.totals.proxyTokens,
+  };
+}
+
+function measureSerialized(text) {
+  const counts = measureText(text);
+  return { ...counts, proxyTokens: Math.ceil(counts.characters / 4) };
+}
+
+function buildHeavyExplanation(fixture) {
+  const decision = buildCandidateDecision({ fixture, scenario: 'blocked', evidenceCopies: 8 });
+  decision.blockers = Array.from({ length: 7 }, (_, index) => ({
+    guardId: 'candidate-precondition',
+    code: 'precondition-missing',
+    args: { requirement: `close-authority-${index + 1}` },
+    remediation: {
+      id: 'satisfy-precondition',
+      args: { issue: fixture.issue, actionId: fixture.actionId },
+    },
+  }));
+  validateCandidateDecision(decision);
+  return `${JSON.stringify(renderCandidateExplanation({ decision }))}\n`;
+}
+
+function buildActionCardinality({ fixtures, inventory }) {
+  const inventoryByAction = new Map(inventory.actions.map((entry) => [entry.id, entry]));
+  return {
+    schema: 'aitm.guidance-action-cardinality/v1',
+    fixtureKind: 'observed-candidate-model',
+    actions: [...ACTIONS].map((actionId) => {
+      const fixture = fixtures[actionId];
+      const scenarios = fixture.scenarios.map((scenario) => {
+        const decision = buildCandidateDecision({ fixture, scenario });
+        return {
+          scenario,
+          blockers: decision.blockers.length,
+          warnings: decision.warnings.length,
+          normalizations: decision.normalizations.length,
+          humanRequests: decision.humanDecision?.requests.length ?? 0,
+          observations: decision.snapshot.observations.length,
+        };
+      });
+      const actionInventory = inventoryByAction.get(actionId);
+      return {
+        action: actionId,
+        observedFixtures: scenarios,
+        simultaneousReachability: scenarios.filter(
+          ({ blockers, warnings, normalizations, humanRequests }) =>
+            blockers + warnings + normalizations + humanRequests > 0
+        ),
+        perSiteFanOut: actionInventory.observations.map((observation) => ({
+          site: observation.id,
+          refusals: observation.refusals.length,
+          warnings: observation.warnings.length,
+          humanObligations: observation.humanObligations.length,
+        })),
+      };
+    }),
+    finiteHeavyInputs: {
+      action: 'close',
+      attempts: 2,
+      blockersPerAttempt: 7,
+      observationsPerAttempt: 8,
+    },
+    unboundedDimensions: [
+      'body-length',
+      'child-count',
+      'dependency-count',
+      'pagination',
+      'retry-history',
+    ],
+  };
+}
+
+function buildSerializationSensitivity({ fixtures, transcripts }) {
+  const deliver = fixtures.deliver;
+  const evidenceOne = JSON.stringify(
+    renderCandidateExplanation({
+      decision: buildCandidateDecision({ fixture: deliver, scenario: 'blocked' }),
+    })
+  );
+  const evidenceMany = JSON.stringify(
+    renderCandidateExplanation({
+      decision: buildCandidateDecision({
+        fixture: deliver,
+        scenario: 'blocked',
+        evidenceCopies: 12,
+      }),
+    })
+  );
+  const ready = measureSerialized(
+    JSON.stringify(
+      renderCandidateExplanation({
+        decision: buildCandidateDecision({ fixture: deliver, scenario: 'ready' }),
+      })
+    )
+  );
+  const blocked = measureSerialized(evidenceOne);
+  const heavyAttempt = buildHeavyExplanation(fixtures.close);
+  const heavyText = `${heavyAttempt}${heavyAttempt}`;
+  return {
+    schema: 'aitm.guidance-serialization-sensitivity/v1',
+    captureKind: 'candidate-model-not-actual-cli',
+    evidenceOnlyGrowth: {
+      inputObservations: { first: 1, expanded: 12 },
+      routine: {
+        first: measureSerialized(evidenceOne),
+        expanded: measureSerialized(evidenceMany),
+        charactersDelta: evidenceMany.length - evidenceOne.length,
+      },
+    },
+    operationalGrowth: {
+      blocked: {
+        ready,
+        blocked,
+        charactersDelta: blocked.characters - ready.characters,
+      },
+    },
+    boundaries: Object.fromEntries(
+      Object.entries(transcripts).map(([adapter, transcript]) => [
+        adapter,
+        transcript.entries.map(
+          ({
+            boundary,
+            commandInput,
+            receiptInput,
+            stdout,
+            stderr,
+            receiptOutput,
+            diagnosticOutput,
+          }) => ({
+            boundary,
+            measurement: measureSerialized(
+              `${commandInput}${receiptInput}${stdout}${stderr}${receiptOutput}${diagnosticOutput}`
+            ),
+          })
+        ),
+      ])
+    ),
+    heavyCase: {
+      inputs: {
+        action: 'close',
+        attempts: 2,
+        blockersPerAttempt: 7,
+        observationsPerAttempt: 8,
+      },
+      measurement: measureSerialized(heavyText),
+    },
+  };
+}
+
+export function buildCandidateMeasurementArtifacts({ projectRoot }) {
+  const baseline = readJson(projectRoot, 'scripts/tests/fixtures/1558/legacy-baseline.json');
+  const inventory = readJson(
+    projectRoot,
+    'scripts/tests/fixtures/1558/action-observation-inventory.json'
+  );
+  const fixtures = Object.fromEntries(
+    [...ACTIONS].map((actionId) => [
+      actionId,
+      readJson(
+        projectRoot,
+        `scripts/tests/fixtures/1558/action-decision-fixtures/${actionId}.json`
+      ),
+    ])
+  );
+  const transcripts = Object.fromEntries(
+    ['claude', 'codex'].map((adapter) => {
+      const legacyTranscript = readJson(
+        projectRoot,
+        `scripts/tests/fixtures/1558/legacy-workflow/transcripts/${adapter}.json`
+      );
+      return [adapter, buildCandidateWorkflow({ adapter, fixtures, legacyTranscript })];
+    })
+  );
+  const responseMeasurements = {
+    clean: measureSerialized(
+      JSON.stringify(
+        renderCandidateExplanation({
+          decision: buildCandidateDecision({ fixture: fixtures.deliver, scenario: 'ready' }),
+        })
+      )
+    ),
+    blocked: measureSerialized(
+      JSON.stringify(
+        renderCandidateExplanation({
+          decision: buildCandidateDecision({ fixture: fixtures.deliver, scenario: 'blocked' }),
+        })
+      )
+    ),
+  };
+  const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md';
+  const oraclePath = 'scripts/tests/helpers/guidance-characterization.mjs';
+  const contextComparison = {
+    schema: 'aitm.guidance-context-comparison/v1',
+    comparisonKind: 'early-candidate-characterization-not-feasibility-authority',
+    identities: {
+      legacy: {
+        sourceCommit: baseline.source.commit,
+        scenarioSha256: transcripts.codex.scenarioSha256,
+        authorityFixtureSha256: transcripts.codex.authorityFixtureSha256,
+        transcriptSha256: Object.fromEntries(
+          baseline.adapters.map(({ id, transcriptSha256 }) => [id, transcriptSha256])
+        ),
+      },
+      candidate: {
+        oracle: {
+          sourcePath: oraclePath,
+          sourceCommit: '3579a72100642e42e3268e3dcf7de63aa691a3ac',
+          sha256: sha256Text(readFileSync(path.join(projectRoot, oraclePath))),
+        },
+        plan: {
+          sourcePath: planPath,
+          sourceSection: 'Appendix A.1 Candidate protocol and illustrative traffic',
+          sourceCommit: '9589337aaf7cd6b13c1f69e28095af82e9df2ecd',
+          sha256: sha256Text(readFileSync(path.join(projectRoot, planPath))),
+        },
+        fixtureSourceCommit: '627907fb43fd2ee1dd8fc6718bcb3499d068b775',
+        fixtureSetSha256: digest(fixtures),
+        serializer: 'guidance-characterization/candidate-workflow-v1',
+        runtime: { node: process.version, platform: process.platform, architecture: process.arch },
+      },
+    },
+    assumptions: {
+      captureKind: 'candidate-model-not-actual-cli',
+      staticObligations:
+        'Provisional exact Appendix A.1 proposed text; this is not a certified complete retained-obligation map.',
+      replacementOwner:
+        'WBS 24 must replace this provisional static assumption with the reviewed obligation map before release evidence.',
+      latency: 'No service latency is inferred from deterministic fixture traffic.',
+    },
+    fixedBudgets: {
+      routerPlusPickup: { absolute: 5000, working: 4000 },
+      clean: { absolute: 300, working: 240 },
+      blocked: { absolute: 500, working: 400 },
+      fullLifecycle: { absolute: 7000, working: 5600 },
+    },
+    adapters: {},
+  };
+  for (const adapter of ['claude', 'codex']) {
+    const legacyAdapter = baseline.adapters.find(({ id }) => id === adapter);
+    const legacyTranscript = readJson(
+      projectRoot,
+      `scripts/tests/fixtures/1558/legacy-workflow/transcripts/${adapter}.json`
+    );
+    const legacyStatic = {
+      files: legacyAdapter.loadedText.map(
+        ({ role: id, sourcePath, characters, bytes, proxyTokens, sha256 }) => ({
+          id,
+          sourcePath,
+          characters,
+          bytes,
+          proxyTokens,
+          sha256,
+        })
+      ),
+      totals: {
+        characters: legacyAdapter.staticCharacters,
+        bytes: legacyAdapter.loadedText.reduce((sum, file) => sum + file.bytes, 0),
+        proxyTokens: legacyAdapter.staticProxyTokens,
+      },
+    };
+    const candidateStatic = candidateStaticSource(projectRoot, adapter);
+    const candidateTrafficMeasurement = candidateTraffic(transcripts[adapter]);
+    const legacyTrafficMeasurement = legacyTraffic(transcripts[adapter], legacyTranscript);
+    const candidateTotal = totalContext(candidateStatic, candidateTrafficMeasurement);
+    const legacyTotal = totalContext(legacyStatic, legacyTrafficMeasurement);
+    contextComparison.adapters[adapter] = {
+      legacy: { static: legacyStatic, traffic: legacyTrafficMeasurement, total: legacyTotal },
+      candidate: {
+        captureKind: 'candidate-model-not-actual-cli',
+        transcriptPath: `scripts/tests/fixtures/1558/candidate-workflow/${adapter}.json`,
+        transcriptSha256: sha256Text(`${JSON.stringify(transcripts[adapter], null, 2)}\n`),
+        static: candidateStatic,
+        responses: responseMeasurements,
+        traffic: candidateTrafficMeasurement,
+        total: candidateTotal,
+      },
+      delta: {
+        characters: candidateTotal.characters - legacyTotal.characters,
+        bytes: candidateTotal.bytes - legacyTotal.bytes,
+        proxyTokens: candidateTotal.proxyTokens - legacyTotal.proxyTokens,
+      },
+      remainingMargins: {
+        routerPlusPickup: {
+          absolute: 5000 - candidateStatic.totals.proxyTokens,
+          working: 4000 - candidateStatic.totals.proxyTokens,
+        },
+        clean: {
+          absolute: 300 - responseMeasurements.clean.proxyTokens,
+          working: 240 - responseMeasurements.clean.proxyTokens,
+        },
+        blocked: {
+          absolute: 500 - responseMeasurements.blocked.proxyTokens,
+          working: 400 - responseMeasurements.blocked.proxyTokens,
+        },
+        fullLifecycle: {
+          absolute: 7000 - candidateTotal.proxyTokens,
+          working: 5600 - candidateTotal.proxyTokens,
+        },
+      },
+    };
+  }
+  return {
+    transcripts,
+    actionCardinality: buildActionCardinality({ fixtures, inventory }),
+    serializationSensitivity: buildSerializationSensitivity({ fixtures, transcripts }),
+    contextComparison,
+  };
+}
+
+export function validateCandidateMeasurementArtifacts(artifacts, { projectRoot }) {
+  const expected = buildCandidateMeasurementArtifacts({ projectRoot });
+  if (JSON.stringify(artifacts) !== JSON.stringify(expected)) {
+    fail('measurement-artifact-drift');
+  }
+  return artifacts;
 }
 
 const PROJECT_OVERRIDE_WARNING = `AITM project guidance override active.\nSource: .ai-task-manager/aitm-guidance.yml\nThe guidance differs from the installed published catalog. Executable guards\nremain authoritative; this repository owns and reviews the local guidance.`;
