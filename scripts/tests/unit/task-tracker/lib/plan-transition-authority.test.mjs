@@ -10,6 +10,10 @@ import {
   writePlanTransitionAuthority,
 } from '../../../../task-tracker/lib/plan-transition-authority.mjs';
 import { fingerprint } from '../../../../task-tracker/lib/resident-action-ledger-codec.mjs';
+import {
+  buildPlanApprovalAuditComment,
+  isCanonicalPlanApprovalAuditComment,
+} from '../../../../task-tracker/lib/plan-approval-audit.mjs';
 
 const TRANSITION_ID = 'move:11111111-1111-4111-8111-111111111111';
 const OTHER_TRANSITION_ID = 'move:22222222-2222-4222-8222-222222222222';
@@ -265,5 +269,34 @@ test('writer fails closed when ambiguous transport finds duplicate exact records
         },
       }),
     /reconciliation-ambiguous/
+  );
+});
+
+test('modern approval audits require the authority codec transition ID grammar', () => {
+  const repairEvidence = {
+    source: 'plan-transition-authority',
+    historicalOutcome: 'waived',
+    transitionId: TRANSITION_ID,
+    authorityRecordId: RECORD_ID,
+    authorityRevision: 2,
+    approvalPlanRecordId: RECORD_ID,
+    revokedRecordId: '01M2Y000000000000000000002',
+  };
+  const audit = buildPlanApprovalAuditComment({ issueNumber: 61, ts: RECORDED_AT, repairEvidence });
+  assert.equal(
+    isCanonicalPlanApprovalAuditComment(audit.replace(TRANSITION_ID, `move:${'-'.repeat(36)}`), {
+      issueNumber: 61,
+      ts: RECORDED_AT,
+    }),
+    false
+  );
+  assert.throws(
+    () =>
+      buildPlanApprovalAuditComment({
+        issueNumber: 61,
+        ts: RECORDED_AT,
+        repairEvidence: { ...repairEvidence, transitionId: `move:${'-'.repeat(36)}` },
+      }),
+    /transition authority repair evidence is invalid/
   );
 });

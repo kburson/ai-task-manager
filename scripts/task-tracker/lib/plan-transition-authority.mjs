@@ -18,7 +18,8 @@ export const PLAN_TRANSITION_AUTHORITY_EXIT = 9;
 const COMMENT_RE =
   /<!--\s*aitm-plan-transition-authority\s+id="([^"]+)"\s+data="([A-Za-z0-9_-]+)"\s*-->/i;
 const WRAPPER_ID_RE = /<!--\s*aitm-plan-transition-authority\b[^>]*\bid="([^"]+)"[^>]*-->/i;
-const TRANSITION_ID_RE = /^move:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const PLAN_TRANSITION_ID_RE =
+  /^move:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RECORD_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 const REPOSITORY_RE = /^[^/\s]+\/[^/\s]+$/;
@@ -114,7 +115,7 @@ function validateRecord(record) {
     'record'
   );
   if (record.schema !== PLAN_TRANSITION_AUTHORITY_SCHEMA) fail('schema');
-  if (!TRANSITION_ID_RE.test(record.transitionId)) fail('transition-id');
+  if (!PLAN_TRANSITION_ID_RE.test(record.transitionId)) fail('transition-id');
   if (!REPOSITORY_RE.test(record.repository)) fail('repository');
   if (!Number.isSafeInteger(record.issue) || record.issue <= 0) fail('issue');
   if (record.source !== 'plan' || record.target !== 'develop') fail('edge');

@@ -22,7 +22,7 @@ import {
   writeTransitionCommit as defaultWriteTransitionCommit,
 } from './transition-commit.mjs';
 import { getStageVisitCount } from '../stage-entry-markers.mjs';
-import { parseRowTs, parseTimingRows } from '../timing-ladder.mjs';
+import { parseTimingRows } from '../timing-ladder.mjs';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
 import { resolveTailProfile } from './tail-profiles.mjs';
 import { resolveReviewAuthority } from '../human-reviewer-audit.mjs';
@@ -105,13 +105,32 @@ export async function defaultProbeCompletion(ctx) {
     !sentinelMarker?.move || !selectedEntry?.move || sentinelMarker.move === selectedEntry.move;
   const entryMarkerPresent = getStageVisitCount(body, stateArg) > 0 && identityConsistent;
 
-  const rows = parseTimingRows(body);
+  const fetchTimingBody =
+    ctx._fetchTimingBody ||
+    (async () => {
+      const { bodyOf, readTimingCommentBody } = await import('../../gh-timing-comment.mjs');
+      return bodyOf(await readTimingCommentBody({ issueNumber: issueArg, repo: cfg.repo }));
+    });
+  let timingBody = '';
+  try {
+    timingBody = await fetchTimingBody();
+  } catch {
+    timingBody = '';
+  }
+  const transitionMarker = selectedEntry?.move
+    ? `<!-- aitm-transition move="${selectedEntry.move}" -->`
+    : null;
+  const transitionTimingBody = transitionMarker
+    ? timingBody
+        .split('\n')
+        .filter((line) => line.includes(transitionMarker))
+        .join('\n')
+    : '';
+  const rows = parseTimingRows(transitionTimingBody);
   const enterEvent = PHASE_EVENTS[stateArg]?.enter?.event;
   const entryRows = enterEvent ? rows.filter((r) => r.event === enterEvent) : [];
   const entryRowPresent = entryRows.length > 0;
   const entryTs = entryRowPresent ? entryRows[entryRows.length - 1].ts : null;
-  const entryMatchesSelected =
-    entryTs != null && Date.parse(selectedEntry?.ts ?? '') === parseRowTs(entryTs);
   const exitRowPresent =
     entryTs != null && rows.some((r) => r.ts === entryTs && COMPLETE_EVENT_RE.test(r.event));
   const recoverablePartial = Boolean(
@@ -120,7 +139,6 @@ export async function defaultProbeCompletion(ctx) {
     selectedEntry?.move &&
     latestEntry === selectedEntry &&
     entryMarkerPresent &&
-    entryMatchesSelected &&
     exitRowPresent &&
     entryRowPresent
   );

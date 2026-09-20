@@ -5,7 +5,10 @@ import {
   defaultProbeCompletion,
   moveState,
 } from '../../../../../task-tracker/lib/move-state/move-state-core.mjs';
-import { serializeEntryMarker } from '../../../../../task-tracker/lib/stage-entry-grammar.mjs';
+import { emitPhasePairRows } from '../../../../../task-tracker/lib/move-state/audit-timing.mjs';
+import { stampEntryMarker } from '../../../../../task-tracker/lib/stage-entry-markers.mjs';
+import { buildRow } from '../../../../../task-tracker/gh-timing-comment.mjs';
+import { PHASE_EVENTS } from '../../../../../task-tracker/phase-events.mjs';
 
 function trackedCtx(probe) {
   const calls = [];
@@ -132,16 +135,32 @@ test('same-target replay without a recoverable partial move remains a strict no-
 
 test('production completion probe recovers only the latest fully-evidenced entry identity', async () => {
   const transitionId = 'move:11111111-1111-4111-8111-111111111111';
-  const body = [
-    serializeEntryMarker({
-      state: 'develop',
-      visit: 1,
-      ts: '2026-09-19T15:22:16.000Z',
-      move: transitionId,
-    }),
-    '| 2026-09-19 10:22:16 -05:00 | plan:completed |',
-    '| 2026-09-19 10:22:16 -05:00 | develop:started |',
-  ].join('\n');
+  const body = stampEntryMarker('Issue body.', 'develop', '2026-09-19T15:22:16.789Z', transitionId);
+  const posted = [];
+  await emitPhasePairRows({
+    issueArg: '1720',
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    transitionId,
+    demoteFlag: false,
+    cfg: { repo: 'kburson/ai-task-manager' },
+    SKIP_NETWORK: false,
+    deps: {
+      ghTimingComment: {
+        buildRow,
+        postTimingEvent: async ({ row }) => posted.push(row),
+        readTimingCommentBody: async () => '',
+        bodyOf: (value) => value,
+      },
+      timingRows: {
+        deriveStateMoveDelta: () => ({ activeSec: 0, idleSec: 0 }),
+        computePhaseCloseDelta: () => ({ matched: false }),
+      },
+      phaseEvents: { PHASE_EVENTS },
+      bankTail: () => ({ marker: 1, fullMarker: 1, fullMarkerAvailable: true }),
+    },
+  });
+  const timingBody = posted.join('\n');
 
   const result = await defaultProbeCompletion({
     issueArg: '1720',
@@ -149,6 +168,7 @@ test('production completion probe recovers only the latest fully-evidenced entry
     cfg: { repo: 'kburson/ai-task-manager' },
     SKIP_NETWORK: false,
     _fetchBody: async () => body,
+    _fetchTimingBody: async () => timingBody,
     resolveLiveStateName: async () => 'develop',
   });
 
@@ -161,12 +181,13 @@ test('production completion probe recovers only the latest fully-evidenced entry
     cfg: { repo: 'kburson/ai-task-manager' },
     SKIP_NETWORK: false,
     _fetchBody: async () =>
-      `${body}\n${serializeEntryMarker({
-        state: 'test',
-        visit: 1,
-        ts: '2026-09-19T15:23:00.000Z',
-        move: 'move:22222222-2222-4222-8222-222222222222',
-      })}`,
+      stampEntryMarker(
+        body,
+        'test',
+        '2026-09-19T15:23:00.000Z',
+        'move:22222222-2222-4222-8222-222222222222'
+      ),
+    _fetchTimingBody: async () => timingBody,
     resolveLiveStateName: async () => 'develop',
   });
   assert.equal(superseded.recoverablePartial, false);

@@ -23,6 +23,8 @@ import {
 } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { writeLastKnownState } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
+import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
+import { stampBodyVersion } from '../../../../task-tracker/lib/body-version.mjs';
 import { runReconcile } from '../../../../task-tracker/verbs/reconcile.mjs';
 import {
   stampEntryMarkers,
@@ -128,7 +130,8 @@ test('Plan → Develop scope drift from the real marker writer is never swallowe
           }),
         },
       },
-      _mutateBody: async ({ mutate }) => {
+      _mutateBody: async ({ mutate, validateFreshBase }) => {
+        validateFreshBase(drifted);
         mutate(drifted);
         throw new Error('mutation must not reach persistence');
       },
@@ -137,6 +140,49 @@ test('Plan → Develop scope drift from the real marker writer is never swallowe
     /plan-transition-authority:scope-drift-before-entry/
   );
   assert.equal(posted.length, 0, 'authority refusal is not downgraded to a recovery audit');
+});
+
+test('Plan → Develop scope validation reruns after a non-overlapping conflict rebase', async () => {
+  const source =
+    '## User Story\n\nAs a maintainer\nI want durable authority\nSo that transitions are auditable\n\n## Scope\n\nOriginal scope.\n\n## Acceptance Criteria\n\n- [ ] Evidence persists.\n\nUnrelated tail.\n';
+  const transitionId = 'move:11111111-1111-4111-8111-111111111111';
+  const original = writeLastKnownState(
+    stampEntryMarker(source, 'develop', '2026-09-19T15:22:16.000Z', transitionId),
+    'develop'
+  ).replace(/(aitm-last-known-state[^>]*\bts=")[^"]+/, '$12026-01-01T00:00:00.000Z');
+  const drifted = original.replace('Original scope.', 'Changed scope.');
+  let remote = stampBodyVersion(original, 1);
+  let pushes = 0;
+  const deps = {
+    fetchBody: async () => remote,
+    pushBody: async (_repo, _issue, next) => {
+      pushes += 1;
+      remote = pushes === 1 ? stampBodyVersion(drifted, 2) : next;
+    },
+  };
+
+  await assert.rejects(
+    stampEntryMarkers({
+      issueArg: '1720',
+      stateArg: 'develop',
+      resolvedFromState: 'plan',
+      transitionId,
+      cfg: CFG,
+      SKIP_NETWORK: false,
+      planTransitionAuthority: {
+        record: {
+          scopeIdentity: computeScopeIdentity({
+            repository: CFG.repo,
+            issue: 1720,
+            body: original,
+          }),
+        },
+      },
+      _mutateBody: (args) => mutateIssueBody({ ...args, deps }),
+    }),
+    /plan-transition-authority:scope-drift-before-entry/
+  );
+  assert.equal(pushes, 1, 'rebased stale authority must be refused before a second push');
 });
 
 test('AC3: failure-comment body names the stage, error and recovery command', () => {

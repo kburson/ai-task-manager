@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { parsePlanApprovedMarker } from './markers.mjs';
+import { PLAN_TRANSITION_ID_RE } from './plan-transition-authority.mjs';
 
 const pexec = promisify(execFile);
 
@@ -46,7 +47,7 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence 
       const authorityRevision = repairEvidence.authorityRevision;
       if (
         repairEvidence.historicalOutcome !== 'waived' ||
-        !/^move:[0-9a-f-]{36}$/i.test(transitionId ?? '') ||
+        !PLAN_TRANSITION_ID_RE.test(transitionId ?? '') ||
         !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(authorityRecordId ?? '') ||
         !Number.isSafeInteger(authorityRevision) ||
         authorityRevision <= 0 ||
@@ -122,8 +123,9 @@ export function isCanonicalPlanApprovalAuditComment(
 
   if (repairTs) {
     const transitionId = src.match(
-      /Historical transition authority: `waived` for `(move:[0-9a-f-]{36})`/i
+      /Historical transition authority: `waived` for `(move:[^`]+)`/i
     )?.[1];
+    if (transitionId && !PLAN_TRANSITION_ID_RE.test(transitionId)) return false;
     if (repairEvidence?.source === 'plan-transition-authority' && !transitionId) return false;
     if (transitionId) {
       if (repairEvidence !== null && repairEvidence?.source !== 'plan-transition-authority') {

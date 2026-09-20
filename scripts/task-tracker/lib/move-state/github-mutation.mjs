@@ -196,25 +196,29 @@ export async function stampEntryMarkers(ctx) {
     let priorVisitCount = 0;
     let nextVisitCount = 0;
     const stampTs = new Date().toISOString();
+    const validateAuthorityScope = (beforeBody) => {
+      if (
+        ctx.resolvedFromState !== 'plan' ||
+        stateArg !== 'develop' ||
+        !ctx.planTransitionAuthority?.record
+      ) {
+        return;
+      }
+      const freshScopeIdentity = computeScopeIdentity({
+        repository: cfg.repo,
+        issue: Number(issueArg),
+        body: beforeBody,
+      });
+      if (freshScopeIdentity !== ctx.planTransitionAuthority.record.scopeIdentity) {
+        throw new Error('plan-transition-authority:scope-drift-before-entry');
+      }
+    };
     await mutateBody({
       issueNumber: issueArg,
       repo: cfg.repo,
       maxRetries: 2,
+      validateFreshBase: validateAuthorityScope,
       mutate: (beforeBody) => {
-        if (
-          ctx.resolvedFromState === 'plan' &&
-          stateArg === 'develop' &&
-          ctx.planTransitionAuthority?.record
-        ) {
-          const freshScopeIdentity = computeScopeIdentity({
-            repository: cfg.repo,
-            issue: Number(issueArg),
-            body: beforeBody,
-          });
-          if (freshScopeIdentity !== ctx.planTransitionAuthority.record.scopeIdentity) {
-            throw new Error('plan-transition-authority:scope-drift-before-entry');
-          }
-        }
         priorState = readLastKnownState(beforeBody).state;
         priorVisitCount = getStageVisitCount(beforeBody, stateArg);
         let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs, transitionId);
