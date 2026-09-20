@@ -25,10 +25,10 @@
 
 #### Story Intent
 
-- **Beneficiary:** maintainer auditing governed lifecycle transitions
-- **Capability:** identify the exact approval, waiver, or disabled-gate policy that authorized a Plan-to-Develop move
-- **Need:** the current guard discards its typed workflow-policy decision after allowing the move
-- **Value or failure prevented:** later exception revocation cannot make a legitimate historical transition appear ungoverned
+- **Beneficiary:** lifecycle audit maintainer
+- **Capability:** identify the authority used for a Plan-to-Develop move
+- **Need:** the guard currently discards its final typed policy decision
+- **Value or failure prevented:** revocation cannot erase historical governance
 
 **Files:**
 
@@ -303,9 +303,9 @@ node --test scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.m
 #### Story Intent
 
 - **Beneficiary:** Full-Auto workflow operator
-- **Capability:** converge current approval evidence from a completed, historically waived transition without requesting a human rubber stamp
-- **Need:** explicit #1716 reconstruction is a legacy recovery command and current consumers do not recognize modern transition authority
-- **Value or failure prevented:** current policy can be satisfied from complete machine evidence without rewriting the historical waiver outcome
+- **Capability:** converge approval from completed historical transition evidence
+- **Need:** current consumers do not recognize modern transition authority
+- **Value or failure prevented:** no human rubber stamp or rewritten waiver history
 
 **Files:**
 
