@@ -143,12 +143,7 @@ test('production completion probe recovers only the latest fully-evidenced entry
     '2026-09-19T15:20:00.000Z',
     previousTransitionId
   );
-  const body = stampEntryMarker(
-    priorBody,
-    'develop',
-    '2026-09-19T15:22:16.789Z',
-    transitionId
-  );
+  const body = stampEntryMarker(priorBody, 'develop', '2026-09-19T15:22:16.789Z', transitionId);
   const posted = [];
   await emitPhasePairRows({
     issueArg: '1720',

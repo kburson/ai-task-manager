@@ -142,8 +142,7 @@ export async function defaultProbeCompletion(ctx) {
     entryTs != null &&
     rows.some(
       (r) =>
-        r.ts === entryTs &&
-        (COMPLETE_EVENT_RE.test(r.event) || r.event === `demoted:${stateArg}`)
+        r.ts === entryTs && (COMPLETE_EVENT_RE.test(r.event) || r.event === `demoted:${stateArg}`)
     );
   const recoverablePartial = Boolean(
     sentinelState !== stateArg &&
