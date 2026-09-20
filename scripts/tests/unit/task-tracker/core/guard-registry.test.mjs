@@ -206,3 +206,13 @@ test('registerGuard throws on malformed guard', async () => {
     /must be \{ id/
   );
 });
+
+test('registerGuard rejects reserved boundary producer ids', async () => {
+  const { registerGuard } = await freshRegistry();
+  for (const id of ['authority-collection', 'action-navigation', 'action-result-validation']) {
+    assert.throws(
+      () => registerGuard('plan', 'exit', { id, run: () => ({ ok: true }) }),
+      /reserved boundary producer/
+    );
+  }
+});
