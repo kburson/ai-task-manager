@@ -1,0 +1,489 @@
+{
+  "schema": "aitm.guidance-feasibility-decision/v1",
+  "owner": { "issue": 1660, "wbsRank": 8, "authority": "sole-foundation-gate" },
+  "inputs": {
+    "acceptedGenerationSha256": "sha256:c7a0260f45f4918c917c3554169922f15cddea9d2eb7fc17c12bb314d8c9ea83",
+    "identities": {
+      "legacySourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+      "oracleSourceCommit": "3579a72100642e42e3268e3dcf7de63aa691a3ac",
+      "proposedStaticSourceCommit": "9589337aaf7cd6b13c1f69e28095af82e9df2ecd",
+      "candidateFixtureSourceCommit": "627907fb43fd2ee1dd8fc6718bcb3499d068b775",
+      "candidateFixtureSetSha256": "sha256:5878deaa0307fd79e71f2827a9566952747cfd6c4e289ae058d8e9abc790ecf0",
+      "sourceSpecificationCommit": "a168753999617066d98bbc1227c4b5d97fa531c5",
+      "baselineGenerationSha256": "sha256:fa73a6eb8fe5fde63eff448cd039f932589392f84f9e15d473a8ff01cd921006",
+      "serializer": "guidance-characterization/candidate-workflow-v1",
+      "scenarioSha256": "sha256:1364fa38a7710471349de771cdb8929b2c68456993c9acf2e545e6e4d07daed9",
+      "authorityFixtureSha256": "sha256:d2b67c1e1da3afa7ed05750160090a5fc405c5538ac22918851c87e2eae2324b",
+      "runtime": { "node": "v26.8.1", "platform": "darwin", "architecture": "arm64" }
+    },
+    "proposedStaticText": {
+      "claude": [
+        {
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "characters": 1435,
+          "bytes": 1435,
+          "proxyTokens": 359,
+          "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+        },
+        {
+          "characters": 564,
+          "bytes": 564,
+          "proxyTokens": 141,
+          "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+        },
+        {
+          "characters": 410,
+          "bytes": 410,
+          "proxyTokens": 103,
+          "sha256": "sha256:99beb2a4d5ce6acaa002b8af6fcf943b35afeed02a2ec963539581a258818faa"
+        }
+      ],
+      "codex": [
+        {
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "characters": 1435,
+          "bytes": 1435,
+          "proxyTokens": 359,
+          "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+        },
+        {
+          "characters": 564,
+          "bytes": 564,
+          "proxyTokens": 141,
+          "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+        },
+        {
+          "characters": 383,
+          "bytes": 383,
+          "proxyTokens": 96,
+          "sha256": "sha256:ef20067ef6bb8bcd2bbcfa4a2bc6c2e5712ac410d4e920c67f84ee6f55e78674"
+        }
+      ]
+    },
+    "records": [
+      {
+        "role": "candidate-action-fixture",
+        "id": "bind",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/bind.json",
+        "sha256": "sha256:9f2eca86be88df9a883e4f749d7e3968ddc046e433f290a264f8d0b3a6583704"
+      },
+      {
+        "role": "candidate-action-fixture",
+        "id": "close",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/close.json",
+        "sha256": "sha256:074a879715603032901bbb0f96e344b2628742cc6d82218a77c0beb0c105b4f9"
+      },
+      {
+        "role": "candidate-action-fixture",
+        "id": "deliver",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/deliver.json",
+        "sha256": "sha256:c81369a4db340c77962ba9217f405d8946692405aeb8d8cb10bc997d79fb664a"
+      },
+      {
+        "role": "candidate-action-fixture",
+        "id": "promote",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/promote.json",
+        "sha256": "sha256:9465f8caf2fadaffa60b78b3dc0ccf925440390e65227ab3eb0fedd741615aeb"
+      },
+      {
+        "role": "candidate-action-fixture",
+        "id": "resume",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/resume.json",
+        "sha256": "sha256:478dcd736394785f786f81092bc28a771a4e5abfa89150a55b1d635a3400e4bd"
+      },
+      {
+        "role": "candidate-action-fixture",
+        "id": "review",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/review.json",
+        "sha256": "sha256:ea8d534fecbc7163c8f499dd376f094b904b34a1ad8b1b290d7d431a5f5006c4"
+      },
+      {
+        "role": "candidate-action-fixture",
+        "id": "test",
+        "path": "scripts/tests/fixtures/1558/action-decision-fixtures/test.json",
+        "sha256": "sha256:b3513955714a097f0d4aa8a3449ae92531805a0e6d0a70109e0261f900e450d2"
+      },
+      {
+        "role": "candidate-oracle-source",
+        "path": "scripts/tests/helpers/guidance-characterization.mjs",
+        "sha256": "sha256:e54fa1229cb919a4dafc7395dfeda2461f3500e7b849f3fcd441bc2ac19e7538"
+      },
+      {
+        "role": "candidate-proposed-static-source",
+        "path": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+        "sha256": "sha256:6810a378cc1ba3fff051fcf72032278efc955af053eb76b8b059de9e033e79f1"
+      },
+      {
+        "role": "candidate-transcript",
+        "id": "claude",
+        "path": "scripts/tests/fixtures/1558/candidate-workflow/claude.json",
+        "sha256": "sha256:ddf030573c783d800b62ba8c96617a192707669cfb26e5152dd0eef938a0d510"
+      },
+      {
+        "role": "candidate-transcript",
+        "id": "codex",
+        "path": "scripts/tests/fixtures/1558/candidate-workflow/codex.json",
+        "sha256": "sha256:59e4888e4e1044954a90b85f89fcd8c21763d4f1dc1f46980edd61523c229f45"
+      },
+      {
+        "role": "legacy-baseline",
+        "path": "scripts/tests/fixtures/1558/legacy-baseline.json",
+        "sha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "action-inventory",
+        "sourcePath": "scripts/tests/fixtures/1558/action-observation-inventory.json",
+        "snapshotPath": "scripts/tests/fixtures/1558/action-observation-inventory.json",
+        "encoding": "identity",
+        "bytes": 14709,
+        "contentSha256": "sha256:d88fed95e3a3ae03305f095c88affe393481772f53652e16ffbabbc9f4a05b1f"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "authority-baseline",
+        "sourcePath": "scripts/tests/fixtures/1558/authority-baseline.json",
+        "snapshotPath": "scripts/tests/fixtures/1558/authority-baseline.json",
+        "encoding": "identity",
+        "bytes": 3162,
+        "contentSha256": "sha256:32ec5ddac931a44c880339b6cad987f3099b8019b5f020858fff22c76ecc5a51"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "authority-store",
+        "sourcePath": "scripts/tests/fixtures/1558/legacy-workflow/authority-store.json",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/authority-store.json",
+        "encoding": "identity",
+        "bytes": 893,
+        "contentSha256": "sha256:d2b67c1e1da3afa7ed05750160090a5fc405c5538ac22918851c87e2eae2324b"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "behavioral-flags",
+        "sourcePath": "scripts/tests/fixtures/1558/behavioral-flags.json",
+        "snapshotPath": "scripts/tests/fixtures/1558/behavioral-flags.json",
+        "encoding": "identity",
+        "bytes": 35480,
+        "contentSha256": "sha256:c7fb3616949a3804e6966bf1acd79bd977d9959b093a20dea91c72cfd2c265a2"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "lifecycle-scenarios",
+        "sourcePath": "scripts/tests/fixtures/1558/legacy-workflow/lifecycle-scenarios.json",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/lifecycle-scenarios.json",
+        "encoding": "identity",
+        "bytes": 12580,
+        "contentSha256": "sha256:1364fa38a7710471349de771cdb8929b2c68456993c9acf2e545e6e4d07daed9"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "runner-guidance-legacy-authority",
+        "sourcePath": "scripts/tests/helpers/guidance-legacy-authority.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-authority.mjs.base64",
+        "encoding": "base64",
+        "bytes": 7082,
+        "contentSha256": "sha256:d97dd5df4ab04fe6bfe5a74aeb6fa4646115a2e6df4f59c7932f7d90528b4b8a"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "runner-guidance-legacy-cli",
+        "sourcePath": "scripts/tests/helpers/guidance-legacy-cli.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-cli.mjs.base64",
+        "encoding": "base64",
+        "bytes": 4193,
+        "contentSha256": "sha256:3f06a81f28b2ff397c765fddc215e6f87ec7526ffc830c1374ff2117edef7604"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "runner-guidance-legacy-preload",
+        "sourcePath": "scripts/tests/helpers/guidance-legacy-preload.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-preload.mjs.base64",
+        "encoding": "base64",
+        "bytes": 8008,
+        "contentSha256": "sha256:8bf9ebba496f02b7e6c625da04153d98b167ed78a81d8ef9f3318df6947455d0"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "runner-guidance-legacy-transport",
+        "sourcePath": "scripts/tests/helpers/guidance-legacy-transport.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-transport.mjs.base64",
+        "encoding": "base64",
+        "bytes": 3212,
+        "contentSha256": "sha256:81b2bdef5ec1a7e4de7b7613b2a0078565e39b8274868e6d6a2cbfab454074ee"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-bin/aitm-registry.mjs",
+        "sourcePath": "bin/aitm-registry.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm-registry.mjs.base64",
+        "encoding": "base64",
+        "bytes": 6320,
+        "contentSha256": "sha256:018d0cb31abe71ac64584ca95ae6a063ff35fc385aa1f549ca578112cd00f75c"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-bin/aitm.mjs",
+        "sourcePath": "bin/aitm.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm.mjs.base64",
+        "encoding": "base64",
+        "bytes": 7221,
+        "contentSha256": "sha256:88bd2f8ef1c8beb78f5588b9d7cd5f52136f0395427bb7e98548de35b9a44e5e"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/task-tracker.mjs",
+        "sourcePath": "scripts/task-tracker/task-tracker.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/task-tracker.mjs.base64",
+        "encoding": "base64",
+        "bytes": 26802,
+        "contentSha256": "sha256:93aef697fbd850ee492ed378abe7c9dfaa4caa7bdfcf90d0b835dd73ccd9c328"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/close.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/close.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs.base64",
+        "encoding": "base64",
+        "bytes": 179366,
+        "contentSha256": "sha256:8ccd93eb5f291b53d854790626390f4e72a1260154aec4cc6b4c1150ae7bb738"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/deliver.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/deliver.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs.base64",
+        "encoding": "base64",
+        "bytes": 63749,
+        "contentSha256": "sha256:874c91f3cc4abdc2a0f68786eb98e3da020ead821e1a716b29124d694676ae31"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/promote.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/promote.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs.base64",
+        "encoding": "base64",
+        "bytes": 35082,
+        "contentSha256": "sha256:ecd874854f6758c7c05090c4542470bda844a23571946c026db8803888e149f2"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/resume.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/resume.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs.base64",
+        "encoding": "base64",
+        "bytes": 21956,
+        "contentSha256": "sha256:f71a0e9d8b68d2785ef94e86d2aa33b1ac97af2e14bed2882a5b3d2766f1cb84"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/review.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/review.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs.base64",
+        "encoding": "base64",
+        "bytes": 68554,
+        "contentSha256": "sha256:bf83b48af358d199d4b1d2f0d08d1c3d8d1c3cd8462f5eb158ffaf3c4194eea5"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/start.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/start.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs.base64",
+        "encoding": "base64",
+        "bytes": 910,
+        "contentSha256": "sha256:3bea25bd9dc0bc875711ed3fb3bb93737a371590d9b201f4d08045007b7eec5c"
+      },
+      {
+        "role": "legacy-frozen-input",
+        "id": "source-scripts/task-tracker/verbs/test.mjs",
+        "sourcePath": "scripts/task-tracker/verbs/test.mjs",
+        "snapshotPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs.base64",
+        "encoding": "base64",
+        "bytes": 65600,
+        "contentSha256": "sha256:93982631ca306c7758c70db102bea85d6f3f03086f5985efb6c738c1a6e774e9"
+      },
+      {
+        "role": "measurement-report",
+        "id": "action-cardinality",
+        "path": "scripts/tests/fixtures/1558/action-cardinality.json",
+        "sha256": "sha256:a617f8fbdd2e80ca2c303431f84490af07e3fb4da0194d3c4a74254945884191"
+      },
+      {
+        "role": "measurement-report",
+        "id": "context-comparison",
+        "path": "scripts/tests/fixtures/1558/context-comparison.json",
+        "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894"
+      },
+      {
+        "role": "measurement-report",
+        "id": "serialization-sensitivity",
+        "path": "scripts/tests/fixtures/1558/serialization-sensitivity.json",
+        "sha256": "sha256:2442d054c6d5f94a7f09161ebd6cfd8ffde81d1d88696205e0de50f1cfc92430"
+      },
+      {
+        "role": "oracle-traceability",
+        "path": "scripts/tests/fixtures/1558/oracle-traceability.json",
+        "sha256": "sha256:d4b81a94c480e7f686926501f1ce4017581c73d714d4a83d8ed97d48053abda8"
+      },
+      {
+        "role": "source-specification",
+        "path": "docs/superpowers/specs/2026-09-15-1558-ask-the-script-guidance-design.md",
+        "sha256": "sha256:2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78"
+      },
+      {
+        "role": "spec-clause-index",
+        "path": "scripts/tests/fixtures/1558/spec-clause-index.json",
+        "sha256": "sha256:6e457daba7d3d17a8798662c0d7b8f61444954ca0050d4fcdfddb4aab41a5c0f"
+      }
+    ]
+  },
+  "completeness": {
+    "status": "pass",
+    "frozenBaselineInputs": 19,
+    "frozenTranscriptEntries": 28,
+    "indexedClauses": 70,
+    "tracedClauses": 70,
+    "candidateActions": 7,
+    "candidateAdapters": 2
+  },
+  "fidelity": {
+    "status": "pass",
+    "oracleAssertionsExecuted": 10,
+    "oracleFixturesObserved": 20,
+    "captureKind": "candidate-model-not-actual-cli",
+    "provisionalStaticObligations": true
+  },
+  "fixedBudgets": {
+    "routerPlusPickup": { "absolute": 5000, "working": 4000 },
+    "clean": { "absolute": 300, "working": 240 },
+    "blocked": { "absolute": 500, "working": 400 },
+    "fullLifecycle": { "absolute": 7000, "working": 5600 }
+  },
+  "adapters": {
+    "claude": {
+      "measurements": {
+        "routerPlusPickup": 840,
+        "clean": 121,
+        "blocked": 170,
+        "fullLifecycle": 4446
+      },
+      "workingLimits": {
+        "routerPlusPickup": 4000,
+        "clean": 240,
+        "blocked": 400,
+        "fullLifecycle": 5600
+      },
+      "absoluteLimits": {
+        "routerPlusPickup": 5000,
+        "clean": 300,
+        "blocked": 500,
+        "fullLifecycle": 7000
+      },
+      "remainingWorkingMargins": {
+        "routerPlusPickup": 3160,
+        "clean": 119,
+        "blocked": 230,
+        "fullLifecycle": 1154
+      },
+      "remainingAbsoluteMargins": {
+        "routerPlusPickup": 4160,
+        "clean": 179,
+        "blocked": 330,
+        "fullLifecycle": 2554
+      },
+      "totalContext": { "legacy": 18169, "candidate": 4446, "delta": -13723 },
+      "verdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true,
+        "reduction": true
+      },
+      "absoluteVerdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true
+      },
+      "status": "pass"
+    },
+    "codex": {
+      "measurements": {
+        "routerPlusPickup": 833,
+        "clean": 121,
+        "blocked": 170,
+        "fullLifecycle": 4439
+      },
+      "workingLimits": {
+        "routerPlusPickup": 4000,
+        "clean": 240,
+        "blocked": 400,
+        "fullLifecycle": 5600
+      },
+      "absoluteLimits": {
+        "routerPlusPickup": 5000,
+        "clean": 300,
+        "blocked": 500,
+        "fullLifecycle": 7000
+      },
+      "remainingWorkingMargins": {
+        "routerPlusPickup": 3167,
+        "clean": 119,
+        "blocked": 230,
+        "fullLifecycle": 1161
+      },
+      "remainingAbsoluteMargins": {
+        "routerPlusPickup": 4167,
+        "clean": 179,
+        "blocked": 330,
+        "fullLifecycle": 2561
+      },
+      "totalContext": { "legacy": 18083, "candidate": 4439, "delta": -13644 },
+      "verdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true,
+        "reduction": true
+      },
+      "absoluteVerdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true
+      },
+      "status": "pass"
+    }
+  },
+  "heavyCase": {
+    "inputs": {
+      "action": "close",
+      "attempts": 2,
+      "blockersPerAttempt": 7,
+      "observationsPerAttempt": 8
+    },
+    "measurement": { "characters": 3682, "bytes": 3682, "proxyTokens": 921 },
+    "interpretation": "Reachable declared-input sensitivity evidence; not a universal limit and not permission to truncate operational values."
+  },
+  "assumptions": {
+    "captureKind": "candidate-model-not-actual-cli",
+    "staticObligations": "Provisional exact Appendix A.1 proposed text; this is not a certified complete retained-obligation map.",
+    "replacementOwner": "WBS 24 must replace this provisional static assumption with the reviewed obligation map before release evidence.",
+    "latency": "No service latency is inferred from deterministic fixture traffic."
+  },
+  "checks": { "completeness": "pass", "fidelity": "pass", "budgets": "pass", "reduction": "pass" },
+  "verdict": "GO",
+  "foundation": {
+    "canAssert": true,
+    "acceptedInputGenerationSha256": "sha256:c7a0260f45f4918c917c3554169922f15cddea9d2eb7fc17c12bb314d8c9ea83"
+  }
+}
