@@ -296,6 +296,15 @@ As a feasibility analyst,
 I want to have complete paired costs and sensitivity evidence,
 So that a smaller selected fragment cannot masquerade as a smaller workflow.
 
+#### Story Intent
+
+- **Beneficiary:** feasibility analyst
+- **Capability:** compare complete paired costs and sensitivity evidence across both adapters
+- **Need:** selected fragments can understate end-to-end workflow context by omitting operational traffic or obligations
+- **Value or failure prevented:** a smaller selected fragment cannot masquerade as a smaller workflow
+
+#### Files and delivery boundary
+
 **Estimate and units:** 12 hours; Complete candidate workflow capture and paired cost categories (8 h); cardinality, sensitivity and reachable heavy-case accounting (4 h). Owner: this child.
 
 **Scope/files and boundary:** Extend comparison functions in `guidance-characterization.mjs`; own `guidance-candidate-measurement.test.mjs`, `action-cardinality.json`, `serialization-sensitivity.json`, `context-comparison.json` and ordered `candidate-workflow/` artifacts. No authoritative verdict or production changes.
