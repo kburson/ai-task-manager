@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import '../../../helpers/action-decision-contract-adversarial-cases.mjs';
+
 import {
   actionDescriptorFor,
   listLifecycleActions,
@@ -173,6 +175,22 @@ test('action navigation fails closed for non-ready and unknown actions', () => {
   });
 });
 
+test('unknown action ids remain explicit in an indeterminate decision envelope', () => {
+  const unknown = readyDecision({
+    actionId: 'rebind',
+    status: 'indeterminate',
+    blockers: [actionNavigationRefusal('rebind')],
+    guidanceIds: ['navigation.unknown'],
+  });
+
+  assert.deepEqual(validateActionDecision(unknown), unknown);
+  assert.throws(() => validateActionDecision({ ...unknown, blockers: [] }), /blockers/);
+  assert.throws(
+    () => validateActionDecision({ ...unknown, actionId: 'promote' }),
+    /unknown-vocabulary/
+  );
+});
+
 test('typed remediation failures never fall back to the legacy adapter', () => {
   assert.throws(
     () =>
@@ -188,6 +206,24 @@ test('typed remediation failures never fall back to the legacy adapter', () => {
         }
       ),
     /unknown remediation bypass-guard/
+  );
+});
+
+test('manual-only blocker codes reject executable remediations', () => {
+  assert.throws(
+    () =>
+      normalizeRefusal(
+        {
+          code: 'unclassified-refusal',
+          args: {},
+          remediation: { id: 'record-plan-approval', args: { issue: 1661 } },
+        },
+        {
+          guardId: 'fixture-legacy-guard',
+          legacyInventory: legacyRefusalInventory(),
+        }
+      ),
+    /manual-disposition-required/
   );
 });
 
@@ -228,6 +264,26 @@ test('blocked decisions bind typed remediation to the matching human request', (
   });
 
   assert.deepEqual(validateActionDecision(decision), decision);
+  const crossIssueDecision = {
+    ...decision,
+    blockers: [
+      {
+        ...blocker,
+        remediation: { id: 'record-plan-approval', args: { issue: 1662 } },
+      },
+    ],
+    humanDecision: {
+      requests: [
+        {
+          kind: 'plan-approval',
+          actor: 'configured-approver',
+          subject: { issue: 1662, actionId: 'promote' },
+          args: {},
+        },
+      ],
+    },
+  };
+  assert.deepEqual(validateActionDecision(crossIssueDecision), crossIssueDecision);
   assert.throws(
     () => validateActionDecision({ ...decision, humanDecision: null }),
     /humanDecision/
@@ -275,7 +331,7 @@ test('blocked decisions bind typed remediation to the matching human request', (
           },
         ],
       }),
-    /remediation/
+    /humanDecision|remediation/
   );
 });
 
@@ -365,6 +421,39 @@ test('snapshot evidence is unique, in-window, issue-bound, and digest-bound', ()
       ),
     /snapshot\.digest/
   );
+  assert.throws(
+    () =>
+      validateActionDecision(
+        readyDecision({ snapshot: actionDecisionSnapshot({ state: 'banana' }) })
+      ),
+    /snapshot\.state/
+  );
+
+  const unresolved = readyDecision({
+    actionId: null,
+    status: 'indeterminate',
+    snapshot: actionDecisionSnapshot({ state: 'banana' }),
+    blockers: [
+      {
+        guardId: 'action-navigation',
+        code: 'state-unavailable',
+        args: { reason: 'unknown' },
+        noAutomaticRemediation: { reason: 'state-investigation-required' },
+      },
+    ],
+    humanDecision: {
+      requests: [
+        {
+          kind: 'manual-investigation',
+          actor: 'human-operator',
+          subject: { issue: 1661, actionId: null },
+          args: { guardId: 'action-navigation', code: 'state-unavailable' },
+        },
+      ],
+    },
+    guidanceIds: ['navigation.unresolved'],
+  });
+  assert.deepEqual(validateActionDecision(unresolved), unresolved);
 });
 
 test('terminal decisions use null action and terminal guidance without inventing execution', () => {
@@ -441,8 +530,8 @@ test('operational warnings preserve order and reject cross-domain code reuse', (
         digest: `sha256:${'d'.repeat(64)}`,
       },
     },
-    { code: 'legacy-guard-warning', args: { guardId: 'fixture-warning-guard' } },
-    { code: 'legacy-guard-warning', args: { guardId: 'fixture-warning-guard' } },
+    { code: 'legacy-guard-warning', args: { guardId: 'blocked-by-not-done' } },
+    { code: 'legacy-guard-warning', args: { guardId: 'blocked-by-not-done' } },
   ];
   const decision = readyDecision({ warnings });
 
@@ -464,6 +553,40 @@ test('operational warnings preserve order and reject cross-domain code reuse', (
   assert.throws(
     () => validateActionDecision(readyDecision({ warnings: [...warnings].reverse() })),
     /warning-order/
+  );
+  assert.throws(
+    () =>
+      validateActionDecision(
+        readyDecision({
+          warnings: [
+            {
+              code: 'legacy-guard-warning',
+              args: { guardId: 'not-a-registered-guard' },
+            },
+          ],
+        })
+      ),
+    /producer/
+  );
+});
+
+test('decision blockers reject producers outside the frozen guard inventory', () => {
+  assert.throws(
+    () =>
+      validateActionDecision(
+        readyDecision({
+          status: 'blocked',
+          blockers: [
+            {
+              guardId: 'not-a-registered-guard',
+              code: 'migration-freeze',
+              args: {},
+              noAutomaticRemediation: { reason: 'result-investigation-required' },
+            },
+          ],
+        })
+      ),
+    /producer/
   );
 });
 
@@ -656,6 +779,16 @@ test('the refusal lint rejects undeclared and cross-domain codes', () => {
     '};',
   ].join('\n');
   const auditAsDecision = undeclared.replace('made-up-code', 'guidance-annotation-failed');
+  const admissionWarningFromGuard = [
+    "export const fixtureGuard = { id: 'fixture-guard',",
+    '  run() { return { ok: true, warnings: [{',
+    "    code: 'guidance-source-diverged', args: {",
+    "      source: '.ai-task-manager/aitm-guidance.yml',",
+    `      digest: 'sha256:${'d'.repeat(64)}'`,
+    '    }',
+    '  }] }; },',
+    '};',
+  ].join('\n');
   const base = {
     inventory: { version: 1, guards: { 'fixture-guard': { complete: true, sites: [] } } },
     registeredGuardIds: ['fixture-guard'],
@@ -674,5 +807,12 @@ test('the refusal lint rejects undeclared and cross-domain codes', () => {
       sources: [{ file: 'fixture-guard.mjs', source: auditAsDecision }],
     }).join('\n'),
     /illegal decision code guidance-annotation-failed/
+  );
+  assert.match(
+    lintRefusalInventory({
+      ...base,
+      sources: [{ file: 'fixture-guard.mjs', source: admissionWarningFromGuard }],
+    }).join('\n'),
+    /illegal producer guidance-source-diverged/
   );
 });
