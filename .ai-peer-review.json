@@ -38,7 +38,9 @@
       },
       "identity": {
         "model_id": "claude-opus-5",
-        "model_display": "Claude Opus 5"
+        "model_display": "Claude Opus 5",
+        "provider": "anthropic",
+        "host": "claude-code"
       }
     }
   },

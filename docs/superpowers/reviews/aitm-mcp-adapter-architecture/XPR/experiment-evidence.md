@@ -57,3 +57,7 @@ will not constitute human ratification or implementation approval.
 
 No XPR finding or outcome has been observed at setup. Append subsequent
 observations without erasing this initial state.
+
+Setup correction: the first start attempt rejected incomplete Claude identity
+configuration (`APR_CONFIG_INVALID`, missing provider and host). The declared
+identity was completed and revalidated before retry; no review had been created.
