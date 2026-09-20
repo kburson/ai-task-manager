@@ -1,0 +1,79 @@
+{
+  "schema": "aitm.xpr-experiment-evidence/v1",
+  "review_id": "review-bf339e74f46697b4da5d2d19cb3c822e",
+  "baseline_commit": "c2e33f4d0ae704900437a0659119bad6eb30dc01",
+  "baseline_sha256": "7066ff40fdfffa399d279f453b3e4ee7dd0e26f96effcc2dff0475b76c2cf783",
+  "accepted_spec_commit": "09551213ec6ee18e90d2d6d39f3fff00e9ade055",
+  "accepted_spec_sha256": "1912963ac7bfa0f7565e3cb1758a0dc27c0695712db1b22612ffb8207ece8c1e",
+  "protocol_finalization_commit": "49f0c84274ef4116523784f64e51e0de8cc0caad",
+  "acceptance_basis": "reviewer-consensus",
+  "human_approval": false,
+  "authority_assurance": "unavailable",
+  "reviewer_rounds": 3,
+  "author_revisions": 2,
+  "required_findings": 8,
+  "runtime_tests_implemented": false,
+  "cost_and_token_coverage": "unknown",
+  "copies": [
+    {
+      "publication": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/publication/XPR-r1-reviewer.md",
+      "source_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-reviewer-response-1.md",
+      "source_sha256": "b70b58f02d428942031c27462ba63097318bde4735cd9bd1c520fbd15dded6cb",
+      "body_sha256": "f8ab694c7f83523e18ed0e534ce3550e00fdad112515746cf20393f5e19a1079",
+      "role": "reviewer",
+      "round": 1,
+      "input_commit": "93a2c790be8c771324ae51eaf35b41bf029dd6ea",
+      "input_sha256": "7066ff40fdfffa399d279f453b3e4ee7dd0e26f96effcc2dff0475b76c2cf783",
+      "result_commit": null,
+      "submitted_at": "2026-09-20T21:54:14.764Z"
+    },
+    {
+      "publication": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/publication/XPR-r1-author.md",
+      "source_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-author-response-1.md",
+      "source_sha256": "da825fc2966f667a0f5b1588e9009a90a88a8b76ca0fd2534d7311bc023ab1a6",
+      "body_sha256": "97e40a1ec7f9955d8e59e3855a8d0261b03f29ebaf0c98cb0dba61236b3e33c8",
+      "role": "author",
+      "round": 1,
+      "input_commit": "93a2c790be8c771324ae51eaf35b41bf029dd6ea",
+      "input_sha256": "7066ff40fdfffa399d279f453b3e4ee7dd0e26f96effcc2dff0475b76c2cf783",
+      "result_commit": "718fc30a2791b9399f1ec37e2c15815633a74806",
+      "submitted_at": "2026-09-20T22:00:06.168Z"
+    },
+    {
+      "publication": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/publication/XPR-r2-reviewer.md",
+      "source_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-reviewer-response-2.md",
+      "source_sha256": "d692e22b30272e2788621ec8aa578a621a07edd8c802d649e0e860be5fb53494",
+      "body_sha256": "4950003f8c8ff7adcba00bcbfe33b78d56c645844773b7c67a5507fde70fe612",
+      "role": "reviewer",
+      "round": 2,
+      "input_commit": "718fc30a2791b9399f1ec37e2c15815633a74806",
+      "input_sha256": "69c3813323e010d70d3e97ca6ce4e5cbce65cc964a1123b582f6a45b861f2ee4",
+      "result_commit": null,
+      "submitted_at": "2026-09-20T22:02:52.913Z"
+    },
+    {
+      "publication": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/publication/XPR-r2-author.md",
+      "source_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-author-response-2.md",
+      "source_sha256": "119933db7c4dea9ef261d6a558807de41d092488fd94ca6ea4a8133069f7bf90",
+      "body_sha256": "3480c2342d4866164547751b76084229cba7658972d9e48a276e83187a58d961",
+      "role": "author",
+      "round": 2,
+      "input_commit": "718fc30a2791b9399f1ec37e2c15815633a74806",
+      "input_sha256": "69c3813323e010d70d3e97ca6ce4e5cbce65cc964a1123b582f6a45b861f2ee4",
+      "result_commit": "09551213ec6ee18e90d2d6d39f3fff00e9ade055",
+      "submitted_at": "2026-09-20T22:04:49.031Z"
+    },
+    {
+      "publication": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/publication/XPR-r3-reviewer.md",
+      "source_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-reviewer-response-3.md",
+      "source_sha256": "7b26b20ab2004431d52a9e2c5bac9b33da2d186bdbf242013113e45ab5de3440",
+      "body_sha256": "d9bef2b7d05c8caa31742d780fb9d7ad629a4746d5c033b9759f6f78bc83bc49",
+      "role": "reviewer",
+      "round": 3,
+      "input_commit": "09551213ec6ee18e90d2d6d39f3fff00e9ade055",
+      "input_sha256": "1912963ac7bfa0f7565e3cb1758a0dc27c0695712db1b22612ffb8207ece8c1e",
+      "result_commit": null,
+      "submitted_at": "2026-09-20T22:06:31.126Z"
+    }
+  ]
+}

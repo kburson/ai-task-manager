@@ -11,7 +11,9 @@
     "MD028": false,
     "MD001": false,
     "MD060": false,
-    "MD024": { "siblings_only": true }
+    "MD024": {
+      "siblings_only": true
+    }
   },
   "globs": ["**/*.md", "!.tmp/**", "!.scratch/**"],
   "ignores": [
@@ -30,6 +32,7 @@
     "docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md",
     "docs/superpowers/reviews/1219/**/protocol-runs/**",
     ".ai-task-manager/memory/**",
-    ".superpowers/**"
+    ".superpowers/**",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/**"
   ]
 }
