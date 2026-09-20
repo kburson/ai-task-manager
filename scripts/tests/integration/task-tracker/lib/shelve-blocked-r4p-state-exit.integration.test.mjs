@@ -1,4 +1,4 @@
-// @story #1343 #1557
+// @story #1343 #1557 #1661
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -36,6 +36,12 @@ test('normal R4P source exit guards refuse an open blocker', async () => {
     {
       id: 'blocked-by-not-done',
       reason: 'cannot exit because blockers are open: #1334 (ready-for-plan)',
+      guardId: 'blocked-by-not-done',
+      code: 'unclassified-refusal',
+      args: {},
+      noAutomaticRemediation: {
+        reason: 'legacy-guard-requires-human-investigation',
+      },
     },
   ]);
 });
@@ -63,7 +69,12 @@ test('exit-disabled guard selection omits R4P exit guards but retains Backlog en
     includeEntryGuards: true,
   });
 
-  assert.deepEqual(result, { ok: true, refusals: [] });
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'ready',
+    refusals: [],
+    humanDecision: null,
+  });
   assert.deepEqual(phases, ['entry']);
 });
 
@@ -95,7 +106,12 @@ test('entry-disabled guard selection retains source exit guards but omits target
     }
   );
 
-  assert.deepEqual(result, { ok: true, refusals: [] });
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'ready',
+    refusals: [],
+    humanDecision: null,
+  });
   assert.deepEqual(phases, ['exit']);
 });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #262
+// @story #262 #1661
 // Unit tests for scripts/task-tracker/lib/guard-registry.mjs (#262).
 //
 // Skeleton-stage registry: GUARDS map, runGuards iterator, registerGuard
@@ -19,7 +19,7 @@ async function freshRegistry() {
   return mod;
 }
 
-test('empty registry: runGuards returns { ok: true, refusals: [] } for any state pair', async () => {
+test('empty registry returns a complete ready guard result for any state pair', async () => {
   const { runGuards } = await freshRegistry();
   for (const pair of [
     ['backlog', 'refine'],
@@ -31,7 +31,11 @@ test('empty registry: runGuards returns { ok: true, refusals: [] } for any state
     ['review', 'done'],
   ]) {
     const r = await runGuards(pair[0], pair[1], {});
-    assert.deepEqual(r, { ok: true, refusals: [] }, `pair ${pair.join('->')}`);
+    assert.deepEqual(
+      r,
+      { ok: true, status: 'ready', refusals: [], humanDecision: null },
+      `pair ${pair.join('->')}`
+    );
   }
 });
 
@@ -79,16 +83,30 @@ test('runGuards aggregates refusals across exit + entry (no short-circuit)', asy
 
   registerGuard('plan', 'exit', {
     id: 'exit-fail',
-    run: () => ({ ok: false, reason: 'exit refused' }),
+    run: () => ({
+      ok: false,
+      reason: 'exit refused',
+      code: 'migration-freeze',
+      args: {},
+      noAutomaticRemediation: { reason: 'result-investigation-required' },
+    }),
   });
   registerGuard('develop', 'entry', {
     id: 'entry-fail',
-    run: () => ({ ok: false, reason: 'entry refused' }),
+    run: () => ({
+      ok: false,
+      reason: 'entry refused',
+      code: 'migration-freeze',
+      args: {},
+      noAutomaticRemediation: { reason: 'result-investigation-required' },
+    }),
   });
 
   const r = await runGuards('plan', 'develop', { issueNumber: 42 });
   assert.equal(r.ok, false);
   assert.equal(r.refusals.length, 2);
+  assert.equal(r.status, 'blocked');
+  assert.equal(r.humanDecision, null);
   const ids = r.refusals.map((x) => x.id).sort();
   assert.deepEqual(ids, ['entry-fail', 'exit-fail']);
   const reasonById = Object.fromEntries(r.refusals.map((x) => [x.id, x.reason]));
