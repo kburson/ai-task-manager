@@ -1,0 +1,740 @@
+{
+  "schema": "aitm.guidance-action-cardinality/v1",
+  "fixtureKind": "observed-candidate-model",
+  "actions": [
+    {
+      "action": "bind",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "bind.start-and-resume",
+          "refusals": 5,
+          "warnings": 2,
+          "humanObligations": 1
+        }
+      ]
+    },
+    {
+      "action": "resume",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "resume.session-reengagement",
+          "refusals": 5,
+          "warnings": 2,
+          "humanObligations": 1
+        }
+      ]
+    },
+    {
+      "action": "promote",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "promote.forward-transition",
+          "refusals": 8,
+          "warnings": 1,
+          "humanObligations": 2
+        }
+      ]
+    },
+    {
+      "action": "test",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "test.develop-verification",
+          "refusals": 6,
+          "warnings": 1,
+          "humanObligations": 1
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "review.agent-review-gate",
+          "refusals": 6,
+          "warnings": 1,
+          "humanObligations": 2
+        }
+      ]
+    },
+    {
+      "action": "deliver",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "deliver.provider-action",
+          "refusals": 6,
+          "warnings": 2,
+          "humanObligations": 2
+        }
+      ]
+    },
+    {
+      "action": "close",
+      "observedFixtures": [
+        {
+          "scenario": "ready",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "simultaneousReachability": [
+        {
+          "scenario": "blocked",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "indeterminate",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        },
+        {
+          "scenario": "warning",
+          "blockers": 0,
+          "warnings": 3,
+          "normalizations": 0,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "normalization",
+          "blockers": 0,
+          "warnings": 0,
+          "normalizations": 1,
+          "humanRequests": 0,
+          "observations": 1
+        },
+        {
+          "scenario": "effective-policy-human-request",
+          "blockers": 1,
+          "warnings": 0,
+          "normalizations": 0,
+          "humanRequests": 1,
+          "observations": 1
+        }
+      ],
+      "perSiteFanOut": [
+        {
+          "site": "close.review-to-done",
+          "refusals": 7,
+          "warnings": 1,
+          "humanObligations": 2
+        }
+      ]
+    }
+  ],
+  "finiteHeavyInputs": {
+    "action": "close",
+    "attempts": 2,
+    "blockersPerAttempt": 7,
+    "observationsPerAttempt": 8
+  },
+  "unboundedDimensions": [
+    "body-length",
+    "child-count",
+    "dependency-count",
+    "pagination",
+    "retry-history"
+  ]
+}
