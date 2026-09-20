@@ -44,6 +44,10 @@ import {
   buildPlanApprovalAuditComment,
   isCanonicalPlanApprovalAuditComment,
 } from '../../../../task-tracker/lib/plan-approval-audit.mjs';
+import {
+  renderPlanTransitionAuthorityComment,
+  resolvePlanTransitionAuthority,
+} from '../../../../task-tracker/lib/plan-transition-authority.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '../../../..');
@@ -197,7 +201,10 @@ for (const readDirectoryContract of [
   assert.equal(calls.comments.length, 0);
 }
 
-function makeEvidenceRepairFixture() {
+function makeEvidenceRepairFixture(issueNumber = 1716, { includeLegacyProof = true } = {}) {
+  const acceptanceLine = includeLegacyProof
+    ? '- [x] Repair is evidence-derived. <!-- aitm-verified exit="0" sha="abcdef0" key="repair" vc-list="vc:1" -->'
+    : '- [x] Repair is evidence-derived.';
   const initialBody = [
     '## User Story',
     '',
@@ -217,7 +224,7 @@ function makeEvidenceRepairFixture() {
     '',
     '## Acceptance Criteria',
     '',
-    '- [x] Repair is evidence-derived. <!-- aitm-verified exit="0" sha="abcdef0" key="repair" vc-list="vc:1" -->',
+    acceptanceLine,
     '',
     '## Plan Adjustment',
     '',
@@ -230,12 +237,14 @@ function makeEvidenceRepairFixture() {
     '',
   ].join('\n');
   const historicalBody = initialBody.replace(
-    '- [x] Repair is evidence-derived. <!-- aitm-verified exit="0" sha="abcdef0" key="repair" vc-list="vc:1" -->',
-    '- [ ] Repair is evidence-derived. <!-- aitm-verified key="repair" vc-list="vc:1" -->'
+    acceptanceLine,
+    includeLegacyProof
+      ? '- [ ] Repair is evidence-derived. <!-- aitm-verified key="repair" vc-list="vc:1" -->'
+      : '- [ ] Repair is evidence-derived.'
   );
   const scopeIdentity = computeScopeIdentity({
     repository: cfg.repo,
-    issue: 1716,
+    issue: issueNumber,
     body: historicalBody,
   });
   const authorization = {
@@ -248,7 +257,7 @@ function makeEvidenceRepairFixture() {
   };
   const first = createWorkflowExceptionEnvelope({
     repository: cfg.repo,
-    issue: 1716,
+    issue: issueNumber,
     exceptionId: 'historical-plan-waiver',
     revision: 1,
     scopeIdentity,
@@ -263,7 +272,7 @@ function makeEvidenceRepairFixture() {
   });
   const revoked = createWorkflowExceptionEnvelope({
     repository: cfg.repo,
-    issue: 1716,
+    issue: issueNumber,
     exceptionId: 'historical-plan-waiver',
     revision: 2,
     status: 'revoked',
@@ -310,6 +319,134 @@ function makeEvidenceRepairFixture() {
     revokedRecordId: revoked.recordId,
   };
 }
+
+function makeModernTransitionAuthorityFixture({
+  issueNumber = 61,
+  authorityScopeIdentity = null,
+  orphan = false,
+} = {}) {
+  const fixture = makeEvidenceRepairFixture(issueNumber, { includeLegacyProof: false });
+  const transitionId = 'move:11111111-1111-4111-8111-111111111111';
+  const active = fixture.workflowRecords[0].envelope;
+  const scopeIdentity = authorityScopeIdentity ?? active.payload.scopeIdentity;
+  fixture.initialBody = fixture.initialBody.replace(
+    '<!-- aitm-entered-develop ts="2026-09-19T15:22:16.645Z" -->',
+    `<!-- aitm-entered-develop ts="2026-09-19T15:22:16.645Z" move="${transitionId}" -->`
+  );
+  if (!orphan) {
+    fixture.initialBody += `<!-- aitm-move-complete state=develop ts=2026-09-19T15:22:16.645Z move=${transitionId} -->\n`;
+  }
+  const record = resolvePlanTransitionAuthority({
+    repository: cfg.repo,
+    issue: issueNumber,
+    transitionId,
+    body: fixture.issueBodyHistory[0],
+    workflowPolicy: {
+      scopeIdentity,
+      decision(id) {
+        assert.equal(id, 'approval.plan');
+        return {
+          id,
+          outcome: 'waived',
+          authority: {
+            recordId: active.recordId,
+            revision: active.payload.revision,
+            reference: active.payload.approvalEvidence.reference,
+            verificationLevel: active.payload.approvalEvidence.verificationLevel,
+          },
+        };
+      },
+    },
+    sessionPolicy: { gates: { analysisToDevelopment: true } },
+    scopeIdentity,
+    recordedAt: '2026-09-19T15:22:13.000Z',
+  });
+  fixture.comments.push(renderPlanTransitionAuthorityComment(record));
+  return { ...fixture, transitionId, authorityRecord: record };
+}
+
+test('completed waived transition auto-converges after prospective exception revocation', async () => {
+  const fixture = makeModernTransitionAuthorityFixture();
+  const { deps, calls, getBody } = makeDeps({
+    state: 'develop',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+  });
+
+  const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+
+  assert.equal(result.status, 'repaired-from-transition-authority', JSON.stringify(result));
+  assert.equal(result.historicalOutcome, 'waived');
+  assert.equal(result.transitionId, fixture.transitionId);
+  assert.equal(result.authorityRecordId, fixture.approvalPlanRecordId);
+  assert.equal(result.authorityRevision, 1);
+  assert.equal(result.revokedRecordId, fixture.revokedRecordId);
+  assert.equal(parsePlanApprovedMarker(getBody()).mode, 'full-auto');
+  assert.equal(parsePlanApprovedMarker(getBody()).repairRecordId, fixture.revokedRecordId);
+  assert.equal(fixture.authorityRecord.outcome, 'waived');
+  assert.match(calls.comments.at(-1), /Historical transition authority: `waived`/);
+  assert.match(calls.comments.at(-1), new RegExp(fixture.transitionId));
+
+  const retry = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+  assert.equal(retry.status, 'repaired-from-transition-authority');
+  assert.equal(calls.writes.length, 1, 'retry must not rewrite the approval marker');
+  assert.equal(calls.comments.length, 1, 'retry must recognize the canonical modern audit');
+});
+
+test('modern transition authority does not auto-converge in human mode', async () => {
+  const fixture = makeModernTransitionAuthorityFixture();
+  const { deps, calls } = makeDeps({ state: 'develop', env: {}, ...fixture });
+
+  const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+
+  assert.equal(result.status, 'wrong-state');
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.comments.length, 0);
+});
+
+test('modern transition authority retains all legacy planning evidence gates', async () => {
+  const fixture = makeModernTransitionAuthorityFixture();
+  fixture.comments = fixture.comments.filter((body) => !body.includes('### Planned Estimate'));
+  const { deps, calls } = makeDeps({
+    state: 'develop',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+  });
+
+  const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+
+  assert.equal(result.status, 'evidence-repair-refused');
+  assert.ok(result.blockers.includes('planned-estimate-missing'), JSON.stringify(result));
+  assert.equal(calls.writes.length, 0);
+});
+
+test('modern transition authority refuses stale scope and orphan records', async () => {
+  const scenarios = [
+    {
+      name: 'stale scope',
+      fixture: makeModernTransitionAuthorityFixture({
+        authorityScopeIdentity: `sha256:${'b'.repeat(64)}`,
+      }),
+      blocker: 'plan-transition-authority-scope',
+    },
+    {
+      name: 'orphan',
+      fixture: makeModernTransitionAuthorityFixture({ orphan: true }),
+      blocker: 'plan-transition-authority-ambiguous',
+    },
+  ];
+  for (const scenario of scenarios) {
+    const { deps, calls } = makeDeps({
+      state: 'develop',
+      env: { TT_FULL_AUTO: '1' },
+      ...scenario.fixture,
+    });
+    const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+    assert.equal(result.status, 'evidence-repair-refused', scenario.name);
+    assert.ok(result.blockers.includes(scenario.blocker), scenario.name);
+    assert.equal(calls.writes.length, 0, scenario.name);
+  }
+});
 
 async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
   const write = process.stdout.write;

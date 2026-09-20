@@ -628,7 +628,11 @@ AITM has three review boundaries, each independent. Full-Auto is the built-in de
 
 The config key `gateAnalysisToDevelopment` retains its legacy name for backward-compatibility with existing project configs; semantically it gates Plan → Develop.
 
-The Plan → Develop gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Plan. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
+The Plan → Develop gate is enforced by an `aitm-plan-approved` marker written into the issue body by `/task plan-approve #N`. The move refuses when the marker is missing and the current Plan-approval policy requires it. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
+
+Every Plan → Develop move also writes and reads back an immutable `aitm.plan-transition-authority/v1` GitHub comment before changing lifecycle evidence or board status. The record truthfully identifies the authority used at that boundary: an approval marker was `satisfied`, a named workflow-exception revision was `waived`, or the gate was `not-required`. It becomes completed historical authority only when the Develop entry marker and move-complete sentinel carry the same transition ID. Later exception revocation changes current policy but does not erase or relabel that historical outcome.
+
+In Develop, Test, or Review, an explicit Full-Auto `/task plan-approve #N` can converge a missing approval marker from one completed modern `waived` record after all planning, lifecycle, exception-lineage, and scope checks pass. The resulting audit remains evidence-derived: it preserves the historical outcome as `waived` and never describes the waiver as a passed or human-approved plan. `--repair-from-evidence` remains the explicit compatibility route for older transitions that predate typed transition authority.
 
 The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
 

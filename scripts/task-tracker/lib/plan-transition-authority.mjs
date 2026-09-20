@@ -219,8 +219,7 @@ export function classifyCompletedPlanTransitionAuthority({ record, issueBody = '
   const developEntries = parseEntryMarkers(issueBody).filter((entry) => entry.state === 'develop');
   const sentinel = readMoveCompleteMarker(issueBody);
   const matchingEntry = developEntries.some((entry) => entry.move === valid.transitionId);
-  const matchingSentinel =
-    sentinel?.state === 'develop' && sentinel?.move === valid.transitionId;
+  const matchingSentinel = sentinel?.state === 'develop' && sentinel?.move === valid.transitionId;
   if (matchingEntry && matchingSentinel) {
     return Object.freeze({ status: 'completed', record: valid, diagnostics: Object.freeze([]) });
   }
@@ -314,8 +313,7 @@ export async function writePlanTransitionAuthority(ctx) {
     ctx.deps?.createPlanTransitionAuthorityComment || ((value) => defaultCreateComment(ctx, value));
   const read =
     ctx.deps?.readPlanTransitionAuthorityComment || ((id) => defaultReadComment(ctx, id));
-  const list =
-    ctx.deps?.listPlanTransitionAuthorityComments || (() => defaultListComments(ctx));
+  const list = ctx.deps?.listPlanTransitionAuthorityComments || (() => defaultListComments(ctx));
   try {
     const created = await create(body, record);
     const found = await read(commentId(created));
@@ -332,8 +330,10 @@ export async function writePlanTransitionAuthority(ctx) {
     const exact = (comments || []).filter((comment) => {
       if (commentBody(comment) !== body) return false;
       try {
-        return parsePlanTransitionAuthorityComment(commentBody(comment)).transitionId ===
-          record.transitionId;
+        return (
+          parsePlanTransitionAuthorityComment(commentBody(comment)).transitionId ===
+          record.transitionId
+        );
       } catch {
         return false;
       }

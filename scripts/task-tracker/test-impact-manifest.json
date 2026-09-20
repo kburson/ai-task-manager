@@ -67,6 +67,16 @@
       "reason": "Plan-exit decomposition enforcement"
     },
     {
+      "sources": ["scripts/task-tracker/lib/plan-transition-authority.mjs"],
+      "tests": [
+        "scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs",
+        "scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs",
+        "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs"
+      ],
+      "reason": "Plan-to-Develop authority production, completion join, and Full-Auto convergence"
+    },
+    {
       "sources": [
         "scripts/task-tracker/lib/split-plan.mjs",
         "scripts/task-tracker/verbs/split-plan.mjs"

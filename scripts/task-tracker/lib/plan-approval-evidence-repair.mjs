@@ -11,6 +11,10 @@ import { hasEmptyPlannedAppendix, hasPlannedAppendix } from './refine-estimate-c
 import { parseTimingRows } from './timing-ladder.mjs';
 import { resolveWorkflowExceptionRecords } from './workflow-policy/exception-record.mjs';
 import { computeScopeIdentity, scopeProjection } from './workflow-policy/scope-identity.mjs';
+import {
+  classifyCompletedPlanTransitionAuthority,
+  parsePlanTransitionAuthorityComment,
+} from './plan-transition-authority.mjs';
 
 const pexec = promisify(execFile);
 
@@ -239,6 +243,59 @@ export function evaluatePlanApprovalRepairEvidence({
   };
 }
 
+export function evaluateModernPlanTransitionEvidence({
+  body,
+  authorityRecords = [],
+  repository,
+  issue,
+} = {}) {
+  const completed = authorityRecords
+    .map((record) => classifyCompletedPlanTransitionAuthority({ record, issueBody: body }))
+    .filter(({ status }) => status === 'completed');
+  if (completed.length !== 1) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-ambiguous']),
+    });
+  }
+  const [{ record }] = completed;
+  let currentScopeIdentity = null;
+  try {
+    currentScopeIdentity = computeScopeIdentity({
+      repository,
+      issue: Number(issue),
+      body,
+    });
+  } catch {
+    // The scope mismatch refusal below covers an uncomputable current scope.
+  }
+  if (
+    record.repository.toLowerCase() !== String(repository || '').toLowerCase() ||
+    record.issue !== Number(issue) ||
+    record.scopeIdentity !== currentScopeIdentity
+  ) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-scope']),
+    });
+  }
+  if (record.outcome !== 'waived') {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze([`plan-transition-authority-outcome-${record.outcome}`]),
+    });
+  }
+  return Object.freeze({
+    status: 'available',
+    source: 'plan-transition-authority',
+    historicalOutcome: record.outcome,
+    transitionId: record.transitionId,
+    authorityRecordId: record.evidence.recordId,
+    authorityRevision: record.evidence.revision,
+    blockers: Object.freeze([]),
+  });
+}
+
 export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, deps = {} }) {
   const listEvidenceComments =
     deps.listEvidenceComments || deps.listComments || defaultListEvidenceComments;
@@ -250,9 +307,22 @@ export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, dep
     listWorkflowRecords({ issueNumber, repo }),
     listBodyHistory({ issueNumber, repo }),
   ]);
+  const authorityRecords = [];
+  for (const comment of comments || []) {
+    try {
+      authorityRecords.push(
+        parsePlanTransitionAuthorityComment(
+          typeof comment === 'string' ? comment : String(comment?.body ?? '')
+        )
+      );
+    } catch {
+      // Unrelated and malformed comments are not modern authority candidates.
+    }
+  }
   return {
     comments,
     records,
     issueBodyHistory,
+    authorityRecords: Object.freeze(authorityRecords),
   };
 }
