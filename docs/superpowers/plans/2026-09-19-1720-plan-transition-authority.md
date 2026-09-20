@@ -28,6 +28,8 @@
 
 ---
 
+## Implementation Tasks
+
 ### Task 1: Persist and verify transition-bound Plan authority
 
 #### Story Intent
