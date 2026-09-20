@@ -143,6 +143,18 @@ test('an inventoried legacy refusal normalizes without interpreting its reason',
       ),
     /not fully inventoried/
   );
+  assert.deepEqual(
+    normalizeRefusal(
+      { reason: 'legacy diagnostic', code: 'story-approval-binding-missing' },
+      { guardId: 'fixture-legacy-guard', legacyInventory }
+    ),
+    {
+      guardId: 'fixture-legacy-guard',
+      code: 'unclassified-refusal',
+      args: {},
+      noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
+    }
+  );
 });
 
 test('action navigation fails closed for non-ready and unknown actions', () => {
@@ -621,6 +633,18 @@ test('the parser-based refusal lint freezes added and edited legacy sites', () =
       registeredGuardIds: ['fixture-guard'],
     }).join('\n'),
     /new unclassified refusal/
+  );
+  const addedCodeOnly = originalSource.replace(
+    "return { ok: false, reason: 'legacy reason' };",
+    "return { ok: false, code: 'diagnostic-only', reason: 'legacy reason' };"
+  );
+  assert.match(
+    lintRefusalInventory({
+      inventory,
+      sources: [{ file: 'fixture-guard.mjs', source: addedCodeOnly }],
+      registeredGuardIds: ['fixture-guard'],
+    }).join('\n'),
+    /changed legacy site/
   );
 });
 
