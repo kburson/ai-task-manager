@@ -26,7 +26,7 @@ Its next commit introduced SAR r1 corrections. This branch,
 parent, which did not contain the spec. Setup does not change those spec bytes.
 
 The first sequence, SAR then SPR then XPR, was merged through PR #1724:
-https://github.com/kburson/ai-task-manager/pull/1724 . Its merge commit and final
+[PR #1724](https://github.com/kburson/ai-task-manager/pull/1724). Its merge commit and final
 spec hash are frozen in the frontmatter. All 32 review files were verified on
 trunk after merge. Using this fixed comparison revision avoids silently changing
 the comparison if trunk advances during the second experiment.
@@ -91,3 +91,26 @@ tool and scheduling delays. Append observed results without rewriting setup hist
 Setup observation: the first doctor invocation omitted the Author model environment
 and reported identity unavailable. Repeating with the verified Astra model metadata
 reported healthy manual-mode readiness; no protocol had yet been started.
+
+## Excluded attempt: user requested fresh Author
+
+The user identified Author context carryover as an experimental concern and
+requested a fresh Astra Author. This attempt was stopped before any Author
+revision or submitted Reviewer response. The original spec digest is unchanged.
+The in-flight Claude process was terminated; its launcher reported invalid JSON
+because it was interrupted. Its draft, invitation, and scratch authority remain
+preserved as excluded setup evidence. No finding from this attempt is supplied
+to either participant in the replacement run or counted as a review outcome.
+
+The protocol package has no abort/cancel/stop command. Its last event state
+therefore remains reviewer-turn, not accepted or officially cancelled. This
+sidecar records the human-directed discontinuation; the raw authority was not
+rewritten. A new protocol with genuinely distinct Author and Reviewer sessions
+will start in a separate worktree from the original-spec commit. This branch
+is excluded from the primary XPR-first comparison.
+
+Operational observations: the Claude native executable was missing again before
+launch and was restored using its own installer. Claude reported 2.1.278. The
+baseline fast suite passed all 872 test files. Setup Markdown lint identified a
+bare PR URL in this log; that editorial issue was corrected here. This stopped
+attempt provides no design acceptance or candidate-quality evidence.
