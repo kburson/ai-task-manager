@@ -653,7 +653,7 @@ export function normalizeRefusal(value, { guardId, legacyInventory } = {}) {
   nonemptyString(guardId, 'normalize.guardId');
   record(value, 'normalize.refusal');
   const typed =
-    Object.hasOwn(value, 'code') ||
+    Object.hasOwn(value, 'args') ||
     Object.hasOwn(value, 'remediation') ||
     Object.hasOwn(value, 'noAutomaticRemediation');
   if (typed) {

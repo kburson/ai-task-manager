@@ -95,7 +95,7 @@ function analyzeSource({ file, source }) {
       codeEmissions.push({ code, decision: refusal, line: node.loc.start.line });
     }
     for (const kind of [
-      refusal && code === undefined ? 'refusal' : null,
+      refusal && !(typeof code === 'string' && typedDisposition) ? 'refusal' : null,
       warning ? 'warning' : null,
     ]) {
       if (!kind) continue;
