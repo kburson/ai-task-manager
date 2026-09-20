@@ -95,3 +95,95 @@ Protocol scratch state remains local and ignored. Durable review records and
 this log are the publication evidence. While a Reviewer holds the turn, the
 Author must preserve its sealed Git and worktree boundary; append consolidated
 experiment observations after the protocol allows those writes.
+
+## SPR outcome recorded after finalization
+
+The normal-mode protocol reached `accepted`, with `reviewer-consensus` as its
+acceptance basis. No human acceptance attestation was configured:
+`authority_assurance` is `unavailable`, as recorded by the package. This is
+AI peer consensus, not human ratification or permission to implement. The
+session used native subagent launch and explicit manual handoffs, not a resident
+broker. The joined runtime session fingerprints were distinct. Model selection
+and effort came from the launch configuration; the CLI model labels were
+supplied through environment variables matching that configuration. The package
+identity record does not independently attest the model's execution or effort.
+
+The frozen SPR entry revision was
+`6891473eb0dca09b0c88d0745f2039c35c82249a`, whose spec content is identical to the
+SAR r5 baseline. That commit added project review setup and this evidence log.
+The spec revision accepted by Sol is
+`0a7e3c6a6283feddd4a7d7f16d81ac856cc5f1eb`, with SHA-256
+`58a41985ff691814e0374a27e32d097a34ed95390d459321c0391121cec1b125`.
+Protocol finalization was committed as `7a0b08c7`.
+
+| Exchange    | Recorded result                                                                                | Durable evidence              |
+| ----------- | ---------------------------------------------------------------------------------------------- | ----------------------------- |
+| Reviewer r1 | Four findings: three high, one medium; revisions requested                                     | [Reviewer r1](reviewer-r1.md) |
+| Author r1   | Four accepted; trust-boundary and irrecoverable-loss qualifications documented; spec corrected | [Author r1](author-r1.md)     |
+| Reviewer r2 | All four resolved; no additional findings; accepted                                            | [Reviewer r2](reviewer-r2.md) |
+
+| Finding | Subject                                                    | Author disposition and experimental interpretation                                                                           |
+| ------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| R1-F001 | In-process plugin trust versus strict assurance            | Accepted claim clarification: narrow assurance to host isolation conditional on a fully trusted plugin set; no sandbox added |
+| R1-F002 | Workspace executable bytes omitted from staleness identity | Accepted content-identity gap; require complete runtime identity and a verified immutable execution view                     |
+| R1-F003 | Retention limits versus sole durable authority             | Accepted durability-contract gap; require retrievable payloads and safe transfer, while permanent loss remains blocked       |
+| R1-F004 | Ambiguous ownership of the ABI evidence method             | Accepted composition-contract ambiguity; only active `work-items` binding writes canonical evidence                          |
+
+The Author also corrected the Reviewer's overbroad attribution of explicit
+provider-retention language to ADR 0002. The Reviewer retained its original
+report and accepted the resulting design without requiring a sandbox or an
+impossible reconstruction guarantee. There were no rejected findings or
+recorded reversals. Related SAR subjects include plugin portability, evidence
+recovery, and host enforcement, so these counts should not be described as four
+statistically independent defects. The pair treated them as additional
+actionable gaps at the SPR entry revision; no independent human adjudication
+has yet classified them.
+
+### Observed timeline
+
+The following UTC timestamps are observations from local protocol events, not
+measurements of active model reasoning. They include scheduling and tool time.
+Later response `started_at` fields retain participant registration time, so they
+must not be used as per-round start times.
+
+| Event sequence | Event                                     | Observed UTC time        |
+| -------------- | ----------------------------------------- | ------------------------ |
+| 1              | Review created                            | 2026-09-20T20:27:05.409Z |
+| 2              | Distinct Reviewer joined                  | 2026-09-20T20:28:22.129Z |
+| 4              | Reviewer r1 submitted                     | 2026-09-20T20:31:53.451Z |
+| 7              | Author revision committed and handed back | 2026-09-20T20:36:44.753Z |
+| 9              | Reviewer r2 accepted                      | 2026-09-20T20:38:05.868Z |
+| 12             | Acceptance committed                      | 2026-09-20T20:38:25.400Z |
+
+Creation to protocol finalization took 679.991 seconds, about 11 minutes
+20 seconds. This excludes setup before protocol creation and evidence
+consolidation afterward. Reviewer registration to first submission took
+211.322 seconds; Author handoff to the second submission took 81.115 seconds.
+These intervals cannot be compared directly with SAR reasoning time or cost.
+Token and monetary totals remain unknown.
+
+### Record format and verification
+
+The package's response schema has closed protected metadata and cannot accept
+additional effort or descriptive ordinal keys. The original sealed response
+files remain byte-preserved. The linked publication copies add the requested
+YAML frontmatter: model, effort, artifact path, reviewed commit SHA, content
+digest, turn ordinal and description, role, and source-file hash. Their response
+prose is unchanged. Author frontmatter identifies its reviewed input revision;
+`result_commit_sha` identifies the committed correction. These copies are
+derived evidence and do not replace the protocol manifest.
+
+The [protocol manifest](2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-review-manifest.md)
+preserves identities, artifact history, response hashes, findings, decisions,
+and the absence of human authority. The generated invitation and Author startup
+instructions are retained alongside it. Additional native-agent instructions
+are recorded in [reviewer instructions](reviewer-instructions.md).
+
+Document validation covered spec formatting and spelling, repository Markdown
+lint and indexed documentation anchors, response structure, JSON examples, and
+whitespace. No provider runtime, plugin isolation, or archive behavior was
+tested. The new conformance cases are design requirements for later approved
+implementation work. All commits remain local; this session did not push.
+
+XPR has not started. Use the accepted content hash above as the next
+sequential entry baseline if that is the user's selected experiment design.
