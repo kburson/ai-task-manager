@@ -3,7 +3,8 @@
 **Date:** 2026-09-20
 
 **Status:** Proposed architecture approved in conversation; implementation and
-provider-plugin delivery remain separately gated
+provider-plugin delivery remain separately gated, with Phase 0 feasibility proof
+required before Phase 1 approval
 
 ## Summary
 
@@ -27,7 +28,10 @@ AITM remains lightweight. It does not introduce a private workflow database or
 hosted control plane. The configured backlog authority stores durable lifecycle
 state, journals, approvals, receipts, recovery records, and cross-system
 references. Local AITM storage contains only rebuildable caches, locks, queues,
-fingerprints, and generated projections.
+fingerprints, and generated projections. Governed writes require a provisioned,
+verified execution target; installing a clone alone enables read-only discovery
+and diagnosis, not write ownership. The Phase 0 reference topology and its
+provisioning requirements must be proved before rollout.
 
 Every agent-facing instruction, capability record, help record, action result,
 error, recovery response, and generated memory directive is schema-validated,
@@ -66,8 +70,10 @@ skills and workflow code.
    it, why it may be unavailable, and how to recover.
 6. Project small, fingerprinted learning directives into agent-host-specific
    memory without making memory authoritative.
-7. Make a committed installation consumable by a fresh clone or cloud worker
-   after only `npm ci`.
+7. Make committed integration available for read-only discovery and diagnosis
+   in a fresh clone or cloud worker after only `npm ci`, subject to runtime
+   authentication and host compatibility. Governed writes additionally require
+   a provisioned, verified execution target.
 8. Permit independently built community and experimental adapters through a
    public ABI and conformance suite.
 9. Prevent or disclose direct-provider mutation bypass according to the host's
@@ -344,8 +350,17 @@ The reference loading approach materializes the declared closure into a new,
 private content-addressed staging directory, verifies every staged byte against
 the selected identity, and atomically publishes it for read-only loading. It
 never imports from the mutable source checkout or a shared package tree. Relative
-imports and asset lookup resolve within the staged closure; undeclared or
-escaping resolution is rejected. Active snapshots are neither updated in place
+imports, ordinary bare dependencies, and asset lookup resolve within the staged
+closure through declared, verified mappings; ambient upward `node_modules`
+resolution is disabled. The sole permitted external module edge is the declared
+`@kburson/ai-task-manager/adapter-sdk` peer import. An identity-verifying loader
+hook binds that exact SDK export surface to the single live, trusted kernel
+module instance used by the dispatcher. The binding records the loaded core
+identity and SDK ABI, validates compatibility, and permits no private kernel
+submodule paths. The snapshot must not contain a second kernel copy. This explicit
+shared-kernel edge is verified separately from staged plugin bytes; both are
+bound into the execution identity. All other undeclared or escaping resolution
+is rejected. Active snapshots are neither updated in place
 nor removed until their users release them. This cache is disposable: a fresh
 process can reconstruct it from the selected, verified package artifacts.
 
@@ -623,14 +638,21 @@ workspace-local MCP binary. They never contain the maintainer's absolute path.
 ### Cloud and clone contract
 
 After setup output, `package.json`, and the package lock are committed, a fresh
-clone or cloud worker requires only:
+clone or cloud worker requires only the following dependency step for read-only
+discovery and diagnosis, subject to the stated host and authentication prerequisites:
 
 ```bash
 npm ci
 ```
 
 The agent host reads the committed project integration and launches the
-workspace-local AITM MCP server. The cloud consumer does not run setup, install,
+workspace-local AITM MCP server. This does not provision write ownership. Under
+the Phase 0 reference topology, ordinary cloud workers and independent clones
+lack governed write channels and cannot admit or dispatch business or evidence
+mutations. A cloud execution target can write only when explicitly provisioned
+and verified as the dispatcher under that same topology. Remote request
+forwarding is not assumed or promised by this version. The cloud consumer does
+not run setup, install,
 init, migration, external-system configuration, or tracked-file regeneration.
 
 A host may claim zero-bootstrap cloud compatibility only when it can consume
@@ -650,7 +672,7 @@ workload identity. They are not tracked.
 Setup writes a content-addressed install manifest containing:
 
 - generator package version as provenance, the setup ABI, and an explicit
-  certified compatibility declaration for consuming core versions;
+  recorded configuration and capability formats;
 - normalized setup-intent hash;
 - configuration and capability schema versions;
 - selected adapter packages, versions, integrity, manifest hashes, and complete
@@ -674,23 +696,26 @@ changing the implementation used for an admitted action.
 
 Staleness is classified rather than flattened:
 
-| Observation                                         | Classification                      |
-| --------------------------------------------------- | ----------------------------------- |
-| Core crosses certified setup compatibility          | Portable metadata stale             |
-| Adapter version or manifest differs                 | Capability metadata stale           |
-| Authoritative generated file is missing or modified | Installation drift                  |
-| Only advisory learning content differs              | Warning; mutation remains available |
-| Core version differs within certified compatibility | Advisory; other checks still apply  |
-| Configuration schema is unsupported                 | Migration required                  |
-| Capability fingerprint differs                      | Capability projection stale         |
-| Credential or scope is missing                      | Runtime unauthorized                |
-| Provider workflow field was removed                 | External compatibility drift        |
-| Work item moved to another valid state              | Normal live state                   |
+| Observation                                          | Classification                      |
+| ---------------------------------------------------- | ----------------------------------- |
+| Installed core does not support recorded setup ABI   | Portable metadata stale             |
+| Adapter version or manifest differs                  | Capability metadata stale           |
+| Authoritative generated file is missing or modified  | Installation drift                  |
+| Only advisory learning content differs               | Warning; mutation remains available |
+| Core version differs with recorded formats supported | Advisory; other checks still apply  |
+| Configuration schema is unsupported                  | Migration required                  |
+| Capability fingerprint differs                       | Capability projection stale         |
+| Credential or scope is missing                       | Runtime unauthorized                |
+| Provider workflow field was removed                  | External compatibility drift        |
+| Work item moved to another valid state               | Normal live state                   |
 
-A core version difference alone is an advisory when an explicit certified
-compatibility declaration covers the installed version and all setup ABI,
-schema, capability, generated-policy, and executable-identity checks still pass.
-Semver ranges alone cannot grant that compatibility. Producer-version provenance
+The installed core ships a tested support declaration for the setup ABI and
+configuration/capability schema versions it can consume. Startup checks that
+declaration against the versions recorded in the install manifest. The old
+generator does not predict or certify future core releases. A core version
+difference alone is advisory when the installed core certifies those recorded
+formats and all capability, generated-policy, and executable-identity checks
+still pass. Semver ranges alone cannot grant that compatibility. Producer-version provenance
 is distinct from semantic fingerprints, so an unchanged learning format does
 not drift solely because that provenance changed. Changed adapter executable
 content still requires verified selection; compatibility does not waive its
@@ -704,10 +729,28 @@ identifies the mismatch, whether any effects committed, the maintainer action,
 and whether a new commit is required. A cloud consumer never repairs or
 regenerates tracked integration files.
 
-A maintainer can enter a narrowly scoped recovery mode while ordinary dispatch
+The typed MCP tool `aitm_recover` and CLI `aitm recover` expose an explicit
+`mode: "evidence-only"` request (`--mode evidence-only` in the CLI), selecting an
+existing action by `actionId` or its authenticated principal/request-key pair.
+The input schema requires exactly one selector and disallows business-action
+payloads. These routes remain discoverable in diagnostic-only mode; their
+evidence-only branch is callable when the following recovery checks pass, while
+ordinary recovery that dispatches business effects remains disabled. Both
+transports invoke the same recovery service and return the same canonical result.
+
+A maintainer can enter this narrowly scoped mode while ordinary dispatch
 is disabled. It requires a currently trusted, verified runtime with certified
 support for the recorded action and journal schemas, authenticated recovery
-authority, and exclusive recovery ownership. Unsupported schemas or unverified
+authority, and exclusive recovery ownership. Recovery authority means the
+authenticated initiating principal has a current policy grant scoped to the
+recorded action and recovery operation; knowledge of its identifier is not a
+grant. The recovery caller may differ from the original action initiator only
+when current policy explicitly authorizes that access. Required approvals retain
+their verified provenance and subject bindings; no third identity namespace or
+implied human approval is introduced. Evidence writes run only on the provisioned,
+verified execution target with governed write ownership. Other clones can inspect
+authorized records and receive instructions for invoking that target, but cannot
+append evidence or assume an automatic remote handoff. Unsupported schemas or unverified
 code do not receive this exception. It may observe original targets and append
 verified `action.reconciled`, `action.retry-authorized`,
 `action.intervention-required`, or completion of an already-observed outcome,
@@ -937,7 +980,10 @@ session ID. A local CLI or stdio host uses a verified operating-system identity
 mapped by trusted project policy, or a provider-authenticated account/service
 identity verified by the identity adapter. A remote transport, when supported,
 requires a verified credential and an explicit mapping to that same namespace.
-Credential rotation and transport changes must preserve the subject mapping.
+The operating-system-to-principal mapping is authoritative generated policy,
+covered by the install manifest content hashes. Tampering is installation drift,
+not a new principal namespace. Credential rotation and transport changes must
+preserve the subject mapping.
 Absent or ambiguous authenticated identity blocks mutation; the namespace never
 degrades silently to an anonymous project-wide scope.
 
@@ -1036,6 +1082,9 @@ certification sets explicit workload assumptions and numeric operating budgets
 for these counts, sustainable action rate, recovery latency, and evidence volume;
 there is no provider-independent throughput promise. Phase 0 measures the GitHub
 reference profile and agrees these budgets before approving Phase 1 delivery.
+At minimum, budgets specify numeric sustained governed actions per hour, retained
+bytes per work item, and cold-replay read counts for an explicit workload size,
+in addition to per-action calls and recovery latency.
 
 Adapters enforce backpressure across every shared provider quota scope, including
 cross-item workloads using the same execution principal. They honor provider
@@ -1355,14 +1404,21 @@ an edit between validation and loading or dispatch to prove the immutable
 execution view, and recover a pending action only with a verified, certified
 compatible executable identity.
 
-Exercise a certified compatible core patch with unchanged semantic setup
-outputs: version provenance alone must warn rather than disable business actions.
+Generate a manifest using an older core, then consume it with a core release
+that did not exist at generation time and certifies the recorded formats with
+unchanged semantic setup outputs: version provenance alone must warn rather
+than disable business actions. Verify that unsupported recorded formats still
+block, and that tampering with the principal mapping is authoritative drift.
 Exercise a schema/ABI boundary crossing, changed executable closure, and modified
 authoritative generated policy: these must still block ordinary dispatch.
 Create an ambiguous action before the upgrade and prove recovery-mode evidence
 repair or a staged compatible recovery runtime can resolve it while new business
 effects remain disabled. Reject the exception for untrusted code or unsupported
 journal schemas; authorization recorded for retry cannot dispatch while stale.
+Exercise both `aitm_recover` and `aitm recover --mode evidence-only` on the
+provisioned execution target, asserting identical evidence-only outcomes and no
+business effects. The ordinary cloud-worker fixture must discover the route
+but be refused evidence writes and receive the target-specific recovery guidance.
 
 ### Learning-plane tests
 
@@ -1463,8 +1519,21 @@ The supervisor serializes dispatcher lifetimes and proves the old instance
 stopped before another starts; outstanding provider effects must also be settled.
 This requires real host/credential enforcement across all participating clones,
 not just an epoch recorded in GitHub or a local lock shared by willing callers.
-One-shot supervised execution is allowed; no hosted AITM service or always-on
-local daemon is introduced. GitHub remains the durable record authority.
+The supervisor is per execution target and supports a one-shot lifecycle around
+a bounded dispatch invocation; its required exclusion must hold between invocations
+as well as during them. No always-running local daemon or hosted AITM service
+is required. GitHub remains the durable record authority.
+
+Multiple worktrees or clones on one machine are independent request workers by
+default, not independent write owners. Explicitly configured co-located workers
+may invoke the same target-local supervisor/dispatcher; that dispatcher resolves
+and verifies each requested checkout binding before local Git effects. Sharing a
+machine, OS user, or filesystem does not itself establish this boundary. A clone
+configured as a separate execution target cannot write the same conflicting
+scope unless certified transfer proves prior ownership and outstanding effects
+settled. The reference topology does not promise remote forwarding from ordinary
+cloud workers. Phase 0 must demonstrate the co-located multi-worktree route and
+the no-daemon lifecycle, or record them as unsupported before rollout approval.
 
 The proof covers initial provisioning, parallel requests from independent
 clones, process pause/resume, target loss, credential changes, stale-generation
@@ -1535,7 +1604,9 @@ exit gate.
 - Make `aitm setup` the authoring-time front door.
 - Generate tracked project, adapter, capability, host, and learning config.
 - Add staleness detection and diagnostic-only mode.
-- Prove fresh-clone operation after only `npm ci`.
+- Prove fresh-clone read-only operation after only `npm ci`, with explicit
+  provisioning diagnostics and no implied write ownership; separately verify
+  governed writes on a provisioned execution target.
 - Distinguish local adapter experiments from reproducible portable selections.
 - Gate configuration activation on pending-action recovery compatibility and
   verify generation checks in long-lived runtimes.
@@ -1547,6 +1618,10 @@ exit gate.
 - Publish the adapter ABI, manifest schema, fixtures, and conformance runner.
 - Discover direct dependencies and workspace plugins.
 - Prove that an independently built reference adapter requires no core changes.
+- Load it through the verified snapshot loader and assert that its SDK import
+  shares module and registry identity with the dispatching kernel. Reject a
+  second kernel copy, private submodule paths, ambient resolution, or an unverified
+  SDK edge.
 
 ### Phase 6: Provider plugins
 
@@ -1642,15 +1717,21 @@ evidence.
 6. Agent-facing instructions and results are schema-validated minified JSON;
    human output is rendered from the same canonical model.
 7. `aitm setup` writes reviewable tracked integration files; a committed clone
-   becomes usable after only `npm ci`. Local-only adapter selections are
+   supports read-only discovery and diagnosis after only `npm ci`, with required
+   runtime authentication. Governed writes require a separately provisioned,
+   verified execution target. Local-only adapter selections are
    explicitly classified and cannot pass portable-install certification.
-8. A stale clone enters diagnostic-only mode and provides exact maintainer
-   remediation without modifying tracked files when authoritative metadata is
-   stale. Certified compatible core differences and isolated advisory learning
-   drift warn without disabling business actions. Verified evidence-only recovery
-   remains available under the defined stale-state exception. Executable plugin content
-   changes trigger drift even when the version and manifest are unchanged;
-   loading, dispatch, and recovery use verified implementation identities.
+8. Installation integrity has separately verified checks:
+   - **8a:** Authoritative staleness enters diagnostic-only mode with exact
+     maintainer remediation and no tracked-file repair by the consumer.
+   - **8b:** The installed core's certified support for recorded formats permits
+     compatible upgrades; isolated advisory learning drift also warns without
+     disabling otherwise authorized business actions.
+   - **8c:** Both recovery routes expose the verified evidence-only exception on
+     the provisioned execution target while business effects remain disabled.
+   - **8d:** Changed plugin bytes trigger drift even with unchanged versions and
+     manifests; loading, dispatch, and recovery use verified implementation
+     identities, including the single shared kernel SDK edge.
 9. Durable journals, approvals, receipts, and recovery records live in the
    selected external backlog authority as canonical append-only hash-linked
    envelopes. Only its active `work-items` binding writes canonical evidence.
@@ -1735,7 +1816,8 @@ executable tests and retained results before approval.
 - Discovery and help are executable, contextual, and self-consistent.
 - Jira plus Bitbucket and other mixed deployments become normal composition.
 - Community adapters can evolve independently without central approval.
-- Cloud environments inherit a complete installation from version control.
+- Cloud environments inherit portable read-only integration from version
+  control; governed writes additionally require execution-target provisioning.
 - Durable audit and recovery remain available without an AITM service.
 
 ### Negative
@@ -1746,7 +1828,8 @@ executable tests and retained results before approval.
   explicit compatibility reporting.
 - External authorities do not provide uniform transactions, retention, or
   conditional updates. Default-provider write readiness remains conditional on
-  the Phase 0 execution proof.
+  the Phase 0 execution proof and each target's verified provisioning. Ordinary
+  cloud workers cannot perform governed writes under the reference topology.
 - Durable per-action evidence increases API writes, retained volume, latency,
   and cold-rebuild cost; quota backpressure can limit otherwise valid work.
 - Fail-closed integrity checks create operational recovery work. Advisory
