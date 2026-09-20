@@ -1,18 +1,9 @@
 --- a/src/provider/claude-launch.mjs
 +++ b/src/provider/claude-launch.mjs
-@@ -5,7 +5,7 @@
- import { resolveContainedPath } from '../collateral/paths.mjs';
- import { AprError } from '../errors.mjs';
- import { fingerprintSession as defaultFingerprintSession } from '../identity/registry.mjs';
+@@ -8 +8 @@
 -import { inspectReviewAuthority as defaultInspectAuthority } from '../protocol/service.mjs';
 +import { inspectReviewAuthority as defaultInspectAuthority, statusReview as defaultStatusReview } from '../protocol/service.mjs';
- import { atomicWrite } from '../protocol/store.mjs';
- 
- const UNSUPPORTED_PATTERN = /[*?\[\]\\]/u;
-@@ -443,6 +443,55 @@
-   return contract;
- }
- 
+@@ -445,0 +446,49 @@
 +export function buildClaudeReviewerCurrentResume({
 +  repositoryRoot, invitation, routing,
 +  inspectAuthority = defaultInspectAuthority, status = defaultStatusReview,
@@ -62,13 +53,7 @@
 +    resume_fingerprint: saved.session_fingerprint });
 +}
 +
- function parseProviderResult(execution) {
-   const stdout = String(execution?.stdout ?? '');
-   if (Buffer.byteLength(stdout, 'utf8') > 1024 * 1024) {
-@@ -497,7 +546,17 @@
-     });
-   }
-   const before = inspectAuthority(contract.workspace);
+@@ -500 +549,11 @@
 -  const priorState = resume ? readLaunchState(contract) : null;
 +  const priorState = resume ? readLaunchState(contract.resume_previous ?? contract) : null;
 +  if (resume && contract.resume_previous) {
@@ -81,28 +66,13 @@
 +      throw new AprError('APR_STALE_REVIEW', 'Current reviewer turn changed before resume.', { recovery: 'Read current protocol status and preserve the registered session.' });
 +    }
 +  }
-   const args = resume
-     ? Object.freeze(['--resume', priorState.session_handle, ...contract.command.args])
-     : contract.command.args;
 --- a/src/cli/run.mjs
 +++ b/src/cli/run.mjs
-@@ -35,6 +35,7 @@
- import {
-   buildClaudeReviewerLaunch,
-   buildClaudeReviewerResume,
+@@ -37,0 +38 @@
 +  buildClaudeReviewerCurrentResume,
-   runClaudeReviewerLaunch,
- } from '../provider/claude-launch.mjs';
- import { doctor } from '../doctor.mjs';
-@@ -4249,7 +4250,7 @@
-       };
-       const repositoryRoot = (io.repository ?? createGitRepository()).root(io.cwd);
-       const contract = parsed.options.resume
+@@ -4252 +4253 @@
 -        ? buildClaudeReviewerResume({ repositoryRoot, invitation, routing })
 +        ? buildClaudeReviewerCurrentResume({ repositoryRoot, invitation, routing })
-         : buildClaudeReviewerLaunch({
-             repositoryRoot,
-             invitation,
 --- a/test/unit/current-turn-resume.test.mjs
 +++ b/test/unit/current-turn-resume.test.mjs
 @@ -0,0 +1,31 @@

@@ -6,7 +6,7 @@ filepath: docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design
 commit_sha: db28996eeeaa3e290d2b2c18457becaf4f462607
 turn_ordinal: XPR r2 recovery
 turn_description: Cross Provider Review revision 2 transport recovery
-patch_sha256: 4b0897cea0cb64a60c8e67e4fe3d13cbbaa35571b5690b262cbefa5267cffbd0
+patch_sha256: f6ca20c63e6fc099a27591e7eed6ae3cd0682826326101ea47dd743e34a7f779
 ---
 
 # XPR continuation recovery
@@ -30,7 +30,10 @@ A copy of the installed package source was placed in ignored scratch at
 `.scratch/xpr-launcher-repair`; installed dependencies were linked, not copied.
 The installed global package and AITM implementation source were left unchanged.
 The [preserved patch](launcher-recovery.patch) records the local change and the
-focused regression test. It is experimental recovery evidence, not an upstream
+focused regression test as a zero-context diff. Blank context lines in the first
+archival diff triggered Git whitespace checks; the archive was regenerated
+without context, with no change to repaired source or test content.
+It is experimental recovery evidence, not an upstream
 release or generally certified launcher fix.
 
 The repaired resume builder reads event-derived current authority, validates the
