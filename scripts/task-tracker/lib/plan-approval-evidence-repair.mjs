@@ -14,7 +14,9 @@ import { computeScopeIdentity, scopeProjection } from './workflow-policy/scope-i
 import {
   classifyCompletedPlanTransitionAuthority,
   parsePlanTransitionAuthorityComment,
+  readPlanTransitionAuthorityWrapperId,
 } from './plan-transition-authority.mjs';
+import { readMoveCompleteMarker } from './move-state/sentinel.mjs';
 
 const pexec = promisify(execFile);
 
@@ -25,11 +27,15 @@ function hasEntry(body, state) {
 async function defaultListEvidenceComments({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
+    ['api', '--paginate', '--slurp', `repos/${repo}/issues/${issueNumber}/comments`],
     { maxBuffer: 10 * 1024 * 1024 }
   );
-  const parsed = JSON.parse(stdout || '{}');
-  return Array.isArray(parsed.comments) ? parsed.comments : [];
+  return JSON.parse(stdout || '[]').flat();
+}
+
+async function defaultFetchAuthenticatedLogin() {
+  const { stdout } = await pexec('gh', ['api', 'user', '--jq', '.login']);
+  return String(stdout).trim();
 }
 
 async function defaultListWorkflowExceptionRecords({ issueNumber, repo }) {
@@ -246,19 +252,88 @@ export function evaluatePlanApprovalRepairEvidence({
 export function evaluateModernPlanTransitionEvidence({
   body,
   authorityRecords = [],
+  authorityDiagnostics = [],
+  authenticatedLogin = null,
   repository,
   issue,
 } = {}) {
-  const completed = authorityRecords
-    .map((record) => classifyCompletedPlanTransitionAuthority({ record, issueBody: body }))
-    .filter(({ status }) => status === 'completed');
+  const observations = authorityRecords.map((value) =>
+    value?.record ? value : { record: value, authorLogin: null, createdAt: null, updatedAt: null }
+  );
+  const developEntries = parseEntryMarkers(body).filter((entry) => entry.state === 'develop');
+  const sentinel = readMoveCompleteMarker(body);
+  const completedTransitionIds = new Set(
+    developEntries
+      .filter((entry) => sentinel?.state === 'develop' && sentinel?.move === entry.move)
+      .map((entry) => entry.move)
+      .filter(Boolean)
+  );
+  if (
+    authorityDiagnostics.some(
+      ({ transitionId, code }) => code === 'malformed' && completedTransitionIds.has(transitionId)
+    )
+  ) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-malformed-collision']),
+    });
+  }
+  const completed = observations
+    .map((observation) => ({
+      observation,
+      classification: classifyCompletedPlanTransitionAuthority({
+        record: observation.record,
+        issueBody: body,
+      }),
+    }))
+    .filter(({ classification }) => classification.status === 'completed');
   if (completed.length !== 1) {
     return Object.freeze({
       status: 'unavailable',
       blockers: Object.freeze(['plan-transition-authority-ambiguous']),
     });
   }
-  const [{ record }] = completed;
+  const [{ observation, classification }] = completed;
+  const { record } = classification;
+  if (
+    typeof authenticatedLogin !== 'string' ||
+    authenticatedLogin.length === 0 ||
+    observation.authorLogin?.toLowerCase() !== authenticatedLogin.toLowerCase()
+  ) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-author']),
+    });
+  }
+  if (!observation.createdAt || !observation.updatedAt) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-provenance']),
+    });
+  }
+  if (observation.createdAt !== observation.updatedAt) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-edited']),
+    });
+  }
+  const matchingEntry = developEntries.find((entry) => entry.move === record.transitionId);
+  const createdMs = Date.parse(observation.createdAt);
+  const entryMs = Date.parse(matchingEntry?.ts ?? '');
+  const sentinelMs = Date.parse(sentinel?.ts ?? '');
+  const recordedMs = Date.parse(record.recordedAt);
+  if (
+    ![createdMs, entryMs, sentinelMs, recordedMs].every(Number.isFinite) ||
+    createdMs > entryMs ||
+    createdMs > sentinelMs ||
+    recordedMs > entryMs ||
+    recordedMs > sentinelMs
+  ) {
+    return Object.freeze({
+      status: 'unavailable',
+      blockers: Object.freeze(['plan-transition-authority-temporal']),
+    });
+  }
   let currentScopeIdentity = null;
   try {
     currentScopeIdentity = computeScopeIdentity({
@@ -296,6 +371,22 @@ export function evaluateModernPlanTransitionEvidence({
   });
 }
 
+function normalizeInstant(value) {
+  if (typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+}
+
+function authorityObservation(comment, record) {
+  return Object.freeze({
+    record,
+    commentId: String(comment?.id ?? comment?.databaseId ?? ''),
+    authorLogin: comment?.authorLogin ?? comment?.author?.login ?? comment?.user?.login ?? null,
+    createdAt: normalizeInstant(comment?.createdAt ?? comment?.created_at),
+    updatedAt: normalizeInstant(comment?.updatedAt ?? comment?.updated_at),
+  });
+}
+
 export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, deps = {} }) {
   const listEvidenceComments =
     deps.listEvidenceComments || deps.listComments || defaultListEvidenceComments;
@@ -308,21 +399,29 @@ export async function collectPlanApprovalRepairEvidence({ issueNumber, repo, dep
     listBodyHistory({ issueNumber, repo }),
   ]);
   const authorityRecords = [];
+  const authorityDiagnostics = [];
   for (const comment of comments || []) {
+    const body = typeof comment === 'string' ? comment : String(comment?.body ?? '');
+    const transitionId = readPlanTransitionAuthorityWrapperId(body);
+    if (transitionId === null) continue;
     try {
       authorityRecords.push(
-        parsePlanTransitionAuthorityComment(
-          typeof comment === 'string' ? comment : String(comment?.body ?? '')
-        )
+        authorityObservation(comment, parsePlanTransitionAuthorityComment(body))
       );
     } catch {
-      // Unrelated and malformed comments are not modern authority candidates.
+      authorityDiagnostics.push(Object.freeze({ transitionId, code: 'malformed' }));
     }
+  }
+  let authenticatedLogin = null;
+  if (authorityRecords.length > 0 || authorityDiagnostics.length > 0) {
+    authenticatedLogin = await (deps.fetchAuthenticatedLogin || defaultFetchAuthenticatedLogin)();
   }
   return {
     comments,
     records,
     issueBodyHistory,
     authorityRecords: Object.freeze(authorityRecords),
+    authorityDiagnostics: Object.freeze(authorityDiagnostics),
+    authenticatedLogin,
   };
 }

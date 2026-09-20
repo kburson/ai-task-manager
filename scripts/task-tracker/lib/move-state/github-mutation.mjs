@@ -25,6 +25,7 @@ import {
 import { serializeEntryMarker } from '../stage-entry-grammar.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
+import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
@@ -192,6 +193,20 @@ export async function stampEntryMarkers(ctx) {
       { timeout: GH_API_TIMEOUT_MS }
     );
     const beforeBody = JSON.parse(stdout).body ?? '';
+    if (
+      ctx.resolvedFromState === 'plan' &&
+      stateArg === 'develop' &&
+      ctx.planTransitionAuthority?.record
+    ) {
+      const freshScopeIdentity = computeScopeIdentity({
+        repository: cfg.repo,
+        issue: Number(issueArg),
+        body: beforeBody,
+      });
+      if (freshScopeIdentity !== ctx.planTransitionAuthority.record.scopeIdentity) {
+        throw new Error('plan-transition-authority:scope-drift-before-entry');
+      }
+    }
     // #741 — the stage the authoritative `aitm-last-known-state` marker points at
     // BEFORE this stamp advances it. Returned to the saga so a subsequent failed
     // board write can compensate by rolling the marker back to this value,

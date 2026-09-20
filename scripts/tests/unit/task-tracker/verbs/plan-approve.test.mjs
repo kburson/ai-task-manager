@@ -101,8 +101,11 @@ function makeDeps(overrides = {}) {
       env: overrides.env ?? {},
       listComments: async () => {
         calls.commentReads++;
-        return comments.map((body) => ({ body }));
+        return comments.map((comment) =>
+          typeof comment === 'string' ? { body: comment } : { ...comment }
+        );
       },
+      fetchAuthenticatedLogin: async () => overrides.authenticatedLogin ?? 'maintainer',
       postComment: async ({ body: commentBody }) => {
         calls.comments.push(commentBody);
         comments.push(commentBody);
@@ -361,7 +364,13 @@ function makeModernTransitionAuthorityFixture({
     scopeIdentity,
     recordedAt: '2026-09-19T15:22:13.000Z',
   });
-  fixture.comments.push(renderPlanTransitionAuthorityComment(record));
+  fixture.comments.push({
+    id: 'IC_transition_authority',
+    body: renderPlanTransitionAuthorityComment(record),
+    authorLogin: 'maintainer',
+    createdAt: '2026-09-19T15:22:14.000Z',
+    updatedAt: '2026-09-19T15:22:14.000Z',
+  });
   return { ...fixture, transitionId, authorityRecord: record };
 }
 
@@ -406,7 +415,10 @@ test('modern transition authority does not auto-converge in human mode', async (
 
 test('modern transition authority retains all legacy planning evidence gates', async () => {
   const fixture = makeModernTransitionAuthorityFixture();
-  fixture.comments = fixture.comments.filter((body) => !body.includes('### Planned Estimate'));
+  fixture.comments = fixture.comments.filter(
+    (comment) =>
+      !(typeof comment === 'string' ? comment : comment.body).includes('### Planned Estimate')
+  );
   const { deps, calls } = makeDeps({
     state: 'develop',
     env: { TT_FULL_AUTO: '1' },
@@ -446,6 +458,68 @@ test('modern transition authority refuses stale scope and orphan records', async
     assert.ok(result.blockers.includes(scenario.blocker), scenario.name);
     assert.equal(calls.writes.length, 0, scenario.name);
   }
+});
+
+test('modern transition authority requires authenticated immutable pre-transition provenance', async () => {
+  const scenarios = [
+    {
+      name: 'forged author',
+      mutate: (comment) => ({ ...comment, authorLogin: 'attacker' }),
+      blocker: 'plan-transition-authority-author',
+    },
+    {
+      name: 'edited comment',
+      mutate: (comment) => ({ ...comment, updatedAt: '2026-09-19T15:22:15.000Z' }),
+      blocker: 'plan-transition-authority-edited',
+    },
+    {
+      name: 'posted after transition',
+      mutate: (comment) => ({
+        ...comment,
+        createdAt: '2026-09-19T15:22:17.000Z',
+        updatedAt: '2026-09-19T15:22:17.000Z',
+      }),
+      blocker: 'plan-transition-authority-temporal',
+    },
+  ];
+  for (const scenario of scenarios) {
+    const fixture = makeModernTransitionAuthorityFixture();
+    const index = fixture.comments.findIndex((comment) => typeof comment === 'object');
+    fixture.comments[index] = scenario.mutate(fixture.comments[index]);
+    const { deps, calls } = makeDeps({
+      state: 'develop',
+      env: { TT_FULL_AUTO: '1' },
+      ...fixture,
+    });
+
+    const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+
+    assert.equal(result.status, 'evidence-repair-refused', scenario.name);
+    assert.ok(result.blockers.includes(scenario.blocker), JSON.stringify(result));
+    assert.equal(calls.writes.length, 0, scenario.name);
+  }
+});
+
+test('malformed authority wrapper colliding with a completed transition fails closed', async () => {
+  const fixture = makeModernTransitionAuthorityFixture();
+  fixture.comments.push({
+    id: 'IC_transition_collision',
+    body: `<!-- aitm-plan-transition-authority id="${fixture.transitionId}" -->`,
+    authorLogin: 'maintainer',
+    createdAt: '2026-09-19T15:22:15.000Z',
+    updatedAt: '2026-09-19T15:22:15.000Z',
+  });
+  const { deps, calls } = makeDeps({
+    state: 'develop',
+    env: { TT_FULL_AUTO: '1' },
+    ...fixture,
+  });
+
+  const result = await runPlanApprove({ issueNumber: 61, cfg, projectDir: root, deps });
+
+  assert.equal(result.status, 'evidence-repair-refused');
+  assert.ok(result.blockers.includes('plan-transition-authority-malformed-collision'));
+  assert.equal(calls.writes.length, 0);
 });
 
 async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
@@ -535,6 +609,23 @@ async function captureVerbStdout(issueNumber, deps, extraArgs = []) {
       ts: FIXED_TS,
     }),
     false
+  );
+  assert.equal(
+    isCanonicalPlanApprovalAuditComment(audit, {
+      issueNumber: 1716,
+      ts: FIXED_TS,
+      repairEvidence: {
+        source: 'plan-transition-authority',
+        historicalOutcome: 'waived',
+        transitionId: 'move:11111111-1111-4111-8111-111111111111',
+        authorityRecordId: fixture.approvalPlanRecordId,
+        authorityRevision: 1,
+        approvalPlanRecordId: fixture.approvalPlanRecordId,
+        revokedRecordId: fixture.revokedRecordId,
+      },
+    }),
+    false,
+    'legacy and modern audit shapes must never satisfy each other'
   );
 }
 

@@ -130,3 +130,10 @@ test('source: fail-closed body-fetch failure exits before the board mutation', (
     'runGuardExecution + its fail-closed return must precede moveState (the sole route to the item-edit mutation)'
   );
 });
+
+test('source: production allocates the transition identity before real guard evaluation', () => {
+  const idIdx = moveSrc.indexOf('ctx.transitionId = createTransitionId(');
+  const guardIdx = moveSrc.indexOf('await runGuardExecution(ctx)');
+  assert.ok(idIdx >= 0, 'host must allocate a transition identity');
+  assert.ok(idIdx < guardIdx, 'host transition identity must exist before guard evaluation');
+});

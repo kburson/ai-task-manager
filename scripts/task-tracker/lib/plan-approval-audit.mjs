@@ -124,7 +124,11 @@ export function isCanonicalPlanApprovalAuditComment(
     const transitionId = src.match(
       /Historical transition authority: `waived` for `(move:[0-9a-f-]{36})`/i
     )?.[1];
+    if (repairEvidence?.source === 'plan-transition-authority' && !transitionId) return false;
     if (transitionId) {
+      if (repairEvidence !== null && repairEvidence?.source !== 'plan-transition-authority') {
+        return false;
+      }
       const authority = src.match(
         /Waiver evidence: workflow-exception record `([0-7][0-9A-HJKMNP-TV-Z]{25})` revision `(\d+)` covered `approval\.plan`/
       );

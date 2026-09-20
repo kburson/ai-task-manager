@@ -65,6 +65,7 @@ import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-sta
 import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
 import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit.mjs';
 import { commitPlanExitOwnershipClaim } from '../task-tracker/lib/plan-exit-ownership-guard.mjs';
+import { createTransitionId } from '../task-tracker/lib/move-state/transition-commit.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -374,6 +375,7 @@ export async function runMoveStateHost({
   // via `AITM_ISSUE_LOCK_HELD=<issue>`; when that names this issue, skip
   // re-acquisition.
   const runMutation = async () => {
+    ctx.transitionId = createTransitionId();
     const guardOutcome = await runGuardExecution(ctx);
     if (guardOutcome.exit !== null) return guardOutcome.exit;
 

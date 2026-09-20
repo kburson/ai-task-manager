@@ -9,6 +9,7 @@ import {
   resolvePlanTransitionAuthority,
   writePlanTransitionAuthority,
 } from '../../../../task-tracker/lib/plan-transition-authority.mjs';
+import { fingerprint } from '../../../../task-tracker/lib/resident-action-ledger-codec.mjs';
 
 const TRANSITION_ID = 'move:11111111-1111-4111-8111-111111111111';
 const OTHER_TRANSITION_ID = 'move:22222222-2222-4222-8222-222222222222';
@@ -83,6 +84,27 @@ test('ordinary approval remains satisfied and fingerprints the exact approval ma
   assert.equal(record.evidence.mode, 'human');
   assert.equal(record.evidence.ts, RECORDED_AT);
   assert.match(record.evidence.markerFingerprint, /^sha256:[0-9a-f]{64}$/);
+});
+
+test('approval fingerprint uses the same fence-aware marker that passed parsing', () => {
+  const fenced = `<!-- aitm-plan-approved ts="2026-01-01T00:00:00.000Z" mode="human" -->`;
+  const real = `<!-- aitm-plan-approved ts="${RECORDED_AT}" trunk-sha="${'b'.repeat(40)}" mode="human" -->`;
+  const body = ['```md', fenced, '```', real].join('\n');
+
+  const record = resolvePlanTransitionAuthority(
+    baseInput({ body, workflowPolicy: null, scopeIdentity: SCOPE_IDENTITY })
+  );
+
+  assert.equal(record.evidence.ts, RECORDED_AT);
+  assert.equal(record.evidence.markerFingerprint, fingerprint(real));
+  assert.notEqual(record.evidence.markerFingerprint, fingerprint(fenced));
+});
+
+test('recordedAt requires canonical millisecond UTC form', () => {
+  assert.throws(
+    () => resolvePlanTransitionAuthority(baseInput({ recordedAt: '2026-09-19T15:22:16Z' })),
+    /recorded-at/
+  );
 });
 
 test('disabled approval gate is not represented as satisfied approval', () => {

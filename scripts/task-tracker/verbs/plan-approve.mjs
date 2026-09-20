@@ -196,12 +196,15 @@ export async function runPlanApprove({
     automaticTransitionEvidence = evaluateModernPlanTransitionEvidence({
       body,
       authorityRecords: collectedRepairEvidence.authorityRecords,
+      authorityDiagnostics: collectedRepairEvidence.authorityDiagnostics,
+      authenticatedLogin: collectedRepairEvidence.authenticatedLogin,
       repository: cfg.repo,
       issue: issueNumber,
     });
     if (
       automaticTransitionEvidence.status !== 'available' &&
-      collectedRepairEvidence.authorityRecords.length > 0
+      (collectedRepairEvidence.authorityRecords.length > 0 ||
+        collectedRepairEvidence.authorityDiagnostics.length > 0)
     ) {
       return {
         status: 'evidence-repair-refused',
@@ -264,7 +267,14 @@ export async function runPlanApprove({
     // or exception revisions are subsequent lifecycle events, not a race that
     // can retroactively change what was approved at this instant.
     const repairTs = existingApproval?.ts || nowIso();
-    const { comments, records, issueBodyHistory, authorityRecords } = repairEvidence;
+    const {
+      comments,
+      records,
+      issueBodyHistory,
+      authorityRecords,
+      authorityDiagnostics,
+      authenticatedLogin,
+    } = repairEvidence;
     const evidence = evaluatePlanApprovalRepairEvidence({
       body,
       comments,
@@ -333,6 +343,8 @@ export async function runPlanApprove({
           const freshTransitionEvidence = evaluateModernPlanTransitionEvidence({
             body: base,
             authorityRecords,
+            authorityDiagnostics,
+            authenticatedLogin,
             repository: cfg.repo,
             issue: issueNumber,
           });

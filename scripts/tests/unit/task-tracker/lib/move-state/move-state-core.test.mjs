@@ -327,6 +327,10 @@ test('Plan → Develop verifies authority after replay probe and before mutation
       value.calls.push(`authority:${value.transitionId}`);
       return { verified: true };
     },
+    _verifyPlanTransitionAuthorityScope: async (value) => {
+      value.calls.push('scope');
+      return { verified: true };
+    },
   });
 
   const result = await moveState(ctx);
@@ -337,8 +341,9 @@ test('Plan → Develop verifies authority after replay probe and before mutation
     'guard',
     'probe',
     'authority:move:11111111-1111-4111-8111-111111111111',
-    'rows:move:11111111-1111-4111-8111-111111111111',
+    'scope',
   ]);
+  assert.equal(ctx.calls[5], 'rows:move:11111111-1111-4111-8111-111111111111');
 });
 
 test('Plan → Develop authority failure is fail-closed before every mutation', async () => {
@@ -370,6 +375,85 @@ test('Plan → Develop authority failure is fail-closed before every mutation', 
   assert.equal(result.sentinelPresent, false);
   assert.deepEqual(ctx.calls, ['guard', 'authority']);
   assert.ok(!ctx.calls.some((call) => call.startsWith('rows:')));
+  assert.ok(!ctx.calls.some((call) => call.startsWith('status:')));
+});
+
+test('Plan → Develop scope drift after authority write fails before lifecycle mutation', async () => {
+  const ctx = baseCtx({
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    _runGuardExecution: async (value) => {
+      value.calls.push('guard');
+      value.planTransitionAuthorityInput = { body: 'locked body' };
+      return { exit: null };
+    },
+    _writePlanTransitionAuthority: async (value) => {
+      value.calls.push('authority');
+      return { verified: true, record: { scopeIdentity: `sha256:${'a'.repeat(64)}` } };
+    },
+    _verifyPlanTransitionAuthorityScope: async (value) => {
+      value.calls.push('scope');
+      throw new Error('plan-transition-authority:scope-drift');
+    },
+  });
+  const originalWrite = process.stderr.write;
+  process.stderr.write = () => true;
+  let result;
+  try {
+    result = await moveState(ctx);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.equal(result.exit, 9);
+  assert.equal(result.phase, 'authority');
+  assert.deepEqual(ctx.calls, ['guard', 'authority', 'scope']);
+  assert.ok(!ctx.calls.some((call) => call.startsWith('rows:')));
+  assert.ok(!ctx.calls.some((call) => call.startsWith('status:')));
+});
+
+test('Plan → Develop scope drift at entry stamping returns the typed authority refusal', async () => {
+  const ctx = baseCtx({
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    _runGuardExecution: async (value) => {
+      value.calls.push('guard');
+      value.planTransitionAuthorityInput = { body: 'locked body' };
+      return { exit: null };
+    },
+    _writePlanTransitionAuthority: async (value) => {
+      value.calls.push('authority');
+      return { verified: true, record: { scopeIdentity: `sha256:${'a'.repeat(64)}` } };
+    },
+    _verifyPlanTransitionAuthorityScope: async (value) => {
+      value.calls.push('scope');
+      return { verified: true };
+    },
+    _stampEntryMarkers: async (value) => {
+      value.calls.push('markers');
+      throw new Error('plan-transition-authority:scope-drift-before-entry');
+    },
+  });
+  const originalWrite = process.stderr.write;
+  process.stderr.write = () => true;
+  let result;
+  try {
+    result = await moveState(ctx);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.equal(result.exit, 9);
+  assert.equal(result.phase, 'authority');
+  assert.equal(result.boardMoved, false);
+  assert.equal(result.sentinelPresent, false);
+  assert.deepEqual(ctx.calls, [
+    'guard',
+    'authority',
+    'scope',
+    'rows:move:test-transition',
+    'markers',
+  ]);
   assert.ok(!ctx.calls.some((call) => call.startsWith('status:')));
 });
 

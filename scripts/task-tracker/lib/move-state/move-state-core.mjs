@@ -28,6 +28,7 @@ import { resolveTailProfile } from './tail-profiles.mjs';
 import { resolveReviewAuthority } from '../human-reviewer-audit.mjs';
 import {
   PLAN_TRANSITION_AUTHORITY_EXIT,
+  verifyPlanTransitionAuthorityScope as defaultVerifyPlanTransitionAuthorityScope,
   writePlanTransitionAuthority as defaultWritePlanTransitionAuthority,
 } from '../plan-transition-authority.mjs';
 
@@ -187,6 +188,8 @@ export async function moveState(ctx) {
   const createTransitionId = ctx._createTransitionId || defaultCreateTransitionId;
   const writePlanTransitionAuthority =
     ctx._writePlanTransitionAuthority || defaultWritePlanTransitionAuthority;
+  const verifyPlanTransitionAuthorityScope =
+    ctx._verifyPlanTransitionAuthorityScope || defaultVerifyPlanTransitionAuthorityScope;
   const writeTransitionCommit = ctx._writeTransitionCommit || defaultWriteTransitionCommit;
   const repairTransitionCommit = ctx._repairTransitionCommit || defaultRepairTransitionCommit;
   const rollbackRecordedState = ctx._rollbackRecordedState || defaultRollbackRecordedState;
@@ -243,6 +246,7 @@ export async function moveState(ctx) {
       if (ctx.planTransitionAuthority?.verified !== true) {
         throw new Error('plan-transition-authority:readback-unverified');
       }
+      await verifyPlanTransitionAuthorityScope(ctx);
     } catch (error) {
       process.stderr.write(
         `⛔ #${ctx.issueArg} plan→develop authority was not durably verified: ${error.message}\n`
@@ -264,7 +268,29 @@ export async function moveState(ctx) {
   // #741 — stampEntryMarkers advances `aitm-last-known-state` to the target
   // stage and returns the stage it pointed at BEFORE (the board's confirmed
   // stage). Captured so a failed board write below can compensate.
-  const stampResult = await stampEntryMarkers(ctx);
+  let stampResult;
+  try {
+    stampResult = await stampEntryMarkers(ctx);
+  } catch (error) {
+    if (
+      ctx.resolvedFromState === 'plan' &&
+      ctx.stateArg === 'develop' &&
+      String(error?.message || '').startsWith('plan-transition-authority:')
+    ) {
+      process.stderr.write(
+        `⛔ #${ctx.issueArg} plan→develop authority changed before entry stamping: ${error.message}\n`
+      );
+      return {
+        exit: PLAN_TRANSITION_AUTHORITY_EXIT,
+        itemId: '',
+        tail: { failures: [] },
+        phase: 'authority',
+        sentinelPresent: false,
+        boardMoved: false,
+      };
+    }
+    throw error;
+  }
   const priorState = stampResult?.priorState ?? null;
 
   // Status is the LAST authoritative board write (#711 fail-closed verify).

@@ -6,7 +6,7 @@ import {
   encodeCanonical,
   fingerprint,
 } from './resident-action-ledger-codec.mjs';
-import { PLAN_APPROVED_RE, parsePlanApprovedMarker } from './markers.mjs';
+import { PLAN_APPROVED_RE, parsePlanApprovedMarker, stripFencedCodeBlocks } from './markers.mjs';
 import { resolveGate } from './gate-resolve.mjs';
 import { computeScopeIdentity } from './workflow-policy/scope-identity.mjs';
 import { parseEntryMarkers } from './stage-entry-grammar.mjs';
@@ -17,6 +17,7 @@ export const PLAN_TRANSITION_AUTHORITY_EXIT = 9;
 
 const COMMENT_RE =
   /<!--\s*aitm-plan-transition-authority\s+id="([^"]+)"\s+data="([A-Za-z0-9_-]+)"\s*-->/i;
+const WRAPPER_ID_RE = /<!--\s*aitm-plan-transition-authority\b[^>]*\bid="([^"]+)"[^>]*-->/i;
 const TRANSITION_ID_RE = /^move:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RECORD_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
@@ -38,6 +39,15 @@ function exactKeys(value, keys, field) {
 
 function requiredString(value, field) {
   if (typeof value !== 'string' || value.trim() !== value || value.length === 0) fail(field);
+}
+
+function canonicalInstant(value) {
+  return (
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) &&
+    Number.isFinite(Date.parse(value)) &&
+    new Date(Date.parse(value)).toISOString() === value
+  );
 }
 
 function validateEvidence(outcome, evidence) {
@@ -111,8 +121,7 @@ function validateRecord(record) {
   if (record.requirementId !== 'approval.plan') fail('requirement');
   if (!OUTCOMES.has(record.outcome)) fail('outcome');
   if (!SHA256_RE.test(record.scopeIdentity)) fail('scope-identity');
-  requiredString(record.recordedAt, 'recorded-at');
-  if (!Number.isFinite(Date.parse(record.recordedAt))) fail('recorded-at');
+  if (!canonicalInstant(record.recordedAt)) fail('recorded-at');
   validateEvidence(record.outcome, record.evidence);
   return deepFreeze(JSON.parse(canonicalJson(record)));
 }
@@ -182,7 +191,7 @@ export function resolvePlanTransitionAuthority({
   }
 
   const approved = parsePlanApprovedMarker(body);
-  const marker = String(body).match(PLAN_APPROVED_RE)?.[0] ?? null;
+  const marker = stripFencedCodeBlocks(body).match(PLAN_APPROVED_RE)?.[0] ?? null;
   if (!approved || !marker) fail('approval-missing');
   return validateRecord({
     ...common,
@@ -212,6 +221,10 @@ export function parsePlanTransitionAuthorityComment(body) {
   const record = validateRecord(decodeCanonical(match[2]));
   if (match[1] !== record.transitionId) fail('id-mismatch');
   return record;
+}
+
+export function readPlanTransitionAuthorityWrapperId(body) {
+  return WRAPPER_ID_RE.exec(String(body || ''))?.[1] ?? null;
 }
 
 export function classifyCompletedPlanTransitionAuthority({ record, issueBody = '' } = {}) {
@@ -280,6 +293,33 @@ async function defaultListComments(ctx) {
     { timeout: 30_000 }
   );
   return JSON.parse(stdout || '[]').flat();
+}
+
+async function defaultFetchScopeBody(ctx) {
+  const { stdout } = await ctx.pexec(
+    'gh',
+    ['issue', 'view', String(ctx.issueArg), '-R', ctx.cfg.repo, '--json', 'body', '--jq', '.body'],
+    { timeout: 15_000 }
+  );
+  return String(stdout);
+}
+
+export async function verifyPlanTransitionAuthorityScope(ctx) {
+  const record = ctx.planTransitionAuthority?.record;
+  if (!record) throw new Error('plan-transition-authority:verified-record-missing');
+  if (ctx.SKIP_NETWORK) return Object.freeze({ verified: true, skipped: true });
+  const fetchBody =
+    ctx.deps?.fetchPlanTransitionAuthorityScopeBody || (() => defaultFetchScopeBody(ctx));
+  const body = await fetchBody();
+  const observed = computeScopeIdentity({
+    repository: ctx.cfg?.repo,
+    issue: Number(ctx.issueArg),
+    body,
+  });
+  if (observed !== record.scopeIdentity) {
+    throw new Error('plan-transition-authority:scope-drift');
+  }
+  return Object.freeze({ verified: true, scopeIdentity: observed });
 }
 
 function verifiedResult({ comment, body, record, reconciled = false }) {
