@@ -352,9 +352,13 @@ outputs so hosts can display precise intent and approvals.
 
 `aitm_invoke_action` invokes portable core actions without a dedicated typed tool,
 including `work-item.create`, blocking, assignment, shelving, and workflow
-exception actions. The seven typed tools are convenience projections, not the
-complete portable vocabulary. Phase 1 maps every existing CLI verb to a canonical
-action or a documented host-local compatibility operation; Phase 3 must cover
+exception actions. This route is exclusive: an action with a dedicated typed
+tool is rejected by `aitm_invoke_action`, even if the host disables or withholds
+permission for that typed tool. The registry assigns each externally callable
+core action exactly one MCP invocation route, which discovery reports. The seven
+typed tools are dedicated projections of selected canonical actions; the generic
+route serves the remaining portable vocabulary. Phase 1 maps every existing CLI
+verb to a canonical action or a documented host-local compatibility operation; Phase 3 must cover
 every portable action over MCP.
 
 The generic input names an exact action ID, action-schema version, capability
@@ -728,7 +732,8 @@ head, authority target, and retry contract.
 
 After mutation, AITM appends `action.completed` or `action.failed` with observed
 typed effects. If execution stops between provider mutation and the outcome
-receipt, recovery finds the unmatched request. The adapter observes using its declared evidence class and appends one of:
+receipt, recovery finds the unmatched request. The adapter observes using its
+declared evidence class and appends one of:
 
 ```text
 action.reconciled
@@ -884,11 +889,13 @@ effects.
 
 ### Transport parity
 
-Invoke every externally callable portable action through CLI and MCP, including
-both generic and typed routes where present, and assert identical domain
-requests, authority effects, receipts, errors, and next-action recommendations.
-Test extension routes against the same policy contract, and verify every route
-rejects `orchestrator-only` actions. The action inventory drives the coverage
+Invoke every externally callable portable action through CLI and its single
+registry-assigned MCP route, and assert identical domain requests, authority
+effects, receipts, errors, and next-action recommendations. For actions with a
+dedicated typed tool, also prove that `aitm_invoke_action` rejects their IDs,
+including when the host withholds that typed tool. Test extension routes against
+the same policy contract, and verify every route rejects `orchestrator-only`
+actions. The action inventory drives the coverage
 matrix; missing invocation coverage is a release failure, not an exemption.
 
 ### Portable-install test
@@ -917,7 +924,7 @@ Release gates reject:
 - mutations without declared effects and recovery semantics;
 - CLI and MCP behavioral divergence;
 - generated-file changes absent from the install manifest;
-- adapters that fail their declared-port conformance suite; and
+- adapters that fail their declared-port conformance suite;
 - cloud fixtures that require setup after `npm ci`;
 - discovery pages beyond their action or byte bounds, or stale-cursor mixing;
 - missing or incorrectly packaged public SDK exports;
@@ -1041,6 +1048,8 @@ evidence.
    without an AITM-controlled allowlist.
 5. Every action, extension, error, and unavailable capability is discoverable
    with purpose, preconditions, effects, retry, recovery, and help references.
+   Discovery uses bounded summaries, 50-action / 32-KiB pages, and
+   query/fingerprint-bound cursors; full descriptions are fetched on demand.
 6. Agent-facing instructions and results are schema-validated minified JSON;
    human output is rendered from the same canonical model.
 7. `aitm setup` writes reviewable tracked integration files; a committed clone
@@ -1050,14 +1059,22 @@ evidence.
 9. Durable journals, approvals, receipts, and recovery records live in the
    selected external backlog authority as canonical append-only hash-linked
    envelopes.
-10. Interrupted mutations are observed and reconciled before retry.
+10. Interrupted mutations are observed and reconciled before retry using their
+    declared observability class. State satisfaction without causal proof is
+    recorded with unknown attribution and cannot satisfy actor-sensitive gates.
 11. Generated agent memory is fingerprinted, replaceable, and non-authoritative.
 12. Full-Auto is unavailable under behavioral-only enforcement and records its
-    actual guarded or strict assurance level.
+    actual guarded or strict assurance level. Strict requires the named sandbox,
+    isolated executor, egress mechanism, and current boundary attestation.
 13. Existing GitHub projects migrate without bulk evidence rewrites or silent
     external mutation.
 14. Each delivery phase has its own bounded specification, plan, tests, and
     approval before implementation.
+15. Scoped coordinators, epoch-fenced grants, and fail-closed conflicts are
+    retained. Non-CAS adapters require one serialized executor per coordinator
+    grant and proven quiescence or enforceable fencing for handoff.
+16. Every portable action has one registry-assigned MCP invocation route with CLI
+    parity; generic invocation rejects actions assigned a dedicated typed tool.
 
 ## Consequences
 
@@ -1079,6 +1096,10 @@ evidence.
   explicit compatibility reporting.
 - External authorities do not provide uniform transactions, retention, or
   conditional updates.
+- Non-CAS authorities require one serialized executor per coordinator grant;
+  linked worktrees and fleet sessions submit to it. Without enforceable fencing,
+  handoff requires maintainer-confirmed quiescence and automatic failover is
+  unavailable, adding coordination latency and operator responsibility.
 - Plugin execution expands the trusted code base selected by a project.
 - Strong enforcement requires credential and network isolation that some hosts
   cannot provide.
