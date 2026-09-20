@@ -268,6 +268,13 @@ declared effects, lifecycle scripts, compatibility, and manifest hash to the
 maintainer for selection. Selection is a code-trust decision: once imported, a
 Node plugin executes with the permissions of the AITM process.
 
+For an explicitly named package that is not yet installed, setup must inspect
+static metadata and declared lifecycle scripts before any dependency operation
+can execute package code. The bounded plugin/setup specification defines the
+fetch-without-execution mechanism and approval boundary; unavailable inspection
+blocks executable installation. Approval to inspect a package is not approval
+to run its lifecycle scripts.
+
 The selected plugins are committed in project configuration and restored by the
 package lock. Cloud consumers load only the committed selection; they neither
 scan nor prompt.
@@ -361,8 +368,10 @@ route serves the remaining portable vocabulary. Phase 1 maps every existing CLI
 verb to a canonical action or a documented host-local compatibility operation; Phase 3 must cover
 every portable action over MCP.
 
-The generic input names an exact action ID, action-schema version, capability
-fingerprint, and payload. The server resolves the action, validates its exact
+The generic input names an exact registered `action` identifier, action-schema
+version, capability fingerprint, payload, and caller-retained `invocationKey`
+for a mutation. Every typed mutation tool and mutating extension carries the
+same invocation envelope. The server resolves the action, validates its exact
 payload schema, and applies the same policy, approvals, effects, and recovery as
 the typed route. An earlier describe/discover response grants no authority; live
 preconditions are checked again at invocation. Unknown, unavailable, or
@@ -726,9 +735,14 @@ discover action
                                             └─► return result
 ```
 
-Before mutation, AITM creates a stable `actionId` and idempotency key. The
-request event records the intended operation, input hash, expected evidence
-head, authority target, and retry contract.
+Before any provider mutation, AITM durably binds the caller's `invocationKey` to
+one `actionId` in the selected external authority and reads that binding back.
+`action` is the registered operation name (for example, `work-item.create`);
+`actionId` identifies one execution instance. Neither is the caller's retry key.
+The `action.requested` event stores all three, the canonical request hash,
+expected evidence head, authority target, actor, and retry contract. A provider
+idempotency marker or native request key derives from this same execution
+instance and is never regenerated on transport retry.
 
 After mutation, AITM appends `action.completed` or `action.failed` with observed
 typed effects. If execution stops between provider mutation and the outcome
@@ -742,6 +756,83 @@ action.intervention-required
 ```
 
 AITM never blindly repeats an ambiguous mutation.
+
+### Invocation identity and transport retries
+
+Every mutation request requires a caller-retained `invocationKey` before the
+first attempt, across CLI, typed MCP tools, generic actions, and extensions.
+The key is an opaque collision-resistant value with at least 128 random bits;
+its schema bounds the encoded length. A read-only key-generation helper or
+caller SDK may generate it without performing a mutation. The caller records
+that key and its canonical request before dispatch. Missing keys fail before
+side effects; a transport retry must reuse the original key rather than invent a
+replacement. A new intentional repetition, even with identical payload, needs
+a new key. CLI mutation aliases accept `--invocation-key`; compatibility work
+migrates clients to this envelope explicitly while retaining command names.
+
+The uniqueness scope is the stable project-authority identity and its binding
+generation, plus `invocationKey`. Work-item creation uses this project scope even
+before an item exists. The durable binding includes `action`, action-schema
+version, canonical payload hash, typed authority targets, stable authenticated
+actor/principal, requested grant/epoch and expected head, and the request's
+capability fingerprint. Schema defaults are resolved canonically before hashing.
+Transient connection IDs and transport formatting do not alter identity.
+
+Reusing a key with the same bound input returns the existing receipt or resumes
+observation/recovery of that instance. It cannot create another request or call
+the provider anew merely because the reply was lost. Reusing the scoped key with
+any different bound input fails with `AITM_INVOCATION_CONFLICT`, without mutation
+or disclosure to an unauthorized caller. Replaying the stored request does not
+require its old expected head or grant to remain current merely to retrieve a
+receipt; further effects always require fresh authority and policy validation.
+Changed grants or delegated recovery are recorded as explicit recovery actions
+with their own invocation keys targeting the original instance, rather than
+rewriting the original request binding. Another actor needs authorized recovery
+access and cannot impersonate the original actor by reusing its key.
+
+Admission and duplicate detection are serialized by the scope coordinator.
+Concurrent same-key requests resolve to one durable binding; conflicting inputs
+are refused. Conditional append is used where supported; otherwise the existing
+single-executor and quiescent-handoff requirements apply. An uncertain binding
+append is looked up and read back before any provider call. No unverified local
+cache or in-memory map can establish that a key is unused. Bindings remain
+reserved for the lifetime of the authority generation, including after completion;
+compaction retains a durable binding/tombstone and receipt locator. Missing,
+unreadable, forked, or ambiguously retained binding history blocks reuse rather
+than authorizing a new execution.
+
+Read-only lookup accepts the authority identity/generation and `invocationKey`
+through `aitm_inspect` and CLI inspection. It returns the authorized caller's
+binding, `actionId`, observed phase, receipt, and permitted recovery action, or a
+verified absence. It never requires an earlier response's `actionId`. A changed
+writable binding does not redirect lookup to a different authority generation.
+If the original authority is unavailable, lookup and mutation fail closed.
+Bootstrap must provide a durable binding location before its first governed
+external effect; if an adapter cannot do so, setup requires explicit maintainer
+provisioning before those effects are enabled, rather than a silent exception.
+
+| Last durable boundary when the response is lost   | Same-key retry or lookup behavior                                                                                                                                           |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Before `action.requested` is confirmed            | Resolve possible append ambiguity first. Only verified absence permits one new binding; otherwise recover the existing binding. No provider call precedes read-back.        |
+| After request read-back, before provider dispatch | Return pending state or resume the original instance after fresh authorization. Record dispatch intent before crossing the provider boundary.                               |
+| Dispatch intent recorded, provider outcome absent | Treat execution as potentially performed, even if the process may have stopped before sending. Observe and reconcile using the declared proof class; do not repeat blindly. |
+| Outcome appended, projection incomplete           | Return the durable outcome and repair the derived projection under its existing authority; do not re-execute the provider operation.                                        |
+| Projection updated, result response lost          | Return the same completed receipt and instance identity. A fresh provider effect requires a new deliberate invocation.                                                      |
+
+Dispatch intent is not proof that the provider executed. A crash between intent
+and send is deliberately classified as ambiguous unless observation or provider
+idempotency proves a safe replay. Results and errors echo a supplied `invocationKey` and
+registered `action`; once a binding exists they also carry `actionId` and an
+invocation lookup reference. Before-binding errors omit `actionId` and report
+that no provider effects occurred. Lost transport responses have no inferred
+success/failure classification; the retained key is their recovery handle.
+
+A canonical mutation request has this shape; each action supplies the exact
+schema for its `payload` and required authority preconditions:
+
+```text
+{"schema":"aitm.request/v1","action":"work-item.record-analysis","actionSchema":"v1","invocationKey":"a19d78015300433f88ef9b3c2a790a61","authority":{"project":"github://org/repo","generation":"1"},"target":"github://org/repo/issues/45","capabilityFingerprint":"sha256:...","payload":{"analysis":"..."}}
+```
 
 ### Mutation observability
 
@@ -763,7 +854,7 @@ alone does not establish an authorized lifecycle transition. If intent is not
 satisfied, retry needs a fresh authority/policy check and an explicit adapter
 proof that replay is safe despite intervening changes; otherwise intervention is
 required. Setting a value is not automatically replay-safe when it can overwrite
-another actor's decision. The original action ID is retained across recovery.
+another actor's decision. The original execution-instance `actionId` is retained across recovery.
 
 An active AITM coordinator serializes governed actors; it does not establish
 exclusive control over humans or other provider clients. Thus ProjectV2 Status,
@@ -775,7 +866,7 @@ and action contracts that require attribution.
 ### Concurrency and fencing
 
 All authoritative operations carry the scope, coordinator grant ID, epoch,
-expected accepted head, and action ID. The kernel validates authority before
+expected accepted head, and execution-instance `actionId`. The kernel validates authority before
 execution and before accepting a result. Worker submissions are durable inputs
 and do not compete to publish a new accepted head. The coordinator serializes
 acceptance and projection writes within its scope; multi-scope actions name
@@ -808,13 +899,13 @@ are Phase 1 conformance gates, including the GitHub path.
 Every action returns the same result shape:
 
 ```text
-{"schema":"aitm.result/v1","ok":true,"actionId":"01K...","action":"work-item.record-analysis","effects":[{"type":"journal.appended","ref":"github://issues/45/comments/123"}],"evidence":{"head":"sha256:..."},"retry":{"safe":true,"mode":"idempotent"},"next":[{"action":"work-item.approve-plan","status":"available"}]}
+{"schema":"aitm.result/v1","ok":true,"invocationKey":"a19d78015300433f88ef9b3c2a790a61","actionId":"01K...","action":"work-item.record-analysis","invocationRef":"aitm://invocations/project-generation/key","effects":[{"type":"journal.appended","ref":"github://issues/45/comments/123"}],"evidence":{"head":"sha256:..."},"retry":{"safe":true,"mode":"idempotent"},"next":[{"action":"work-item.approve-plan","status":"available"}]}
 ```
 
 Errors use the same principles:
 
 ```text
-{"schema":"aitm.error/v1","ok":false,"code":"AITM_SETUP_STALE","effects":{"committed":false},"retry":{"safe":false},"reason":{"code":"adapter-manifest-mismatch","expected":"0.2.0","observed":"0.3.0"},"recovery":{"actor":"maintainer","action":"setup","command":"npx aitm setup","commitRequired":true},"helpRef":"aitm://errors/AITM_SETUP_STALE"}
+{"schema":"aitm.error/v1","ok":false,"invocationKey":"a19d78015300433f88ef9b3c2a790a61","action":"work-item.record-analysis","code":"AITM_SETUP_STALE","effects":{"committed":false},"retry":{"safe":false},"reason":{"code":"adapter-manifest-mismatch","expected":"0.2.0","observed":"0.3.0"},"recovery":{"actor":"maintainer","action":"setup","command":"npx aitm setup","commitRequired":true},"helpRef":"aitm://errors/AITM_SETUP_STALE"}
 ```
 
 ## Host enforcement and Full-Auto
@@ -885,7 +976,11 @@ npx aitm-adapter-conformance ./dist/adapter.mjs
 It verifies manifest and port schemas, identifier round trips, capability
 reporting, idempotent replay, interrupted-write recovery, error normalization,
 evidence preservation, unauthorized behavior, minified JSON, and prohibited
-effects.
+effects. Invocation conformance covers `work-item.create` and a state-only field
+mutation: same-key replay, different-input conflict, two concurrent submissions
+of one key, and lost responses at every durable boundary in the recovery table.
+It verifies one execution instance and no duplicate provider effect, truthfully
+ambiguous state when proof is unavailable, and safe pending-projection repair.
 
 ### Transport parity
 
@@ -897,6 +992,10 @@ including when the host withholds that typed tool. Test extension routes against
 the same policy contract, and verify every route rejects `orchestrator-only`
 actions. The action inventory drives the coverage
 matrix; missing invocation coverage is a release failure, not an exemption.
+Cross-transport retry uses the same invocation key and canonical request: a CLI
+attempt followed by MCP lookup/retry (and the reverse) must recover the same
+instance and receipt. Every route rejects missing keys and conflicting reuse;
+registered action identifiers are never confused with execution-instance IDs.
 
 ### Portable-install test
 
@@ -945,7 +1044,9 @@ implementation-sized specifications and plans.
   existing internal `ProviderAdapter` name and compatibility mapping.
 - Preserve scoped coordinators, epoch fencing, and fail-closed conflicts; prove
   serialized non-CAS acceptance and safe handoff before enabling the new path.
-- Define canonical action, result, error, effect, and evidence schemas.
+- Define canonical action, request, result, error, effect, and evidence schemas,
+  including caller-retained invocation keys, durable binding, duplicate admission,
+  and lost-response recovery before freezing the Phase 1 action schemas.
 - Route the current CLI through application services and policy.
 - Move GitHub behavior behind the public adapter contract.
 
@@ -1075,6 +1176,11 @@ evidence.
     grant and proven quiescence or enforceable fencing for handoff.
 16. Every portable action has one registry-assigned MCP invocation route with CLI
     parity; generic invocation rejects actions assigned a dedicated typed tool.
+17. Every mutation binds a caller-retained invocation key before provider effects.
+    Same-key retries recover one instance through any transport; conflicting reuse
+    fails closed. Concurrent submissions and lost responses at every durable
+    boundary preserve that identity, including work-item creation and state-only
+    mutations. Lookup does not depend on receiving the original result.
 
 ## Consequences
 
