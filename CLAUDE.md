@@ -157,3 +157,15 @@ manually when you want a coverage snapshot.
 
 - No emojis unless asked.
 - No trailing summaries — code speaks for itself.
+
+## XPR-first experiment isolation (user requirement)
+
+For the active architecture review in this checkout, use only the target
+architecture spec, its recorded requirements, repository ADRs and implementation
+at this checkout, and responses from this new XPR run. Do not read memories,
+other worktrees, prior conversations or agent histories, earlier review
+collateral, historical corrections, or origin/trunk content. Do not run an
+initial SAR or spawn additional reviewers. Review only as the fresh Claude Opus
+5 Reviewer at medium effort. Report any observed isolation breach in your
+response. Follow the sealed protocol invitation and its exact pending response
+write boundary. Stop at XPR acceptance; later SPR/SAR requires a human decision.
