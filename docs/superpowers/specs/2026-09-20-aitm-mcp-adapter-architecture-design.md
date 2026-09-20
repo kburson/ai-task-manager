@@ -318,12 +318,28 @@ aitm_recover
 Widely used portable actions receive explicit tools with JSON Schema inputs and
 outputs so hosts can display precise intent and approvals.
 
-### Extension invocation
+### Portable and extension invocation
+
+Every agent-callable portable action has an MCP invocation route. Common actions
+use the typed tools above; remaining portable actions use `aitm_invoke_action`
+with a registry action name, schema version, and action payload. Discovery reports the
+exact tool and argument mapping for each action. Typed tools and the generic
+portable invoker resolve to the same executable action definition.
 
 Uncommon namespaced adapter extensions use `aitm_invoke_extension`. The agent
 must first discover or describe the extension. The server validates the payload
 against the extension's exact schema and policy before invocation. An extension
 may be promoted to a typed tool without changing its domain contract.
+
+Both generic invokers validate the exact action schema, current availability,
+policy, and approvals in the kernel. Portable actions and extensions cannot be
+routed through the other namespace. Unknown and `orchestrator-only` actions
+are rejected by every agent-callable route. Generic invocation never grants
+low-level adapter access or weakens host approval and mutation-routing policy;
+hosts must authorize the resolved action and payload before dispatch.
+
+All mutation routes carry the same caller-supplied `requestKey` described under
+governed action and recovery flow. Transport request IDs are not substitutes.
 
 ### MCP resources
 
@@ -564,6 +580,47 @@ adapter may use a provider-native project property or a dedicated managed
 backlog record, but it must expose the same canonical stream contract and must
 report its visibility and retention characteristics during setup.
 
+### First authority bootstrap
+
+Creating the first control-stream container is the sole external provisioning
+exception to append-before-mutation: the stream does not yet exist. Only an
+explicitly confirmed maintainer setup operation may use this exception. It may
+create or bind the control container, but cannot perform ordinary work-item,
+forge, CI, or lifecycle mutations until the root is verified.
+
+Setup derives a stable bootstrap key from the canonical provider instance,
+project identity, and control-stream purpose. It searches for that key before
+provisioning. Safe automatic creation requires provider-enforced uniqueness or
+a demonstrably exclusive provisioning owner, and must store the bootstrap key
+and canonical `authority.genesis` envelope in the initial creation payload. The
+envelope records the setup intent hash, actor, and schema version. A title or
+search result alone is not authority. Adapters that cannot meet these conditions
+require a maintainer-provisioned container and an explicit typed reference;
+they do not attempt best-effort automatic creation.
+
+Setup reads back and verifies the container identity and genesis before locking
+its locator into project configuration. Binding an existing container verifies
+its ownership and existing genesis, or initializes and reads back the genesis
+under exclusive provisioning ownership. Subsequent setup effects follow the
+normal request/outcome protocol in that stream. Bootstrap selection does not
+silently replace an existing configured authority.
+
+After response loss, setup reconciles the same bootstrap key and intent rather
+than generating a new key or blindly creating another container. One verified
+match permits continuation. Multiple matches or conflicting genesis records
+block setup for explicit maintainer reconciliation; no candidate is elected or
+deleted automatically. Zero visible matches permit retry only when the adapter
+can establish that the earlier creation did not occur and cannot still complete;
+otherwise setup reports `action.intervention-required`. Concurrent setup must
+either share the verified root or stop before further effects.
+
+Local setup output is staged until verification succeeds. A partially created
+external container is reported as a durable provisioning effect with its known
+reference or bootstrap key and recovery instructions. It is neither called a
+successful installation nor erased to simulate rollback. Failure-injection and
+concurrency certification are required before an adapter enables automatic
+bootstrap.
+
 ### Append-only integrity
 
 The project control stream and each work item have append-only, hash-linked
@@ -585,32 +642,75 @@ models without making signature infrastructure a version-one dependency.
 
 ADR 0002 made GitHub Issues and comments the sole durable authority. This design
 preserves its storage-neutral principles—external durable authority,
-append-first mutation, immutable capsules, rebuildable projections, and no
-required AITM database—but generalizes the authority from GitHub to the selected
-`work-items` adapter.
+append-first mutation with read-back verification, scoped coordinators and epoch
+fencing, fail-closed conflict handling, immutable capsules, rebuildable
+projections, and no required AITM database—but generalizes the authority from
+GitHub to the selected `work-items` adapter. The explicit first-container
+bootstrap exception does not relax ordinary action admission or execution.
 
 Implementation must add a replacement ADR before activating a non-GitHub
 backlog. Until then, the built-in GitHub adapter preserves ADR 0002 behavior.
 
 ## Governed action and recovery flow
 
-Every mutation follows this sequence:
+After first authority bootstrap, every governed mutation follows this sequence:
 
 ```text
 discover action
-  └─► validate capability and policy
-        └─► rehydrate authority state and evidence head
-              └─► append action.requested
-                    └─► execute through adapter
-                          └─► observe external effects
-                                └─► append outcome
-                                      └─► update projection
-                                            └─► return result
+  └─► validate schema, caller identity, and request key
+        └─► serialize admission under scoped execution ownership
+              └─► rehydrate authority and resolve any existing request
+                    └─► validate current capability, policy, and approvals
+                          └─► append and read back action.requested
+                                └─► verify dispatch ownership and preconditions
+                                      └─► execute through adapter
+                                            └─► observe external effects
+                                                  └─► append and verify outcome
+                                                        └─► update projection
+                                                              └─► return result
 ```
 
-Before mutation, AITM creates a stable `actionId` and idempotency key. The
-request event records the intended operation, input hash, expected evidence
-head, authority target, and retry contract.
+### Request identity and retry
+
+Every mutating CLI and MCP request requires a caller-supplied `requestKey`,
+chosen and retained before submission. Interactive CLI use may generate and
+display the key before sending, but unattended callers must supply it explicitly
+and reuse it after timeout or response loss. The key is not derived solely from
+the payload: two intentionally distinct operations may have identical inputs.
+
+The deduplication scope is the canonical project authority and authenticated
+initiating principal, independent of host, process, transport, or MCP session.
+Under serialized admission, AITM resolves the key in the project's authority
+streams and durably associates it with one stable `actionId`, action name,
+target, schema version, canonical input hash, and adapter effect keys. An index
+may accelerate lookup but is rebuildable and cannot decide that a request is
+new. Work-item creation uses the project control stream before an item exists.
+Admission ownership includes the project request-key reservation as well as the
+affected action scopes, so requests naming different targets cannot race to
+claim the same key.
+
+Reusing the same key and canonical request returns the recorded outcome or
+existing in-progress/recovery handle; it never creates another logical action.
+Reusing the key with a different action, target, or payload returns
+`AITM_REQUEST_KEY_CONFLICT` without new mutation. Discovery and `aitm_inspect`
+support authorized lookup by request key when the caller never received the
+action ID. Another authorized principal may inspect or recover the original
+action by its handle under policy, but cannot silently rebind its request key.
+Retention and migration must preserve these mappings or durable tombstones;
+missing or unreadable history must not be interpreted as an unused key.
+
+The `action.requested` record includes the expected evidence head, execution
+owner and epoch, retry contract, and non-secret canonical inputs or immutable,
+hash-verified references sufficient for observation and recovery from a fresh
+process. An input hash alone is insufficient. Credentials are reacquired at
+runtime and are never journaled. If required input cannot be recovered, the
+action requires intervention rather than guessing it from local cache.
+
+Each external effect has a stable key derived from the action ID and effect
+identity. The adapter maps that key to native idempotency or a durable searchable
+marker and defines observation guarantees. Multiple adapter effects in one
+action retain distinct keys and progress; recovery cannot repeat a completed
+effect merely because a later effect failed.
 
 After mutation, AITM appends `action.completed` or `action.failed` with observed
 typed effects. If execution stops between provider mutation and the outcome
@@ -625,15 +725,55 @@ action.intervention-required
 
 AITM never blindly repeats an ambiguous mutation.
 
-Concurrent writers use an expected-head precondition. An adapter with
-conditional-update support performs compare-and-append. Other adapters reread
-and verify around the append. Detected forks remain visible and are joined by an
-explicit reconciliation record rather than silently discarded.
+Absence from an eventually visible search, timeout, or expired owner lease is
+not proof that a mutation did not occur or cannot still complete. Retry requires
+safe native idempotency or authoritative observation establishing that the
+effect was not applied and no earlier attempt remains in flight. Otherwise the
+result explicitly reports unknown effects and requires intervention. Recovery
+retains the original action and effect keys, runs under current execution
+ownership, and revalidates policy before any newly authorized provider mutation.
+
+### Concurrent execution and authority fencing
+
+Journal conflict detection and permission to execute are separate guarantees.
+Each affected scope has one authoritative coordinator with an epoch-fenced
+grant, preserving ADR 0002. Workers may submit requests or evidence; only the
+current execution owner admits actions and dispatches their external effects.
+Cross-scope actions declare every conflicting scope, acquire ownership in a
+canonical order, and release it only after outcomes or unresolved effects are
+durably recorded. A pending ambiguous effect blocks conflicting successors.
+
+Adapters declare and certify an execution mode: provider-conditional admission
+with fenced dispatch, or an exclusive coordinator that serializes admission and
+dispatch without overlapping ownership. Conditional append alone is insufficient
+unless the execution boundary also rejects a stale owner or stale request.
+Exclusive coordination must cover all participating clones and workers; a local
+process lock, elapsed lease, or reread-and-append loop does not prove exclusivity.
+Where an adapter cannot fence an old owner at the effect boundary, takeover is
+blocked until the old dispatcher is verifiably stopped and in-flight effects
+are settled. If neither safe mode is available, the affected mutation capability
+is blocked with a structured reason; it does not fall back to optimistic writes.
+
+Admission checks the expected evidence head under that ownership, reads fresh
+authority state, and evaluates current policy and approvals before recording
+the request. Immediately before each dispatch, the kernel verifies ownership,
+epoch, and action preconditions, including provider-native expected revisions
+where available. The adapter must document how a change between that check and
+dispatch is fenced; a check alone is not the execution guarantee. Detailed
+provider proofs and failure tests belong to the phase-specific specifications.
+
+Detected forks block new governed effects in the affected scope. Reconciliation
+preserves every competing record and observes already-dispatched effects before
+an authorized reconciliation record joins the branches. A join records the
+conflict and its disposition; it neither retroactively authorizes effects nor
+silently chooses a winning request. Observation and reconciliation evidence may
+be recorded under exclusive recovery ownership while ordinary dispatch remains
+blocked.
 
 Every action returns the same result shape:
 
 ```text
-{"schema":"aitm.result/v1","ok":true,"actionId":"01K...","action":"work-item.record-analysis","effects":[{"type":"journal.appended","ref":"github://issues/45/comments/123"}],"evidence":{"head":"sha256:..."},"retry":{"safe":true,"mode":"idempotent"},"next":[{"action":"work-item.approve-plan","status":"available"}]}
+{"schema":"aitm.result/v1","ok":true,"requestKey":"analysis-45-01","actionId":"01K...","action":"work-item.record-analysis","effects":[{"type":"journal.appended","ref":"github://org/repo/issues/45/comments/123"}],"evidence":{"head":"sha256:..."},"retry":{"safe":true,"mode":"idempotent","requiresSameRequestKey":true},"next":[{"action":"work-item.approve-plan","status":"available"}]}
 ```
 
 Errors use the same principles:
@@ -679,6 +819,22 @@ Test lifecycle and policy independently of providers, including action schemas,
 effects, retry classification, evidence replay, correction, reconciliation,
 fork handling, and canonical minified JSON.
 
+Required adversarial cases include:
+
+- two workers admitting conflicting requests from the same evidence head;
+- a former coordinator resuming after ownership changes, including a pause
+  between the final ownership check and provider dispatch;
+- takeover while an earlier provider request is still in flight;
+- policy or approval changes between discovery and action admission;
+- a successful effect whose response is lost, followed by the same request key
+  from a fresh process through the other transport;
+- simultaneous retries using one key, conflicting payloads under one key, and
+  intentionally distinct keys with identical payloads;
+- recovery using only external authority after local state is deleted;
+- incomplete observations that must not authorize duplicate effects; and
+- fork reconciliation that preserves competing evidence and blocks conflicting
+  execution until every outstanding effect is resolved.
+
 ### Adapter conformance kit
 
 The public SDK ships a runner:
@@ -692,10 +848,27 @@ reporting, idempotent replay, interrupted-write recovery, error normalization,
 evidence preservation, unauthorized behavior, minified JSON, and prohibited
 effects.
 
+Each adapter must prove its declared admission and execution mode, including
+stale-owner rejection or safe refusal of takeover. Built-in GitHub is subject to
+the same gate. The suite also exercises automatic bootstrap or its explicit
+unsupported result, concurrent provisioning, lost creation responses, duplicate
+roots, genesis read-back failure, and recovery by binding an existing container.
+Search visibility delays must produce intervention when absence cannot be
+established. A manifest declaration without a passing proof does not enable the
+corresponding mutation capability.
+
 ### Transport parity
 
 Invoke common actions through CLI and MCP and assert identical domain requests,
 authority effects, receipts, errors, and next-action recommendations.
+
+Enumerate the executable registry and require a tested MCP route for every
+agent-callable action, including uncommon portable actions through
+`aitm_invoke_action`. Exercise typed and generic routes with the same logical
+request and request key, verifying that retries resolve to the same action.
+Reject unknown actions, namespace mismatches, invalid schemas, and
+`orchestrator-only` invocations through every public dispatcher. Verify that host
+approval applies to the resolved generic action and payload.
 
 ### Portable-install test
 
@@ -719,8 +892,11 @@ and returns structured diagnostics.
 Release gates reject:
 
 - undocumented or undiscoverable actions;
+- agent-callable actions without a tested MCP invocation route;
 - actions without input and output schemas;
 - mutations without declared effects and recovery semantics;
+- mutations without certified execution ownership and durable request identity;
+- automatic authority bootstrap without verified genesis and safe recovery;
 - CLI and MCP behavioral divergence;
 - generated-file changes absent from the install manifest;
 - adapters that fail their declared-port conformance suite; and
@@ -735,10 +911,13 @@ implementation-sized specifications and plans.
 
 - Inventory every current action and direct provider mutation.
 - Define canonical action, result, error, effect, and evidence schemas.
+- Establish durable request keys, scoped execution ownership, and bootstrap
+  recovery before enabling the new mutation path.
 - Route the current CLI through application services and policy.
 - Move GitHub behavior behind the public adapter contract.
 
-Exit when the existing CLI suite passes through the kernel without MCP.
+Exit when the existing CLI suite passes through the kernel without MCP and the
+new admission, response-loss, stale-owner, and bootstrap failure cases pass.
 
 ### Phase 2: Discovery and self-help
 
@@ -751,6 +930,7 @@ Exit when every action and error is discoverable and schema-linked.
 ### Phase 3: MCP and lightweight skill
 
 - Add the tiered MCP tools and resources.
+- Prove complete invocation coverage, including uncommon portable actions.
 - Add host bridges.
 - Replace detailed workflow prose with the lightweight MCP bootstrap.
 - Retain the CLI compatibility path.
@@ -805,10 +985,20 @@ migration. It:
 - leaves external GitHub state unchanged unless the reviewed setup plan names a
   required compatible mutation.
 
-A failed migration leaves the previous installation operational and records no
-partial success.
+A failed migration does not activate partially generated integration files or
+claim success. The previous installation remains selected; compatible external
+effects already committed are preserved and reported in the control stream with
+recovery instructions. First-container provisioning uses the bootstrap recovery
+contract when that stream is not yet verified. If an unresolved effect makes
+continued mutation unsafe, affected actions are blocked until reconciliation;
+rollback never promises to erase an external effect or to keep unsafe actions
+operational.
 
 Existing CLI verbs remain supported for at least one major-version transition.
+Compatibility aliases use the same request-key contract. The migration preview
+identifies unattended callers that must supply a stable key; a missing key fails
+before provider effects, rather than silently inventing a fresh key on retry.
+Interactive CLI key generation remains available as specified above.
 Old evidence remains readable after its writer is no longer installed. A
 migration never silently changes the writable backlog authority. Rollback may
 restore generated integration files but never deletes durable external
@@ -827,6 +1017,8 @@ evidence.
    without an AITM-controlled allowlist.
 5. Every action, extension, error, and unavailable capability is discoverable
    with purpose, preconditions, effects, retry, recovery, and help references.
+   Every agent-callable action has a tested MCP invocation route, including
+   uncommon portable actions; orchestrator-only actions cannot use those routes.
 6. Agent-facing instructions and results are schema-validated minified JSON;
    human output is rendered from the same canonical model.
 7. `aitm setup` writes reviewable tracked integration files; a committed clone
@@ -836,7 +1028,9 @@ evidence.
 9. Durable journals, approvals, receipts, and recovery records live in the
    selected external backlog authority as canonical append-only hash-linked
    envelopes.
-10. Interrupted mutations are observed and reconciled before retry.
+10. Interrupted mutations are observed and reconciled before retry. Caller-held
+    request keys resolve to the same durable action across process and transport
+    changes; changed payloads under the same key fail without new effects.
 11. Generated agent memory is fingerprinted, replaceable, and non-authoritative.
 12. Full-Auto is unavailable under behavioral-only enforcement and records its
     actual guarded or strict assurance level.
@@ -844,6 +1038,12 @@ evidence.
     external mutation.
 14. Each delivery phase has its own bounded specification, plan, tests, and
     approval before implementation.
+15. Concurrent execution uses certified scoped ownership and fencing or
+    exclusive coordination; journal rereads alone never authorize dispatch.
+    Stale owners, unresolved conflicting effects, and forks block execution.
+16. First authority bootstrap verifies a durable genesis and reconciles lost
+    responses or duplicate roots before enabling workflows. Unsupported safe
+    provisioning requires explicit binding, and partial effects remain visible.
 
 ## Consequences
 
