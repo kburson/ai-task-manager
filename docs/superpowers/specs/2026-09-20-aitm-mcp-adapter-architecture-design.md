@@ -141,10 +141,20 @@ A repository action resolves an explicit execution context containing project
 repository identity, clone/worktree identity, target branch/ref, and relevant
 expected HEAD/worktree-state preconditions before dispatch. An MCP server's
 startup directory is not authority to choose a worktree on the caller's behalf.
-Missing, foreign, or changed context fails before effects. Machine paths are
-runtime locators, not portable project bindings. Local Git effects use the same
-invocation/recovery contract and external-authority receipts as remote effects;
-Git objects remain repository evidence, not a second workflow-authority store.
+The initial resolved context is part of the canonical request and durable
+invocation binding: repository/clone/worktree identities, target ref, and original
+expected state cannot be silently replaced on retry. Machine paths are verified
+runtime locators for those identities, not portable project bindings or substitutes
+for identity. Missing, foreign, or changed context refuses new effects. Read-only
+receipt lookup remains available after the operation legitimately changes HEAD
+or worktree state; it does not reapply original execution preconditions as a
+condition of retrieving the historical result. Recovery observes the original
+target and validates current preconditions before any further effect. A new
+execution target or revised precondition requires a separately authorized
+invocation or explicit recovery action linked to the original instance, never
+rebinding its key. Local Git effects use the same invocation/recovery contract
+and external-authority receipts as remote effects; Git objects remain repository
+evidence, not a second workflow-authority store.
 
 ### Provider targets
 
@@ -816,8 +826,11 @@ generation, plus `invocationKey`. Work-item creation uses this project scope eve
 before an item exists. The durable binding includes `action`, action-schema
 version, canonical payload hash, typed authority targets, stable authenticated
 actor/principal, requested grant/epoch and expected head, and the request's
-capability fingerprint. Schema defaults are resolved canonically before hashing.
-Transient connection IDs and transport formatting do not alter identity.
+capability fingerprint. Repository actions additionally bind their resolved
+execution-context identities, target ref, and original expected repository state.
+Schema defaults are resolved canonically before hashing. Transient connection
+IDs and transport formatting do not alter identity; a new transport may not
+substitute its current directory for a bound execution target.
 
 Reusing a key with the same bound input returns the existing receipt or resumes
 observation/recovery of that instance. It cannot create another request or call
@@ -1050,8 +1063,12 @@ coordinators sharing one project key namespace.
 
 The bundled repository adapter's conformance cases include wrong or missing
 worktree identity, changed branch/HEAD, local operation interrupted after its Git
-effect, and CLI/MCP calls resolving the same explicit execution context. Its
-receipts and recovery retain the selected external backlog authority.
+effect, and CLI/MCP calls resolving the same explicit execution context. Retry
+cases change the server directory or supply another worktree/ref under the same
+key and must not redirect effects. A lost response after a successful HEAD or
+worktree change still permits receipt retrieval; recovery observes the originally
+bound target and does not silently replace its preconditions. Its receipts and
+recovery retain the selected external backlog authority.
 
 ### Transport parity
 

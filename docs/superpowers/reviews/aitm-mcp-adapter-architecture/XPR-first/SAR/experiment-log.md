@@ -57,3 +57,21 @@ This same-author review is not independent Reviewer consensus or human approval.
 
 Preparation checks passed with no tool interruption or error. Review records
 and subsequent commit mappings follow after the first pass.
+
+## Round mapping and observed events
+
+| Round  | Reviewed HEAD                              | Reviewed artifact SHA256                                           | Findings | Correction result commit                   | Result artifact SHA256                                             |
+| ------ | ------------------------------------------ | ------------------------------------------------------------------ | -------- | ------------------------------------------ | ------------------------------------------------------------------ |
+| SAR r1 | `0d2033b854e46db4bbab4424a2e798bc347f78a3` | `dd2d36956fec9dabb3427429b23541ea5733ce50dd00560bdff4bb22de266c23` | 4        | `8e5fb7cf5886f8577f4de53d254ae26bd32fa2c5` | `72b8730f8e4b41db6c3f7e888403428f363ef66555278a8b4176b9ec4dde0613` |
+
+R1 findings/dispositions and validation failures are preserved in
+[self-review-r1.md](self-review-r1.md). F1 is explicitly carried forward from an
+earlier optional XPR observation; it is not an independent discovery. The other
+three findings were identified during this SAR pass. No cross-sequence conclusion
+is drawn from those counts.
+
+R2 input clean HEAD was verified at 2026-09-20T22:45:39Z. The complete pass found
+one interaction introduced by r1's repository-context correction. Its reasoning,
+disposition, and qualifications are in [self-review-r2.md](self-review-r2.md).
+This is a follow-up correction cycle, not evidence of another defect in the
+original SPR-accepted input. R1 evidence remains unchanged after its commit.
