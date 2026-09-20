@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { actionDescriptorFor, listLifecycleActions } from '../lifecycle-policy/actions.mjs';
+import { stateIds } from '../lifecycle-policy/states.mjs';
 import {
   listRemediations,
   remediationDefinitionFor,
@@ -23,6 +25,11 @@ export const AUTHORITY_RESOURCE_IDS = Object.freeze([
   'timing-log',
   'workflow-policy',
 ]);
+export const REGISTERED_GUARD_IDS = Object.freeze(
+  Object.keys(
+    JSON.parse(readFileSync(new URL('./legacy-refusals.json', import.meta.url), 'utf8')).guards
+  ).sort()
+);
 
 const noArgs = () =>
   Object.freeze({
@@ -221,6 +228,7 @@ const NO_AUTOMATIC_REASONS = Object.freeze([
   'action-not-explain-ready',
 ]);
 const STATUSES = Object.freeze(['ready', 'blocked', 'indeterminate']);
+const LIFECYCLE_STATES = Object.freeze(stateIds());
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 const HEAD = /^[a-f0-9]{40,64}$/;
 
@@ -281,9 +289,31 @@ function validateArgs(value, schema, path) {
   }
 }
 
-function producerAllowed(producerId, allowed) {
+function producerAllowed(producerId, allowed, registeredGuardIds = REGISTERED_GUARD_IDS) {
   if (allowed.includes(producerId)) return true;
-  return allowed.includes('registered-guard') && !BOUNDARY_PRODUCER_IDS.includes(producerId);
+  return allowed.includes('registered-guard') && registeredGuardIds.includes(producerId);
+}
+
+function producerPhase(producerId, definition, registeredGuardIds) {
+  if (producerId === 'authority-collection') return 'collection';
+  if (producerId === 'action-navigation') return 'navigation';
+  if (producerId === 'action-result-validation') {
+    return definition.domain === 'execution-normalization' ? 'execution' : 'validation';
+  }
+  if (producerId === 'guidance-admission') {
+    return definition.domain === 'operational-warning' ? 'presentation' : 'admission';
+  }
+  if (producerId === 'guidance-annotation') return 'post-success';
+  if (registeredGuardIds.includes(producerId)) return 'evaluation';
+  return null;
+}
+
+function validateProducer(producerId, definition, path, registeredGuardIds) {
+  if (!producerAllowed(producerId, definition.allowedProducerIds, registeredGuardIds)) {
+    fail(path, 'producer');
+  }
+  const phase = producerPhase(producerId, definition, registeredGuardIds);
+  if (phase === null || !definition.legalPhases.includes(phase)) fail(path, 'phase');
 }
 
 function validateDisposition(blocker, definition, path) {
@@ -292,6 +322,9 @@ function validateDisposition(blocker, definition, path) {
   if (hasRemediation === hasManual) fail(path, 'disposition');
   if (definition.disposition === 'registered-remediation' && !hasRemediation) {
     fail(path, 'remediation-required');
+  }
+  if (definition.disposition === 'no-automatic-remediation' && !hasManual) {
+    fail(path, 'manual-disposition-required');
   }
   if (hasRemediation) validateRemediation(blocker.remediation);
   if (hasManual) {
@@ -302,7 +335,10 @@ function validateDisposition(blocker, definition, path) {
   }
 }
 
-export function validateBlocker(value, { status, path = 'blocker' } = {}) {
+export function validateBlocker(
+  value,
+  { status, path = 'blocker', registeredGuardIds = REGISTERED_GUARD_IDS } = {}
+) {
   record(value, path);
   const hasRemediation = Object.hasOwn(value, 'remediation');
   const hasManual = Object.hasOwn(value, 'noAutomaticRemediation');
@@ -317,20 +353,37 @@ export function validateBlocker(value, { status, path = 'blocker' } = {}) {
     fail(`${path}.code`, 'domain');
   }
   if (!definition.legalStatuses.includes(status)) fail(`${path}.code`, 'status');
-  if (!producerAllowed(value.guardId, definition.allowedProducerIds)) {
-    fail(`${path}.guardId`, 'producer');
-  }
+  validateProducer(value.guardId, definition, `${path}.guardId`, registeredGuardIds);
   validateArgs(value.args, definition.argumentSchema, `${path}.args`);
   validateDisposition(value, definition, path);
   return structuredClone(value);
 }
 
-export function validateWarning(value, { status, path = 'warning' } = {}) {
+export function validateWarning(
+  value,
+  { status, path = 'warning', producerId = null, registeredGuardIds = REGISTERED_GUARD_IDS } = {}
+) {
   exact(value, ['code', 'args'], path);
   const definition = CODE_DEFINITIONS[value.code];
   if (!definition || definition.domain !== 'operational-warning') fail(`${path}.code`, 'domain');
   if (!definition.legalStatuses.includes(status)) fail(`${path}.code`, 'status');
   validateArgs(value.args, definition.argumentSchema, `${path}.args`);
+  const effectiveProducer =
+    producerId ??
+    (definition.allowedProducerIds.includes('registered-guard')
+      ? value.args.guardId
+      : definition.allowedProducerIds.length === 1
+        ? definition.allowedProducerIds[0]
+        : null);
+  if (effectiveProducer === null) fail(`${path}.code`, 'producer');
+  if (
+    producerId !== null &&
+    value.args.guardId !== undefined &&
+    value.args.guardId !== producerId
+  ) {
+    fail(`${path}.args.guardId`, 'producer');
+  }
+  validateProducer(effectiveProducer, definition, `${path}.code`, registeredGuardIds);
   return structuredClone(value);
 }
 
@@ -399,7 +452,7 @@ function requiredHumanRequests(decision) {
       return [
         {
           kind: 'plan-approval',
-          subject: { issue: decision.issue, actionId: 'promote' },
+          subject: { issue: blocker.remediation.args.issue, actionId: 'promote' },
           args: {},
         },
       ];
@@ -587,7 +640,7 @@ export function validateActionDecision(value) {
   );
   if (value.schema !== ACTION_DECISION_SCHEMA) fail('schema');
   if (!Number.isInteger(value.issue) || value.issue <= 0) fail('issue', 'positive-integer');
-  if (value.actionId !== null && !actionDescriptorFor(value.actionId)) fail('actionId', 'unknown');
+  if (value.actionId !== null) nonemptyString(value.actionId, 'actionId');
   if (!STATUSES.includes(value.status)) fail('status', 'enum');
   if (!Array.isArray(value.blockers)) fail('blockers', 'array');
   if (value.status === 'ready' && value.blockers.length !== 0) fail('blockers', 'ready-empty');
@@ -595,9 +648,20 @@ export function validateActionDecision(value) {
   value.blockers.forEach((blocker, index) =>
     validateBlocker(blocker, { status: value.status, path: `blockers[${index}]` })
   );
+  const actionDescriptor = value.actionId === null ? null : actionDescriptorFor(value.actionId);
+  const unknownVocabulary = value.blockers.some(({ code }) => code === 'unknown-vocabulary');
+  const unresolvedNavigation = value.blockers.some(({ code }) => code === 'state-unavailable');
+  if (value.actionId !== null && actionDescriptor === null && !unknownVocabulary) {
+    fail('actionId', 'unknown');
+  }
+  if (actionDescriptor !== null && unknownVocabulary)
+    fail('blockers', 'unknown-vocabulary-coupling');
   validateAuthoritySubjects(value.blockers);
   validateNormalizations(value.normalizations);
   validateSnapshot(value.snapshot, value.normalizations, value.issue);
+  if (!LIFECYCLE_STATES.includes(value.snapshot.state) && !unresolvedNavigation) {
+    fail('snapshot.state', 'unknown-without-navigation-blocker');
+  }
   if (!Array.isArray(value.warnings)) fail('warnings', 'array');
   value.warnings.forEach((warning, index) =>
     validateWarning(warning, { status: value.status, path: `warnings[${index}]` })
@@ -619,13 +683,11 @@ export function validateActionDecision(value) {
     }
     if (
       blocker.code === 'plan-approval-missing' &&
-      (blocker.remediation.id !== 'record-plan-approval' ||
-        blocker.remediation.args.issue !== value.issue)
+      blocker.remediation.id !== 'record-plan-approval'
     ) {
       fail('blockers.remediation', 'coupling');
     }
   }
-  const unresolvedNavigation = value.blockers.some(({ code }) => code === 'state-unavailable');
   if (value.snapshot.state === 'done' && value.status !== 'ready') fail('status', 'terminal');
   if (value.snapshot.state === 'done' && value.actionId !== null) fail('actionId', 'terminal');
   if (unresolvedNavigation && value.actionId !== null) fail('actionId', 'navigation');
@@ -633,11 +695,13 @@ export function validateActionDecision(value) {
     fail('actionId', 'null');
   }
   const expectedGuidanceId =
-    value.actionId !== null
-      ? actionDescriptorFor(value.actionId).guidanceId
-      : value.snapshot.state === 'done'
-        ? 'state.done'
-        : 'navigation.unresolved';
+    actionDescriptor !== null
+      ? actionDescriptor.guidanceId
+      : unknownVocabulary
+        ? 'navigation.unknown'
+        : value.snapshot.state === 'done'
+          ? 'state.done'
+          : 'navigation.unresolved';
   if (value.guidanceIds.length !== 1 || value.guidanceIds[0] !== expectedGuidanceId) {
     fail('guidanceIds', 'coupling');
   }
@@ -649,9 +713,10 @@ function fullyInventoried(legacyInventory, guardId) {
   return guard?.complete === true && Array.isArray(guard.sites) && guard.sites.length > 0;
 }
 
-export function normalizeRefusal(value, { guardId, legacyInventory } = {}) {
+export function normalizeRefusal(value, { guardId, legacyInventory, registeredGuardIds } = {}) {
   nonemptyString(guardId, 'normalize.guardId');
   record(value, 'normalize.refusal');
+  registeredGuardIds ??= Object.keys(legacyInventory?.guards ?? {}).sort();
   const typed =
     Object.hasOwn(value, 'args') ||
     Object.hasOwn(value, 'remediation') ||
@@ -668,7 +733,11 @@ export function normalizeRefusal(value, { guardId, legacyInventory } = {}) {
     };
     const definition = CODE_DEFINITIONS[blocker.code];
     const status = definition?.legalStatuses?.[0];
-    return validateBlocker(blocker, { status, path: 'normalize.refusal' });
+    return validateBlocker(blocker, {
+      status,
+      path: 'normalize.refusal',
+      registeredGuardIds,
+    });
   }
   if (!fullyInventoried(legacyInventory, guardId)) {
     fail('normalize.refusal', `guard ${guardId} is not fully inventoried`);

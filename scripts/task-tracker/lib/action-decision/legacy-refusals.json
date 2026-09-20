@@ -449,6 +449,18 @@
           "line": 60,
           "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
           "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 67,
+          "fingerprint": "sha256:0f543cb53791e41f040fc7678e94986b93d208d80236842b4dae39ffcca9f173",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 77,
+          "fingerprint": "sha256:3099b4d8f0b4446f37aa5f166cddfa663fb5279ddaba3dc19170ea6747dd37e6",
+          "kind": "refusal"
         }
       ]
     },
@@ -459,6 +471,84 @@
           "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
           "line": 39,
           "fingerprint": "sha256:c7c21fae89b526012096e0906b416f017f85d32731fcf73c54f12ede3cadecea",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 61,
+          "fingerprint": "sha256:fea23569c445f0f8badbe36010a53eafc58f24c7bfeb12c84e08399bf7c5b5c2",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 66,
+          "fingerprint": "sha256:1b035a6609d7f0e9908e1c024f35843389fe0092ee621d776a09f6697414d201",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 71,
+          "fingerprint": "sha256:d087415579aca4a8d5545c03a37782322345b98d68d233236435c7a3c62117e5",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 84,
+          "fingerprint": "sha256:dafaebc5f29f3ef3295589f428ce1e8428957e373b96ea35d7609dfc5d584f4c",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 89,
+          "fingerprint": "sha256:baebd01783e0731421edd2b53cc319949635d0afaf01d6d76d7280b5cbefe4b0",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 97,
+          "fingerprint": "sha256:b82a637879b25db0e207c21b5ed9fdef7b0f67c13a2997c306f5908aa20b3200",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 113,
+          "fingerprint": "sha256:281ab0c013e58a5546d7483bd99d0ec955c4d620b3ae7b9ee977e788930dd39d",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 118,
+          "fingerprint": "sha256:013f6d90d2eb5ddba7b8f7a1aed08d89d90855761450bb22815842330725f331",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 123,
+          "fingerprint": "sha256:976995acd58d5c3ab18281d43eae01cbd5bf0932b00edbf403e933706dec1cad",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 145,
+          "fingerprint": "sha256:cd5301ef0701a93db8b30119d52309537e70ab1333b0fa475ebe0e364762b4ae",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 150,
+          "fingerprint": "sha256:849b60f30304f70cca752e8acea16dff5594153eea9f7ebf897a9897ef99c754",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 169,
+          "fingerprint": "sha256:befb7a3e2efb8106363f8c32d2e23f941eda57c7404445feb9a22edd5e6b386d",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 174,
+          "fingerprint": "sha256:bfb59d8214fefec1aead80e758e5614ee619780bb2cc1ec80de525cf3ba77e82",
           "kind": "refusal"
         }
       ]
@@ -544,6 +634,12 @@
         },
         {
           "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 95,
+          "fingerprint": "sha256:0757a26d7c44a9eb2d2adaaa2a41b1b9c759d8ee674bbd75f6219c214d6db4b3",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
           "line": 104,
           "fingerprint": "sha256:663417799ab970a83caaaaa04d0ce4bb3e297c8e808e3ec088abd408799b8a9f",
           "kind": "refusal"
@@ -557,6 +653,48 @@
           "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
           "line": 13,
           "fingerprint": "sha256:551e612f0c7db0eb1037f12f341de9d4acce81f7dce24faff23a22568983f472",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 20,
+          "fingerprint": "sha256:1db44447c68d7247a24e811f428fde3794e5d43383ff51d813a094acd0bac457",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 28,
+          "fingerprint": "sha256:4c0500ac1ab459749e51e42a192a665ac852ce37da3546c77befbfe490d7218e",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 33,
+          "fingerprint": "sha256:61ccd7723378ac4bb9a20d4f1b5b486901a5d2eb71194b66254d9937d8283762",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 36,
+          "fingerprint": "sha256:88dca06c76868d81304c73ba4617c6bf4a1e718004f5555b5c3e070de36eefa6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 41,
+          "fingerprint": "sha256:71a465bf3628c01c5cf4186cebc4e07f8452fee9cc17647cd5ceb70dbd8b5e37",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 43,
+          "fingerprint": "sha256:d74cbf5fa32b71d1f9578c42977c12aa28d550ee56e73c545251bc2e38c11b34",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 45,
+          "fingerprint": "sha256:324adbeaa8f8776c8ad34cf6d390357c32ef197cd5916082e60c1ce0849590f6",
           "kind": "refusal"
         }
       ]
@@ -591,6 +729,18 @@
           "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
           "line": 60,
           "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 67,
+          "fingerprint": "sha256:0f543cb53791e41f040fc7678e94986b93d208d80236842b4dae39ffcca9f173",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 77,
+          "fingerprint": "sha256:3099b4d8f0b4446f37aa5f166cddfa663fb5279ddaba3dc19170ea6747dd37e6",
           "kind": "refusal"
         }
       ]
@@ -741,6 +891,18 @@
         },
         {
           "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
+          "line": 43,
+          "fingerprint": "sha256:f836b1978d7ca13b41bc34df39b576c33bd346894c4a448365f04480dcda9f2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
+          "line": 46,
+          "fingerprint": "sha256:f836b1978d7ca13b41bc34df39b576c33bd346894c4a448365f04480dcda9f2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
           "line": 57,
           "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
           "kind": "refusal"
@@ -850,6 +1012,18 @@
           "file": "scripts/task-tracker/verbs/review.mjs",
           "line": 383,
           "fingerprint": "sha256:856c72d633b8e4f45173703ef5a3b9df62e3f153120d5def4ac8a93357583a5e",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 463,
+          "fingerprint": "sha256:296880b56b3c5949acc2091bd40d31f4e94ff40cbd7a74c105d915cda0d2ec08",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 1163,
+          "fingerprint": "sha256:492e8cc29829df9cabe2708fc7955250795a0821d1a29aee6fa0f99bc8dcf005",
           "kind": "refusal"
         }
       ]

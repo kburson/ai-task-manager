@@ -68,12 +68,92 @@ function parseSource(source, file) {
   }
 }
 
+function isLegacyRefusalObject(node) {
+  if (node?.type !== 'ObjectExpression' || literal(property(node, 'ok')) !== false) return false;
+  const code = literal(property(node, 'code'));
+  const typedDisposition =
+    property(node, 'remediation') !== null || property(node, 'noAutomaticRemediation') !== null;
+  return !(typeof code === 'string' && typedDisposition);
+}
+
+function constructorKind(name) {
+  if (/^(?:refuse|refusal|reject|blocked|blocker)$/i.test(name)) return 'refusal';
+  if (/^(?:warn|warning)$/i.test(name)) return 'warning';
+  return null;
+}
+
+function constructorKinds(ast) {
+  const names = new Map();
+  const namespaces = new Set();
+  const functionResultKind = (fn) => {
+    let found = null;
+    walk(fn.body, (node) => {
+      if (isLegacyRefusalObject(node)) found = 'refusal';
+      else if (node?.type === 'ObjectExpression' && property(node, 'warn') !== null) {
+        found ??= 'warning';
+      }
+    });
+    return found;
+  };
+  walk(ast, (node) => {
+    if (node.type === 'ImportDeclaration') {
+      for (const specifier of node.specifiers ?? []) {
+        if (specifier.type === 'ImportNamespaceSpecifier') {
+          namespaces.add(specifier.local.name);
+          continue;
+        }
+        const importedName = specifier.imported?.name ?? specifier.local?.name;
+        const kind = constructorKind(importedName);
+        if (kind && specifier.local?.name) names.set(specifier.local.name, kind);
+      }
+    }
+    if (
+      node.type === 'VariableDeclarator' &&
+      node.id?.type === 'Identifier' &&
+      ['ArrowFunctionExpression', 'FunctionExpression'].includes(node.init?.type) &&
+      functionResultKind(node.init)
+    ) {
+      names.set(node.id.name, functionResultKind(node.init));
+    }
+    if (
+      node.type === 'FunctionDeclaration' &&
+      node.id?.type === 'Identifier' &&
+      functionResultKind(node)
+    ) {
+      names.set(node.id.name, functionResultKind(node));
+    }
+  });
+  return { names, namespaces };
+}
+
 function analyzeSource({ file, source }) {
   const ast = parseSource(source, file);
+  const constructors = constructorKinds(ast);
   const guardIds = new Set();
   const sites = [];
   const codeEmissions = [];
   walk(ast, (node) => {
+    if (node.type === 'CallExpression') {
+      const directKind =
+        node.callee?.type === 'Identifier' ? constructors.names.get(node.callee.name) : null;
+      const memberKind =
+        node.callee?.type === 'MemberExpression' &&
+        !node.callee.computed &&
+        node.callee.object?.type === 'Identifier' &&
+        constructors.namespaces.has(node.callee.object.name)
+          ? constructorKind(node.callee.property?.name)
+          : null;
+      const kind = directKind ?? memberKind;
+      if (!kind) return;
+      const exactSource = source.slice(node.range[0], node.range[1]);
+      sites.push({
+        file,
+        line: node.loc.start.line,
+        fingerprint: fingerprint(kind, exactSource),
+        kind,
+      });
+      return;
+    }
     if (node.type !== 'ObjectExpression') return;
     const id = literal(property(node, 'id'));
     const run = property(node, 'run')?.value;
@@ -91,7 +171,12 @@ function analyzeSource({ file, source }) {
     const typedDisposition =
       property(node, 'remediation') !== null || property(node, 'noAutomaticRemediation') !== null;
     const vocabularyModule = file.includes('/action-decision/') || file.includes('/guidance/');
-    if (typeof code === 'string' && !declaresDefinition && (typedDisposition || vocabularyModule)) {
+    const typedArgs = property(node, 'args') !== null;
+    if (
+      typeof code === 'string' &&
+      !declaresDefinition &&
+      (typedDisposition || typedArgs || vocabularyModule)
+    ) {
       codeEmissions.push({ code, decision: refusal, line: node.loc.start.line });
     }
     for (const kind of [
@@ -150,6 +235,13 @@ function lintCodeEmissions(analysis, diagnostics) {
       !['decision-blocker', 'execution-normalization'].includes(definition.domain)
     ) {
       diagnostics.push(`${location}: illegal decision code ${emission.code}`);
+    }
+    if (analysis.guardIds.length > 0) {
+      if (!definition.allowedProducerIds.includes('registered-guard')) {
+        diagnostics.push(`${location}: illegal producer ${emission.code}`);
+      } else if (!definition.legalPhases.includes('evaluation')) {
+        diagnostics.push(`${location}: illegal phase ${emission.code}`);
+      }
     }
   }
 }

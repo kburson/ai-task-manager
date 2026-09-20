@@ -82,6 +82,7 @@ import { readFileSync } from 'node:fs';
 
 import { stateIds } from './lifecycle-policy/index.mjs';
 import {
+  BOUNDARY_PRODUCER_IDS,
   CODE_DEFINITIONS,
   normalizeRefusal,
   validateHumanRequest,
@@ -117,6 +118,9 @@ export function registerGuard(state, kind, guard) {
   if (!guard || typeof guard.id !== 'string' || typeof guard.run !== 'function') {
     throw new Error('registerGuard: guard must be { id: string, run(ctx) -> { ok, reason? } }');
   }
+  if (BOUNDARY_PRODUCER_IDS.includes(guard.id)) {
+    throw new Error(`registerGuard: "${guard.id}" is a reserved boundary producer`);
+  }
   const slot = GUARDS[state][kind];
   if (slot.some((g) => g.id === guard.id)) {
     return false; // idempotent no-op
@@ -151,13 +155,31 @@ function typedStatus(refusals) {
     : 'blocked';
 }
 
-function typedWarnings(guard, result, status) {
-  if (result.warnings !== undefined && !Array.isArray(result.warnings)) {
-    throw new TypeError('guard warnings must be an array');
+function registeredGuardIds() {
+  return STATES.flatMap((state) =>
+    KINDS.flatMap((kind) => GUARDS[state][kind].map(({ id }) => id))
+  );
+}
+
+function denseArray(value, label) {
+  if (!Array.isArray(value)) throw new TypeError(`guard ${label} must be an array`);
+  for (let index = 0; index < value.length; index += 1) {
+    if (!Object.hasOwn(value, index)) throw new TypeError(`guard ${label} must be dense`);
   }
-  const warnings = (result.warnings ?? []).map((warning, index) => ({
+  return value;
+}
+
+function typedWarnings(guard, result, status) {
+  const warningValues =
+    result.warnings === undefined ? [] : denseArray(result.warnings, 'warnings');
+  const warnings = warningValues.map((warning, index) => ({
     id: guard.id,
-    ...validateWarning(warning, { status, path: `warnings[${index}]` }),
+    ...validateWarning(warning, {
+      status,
+      path: `warnings[${index}]`,
+      producerId: guard.id,
+      registeredGuardIds: registeredGuardIds(),
+    }),
   }));
   if (result.warn != null) {
     warnings.push({
@@ -171,10 +193,9 @@ function typedWarnings(guard, result, status) {
 }
 
 function typedRequests(result) {
-  if (result.requests !== undefined && !Array.isArray(result.requests)) {
-    throw new TypeError('guard requests must be an array');
-  }
-  return (result.requests ?? []).map((request, index) =>
+  const requestValues =
+    result.requests === undefined ? [] : denseArray(result.requests, 'requests');
+  return requestValues.map((request, index) =>
     validateHumanRequest(request, { path: `requests[${index}]` })
   );
 }
@@ -192,6 +213,14 @@ async function invoke(guard, ctx) {
   }
   try {
     if (result && result.ok === true) {
+      if (Object.hasOwn(result, 'refusals')) {
+        if (denseArray(result.refusals, 'refusals').length > 0) {
+          throw new TypeError('successful guard refusals must be empty');
+        }
+      }
+      if (Array.isArray(result.requests) && result.requests.length > 0) {
+        throw new TypeError('successful guard cannot return human requests');
+      }
       // #359 — guards may attach a non-refusing `warn` payload (e.g. the
       // lifecycle warn-only path on done-entry when
       // lifecycleCheckboxesRequired=false). The host can read it from
@@ -204,6 +233,11 @@ async function invoke(guard, ctx) {
       return out;
     }
     if (result && result.ok === false) {
+      if (Object.hasOwn(result, 'refusals')) {
+        if (denseArray(result.refusals, 'refusals').length === 0) {
+          throw new TypeError('refusing guard refusals must be a nonempty array');
+        }
+      }
       // #336 — adapters may include a `blockers: string[]` alongside `reason`
       // so verb-layer callers (promote.mjs) can preserve the array shape that
       // legacy structured-status tests pin (e.g. `r.blockers.length >= 2`).
@@ -213,6 +247,7 @@ async function invoke(guard, ctx) {
         normalizeRefusal(refusal, {
           guardId: guard.id,
           legacyInventory: ctx?.legacyRefusalInventory ?? DEFAULT_LEGACY_REFUSAL_INVENTORY,
+          registeredGuardIds: registeredGuardIds(),
         })
       );
       const status = typedStatus(typedRefusals);
