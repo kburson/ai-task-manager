@@ -30,14 +30,14 @@
 - **Need:** the guard currently discards its final typed policy decision
 - **Value or failure prevented:** revocation cannot erase historical governance
 
-**Files:**
+#### Files
 
 - Create: `scripts/task-tracker/lib/plan-transition-authority.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/guard-execution.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs`
 - Test: `scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.mjs`
 
-**Interfaces:**
+#### Interfaces
 
 - Produces: `resolvePlanTransitionAuthority(input) -> frozen authority record`
 - Produces: `renderPlanTransitionAuthorityComment(record) -> string`
@@ -307,7 +307,7 @@ node --test scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.m
 - **Need:** current consumers do not recognize modern transition authority
 - **Value or failure prevented:** no human rubber stamp or rewritten waiver history
 
-**Files:**
+#### Files
 
 - Modify: `scripts/task-tracker/lib/plan-approval-evidence-repair.mjs`
 - Modify: `scripts/task-tracker/verbs/plan-approve.mjs`
@@ -316,7 +316,7 @@ node --test scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.m
 - Modify: `scripts/task-tracker/test-impact-manifest.json`
 - Modify: `docs/guides/workflow.md`
 
-**Interfaces:**
+#### Interfaces
 
 - Consumes: `classifyCompletedPlanTransitionAuthority({ record, issueBody })`
 - Produces: modern repair evidence with `source: 'plan-transition-authority'`, historical outcome `waived`, transition ID, exception record ID, and revision
