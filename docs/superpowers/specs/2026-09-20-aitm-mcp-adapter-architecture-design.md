@@ -126,9 +126,22 @@ configuration presets rather than new architectural layers. A Jira plus
 Bitbucket bundle might bind Jira to `work-items` and Bitbucket to `forge` and
 `ci`. Each binding remains independently visible and replaceable.
 
-Each exclusive role has one active writable binding. In particular, a project
-has exactly one writable `work-items` authority. Supporting providers may be
-configured for read-only observations when an action explicitly names them.
+For this architecture, each project has exactly one active writable binding
+for each of `work-items`, `repository`, `forge`, and `ci`; an optional port may
+be unconfigured, which blocks actions requiring it. `work-items` is the sole
+backlog authority. The local Git `repository` binding may resolve multiple
+explicit clone/worktree targets, but those are targets of one binding, not
+competing writable providers. `identity` is non-mutating and may have multiple
+provider/account observers. Other provider bindings are observation-only and
+must be named explicitly when read.
+
+An action resolves an omitted forge or CI destination only from that port's one
+active binding and an unambiguous configured target mapping. An explicit target
+must belong to the same binding. Missing, ambiguous, or conflicting mappings
+block admission; there is no first-match selection or transport-specific default.
+Switching a writable provider uses the configuration-generation and recovery
+rules below. Concurrent writes to multiple forges or CI bindings are outside
+this version's scope.
 
 Identity observations are scoped to the provider instance and account. A shared
 display name across providers does not establish the same actor. The kernel
@@ -233,6 +246,11 @@ The referenced manifest is data rather than executable code:
 }
 ```
 
+The `^2.0.0` package and `^2` ABI values above are illustrative future versions,
+not a claim about today's `0.1.0` release. The SDK delivery specification must
+choose the actual first public ABI version and publish its compatibility matrix
+against package versions; ABI and package major numbers need not be identical.
+
 The adapter runtime contract is intentionally small:
 
 | Method      | Responsibility                                                |
@@ -322,6 +340,26 @@ Hashing a pathname and later loading mutable bytes is insufficient. Changing
 code without changing a package version or manifest still requires a new
 verified selection and installation fingerprint.
 
+The reference loading approach materializes the declared closure into a new,
+private content-addressed staging directory, verifies every staged byte against
+the selected identity, and atomically publishes it for read-only loading. It
+never imports from the mutable source checkout or a shared package tree. Relative
+imports and asset lookup resolve within the staged closure; undeclared or
+escaping resolution is rejected. Active snapshots are neither updated in place
+nor removed until their users release them. This cache is disposable: a fresh
+process can reconstruct it from the selected, verified package artifacts.
+
+Snapshot ownership must be enforceable under the host's stated threat model.
+The kernel serializes its own publishers and garbage collection, and the host
+must exclude other writers throughout loading and use. A directory name, chmod,
+or advisory lock alone does not establish this when another process retains
+write capability. Strict hosts require actual access isolation; other hosts
+must certify the narrower trusted-writer assumptions they rely on. If a host,
+loader, native dependency, or dynamic asset cannot satisfy the closure and
+ownership contract, that runtime is unsupported until an alternative verified
+loading mechanism is certified. Phase 0 proves at least one supported mechanism
+before later phases can promise general portability.
+
 ## Action registry and capability graph
 
 The core owns a portable domain-action vocabulary. Adapters implement those
@@ -337,7 +375,10 @@ jira:sprint-assign
 Extensions use the same schemas, policy evaluation, effects, evidence,
 idempotency, and recovery contracts as portable actions. Low-level adapter
 operations remain discoverable for diagnostics but are marked
-`orchestrator-only` and have no directly callable MCP tool.
+`orchestrator-only` and have no directly callable MCP tool. Core-reviewed action
+metadata assigns this classification to internal protocol primitives with a
+named portable parent action; adapters cannot use it to hide an end-user action
+from invocation coverage. Registry tests audit those assignments and parents.
 
 The capability resolver combines:
 
@@ -511,16 +552,20 @@ projection contains durable operating guidance and references only. It contains
 no credentials, live issue state, or copied provider documentation.
 
 Setup writes the canonical learning-directive set and its compact fingerprint.
-The fingerprint covers core and schema versions, adapter identities, executable
+The fingerprint covers core and schema compatibility identities, adapter identities, executable
 content identities and manifests, project bindings and feature flags, and the
 projection format.
 
 For an untracked host-local memory target, session boot compares the fingerprint
 and regenerates only the protected section when it changes. For a tracked
-project memory target, session boot validates but never rewrites it; a mismatch
-enters diagnostic-only mode and directs a maintainer to rerun setup. This keeps
-cloud consumers read-only while preserving automatic refresh for genuinely
-local derived memory.
+project memory target, session boot validates but never rewrites it; an isolated
+learning-projection mismatch produces a warning and a maintainer setup diagnostic.
+It does not disable mutation when authoritative configuration, schemas, bindings,
+executable identities, and actual host enforcement remain valid. The kernel
+continues to consult those validated sources rather than stale memory. Drift in
+a hook or enforcement policy remains blocking even when co-located with learning
+text. This keeps cloud consumers read-only and memory advisory while preserving
+automatic refresh for genuinely local derived memory.
 
 ## Setup and adoption
 
@@ -604,7 +649,8 @@ workload identity. They are not tracked.
 
 Setup writes a content-addressed install manifest containing:
 
-- generator package version and setup ABI;
+- generator package version as provenance, the setup ABI, and an explicit
+  certified compatibility declaration for consuming core versions;
 - normalized setup-intent hash;
 - configuration and capability schema versions;
 - selected adapter packages, versions, integrity, manifest hashes, and complete
@@ -628,22 +674,55 @@ changing the implementation used for an admitted action.
 
 Staleness is classified rather than flattened:
 
-| Observation                            | Classification               |
-| -------------------------------------- | ---------------------------- |
-| Core differs from setup generator      | Portable metadata stale      |
-| Adapter version or manifest differs    | Capability metadata stale    |
-| Generated file is missing or modified  | Installation drift           |
-| Configuration schema is unsupported    | Migration required           |
-| Capability fingerprint differs         | Capability projection stale  |
-| Credential or scope is missing         | Runtime unauthorized         |
-| Provider workflow field was removed    | External compatibility drift |
-| Work item moved to another valid state | Normal live state            |
+| Observation                                         | Classification                      |
+| --------------------------------------------------- | ----------------------------------- |
+| Core crosses certified setup compatibility          | Portable metadata stale             |
+| Adapter version or manifest differs                 | Capability metadata stale           |
+| Authoritative generated file is missing or modified | Installation drift                  |
+| Only advisory learning content differs              | Warning; mutation remains available |
+| Core version differs within certified compatibility | Advisory; other checks still apply  |
+| Configuration schema is unsupported                 | Migration required                  |
+| Capability fingerprint differs                      | Capability projection stale         |
+| Credential or scope is missing                      | Runtime unauthorized                |
+| Provider workflow field was removed                 | External compatibility drift        |
+| Work item moved to another valid state              | Normal live state                   |
 
-Stale installation metadata enters diagnostic-only mode. Read-only discovery,
-help, and diagnosis remain available; mutating tools are disabled. The error
+A core version difference alone is an advisory when an explicit certified
+compatibility declaration covers the installed version and all setup ABI,
+schema, capability, generated-policy, and executable-identity checks still pass.
+Semver ranges alone cannot grant that compatibility. Producer-version provenance
+is distinct from semantic fingerprints, so an unchanged learning format does
+not drift solely because that provenance changed. Changed adapter executable
+content still requires verified selection; compatibility does not waive its
+content-identity check. Generated files are classified by purpose: drift solely
+in advisory learning content warns, while authoritative integration drift blocks.
+
+Stale authoritative installation metadata enters diagnostic-only mode. Read-only
+discovery, help, and diagnosis remain available; ordinary business mutations are
+disabled. The error
 identifies the mismatch, whether any effects committed, the maintainer action,
 and whether a new commit is required. A cloud consumer never repairs or
 regenerates tracked integration files.
+
+A maintainer can enter a narrowly scoped recovery mode while ordinary dispatch
+is disabled. It requires a currently trusted, verified runtime with certified
+support for the recorded action and journal schemas, authenticated recovery
+authority, and exclusive recovery ownership. Unsupported schemas or unverified
+code do not receive this exception. It may observe original targets and append
+verified `action.reconciled`, `action.retry-authorized`,
+`action.intervention-required`, or completion of an already-observed outcome,
+including recovery of an uncertain evidence append. It cannot admit new business
+actions or dispatch business effects; retry authorization records permission
+for later revalidation, not immediate execution. Conflicting effects stay blocked.
+
+Setup may validate and stage a compatible recovery runtime before activation
+without changing the active destinations or configuration generation. It then
+settles pending actions or verifies a continuing authorized recovery path before
+activating the new generation. Reinstalling the last verified committed runtime
+is another route when it remains compatible and trusted. If neither path can be
+proved, setup explicitly stops for intervention. Staleness alone must not prevent
+this governed evidence repair, and recovery never silently repairs tracked
+configuration in a cloud consumer.
 
 ## Durable authority, journals, and receipts
 
@@ -849,10 +928,36 @@ discover action
                                                               └─► return result
 ```
 
+### Initiating principal authentication
+
+Each transport authenticates a caller to a stable, project-scoped principal
+reference before mutation admission. The namespace includes the identity issuer
+and stable subject, never just a display name, raw token, process ID, or MCP
+session ID. A local CLI or stdio host uses a verified operating-system identity
+mapped by trusted project policy, or a provider-authenticated account/service
+identity verified by the identity adapter. A remote transport, when supported,
+requires a verified credential and an explicit mapping to that same namespace.
+Credential rotation and transport changes must preserve the subject mapping.
+Absent or ambiguous authenticated identity blocks mutation; the namespace never
+degrades silently to an anonymous project-wide scope.
+
+Initiator, execution principal, and approver are distinct roles; one verified
+identity may occupy more than one role without proving human approval. Sessions
+sharing an authenticated service identity share its request-key namespace.
+They must generate distinct keys for distinct intent. If they deliberately reuse
+a key with identical canonical input, replay of the same logical action is the
+correct result; different input is a conflict. No transport can infer two
+independent intentions from an identical principal, key, and payload. An
+untrusted actor string cannot split or impersonate namespaces. Authorization
+for inspection and recovery is checked independently of knowledge of a key.
+
 ### Request identity and retry
 
 Every mutating CLI and MCP request requires a caller-supplied `requestKey`,
-chosen and retained before submission. Interactive CLI use may generate and
+chosen and retained before submission. Independently initiated actions use keys
+with at least 122 bits of cryptographic randomness (for example, random UUIDv4 keys),
+not natural-language labels or locally incremented counters. Any display label
+is separate from this key. Interactive CLI use may generate and
 display the key before sending, but unattended callers must supply it explicitly
 and reuse it after timeout or response loss. The key is not derived solely from
 the payload: two intentionally distinct operations may have identical inputs.
@@ -920,6 +1025,41 @@ effect was not applied and no earlier attempt remains in flight. Otherwise the
 result explicitly reports unknown effects and requires intervention. Recovery
 retains the original action and effect keys, runs under current execution
 ownership, and revalidates policy before any newly authorized provider mutation.
+
+### Quota, backpressure, and evidence volume
+
+A governed action requires verified request and outcome records in addition to
+its business effects and any necessary observation. Phase-specific action
+profiles must count authority creates, verification reads, business calls,
+projection writes, bytes retained, and cold-replay reads. The provider binding
+certification sets explicit workload assumptions and numeric operating budgets
+for these counts, sustainable action rate, recovery latency, and evidence volume;
+there is no provider-independent throughput promise. Phase 0 measures the GitHub
+reference profile and agrees these budgets before approving Phase 1 delivery.
+
+Adapters enforce backpressure across every shared provider quota scope, including
+cross-item workloads using the same execution principal. They honor provider
+retry delays, use bounded backoff, and expose temporary unavailability and the
+same resumable request identity. Read batching and coalescing derived projection
+updates may reduce load, but cannot skip verified requests or durable outcomes.
+Actions are coarse domain operations, not one action per internal SDK call.
+
+An unsent request or an authoritative rejection proven to have applied no effect
+may retry under its original key after the required delay and fresh authorization.
+A rate-limit status by itself is not proof for every endpoint: the adapter
+certifies that classification. A lost response or uncertain write instead enters
+observation with its original stable event marker and canonical envelope.
+Temporary inability to read does not imply a human decision is immediately
+required; bounded deferred observation may continue under recovery ownership.
+Persistently unresolvable uncertainty requires intervention. No backoff, quota
+increase, or expired timer authorizes blind resubmission of an ambiguous write.
+
+Certification reports retained-record growth and cold-rebuild cost, including
+multi-year workloads and shared account pressure. Capacity thresholds trigger
+backpressure or a reviewed archive/container rotation before loss of evidence.
+Such rotation preserves the complete logical authority and request-key history
+under the retention contract; deleting old comments to reduce cost is not an
+acceptable substitute. No fixed GitHub quota is assumed by this umbrella design.
 
 ### Recovery across configuration changes
 
@@ -1026,7 +1166,7 @@ blocked.
 Every action returns the same result shape:
 
 ```text
-{"schema":"aitm.result/v1","ok":true,"requestKey":"analysis-45-01","actionId":"01K...","action":"work-item.record-analysis","effects":[{"type":"journal.appended","ref":"github://org/repo/issues/45/comments/123"}],"evidence":{"head":"sha256:..."},"retry":{"safe":true,"mode":"idempotent","requiresSameRequestKey":true},"next":[{"action":"work-item.approve-plan","status":"available"}]}
+{"schema":"aitm.result/v1","ok":true,"requestKey":"91b2b7a5-46b7-4c7a-94a7-6aafde380255","actionId":"01K...","action":"work-item.record-analysis","effects":[{"type":"journal.appended","ref":"github://org/repo/issues/45/comments/123"}],"evidence":{"head":"sha256:..."},"retry":{"safe":true,"mode":"idempotent","requiresSameRequestKey":true},"next":[{"action":"work-item.approve-plan","status":"available"}]}
 ```
 
 Errors use the same principles:
@@ -1120,6 +1260,15 @@ Required adversarial cases include:
 Fork tests include omitted or tampered join parents, competing joins, a late
 branch, legacy-reader refusal, and deterministic replay from the complete graph.
 
+Evidence ordering follows authenticated predecessor relationships and ownership
+epochs, not wall-clock timestamps. Test skewed clocks and delayed delivery;
+local expiry estimates never establish takeover safety or proof of absence.
+Also test authenticated principal resolution across transports, credential
+rotation, missing identity, forged caller labels, and parallel sessions sharing
+a service identity. Distinct generated keys must create independent actions;
+identical principal/key/input must replay once, and changed input under that
+same key must conflict. These outcomes are deliberate, not identity inference.
+
 ### Adapter conformance kit
 
 The public SDK ships a runner:
@@ -1138,8 +1287,9 @@ stale-owner rejection or safe refusal of takeover. Built-in GitHub is subject to
 the same gate. The suite also exercises automatic bootstrap or its explicit
 unsupported result, concurrent provisioning, lost creation responses, duplicate
 roots, genesis read-back failure, and recovery by binding an existing container.
-Search visibility delays must produce intervention when absence cannot be
-established. A manifest declaration without a passing proof does not enable the
+Search visibility delays must preserve unknown outcomes and block unsafe
+resubmission; bounded observation may defer a human intervention when the
+certified visibility contract still permits automatic resolution. A manifest declaration without a passing proof does not enable the
 corresponding mutation capability.
 
 Evidence-port certification separately proves stable event lookup, uncertain
@@ -1205,6 +1355,26 @@ an edit between validation and loading or dispatch to prove the immutable
 execution view, and recover a pending action only with a verified, certified
 compatible executable identity.
 
+Exercise a certified compatible core patch with unchanged semantic setup
+outputs: version provenance alone must warn rather than disable business actions.
+Exercise a schema/ABI boundary crossing, changed executable closure, and modified
+authoritative generated policy: these must still block ordinary dispatch.
+Create an ambiguous action before the upgrade and prove recovery-mode evidence
+repair or a staged compatible recovery runtime can resolve it while new business
+effects remain disabled. Reject the exception for untrusted code or unsupported
+journal schemas; authorization recorded for retry cannot dispatch while stale.
+
+### Learning-plane tests
+
+Test preservation of all human text outside managed markers, including adjacent,
+duplicate, nested, malformed, and adversarially placed markers. Ambiguous marker
+ownership fails without writes. Tracked targets are never regenerated at session
+boot; untracked targets refresh only their owned projection on semantic
+fingerprint change. Reject credentials, live issue state, and copied provider
+documentation in generated content. Pure advisory fingerprint drift produces a
+warning while authoritative policy remains enforced. Co-located enforcement
+policy drift must still block; stale learning must never supply a gate decision.
+
 ### Migration cutover tests
 
 Exercise an older CLI racing checkpoint capture, an in-flight legacy effect,
@@ -1233,6 +1403,13 @@ the test cannot be presented as proof of arbitrary-code isolation. Verify that
 strict receipts name the fully trusted plugin content identities and accurately
 limit their guarantee to the enforced host boundary.
 
+Quota fixtures distinguish unsent writes, proven rejection, response loss,
+read throttling, and unresolved uncertain appends. Verify shared-principal
+backpressure, bounded observation/backoff, retry-delay compliance, and unchanged
+logical keys. Measure the approved action profiles and retained-volume/cold-read
+budgets; excessive load cannot be hidden by dropping evidence. Exercise safe
+container/archive rotation with complete retrieval and tombstone continuity.
+
 ### Live provider certification
 
 GitHub, GitLab, Bitbucket, and Jira have separate opt-in suites against
@@ -1258,6 +1435,10 @@ Release gates reject:
 - adapters that fail their declared-port conformance suite;
 - executable adapters without a verified complete runtime content identity;
 - assurance claims that omit trusted plugins or imply they are sandboxed;
+- default-provider rollout without the Phase 0 feasibility and quota proof;
+- learning bridges without protected-marker and advisory-drift tests;
+- caller identity or port selection without transport-parity tests;
+- stale-state recovery without a verified evidence-only repair path;
 - writable authorities without certified retention and complete retrieval; and
 - cloud fixtures that require setup after `npm ci` or depend on local adapter
   files unavailable in the clone.
@@ -1266,6 +1447,41 @@ Release gates reject:
 
 This architecture is an umbrella initiative and must be decomposed into
 implementation-sized specifications and plans.
+
+### Phase 0: Feasibility and operating-envelope proof
+
+Neither ADR 0002 nor this umbrella document demonstrates a certified execution
+mode for GitHub. Issue/comment journals are evidence storage, not a presumed
+conditional mutation or stale-dispatch fence. The built-in packaging default
+therefore does not imply zero-configuration governed-write readiness.
+
+Before approving Phase 1 implementation, a bounded feasibility specification
+must prototype and certify a concrete reference execution topology. The candidate
+is one explicitly provisioned dispatcher per conflicting scope on a verified
+execution target, with other workers lacking its governed write channels.
+The supervisor serializes dispatcher lifetimes and proves the old instance
+stopped before another starts; outstanding provider effects must also be settled.
+This requires real host/credential enforcement across all participating clones,
+not just an epoch recorded in GitHub or a local lock shared by willing callers.
+One-shot supervised execution is allowed; no hosted AITM service or always-on
+local daemon is introduced. GitHub remains the durable record authority.
+
+The proof covers initial provisioning, parallel requests from independent
+clones, process pause/resume, target loss, credential changes, stale-generation
+dispatch, takeover refusal, and local Git effects. It also demonstrates at least
+one verified plugin-loading snapshot and measures the protocol's quota/retention
+operating envelope. These are feasibility results to establish, not claims that
+the candidate already passes on all supported hosts.
+
+If no permitted topology passes, new mutations remain unavailable and the
+architecture returns for explicit revision before kernel rollout or migration
+activation. Existing projects retain their prior installation until cutover;
+that is not certification of the legacy path against the new guarantees.
+Fresh installations offer diagnostics and read-only discovery, with the missing
+execution capability and provisioning requirements explicit. There is no reduced
+assurance tier that permits duplicate or unfenced effects. The Phase 1 gate is
+conditional on this earlier proof, so default-provider feasibility is not first
+discovered after the kernel has been built.
 
 ### Phase 1: Headless kernel and built-in GitHub adapter
 
@@ -1286,7 +1502,10 @@ implementation-sized specifications and plans.
 
 Exit when the existing CLI suite passes through the kernel without MCP and the
 new admission, response-loss, evidence-append, stale-owner, bootstrap, and
-migration-cutover failure cases pass.
+migration-cutover failure cases pass in the topology certified by Phase 0.
+Its implementation plan must split the work into independently approved kernel,
+authority/recovery, and migration increments; later increments cannot activate
+before their predecessor gates pass.
 Approval-provenance, stale-subject, and changed-binding recovery cases are also
 required before replacing the corresponding existing guards or mutation paths.
 
@@ -1426,7 +1645,10 @@ evidence.
    becomes usable after only `npm ci`. Local-only adapter selections are
    explicitly classified and cannot pass portable-install certification.
 8. A stale clone enters diagnostic-only mode and provides exact maintainer
-   remediation without modifying tracked files. Executable plugin content
+   remediation without modifying tracked files when authoritative metadata is
+   stale. Certified compatible core differences and isolated advisory learning
+   drift warn without disabling business actions. Verified evidence-only recovery
+   remains available under the defined stale-state exception. Executable plugin content
    changes trigger drift even when the version and manifest are unchanged;
    loading, dispatch, and recovery use verified implementation identities.
 9. Durable journals, approvals, receipts, and recovery records live in the
@@ -1438,6 +1660,8 @@ evidence.
     request keys resolve to the same durable action across process and transport
     changes; changed payloads under the same key fail without new effects.
 11. Generated agent memory is fingerprinted, replaceable, and non-authoritative.
+    Its isolated drift is advisory; managed-marker updates preserve human content
+    and never rewrite tracked targets at session boot.
 12. Full-Auto is unavailable under behavioral-only enforcement and records its
     actual guarded or strict assurance level, trusted executable adapter
     identities, and enforcement boundary. Strict host isolation does not claim
@@ -1446,7 +1670,9 @@ evidence.
     external mutation. A shared, verified cutover fences old writers before the
     final checkpoint; restoring local files cannot reactivate obsolete authority.
 14. Each delivery phase has its own bounded specification, plan, tests, and
-    approval before implementation.
+    approval before implementation. Phase 0 proves default-provider execution,
+    verified runtime loading, and the operating envelope before Phase 1 rollout
+    can be approved; failed feasibility returns the architecture for revision.
 15. Concurrent execution uses certified scoped ownership and fencing or
     exclusive coordination; journal rereads alone never authorize dispatch.
     Stale owners, unresolved conflicting effects, and forks block execution.
@@ -1470,6 +1696,36 @@ evidence.
     Recovery elsewhere cannot infer absence or replay against a different
     checkout, and host assurance covers both local and remote mutation channels.
 
+### Acceptance-to-verification traceability
+
+These are required verification obligations, not evidence that implementations
+already pass. Each phase specification maps its applicable criteria to named
+executable tests and retained results before approval.
+
+| Criterion | Required verification coverage                                                                            |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| 1         | Core domain tests and transport parity: one service path and equivalent effects                           |
+| 2         | Adapter conformance: exclusive bindings, deterministic targets, and mixed-provider composition            |
+| 3         | Adapter conformance and live GitHub certification without privileged bypass                               |
+| 4         | Portable-install and SDK conformance with independent and workspace plugins                               |
+| 5         | Registry enumeration, schema/help availability, invocation coverage, and internal-action classification   |
+| 6         | Core canonical JSON tests and CLI/MCP schema parity                                                       |
+| 7         | Isolated portable-install fixture, runtime closure, and host compatibility checks                         |
+| 8         | Staleness classification, compatible upgrade, immutable loading, and recovery-mode tests                  |
+| 9         | Exclusive evidence routing, replay, retention, archive, and missing-payload tests                         |
+| 10        | Request-key replay, shared-principal concurrency, principal authentication, and uncertain-effect recovery |
+| 11        | Learning-plane marker, privacy, tracked/untracked, and advisory-drift tests                               |
+| 12        | Host-policy tests of assurance, trusted identities, and Full-Auto refusal                                 |
+| 13        | Migration cutover, old-writer fencing, checkpoint, and reverse-cutover tests                              |
+| 14        | Phase 0 feasibility results plus phase approval and criterion-to-test evidence gates                      |
+| 15        | Stale-owner, cross-clone, in-flight, clock-skew, and conflicting-scope tests                              |
+| 16        | Bootstrap concurrency, lost creation, duplicate roots, and genesis verification                           |
+| 17        | Evidence-port append identity, read-back, and response-loss certification                                 |
+| 18        | Approval provenance, content binding, forged evidence, and host/workflow separation                       |
+| 19        | Recorded execution context, changed bindings, executable compatibility, and retired generation tests      |
+| 20        | Versioned multi-parent replay, omitted/late parents, conflicting joins, and old-reader refusal            |
+| 21        | Local Git target binding, cross-clone recovery, user-data preservation, and local enforcement tests       |
+
 ## Consequences
 
 ### Positive
@@ -1489,7 +1745,13 @@ evidence.
 - MCP client behavior and host enforcement capabilities differ and require
   explicit compatibility reporting.
 - External authorities do not provide uniform transactions, retention, or
-  conditional updates.
+  conditional updates. Default-provider write readiness remains conditional on
+  the Phase 0 execution proof.
+- Durable per-action evidence increases API writes, retained volume, latency,
+  and cold-rebuild cost; quota backpressure can limit otherwise valid work.
+- Fail-closed integrity checks create operational recovery work. Advisory
+  learning drift and certified compatible core upgrades must not create the
+  same block as authority or executable drift.
 - Plugin execution expands the trusted code base selected by a project.
 - Strong enforcement requires credential and network isolation that some hosts
   cannot provide.
