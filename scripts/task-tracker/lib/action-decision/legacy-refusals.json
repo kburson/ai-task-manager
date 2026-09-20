@@ -1,0 +1,885 @@
+{
+  "version": 1,
+  "guards": {
+    "backlog-exit-child-parent-refine-or-plan": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/backlog-exit-child-parent-state-guard.mjs",
+          "line": 70,
+          "fingerprint": "sha256:80b44be1bf17e5e7f34c2d24dcec5a24607af775e012531f31dae483b7549600",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/backlog-exit-child-parent-state-guard.mjs",
+          "line": 83,
+          "fingerprint": "sha256:80b44be1bf17e5e7f34c2d24dcec5a24607af775e012531f31dae483b7549600",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/backlog-exit-child-parent-state-guard.mjs",
+          "line": 91,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "blocked-by-not-done": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/blocked-by-guard.mjs",
+          "line": 19,
+          "fingerprint": "sha256:0ee8d22b670d6d7ef7f7aae7b06b1eddaab219a1babc159d1efd39619c8e73ea",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/blocked-by-guard.mjs",
+          "line": 57,
+          "fingerprint": "sha256:15be8bea068c85b02f67e427e424a9748db6c2644dc63b246e68099512145e58",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/blocked-by-guard.mjs",
+          "line": 62,
+          "fingerprint": "sha256:7be8e7a27474ef126c005ae2bf054af7d26c5fb5ce320830ee28e2821c9854c2",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/blocked-by-guard.mjs",
+          "line": 77,
+          "fingerprint": "sha256:d0274be43891cd98d75d68d7b4784bed9e8b561c42ca2b8156cb89a98ee94350",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/blocked-by-guard.mjs",
+          "line": 81,
+          "fingerprint": "sha256:f0934f745c788515605740a17eee985f9a823862e543d7c04bb7aade799e9240",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "body-gates-entry-done": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 64,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 75,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 103,
+          "fingerprint": "sha256:ba5ec6b22137a835e951cc78b878ceb83b677b29923f9295828d95d09f4f9cb6",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:f7e82e338c6715900ea0b1e2f2373c551dfb5b663132da5a46e724450be254a7",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:9bfccc6842f18c6a38723600afc1cb1bc0de1b00ce2a88404f440fb1d44e75fd",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 108,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "body-gates-entry-review": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 64,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 75,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 103,
+          "fingerprint": "sha256:ba5ec6b22137a835e951cc78b878ceb83b677b29923f9295828d95d09f4f9cb6",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:f7e82e338c6715900ea0b1e2f2373c551dfb5b663132da5a46e724450be254a7",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:9bfccc6842f18c6a38723600afc1cb1bc0de1b00ce2a88404f440fb1d44e75fd",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 108,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "body-gates-entry-test": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 64,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 75,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 103,
+          "fingerprint": "sha256:ba5ec6b22137a835e951cc78b878ceb83b677b29923f9295828d95d09f4f9cb6",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:f7e82e338c6715900ea0b1e2f2373c551dfb5b663132da5a46e724450be254a7",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:9bfccc6842f18c6a38723600afc1cb1bc0de1b00ce2a88404f440fb1d44e75fd",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/body-gates-entry-guard.mjs",
+          "line": 108,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "child-cannot-lead-epic-exit": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/child-cannot-lead-epic-exit-guard.mjs",
+          "line": 53,
+          "fingerprint": "sha256:80b44be1bf17e5e7f34c2d24dcec5a24607af775e012531f31dae483b7549600",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/child-cannot-lead-epic-exit-guard.mjs",
+          "line": 64,
+          "fingerprint": "sha256:ea488047e19387d7b367340855e5043d7ac378bf1564108a0946f39e05e128ef",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "contiguity-entry": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/contiguity-entry-guard.mjs",
+          "line": 42,
+          "fingerprint": "sha256:edc857eadd36912130eb301c4a8dbe2b30bd37490c61a2ad95498564c7a5f659",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "develop-exit-code-complete": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
+          "line": 36,
+          "fingerprint": "sha256:35ab73220d5c1a4b647728fd346de0fcce347f558603dcefadb1056ebe79e6ee",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
+          "line": 51,
+          "fingerprint": "sha256:6ff67738649c9c7df880bd8236cd7054064a47b5d1aff69f20aca00a76e879ea",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "develop-exit-commit-trail-head": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-commit-trail-head-guard.mjs",
+          "line": 48,
+          "fingerprint": "sha256:7c7b585b6ca87256b49c4f0129e0fec3529452a230c203dadb94cdc7476453d3",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "develop-exit-epic-children-done": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/develop-epic-children-done-guard.mjs",
+          "line": 45,
+          "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "develop-exit-receipt": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
+          "line": 54,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
+          "line": 72,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
+          "line": 79,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "discuss-unresolved": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/discuss-block-guard.mjs",
+          "line": 78,
+          "fingerprint": "sha256:7c7b585b6ca87256b49c4f0129e0fec3529452a230c203dadb94cdc7476453d3",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-entry-fields-board": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 44,
+          "fingerprint": "sha256:74c027941d354a249bbe2b58dab64c95c615814fcccb2cedd768bd471682fd0f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 56,
+          "fingerprint": "sha256:b9260582030a6b4c88475dff381ddff70cf7a680e1ed423f6b5f401c9e47f7ce",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 67,
+          "fingerprint": "sha256:0b7544efc954cd8741c3d21615c5f185d0b1ca80cc4b5c277c60f53d3eddf7dd",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 79,
+          "fingerprint": "sha256:b9260582030a6b4c88475dff381ddff70cf7a680e1ed423f6b5f401c9e47f7ce",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 89,
+          "fingerprint": "sha256:158a6cca171465e9705586fcfb6bddb265c02edfdfe97667ec650361f92f68a2",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 99,
+          "fingerprint": "sha256:b9260582030a6b4c88475dff381ddff70cf7a680e1ed423f6b5f401c9e47f7ce",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-entry-fields-body": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 44,
+          "fingerprint": "sha256:74c027941d354a249bbe2b58dab64c95c615814fcccb2cedd768bd471682fd0f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 56,
+          "fingerprint": "sha256:b9260582030a6b4c88475dff381ddff70cf7a680e1ed423f6b5f401c9e47f7ce",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 67,
+          "fingerprint": "sha256:0b7544efc954cd8741c3d21615c5f185d0b1ca80cc4b5c277c60f53d3eddf7dd",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 79,
+          "fingerprint": "sha256:b9260582030a6b4c88475dff381ddff70cf7a680e1ed423f6b5f401c9e47f7ce",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 89,
+          "fingerprint": "sha256:158a6cca171465e9705586fcfb6bddb265c02edfdfe97667ec650361f92f68a2",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-adapters-entry-fields.mjs",
+          "line": 99,
+          "fingerprint": "sha256:b9260582030a6b4c88475dff381ddff70cf7a680e1ed423f6b5f401c9e47f7ce",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-decomposition": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 138,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 142,
+          "fingerprint": "sha256:0273e77a3125381a1f885e3cdd8c5274e55d2ba108a85204e6aa79fa20786f97",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 149,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 176,
+          "fingerprint": "sha256:7e0969e6ba1a1ece545cfee2babb2e5e0d87eee5d6328d9ca9c65fc5ae81d5e0",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 185,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 191,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 195,
+          "fingerprint": "sha256:3280f6bb967992f1fba1fd865b02bf753d40e56af8908665b91a1b60f5357856",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 201,
+          "fingerprint": "sha256:4be05a4834cac55badf5de0a5d0a1bd85049961c33db02e89adfb6a747245f05",
+          "kind": "warning"
+        }
+      ]
+    },
+    "plan-exit-deep-dive": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-deep-dive-guard.mjs",
+          "line": 32,
+          "fingerprint": "sha256:d3227ec611df15b1f54358aeb501e0632260dd66f93339b7cbf0ccabdd54c3c3",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-epic-children-r4p-or-beyond": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 51,
+          "fingerprint": "sha256:97172abd83bd088167ec398885ac1cd3a0c04a19e7d68c00ae64639363e868e4",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 55,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 60,
+          "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-ownership": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-ownership-guard.mjs",
+          "line": 39,
+          "fingerprint": "sha256:c7c21fae89b526012096e0906b416f017f85d32731fcf73c54f12ede3cadecea",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-plan-approved": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
+          "line": 59,
+          "fingerprint": "sha256:a59a626c789a89b81b587ef20a91548d67b622a3c167cc62bca5ef8015344cf5",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
+          "line": 65,
+          "fingerprint": "sha256:2caa9f02a36dd9613862ce1911c2b7ff1624b40c0a7ad38abc09a79c2325203f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
+          "line": 72,
+          "fingerprint": "sha256:ff22e5660b12089b26aac6620e0d7a38f7639498484e2d430dc71ea8a3146838",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
+          "line": 75,
+          "fingerprint": "sha256:62ee146c3e3f83257bafdd9a5a13cf0c065724d53cc536935d93a06e66a48022",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-plan-metadata": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-plan-metadata-guard.mjs",
+          "line": 30,
+          "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-plan-metadata-guard.mjs",
+          "line": 36,
+          "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-planned-estimate": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 37,
+          "fingerprint": "sha256:f7bb5131c4575a4aa62e3f9c0c5023dcb9243470ac55b388e276983d5f92d57a",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 47,
+          "fingerprint": "sha256:c2addc64484628a39948d151e1e8d3f3e0004b01aa33ec3f6fedf4541fd3abd6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 66,
+          "fingerprint": "sha256:2aa356d53782324f4fa35e07357283cc0cf8f33dcf03b0fcf1553a4766612632",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 77,
+          "fingerprint": "sha256:1827b1ccdda7b89f219bed02b6ad2e2549e7e5e05df6f1bcc18b078f31730604",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 86,
+          "fingerprint": "sha256:d9a49cc47cf4b66d78088776ba642fff9e4864d7767ecfc5b39cc7916e1e428d",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+          "line": 104,
+          "fingerprint": "sha256:663417799ab970a83caaaaa04d0ce4bb3e297c8e808e3ec088abd408799b8a9f",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-story-approval-binding": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/story-approval-binding-guard.mjs",
+          "line": 13,
+          "fingerprint": "sha256:551e612f0c7db0eb1037f12f341de9d4acce81f7dce24faff23a22568983f472",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "plan-exit-vc-presence": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-exit-vc-presence-guard.mjs",
+          "line": 45,
+          "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "ready-for-plan-exit-epic-children-r4p-or-beyond": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 51,
+          "fingerprint": "sha256:97172abd83bd088167ec398885ac1cd3a0c04a19e7d68c00ae64639363e868e4",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 55,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/plan-epic-children-guard.mjs",
+          "line": 60,
+          "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "refine-exit-child-parent-developing-or-beyond": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/refine-exit-child-parent-state-guard.mjs",
+          "line": 58,
+          "fingerprint": "sha256:80b44be1bf17e5e7f34c2d24dcec5a24607af775e012531f31dae483b7549600",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/refine-exit-child-parent-state-guard.mjs",
+          "line": 71,
+          "fingerprint": "sha256:80b44be1bf17e5e7f34c2d24dcec5a24607af775e012531f31dae483b7549600",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/refine-exit-child-parent-state-guard.mjs",
+          "line": 79,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "refine-exit-complete-marker": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/refine-exit-complete-marker-guard.mjs",
+          "line": 30,
+          "fingerprint": "sha256:7c7b585b6ca87256b49c4f0129e0fec3529452a230c203dadb94cdc7476453d3",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "refine-exit-current-snapshot": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/refinement-snapshot-guard.mjs",
+          "line": 123,
+          "fingerprint": "sha256:7c512924d922f1a84266a64cad488c602befa7c3eae60566226491defa00f778",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/refinement-snapshot-guard.mjs",
+          "line": 132,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/refinement-snapshot-guard.mjs",
+          "line": 141,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/refinement-snapshot-guard.mjs",
+          "line": 146,
+          "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "refine-exit-stub-placeholder": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/refine-exit-stub-placeholder-guard.mjs",
+          "line": 35,
+          "fingerprint": "sha256:2817911c5d30d0c171abae387e737bacdb5995884a0adab3c493dbab8e8363b8",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "refine-exit-wip-budget": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs",
+          "line": 36,
+          "fingerprint": "sha256:221e8dd5334b61d596d44f8dceda3d3253539df0df2b3deb8edd37b4f4e4247a",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "review-exit-close-gates": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/review-exit-close-gates-guard.mjs",
+          "line": 43,
+          "fingerprint": "sha256:a68e075ee3a633009420e43de5e605c985b09783de60a45aa170c21500c60790",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/review-exit-close-gates-guard.mjs",
+          "line": 47,
+          "fingerprint": "sha256:5c34a3bc65efe2dbbd441cf1743f19063f3dc75b7ca79a2dbeb67c04785e1074",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "review-exit-epic-child-disposition": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/review-exit-epic-child-disposition-guard.mjs",
+          "line": 39,
+          "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "review-exit-epic-children-done": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/review-exit-epic-children-done-guard.mjs",
+          "line": 43,
+          "fingerprint": "sha256:de3a2c061cb0d239225de494221327e288938f1e391e9018694ada5a834deb4b",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "review-exit-review-approved": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/review-exit-review-approved-guard.mjs",
+          "line": 36,
+          "fingerprint": "sha256:6bd9f159bd0283dd02b9093271cff7e3484c6e52c33bd1194efd44ce5d979810",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "test-exit-dod-verified": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
+          "line": 37,
+          "fingerprint": "sha256:7cff4c6e368f612a1db648af381fcb68934e7db0a2477248258ef7e7a1ab1e8d",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
+          "line": 57,
+          "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
+          "line": 65,
+          "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "test-exit-pre-close-completeness": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/test-exit-pre-close-completeness-guard.mjs",
+          "line": 38,
+          "fingerprint": "sha256:392ce52fa0c098afa6b178351d7a00ab5830353dce4c447d20ba92112d56f546",
+          "kind": "refusal"
+        }
+      ]
+    }
+  },
+  "symbols": {
+    "verb:close": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/verbs/close.mjs",
+          "line": 2156,
+          "fingerprint": "sha256:e082d3e0bf8bd6bc08fa98eed3c52e616dc3c6329d243087f10166f7d85b6894",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/close.mjs",
+          "line": 3128,
+          "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/close.mjs",
+          "line": 4458,
+          "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "verb:deliver": {
+      "complete": true,
+      "sites": []
+    },
+    "verb:promote": {
+      "complete": true,
+      "sites": []
+    },
+    "verb:resume": {
+      "complete": true,
+      "sites": []
+    },
+    "verb:review": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 161,
+          "fingerprint": "sha256:5ae2aa31548c7b99021de00267554dcad722ef3c3098d2ba0f6c46b440a3fab9",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 175,
+          "fingerprint": "sha256:bcdf59cbc9f3d1cc0d316fc7dfba9ceba5ae313760647ed052417a2bb04d2987",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 196,
+          "fingerprint": "sha256:2c2d9762465336a65378c8f9abd348e900bf0b8dab628680ce9485672d33ddc8",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 206,
+          "fingerprint": "sha256:34230c4c068fe1caba35d588759884e27001bcb5a1c90ecda32d6c40e1d61d07",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 231,
+          "fingerprint": "sha256:12a924c9266eb99e05005e710513c4f923863e65c59240601f8770ecf04d97af",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 248,
+          "fingerprint": "sha256:4fd7737234de12682b5c0e66f1b6e97d308e88021d1649339f8f4ce8508f05f3",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 265,
+          "fingerprint": "sha256:2a7774416d42325ecc53793cb54ee966572837a12e045ebfb9bf2f4842b9b2f9",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/review.mjs",
+          "line": 383,
+          "fingerprint": "sha256:856c72d633b8e4f45173703ef5a3b9df62e3f153120d5def4ac8a93357583a5e",
+          "kind": "refusal"
+        }
+      ]
+    },
+    "verb:bind": {
+      "complete": true,
+      "sites": []
+    },
+    "verb:test": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/verbs/test.mjs",
+          "line": 715,
+          "fingerprint": "sha256:a5d9c8340bf9d6fbebf6f93c763f5ca7189a761bb4598925fd2d0ffbc163944f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/test.mjs",
+          "line": 1351,
+          "fingerprint": "sha256:8cc9d3ebf8e3df5d903cde58cec69efcfcdf958d583b3828264a93ee38e14902",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/test.mjs",
+          "line": 1353,
+          "fingerprint": "sha256:5c2c3790301c73f999ca5c3b7636eb06f5b03795e722594dcdf7fdb41085426c",
+          "kind": "refusal"
+        }
+      ]
+    }
+  }
+}

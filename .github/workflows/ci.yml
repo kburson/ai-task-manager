@@ -74,9 +74,9 @@ jobs:
           NODE
       - run: npm run format:check
       # `npm run lint` includes the fail-closed canonical-layout, package-wide
-      # story-tag, and package-wide line-cap gates. Unit + integration tests
-      # below also prove `npm pack` excludes scripts/tests/** while retaining
-      # runtime assets.
+      # story-tag, package-wide line-cap, and typed action-refusal inventory
+      # gates. Unit + integration tests below also prove `npm pack` excludes
+      # scripts/tests/** while retaining runtime assets.
       - run: npm run lint
       # Memory-seed index parity (#728, folds #744): fail on any MEMORY.md-index
       # ⇄ docs/ai-memory/ durable-set drift. Repo-only / CI-safe — `--mode index`
