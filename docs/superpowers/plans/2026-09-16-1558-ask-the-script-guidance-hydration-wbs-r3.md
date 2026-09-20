@@ -333,6 +333,15 @@ As a maintainer funding runtime extraction,
 I want to have a reproducible feasibility verdict with an enforced GO prerequisite,
 So that an honest negative result cannot release runtime work.
 
+#### Story Intent
+
+- **Beneficiary:** maintainer funding runtime extraction
+- **Capability:** reproduce one feasibility verdict and enforce it as the sole foundation prerequisite
+- **Need:** favorable fragments can hide incomplete or over-budget workflow context and must not authorize downstream runtime work
+- **Value or failure prevented:** only an evidence-complete, semantically faithful, budget-feasible candidate can release runtime extraction while an honest negative result blocks it
+
+#### Files and delivery boundary
+
 **Estimate and units:** 8 hours; Validate all pinned inputs and publish the single decision plus foundation assertion (8 h). Owner: this child.
 
 **Scope/files and boundary:** Own `scripts/maintenance/measure-guidance-candidate.mjs`, aggregate `guidance-characterization.test.mjs`, and `scripts/tests/fixtures/1558/feasibility-decision.json`. Aggregate tests execute WBS 5–7 checks. No budget changes, runtime extraction or competing gate.
