@@ -78,7 +78,19 @@
 // guards belong here too — register them in the matching state module and
 // append a row above.
 
+import { readFileSync } from 'node:fs';
+
 import { stateIds } from './lifecycle-policy/index.mjs';
+import {
+  CODE_DEFINITIONS,
+  normalizeRefusal,
+  validateHumanRequest,
+  validateWarning,
+} from './action-decision/contract.mjs';
+
+export const DEFAULT_LEGACY_REFUSAL_INVENTORY = JSON.parse(
+  readFileSync(new URL('./action-decision/legacy-refusals.json', import.meta.url), 'utf8')
+);
 
 const STATES = stateIds();
 const KINDS = ['exit', 'entry'];
@@ -116,9 +128,69 @@ export function registerGuard(state, kind, guard) {
 // Guards may be sync OR return a Promise. invoke awaits either uniformly so a
 // guard that shells out to git/gh can be registered alongside pure-data
 // guards without callers needing to know which is which.
+function contractFailure(guardId, code, reason) {
+  return {
+    ok: false,
+    reason,
+    typedRefusals: [
+      {
+        guardId,
+        code,
+        args: {},
+        noAutomaticRemediation: { reason: 'result-investigation-required' },
+      },
+    ],
+  };
+}
+
+function typedStatus(refusals) {
+  return refusals.some((refusal) =>
+    CODE_DEFINITIONS[refusal.code]?.legalStatuses?.includes('indeterminate')
+  )
+    ? 'indeterminate'
+    : 'blocked';
+}
+
+function typedWarnings(guard, result, status) {
+  if (result.warnings !== undefined && !Array.isArray(result.warnings)) {
+    throw new TypeError('guard warnings must be an array');
+  }
+  const warnings = (result.warnings ?? []).map((warning, index) => ({
+    id: guard.id,
+    ...validateWarning(warning, { status, path: `warnings[${index}]` }),
+  }));
+  if (result.warn != null) {
+    warnings.push({
+      id: guard.id,
+      warn: result.warn,
+      code: 'legacy-guard-warning',
+      args: { guardId: guard.id },
+    });
+  }
+  return warnings;
+}
+
+function typedRequests(result) {
+  if (result.requests !== undefined && !Array.isArray(result.requests)) {
+    throw new TypeError('guard requests must be an array');
+  }
+  return (result.requests ?? []).map((request, index) =>
+    validateHumanRequest(request, { path: `requests[${index}]` })
+  );
+}
+
 async function invoke(guard, ctx) {
+  let result;
   try {
-    const result = await guard.run(ctx);
+    result = await guard.run(ctx);
+  } catch (err) {
+    return contractFailure(
+      guard.id,
+      'guard-error',
+      `guard "${guard.id}" threw: ${err?.message ?? String(err)}`
+    );
+  }
+  try {
     if (result && result.ok === true) {
       // #359 — guards may attach a non-refusing `warn` payload (e.g. the
       // lifecycle warn-only path on done-entry when
@@ -126,7 +198,8 @@ async function invoke(guard, ctx) {
       // `guardResult.warns` and emit a side effect (timing row, log line,
       // etc.) without the guard itself doing I/O.
       const out = { ok: true };
-      if (result.warn != null) out.warn = result.warn;
+      out.typedWarnings = typedWarnings(guard, result, 'ready');
+      out.requests = typedRequests(result);
       if (result.derived && typeof result.derived === 'object') out.derived = result.derived;
       return out;
     }
@@ -135,18 +208,36 @@ async function invoke(guard, ctx) {
       // so verb-layer callers (promote.mjs) can preserve the array shape that
       // legacy structured-status tests pin (e.g. `r.blockers.length >= 2`).
       // Reason remains the canonical single-string surface.
-      const out = { ok: false, reason: result.reason ?? '(no reason given)' };
+      const candidates = Array.isArray(result.refusals) ? result.refusals : [result];
+      const typedRefusals = candidates.map((refusal) =>
+        normalizeRefusal(refusal, {
+          guardId: guard.id,
+          legacyInventory: ctx?.legacyRefusalInventory ?? DEFAULT_LEGACY_REFUSAL_INVENTORY,
+        })
+      );
+      const status = typedStatus(typedRefusals);
+      const out = {
+        ok: false,
+        reason: result.reason ?? '(no reason given)',
+        typedRefusals,
+        typedWarnings: typedWarnings(guard, result, status),
+        requests: typedRequests(result),
+      };
       if (Array.isArray(result.blockers)) out.blockers = result.blockers;
-      if (result.warn != null) out.warn = result.warn;
       if (result.derived && typeof result.derived === 'object') out.derived = result.derived;
       return out;
     }
-    return {
-      ok: false,
-      reason: `guard "${guard.id}" returned malformed result: ${JSON.stringify(result)}`,
-    };
+    return contractFailure(
+      guard.id,
+      'guard-result-invalid',
+      `guard "${guard.id}" returned malformed result: ${JSON.stringify(result)}`
+    );
   } catch (err) {
-    return { ok: false, reason: `guard "${guard.id}" threw: ${err?.message ?? String(err)}` };
+    return contractFailure(
+      guard.id,
+      'guard-result-invalid',
+      `guard "${guard.id}" returned invalid typed result: ${err?.message ?? String(err)}`
+    );
   }
 }
 
@@ -158,12 +249,15 @@ export async function runGuards(
 ) {
   const refusals = [];
   const warns = [];
+  const requests = [];
   let derived = Object.freeze({});
   const fromSlot = GUARDS[fromState];
   const toSlot = GUARDS[toState];
 
   function finish(out) {
     if (warns.length > 0) out.warns = warns;
+    if (requests.length > 0) out.humanDecision = { requests };
+    else out.humanDecision = null;
     if (Object.keys(derived).length > 0) out.derived = derived;
     if (
       ctx &&
@@ -177,11 +271,14 @@ export async function runGuards(
 
   function consume(g, r) {
     if (!r.ok) {
-      const entry = { id: g.id, reason: r.reason };
-      if (r.blockers) entry.blockers = r.blockers;
-      refusals.push(entry);
+      for (const refusal of r.typedRefusals ?? []) {
+        const entry = { id: g.id, reason: r.reason, ...refusal };
+        if (r.blockers) entry.blockers = r.blockers;
+        refusals.push(entry);
+      }
     }
-    if (r.warn != null) warns.push({ id: g.id, warn: r.warn });
+    warns.push(...(r.typedWarnings ?? []));
+    requests.push(...(r.requests ?? []));
     if (r.derived) derived = Object.freeze({ ...derived, ...r.derived });
   }
 
@@ -200,9 +297,9 @@ export async function runGuards(
   }
 
   if (refusals.length === 0) {
-    return finish({ ok: true, refusals: [] });
+    return finish({ ok: true, status: 'ready', refusals: [] });
   }
-  return finish({ ok: false, refusals });
+  return finish({ ok: false, status: typedStatus(refusals), refusals });
 }
 
 // Exposed for tests; not part of the public registration API.
