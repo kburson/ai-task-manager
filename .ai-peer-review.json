@@ -18,20 +18,45 @@
         "heartbeat_interval_ms": 15000,
         "lease_ttl_ms": 60000
       }
+    },
+    "claude": {
+      "resume": {
+        "command": [
+          "claude",
+          "--resume"
+        ]
+      },
+      "automatic": {
+        "adapter_version": "2.0.0",
+        "capability": "live-wait",
+        "server_command": [
+          "peer-review-mcp"
+        ],
+        "tool_timeout_ms": 28800000,
+        "heartbeat_interval_ms": 15000,
+        "lease_ttl_ms": 60000
+      },
+      "identity": {
+        "model_id": "claude-opus-5",
+        "model_display": "Claude Opus 5"
+      }
     }
   },
   "setup": {
     "owner": "ai-peer-review",
     "version": 2,
     "agents": [
+      "claude",
       "codex"
     ],
     "config_created": true,
     "scratch_exclude_added": false,
     "resume_commands_added": [
+      "claude",
       "codex"
     ],
     "automatic_adapters_added": [
+      "claude",
       "codex"
     ]
   }
