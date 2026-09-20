@@ -19,14 +19,14 @@
 - Existing `aitm.transition-commit/v1` records and explicit #1716 `--repair-from-evidence` behavior remain backward compatible.
 - Use strict TDD: each production behavior must first be demonstrated by a focused failing test.
 
+---
+
 ## Story Intent
 
 - **Beneficiary:** maintainer of governed lifecycle records
 - **Capability:** retain durable authority for every Plan-to-Develop transition
 - **Need:** exception revocation can erase the only visible historical authority
 - **Value or failure prevented:** completed governed transitions remain auditable
-
----
 
 ## Implementation Tasks
 
