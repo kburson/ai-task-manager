@@ -77,7 +77,7 @@ function deepDiveAdequate() {
 const PROJECT_ID = 'PVT_x';
 function currentApprovedBody() {
   const body =
-    '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n## Acceptance Criteria\n- [ ] AC\n\n' +
+    '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n## Scope\n\nPrevent partial publication when registry checks fail.\n\n## Acceptance Criteria\n- [ ] AC\n\n' +
     deepDiveAdequate().replace(
       '## Deep-Dive Analysis (2026-05-09)\n',
       '## Deep-Dive Analysis (2026-05-09)\n### Story Intent\n- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** registry checks can fail\n- **Value or failure prevented:** consumers receive complete releases\n### Analysis\n'
@@ -135,6 +135,7 @@ const BODY = ${JSON.stringify(body)};
 // successful move confirms. \`name\` stays the current state for the pre-write
 // drift check (which reads name, not optionId).
 const STATE_FILE = ${JSON.stringify(path.join(sandbox, '.last-option'))};
+const AUTHORITY_FILE = ${JSON.stringify(path.join(sandbox, '.plan-transition-authority'))};
 // #756 — the shim must be a real body store, not a constant. move-state stamps
 // entry markers via versionedWriteBody, which pushes a new body over
 // \`gh issue edit --body-file -\` and then read-back-verifies byte-equality.
@@ -183,11 +184,25 @@ if (args[0] === 'project' && args[1] === 'item-edit') {
   if (i !== -1 && args[i + 1]) fs.writeFileSync(STATE_FILE, args[i + 1]);
   process.exit(0);
 }
-if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$').test(args[1] || '')) {
+if (args[0] === 'api' && args[1] === 'repos/o/r/issues/comments/1720') {
+  let authorityBody = '';
+  try { authorityBody = fs.readFileSync(AUTHORITY_FILE, 'utf8'); } catch {}
+  fs.writeSync(1, JSON.stringify({ id: 1720, body: authorityBody }));
+  process.exit(0);
+}
+if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$').test(args[1] || args[args.length - 1] || '')) {
+  const commentsPath = args[1] || args[args.length - 1];
+  if (args.includes('POST')) {
+    const field = args.find((arg) => arg.startsWith('body=')) || '';
+    const authorityBody = field.slice('body='.length);
+    fs.writeFileSync(AUTHORITY_FILE, authorityBody);
+    fs.writeSync(1, JSON.stringify({ id: 1720, body: authorityBody }));
+    process.exit(0);
+  }
   // Plan→develop gate fetches the refine-estimate comment via REST.
   // Return a single comment matching the issue number with a non-empty
   // \`### Planned Estimate\` appendix so planPlannedEstimateGate passes.
-  const issueNum = (args[1].match(new RegExp('issues/([0-9]+)/comments')) || [])[1] || '100';
+  const issueNum = (commentsPath.match(new RegExp('issues/([0-9]+)/comments')) || [])[1] || '100';
   const commentBody = [
     '<!-- aitm-refined-estimate: ' + issueNum + ' -->',
     '### 🛠 Refine estimate',
@@ -206,7 +221,11 @@ if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$'
     '',
     'no drift observed',
   ].join('\\n');
-  fs.writeSync(1, JSON.stringify([{ id: 1, body: commentBody }]));
+  const comments = [{ id: 1, body: commentBody }];
+  try {
+    comments.push({ id: 1720, body: fs.readFileSync(AUTHORITY_FILE, 'utf8') });
+  } catch {}
+  fs.writeSync(1, JSON.stringify(comments));
   process.exit(0);
 }
 if (args[0] === 'api' && args[1] === 'user') {

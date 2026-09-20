@@ -235,6 +235,228 @@ test('pre-mutation boundary reloads policy only after a waivable guard refusal',
   assert.equal(calls.at(-1)[1], workflowPolicy);
 });
 
+test('Plan → Develop exposes the exact successful guard decision for durable authority', async () => {
+  const workflowPolicy = {
+    scopeIdentity: `sha256:${'a'.repeat(64)}`,
+    decision: () => ({ outcome: 'waived' }),
+  };
+  const body = [
+    '## User Story',
+    'As a maintainer',
+    'I want durable transition authority',
+    'So that historical completion survives later policy changes',
+    '',
+    '## Scope',
+    'S',
+    '',
+    '## Acceptance Criteria',
+    '- [ ] A',
+  ].join('\n');
+  const ctx = {
+    issueArg: '1720',
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    verbContext: 'promote',
+    shelveBackwardGuardAuthorized: false,
+    demoteFlag: false,
+    plan: { runGuardPipeline: true },
+    forceFlag: false,
+    supersedeFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'kburson/ai-task-manager' },
+    boundarySnapshot: { body: { value: body } },
+    sessionPolicy: { gates: { analysisToDevelopment: true } },
+    gh: async () => {
+      throw new Error('locked snapshot should be authoritative');
+    },
+    pexec: async () => ({ stdout: '' }),
+    resolveLiveStateName: async () => '',
+    checkDirty: async () => ({ dirty: false }),
+    formatSummary: () => '',
+    resolveWorkspaceForIssue: () => process.cwd(),
+    backlogMoveWarning: async () => undefined,
+    lifecycleEvidence: null,
+    _loadWorkflowBoundary: async () => workflowPolicy,
+    _runGuards: async (_from, _to, guardCtx) => {
+      if (!guardCtx.workflowPolicy) {
+        return {
+          ok: false,
+          refusals: [{ id: 'plan-exit-plan-approved', reason: 'plan-approved-missing' }],
+        };
+      }
+      return { ok: true, refusals: [] };
+    },
+  };
+
+  const result = await runGuardExecution(ctx);
+
+  assert.deepEqual(result, { exit: null });
+  assert.equal(ctx.planTransitionAuthorityInput.body, body);
+  assert.equal(ctx.planTransitionAuthorityInput.workflowPolicy, workflowPolicy);
+  assert.equal(ctx.planTransitionAuthorityInput.sessionPolicy, ctx.sessionPolicy);
+  assert.equal(ctx.planTransitionAuthorityInput.scopeIdentity, workflowPolicy.scopeIdentity);
+  assert.match(ctx.planTransitionAuthorityInput.recordedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('Plan → Develop verifies authority after replay probe and before mutation', async () => {
+  const ctx = baseCtx({
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    _createTransitionId: () => {
+      ctx.calls.push('transition-id');
+      return 'move:11111111-1111-4111-8111-111111111111';
+    },
+    _runGuardExecution: async (value) => {
+      assert.equal(value.transitionId, 'move:11111111-1111-4111-8111-111111111111');
+      value.calls.push('guard');
+      value.planTransitionAuthorityInput = { body: 'locked body' };
+      return { exit: null };
+    },
+    _probeCompletion: async () => {
+      ctx.calls.push('probe');
+      return {
+        sentinelState: '',
+        statusState: '',
+        entryMarkerPresent: false,
+        exitRowPresent: false,
+        entryRowPresent: false,
+      };
+    },
+    _writePlanTransitionAuthority: async (value) => {
+      assert.deepEqual(value.planTransitionAuthorityInput, { body: 'locked body' });
+      value.calls.push(`authority:${value.transitionId}`);
+      return { verified: true };
+    },
+    _verifyPlanTransitionAuthorityScope: async (value) => {
+      value.calls.push('scope');
+      return { verified: true };
+    },
+  });
+
+  const result = await moveState(ctx);
+
+  assert.equal(result.exit, null);
+  assert.deepEqual(ctx.calls.slice(0, 5), [
+    'transition-id',
+    'guard',
+    'probe',
+    'authority:move:11111111-1111-4111-8111-111111111111',
+    'scope',
+  ]);
+  assert.equal(ctx.calls[5], 'rows:move:11111111-1111-4111-8111-111111111111');
+});
+
+test('Plan → Develop authority failure is fail-closed before every mutation', async () => {
+  const ctx = baseCtx({
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    _runGuardExecution: async (value) => {
+      value.calls.push('guard');
+      value.planTransitionAuthorityInput = { body: 'locked body' };
+      return { exit: null };
+    },
+    _writePlanTransitionAuthority: async (value) => {
+      value.calls.push('authority');
+      throw new Error('readback unavailable');
+    },
+  });
+  const originalWrite = process.stderr.write;
+  process.stderr.write = () => true;
+  let result;
+  try {
+    result = await moveState(ctx);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.equal(result.exit, 9);
+  assert.equal(result.phase, 'authority');
+  assert.equal(result.boardMoved, false);
+  assert.equal(result.sentinelPresent, false);
+  assert.deepEqual(ctx.calls, ['guard', 'authority']);
+  assert.ok(!ctx.calls.some((call) => call.startsWith('rows:')));
+  assert.ok(!ctx.calls.some((call) => call.startsWith('status:')));
+});
+
+test('Plan → Develop scope drift after authority write fails before lifecycle mutation', async () => {
+  const ctx = baseCtx({
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    _runGuardExecution: async (value) => {
+      value.calls.push('guard');
+      value.planTransitionAuthorityInput = { body: 'locked body' };
+      return { exit: null };
+    },
+    _writePlanTransitionAuthority: async (value) => {
+      value.calls.push('authority');
+      return { verified: true, record: { scopeIdentity: `sha256:${'a'.repeat(64)}` } };
+    },
+    _verifyPlanTransitionAuthorityScope: async (value) => {
+      value.calls.push('scope');
+      throw new Error('plan-transition-authority:scope-drift');
+    },
+  });
+  const originalWrite = process.stderr.write;
+  process.stderr.write = () => true;
+  let result;
+  try {
+    result = await moveState(ctx);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.equal(result.exit, 9);
+  assert.equal(result.phase, 'authority');
+  assert.deepEqual(ctx.calls, ['guard', 'authority', 'scope']);
+  assert.ok(!ctx.calls.some((call) => call.startsWith('rows:')));
+  assert.ok(!ctx.calls.some((call) => call.startsWith('status:')));
+});
+
+test('Plan → Develop scope drift at entry stamping returns the typed authority refusal', async () => {
+  const ctx = baseCtx({
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    _runGuardExecution: async (value) => {
+      value.calls.push('guard');
+      value.planTransitionAuthorityInput = { body: 'locked body' };
+      return { exit: null };
+    },
+    _writePlanTransitionAuthority: async (value) => {
+      value.calls.push('authority');
+      return { verified: true, record: { scopeIdentity: `sha256:${'a'.repeat(64)}` } };
+    },
+    _verifyPlanTransitionAuthorityScope: async (value) => {
+      value.calls.push('scope');
+      return { verified: true };
+    },
+    _stampEntryMarkers: async (value) => {
+      value.calls.push('markers');
+      throw new Error('plan-transition-authority:scope-drift-before-entry');
+    },
+  });
+  const originalWrite = process.stderr.write;
+  process.stderr.write = () => true;
+  let result;
+  try {
+    result = await moveState(ctx);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.equal(result.exit, 9);
+  assert.equal(result.phase, 'authority');
+  assert.equal(result.boardMoved, false);
+  assert.equal(result.sentinelPresent, false);
+  assert.deepEqual(ctx.calls, [
+    'guard',
+    'authority',
+    'scope',
+    'rows:move:test-transition',
+    'markers',
+  ]);
+  assert.ok(!ctx.calls.some((call) => call.startsWith('status:')));
+});
+
 test('moveState halts on status exit and never runs tail', async () => {
   const ctx = baseCtx({ _runStatusWrite: async () => ({ itemId: 'IT_1', exit: 7 }) });
   const res = await moveState(ctx);

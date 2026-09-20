@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { parsePlanApprovedMarker } from './markers.mjs';
+import { PLAN_TRANSITION_ID_RE } from './plan-transition-authority.mjs';
 
 const pexec = promisify(execFile);
 
@@ -39,6 +40,38 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence 
       throw new Error(
         'buildPlanApprovalAuditComment: repair evidence requires approval-plan and revoked record IDs'
       );
+    }
+    if (repairEvidence.source === 'plan-transition-authority') {
+      const transitionId = repairEvidence.transitionId;
+      const authorityRecordId = repairEvidence.authorityRecordId;
+      const authorityRevision = repairEvidence.authorityRevision;
+      if (
+        repairEvidence.historicalOutcome !== 'waived' ||
+        !PLAN_TRANSITION_ID_RE.test(transitionId ?? '') ||
+        !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(authorityRecordId ?? '') ||
+        !Number.isSafeInteger(authorityRevision) ||
+        authorityRevision <= 0 ||
+        authorityRecordId !== approvalPlanRecordId
+      ) {
+        throw new Error(
+          'buildPlanApprovalAuditComment: transition authority repair evidence is invalid'
+        );
+      }
+      return [
+        `### ${PLAN_APPROVAL_AUDIT_HEADING} — #${issueNumber}`,
+        '',
+        `Plan approval was reconstructed at \`${ts}\` under explicit \`TT_FULL_AUTO=1\` from durable evidence.`,
+        '',
+        '- Approval actor: AI agent operating in Full-Auto mode',
+        '- Human reviewer: none — no human reviewer approved this plan',
+        `- Historical transition authority: \`waived\` for \`${transitionId}\``,
+        `- Waiver evidence: workflow-exception record \`${authorityRecordId}\` revision \`${authorityRevision}\` covered \`approval.plan\``,
+        `- Revocation evidence: workflow-exception chain head \`${revokedRecordId}\` is revoked`,
+        '- Planning evidence: Plan entry and completion before Develop; Deep-Dive Analysis; Plan Metadata; Planned Estimate',
+        `- Evidence: \`<!-- aitm-plan-approved ts="${ts}" mode="full-auto" -->\``,
+        '',
+        'This audit records evidence-derived automated Plan approval. It preserves the historical waiver and does not relabel it as passed or as human approval.',
+      ].join('\n');
     }
     return [
       `### ${PLAN_APPROVAL_AUDIT_HEADING} — #${issueNumber}`,
@@ -89,6 +122,51 @@ export function isCanonicalPlanApprovalAuditComment(
   if (!recordedTs || (ts != null && recordedTs !== ts)) return false;
 
   if (repairTs) {
+    const transitionId = src.match(
+      /Historical transition authority: `waived` for `(move:[^`]+)`/i
+    )?.[1];
+    if (transitionId && !PLAN_TRANSITION_ID_RE.test(transitionId)) return false;
+    if (repairEvidence?.source === 'plan-transition-authority' && !transitionId) return false;
+    if (transitionId) {
+      if (repairEvidence !== null && repairEvidence?.source !== 'plan-transition-authority') {
+        return false;
+      }
+      const authority = src.match(
+        /Waiver evidence: workflow-exception record `([0-7][0-9A-HJKMNP-TV-Z]{25})` revision `(\d+)` covered `approval\.plan`/
+      );
+      const revokedRecordId = src.match(
+        /Revocation evidence: workflow-exception chain head `([0-7][0-9A-HJKMNP-TV-Z]{25})` is revoked/
+      )?.[1];
+      if (!authority || !revokedRecordId) return false;
+      const modernEvidence = {
+        source: 'plan-transition-authority',
+        historicalOutcome: 'waived',
+        transitionId,
+        authorityRecordId: authority[1],
+        authorityRevision: Number(authority[2]),
+        approvalPlanRecordId: authority[1],
+        revokedRecordId,
+      };
+      if (
+        repairEvidence?.source === 'plan-transition-authority' &&
+        (repairEvidence.historicalOutcome !== modernEvidence.historicalOutcome ||
+          repairEvidence.transitionId !== modernEvidence.transitionId ||
+          repairEvidence.authorityRecordId !== modernEvidence.authorityRecordId ||
+          repairEvidence.authorityRevision !== modernEvidence.authorityRevision ||
+          repairEvidence.approvalPlanRecordId !== modernEvidence.approvalPlanRecordId ||
+          repairEvidence.revokedRecordId !== modernEvidence.revokedRecordId)
+      ) {
+        return false;
+      }
+      return (
+        src ===
+        buildPlanApprovalAuditComment({
+          issueNumber: recordedIssueNumber,
+          ts: recordedTs,
+          repairEvidence: modernEvidence,
+        })
+      );
+    }
     const approvalPlanRecordId = src.match(
       /Waiver evidence: workflow-exception record `([0-7][0-9A-HJKMNP-TV-Z]{25})` covered `approval\.plan`/
     )?.[1];

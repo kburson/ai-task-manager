@@ -26,6 +26,11 @@ import { parseTimingRows } from '../timing-ladder.mjs';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
 import { resolveTailProfile } from './tail-profiles.mjs';
 import { resolveReviewAuthority } from '../human-reviewer-audit.mjs';
+import {
+  PLAN_TRANSITION_AUTHORITY_EXIT,
+  verifyPlanTransitionAuthorityScope as defaultVerifyPlanTransitionAuthorityScope,
+  writePlanTransitionAuthority as defaultWritePlanTransitionAuthority,
+} from '../plan-transition-authority.mjs';
 
 // A timing row whose event closes a phase: any canonical `<state>:complete`
 // slug (`refine:completed`, `test:passed`, `review:approved`, `issue:closed`)
@@ -50,6 +55,8 @@ export async function defaultProbeCompletion(ctx) {
     entryMarkerPresent: false,
     exitRowPresent: false,
     entryRowPresent: false,
+    transitionId: null,
+    recoverablePartial: false,
   };
   if (SKIP_NETWORK) return notComplete;
 
@@ -77,9 +84,14 @@ export async function defaultProbeCompletion(ctx) {
 
   const sentinelMarker = readMoveCompleteMarker(body);
   const sentinelState = sentinelMarker?.state ?? '';
-  // The sentinel is the LAST write of a complete move; if it does not already
-  // name the target the move is definitively incomplete — skip the board read.
-  if (sentinelState !== stateArg) return { ...notComplete, sentinelState };
+  const allEntries = parseGrammarEntryMarkers(body);
+  const entries = allEntries.filter((entry) => entry.state === stateArg);
+  const selectedEntry = entries.at(-1) ?? null;
+  const latestEntry = allEntries.at(-1) ?? null;
+  const hasRecoveryCandidate = Boolean(selectedEntry?.move && latestEntry === selectedEntry);
+  if (sentinelState !== stateArg && !hasRecoveryCandidate) {
+    return { ...notComplete, sentinelState };
+  }
 
   const resolveLiveStateName = ctx.resolveLiveStateName || (async () => '');
   let statusState = '';
@@ -89,19 +101,64 @@ export async function defaultProbeCompletion(ctx) {
     statusState = '';
   }
 
-  const entries = parseGrammarEntryMarkers(body).filter((entry) => entry.state === stateArg);
-  const selectedEntry = entries.at(-1) ?? null;
+  // A sentinel that already claims the target must identify the same move as
+  // the latest target entry. A sentinel for an older state is expected after
+  // Status succeeds but before the final sentinel write; the transition-bound
+  // entry and timing pair below are the recovery authority for that shape.
   const identityConsistent =
-    !sentinelMarker?.move || !selectedEntry?.move || sentinelMarker.move === selectedEntry.move;
+    sentinelState !== stateArg ||
+    !sentinelMarker?.move ||
+    !selectedEntry?.move ||
+    sentinelMarker.move === selectedEntry.move;
   const entryMarkerPresent = getStageVisitCount(body, stateArg) > 0 && identityConsistent;
 
-  const rows = parseTimingRows(body);
+  const fetchTimingBody =
+    ctx._fetchTimingBody ||
+    (async () => {
+      const { bodyOf, readTimingCommentBody } = await import('../../gh-timing-comment.mjs');
+      return bodyOf(await readTimingCommentBody({ issueNumber: issueArg, repo: cfg.repo }));
+    });
+  let timingBody = '';
+  try {
+    timingBody = await fetchTimingBody();
+  } catch {
+    timingBody = '';
+  }
+  const transitionMarker = selectedEntry?.move
+    ? `<!-- aitm-transition move="${selectedEntry.move}" -->`
+    : null;
+  const transitionTimingBody = transitionMarker
+    ? timingBody
+        .split('\n')
+        .filter((line) => line.includes(transitionMarker))
+        .join('\n')
+    : '';
+  const rows = parseTimingRows(transitionTimingBody);
   const enterEvent = PHASE_EVENTS[stateArg]?.enter?.event;
   const entryRows = enterEvent ? rows.filter((r) => r.event === enterEvent) : [];
   const entryRowPresent = entryRows.length > 0;
   const entryTs = entryRowPresent ? entryRows[entryRows.length - 1].ts : null;
   const exitRowPresent =
-    entryTs != null && rows.some((r) => r.ts === entryTs && COMPLETE_EVENT_RE.test(r.event));
+    entryTs != null &&
+    rows.some(
+      (r) =>
+        r.ts === entryTs && (COMPLETE_EVENT_RE.test(r.event) || r.event === `demoted:${stateArg}`)
+    );
+  const recoverablePartial = Boolean(
+    sentinelState !== stateArg &&
+    statusState === stateArg &&
+    selectedEntry?.move &&
+    latestEntry === selectedEntry &&
+    entryMarkerPresent &&
+    exitRowPresent &&
+    entryRowPresent
+  );
+  const transitionId =
+    sentinelState === stateArg && identityConsistent
+      ? (sentinelMarker?.move ?? selectedEntry?.move ?? null)
+      : recoverablePartial
+        ? selectedEntry.move
+        : null;
 
   return {
     sentinelState,
@@ -109,7 +166,8 @@ export async function defaultProbeCompletion(ctx) {
     entryMarkerPresent,
     exitRowPresent,
     entryRowPresent,
-    transitionId: identityConsistent ? (sentinelMarker?.move ?? selectedEntry?.move ?? null) : null,
+    transitionId,
+    recoverablePartial,
     visitMarker: selectedEntry
       ? serializeEntryMarker({
           state: selectedEntry.state,
@@ -181,11 +239,21 @@ export async function moveState(ctx) {
   const writeSentinel = ctx._writeSentinel || defaultWriteSentinel;
   const runPostCommitTail = ctx._runPostCommitTail || defaultRunPostCommitTail;
   const createTransitionId = ctx._createTransitionId || defaultCreateTransitionId;
+  const writePlanTransitionAuthority =
+    ctx._writePlanTransitionAuthority || defaultWritePlanTransitionAuthority;
+  const verifyPlanTransitionAuthorityScope =
+    ctx._verifyPlanTransitionAuthorityScope || defaultVerifyPlanTransitionAuthorityScope;
   const writeTransitionCommit = ctx._writeTransitionCommit || defaultWriteTransitionCommit;
   const repairTransitionCommit = ctx._repairTransitionCommit || defaultRepairTransitionCommit;
   const rollbackRecordedState = ctx._rollbackRecordedState || defaultRollbackRecordedState;
   const assertBoardMarkerConsistent =
     ctx._assertBoardMarkerConsistent || defaultAssertBoardMarkerConsistent;
+
+  // The guard decision, authority record, entry marker, sentinel, and commit
+  // provenance all describe one move. Allocate their shared identity before
+  // the guard so the successful decision can be captured without re-querying
+  // policy at write time.
+  ctx.transitionId = ctx.transitionId || createTransitionId();
 
   const guard = await runGuardExecution(ctx);
   if (guard.exit !== null && guard.exit !== undefined) {
@@ -204,8 +272,20 @@ export async function moveState(ctx) {
   // still runs — every tail step is idempotent, and re-running it reconciles
   // dependents/fields that a crash between Status and tail may have skipped.
   const probe = await probeCompletion(ctx);
+  if (probe.transitionId) ctx.transitionId = probe.transitionId;
   if (isMoveComplete({ ...probe, target: ctx.stateArg })) {
-    ctx.transitionId = probe.transitionId ?? ctx.transitionId ?? null;
+    if (ctx.repairOnly === true) {
+      return {
+        exit: null,
+        itemId: '',
+        noop: true,
+        tail: { failures: [] },
+        phase: 'noop',
+        sentinelPresent: true,
+        boardMoved: true,
+        warnings: [],
+      };
+    }
     ctx.transitionEvidence = {
       visitMarker: probe.visitMarker ?? null,
       sentinelMarker: probe.sentinelMarker ?? null,
@@ -224,20 +304,81 @@ export async function moveState(ctx) {
       warnings: [],
     };
   }
+  const repairAfterStatus = ctx.repairOnly === true && probe.recoverablePartial === true;
+  if (ctx.repairOnly === true && !repairAfterStatus) {
+    return {
+      exit: null,
+      itemId: '',
+      noop: true,
+      tail: { failures: [] },
+      phase: 'noop',
+      sentinelPresent: false,
+      boardMoved: true,
+      warnings: [],
+    };
+  }
 
-  ctx.transitionId = ctx.transitionId || createTransitionId();
+  if (ctx.resolvedFromState === 'plan' && ctx.stateArg === 'develop') {
+    try {
+      ctx.planTransitionAuthority = await writePlanTransitionAuthority(ctx);
+      if (ctx.planTransitionAuthority?.verified !== true) {
+        throw new Error('plan-transition-authority:readback-unverified');
+      }
+      await verifyPlanTransitionAuthorityScope(ctx);
+    } catch (error) {
+      process.stderr.write(
+        `⛔ #${ctx.issueArg} plan→develop authority was not durably verified: ${error.message}\n`
+      );
+      return {
+        exit: PLAN_TRANSITION_AUTHORITY_EXIT,
+        itemId: '',
+        tail: { failures: [] },
+        phase: 'authority',
+        sentinelPresent: false,
+        boardMoved: false,
+      };
+    }
+  }
 
   // Pre-Status evidence: exit-flush the departing row + entry row, then the
   // entry markers. Both are individually idempotent and re-read-verified.
-  await emitPhasePairRows(ctx);
+  if (!repairAfterStatus) await emitPhasePairRows(ctx);
   // #741 — stampEntryMarkers advances `aitm-last-known-state` to the target
   // stage and returns the stage it pointed at BEFORE (the board's confirmed
   // stage). Captured so a failed board write below can compensate.
-  const stampResult = await stampEntryMarkers(ctx);
+  let stampResult = repairAfterStatus
+    ? { priorState: ctx.stateArg, visitMarker: probe.visitMarker ?? null }
+    : null;
+  if (!repairAfterStatus) {
+    try {
+      stampResult = await stampEntryMarkers(ctx);
+    } catch (error) {
+      if (
+        ctx.resolvedFromState === 'plan' &&
+        ctx.stateArg === 'develop' &&
+        String(error?.message || '').startsWith('plan-transition-authority:')
+      ) {
+        process.stderr.write(
+          `⛔ #${ctx.issueArg} plan→develop authority changed before entry stamping: ${error.message}\n`
+        );
+        return {
+          exit: PLAN_TRANSITION_AUTHORITY_EXIT,
+          itemId: '',
+          tail: { failures: [] },
+          phase: 'authority',
+          sentinelPresent: false,
+          boardMoved: false,
+        };
+      }
+      throw error;
+    }
+  }
   const priorState = stampResult?.priorState ?? null;
 
   // Status is the LAST authoritative board write (#711 fail-closed verify).
-  const writeResult = await runStatusWrite(ctx);
+  const writeResult = repairAfterStatus
+    ? { itemId: ctx.itemIdOverride ?? ctx.itemId ?? '', exit: null }
+    : await runStatusWrite(ctx);
   if (writeResult.exit !== null) {
     // #741 — the board write failed/did-not-confirm but stampEntryMarkers has
     // already advanced the authoritative marker to the target. Roll the marker

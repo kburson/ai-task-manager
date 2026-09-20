@@ -48,6 +48,7 @@ import {
 } from '../lib/governed-plan-policy.mjs';
 import {
   collectPlanApprovalRepairEvidence,
+  evaluateModernPlanTransitionEvidence,
   evaluatePlanApprovalRepairEvidence,
 } from '../lib/plan-approval-evidence-repair.mjs';
 
@@ -133,7 +134,10 @@ export async function runPlanApprove({
     Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
 
   const state = await getBoardState({ issueNumber, projectDir });
-  if (state !== 'plan' && !adaptiveConfigured && !repairFromEvidence) {
+  const laterRepairState = ['develop', 'test', 'review'].includes(state);
+  const automaticModernEligible =
+    !repairFromEvidence && requestedMode === 'full-auto' && laterRepairState;
+  if (state !== 'plan' && !adaptiveConfigured && !repairFromEvidence && !automaticModernEligible) {
     return {
       status: 'wrong-state',
       message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
@@ -173,7 +177,45 @@ export async function runPlanApprove({
       violations: governedPlan.violations,
     };
   }
-  if (repairFromEvidence) {
+  let collectedRepairEvidence = null;
+  let automaticTransitionEvidence = null;
+  if (automaticModernEligible) {
+    try {
+      collectedRepairEvidence = await collectPlanApprovalRepairEvidence({
+        issueNumber,
+        repo: cfg.repo,
+        deps,
+      });
+    } catch (error) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} evidence repair could not read complete durable evidence: ${error.message}`,
+        blockers: ['evidence-read-failed'],
+      };
+    }
+    automaticTransitionEvidence = evaluateModernPlanTransitionEvidence({
+      body,
+      authorityRecords: collectedRepairEvidence.authorityRecords,
+      authorityDiagnostics: collectedRepairEvidence.authorityDiagnostics,
+      repository: cfg.repo,
+      issue: issueNumber,
+    });
+    if (
+      automaticTransitionEvidence.status !== 'available' &&
+      (collectedRepairEvidence.authorityRecords.length > 0 ||
+        collectedRepairEvidence.authorityDiagnostics.length > 0)
+    ) {
+      return {
+        status: 'evidence-repair-refused',
+        message: `#${issueNumber} transition-authority repair refused: ${automaticTransitionEvidence.blockers.join('; ')}`,
+        blockers: automaticTransitionEvidence.blockers,
+      };
+    }
+    if (automaticTransitionEvidence.status !== 'available') {
+      automaticTransitionEvidence = null;
+    }
+  }
+  if (repairFromEvidence || automaticTransitionEvidence) {
     if (!['develop', 'test', 'review'].includes(state)) {
       return {
         status: 'evidence-repair-refused',
@@ -204,25 +246,28 @@ export async function runPlanApprove({
         blockers: ['existing-approval-not-evidence-repair'],
       };
     }
-    let repairEvidence;
-    try {
-      repairEvidence = await collectPlanApprovalRepairEvidence({
-        issueNumber,
-        repo: cfg.repo,
-        deps,
-      });
-    } catch (error) {
-      return {
-        status: 'evidence-repair-refused',
-        message: `#${issueNumber} evidence repair could not read complete durable evidence: ${error.message}`,
-        blockers: ['evidence-read-failed'],
-      };
+    let repairEvidence = collectedRepairEvidence;
+    if (repairEvidence === null) {
+      try {
+        repairEvidence = await collectPlanApprovalRepairEvidence({
+          issueNumber,
+          repo: cfg.repo,
+          deps,
+        });
+      } catch (error) {
+        return {
+          status: 'evidence-repair-refused',
+          message: `#${issueNumber} evidence repair could not read complete durable evidence: ${error.message}`,
+          blockers: ['evidence-read-failed'],
+        };
+      }
     }
     // The approval time follows the complete evidence snapshot. Later comments
     // or exception revisions are subsequent lifecycle events, not a race that
     // can retroactively change what was approved at this instant.
     const repairTs = existingApproval?.ts || nowIso();
-    const { comments, records, issueBodyHistory } = repairEvidence;
+    const { comments, records, issueBodyHistory, authorityRecords, authorityDiagnostics } =
+      repairEvidence;
     const evidence = evaluatePlanApprovalRepairEvidence({
       body,
       comments,
@@ -232,15 +277,27 @@ export async function runPlanApprove({
       repo: cfg.repo,
       now: new Date(repairTs).toISOString(),
     });
+    const evidenceBlockers = [...evidence.blockers];
+    if (automaticTransitionEvidence) {
+      const authorityLineageRecord = (records || []).find(
+        ({ envelope }) =>
+          envelope?.recordId === automaticTransitionEvidence.authorityRecordId &&
+          envelope?.payload?.revision === automaticTransitionEvidence.authorityRevision &&
+          envelope?.payload?.requirementIds?.includes('approval.plan')
+      );
+      if (!authorityLineageRecord) {
+        evidenceBlockers.push('plan-transition-authority-lineage');
+      }
+    }
     if (
-      evidence.blockers.length > 0 ||
+      evidenceBlockers.length > 0 ||
       !evidence.approvalPlanRecordId ||
       !evidence.revokedRecordId
     ) {
       return {
         status: 'evidence-repair-refused',
-        message: `#${issueNumber} evidence repair refused: ${evidence.blockers.join('; ')}`,
-        blockers: evidence.blockers,
+        message: `#${issueNumber} evidence repair refused: ${evidenceBlockers.join('; ')}`,
+        blockers: evidenceBlockers,
       };
     }
     if (
@@ -275,6 +332,23 @@ export async function runPlanApprove({
             `plan-approve: evidence changed before repair: ${freshEvidence.blockers.join('; ')}`
           );
         }
+        if (automaticTransitionEvidence) {
+          const freshTransitionEvidence = evaluateModernPlanTransitionEvidence({
+            body: base,
+            authorityRecords,
+            authorityDiagnostics,
+            repository: cfg.repo,
+            issue: issueNumber,
+          });
+          if (
+            freshTransitionEvidence.status !== 'available' ||
+            freshTransitionEvidence.transitionId !== automaticTransitionEvidence.transitionId ||
+            freshTransitionEvidence.authorityRecordId !==
+              automaticTransitionEvidence.authorityRecordId
+          ) {
+            throw new Error('plan-approve: transition authority changed before repair');
+          }
+        }
         const freshApproval = parsePlanApprovedMarker(base);
         if (freshApproval) {
           if (
@@ -303,17 +377,23 @@ export async function runPlanApprove({
       mode: readPlanApprovedMode(persistedBody),
       env,
       repairEvidence: {
-        approvalPlanRecordId: evidence.approvalPlanRecordId,
+        ...(automaticTransitionEvidence || {}),
+        approvalPlanRecordId:
+          automaticTransitionEvidence?.authorityRecordId ?? evidence.approvalPlanRecordId,
         revokedRecordId: evidence.revokedRecordId,
       },
       ...auditDeps,
     });
     return {
-      status: 'repaired-from-evidence',
+      ...(automaticTransitionEvidence || {}),
+      status: automaticTransitionEvidence
+        ? 'repaired-from-transition-authority'
+        : 'repaired-from-evidence',
       ts: repairTs,
       mode: readPlanApprovedMode(persistedBody),
       audit,
-      approvalPlanRecordId: evidence.approvalPlanRecordId,
+      approvalPlanRecordId:
+        automaticTransitionEvidence?.authorityRecordId ?? evidence.approvalPlanRecordId,
       revokedRecordId: evidence.revokedRecordId,
     };
   }
@@ -664,6 +744,8 @@ export function formatPlanApproveOutcome(issueNumber, result) {
       return `Plan approval story binding renewed for #${issueNumber} at ${result.ts} (${detail}).`;
     case 'repaired-from-evidence':
       return `✓ Reconstructed Full-Auto Plan approval for #${issueNumber} at ${result.ts} from durable evidence (revoked exception ${result.revokedRecordId}; ${detail}).`;
+    case 'repaired-from-transition-authority':
+      return `✓ Converged Full-Auto Plan approval for #${issueNumber} at ${result.ts} from completed transition authority ${result.transitionId} (historical outcome=${result.historicalOutcome}; revoked exception ${result.revokedRecordId}; ${detail}).`;
     default:
       return null;
   }
@@ -708,6 +790,7 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     case 'repaired-approval':
     case 'repaired-story-binding':
     case 'repaired-from-evidence':
+    case 'repaired-from-transition-authority':
       process.stdout.write(`${formatPlanApproveOutcome(issueNumber, result)}\n`);
       return;
     case 'wrong-state':

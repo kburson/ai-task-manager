@@ -333,6 +333,19 @@ export async function runGuardExecution(ctx) {
       return { exit: 4 };
     }
 
+    // #1720 — retain the exact successful Plan→Develop decision from this
+    // locked mutation boundary. The authority writer consumes this snapshot;
+    // it must never re-query policy after the guard has passed.
+    if (resolvedFromState === 'plan' && stateArg === 'develop') {
+      ctx.planTransitionAuthorityInput = Object.freeze({
+        body: guardBody,
+        workflowPolicy: guardCtx.workflowPolicy ?? null,
+        sessionPolicy: guardCtx.sessionPolicy,
+        scopeIdentity: guardCtx.workflowPolicy?.scopeIdentity ?? null,
+        recordedAt: new Date().toISOString(),
+      });
+    }
+
     if (guardCtx.planExitOwnershipClaim) {
       ctx.planExitOwnershipClaim = guardCtx.planExitOwnershipClaim;
     }
