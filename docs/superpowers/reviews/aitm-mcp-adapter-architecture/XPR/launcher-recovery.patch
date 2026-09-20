@@ -1,0 +1,139 @@
+--- a/src/provider/claude-launch.mjs
++++ b/src/provider/claude-launch.mjs
+@@ -5,7 +5,7 @@
+ import { resolveContainedPath } from '../collateral/paths.mjs';
+ import { AprError } from '../errors.mjs';
+ import { fingerprintSession as defaultFingerprintSession } from '../identity/registry.mjs';
+-import { inspectReviewAuthority as defaultInspectAuthority } from '../protocol/service.mjs';
++import { inspectReviewAuthority as defaultInspectAuthority, statusReview as defaultStatusReview } from '../protocol/service.mjs';
+ import { atomicWrite } from '../protocol/store.mjs';
+ 
+ const UNSUPPORTED_PATTERN = /[*?\[\]\\]/u;
+@@ -443,6 +443,55 @@
+   return contract;
+ }
+ 
++export function buildClaudeReviewerCurrentResume({
++  repositoryRoot, invitation, routing,
++  inspectAuthority = defaultInspectAuthority, status = defaultStatusReview,
++} = {}) {
++  const workspace = contained(realpathSync(repositoryRoot), routing.workspace, 'workspace');
++  const savedFile = path.join(workspace.absolute, 'provider', 'claude', 'launch-state.json');
++  regularFile(savedFile, 'private resume state');
++  const saved = JSON.parse(readFileSync(savedFile, 'utf8'));
++  const previous = buildClaudeReviewerResume({
++    repositoryRoot, invitation, routing: { ...routing, response: saved.response },
++  });
++  const authority = inspectAuthority(workspace.absolute);
++  const reviewer = authority.state.participants.reviewer;
++  if (!reviewer || reviewer.session_fingerprint !== saved.session_fingerprint ||
++      reviewer.model_id !== saved.model || reviewer.provider !== 'anthropic') {
++    throw new AprError('APR_IDENTITY_CONFLICT', 'Resume must retain the registered Claude reviewer.', { recovery: 'Read current protocol status and preserve the registered session.' });
++  }
++  const current = status(workspace.absolute);
++  if (current.state !== 'reviewer-turn' || current.claim?.status !== 'active') {
++    throw new AprError('APR_INVALID_TRANSITION', 'Resume requires an active reviewer turn.', { recovery: 'Read current protocol status and preserve the registered session.' });
++  }
++  if (current.review_id !== routing.review_id || current.paths.invitation !== invitation ||
++      path.resolve(repositoryRoot, authority.state.protocol.artifact.path) !== routing.artifact) {
++    throw new AprError('APR_INVITATION_INVALID', 'Resume routing differs from event authority.', { recovery: 'Read current protocol status and preserve the registered session.' });
++  }
++  const base = buildClaudeReviewerLaunch({
++    repositoryRoot, invitation, routing: { ...routing, response: current.paths.response },
++    model: saved.model, effort: saved.effort,
++  });
++  regularFile(base.response, 'pending response');
++  const resumeCommand = renderCommand(['peer-review', 'resume', base.workspace]);
++  const submitCommand = renderCommand(['peer-review', 'submit', base.workspace]);
++  const allow = Object.freeze(['Read', 'Glob', 'Grep',
++    encodeClaudeBashRule(['peer-review', 'status', base.workspace, '--next']),
++    encodeClaudeBashRule(['peer-review', 'resume', base.workspace]),
++    encodeClaudeBashRule(['peer-review', 'submit', base.workspace]),
++    encodeClaudeEditRule(base.response)]);
++  const args = [...base.command.args.slice(0, base.command.args.indexOf('--allowedTools') + 1), ...allow];
++  args[1] = `Continue your existing reviewer session. Run exactly: ${resumeCommand}. ` +
++    `The current authorized response is ${base.response}. Read the latest Author response and ` +
++    `updated artifact, finish your review, and edit only this pending response. Preserve protected metadata. ` +
++    `Do not rejoin through the original invitation, edit the artifact, or use Git. ` +
++    `Then run exactly: ${submitCommand}.`;
++  return Object.freeze({ ...base, permissions: Object.freeze({ allow }),
++    command: Object.freeze({ ...base.command, args: Object.freeze(args) }),
++    resume_previous: previous, resume_revision: authority.state.protocol.revision,
++    resume_fingerprint: saved.session_fingerprint });
++}
++
+ function parseProviderResult(execution) {
+   const stdout = String(execution?.stdout ?? '');
+   if (Buffer.byteLength(stdout, 'utf8') > 1024 * 1024) {
+@@ -497,7 +546,17 @@
+     });
+   }
+   const before = inspectAuthority(contract.workspace);
+-  const priorState = resume ? readLaunchState(contract) : null;
++  const priorState = resume ? readLaunchState(contract.resume_previous ?? contract) : null;
++  if (resume && contract.resume_previous) {
++    const current = defaultStatusReview(contract.workspace);
++    if (before.state.protocol.revision !== contract.resume_revision ||
++        current.state !== 'reviewer-turn' || current.claim?.status !== 'active' ||
++        current.paths.response !== contract.response ||
++        before.state.participants.reviewer?.session_fingerprint !== contract.resume_fingerprint ||
++        priorState.session_fingerprint !== contract.resume_fingerprint) {
++      throw new AprError('APR_STALE_REVIEW', 'Current reviewer turn changed before resume.', { recovery: 'Read current protocol status and preserve the registered session.' });
++    }
++  }
+   const args = resume
+     ? Object.freeze(['--resume', priorState.session_handle, ...contract.command.args])
+     : contract.command.args;
+--- a/src/cli/run.mjs
++++ b/src/cli/run.mjs
+@@ -35,6 +35,7 @@
+ import {
+   buildClaudeReviewerLaunch,
+   buildClaudeReviewerResume,
++  buildClaudeReviewerCurrentResume,
+   runClaudeReviewerLaunch,
+ } from '../provider/claude-launch.mjs';
+ import { doctor } from '../doctor.mjs';
+@@ -4249,7 +4250,7 @@
+       };
+       const repositoryRoot = (io.repository ?? createGitRepository()).root(io.cwd);
+       const contract = parsed.options.resume
+-        ? buildClaudeReviewerResume({ repositoryRoot, invitation, routing })
++        ? buildClaudeReviewerCurrentResume({ repositoryRoot, invitation, routing })
+         : buildClaudeReviewerLaunch({
+             repositoryRoot,
+             invitation,
+--- a/test/unit/current-turn-resume.test.mjs
++++ b/test/unit/current-turn-resume.test.mjs
+@@ -0,0 +1,31 @@
++import assert from 'node:assert/strict';
++import {readFileSync} from 'node:fs';
++import path from 'node:path';
++import test from 'node:test';
++import * as launcher from '../../src/provider/claude-launch.mjs';
++const root='/Users/kpburson/.codex/worktrees/planning/ai-task-manager';
++const ws=path.join(root,'.scratch/peer-review/review-cf0c320256eb77ed12fe9e531ed9744f');
++const state=JSON.parse(readFileSync(path.join(ws,'provider/claude/launch-state.json')));
++const invitation=state.invitation;
++const text=readFileSync(invitation,'utf8');
++const routing=JSON.parse(Buffer.from(text.match(/data="([A-Za-z0-9_-]+)"/)[1],'base64url'));
++const input={repositoryRoot:root,invitation,routing};
++test('resume grants only current response, preserves model/effort/session and does not rejoin',()=>{
++ const c=launcher.buildClaudeReviewerCurrentResume(input);
++ assert.match(c.response,/-reviewer-response-2\.md$/);
++ assert.equal(c.model,'claude-opus-5'); assert.equal(c.effort,'medium');
++ const edit=c.permissions.allow.filter(x=>x.startsWith('Edit(')); assert.equal(edit.length,1);
++ assert.equal(launcher.matchesClaudeEditRule(edit[0],c.response,{projectRoot:root}),true);
++ assert.equal(launcher.matchesClaudeEditRule(edit[0],routing.response,{projectRoot:root}),false);
++ assert.equal(launcher.matchesClaudeEditRule(edit[0],routing.artifact,{projectRoot:root}),false);
++ assert.equal(c.command.args.join(' ').includes('peer-review join '),false);
++ assert.ok(c.command.args.join(' ').includes('peer-review resume '));
++ assert.equal(c.resume_previous.response,state.response);
++ assert.equal(c.resume_fingerprint,state.session_fingerprint);
++});
++test('resume refuses a changed reviewer identity',()=>{
++ assert.throws(()=>launcher.buildClaudeReviewerCurrentResume({...input,inspectAuthority:()=>({state:{protocol:{review_id:routing.review_id},participants:{reviewer:{session_fingerprint:'sha256:wrong'}}}})}),{code:'APR_IDENTITY_CONFLICT'});
++});
++test('resume refuses a non-reviewer current turn',()=>{
++ assert.throws(()=>launcher.buildClaudeReviewerCurrentResume({...input,status:()=>({state:'author-revision',paths:{response:routing.response}})}),{code:'APR_INVALID_TRANSITION'});
++});
