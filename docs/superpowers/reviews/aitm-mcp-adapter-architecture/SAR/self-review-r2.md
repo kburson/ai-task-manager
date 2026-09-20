@@ -12,7 +12,7 @@ turn_description: Single Agent Review revision 2
 
 **Date:** 2026-09-20
 
-**Artifact:** [Architecture specification](../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
+**Artifact:** [Architecture specification](../../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
 
 **Reviewed baseline:** `3d61deb4e5bb0d65258cfd0116fdfd4e541682cb`
 
@@ -27,9 +27,9 @@ implementation approval. The manual Claude review remains separate.
 ## Evidence and scope
 
 The review covered the complete specification, the prior
-[self-review](self-review.md), [ADR 0002](../../../decisions/0002-github-native-authority-records.md),
-the current [capsule chain](../../../../scripts/task-tracker/lib/github-records/capsule-chain.mjs),
-and [contract source selection](../../../../scripts/task-tracker/lib/github-records/contract-source.mjs).
+[self-review](self-review-r1.md), [ADR 0002](../../../../decisions/0002-github-native-authority-records.md),
+the current [capsule chain](../../../../../scripts/task-tracker/lib/github-records/capsule-chain.mjs),
+and [contract source selection](../../../../../scripts/task-tracker/lib/github-records/contract-source.mjs).
 The first round's four corrections remain present. This round examines failure
 paths within journal persistence, migration activation, and plugin portability.
 

@@ -42,13 +42,13 @@ The tracked SAR records identify GPT-6 Astra at high effort. SAR r1 ran in a
 session attached to another project, but its edits and commit were made in this
 AITM worktree. Later rounds used the correct worktree explicitly.
 
-| Round  | Findings recorded and corrected | Evidence                       | Resulting commit                           |
-| ------ | ------------------------------: | ------------------------------ | ------------------------------------------ |
-| SAR r1 |                               4 | [Review](../self-review.md)    | `3d61deb4e5bb0d65258cfd0116fdfd4e541682cb` |
-| SAR r2 |                               3 | [Review](../self-review-r2.md) | `21778cf5535b055ad9a42131df9b9d471b428f6e` |
-| SAR r3 |                               2 | [Review](../self-review-r3.md) | `21778cf5535b055ad9a42131df9b9d471b428f6e` |
-| SAR r4 |                               2 | [Review](../self-review-r4.md) | `c5cff0e6ce254cb8872d28fd24ecadc932d9b0a0` |
-| SAR r5 |                               0 | [Review](../self-review-r5.md) | `559df32bb43eb07dc26212c708847ef2fe9be7c8` |
+| Round  | Findings recorded and corrected | Evidence                           | Resulting commit                           |
+| ------ | ------------------------------: | ---------------------------------- | ------------------------------------------ |
+| SAR r1 |                               4 | [Review](../SAR/self-review-r1.md) | `3d61deb4e5bb0d65258cfd0116fdfd4e541682cb` |
+| SAR r2 |                               3 | [Review](../SAR/self-review-r2.md) | `21778cf5535b055ad9a42131df9b9d471b428f6e` |
+| SAR r3 |                               2 | [Review](../SAR/self-review-r3.md) | `21778cf5535b055ad9a42131df9b9d471b428f6e` |
+| SAR r4 |                               2 | [Review](../SAR/self-review-r4.md) | `c5cff0e6ce254cb8872d28fd24ecadc932d9b0a0` |
+| SAR r5 |                               0 | [Review](../SAR/self-review-r5.md) | `559df32bb43eb07dc26212c708847ef2fe9be7c8` |
 
 These are recorded findings, not an independently adjudicated count of unique
 defects. SAR r3 reviewed uncommitted r2 changes; its frontmatter includes the

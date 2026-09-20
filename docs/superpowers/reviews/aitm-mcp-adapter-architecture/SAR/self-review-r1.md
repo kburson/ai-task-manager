@@ -12,7 +12,7 @@ turn_description: Single Agent Review revision 1
 
 **Date:** 2026-09-20
 
-**Artifact:** [Architecture specification](../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
+**Artifact:** [Architecture specification](../../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
 
 **Reviewed baseline:** `c2e33f4d0ae704900437a0659119bad6eb30dc01`
 
@@ -27,8 +27,8 @@ with Claude follows separately after these revisions.
 
 ## Evidence and scope
 
-The review examined the complete specification, [ADR 0002](../../../decisions/0002-github-native-authority-records.md),
-and the current [capsule-chain implementation](../../../../scripts/task-tracker/lib/github-records/capsule-chain.mjs).
+The review examined the complete specification, [ADR 0002](../../../../decisions/0002-github-native-authority-records.md),
+and the current [capsule-chain implementation](../../../../../scripts/task-tracker/lib/github-records/capsule-chain.mjs).
 ADR 0002 requires one coordinator per governed scope, epoch fencing, read-back
 verification, and fail-closed conflict handling. The current chain code detects
 forks and refuses normal authoritative traversal or append through a fork.

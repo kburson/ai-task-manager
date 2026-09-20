@@ -13,7 +13,7 @@ turn_description: Single Agent Review revision 4
 
 **Date:** 2026-09-20
 
-**Artifact:** [Architecture specification](../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
+**Artifact:** [Architecture specification](../../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
 
 **Reviewer:** Codex, self-review
 
@@ -30,9 +30,9 @@ The Append-only integrity section specifies a predecessor hash, while Concurrent
 execution and authority fencing promises an authorized record joining forked
 branches. Appending a record to one branch does not remove the original fork or
 authenticate the other branch. The current
-[capsule-chain reader](../../../../scripts/task-tracker/lib/github-records/capsule-chain.mjs)
+[capsule-chain reader](../../../../../scripts/task-tracker/lib/github-records/capsule-chain.mjs)
 rejects forks even when a record's type is `conflict-resolution`; the current
-[envelope](../../../../scripts/task-tracker/lib/github-records/record-envelope.mjs)
+[envelope](../../../../../scripts/task-tracker/lib/github-records/record-envelope.mjs)
 has one predecessor. Merely adding a new event name cannot make replay resume.
 
 **Correction:** Require a versioned multi-parent join representation with hashed
@@ -53,7 +53,7 @@ provider effects without distinguishing effects that exist only in one clone.
 After an interrupted local commit or worktree creation, another clone cannot
 infer absence by inspecting its own filesystem. Treating the caller's current
 directory as the target can mutate the wrong checkout. The existing
-[worktree binding](../../../../scripts/task-tracker/lib/worktree-binding.mjs)
+[worktree binding](../../../../../scripts/task-tracker/lib/worktree-binding.mjs)
 already records the checkout root and branch; that boundary
 must survive the new transport architecture.
 

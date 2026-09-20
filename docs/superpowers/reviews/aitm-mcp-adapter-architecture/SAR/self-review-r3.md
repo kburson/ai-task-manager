@@ -13,7 +13,7 @@ turn_description: Single Agent Review revision 3
 
 **Date:** 2026-09-20
 
-**Artifact:** [Architecture specification](../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
+**Artifact:** [Architecture specification](../../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
 
 **Reviewed baseline:** The working-tree specification after round 2, based on
 commit `3d61deb4e5bb0d65258cfd0116fdfd4e541682cb` with uncommitted round-2 changes.
@@ -31,11 +31,11 @@ acceptance or implementation approval. The manual Claude review remains pending.
 ## Evidence and scope
 
 The review examined the complete updated specification and the corrections in
-[round 1](self-review.md) and [round 2](self-review-r2.md). It checked the current
-[story approval binding guard](../../../../scripts/task-tracker/lib/story-approval-binding-guard.mjs),
-[Plan transition authority](../../../../scripts/task-tracker/lib/plan-transition-authority.mjs),
-[human reviewer audit](../../../../scripts/task-tracker/lib/human-reviewer-audit.mjs),
-and [delivery provider action](../../../../scripts/task-tracker/lib/delivery-provider-action.mjs).
+[round 1](self-review-r1.md) and [round 2](self-review-r2.md). It checked the current
+[story approval binding guard](../../../../../scripts/task-tracker/lib/story-approval-binding-guard.mjs),
+[Plan transition authority](../../../../../scripts/task-tracker/lib/plan-transition-authority.mjs),
+[human reviewer audit](../../../../../scripts/task-tracker/lib/human-reviewer-audit.mjs),
+and [delivery provider action](../../../../../scripts/task-tracker/lib/delivery-provider-action.mjs).
 
 The existing code rejects stale story or intent approval bindings, distinguishes
 human and automated approval evidence, and binds delivery to a repository, PR,

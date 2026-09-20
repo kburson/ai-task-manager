@@ -14,7 +14,7 @@ finding_count: 0
 
 **Date:** 2026-09-20
 
-**Artifact:** [Architecture specification](../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
+**Artifact:** [Architecture specification](../../../specs/2026-09-20-aitm-mcp-adapter-architecture-design.md)
 
 **Reviewer:** Codex, self-review
 
@@ -26,7 +26,7 @@ complete; independent Claude review remains pending.
 Reviewed the entire committed specification, including its goals, non-goals,
 contracts, examples, migration phases, verification requirements, all 21
 acceptance criteria, and consequences. Rechecked the corrections from
-[round 1](self-review.md), [round 2](self-review-r2.md),
+[round 1](self-review-r1.md), [round 2](self-review-r2.md),
 [round 3](self-review-r3.md), and [round 4](self-review-r4.md) for regressions and
 cross-section contradictions.
 
