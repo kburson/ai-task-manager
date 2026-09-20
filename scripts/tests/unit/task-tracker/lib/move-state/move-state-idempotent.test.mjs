@@ -225,3 +225,56 @@ test('production completion probe recovers only the latest fully-evidenced entry
   assert.equal(superseded.recoverablePartial, false);
   assert.equal(superseded.transitionId, null);
 });
+
+test('production completion probe recovers a demotion with target-bound timing evidence', async () => {
+  const transitionId = 'move:44444444-4444-4444-8444-444444444444';
+  const body = stampEntryMarker(
+    writeMoveCompleteMarker(
+      'Issue body.',
+      'test',
+      '2026-09-19T16:00:00.000Z',
+      'move:55555555-5555-4555-8555-555555555555'
+    ),
+    'develop',
+    '2026-09-19T16:01:00.000Z',
+    transitionId
+  );
+  const posted = [];
+  await emitPhasePairRows({
+    issueArg: '1720',
+    stateArg: 'develop',
+    resolvedFromState: 'test',
+    transitionId,
+    demoteFlag: true,
+    demoteReason: 'verification failed',
+    cfg: { repo: 'kburson/ai-task-manager' },
+    SKIP_NETWORK: false,
+    deps: {
+      ghTimingComment: {
+        buildRow,
+        postTimingEvent: async ({ row }) => posted.push(row),
+        readTimingCommentBody: async () => '',
+        bodyOf: (value) => value,
+      },
+      timingRows: {
+        deriveStateMoveDelta: () => ({ activeSec: 0, idleSec: 0 }),
+        computePhaseCloseDelta: () => ({ matched: false }),
+      },
+      phaseEvents: { PHASE_EVENTS },
+      bankTail: () => ({ marker: 1, fullMarker: 1, fullMarkerAvailable: true }),
+    },
+  });
+
+  const result = await defaultProbeCompletion({
+    issueArg: '1720',
+    stateArg: 'develop',
+    cfg: { repo: 'kburson/ai-task-manager' },
+    SKIP_NETWORK: false,
+    _fetchBody: async () => body,
+    _fetchTimingBody: async () => posted.join('\n'),
+    resolveLiveStateName: async () => 'develop',
+  });
+
+  assert.equal(result.recoverablePartial, true);
+  assert.equal(result.transitionId, transitionId);
+});
