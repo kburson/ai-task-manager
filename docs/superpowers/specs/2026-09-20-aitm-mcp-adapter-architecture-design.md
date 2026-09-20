@@ -157,6 +157,32 @@ Provider variants such as cloud and self-managed installations are expressed as
 adapter capabilities or separate plugin packages. They do not change the port
 contract.
 
+### Local repository binding
+
+A built-in local Git adapter supplies the `repository` port through the same
+public ABI and conformance requirements. Remote forge selection does not select
+the caller's checkout implicitly. Each local effect binds the canonical
+repository, clone and worktree identity, affected refs, and expected revisions.
+Linked worktrees share the relevant Git mutation scopes; distinct clones do
+not become the same local target merely because their remotes match.
+
+Portable configuration describes repository roles and relative locations.
+Runtime binding resolves and verifies the actual checkout; machine paths are
+locators, not portable identity or authority. Missing, ambiguous, or relocated
+bindings block affected mutations until an explicit verified rebind. Neither
+CLI `cwd` nor MCP server startup location overrides the recorded target.
+
+Local commits, worktrees, and uncommitted user data are original repository
+artifacts, not disposable AITM cache. Their governance and recovery receipts
+remain in external authority, but recovery can inspect a local effect only at
+its verified target or through an explicitly authorized, verified transfer.
+An unavailable original clone means unknown effects, not proof of absence. A
+fresh clone may inspect the action but cannot replay its local mutation against
+itself. Publishing a local object, moving user data, or replacing a checkout
+requires a separately declared and authorized effect; recovery does not silently
+push, discard, or recreate it. AITM supports intervention when the original
+artifact cannot be recovered and does not promise to reconstruct lost user data.
+
 ### Adapter ownership
 
 Provider-specific behavior stays inside its adapter, including:
@@ -653,9 +679,27 @@ bootstrap.
 
 The project control stream and each work item have append-only, hash-linked
 evidence streams. Records contain a stable event ID, action ID, actor,
-timestamp, input or result hash, effects, predecessor hash, and record hash.
-Corrections, reversals, reconciliations, and fork joins append new records that
-supersede prior facts; they do not rewrite history.
+timestamp, input or result hash, effects, predecessor references, and record
+hash. Ordinary records have one predecessor; genesis has none. Corrections,
+reversals, reconciliations, and fork joins append new records that supersede
+prior facts; they do not rewrite history.
+
+A fork join uses an explicitly versioned multi-parent envelope whose hash covers
+a canonical ordered set of all joined head IDs and hashes. It includes the
+authorized disposition of competing evidence and effects, rather than treating
+all branch contents as accepted. The new replay contract preserves the full
+graph, validates every parent and disposition, and derives one authoritative
+state from the join. A join must cover the complete conflicting frontier under
+exclusive recovery ownership. Missing parents, conflicting joins, unresolved
+effects, or a subsequently discovered branch keep or return the scope to a
+blocked state; selecting one branch is never implicit recovery.
+
+The current single-predecessor capsule reader does not implement this contract.
+Implementation must version the envelope and replay rules and certify both
+before enabling joins. Older readers must refuse the new schema, not silently
+ignore extra parents. Historical single-predecessor evidence stays readable;
+ordinary traversal cannot resume through a fork just because an event is named
+`conflict-resolution`.
 
 The bounded head projection contains the latest event reference, chain hash,
 lifecycle summary, and unresolved recovery actions. It is derived and
@@ -918,7 +962,7 @@ possible, enforce mutation routing.
 
 | Level        | Meaning                                                          |
 | ------------ | ---------------------------------------------------------------- |
-| `strict`     | Only AITM can access provider write credentials or channels      |
+| `strict`     | Only the isolated AITM kernel can use governed write channels    |
 | `guarded`    | Host policy blocks known mutation tools, commands, and endpoints |
 | `behavioral` | The skill requests compliance, but the host cannot enforce it    |
 
@@ -930,9 +974,20 @@ declarations into host-specific policy rather than maintaining a hard-coded
 GitHub command list. A blocked attempt returns a minified policy error and the
 governed replacement action.
 
-Strict mode additionally requires provider write credentials to be isolated to
-the MCP process, no alternate write-enabled provider tool, enforceable network
-or credential boundaries where applicable, and a successful startup probe.
+Strict mode requires provider credentials and governed local Git write access
+to be isolated to the kernel execution boundary reached by either transport.
+The CLI remains a governed entry point; it cannot expose those credentials or
+write capabilities to the calling agent. No alternate provider or local Git
+mutation channel may bypass that boundary. Enforceable filesystem, process,
+network, or credential controls and a successful startup probe must establish
+the claim. A host with an unrestricted shell sharing writable Git metadata
+cannot claim strict assurance solely by hiding provider credentials.
+
+Guarded mode covers declared local Git mutation commands as well as provider
+tools and endpoints. Read-only Git inspection and source editing allowed by the
+workflow are distinct from governed repository mutations. Each bridge states
+its actual coverage; CLI and MCP use the same assurance classification. The
+minimum assurance across the action's participating ports governs Full-Auto.
 
 Full-Auto requires `guarded` or `strict`. A behavioral-only host may run
 supervised workflows but cannot activate Full-Auto. Every durable Full-Auto
@@ -966,9 +1021,14 @@ Required adversarial cases include:
   reconciliation records, including delayed visibility and conflicting copies;
 - recovery after a binding change, adapter upgrade or removal, and a runtime
   configuration change after the first successful action;
+- interrupted local Git effects inspected from another clone, missing or
+  relocated checkout bindings, and preservation of uncommitted user data;
 - incomplete observations that must not authorize duplicate effects; and
 - fork reconciliation that preserves competing evidence and blocks conflicting
   execution until every outstanding effect is resolved.
+
+Fork tests include omitted or tampered join parents, competing joins, a late
+branch, legacy-reader refusal, and deterministic replay from the complete graph.
 
 ### Adapter conformance kit
 
@@ -1003,6 +1063,10 @@ retaining the backlog authority and verify observation at the original target,
 stable effect keys, and refusal of unsupported recovery or redirected dispatch.
 Passing each adapter's standalone suite does not replace these composition
 checks.
+
+The local Git adapter must prove target binding and shared-worktree conflict
+scopes, interruption recovery, and refusal to treat another clone's filesystem
+as evidence that an original local effect did not occur.
 
 ### Transport parity
 
@@ -1049,6 +1113,9 @@ hosts cannot activate Full-Auto.
 Verify separately that host tool permissions cannot fabricate workflow approval
 and that approval provenance distinguishes human decisions from automated ones,
 even when both use the same provider account.
+Include raw local Git mutation channels, an unrestricted shell with writable
+Git metadata, and the CLI route in assurance tests. Strict mode must refuse a
+claim that is established only for remote provider credentials.
 
 ### Live provider certification
 
@@ -1066,6 +1133,8 @@ Release gates reject:
 - mutations that omit required approval provenance or subject bindings;
 - pending-action recovery that redirects targets or lacks adapter compatibility;
 - evidence appends without stable identity and certified response-loss recovery;
+- fork recovery without a versioned, certified multi-parent replay contract;
+- local repository effects without verified target binding and recovery scope;
 - automatic authority bootstrap without verified genesis and safe recovery;
 - migration activation without a verified old-writer barrier and durable cutover;
 - CLI and MCP behavioral divergence;
@@ -1091,6 +1160,8 @@ implementation-sized specifications and plans.
   execution context for recovery across configuration changes.
 - Route the current CLI through application services and policy.
 - Move GitHub behavior behind the public adapter contract.
+- Supply the local Git port, certify its binding and recovery boundaries, and
+  version and certify fork-join replay before enabling those capabilities.
 
 Exit when the existing CLI suite passes through the kernel without MCP and the
 new admission, response-loss, evidence-append, stale-owner, bootstrap, and
@@ -1261,6 +1332,12 @@ evidence.
 19. Pending actions retain their resolved targets and recovery contracts across
     configuration changes. Incompatible recovery or retired configuration
     generations block dispatch; retries never redirect effects to new defaults.
+20. Fork joins authenticate every joined head and its disposition through a
+    versioned replay contract. Incomplete or conflicting joins remain blocked;
+    old readers cannot silently accept a schema they do not understand.
+21. Local Git mutations bind the correct clone, worktree, refs, and revisions.
+    Recovery elsewhere cannot infer absence or replay against a different
+    checkout, and host assurance covers both local and remote mutation channels.
 
 ## Consequences
 
