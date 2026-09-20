@@ -169,6 +169,17 @@ The kernel sees canonical authority references, actions, effects, capabilities,
 and errors. An adapter may not return an untyped provider identifier and require
 the agent, CLI, MCP handler, or another adapter to interpret it.
 
+### Vocabulary and existing host integrations
+
+In new code and documentation, an **external-system adapter** integrates GitHub,
+GitLab, Bitbucket, Jira, or another authority; an **agent-host bridge** integrates
+Codex, Claude, or another agent runtime. Bare `ProviderAdapter` is not a new SDK
+name. The existing `scripts/providers/provider-adapter.mjs` describes AI vendors
+and local agents; Phase 1 inventories its callers and migrates that internal
+concept to `AgentHostBridge`, retaining compatibility exports and configuration
+keys where needed. Verification providers and delivery-provider actions retain
+explicitly qualified names and are mapped by responsibility, not bulk-renamed.
+
 ## Adapter ABI and plugin model
 
 AITM exports a stable adapter SDK:
@@ -182,7 +193,7 @@ An external plugin declares its compatibility statically:
 ```json
 {
   "name": "@community/aitm-adapter-gitlab",
-  "peerDependencies": { "@kburson/ai-task-manager": "^2.0.0" },
+  "peerDependencies": { "@kburson/ai-task-manager": "^1.0.0" },
   "aitm": { "kind": "adapter", "manifest": "./aitm-adapter.json", "entry": "./dist/adapter.mjs" }
 }
 ```
@@ -194,12 +205,31 @@ The referenced manifest is data rather than executable code:
   "schema": "aitm.adapter-manifest/v1",
   "id": "community-gitlab",
   "version": "1.2.0",
-  "coreApi": "^2",
+  "coreApi": "^1",
   "ports": ["work-items", "forge", "ci", "identity"],
   "extensions": ["gitlab:epic-link"],
   "entry": "./dist/adapter.mjs"
 }
 ```
+
+These examples describe the planned first stable release, not today's package.
+The current checkout is `0.1.0` with no `exports` map or adapter SDK entry point.
+Phases 1-4 develop on the unstable `0.x` line; their exits do not promise a stable
+external plugin ABI. Phase 5 publishes core `1.0.0` and adapter ABI `1` only after
+its release gates pass. Phases 6-7 target compatible `1.x` additions; a breaking
+core or ABI change requires its own major release and migration decision.
+
+The npm peer range constrains the installed package version; `coreApi` constrains
+the separately versioned adapter ABI advertised by that package. Both must
+match. Neither overrides the other: a conflict makes the plugin incompatible,
+even if npm installation succeeded. Setup and runtime validate both.
+
+Phase 5 adds a deliberate package `exports` map for the public adapter SDK and
+schemas, includes their runtime files and declarations in the npm `files` set,
+and documents the supported compatibility entries for existing consumers.
+Internal script paths are not promised as SDK APIs. A packed-package consumer
+fixture must resolve every public entry without a source checkout, reject
+unexported internals, and verify supported CLI compatibility before publication.
 
 The adapter runtime contract is intentionally small:
 
@@ -318,12 +348,37 @@ aitm_recover
 Widely used portable actions receive explicit tools with JSON Schema inputs and
 outputs so hosts can display precise intent and approvals.
 
+### Portable action invocation
+
+`aitm_invoke_action` invokes portable core actions without a dedicated typed tool,
+including `work-item.create`, blocking, assignment, shelving, and workflow
+exception actions. The seven typed tools are convenience projections, not the
+complete portable vocabulary. Phase 1 maps every existing CLI verb to a canonical
+action or a documented host-local compatibility operation; Phase 3 must cover
+every portable action over MCP.
+
+The generic input names an exact action ID, action-schema version, capability
+fingerprint, and payload. The server resolves the action, validates its exact
+payload schema, and applies the same policy, approvals, effects, and recovery as
+the typed route. An earlier describe/discover response grants no authority; live
+preconditions are checked again at invocation. Unknown, unavailable, or
+`orchestrator-only` actions are refused. Core IDs and namespaced extension IDs
+have distinct registries, so the portable route cannot bypass extension policy.
+
+Typed tools let hosts render precise static intent. Generic invocation supplies
+runtime intent and effects from the exact described action. A host that cannot
+display that detail must use a governed approval flow which does, or refuse an
+action requiring informed approval. Generic invocation never converts a broad
+tool permission into approval for its payload's effects.
+
 ### Extension invocation
 
 Uncommon namespaced adapter extensions use `aitm_invoke_extension`. The agent
 must first discover or describe the extension. The server validates the payload
 against the extension's exact schema and policy before invocation. An extension
-may be promoted to a typed tool without changing its domain contract.
+may be promoted to a typed tool without changing its domain contract. The
+extension route rejects `orchestrator-only` identifiers and core action IDs;
+server policy enforces that boundary even when no dedicated tool exists.
 
 ### MCP resources
 
@@ -378,10 +433,28 @@ Canonical domain object ──► minified JSON ──► agents and automation
 ### Contextual discovery record
 
 ```text
-{"schema":"aitm.discovery/v1","context":{"workItem":"github://org/repo/issues/45","state":"Plan"},"actions":[{"id":"work-item.record-analysis","tool":"aitm_record_evidence","status":"available","why":"Persist analysis before implementation.","when":["Analysis is complete and must become durable."],"effects":["journal.append","projection.update"],"inputSchemaRef":"aitm://schemas/actions/work-item.record-analysis/v1","helpRef":"aitm://actions/work-item.record-analysis"}]}
+{"schema":"aitm.discovery/v1","fingerprint":"sha256:...","context":{"workItem":"github://org/repo/issues/45","state":"Plan"},"actions":[{"id":"work-item.record-analysis","tool":"aitm_record_evidence","status":"available","purpose":"Persist analysis.","helpRef":"aitm://actions/work-item.record-analysis"}],"complete":true}
 ```
 
-Every action record describes:
+Discovery returns only action ID, invocation tool, status, a short purpose,
+`helpRef`, and a reason code when unavailable, plus bounded context, capability
+fingerprint, completion flag, and an opaque next-page cursor when needed.
+`aitm_describe` returns the full versioned record below and its schema references.
+Unavailable actions remain reachable through filters and pagination; they need
+not all be inlined into the first response.
+
+Every discovery response is capped at 50 actions and 32 KiB of serialized UTF-8
+JSON, including its envelope. Pagination is mandatory when either limit would
+be exceeded. Filters include action namespace, port, status, and work-item
+context. Cursors bind the query and capability fingerprint; stale cursors return
+a structured restart instruction rather than silently mixing snapshots. Short
+fields have schema length bounds; an oversized single record is a catalog
+validation error, not an unbounded page. The full capabilities resource uses the
+same pagination contract. Description and schema resources are fetched on demand.
+Release gates exercise large catalogs, unavailable entries, byte bounds, and
+cursor invalidation.
+
+Every full description record describes:
 
 - portability and adapter ownership;
 - purpose, when to use it, and when not to use it;
@@ -456,6 +529,22 @@ require understanding that decomposition.
 
 Setup is maintainer-owned and intent-changing. It never runs implicitly during
 package installation.
+
+Each phase has a stable operation ID, input fingerprint, declared effects,
+read-back checks, and retry classification. Read-only phases may rerun freely;
+file/package phases stage and validate changes before activation, preserving a
+rollback snapshot. External writes use the same requested/outcome and recovery
+contract as other governed actions. A rerun observes prior effects and resumes
+incomplete steps; it does not blindly replay package installation, lifecycle
+scripts, or external initialization. Bootstrap creates or locates the selected
+control stream under an explicit maintainer grant before other external writes;
+an ambiguous control-stream creation requires discovery and reconciliation.
+
+Activation is the final step after runtime and parity checks. Partial failures
+report exact committed effects and recovery steps. External evidence is retained;
+it is not erased to simulate rollback. The previous installation remains the
+active configuration while activation is incomplete; if an external effect makes
+it incompatible, governed mutations pause with diagnostics until reconciled.
 
 ### Tracked portable output
 
@@ -581,16 +670,41 @@ itself prevent a provider administrator from replacing an entire history;
 provider audit controls and future optional signatures address stronger threat
 models without making signature infrastructure a version-one dependency.
 
+A chain protects the recorded reference and content digest, not the continued
+availability or immutability of the referenced system. Git evidence records full
+commit/object IDs and relevant content digests, not branch names alone. Force
+pushes, deletion, or retention expiry can make an object unavailable even though
+the recorded digest is intact; a receipt must not treat that as freshly verified
+evidence. Typed references retain authority identity, binding generation, stable
+provider ID where supported, and the original locator. Renames may be resolved
+only with verified identity continuity. Deleted, moved without proof, or
+unavailable referents return typed diagnostics; a new forge binding does not
+redirect historical evidence. Historical observations remain readable, while
+new gates requiring live proof fail closed when that proof cannot be obtained.
+
 ### Relation to ADR 0002
 
 ADR 0002 made GitHub Issues and comments the sole durable authority. This design
-preserves its storage-neutral principles—external durable authority,
-append-first mutation, immutable capsules, rebuildable projections, and no
-required AITM database—but generalizes the authority from GitHub to the selected
-`work-items` adapter.
+generalizes that storage choice to the selected `work-items` adapter. It retains
+all nine required mitigations: one authoritative coordinator per scope;
+epoch-fenced grants and assignments; immutable predecessor-linked records;
+canonical JSON, hashes, and read-back verification; coarse capsules and batched
+or cached reads; fail-closed conflicts; sealed Delivery Contracts; versioned
+schemas and legacy adapters; and crash, fork, deletion, and rebuild tests.
 
-Implementation must add a replacement ADR before activating a non-GitHub
-backlog. Until then, the built-in GitHub adapter preserves ADR 0002 behavior.
+Workers append submissions, not authoritative acceptances. Only the active
+scoped coordinator accepts them and updates the corresponding authoritative
+projection. The project control stream is itself a governed scope with its own
+coordinator and fenced grant. Separate worktrees and fleet sessions submit
+requests to that scope; they do not independently advance its accepted head.
+Nested delegation retains the existing parent/child scope and epoch rules.
+
+Phase 1 preserves these mitigations in the extracted kernel and GitHub adapter;
+they are not deferred until plugins or Full-Auto. Provider-neutral record
+encoding and the added project control scope extend the existing mechanism.
+There is no intended replacement of scoped coordination by optimistic races.
+A replacement ADR must enumerate these retained mitigations and the generalized
+storage decision before a non-GitHub backlog is activated.
 
 ## Governed action and recovery flow
 
@@ -614,8 +728,7 @@ head, authority target, and retry contract.
 
 After mutation, AITM appends `action.completed` or `action.failed` with observed
 typed effects. If execution stops between provider mutation and the outcome
-receipt, recovery finds the unmatched request. The adapter searches using the
-idempotency marker and appends one of:
+receipt, recovery finds the unmatched request. The adapter observes using its declared evidence class and appends one of:
 
 ```text
 action.reconciled
@@ -625,10 +738,67 @@ action.intervention-required
 
 AITM never blindly repeats an ambiguous mutation.
 
-Concurrent writers use an expected-head precondition. An adapter with
-conditional-update support performs compare-and-append. Other adapters reread
-and verify around the append. Detected forks remain visible and are joined by an
-explicit reconciliation record rather than silently discarded.
+### Mutation observability
+
+Each action declares one of these proof classes before execution:
+
+| Class                               | Proof and recovery outcome                                                                                                                                                                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Marker-attributable                 | A durable provider marker or operation receipt uniquely binds the effect to the action. Verified read-back permits `action.reconciled` with attributed effects.                                                                                      |
+| Exclusively attributable transition | A recorded prior value plus provider audit identity or enforced exclusive writer conditions proves the transition belongs to this action. The receipt states that proof and permits attributed reconciliation. Value equality alone is insufficient. |
+| State-only observable               | A field, label, assignee, or milestone matches intent but causation cannot be proved. Reconciliation may record `state-satisfied`, `attribution: unknown`, and `execution: unknown`; it must not assert that AITM performed the write.               |
+| Unobservable or conflicting         | Evidence is unavailable, contradictory, or shows unresolved concurrent changes. Append `action.intervention-required`; no success or automatic retry is inferred.                                                                                    |
+
+For state-only observations, an action whose contract requires only a desired
+state may finish with a truthful `state-satisfied` reconciliation and no duplicate
+write, after all other policy and evidence requirements pass. An approval,
+integration, accounting, or lifecycle rule requiring proof of actor or occurrence
+cannot be satisfied that way and requires intervention. Matching board status
+alone does not establish an authorized lifecycle transition. If intent is not
+satisfied, retry needs a fresh authority/policy check and an explicit adapter
+proof that replay is safe despite intervening changes; otherwise intervention is
+required. Setting a value is not automatically replay-safe when it can overwrite
+another actor's decision. The original action ID is retained across recovery.
+
+An active AITM coordinator serializes governed actors; it does not establish
+exclusive control over humans or other provider clients. Thus ProjectV2 Status,
+labels, assignees, and milestones default to state-only observability unless the
+adapter supplies stronger proof. The conformance kit covers identical human
+writes, value changes and reversals, crash-after-write, missing audit evidence,
+and action contracts that require attribution.
+
+### Concurrency and fencing
+
+All authoritative operations carry the scope, coordinator grant ID, epoch,
+expected accepted head, and action ID. The kernel validates authority before
+execution and before accepting a result. Worker submissions are durable inputs
+and do not compete to publish a new accepted head. The coordinator serializes
+acceptance and projection writes within its scope; multi-scope actions name
+all required authorities and pause if any are ambiguous.
+
+When a provider supports atomic conditional append and fencing, the adapter uses
+it. GitHub issue-comment updates in this checkout provide no such CAS. Rereading
+before and after append is detection, not atomic exclusion. On a non-CAS adapter,
+a coordinator grant must have one active serialized executor; two clones may not
+activate the same grant concurrently. Initial activation and handoff require
+externally serialized execution or an explicit maintainer-controlled quiescent
+handoff that confirms the previous executor and in-flight writes have stopped.
+A timeout or an unreadable process is not proof of quiescence. Automatic failover
+is unavailable without an enforceable exclusion/fencing mechanism; an adapter
+must report that limitation rather than offer race-prone distributed activation.
+This does not require a hosted AITM service or permanent daemon: a bounded
+coordinator invocation can drain pending external submissions under that rule.
+
+For the project control stream, concurrent sessions may append independent
+request submissions; only its single executor appends accepted control events
+and updates its head. Submissions are linked to their own IDs and observed head,
+not falsely represented as concurrent accepted successors. On conflict, stale
+epoch, duplicate executor, or fork detection, affected governed mutations stop.
+No contender wins merely by writing last. Preserve competing records and observed
+effects; an authorized reconciliation joins them only after restoring unique
+coordination and resolving any ambiguous effects. Local worktree locks alone
+cannot prove exclusion across clones. These constraints and interrupted handoffs
+are Phase 1 conformance gates, including the GitHub path.
 
 Every action returns the same result shape:
 
@@ -662,9 +832,29 @@ declarations into host-specific policy rather than maintaining a hard-coded
 GitHub command list. A blocked attempt returns a minified policy error and the
 governed replacement action.
 
-Strict mode additionally requires provider write credentials to be isolated to
-the MCP process, no alternate write-enabled provider tool, enforceable network
-or credential boundaries where applicable, and a successful startup probe.
+Strict mode is a bounded claim about an explicitly declared execution boundary,
+not a startup scan of an arbitrary workstation. A supporting host must place the
+agent and its child processes inside an enforced sandbox without provider write
+secrets or access to credential helpers; a separately isolated AITM executor
+holds those credentials. Egress rules prevent direct provider writes and access
+to other credential brokers. The only permitted write route crosses a validated
+AITM action boundary. A CLI caller can use the same isolated executor without
+receiving its credentials.
+
+The host supplies verifiable boundary configuration and an attestation bound to
+the current process tree, credential policy, egress policy, and configuration
+fingerprint. Startup probes exercise denied direct-write and credential-access
+paths; probes corroborate the mechanism rather than proving an unbounded
+negative. Policy change, attestation expiry, or boundary loss disables strict
+execution and requires reevaluation before another governed mutation. Receipts
+record the boundary and assurance fingerprint. No claim covers a compromised
+host administrator outside that declared trust boundary.
+
+The first host-bridge release defaults to guarded or behavioral; it does not
+promise this strict isolation mechanism on ordinary developer desktops. An agent
+with Bash and accessible authenticated `gh` cannot report strict. A host may add
+strict certification only in Phase 7 after mechanism-specific positive and
+negative isolation tests pass. Merely unsetting `GH_TOKEN` is insufficient.
 
 Full-Auto requires `guarded` or `strict`. A behavioral-only host may run
 supervised workflows but cannot activate Full-Auto. Every durable Full-Auto
@@ -694,8 +884,12 @@ effects.
 
 ### Transport parity
 
-Invoke common actions through CLI and MCP and assert identical domain requests,
-authority effects, receipts, errors, and next-action recommendations.
+Invoke every externally callable portable action through CLI and MCP, including
+both generic and typed routes where present, and assert identical domain
+requests, authority effects, receipts, errors, and next-action recommendations.
+Test extension routes against the same policy contract, and verify every route
+rejects `orchestrator-only` actions. The action inventory drives the coverage
+matrix; missing invocation coverage is a release failure, not an exemption.
 
 ### Portable-install test
 
@@ -724,7 +918,12 @@ Release gates reject:
 - CLI and MCP behavioral divergence;
 - generated-file changes absent from the install manifest;
 - adapters that fail their declared-port conformance suite; and
-- cloud fixtures that require setup after `npm ci`.
+- cloud fixtures that require setup after `npm ci`;
+- discovery pages beyond their action or byte bounds, or stale-cursor mixing;
+- missing or incorrectly packaged public SDK exports;
+- incompatible peer/ABI combinations accepted by the resolver;
+- non-CAS concurrent executor activation or unsafe automatic takeover; and
+- strict assurance without the named isolation mechanism and current attestation.
 
 ## Migration and rollout
 
@@ -733,7 +932,12 @@ implementation-sized specifications and plans.
 
 ### Phase 1: Headless kernel and built-in GitHub adapter
 
-- Inventory every current action and direct provider mutation.
+- Inventory every current action and direct provider mutation, mapping each CLI
+  verb to a portable action or documented host-local compatibility operation.
+- Disambiguate external-system adapters and agent-host bridges, including the
+  existing internal `ProviderAdapter` name and compatibility mapping.
+- Preserve scoped coordinators, epoch fencing, and fail-closed conflicts; prove
+  serialized non-CAS acceptance and safe handoff before enabling the new path.
 - Define canonical action, result, error, effect, and evidence schemas.
 - Route the current CLI through application services and policy.
 - Move GitHub behavior behind the public adapter contract.
@@ -771,7 +975,12 @@ exit gate.
 
 - Publish the adapter ABI, manifest schema, fixtures, and conformance runner.
 - Discover direct dependencies and workspace plugins.
+- Add and package the public SDK/schema exports, explicit compatibility entries,
+  and packed-package consumer tests.
 - Prove that an independently built reference adapter requires no core changes.
+
+Exit publishes the first stable core `1.0.0` with adapter ABI `1`, after peer/ABI
+compatibility and package export gates pass.
 
 ### Phase 6: Provider plugins
 
@@ -805,10 +1014,15 @@ migration. It:
 - leaves external GitHub state unchanged unless the reviewed setup plan names a
   required compatible mutation.
 
-A failed migration leaves the previous installation operational and records no
-partial success.
+A failed migration does not activate a partially installed configuration. It
+retains the previous configuration, records any external effects truthfully, and
+pauses mutations if those effects prevent safe continued operation. Recovery
+resumes or rolls back reversible installation effects without deleting evidence.
 
-Existing CLI verbs remain supported for at least one major-version transition.
+Existing CLI verbs remain supported throughout `0.x`, the first stable `1.x`
+line, and the following `2.x` major line. Removal can occur no earlier than `3.0.0`
+and requires its own approved migration decision; this defines the promised
+major-version transition relative to today's `0.1.0`.
 Old evidence remains readable after its writer is no longer installed. A
 migration never silently changes the writable backlog authority. Rollback may
 restore generated integration files but never deletes durable external
