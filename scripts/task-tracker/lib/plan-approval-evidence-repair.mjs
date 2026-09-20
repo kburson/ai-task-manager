@@ -267,7 +267,7 @@ export function evaluateModernPlanTransitionEvidence({
       body,
     });
   } catch {
-    // The scope mismatch refusal below covers an uncomputable current scope.
+    // The scope mismatch refusal below covers an invalid current scope.
   }
   if (
     record.repository.toLowerCase() !== String(repository || '').toLowerCase() ||
