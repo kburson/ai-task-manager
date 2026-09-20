@@ -6,6 +6,7 @@ import {
   moveState,
 } from '../../../../../task-tracker/lib/move-state/move-state-core.mjs';
 import { emitPhasePairRows } from '../../../../../task-tracker/lib/move-state/audit-timing.mjs';
+import { writeMoveCompleteMarker } from '../../../../../task-tracker/lib/move-state/sentinel.mjs';
 import { stampEntryMarker } from '../../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { buildRow } from '../../../../../task-tracker/gh-timing-comment.mjs';
 import { PHASE_EVENTS } from '../../../../../task-tracker/phase-events.mjs';
@@ -135,7 +136,19 @@ test('same-target replay without a recoverable partial move remains a strict no-
 
 test('production completion probe recovers only the latest fully-evidenced entry identity', async () => {
   const transitionId = 'move:11111111-1111-4111-8111-111111111111';
-  const body = stampEntryMarker('Issue body.', 'develop', '2026-09-19T15:22:16.789Z', transitionId);
+  const previousTransitionId = 'move:00000000-0000-4000-8000-000000000000';
+  const priorBody = writeMoveCompleteMarker(
+    'Issue body.',
+    'plan',
+    '2026-09-19T15:20:00.000Z',
+    previousTransitionId
+  );
+  const body = stampEntryMarker(
+    priorBody,
+    'develop',
+    '2026-09-19T15:22:16.789Z',
+    transitionId
+  );
   const posted = [];
   await emitPhasePairRows({
     issueArg: '1720',
@@ -174,6 +187,25 @@ test('production completion probe recovers only the latest fully-evidenced entry
 
   assert.equal(result.recoverablePartial, true);
   assert.equal(result.transitionId, transitionId);
+
+  const mismatchedTargetSentinel = await defaultProbeCompletion({
+    issueArg: '1720',
+    stateArg: 'develop',
+    cfg: { repo: 'kburson/ai-task-manager' },
+    SKIP_NETWORK: false,
+    _fetchBody: async () =>
+      writeMoveCompleteMarker(
+        body,
+        'develop',
+        '2026-09-19T15:23:00.000Z',
+        'move:33333333-3333-4333-8333-333333333333'
+      ),
+    _fetchTimingBody: async () => timingBody,
+    resolveLiveStateName: async () => 'develop',
+  });
+  assert.equal(mismatchedTargetSentinel.recoverablePartial, false);
+  assert.equal(mismatchedTargetSentinel.entryMarkerPresent, false);
+  assert.equal(mismatchedTargetSentinel.transitionId, null);
 
   const superseded = await defaultProbeCompletion({
     issueArg: '1720',

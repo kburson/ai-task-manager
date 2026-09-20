@@ -101,8 +101,15 @@ export async function defaultProbeCompletion(ctx) {
     statusState = '';
   }
 
+  // A sentinel that already claims the target must identify the same move as
+  // the latest target entry. A sentinel for an older state is expected after
+  // Status succeeds but before the final sentinel write; the transition-bound
+  // entry and timing pair below are the recovery authority for that shape.
   const identityConsistent =
-    !sentinelMarker?.move || !selectedEntry?.move || sentinelMarker.move === selectedEntry.move;
+    sentinelState !== stateArg ||
+    !sentinelMarker?.move ||
+    !selectedEntry?.move ||
+    sentinelMarker.move === selectedEntry.move;
   const entryMarkerPresent = getStageVisitCount(body, stateArg) > 0 && identityConsistent;
 
   const fetchTimingBody =
