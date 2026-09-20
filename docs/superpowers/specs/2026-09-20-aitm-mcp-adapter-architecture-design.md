@@ -129,12 +129,30 @@ Each exclusive role has one active writable binding. In particular, a project
 has exactly one writable `work-items` authority. Supporting providers may be
 configured for read-only observations when an action explicitly names them.
 
+The `repository` port defaults to a bundled `local-git` adapter, independently of
+the remote work-items, forge, CI, and identity bindings. Every composition below
+includes that repository binding unless a compatible replacement is explicitly
+selected. Local Git commands, worktree discovery, branch/ref handling, ancestry,
+and their filesystem/process mechanics belong to this adapter; workflow policy
+and authorization remain in the kernel. The adapter uses the same public port
+contract and conformance rules as the external-system adapters.
+
+A repository action resolves an explicit execution context containing project
+repository identity, clone/worktree identity, target branch/ref, and relevant
+expected HEAD/worktree-state preconditions before dispatch. An MCP server's
+startup directory is not authority to choose a worktree on the caller's behalf.
+Missing, foreign, or changed context fails before effects. Machine paths are
+runtime locators, not portable project bindings. Local Git effects use the same
+invocation/recovery contract and external-authority receipts as remote effects;
+Git objects remain repository evidence, not a second workflow-authority store.
+
 ### Provider targets
 
 The current provider targets are:
 
 | Provider  | Packaging        | Candidate ports                         |
 | --------- | ---------------- | --------------------------------------- |
+| Local Git | Built-in default | `repository`                            |
 | GitHub    | Built-in default | `work-items`, `forge`, `ci`, `identity` |
 | GitLab    | External plugin  | `work-items`, `forge`, `ci`, `identity` |
 | Bitbucket | External plugin  | `work-items`, `forge`, `ci`, `identity` |
@@ -275,9 +293,20 @@ fetch-without-execution mechanism and approval boundary; unavailable inspection
 blocks executable installation. Approval to inspect a package is not approval
 to run its lifecycle scripts.
 
-The selected plugins are committed in project configuration and restored by the
-package lock. Cloud consumers load only the committed selection; they neither
-scan nor prompt.
+A portable selection must be restorable from the committed checkout and package
+lock: a pinned registry artifact, or fully tracked in-repository workspace/file
+sources with restorable build inputs. An absolute or outside-checkout filesystem
+path, missing tracked source, or symlink escaping that source boundary does not
+become portable merely because a lockfile records it. Setup must normalize such
+a selection into a restorable dependency or report `plugin-local-required`.
+
+Local experimentation remains available through an explicit machine-local
+override, but that selection is marked not portable and cannot produce a
+successful portable-install manifest or satisfy the cloud acceptance gate. Do
+not write its machine path into tracked portable integration. A clone missing
+that override reports the required capability as unconfigured rather than
+scanning for or silently substituting a plugin. Cloud consumers load only the
+committed portable selection; they neither scan nor prompt.
 
 ## Action registry and capability graph
 
@@ -362,11 +391,12 @@ including `work-item.create`, blocking, assignment, shelving, and workflow
 exception actions. This route is exclusive: an action with a dedicated typed
 tool is rejected by `aitm_invoke_action`, even if the host disables or withholds
 permission for that typed tool. The registry assigns each externally callable
-core action exactly one MCP invocation route, which discovery reports. The seven
+action, whether core or extension, exactly one MCP invocation route, which
+discovery reports. The seven
 typed tools are dedicated projections of selected canonical actions; the generic
 route serves the remaining portable vocabulary. Phase 1 maps every existing CLI
-verb to a canonical action or a documented host-local compatibility operation; Phase 3 must cover
-every portable action over MCP.
+verb to a canonical action or a documented host-local compatibility operation;
+Phase 3 must cover every portable action over MCP.
 
 The generic input names an exact registered `action` identifier, action-schema
 version, capability fingerprint, payload, and caller-retained `invocationKey`
@@ -389,9 +419,14 @@ tool permission into approval for its payload's effects.
 Uncommon namespaced adapter extensions use `aitm_invoke_extension`. The agent
 must first discover or describe the extension. The server validates the payload
 against the extension's exact schema and policy before invocation. An extension
-may be promoted to a typed tool without changing its domain contract. The
-extension route rejects `orchestrator-only` identifiers and core action IDs;
-server policy enforces that boundary even when no dedicated tool exists.
+may be promoted to a typed tool without changing its domain contract, but that
+promotion changes its assigned invocation route and capability fingerprint. The
+extension route rejects promoted extensions assigned a typed tool, even when the
+host withholds that tool. Both generic routes enforce the registry's exclusive
+route assignment; neither is a fallback around typed-tool permissions. The
+extension route also rejects `orchestrator-only` identifiers and core action IDs.
+Discovery and description report the current assignment; stale route use returns
+a structured rediscovery instruction before any effects.
 
 ### MCP resources
 
@@ -525,11 +560,11 @@ npx aitm setup
 
 1. inspect the repository, package manager, installed hosts, credentials, and
    existing AITM state;
-2. select a provider bundle or independent port bindings;
+2. select a provider bundle or independent port bindings, including `local-git`;
 3. discover installed compatible plugins and ask which to trust;
 4. preview repository, host, package, and external-authority effects;
 5. after confirmation, add or normalize selected external plugins in project
-   dependencies and the package lock;
+   dependencies and the package lock, and verify source portability;
 6. install portable project integration and host bridges;
 7. initialize or bind the selected external authority;
 8. resolve and lock the capability graph;
@@ -596,7 +631,9 @@ init, migration, external-system configuration, or tracked-file regeneration.
 A host may claim zero-bootstrap cloud compatibility only when it can consume
 tracked project-local MCP configuration. Setup reports a host that requires
 uncommitted machine-global registration as `host-local-required`; AITM does not
-pretend that integration is portable.
+pretend that integration is portable. The same portability gate rejects
+`plugin-local-required` selections from the zero-bootstrap claim; a working
+maintainer checkout is not a substitute for a clean-clone dependency test.
 
 Credentials come from provider-native authentication, cloud secret stores, or
 workload identity. They are not tracked.
@@ -724,25 +761,29 @@ storage decision before a non-GitHub backlog is activated.
 Every mutation follows this sequence:
 
 ```text
-discover action
-  └─► validate capability and policy
-        └─► rehydrate authority state and evidence head
-              └─► append action.requested
-                    └─► execute through adapter
-                          └─► observe external effects
-                                └─► append outcome
-                                      └─► update projection
-                                            └─► return result
+discover action and retain invocation key
+  └─► authenticate caller and authorize invocation lookup
+        └─► resolve existing binding or verify absence
+              ├─► existing: inspect receipt or enter governed recovery
+              └─► absent: validate current capability, policy, and authority
+                    └─► append and read back action.requested
+                          └─► record dispatch intent
+                                └─► execute through adapter
+                                      └─► observe effects and append outcome
+                                            └─► update projection and return
 ```
 
-Before any provider mutation, AITM durably binds the caller's `invocationKey` to
+Before any domain effect through an adapter, AITM durably binds the caller's
+`invocationKey` to
 one `actionId` in the selected external authority and reads that binding back.
 `action` is the registered operation name (for example, `work-item.create`);
 `actionId` identifies one execution instance. Neither is the caller's retry key.
 The `action.requested` event stores all three, the canonical request hash,
 expected evidence head, authority target, actor, and retry contract. A provider
 idempotency marker or native request key derives from this same execution
-instance and is never regenerated on transport retry.
+instance and is never regenerated on transport retry. Journal writes establish
+these boundaries; they are not recursive requests to perform the same domain
+effect.
 
 After mutation, AITM appends `action.completed` or `action.failed` with observed
 typed effects. If execution stops between provider mutation and the outcome
@@ -790,7 +831,11 @@ with their own invocation keys targeting the original instance, rather than
 rewriting the original request binding. Another actor needs authorized recovery
 access and cannot impersonate the original actor by reusing its key.
 
-Admission and duplicate detection are serialized by the scope coordinator.
+Invocation binding and duplicate detection use the project control scope, which
+matches the key's project-authority/generation uniqueness scope. Its coordinator
+serializes admission to one durable identity registry even when execution is
+subsequently authorized by different work-item coordinators. Per-item streams
+reference that binding; they cannot allocate a conflicting instance independently.
 Concurrent same-key requests resolve to one durable binding; conflicting inputs
 are refused. Conditional append is used where supported; otherwise the existing
 single-executor and quiescent-handoff requirements apply. An uncertain binding
@@ -807,6 +852,12 @@ binding, `actionId`, observed phase, receipt, and permitted recovery action, or 
 verified absence. It never requires an earlier response's `actionId`. A changed
 writable binding does not redirect lookup to a different authority generation.
 If the original authority is unavailable, lookup and mutation fail closed.
+Diagnostic-only mode permits this read-only lookup when a trusted compatible
+read path remains available. It never permits provider execution, journal
+reconciliation writes, or projection repair; those wait for restored mutation
+capability and authorization. If no safe read path exists, report the lookup as
+unavailable and prior invocation effects as unknown. An unauthorized caller
+receives no disclosure of another actor's binding or effects.
 Bootstrap must provide a durable binding location before its first governed
 external effect; if an adapter cannot do so, setup requires explicit maintainer
 provisioning before those effects are enabled, rather than a silent exception.
@@ -821,10 +872,20 @@ provisioning before those effects are enabled, rather than a silent exception.
 
 Dispatch intent is not proof that the provider executed. A crash between intent
 and send is deliberately classified as ambiguous unless observation or provider
-idempotency proves a safe replay. Results and errors echo a supplied `invocationKey` and
-registered `action`; once a binding exists they also carry `actionId` and an
-invocation lookup reference. Before-binding errors omit `actionId` and report
-that no provider effects occurred. Lost transport responses have no inferred
+idempotency proves a safe replay. Results and errors echo a supplied
+`invocationKey` and registered `action`; when an authorized lookup resolves the
+binding, they also carry `actionId` and an invocation lookup reference.
+
+An error distinguishes effects dispatched by this transport attempt from known
+effects of the whole invocation. A refused retry can report `attempt: none` while
+`invocation: unknown` or `invocation: observed` refers to its earlier execution.
+Only verified absence at a recorded identity-admission boundary plus no dispatch
+supports `invocation: none` at that observation. It is not a promise about later
+concurrent submissions. If lookup cannot verify absence, omit an unresolved
+`actionId` and preserve uncertainty; a pre-admission failure must never imply that
+an earlier same-key attempt had no effects. For unauthorized lookup, the invocation
+classification is `not-disclosed`. A supplied key is echoed only when safe for
+that authenticated request. Lost transport responses have no inferred
 success/failure classification; the retained key is their recovery handle.
 
 A canonical mutation request has this shape; each action supplies the exact
@@ -905,7 +966,7 @@ Every action returns the same result shape:
 Errors use the same principles:
 
 ```text
-{"schema":"aitm.error/v1","ok":false,"invocationKey":"a19d78015300433f88ef9b3c2a790a61","action":"work-item.record-analysis","code":"AITM_SETUP_STALE","effects":{"committed":false},"retry":{"safe":false},"reason":{"code":"adapter-manifest-mismatch","expected":"0.2.0","observed":"0.3.0"},"recovery":{"actor":"maintainer","action":"setup","command":"npx aitm setup","commitRequired":true},"helpRef":"aitm://errors/AITM_SETUP_STALE"}
+{"schema":"aitm.error/v1","ok":false,"invocationKey":"a19d78015300433f88ef9b3c2a790a61","action":"work-item.record-analysis","code":"AITM_SETUP_STALE","effects":{"attempt":"none","invocation":"unknown"},"retry":{"safe":false},"reason":{"code":"adapter-manifest-mismatch","expected":"0.2.0","observed":"0.3.0"},"recovery":{"actor":"maintainer","action":"setup","command":"npx aitm setup","commitRequired":true},"helpRef":"aitm://errors/AITM_SETUP_STALE"}
 ```
 
 ## Host enforcement and Full-Auto
@@ -981,16 +1042,26 @@ mutation: same-key replay, different-input conflict, two concurrent submissions
 of one key, and lost responses at every durable boundary in the recovery table.
 It verifies one execution instance and no duplicate provider effect, truthfully
 ambiguous state when proof is unavailable, and safe pending-projection repair.
+Additional cases lose a successful response, then retry under setup drift,
+authority-read failure, or revoked access: no error may falsely report that the
+original invocation was effect-free, and diagnostic-only lookup performs no
+repair writes. Duplicate admission is tested across different work-item
+coordinators sharing one project key namespace.
+
+The bundled repository adapter's conformance cases include wrong or missing
+worktree identity, changed branch/HEAD, local operation interrupted after its Git
+effect, and CLI/MCP calls resolving the same explicit execution context. Its
+receipts and recovery retain the selected external backlog authority.
 
 ### Transport parity
 
 Invoke every externally callable portable action through CLI and its single
 registry-assigned MCP route, and assert identical domain requests, authority
 effects, receipts, errors, and next-action recommendations. For actions with a
-dedicated typed tool, also prove that `aitm_invoke_action` rejects their IDs,
-including when the host withholds that typed tool. Test extension routes against
-the same policy contract, and verify every route rejects `orchestrator-only`
-actions. The action inventory drives the coverage
+dedicated typed tool, also prove that both generic routes reject their IDs,
+including promoted extensions and when the host withholds the assigned tool.
+Test extension routes against the same policy contract, and verify every route
+rejects `orchestrator-only` actions. The action inventory drives the coverage
 matrix; missing invocation coverage is a release failure, not an exemption.
 Cross-transport retry uses the same invocation key and canonical request: a CLI
 attempt followed by MCP lookup/retry (and the reverse) must recover the same
@@ -1002,6 +1073,10 @@ registered action identifiers are never confused with execution-instance IDs.
 An isolated fixture runs setup, commits the generated integration, clones the
 fixture, runs `npm ci`, starts the MCP server, and performs read-only discovery.
 The fresh clone must not run setup, install, init, or tracked-file generation.
+Include selected registry and tracked workspace/file plugins, and reject portable
+claims for outside-checkout paths, missing tracked source/build inputs, escaping
+symlinks, or required machine-local overrides. Success in the authoring checkout
+alone does not satisfy this fixture.
 
 ### Host-policy tests
 
@@ -1048,7 +1123,9 @@ implementation-sized specifications and plans.
   including caller-retained invocation keys, durable binding, duplicate admission,
   and lost-response recovery before freezing the Phase 1 action schemas.
 - Route the current CLI through application services and policy.
-- Move GitHub behavior behind the public adapter contract.
+- Move GitHub behavior behind the public adapter contract and extract local Git
+  mechanics into the bundled `local-git` repository adapter, preserving explicit
+  worktree/branch/HEAD guards and the common external evidence contract.
 
 Exit when the existing CLI suite passes through the kernel without MCP.
 
@@ -1174,13 +1251,22 @@ evidence.
 15. Scoped coordinators, epoch-fenced grants, and fail-closed conflicts are
     retained. Non-CAS adapters require one serialized executor per coordinator
     grant and proven quiescence or enforceable fencing for handoff.
-16. Every portable action has one registry-assigned MCP invocation route with CLI
-    parity; generic invocation rejects actions assigned a dedicated typed tool.
+16. Every externally callable core or extension action has one registry-assigned
+    MCP invocation route with CLI parity. Both generic routes
+    reject actions assigned a dedicated typed tool, including promoted extensions.
 17. Every mutation binds a caller-retained invocation key before provider effects.
     Same-key retries recover one instance through any transport; conflicting reuse
     fails closed. Concurrent submissions and lost responses at every durable
     boundary preserve that identity, including work-item creation and state-only
-    mutations. Lookup does not depend on receiving the original result.
+    mutations. Lookup does not depend on receiving the original result. Errors
+    distinguish current-attempt effects from prior invocation effects and preserve
+    unknown outcomes when lookup is unavailable.
+18. Every supported composition includes a compatible repository binding, with
+    bundled `local-git` as the default, explicit execution context, and local-effect
+    recovery/receipts through the external authority.
+19. Portable setup output selects only plugins restorable from the committed
+    checkout and lock; machine-local experiments cannot satisfy the clean-clone
+    acceptance gate.
 
 ## Consequences
 
