@@ -57,8 +57,9 @@ skills and workflow code.
 1. Make every portable AITM action agent-discoverable and schema-invocable.
 2. Keep provider APIs, identifiers, limits, and recovery behavior inside
    provider adapters.
-3. Allow provider-specific extensions without allowing them to bypass AITM
-   governance.
+3. Route provider-specific extensions through the same AITM governance as
+   portable actions, with selected executable plugins explicitly inside the
+   trusted kernel boundary.
 4. Preserve one external writable backlog authority and avoid a required AITM
    database or hosted service.
 5. Give agents contextual help describing what is possible, when and why to use
@@ -242,8 +243,17 @@ The adapter runtime contract is intentionally small:
 | `execute`   | Perform an authorized domain action                           |
 | `observe`   | Determine which external effects occurred                     |
 | `reconcile` | Resolve an interrupted or ambiguous action                    |
-| `evidence`  | Append and retrieve canonical evidence envelopes              |
+| `evidence`  | Active `work-items` binding only: store canonical evidence    |
 | `doctor`    | Return typed diagnostics and remediation                      |
+
+Methods are supported according to declared ports. Only the active writable
+`work-items` binding implements canonical evidence persistence for the project.
+The kernel sends every request, progress, outcome, approval, and recovery
+envelope through that binding, including actions whose business effects occur
+in another provider. Other adapters return typed observations and effect
+receipts to the kernel; their native logs and referenced artifacts are source
+evidence, not separate AITM authority streams. A package implementing multiple
+ports receives evidence calls only in its active `work-items` binding context.
 
 GitHub is bundled for zero-configuration adoption, but it implements this same
 public contract and passes the same conformance suite. It has no privileged
@@ -269,6 +279,14 @@ declared effects, lifecycle scripts, compatibility, and manifest hash to the
 maintainer for selection. Selection is a code-trust decision: once imported, a
 Node plugin executes with the permissions of the AITM process.
 
+Selected executable plugins and their runtime dependencies are part of the
+fully trusted computing base. This version does not sandbox them or prevent
+buggy or malicious trusted code from bypassing the ABI, reading process
+credentials, or making undeclared effects. Conformance tests detect violations;
+they do not establish containment. A maintainer who does not trust a plugin with
+the kernel's privileges must not activate it. Supporting less-trusted code
+would require a separately specified isolation boundary.
+
 The selected plugins are committed in project configuration and restored by the
 package lock. Cloud consumers load only the committed selection; they neither
 scan nor prompt.
@@ -286,6 +304,23 @@ but setup reports `adapter-local-required` and cannot certify that installation
 as portable. The maintainer must publish or vendor the package, normalize the
 dependency and lockfile, and pass isolated-clone verification before portability
 is claimed. A package-lock entry alone is not proof of reproducibility.
+
+Every selected adapter also has an executable content identity covering its
+resolved entry, complete executable dependency closure, runtime assets, and
+loader/build inputs that determine those bytes. Verified package integrity
+alone is sufficient only when it covers the complete closure actually loaded;
+dependencies and generated outputs outside that coverage need their own
+verified identities. Workspace and relative-filesystem adapters use a
+deterministic digest of a reviewed runtime artifact and its complete closure.
+Undeclared dynamic imports, escaping paths, or unverified downloaded code cannot
+extend that identity. An unverifiable closure blocks activation.
+
+Setup records that identity with the maintainer's trust selection. Runtime
+loading uses the verified artifact and holds an immutable view, or equivalent
+certified exclusion of concurrent writes, for as long as it can dispatch.
+Hashing a pathname and later loading mutable bytes is insufficient. Changing
+code without changing a package version or manifest still requires a new
+verified selection and installation fingerprint.
 
 ## Action registry and capability graph
 
@@ -476,8 +511,9 @@ projection contains durable operating guidance and references only. It contains
 no credentials, live issue state, or copied provider documentation.
 
 Setup writes the canonical learning-directive set and its compact fingerprint.
-The fingerprint covers core and schema versions, adapter identities and
-manifests, project bindings and feature flags, and the projection format.
+The fingerprint covers core and schema versions, adapter identities, executable
+content identities and manifests, project bindings and feature flags, and the
+projection format.
 
 For an untracked host-local memory target, session boot compares the fingerprint
 and regenerates only the protected section when it changes. For a tracked
@@ -571,7 +607,8 @@ Setup writes a content-addressed install manifest containing:
 - generator package version and setup ABI;
 - normalized setup-intent hash;
 - configuration and capability schema versions;
-- selected adapter packages, versions, integrity, and manifest hashes;
+- selected adapter packages, versions, integrity, manifest hashes, and complete
+  executable content identities;
 - selected host bridges and enforcement-policy fingerprints; and
 - generated artifact paths and content hashes.
 
@@ -583,6 +620,11 @@ validated generation under execution ownership. Drift before dispatch blocks
 new effects, and an adapter report that an external assumption changed triggers
 fresh compatibility resolution. Implementations may cache immutable data by
 fingerprint, but a cache cannot establish that its generation is still active.
+These checks cover the executable identity selected by setup and the code
+actually loaded at startup, admission, dispatch, and recovery. A changed runtime
+closure is installation drift even if package versions and manifests match.
+The immutable execution view prevents an edit after validation from silently
+changing the implementation used for an admitted action.
 
 Staleness is classified rather than flattened:
 
@@ -617,8 +659,8 @@ streams. Together they store:
 - recovery and reconciliation records; and
 - canonical references to repository, forge, CI, and identity evidence.
 
-The core defines canonical minified envelopes. Each adapter stores the exact
-envelope through the provider's most suitable durable mechanism and maintains a
+The core defines canonical minified envelopes. The active `work-items` binding
+stores the exact envelope through the provider's most suitable durable mechanism and maintains a
 small indexed projection on the work item. GitHub may use marker-owned comments
 plus a bounded body projection; Jira may use issue properties and comments. The
 mechanism differs, but the record semantics do not.
@@ -633,6 +675,40 @@ records the typed item reference and starts that item's evidence stream. An
 adapter may use a provider-native project property or a dedicated managed
 backlog record, but it must expose the same canonical stream contract and must
 report its visibility and retention characteristics during setup.
+
+### Retention and retrieval contract
+
+A writable `work-items` binding must preserve and retrieve the canonical
+payloads needed for complete replay, approval provenance, request-key
+deduplication, and recovery for the lifetime of the configured authority.
+Automatic expiry cannot remove those payloads or request-key tombstones. A
+finite live-store retention window is acceptable only with a verified,
+provider-native durable archive inside the same logical authority and governed
+ownership boundary. Moving records there preserves exact envelopes, stable
+identity, complete predecessor traversal, and lookup; hashes or locators without
+retrievable payloads are insufficient. An independent local archive cannot
+satisfy this contract.
+
+Setup certifies retention, enumeration, lookup, and deletion-detection behavior
+before activating writable capabilities. Each admission validates the current
+retention policy and the completeness needed to establish its authoritative
+state and request-key reservation, including archive coverage. Certified
+completeness evidence may avoid a full scan, but a stale projection or absent
+search result cannot supply it. Expiry, deletion, inaccessible archives, or
+policy drift that breaks this proof blocks affected admission and dispatch;
+uncertainty spanning the project request-key scope blocks project mutations.
+Read-only diagnosis and governed evidence recovery remain available.
+
+A reviewed archive transfer or authority migration must verify full payload and
+request-key/tombstone continuity, including pending actions, under the same
+writer barrier and durable cutover rules as existing-project migration. There
+is only one active writable authority; an old store may be retained read-only
+as part of verified historical retrieval. If required history is already lost,
+recovery requires an authentic retained copy. Rebinding a container or inventing
+a genesis cannot certify missing history or release ambiguous effects. When no
+copy exists, intervention remains blocked rather than promising reconstruction
+or uninterrupted availability. Whole-history replacement by a trusted provider
+administrator remains outside the hash-chain threat model stated below.
 
 ### First authority bootstrap
 
@@ -812,8 +888,8 @@ action requires intervention rather than guessing it from local cache.
 The request also preserves its non-secret resolved execution context: the
 active configuration generation and hash, selected port bindings, canonical
 provider instances and target references, adapter identities and versions,
-recovery-contract versions, and expected target revisions. An effect whose
-target does not exist yet records the destination container and its stable
+executable content identities, recovery-contract versions, and expected target
+revisions. An effect whose target does not exist yet records the destination container and its stable
 creation key. Implicitly selected forge or CI destinations must be recorded as
 explicitly as the work-item authority. Secrets are referenced by runtime
 credential requirements, never copied into this snapshot.
@@ -852,6 +928,11 @@ default port bindings. Current policy and permissions still apply; an old
 execution snapshot is evidence of intent, not a continuing authorization grant.
 An installed adapter may recover an older action only when it is selected and
 trusted and its conformance contract supports the recorded recovery version.
+Recovery validates the current selected executable identity and its certified
+compatibility with the recorded implementation identity and recovery contract;
+a matching package version alone is insufficient. A compatible upgrade may
+recover the action without reinstalling old code, but cannot silently treat
+changed bytes as the original implementation.
 Missing credentials, an unavailable adapter, or incompatible semantics require
 intervention. A record naming an old package never authorizes automatically
 installing or executing it.
@@ -983,6 +1064,15 @@ network, or credential controls and a successful startup probe must establish
 the claim. A host with an unrestricted shell sharing writable Git metadata
 cannot claim strict assurance solely by hiding provider credentials.
 
+Strict assurance describes isolation from the calling agent and other
+untrusted host processes, conditional on the selected kernel and plugins being
+trusted. It does not claim containment of malicious kernel or adapter code.
+Every assurance receipt identifies the trusted executable adapter set and its
+content identities, trust basis, and enforcement boundary. Unknown executable
+identity or missing explicit trust excludes an adapter from activation and thus
+from Full-Auto at either assurance level. Certification of a declared mutation
+surface is necessary but is not proof that arbitrary Node code cannot evade it.
+
 Guarded mode covers declared local Git mutation commands as well as provider
 tools and endpoints. Read-only Git inspection and source editing allowed by the
 workflow are distinct from governed repository mutations. Each bridge states
@@ -1064,6 +1154,19 @@ stable effect keys, and refusal of unsupported recovery or redirected dispatch.
 Passing each adapter's standalone suite does not replace these composition
 checks.
 
+Mixed-provider tests route every canonical request, progress, outcome, and
+recovery envelope exclusively to the active authority: for example, Jira in a
+Jira-plus-Bitbucket fixture. Forge and CI adapters return observations only;
+attempts to persist independent authoritative envelopes must fail the contract.
+
+Retention certification exercises expiry or deletion of intermediate requests,
+approvals, outcomes, and request-key tombstones; inaccessible archives; and
+retention-policy changes. It must prove refusal of unsafe admission and dispatch,
+exact payload retrieval through any claimed archive, and complete replay and
+key continuity after a governed transfer. Where no authentic copy survives,
+the passing result is explicit unrecoverable intervention with mutations still
+blocked, never a fabricated repair or a durable-retention capability claim.
+
 The local Git adapter must prove target binding and shared-worktree conflict
 scopes, interruption recovery, and refusal to treat another clone's filesystem
 as evidence that an original local effect did not occur.
@@ -1095,6 +1198,13 @@ Reject a portable-install claim for an external filesystem dependency, an
 escaping symlink, or a runtime entry requiring an undeclared build step. The
 fixture has no access to the maintainer's checkout or local plugin directories.
 
+Change a workspace entry, imported dependency, generated runtime output, or
+asset without changing its version or manifest. Startup and existing runtimes
+must detect the executable identity mismatch and block new effects. Exercise
+an edit between validation and loading or dispatch to prove the immutable
+execution view, and recover a pending action only with a verified, certified
+compatible executable identity.
+
 ### Migration cutover tests
 
 Exercise an older CLI racing checkpoint capture, an in-flight legacy effect,
@@ -1116,6 +1226,12 @@ even when both use the same provider account.
 Include raw local Git mutation channels, an unrestricted shell with writable
 Git metadata, and the CLI route in assurance tests. Strict mode must refuse a
 claim that is established only for remote provider credentials.
+
+Inject an adapter mutation outside its declared method or port. Certification
+must report the violation and reject that implementation's capability claim;
+the test cannot be presented as proof of arbitrary-code isolation. Verify that
+strict receipts name the fully trusted plugin content identities and accurately
+limit their guarantee to the enforced host boundary.
 
 ### Live provider certification
 
@@ -1139,7 +1255,10 @@ Release gates reject:
 - migration activation without a verified old-writer barrier and durable cutover;
 - CLI and MCP behavioral divergence;
 - generated-file changes absent from the install manifest;
-- adapters that fail their declared-port conformance suite; and
+- adapters that fail their declared-port conformance suite;
+- executable adapters without a verified complete runtime content identity;
+- assurance claims that omit trusted plugins or imply they are sandboxed;
+- writable authorities without certified retention and complete retrieval; and
 - cloud fixtures that require setup after `npm ci` or depend on local adapter
   files unavailable in the clone.
 
@@ -1160,6 +1279,8 @@ implementation-sized specifications and plans.
   execution context for recovery across configuration changes.
 - Route the current CLI through application services and policy.
 - Move GitHub behavior behind the public adapter contract.
+- Assign all canonical evidence writes exclusively to the active `work-items`
+  binding and certify retention, retrieval, and mixed-port evidence routing.
 - Supply the local Git port, certify its binding and recovery boundaries, and
   version and certify fork-join replay before enabling those capabilities.
 
@@ -1199,6 +1320,8 @@ exit gate.
 - Distinguish local adapter experiments from reproducible portable selections.
 - Gate configuration activation on pending-action recovery compatibility and
   verify generation checks in long-lived runtimes.
+- Bind plugin trust and staleness to the complete executable runtime identity
+  and prove dispatch cannot switch to unverified bytes after validation.
 
 ### Phase 5: Public plugin SDK
 
@@ -1218,6 +1341,8 @@ conformance suite.
 - Report strict, guarded, or behavioral assurance.
 - Enforce the guarded-or-strict Full-Auto threshold.
 - Record assurance in durable receipts.
+- Identify the fully trusted plugin code in receipts and distinguish host
+  isolation from the unsupported containment of in-process plugins.
 
 Only after this exit gate does the MCP path replace the legacy Full-Auto entry
 path. Both paths use the same kernel during the transition, so compatibility
@@ -1301,16 +1426,22 @@ evidence.
    becomes usable after only `npm ci`. Local-only adapter selections are
    explicitly classified and cannot pass portable-install certification.
 8. A stale clone enters diagnostic-only mode and provides exact maintainer
-   remediation without modifying tracked files.
+   remediation without modifying tracked files. Executable plugin content
+   changes trigger drift even when the version and manifest are unchanged;
+   loading, dispatch, and recovery use verified implementation identities.
 9. Durable journals, approvals, receipts, and recovery records live in the
    selected external backlog authority as canonical append-only hash-linked
-   envelopes.
+   envelopes. Only its active `work-items` binding writes canonical evidence.
+   Certified retention and retrieval preserve replay and request-key continuity;
+   missing required payloads block mutations until authentic recovery.
 10. Interrupted mutations are observed and reconciled before retry. Caller-held
     request keys resolve to the same durable action across process and transport
     changes; changed payloads under the same key fail without new effects.
 11. Generated agent memory is fingerprinted, replaceable, and non-authoritative.
 12. Full-Auto is unavailable under behavioral-only enforcement and records its
-    actual guarded or strict assurance level.
+    actual guarded or strict assurance level, trusted executable adapter
+    identities, and enforcement boundary. Strict host isolation does not claim
+    to contain the fully trusted in-process plugins.
 13. Existing GitHub projects migrate without bulk evidence rewrites or silent
     external mutation. A shared, verified cutover fences old writers before the
     final checkpoint; restoring local files cannot reactivate obsolete authority.
