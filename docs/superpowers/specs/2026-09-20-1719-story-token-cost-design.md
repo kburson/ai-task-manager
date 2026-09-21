@@ -183,6 +183,24 @@ If no authoritative delivery receipt exists, the delivery split is incomplete;
 the report may still show event and stage totals without inventing the trunk
 boundary.
 
+The boundary uses the verification instant carried by the accepted delivery
+authority, not the receipt's later publication time. For legacy PR receipts this
+is `verifiedAt`; evidence-v2 delivery records must expose an equivalent verified
+instant and prove delivery to the configured trunk target. A delivery to an epic
+branch is not delivery to trunk. No-commit issue deliverables have a
+`not-applicable` trunk split; authorized local-trunk work without a durable
+verification instant has an incomplete split. A child closed before its epic
+reaches trunk retains its own Done cutoff; an epic report can classify the
+child's earlier usage against the epic's verified trunk boundary without
+extending the child's accounting window or copying its cost lines.
+
+Delivery verification requests a source observation associated with that
+boundary. Observation time remains distinct from the receipt instant. Only
+source evidence that measures the cutoff, or individually timed usage that can
+be partitioned at it, supports an exact split. A delayed observation spanning
+the cutoff stays unsplit and the affected boundary views stay incomplete.
+The same rule applies to opening, stage, pause/resume, and Done cutoffs.
+
 ## Authority model
 
 ### Timing Log
@@ -192,7 +210,7 @@ durations, and lifecycle boundaries. Every newly emitted row receives a stable
 opaque event identifier in a trailing marker:
 
 ```text
-<!-- aitm-cost-event id="01..." -->
+<!-- aitm-cost-event id="01..." policy="01..." -->
 ```
 
 The identifier is generated once in the durable capture intent and is reused by
@@ -218,13 +236,28 @@ does not invalidate accepted records.
 ### Local capture outbox
 
 Before any remote append, AITM writes a machine-local capture intent containing
-the event identifier, issue, timing descriptor, source cursor references, and
-operation status. The outbox is atomic and idempotent. It stores no credentials
-or prompt/tool-result content.
+the event identifier, issue, timing descriptor, expected sources, source cursor
+references, and operation status. It then atomically freezes the observations,
+their actual observation times, predecessor identifiers, normalized payload,
+payload hash, and intended remote record identity before publishing them.
+The outbox is atomic and idempotent. It stores no credentials or
+prompt/tool-result content.
 
 The outbox bridges partial completion among timing-row append, event-record
 append, and projection refresh. A successfully read-back event record is the
 only condition that marks its item delivered.
+
+Durable observation acceptance and remote delivery are separate commit points.
+Freezing an available observation and advancing its local source cursor is one
+atomic operation, serialized per source epoch. A later capture uses that frozen
+predecessor even while it is queued for publication. The remote read-back marks
+delivery only; it never advances or rewinds the measurement cursor. An
+unavailable observation does not advance that cursor.
+
+On another machine or after local state loss, a source chain may resume only
+from a verified predecessor with proven continuity. Competing or missing
+predecessors make the affected view incomplete until reconciled; neither
+arrival order nor a fresh local baseline may silently erase the gap.
 
 ### Subscription Capacity Ledger
 
@@ -253,10 +286,11 @@ semantics are required.
 | `boundary`         | `baseline`, `interval`, `delivery`, `post-trunk`, or `terminal`  |
 | `operationId`      | Idempotency/correlation identifier for the whole capture attempt |
 
-The interval ending at an event is charged to the stage that was active before
-that event. A `develop:completed` event therefore closes a Develop interval; it
-does not charge that interval to Test. The first source observation is a
-baseline with no delta.
+An interval wholly within one stage visit is charged to that stage. A
+`develop:completed` event therefore closes a Develop interval; it does not
+charge that interval to Test. The first source observation is a baseline with
+no delta. If it occurs after the accounting window opens, the unobserved opening
+span is a coverage gap, not evidence of zero or excluded pre-story consumption.
 
 ### Source identity
 
@@ -278,10 +312,10 @@ source epoch unless the adapter proves continuity.
 
 ### Observation and delta
 
-Every source contribution retains:
+Every cumulative source contribution retains:
 
 - the cumulative native snapshot;
-- the prior accepted snapshot identifier;
+- the prior durably frozen snapshot identifier, including a queued predecessor;
 - a derived native delta;
 - normalized common quantities;
 - observation time and applicable provider time bucket;
@@ -290,17 +324,43 @@ Every source contribution retains:
 - a hash of the normalized source evidence when retained locally; and
 - whether the source record is exact, aggregate, estimated, or unavailable.
 
+Per-response adapters retain unique receipt identities and occurrence bounds
+instead of manufacturing native cumulative counters. Their normalized running
+sum uses deduplicated receipts, a durable cursor, and the same frozen-observation
+and coverage rules. Aggregate adapters preserve the original bucket and grouping
+dimensions; they cannot manufacture request or boundary resolution.
+
 The delta formula is:
 
 ```text
 delta(source, epoch, category) =
-  current cumulative value - prior accepted cumulative value
+  current cumulative value - prior durably frozen cumulative value
 ```
 
 The subtraction is valid only within one source epoch and for counters the
 adapter declares cumulative and monotonic. A negative result never becomes a
 negative cost. It opens a new epoch or produces an incomplete record requiring
 reconciliation.
+
+Each derived delta is a span identified by its starting and ending observation
+IDs, source epoch, measured time bounds, and known ownership and lifecycle
+boundaries. A span crossing an unmeasured stage, pause, issue, or delivery
+boundary is not assigned wholesale to its ending event. It may contribute to
+an issue total only when ownership of the entire span is proven; unsupported
+stage or delivery splits remain unresolved. A pause-crossing span cannot be
+charged as active model work without evidence separating paused consumption.
+Wall-clock proration is never a substitute for that evidence.
+
+Reconciliation that inserts an observation replaces every affected derived
+span together in one validated projection revision. For observations 100,
+missing, and 180, the unsplit quantity is 80; a later valid intermediate 150
+replaces it with 50 and 30, never 80 plus 50. The reconciliation payload names
+the complete replacement set and its input hashes, using existing envelope
+`predecessor`/`supersedes` links for revision lineage. Missing inputs, competing
+revisions, cycles, or invalid conservation of measured quantities prevent that
+revision from contributing; affected totals remain incomplete. Corrections to
+erroneous source quantities must explicitly identify the corrected evidence
+and explain any change in quantity instead of claiming a conserving split.
 
 ### Cost lines
 
@@ -325,6 +385,39 @@ request charge already includes token and hosted-tool charges, that actual-cost
 line can include those component lines. The components remain visible, but the
 report does not add them again to the actual billed subtotal.
 
+### Economic identity and overlapping evidence
+
+Observation identity is distinct from economic identity. Each contributing
+quantity identifies the provider/account meter, request or run where available,
+native category, and covered interval or cumulative range. Adapters declare
+when transcript, response-receipt, and administrative observations cover the
+same usage. Different observation IDs do not prove different consumption.
+
+Within each consumption or valuation view, proven identical usage contributes
+once. Exact per-request evidence takes precedence over an equivalent aggregate
+measurement; equally precise agreeing evidence uses a stable source-ID tie
+break and retains the other evidence as corroboration. Conflicting evidence at
+equal precision is unresolved. An aggregate remainder contributes only when
+its disjoint coverage can be established; uncertain overlap is excluded from
+the additive subtotal and disclosed as incomplete. Actual billed and estimated
+equivalent views are never added to one another.
+
+The `includes` graph must be acyclic, refer to present evidence, and establish
+the covered components. Each component contributes at most once within a view;
+ambiguous or conflicting inclusion relationships make that view incomplete.
+Exclusive aggregate billing can establish actual cost only for the ownership,
+period, currency, and boundary dimensions its evidence supports. A whole-story
+bill does not establish stage or delivery/post-trunk actual amounts without
+finer correlation.
+
+### Currency
+
+Version one aggregates monetary values separately by currency. It performs no
+foreign-exchange conversion and never produces a scalar that adds unlike
+currencies. Every stage, story, epic, headline, and subscription comparison
+preserves the currency dimension. A comparison requiring incompatible
+currencies is unavailable; display the original amounts separately.
+
 ## Capture transaction
 
 The timing path performs the following prospective sequence for every event:
@@ -332,10 +425,13 @@ The timing path performs the following prospective sequence for every event:
 1. Resolve the active issue and the stage/visit owning the interval.
 2. Generate one `eventId` and `operationId`.
 3. Persist the local capture intent before remote writes.
-4. Ask every applicable usage-source adapter for a bounded-time cumulative
-   snapshot or explicit unavailable result.
-5. Normalize snapshots and derive deltas against the last accepted cursor for
-   each source epoch.
+4. Ask every applicable usage-source adapter for a bounded-time observation or
+   explicit unavailable result. Retain cumulative snapshots or stable
+   per-response identities according to the adapter's declared semantics.
+5. Normalize observations, derive spans against the last durably frozen cursor,
+   and atomically freeze the observation, predecessor, and intended payload
+   with the cursor update. Source serialization covers predecessor selection
+   through this commit point, not just the final write.
 6. Append and read back the Timing Log row carrying `eventId` through the
    existing timing lock.
 7. Append and read back the immutable Agent Cost Ledger event record through
@@ -350,10 +446,21 @@ event must instead retain an incomplete capture intent or record that can be
 retried. Existing lifecycle gates remain authoritative and cannot be bypassed
 in the name of cost capture.
 
-Retries reuse the original identifiers. An exact duplicate is an idempotent
-success. A conflicting payload for an existing event/source identity fails
+Retries replay the frozen identifiers and payload without resampling. An
+uncertain remote write is resolved by exact read-back before repeating it.
+An exact duplicate is an idempotent success. A conflicting payload for an existing event/source identity fails
 closed, preserves both observable hashes in diagnostics, and requires an
 append-only reconciliation record.
+
+If a crash occurs after intent creation but before observation freezing, a
+later sample retains its actual time and is new reconciliation evidence; it
+cannot masquerade as the missed historical snapshot. If remote lifecycle or
+timing acceptance failed, the frozen observation remains evidence of source
+consumption but cannot invent an accepted lifecycle transition. Recovery binds
+it to verified timing authority or leaves the attribution unresolved. If the
+outbox itself cannot be persisted, the lifecycle action still follows its
+existing rules; a missing cost envelope is exposed by the independent coverage
+inventory described below.
 
 ## Usage-source adapter boundary
 
@@ -396,8 +503,10 @@ uses coarser economic dimensions. Anthropic similarly exposes usage and cost
 reports with provider-defined buckets and grouping fields.
 
 These records can reconcile story events when an exclusive correlation
-dimension exists. Otherwise they remain aggregate comparison evidence with an
-unattributed residual.
+dimension exists, but only at the dimensions their evidence supports. They
+follow the economic-overlap rules and never become a second additive copy of
+locally measured usage. Otherwise they remain aggregate comparison evidence
+with an unattributed residual.
 
 ### Exact per-request billing sources
 
@@ -428,7 +537,11 @@ explanation, but its monetary amount remains unknown or not applicable.
 
 Each `aitm-session-ref` entry identifies a source epoch candidate. A new session
 begins with a baseline snapshot; its pre-baseline cumulative usage is not
-charged to the issue. Context compaction inside a session does not reset
+charged to the issue without independently correlated in-window evidence. An
+unobserved in-window prefix remains an explicit coverage gap. A per-request
+adapter may reconstruct it from unique request receipts and a proven opening
+cursor; it must not assume the first observed counter started at zero.
+Context compaction inside a session does not reset
 cumulative accounting unless the provider counter actually resets. A reset
 creates a new epoch and preserves both sides of the discontinuity.
 
@@ -477,8 +590,52 @@ npx aitm cost #N --json
 ```
 
 It is read-only by default and computes from accepted ledger records without
-calling provider APIs. A separately authorized reconciliation command may fetch
-new billing evidence and append reconciliation records.
+calling provider APIs. It also reads authoritative GitHub timing, policy,
+session/run, and delivery evidence to establish coverage. A separately
+authorized reconciliation command may fetch new billing evidence and append
+reconciliation records.
+
+### Coverage inventory
+
+Completeness is measured against expected evidence, not just the records that
+happen to exist. The report reconciles every keyed Timing Log event with its
+cost envelope, observation dependencies, and unresolved correction state. It
+also includes delivery cutoffs and explicitly correlated asynchronous or review
+runs even when they do not create their own Timing Log rows.
+
+A durable, immutable capture-policy record identifies the enablement boundary,
+expected source-selection rules, configured adapters, and their versioned
+capabilities without credentials. Each keyed timing event references its policy
+identity; its cost envelope records the resolved sources and applicable
+session/dispatch/run references. Policy changes are append-only with an
+effective boundary. Missing policy, envelope, source roster, dependency, or run
+completion evidence means coverage is unverified for the affected view, even if
+all present observations are complete. A source can be not applicable only with
+an explicit policy/capability or ownership reason, not simply because it failed
+to produce an observation. Sources required by the selected cost view but
+unsupported by an adapter remain unavailable, not excluded from completeness.
+
+Failure to publish the policy or cost envelope must not block lifecycle work:
+timing markers still reference the intended identities, exposing the missing
+records. If timing evidence itself is unavailable, the report cannot certify
+coverage. Enablement partway through a story, a missing initial baseline,
+unobserved reset, or an unproven Done cutoff leaves the whole-story view
+incomplete; a complete covered subwindow may be labeled separately. Existing
+unkeyed rows remain outside prospective capture but remain visible as uncovered
+story history.
+
+Completeness is specific to each quantity, currency, stage, boundary, and
+valuation view. Resolved issue ownership can support a whole-story quantity
+without proving stage attribution. A complete rate-card view does not imply
+complete actual billing. Source lateness is recorded: Done ends the occurrence
+window, not the opportunity to append evidence for consumption inside it.
+Terminal coverage requires a source cursor/watermark or closed-run evidence
+that covers the cutoff; simply reaching Done or waiting a timeout is not proof.
+Later in-window usage or billing evidence is reconciled without reopening or
+extending the lifecycle window. Consumption after Done is outside that story's
+window and must not be silently backdated.
+
+### Report views
 
 The report includes:
 
@@ -506,6 +663,9 @@ and missing categories together. Actual billed and rate-card equivalent amounts
 remain side by side. The headline prefers actual billed cost only when the
 actual view is complete for the requested boundary; otherwise it presents the
 rate-card equivalent as an estimate and labels actual billing incomplete.
+If the estimated view is itself partial or unavailable, the headline preserves
+that status; it cannot upgrade a known subtotal to a complete estimate. All
+amounts and statuses are displayed per currency.
 
 ## Subscription Capacity Ledger
 
@@ -554,13 +714,16 @@ authorized.
 ### Source unavailable
 
 Append an incomplete event record when possible, with a stable diagnostic code,
-the attempted source, and the last accepted cursor. Do not advance the source
+the attempted source, and the last durably frozen cursor. Do not advance the source
 cursor and do not emit zero.
 
 ### Ledger write unavailable
 
 Retain the capture intent in the outbox and retry on later timing verbs, an
-explicit update, or reconciliation. The Timing Log event remains valid.
+explicit update, or reconciliation, replaying frozen bytes and checking timing
+and ledger read-back independently. The Timing Log event remains valid and is
+not appended again when already present. Pending predecessor dependencies keep
+the affected remote view incomplete until the chain is available.
 
 ### Duplicate event
 
@@ -570,13 +733,15 @@ conflict is a hard reconciliation condition; neither record is overwritten.
 ### Out-of-order observation
 
 Store the observation but do not derive a delta across an unknown predecessor.
-A later reconciliation record can link the correct predecessor and supersede
-the incomplete derived view.
+A later reconciliation record can link the correct predecessor and atomically
+replace the affected derived spans under the conservation and conflict rules
+above. Publication order never determines measurement order.
 
 ### Counter reset or source switch
 
 Open a new epoch with a baseline. Never subtract across epochs or discard the
-prior epoch.
+prior epoch. Any unobserved tail of the old epoch or prefix of the new one is a
+coverage gap unless independently correlated receipts recover it.
 
 ### Pricing change
 
@@ -704,6 +869,34 @@ reconciled. The final report must:
 - separate delivery and housekeeping subtotals;
 - preserve one owning issue per child or parent line; and
 - leave subscription spend outside the whole-story total.
+
+### Accounting failure acceptance cases
+
+The implementation plan must preserve these concrete invariants:
+
+1. For cumulative observations 100 / missing / 180 across Develop and Test,
+   report an unresolved split of 80. A later valid intermediate 150 replaces
+   that span with 50 and 30. Missing pause/resume or delivery-cutoff snapshots
+   cannot silently allocate the entire span to the final stage or boundary.
+2. From baseline 100, freeze E1=130, fail its publication, then freeze E2=160.
+   Retry after the live meter advances. Only the frozen 30 + 30 contributes;
+   E2 remains dependent on E1, and restart or read-back ambiguity never
+   resamples E1 or creates a duplicate timing row.
+3. Recover after a crash before observation freezing, a missing opening
+   baseline, or a source reset. Later observations retain their actual time;
+   lost in-window coverage remains explicit until independent evidence fills it.
+4. Observe one request through transcript, receipt, and an exclusive aggregate
+   bill. Consumption and each valuation view count it once. A whole-story bill
+   alone cannot create stage or delivery-split actual amounts. Conflicting or
+   partially overlapping evidence remains non-additive and incomplete.
+5. Combine USD 1 and EUR 1. Render distinct currency totals, never 2 in an
+   unstated currency; incompatible subscription comparisons are unavailable.
+6. From a second checkout, report ten keyed timing events with only eight
+   cost envelopes. Identify missing event coverage and prohibit a complete
+   whole-story total, including when the originating outbox has been lost.
+7. Reconcile competing correction revisions and missing dependencies without
+   mixing original and replacement spans. Include delayed in-window evidence
+   after Done, but exclude later consumption and require terminal coverage proof.
 
 ## Acceptance-criteria traceability
 
