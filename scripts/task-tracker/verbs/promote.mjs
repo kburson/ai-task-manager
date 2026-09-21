@@ -35,6 +35,7 @@ import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import { evaluateProjectedReviewGuards } from '../lib/action-decision/review.mjs';
 import { evaluateEarlyPromoteGuards } from '../lib/action-decision/promote.mjs';
 import { resolveStoryIntentSource } from '../lib/story-intent-source.mjs';
 import { isReadyForPlanMigrationActive } from '../lib/ready-for-plan-migration-freeze.mjs';
@@ -406,9 +407,11 @@ export async function runPromote({
   };
   const runGuardsFn = deps.runGuards || runGuards;
   const evaluateForBody = (guardBody) =>
-    (['backlog', 'refine', 'ready-for-plan', 'plan'].includes(recorded)
-      ? evaluateEarlyPromoteGuards
-      : evaluateCompleteGuards)({
+    (recorded === 'test' && target === 'review'
+      ? evaluateProjectedReviewGuards
+      : ['backlog', 'refine', 'ready-for-plan', 'plan'].includes(recorded)
+        ? evaluateEarlyPromoteGuards
+        : evaluateCompleteGuards)({
       fromState: recorded,
       toState: target,
       context: { ...guardContextBase, body: guardBody },

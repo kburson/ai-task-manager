@@ -179,6 +179,23 @@ export const CODE_DEFINITIONS = Object.freeze({
     phases: ['collection'],
     argumentSchema: args(['reason'], { reason: stringType }),
   }),
+  'review-preflight-refused': decisionBlocked(
+    'review-preflight-refused',
+    ['authority-collection'],
+    {
+      phases: ['collection'],
+      argumentSchema: args(['category'], {
+        category: enumType(
+          'worktree-dirty',
+          'commit-trail',
+          'test-evidence',
+          'epic-child',
+          'acceptance-evidence',
+          'deliverable'
+        ),
+      }),
+    }
+  ),
   'resume-not-paused': decisionBlocked('resume-not-paused', ['authority-collection'], {
     phases: ['collection'],
   }),

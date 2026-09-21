@@ -1,4 +1,4 @@
-// @story #1752
+// @story #1752 #1667
 import assert from 'node:assert/strict';
 import { evaluateAction } from '../../task-tracker/lib/action-decision/evaluate.mjs';
 import { createObservationAttempt } from '../../task-tracker/lib/action-decision/observations.mjs';
@@ -155,8 +155,10 @@ export function registerActionNavigationCases({ test, body, now }) {
       ['promote', 'mystery', 'state-unavailable', null],
       ['promote', { recorded: 'plan', live: 'develop' }, 'state-unavailable', null],
       ['promote', 'develop', 'state-unavailable', null],
-      ['promote', 'test', 'action-not-explain-ready', 'promote'],
-      ['promote', 'review', 'action-not-explain-ready', 'promote'],
+      // Review is now collected; this fixture's Plan body conflicts with both
+      // later states, so fresh authority must refuse rather than advertise a pending edge.
+      ['promote', 'test', 'state-unavailable', null],
+      ['promote', 'review', 'state-unavailable', null],
     ]) {
       const effects = [];
       const attempt = createObservationAttempt({

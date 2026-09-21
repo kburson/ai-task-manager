@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #109
+// @story #109 #1667
 import { strict as assert } from 'node:assert';
 import { runReviewPreflight } from '../../../../task-tracker/lib/review-preflight.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../../../../task-tracker/lib/body-invariants.mjs';
@@ -41,6 +41,10 @@ const TRAIL = [
     },
   });
   assert.equal(r.ok, true);
+  assert.equal(
+    r.bodyDigest,
+    'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+  );
 }
 
 // #733 — Parked-then-resumed / rewritten-SHA: the trailed SHA is NOT reachable

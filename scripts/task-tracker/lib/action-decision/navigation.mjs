@@ -50,6 +50,11 @@ export function resolveActionNavigation({ actionId, state } = {}) {
       ? route('ready', 'test')
       : route('pending', 'test', null, blocker('action-not-explain-ready'));
   }
+  if (actionId === 'review') {
+    return recorded === 'test' || recorded === 'review'
+      ? route('ready', 'review', 'review')
+      : route('pending', 'review', null, blocker('action-not-explain-ready'));
+  }
   if (actionId !== 'promote') {
     return route('pending', policy.target ?? null, null, blocker('action-not-explain-ready'));
   }
@@ -65,6 +70,12 @@ export function resolveActionNavigation({ actionId, state } = {}) {
   if (!EARLY_PROMOTE_STATES.has(recorded)) {
     if (recorded === 'develop' && target === 'test' && policy.delegate === 'test') {
       return route('ready', target, 'test');
+    }
+    if (recorded === 'test' && target === 'review' && policy.delegate === 'review') {
+      return route('ready', target, 'review');
+    }
+    if (recorded === 'review' && target === 'done' && policy.delegate === 'close') {
+      return route('ready', 'review', 'review');
     }
     return route('pending', target, policy.delegate ?? null, blocker('action-not-explain-ready'));
   }

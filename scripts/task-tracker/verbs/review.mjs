@@ -14,7 +14,7 @@ import {
   parseVerificationReceipt,
 } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
-import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import { evaluateProjectedReviewGuards } from '../lib/action-decision/review.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -1455,9 +1455,7 @@ export async function verbReview(ctx) {
     // the old stale-body fallback is not an authorization path.
     const evaluateReviewProjection = async ({ projection }) =>
       (
-        await evaluateCompleteGuards({
-          fromState: 'test',
-          toState: 'review',
+        await evaluateProjectedReviewGuards({
           context: {
             issueNumber: Number(issueNum),
             repo: cfg.repo,
