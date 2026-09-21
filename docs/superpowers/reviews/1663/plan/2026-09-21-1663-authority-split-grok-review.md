@@ -10,7 +10,7 @@
 
 The reviewer found the 8h/19h cut structurally sound and the atomic promote migration preserved, but requested six corrections before hydration:
 
-1. Restore mandatory read-only trunk attribution, named unavailable cause, exact-tip/object-completeness provenance, and the full no-fetch/fail-closed boundary; remove the optionalizing phrase.
+1. Restore mandatory read-only trunk attribution, named unavailable cause, exact-tip/object-completeness provenance, and the full no-fetch/fail-closed boundary; remove the phrase that made attribution optional.
 2. Name the `evaluateAction` export, #1661 schemas and #1662 preservation fixtures, and observation of lazy guard reads inside pinned child sections.
 3. Count capabilities rather than test/handoff phases as units; distinguish the one observation unit from the evaluator and atomic promote units.
 4. Cite accepted hydration WBS r3, not historical r2, and retain VC4's issue-local `vc:1` mapping.
