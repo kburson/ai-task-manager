@@ -3,6 +3,7 @@
 // explicit: a missing adapter cannot advertise readiness.
 import { createHash } from 'node:crypto';
 import { isAbsolute } from 'node:path';
+import { readLastKnownState } from '../../gh-timing-comment.mjs';
 
 import { actionDescriptorFor, actionPolicyFor } from '../lifecycle-policy/actions.mjs';
 import { hasAttributingCommit as defaultHasAttributingCommit } from '../commit-attribution.mjs';
@@ -577,6 +578,8 @@ async function evaluateCompletedAction({
   const navigation = resolveActionNavigation({ actionId, state: inputs.state });
   const canonicalState =
     typeof inputs.state === 'string' ? inputs.state : (inputs.state?.recorded ?? 'unknown');
+  let snapshotState =
+    canonicalState === 'done' && navigation.status !== 'terminal' ? 'unknown' : canonicalState;
   const invalid = {
     guardId: 'action-result-validation',
     code: 'guard-result-invalid',
@@ -593,8 +596,31 @@ async function evaluateCompletedAction({
   let blockers = navigation.blocker ? [navigation.blocker] : [];
   let humanDecision = null;
   let collectorFailed = false;
-  if (navigation.status === 'terminal') status = 'ready';
-  else if (navigation.status === 'ready') {
+  if (navigation.status === 'terminal') {
+    const [bodyObservation, boardObservation] = await Promise.all([
+      attempt.observe({ resource: 'issue-body', identity: `issue:${issue}:1`, scope }),
+      attempt.observe({ resource: 'project-board', identity: `issue:${issue}:2`, scope }),
+    ]);
+    const bodyValue = bodyObservation.status === 'observed' ? bodyObservation.value : null;
+    const boardValue = boardObservation.status === 'observed' ? boardObservation.value : null;
+    if (
+      bodyValue?.number === issue &&
+      readLastKnownState(bodyValue.body).state === 'done' &&
+      boardValue?.state === 'done'
+    ) {
+      status = 'ready';
+    } else {
+      snapshotState = 'unknown';
+      blockers = [
+        {
+          guardId: 'action-navigation',
+          code: 'state-unavailable',
+          args: { reason: 'conflicting' },
+          noAutomaticRemediation: { reason: 'state-investigation-required' },
+        },
+      ];
+    }
+  } else if (navigation.status === 'ready') {
     try {
       const result =
         actionId === 'promote'
@@ -649,7 +675,7 @@ async function evaluateCompletedAction({
       collectorFailed = true;
     }
   }
-  if (navigation.status !== 'ready' || collectorFailed) {
+  if ((navigation.status !== 'ready' && navigation.status !== 'terminal') || collectorFailed) {
     await attempt.observe({ resource: 'issue-body', identity: `issue:${issue}:0`, scope });
   }
   let attemptedEffects;
@@ -658,12 +684,23 @@ async function evaluateCompletedAction({
   } catch {
     attemptedEffects = null;
   }
-  if (
-    navigation.status !== 'terminal' &&
-    (!Array.isArray(attemptedEffects) || attemptedEffects.length > 0)
-  ) {
+  if (!Array.isArray(attemptedEffects) || attemptedEffects.length > 0) {
     status = 'indeterminate';
     if (!blockers.some(({ code }) => code === invalid.code)) blockers = [...blockers, invalid];
+    if (navigation.status === 'terminal') {
+      snapshotState = 'unknown';
+      if (!blockers.some(({ code }) => code === 'state-unavailable')) {
+        blockers = [
+          ...blockers,
+          {
+            guardId: 'action-navigation',
+            code: 'state-unavailable',
+            args: { reason: 'conflicting' },
+            noAutomaticRemediation: { reason: 'state-investigation-required' },
+          },
+        ];
+      }
+    }
   }
   const requests = blockers.flatMap((blocker) => {
     if (blocker.code === 'plan-approval-missing') {
@@ -707,13 +744,13 @@ async function evaluateCompletedAction({
         ? null
         : actionId,
     status,
-    snapshot: snapshotFromBundle({ state: canonicalState, head: inputs.head, bundle }),
+    snapshot: snapshotFromBundle({ state: snapshotState, head: inputs.head, bundle }),
     blockers,
     normalizations: [],
     warnings: [],
     humanDecision,
     guidanceIds: [
-      navigation.status === 'terminal'
+      navigation.status === 'terminal' && snapshotState === 'done'
         ? 'state.done'
         : blockers.some(({ code }) => code === 'state-unavailable')
           ? 'navigation.unresolved'

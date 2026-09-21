@@ -185,7 +185,11 @@ export function registerActionNavigationCases({ test, body, now }) {
       issue,
       boundaryId: 'action:done:1752',
       now,
-      read: async (request) => ({ ...request, value: { number: issue, body: doneBody } }),
+      read: async (request) => ({
+        ...request,
+        value:
+          request.resource === 'issue-body' ? { number: issue, body: doneBody } : { state: 'done' },
+      }),
     });
     const done = await evaluateAction({
       actionId: 'promote',
@@ -200,6 +204,60 @@ export function registerActionNavigationCases({ test, body, now }) {
       ['ready', null, ['state.done']]
     );
     assert.deepEqual(validateActionDecision(done), done);
+  });
+
+  test('terminal Done refuses an effect, stale authority, and rebind without a false grant', async () => {
+    const issue = 1752;
+    const repository = 'example/project';
+    const doneBody = body.replace('state="plan"', 'state="done"');
+    for (const scenario of [
+      { actionId: 'promote', bodyValue: doneBody, boardState: 'done', effects: ['move'] },
+      { actionId: 'promote', bodyValue: body, boardState: 'done', effects: [] },
+      { actionId: 'promote', bodyValue: doneBody, boardState: 'plan', effects: [] },
+      {
+        actionId: 'promote',
+        state: { recorded: 'done', live: 'plan' },
+        bodyValue: doneBody,
+        boardState: 'plan',
+        effects: [],
+      },
+      { actionId: 'rebind', bodyValue: doneBody, boardState: 'done', effects: [] },
+    ]) {
+      const attempt = createObservationAttempt({
+        repository,
+        issue,
+        boundaryId: `action:done:${scenario.actionId}:${scenario.effects.length}:1752`,
+        now,
+        read: async (request) => ({
+          ...request,
+          value:
+            request.resource === 'issue-body'
+              ? { number: issue, body: scenario.bodyValue }
+              : { state: scenario.boardState },
+        }),
+      });
+      const decision = await evaluateAction({
+        actionId: scenario.actionId,
+        repository,
+        issue,
+        inputs: { state: scenario.state ?? 'done', head: 'a'.repeat(40), body: scenario.bodyValue },
+        attempt,
+        deps: { effectAttempts: () => scenario.effects },
+      });
+      assert.deepEqual(validateActionDecision(decision), decision);
+      if (
+        scenario.effects.length ||
+        scenario.bodyValue !== doneBody ||
+        scenario.boardState !== 'done'
+      ) {
+        assert.equal(decision.status, 'indeterminate');
+        assert.equal(decision.actionId, null);
+        assert.ok(decision.blockers.some(({ code }) => code === 'state-unavailable'));
+      } else {
+        assert.equal(decision.status, 'ready');
+        assert.equal(decision.actionId, null);
+      }
+    }
   });
 
   test('a ready v2 explanation never authorizes stale promotion execution', async () => {
