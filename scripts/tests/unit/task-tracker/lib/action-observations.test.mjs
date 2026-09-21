@@ -11,6 +11,18 @@ const body = '## User Story\nA user\n## Scope\nDo work\n## Acceptance Criteria\n
 const scope = computeScopeIdentity({ repository, issue: 1728, body });
 const clock = () => '2026-09-21T09:20:00.000Z';
 const request = { resource: 'issue-body', identity: 'issue:1728', scope };
+const EFFECT_SURFACES = Object.freeze([
+  'tracked-file:write',
+  'git:ref-update',
+  'git:object-write',
+  'git:index-write',
+  'lock:acquire',
+  'session:write',
+  'github:issue-edit',
+  'test:spawn',
+  'provider:invoke',
+  'network:fetch',
+]);
 const response = () => ({
   repository,
   issue: 1728,
@@ -83,6 +95,24 @@ test('new attempts and changed scope do not reuse stale reads', async () => {
   assert.equal(reads, 3);
 });
 
+test('different source identities are distinct within one attempt', async () => {
+  let reads = 0;
+  const attempt = createObservationAttempt({
+    repository,
+    issue: 1728,
+    boundaryId: 'explain:promote',
+    now: clock,
+    read: async (input) => {
+      reads += 1;
+      return { ...input, value: { head: 'a'.repeat(40) } };
+    },
+  });
+  await attempt.observe({ resource: 'delivery', identity: 'evidence:1728:1', scope });
+  await attempt.observe({ resource: 'delivery', identity: 'evidence:1728:2', scope });
+  assert.equal(reads, 2);
+  assert.equal(attempt.finish().observations.length, 2);
+});
+
 test('a refresh replaces superseded body evidence rather than retaining it in the bundle', async () => {
   let revision = 0;
   const attempt = createObservationAttempt({
@@ -144,6 +174,26 @@ test('failed required read retains a typed indeterminate cause and source proven
   assert.equal(observed.resource, 'issue-body');
   assert.equal(observed.identity, 'issue:1728');
   assert.equal(attempt.finish().observations.length, 1);
+});
+
+test('a forced hook throw is a read failure, not an effect attempt', async () => {
+  const attempts = [];
+  const attempt = createObservationAttempt({
+    repository,
+    issue: 1728,
+    boundaryId: 'explain:promote',
+    now: clock,
+    read: async () => {
+      throw new Error('AITM_GUARD_FORCE_THROW');
+    },
+  });
+  try {
+    const observed = await attempt.observe(request);
+    assert.equal(observed.cause.args.reason, 'unavailable');
+    assert.equal(observed.provenance.detail, 'AITM_GUARD_FORCE_THROW');
+  } finally {
+    assert.deepEqual(attempts, []);
+  }
 });
 
 test('missing source and incompatible repository, issue, or body fail closed', async () => {
@@ -223,18 +273,15 @@ test('an attempt with no observed source cannot finish as an authority bundle', 
 test('collector leaves the outer effect-attempt ledger empty', async () => {
   const attempts = [];
   const read = async () => response();
-  read.fetch = () => {
-    attempts.push('network:fetch');
-    throw new Error('fetch forbidden');
-  };
-  read.writeFile = () => {
-    attempts.push('file:write');
-    throw new Error('write forbidden');
-  };
-  read.updateRef = () => {
-    attempts.push('git:update-ref');
-    throw new Error('ref forbidden');
-  };
+  read.forbiddenEffects = Object.fromEntries(
+    EFFECT_SURFACES.map((name) => [
+      name,
+      () => {
+        attempts.push(name);
+        throw new Error(`${name} forbidden`);
+      },
+    ])
+  );
   const attempt = createObservationAttempt({
     repository,
     issue: 1728,
@@ -249,7 +296,7 @@ test('collector leaves the outer effect-attempt ledger empty', async () => {
   }
 });
 
-test('the outer ledger catches swallowed local, Git, and network effects inside a read port', async () => {
+test('the outer ledger catches swallowed effects on every required surface inside a read port', async () => {
   const attempts = [];
   const forbidden = (name) => {
     attempts.push(name);
@@ -261,7 +308,7 @@ test('the outer ledger catches swallowed local, Git, and network effects inside 
     boundaryId: 'explain:promote',
     now: clock,
     read: async () => {
-      for (const name of ['network:fetch', 'file:write', 'git:update-ref']) {
+      for (const name of EFFECT_SURFACES) {
         try {
           forbidden(name);
         } catch {}
@@ -272,7 +319,7 @@ test('the outer ledger catches swallowed local, Git, and network effects inside 
   try {
     assert.equal((await attempt.observe(request)).status, 'observed');
   } finally {
-    assert.deepEqual(attempts, ['network:fetch', 'file:write', 'git:update-ref']);
+    assert.deepEqual(attempts, EFFECT_SURFACES);
     assert.throws(() => assert.deepEqual(attempts, []));
   }
 });
