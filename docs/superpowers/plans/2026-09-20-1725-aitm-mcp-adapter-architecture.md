@@ -31,10 +31,11 @@ at reviewed trunk commit
 This previously reviewed umbrella spec retains its original filename for
 provenance; it is not the naming pattern for newly allocated child artifacts.
 
-**Review status:** Revised through iterative Single Agent Review (SAR). This is an
-umbrella hydration plan, not an executable child plan or independent approval.
-Review records are retained under
-`docs/superpowers/reviews/aitm-mcp-adapter-architecture/plan-1725/SAR/`.
+**Review history:** Iterative Single Agent Review (SAR) and cross-provider review
+(XPR) records are retained under
+`docs/superpowers/reviews/aitm-mcp-adapter-architecture/plan-1725/`. Consult the
+terminal XPR record for the independent-review outcome. This is an umbrella
+hydration plan, not an executable child plan or implementation approval.
 
 ## Global Constraints
 
@@ -106,10 +107,12 @@ Review records are retained under
   buckets before their tests are introduced: Task 1 covers Phase 0 feasibility;
   Task 4 covers production `src/` alongside retained `scripts/` and package-root
   entry points. The canonical test root and three lanes remain unchanged.
-- Every in-repository implementation child runs the lint and format commands
+- Every in-repository child, including document-producing children, runs the lint and format commands
   in its verification block before delivery, including story attribution,
   layout, and the 800-code-line hard cap (400-line review target). External
-  provider plans define their own equivalent mandatory gates.
+  provider plans define their own equivalent mandatory gates, including a
+  `test:package` script that asserts their allowed runtime, manifests, and
+  exclusions over the packed inventory; printing a dry run alone is insufficient.
 - All implementation tasks use red-green-refactor cycles and preserve the
   existing CLI behavior until the applicable phase exit gate passes.
 
@@ -200,8 +203,13 @@ new boundaries:
    supported workflow path.
 4. **Gate D — portability and ecosystem:** Tasks 14–16 complete before external
    adapters can claim portable activation.
-5. **Gate E — provider and assurance rollout:** Tasks 17–20 complete before MCP
-   replaces the legacy Full-Auto entry path.
+5. **Gate E — assurance rollout:** Task 20 depends on Gates A–D and its own
+   host-assurance certification before MCP replaces the legacy Full-Auto entry
+   path. A GitHub/local-Git configuration can pass independently of external
+   provider delivery. Tasks 17–19 depend on Gate D and are separately governed
+   external projects, not prerequisites for Task 20 or the core cutover. Each
+   external configuration requires certification of its selected adapters and
+   participating-port assurance before Full-Auto is enabled for that configuration.
 
 ## Hydration and Execution Protocol
 
@@ -213,9 +221,11 @@ new boundaries:
   implementation plan against the then-current repository and its allocated
   issue number. That child does not edit source until both artifacts complete
   the required review and approval path.
-- Phase 1 children are approved serially in the order shown. Later phase
-  children may be created for visibility, but remain blocked on the preceding
-  delivery gate.
+- Core children are approved serially through Tasks 1–16, followed by Task 20.
+  They may be created for visibility but remain blocked on their preceding
+  core delivery gate. Phase 6 external children (Tasks 17–19) branch from Gate D
+  and do not block Phase 7 Task 20. Phase numbers group capabilities; the
+  explicit gate dependencies determine execution order.
 - Each child plan names exact files, consumes/produces interfaces, executable
   failing tests and expected outcomes, implementation steps, and its own exit
   gate. The task summaries below are planning inputs, not coding instructions.
@@ -225,7 +235,11 @@ new boundaries:
   prerequisites of earlier activation.
 - Tasks 17–19 are external-project deliveries. Their child records track
   compatibility and retained certification evidence; their source changes do
-  not land in the core repository.
+  not land in the core repository. Each may release independently for its
+  certified compositions; a composition requiring another external adapter
+  remains unavailable until that counterpart is certified. Neither that
+  composition nor external-project funding delays the GitHub/local-Git core
+  cutover. The core estimate includes Task 20 and excludes Tasks 17–19.
 
 ---
 
@@ -274,7 +288,8 @@ new boundaries:
 
 ```sh
 rg -n "credential|git commit|git push|gh |graphql|api " bin scripts --glob '*.mjs'
-npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 2: Prototype the Dispatcher and Verified Plugin Snapshot
@@ -332,6 +347,10 @@ npm run format:check
 #### Files and Interfaces
 
 - Create: `scripts/benchmarks/mcp-architecture-operating-envelope.mjs`
+- Modify: `package.json` to exclude `scripts/benchmarks/**` from packed files
+  in this same child, before the benchmark directory is introduced. Extend
+  `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` to enforce
+  that exclusion without increasing the entry ceiling.
 - Create: `scripts/tests/slow/feasibility/github-reference-certification.test.mjs`
 - Create: `docs/reports/aitm-mcp-phase-0-feasibility.md`
 - Measure provider calls per action, verification reads, retained bytes per work
@@ -358,6 +377,7 @@ npm run format:check
 ```sh
 node --test scripts/tests/slow/feasibility/github-reference-certification.test.mjs
 node scripts/benchmarks/mcp-architecture-operating-envelope.mjs --verify-report docs/reports/aitm-mcp-phase-0-feasibility.md
+node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
 npm run lint
 npm run format:check
 ```
@@ -393,8 +413,8 @@ npm run format:check
   fixtures under `src/adapter-sdk/fixtures/` and
   `scripts/tests/unit/adapter-sdk/contract.test.mjs`.
 - Modify: `package.json` public exports and `files` allowlist; include the
-  production `src/` closure and exclude test-only material,
-  `scripts/benchmarks/**`, and `src/feasibility/**`. Preserve existing
+  production `src/` closure, preserve Task 3's `scripts/benchmarks/**` exclusion,
+  and exclude test-only material and `src/feasibility/**`. Preserve existing
   entry points when adding an exports map.
 - Extend: `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
   and add `scripts/tests/slow/package/kernel-consumer.test.mjs`.
@@ -404,18 +424,24 @@ npm run format:check
 - [ ] Approve the ADR 0001 production amendment before new production tests.
       Enumerate source-relative mappings for `src/kernel/`, `src/adapter-sdk/`,
       `src/transports/`, `src/setup/`, `src/host-bridges/`, and adapters, plus
-      explicit conformance/package feature buckets. Preserve existing `scripts/`
+      explicit conformance/package/migration feature buckets. Correct ADR 0001 §5
+      to match the runner: fast is unit-only and integration is a separate lane.
+      Preserve existing `scripts/`
       mappings, support-only exclusions, and fail-closed package-wide discovery;
       document ownership where a feature spans both source roots.
 - [ ] Budget packed entries per child, following the existing reviewed allowance
       pattern in `package-boundary.test.mjs`. Record the actual before/after
       pack inventory and exact intentional delta with the allocated issue ID;
       adjust only that child allowance when necessary. Baseline currently has
-      798 entries against an effective ceiling of 798, measured during XPR;
+      798 entries against an effective ceiling of 798, measured during XPR.
+      Reproduce with `npm pack --dry-run --json`, parsed by
+      `parseNpmPackReport` from `scripts/tests/helpers/npm-pack-report.mjs`;
       remeasure at each child rather than treating that number as permanent.
       Do not add blanket headroom or relax forbidden-path assertions. Every
-      later child adding shipped files, including Tasks 5–16 and 20, inherits
-      this obligation and runs the package-boundary gate.
+      child adding shipped files inherits this obligation and runs the
+      package-boundary gate, including Tasks 5–16 and 20. Task 3 already applies
+      the same inventory discipline and gate, with its benchmark excluded in
+      that child; no task may defer its packed-file compliance to a later task.
 - [ ] Ratify the initial ABI and package compatibility matrix now, with exact
       contracts for `manifest`, `probe`, `read`, `execute`, `observe`,
       `reconcile`, `evidence`, and `doctor`. Tasks 8–9 consume these same
@@ -868,6 +894,9 @@ npm run format:check
 
 #### Steps
 
+- [ ] Record the before/after packed inventory and exact reviewed entry allowance
+      for the new bin, runtime closure, and dependency manifest changes under
+      Task 4's per-child package policy.
 - [ ] Ratify the exact MCP runtime dependency, production graph, Node floor,
       license, packed size, audit result, and alternatives before installation.
 - [ ] Write red tests for the five discovery tools, seven common mutation tools,
@@ -885,6 +914,7 @@ npm run format:check
 node --test scripts/tests/integration/transports/mcp-tools.test.mjs scripts/tests/integration/transports/mcp-resources.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
 npm audit --omit=dev
 npm pack --dry-run
+npm test
 npm run lint
 npm run format:check
 ```
@@ -1048,6 +1078,7 @@ npm run format:check
 ```sh
 node --test scripts/tests/slow/setup/portable-clone.test.mjs scripts/tests/unit/host-bridges/learning-projection.test.mjs
 npm pack --dry-run
+npm test
 npm run lint
 npm run format:check
 ```
@@ -1074,7 +1105,8 @@ npm run format:check
 - Create: `scripts/tests/slow/adapter-sdk/independent-plugin.test.mjs`.
 - Create the independently installable reference fixture at
   `scripts/tests/fixtures/adapters/reference/`, including `package.json`,
-  `aitm-adapter.json`, and the tracked runtime `dist/adapter.mjs` used below.
+  `aitm-adapter.json`, and the tracked source fixture `dist/adapter.mjs` used below.
+  The installable package around that source fixture is harness-assembled.
   Its peer dependency resolves the packed SDK; it cannot import private core
   files or the source worktree. This consumer fixture is distinct from the
   public runner fixtures under `src/adapter-sdk/fixtures/`. The consumer fixture
@@ -1161,6 +1193,7 @@ npm run format:check
 npx aitm-adapter-conformance ./dist/adapter.mjs
 npm test
 npm pack --dry-run
+npm run test:package
 ```
 
 ### Task 18: Certify the Independent Bitbucket Adapter Project
@@ -1196,6 +1229,7 @@ npm pack --dry-run
 npx aitm-adapter-conformance ./dist/adapter.mjs
 npm test
 npm pack --dry-run
+npm run test:package
 ```
 
 ### Task 19: Certify the Independent Jira Adapter Project
@@ -1230,6 +1264,7 @@ npm pack --dry-run
 npx aitm-adapter-conformance ./dist/adapter.mjs
 npm test
 npm pack --dry-run
+npm run test:package
 ```
 
 ### Task 20: Enforce Host Mutation Routing and Cut Over Full-Auto
@@ -1272,10 +1307,10 @@ npm pack --dry-run
 ```sh
 node --test scripts/tests/slow/host-bridges/assurance.test.mjs
 npm test
+npm run test:integration
 npm run test:slow
 npm run lint
 npm run format:check
-npm run test:integration
 ```
 
 ## Acceptance-to-Task Traceability
