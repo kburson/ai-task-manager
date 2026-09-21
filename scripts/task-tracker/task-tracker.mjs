@@ -170,13 +170,28 @@ export function resolvePreflightInvocation({ verb, mode, rest, stateBefore }) {
   };
 }
 
+// #1750: expose the dispatcher's exact bind/resume selection to a read-only
+// evaluator. The execution path still owns fresh preflight and every effect.
+export function resolveSessionActionInvocation({ verb, mode, rest, stateBefore }) {
+  const invocation = resolvePreflightInvocation({ verb, mode, rest, stateBefore });
+  if (mode !== 'switch-target')
+    return { ...invocation, actionId: null, issue: null, explicitTarget: false };
+  const explicit = /^#\d+$/.test(String(verb)) ? String(verb) : targetFromRest(rest);
+  return {
+    actionId: verb === 'resume' ? 'resume' : 'bind',
+    issue: invocation.target ? Number(String(invocation.target).replace(/^#/, '')) : null,
+    explicitTarget: Boolean(explicit),
+    ...invocation,
+  };
+}
+
 async function runVerbPreflight(ctx) {
   const mode = PREFLIGHT_MODE[ctx.verb] || (/^#\d+$/.test(ctx.verb) ? 'switch-target' : null);
   if (!mode) return;
   const { preflightVerb } = await import('./lib/verb-preflight.mjs');
   const { loadState } = await import('./state.mjs');
   const stateBefore = loadState(ctx.statePath);
-  const invocation = resolvePreflightInvocation({
+  const invocation = resolveSessionActionInvocation({
     verb: ctx.verb,
     mode,
     rest: ctx.rest,

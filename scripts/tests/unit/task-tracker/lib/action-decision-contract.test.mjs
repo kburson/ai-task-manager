@@ -18,6 +18,7 @@ import {
   CODE_DEFINITIONS,
   actionNavigationRefusal,
   normalizeRefusal,
+  validateBlocker,
   validateActionDecision,
   vocabularyDigest,
 } from '../../../../task-tracker/lib/action-decision/contract.mjs';
@@ -116,7 +117,7 @@ test('the decision vocabulary exposes its version and reserved boundary producer
   assert.match(vocabularyDigest(), /^sha256:[a-f0-9]{64}$/);
 });
 
-test('authority resources preserve the accepted Task 1 source vocabulary', () => {
+test('authority resources include honest local session sources while remaining closed', () => {
   assert.deepEqual(AUTHORITY_RESOURCE_IDS, [
     'issue-body',
     'issue-comment',
@@ -124,7 +125,31 @@ test('authority resources preserve the accepted Task 1 source vocabulary', () =>
     'delivery',
     'timing-log',
     'workflow-policy',
+    'local-config',
+    'session-state',
+    'worktree',
+    'github-user',
+    'occupancy',
+    'migration-journal',
   ]);
+});
+
+test('observed session and worktree mismatches are valid closed v2 blockers', () => {
+  for (const code of [
+    'session-bind-mismatch',
+    'worktree-mismatch',
+    'state-drift',
+    'ownership-mismatch',
+    'occupancy-conflict',
+  ]) {
+    const blocker = {
+      guardId: 'authority-collection',
+      code,
+      args: {},
+      noAutomaticRemediation: { reason: 'state-investigation-required' },
+    };
+    assert.deepEqual(validateBlocker(blocker, { status: 'blocked' }), blocker);
+  }
 });
 
 test('an inventoried legacy refusal normalizes without interpreting its reason', () => {

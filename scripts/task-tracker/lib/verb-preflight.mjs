@@ -43,6 +43,7 @@ import {
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { isReadyForPlanMigrationActive } from './ready-for-plan-migration-freeze.mjs';
+import { compareBoardMarker } from './action-decision/session.mjs';
 
 const pexec = promisify(execFile);
 
@@ -51,6 +52,11 @@ export const EXIT_AI_OVERSIGHT = 8;
 export const EXIT_HUMAN_MOVE = 9;
 export const EXIT_MIGRATION_FREEZE = 14;
 export { EXIT_ASSIGNEE_MISMATCH };
+
+// Reuse the execution network mode for read-only session decisions.
+export function sessionNetworkSkipped() {
+  return process.env.TT_SKIP_NETWORK === '1';
+}
 
 function normalizeIssueNumber(target) {
   if (target == null) return null;
@@ -245,7 +251,8 @@ export async function runPreflight({
   marker = marker ? normalizeStateId(marker) : null;
 
   // Marker absent (freshly created, never moved) or matches live: no drift.
-  if (!marker || marker === live) {
+  const comparison = compareBoardMarker(live, marker);
+  if (comparison.status !== 'drift') {
     return { ok: true, stateAfter: stateBefore, changed: false };
   }
 

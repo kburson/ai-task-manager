@@ -73,6 +73,18 @@ function failure({
 }
 
 function compatible(result, request, repository, issue) {
+  if (
+    [
+      'local-config',
+      'session-state',
+      'worktree',
+      'github-user',
+      'occupancy',
+      'migration-journal',
+    ].includes(request.resource) &&
+    request.identity !== `${request.resource}:${issue}`
+  )
+    return 'incompatible-identity';
   if (!result || typeof result !== 'object' || Array.isArray(result)) return 'missing-source';
   if (
     result.repository !== repository ||
