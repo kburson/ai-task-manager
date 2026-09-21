@@ -17,6 +17,7 @@ import {
 import { resolveActionNavigation } from './navigation.mjs';
 import { collectSessionReadiness } from './session.mjs';
 import { collectEarlyPromoteReadiness } from './promote.mjs';
+import { collectTestReadiness } from './test.mjs';
 
 /**
  * Read-only remote-tip authority for a later close adapter. The caller owns
@@ -380,7 +381,7 @@ export async function evaluateAction({
     throw new TypeError('action-evaluator:attempt');
   }
   if (
-    (actionId === 'rebind' || ['bind', 'resume', 'promote'].includes(actionId)) &&
+    (actionId === 'rebind' || ['bind', 'resume', 'promote', 'test'].includes(actionId)) &&
     typeof deps.runReadOnlyGuards !== 'function'
   ) {
     return evaluateCompletedAction({ actionId, repository, issue, inputs, attempt, deps });
@@ -595,6 +596,7 @@ async function evaluateCompletedAction({
   let status = 'indeterminate';
   let blockers = navigation.blocker ? [navigation.blocker] : [];
   let humanDecision = null;
+  let warnings = [];
   let collectorFailed = false;
   if (navigation.status === 'terminal') {
     const [bodyObservation, boardObservation] = await Promise.all([
@@ -622,8 +624,18 @@ async function evaluateCompletedAction({
     }
   } else if (navigation.status === 'ready') {
     try {
-      const result =
-        actionId === 'promote'
+      const testAction =
+        actionId === 'test' || (actionId === 'promote' && canonicalState === 'develop');
+      const result = testAction
+        ? await collectTestReadiness({
+            issue,
+            fromState: canonicalState,
+            body: inputs.body,
+            head: inputs.head,
+            attempt,
+            ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
+          })
+        : actionId === 'promote'
           ? await collectEarlyPromoteReadiness({
               issue,
               fromState: canonicalState,
@@ -641,6 +653,7 @@ async function evaluateCompletedAction({
             });
       status = result.status;
       blockers = result.blockers;
+      warnings = result.warnings ?? [];
       if (
         actionId === 'promote' &&
         blockers.some(({ code }) => code === 'authority-read-skipped')
@@ -651,7 +664,7 @@ async function evaluateCompletedAction({
           scope,
         });
       }
-      if (actionId !== 'promote') {
+      if (actionId !== 'promote' && actionId !== 'test') {
         const board = result.observations?.find(
           (observation) =>
             observation.resource === 'project-board' && observation.status === 'observed'
@@ -747,7 +760,7 @@ async function evaluateCompletedAction({
     snapshot: snapshotFromBundle({ state: snapshotState, head: inputs.head, bundle }),
     blockers,
     normalizations: [],
-    warnings: [],
+    warnings,
     humanDecision,
     guidanceIds: [
       navigation.status === 'terminal' && snapshotState === 'done'

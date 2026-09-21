@@ -154,7 +154,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       ['rebind', 'plan', 'unknown-vocabulary', 'rebind'],
       ['promote', 'mystery', 'state-unavailable', null],
       ['promote', { recorded: 'plan', live: 'develop' }, 'state-unavailable', null],
-      ['promote', 'develop', 'action-not-explain-ready', 'promote'],
+      ['promote', 'develop', 'authority-read-failed', 'promote'],
       ['promote', 'test', 'action-not-explain-ready', 'promote'],
       ['promote', 'review', 'action-not-explain-ready', 'promote'],
     ]) {

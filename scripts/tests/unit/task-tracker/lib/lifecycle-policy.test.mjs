@@ -54,7 +54,7 @@ test('navigation refuses rebind vocabulary and unknown or conflicting state', ()
   );
 });
 
-test('Done is terminal and later delegates remain pending', () => {
+test('Done is terminal, Develop delegates Test readiness, and later delegates remain pending', () => {
   assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state: 'done' }), {
     status: 'terminal',
     target: null,
@@ -62,8 +62,13 @@ test('Done is terminal and later delegates remain pending', () => {
     blocker: null,
   });
   assert.equal(resolveActionNavigation({ actionId: 'bind', state: 'done' }).status, 'terminal');
+  assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state: 'develop' }), {
+    status: 'ready',
+    target: 'test',
+    delegate: 'test',
+    blocker: null,
+  });
   for (const [state, target, delegate] of [
-    ['develop', 'test', 'test'],
     ['test', 'review', 'review'],
     ['review', 'done', 'close'],
   ]) {

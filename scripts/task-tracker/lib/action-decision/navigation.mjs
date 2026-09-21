@@ -45,6 +45,11 @@ export function resolveActionNavigation({ actionId, state } = {}) {
     return route('pending', policy.target ?? null, null, blocker('action-not-explain-ready'));
   }
   if (actionId === 'bind' || actionId === 'resume') return route('ready');
+  if (actionId === 'test') {
+    return recorded === 'develop' || recorded === 'test'
+      ? route('ready', 'test')
+      : route('pending', 'test', null, blocker('action-not-explain-ready'));
+  }
   if (actionId !== 'promote') {
     return route('pending', policy.target ?? null, null, blocker('action-not-explain-ready'));
   }
@@ -58,6 +63,9 @@ export function resolveActionNavigation({ actionId, state } = {}) {
     );
   }
   if (!EARLY_PROMOTE_STATES.has(recorded)) {
+    if (recorded === 'develop' && target === 'test' && policy.delegate === 'test') {
+      return route('ready', target, 'test');
+    }
     return route('pending', target, policy.delegate ?? null, blocker('action-not-explain-ready'));
   }
   return route('ready', target);
