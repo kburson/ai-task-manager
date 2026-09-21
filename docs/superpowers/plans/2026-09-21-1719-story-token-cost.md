@@ -14,7 +14,7 @@
 
 **Source integrity:** SHA-256 `1a47930a8c54c29d64b6b06abca9f1291d3d6f9362e6d7289b58ef18e9b990a9`; published through [PR #1727](https://github.com/kburson/ai-task-manager/pull/1727); reference recorded in [issue #1719](https://github.com/kburson/ai-task-manager/issues/1719).
 
-**Plan status:** Proposed, awaiting its own SAR and approval. The user authorized creation and commitment of this plan. Neither the spec merge nor this plan authorizes production implementation, historical backfill, live billing credentials, or provider account access. Do not start implementation or a new review as part of writing this artifact. Issue #1719 remains the design-and-plan deliverable; hydrate implementation issues through the governed workflow only after plan approval.
+**Plan status:** Proposed, undergoing its separately authorized XPR; implementation approval remains pending. The user authorized creation and commitment of this plan. Neither the spec merge nor this plan authorizes production implementation, historical backfill, live billing credentials, or provider account access. Do not start implementation as part of reviewing this artifact. Issue #1719 remains the design-and-plan deliverable; hydrate implementation issues through the governed workflow only after plan approval.
 
 ## Global Constraints
 
@@ -30,7 +30,7 @@
 - Keep the envelope's scalar `predecessor` and `supersedes`. The many-to-many span replacement set belongs in the reconciliation payload.
 - Read timing suffixes and isolate cost records before enabling any writer. Missing or corrupt economic evidence must never weaken or poison governance validation.
 - Replay the complete frozen envelope, authority identity, marker, prose, and body. An equal payload hash alone is not successful delivery.
-- All new executable files carry the implementation issue's `@story` tag. Examples use #1719 until implementation issues exist; do not invent issue numbers.
+- All new executable files carry the implementation issue's `@story` tag. Examples use #1719 until implementation issues exist; do not invent issue numbers. Before executing any implementation task, substitute its approved implementation issue in every executable story tag and commit subject; fixture issue numbers may remain 1719.
 - Use repository-owned worktree setup and self-link verification before execution. Keep scratch inputs in `.scratch/`, disposable runtime caches in `.tmp/aitm/`, durable cost journals in the clone-shared Git metadata directory defined below, and tests within the canonical `scripts/tests/` tree.
 
 ---
@@ -46,7 +46,11 @@ Keep one plan because the writers, coverage inventory, and read model form one a
 5. Task 15: offline administrative evidence and a separately gated live-integration boundary.
 6. Task 16: acceptance scenario, failure matrix, packaged compatibility, and documented prospective rollout.
 
-Tasks 2 and 3 are hard prerequisites for Task 8. Do not ship an enabled writer with only one of them. Each implementation task ends with its own tests and commit; plan SAR and implementation authorization precede all of them.
+Tasks 2 and 3 are hard prerequisites for Task 8. The compatible Task 10 delivery-payload reader must also ship before any enabled delivery writer. Publish these reader changes together as a reader-only release before the capture release. Do not ship an enabled writer with only some prerequisites.
+
+The shared GitHub issue is the compatibility boundary across installed packages, linked worktrees, CI and automation. Keep the ratified `row-sec` then cost-marker order: putting cost first would change the ratified wire contract and would still require compatibility tests. A pre-upgrade reader throws `timing-row-reader:estimation-row-sec` on the ratified composed suffix. Characterize this with a pinned old-package fixture; it is not a supported mixed-version deployment. Task 16 must name the exact published reader-only package version and immutable commit in the rollout guide before enablement; that version is the minimum supported reader for a cost-enabled issue. No numeric release is invented before the release exists.
+
+Enablement requires a repository-owner inventory of every consumer of the shared issue, including CI pins, installed packages and stale worktrees, with recorded verification that each supports the reader-only release. Unknown or unverified consumers mean capture stays disabled. Configuration exposes `readerRolloutFile` (default null), a project-local, secret-free versioned manifest containing `{ schema, readerVersion, readerCommit, consumers, confirmedAt }`; each consumer is `{ id, version }`. Task 4 validates the manifest, semver floor and locally installed reader capability `story-cost-readers/v1` before enabling either writer. This is an explicit operator attestation, not automatic discovery of every installation. A missing or invalid attestation declines capture with unchanged timing bytes and a local diagnostic. The rollout guide requires reconfirmation whenever a consumer is added or downgraded and forbids rolling any reader below the floor while cost evidence remains. Reader support is retained after capture is disabled. Each implementation task ends with its own tests and commit; plan review and implementation authorization precede all of them.
 
 ## Current repository anchors
 
@@ -54,7 +58,7 @@ These are implementation anchors verified against the spec's merge commit, not c
 
 | Existing file / function                                                                                                                             | Required integration                                                                                                       |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/task-tracker/runtime.mjs`: `flushActiveToGH`, `safePostTiming`, queue drain functions                                                       | Capture every emitted row, retain actual sample times, replay prepared rows                                                |
+| `scripts/task-tracker/runtime.mjs`: `flushActiveToGH`, `safePostTiming` (runtime context members), queue drain functions                             | Capture every emitted row, retain actual sample times, replay prepared rows                                                |
 | `scripts/task-tracker/gh-timing-comment.mjs`: `buildRow`, `buildFlushRow`, `postTimingEvent`                                                         | Preserve old bytes when disabled; keyed append/read-back when enabled                                                      |
 | `scripts/task-tracker/lib/timing-row-reader.mjs`: `splitTimingRowMarker`, `parseTimingRow`, `replaceTimingRowCells`, `ensureTimingRowFullMarkerCell` | One composed-suffix grammar, independent cost diagnostics                                                                  |
 | `scripts/task-tracker/lib/github-records/record-envelope.mjs`                                                                                        | Reuse canonical JSON, validation, hashing, secret rejection, IDs, and envelope links                                       |
@@ -106,9 +110,9 @@ All exported functions below take one object argument unless an exact positional
 
 Resolve the clone's common Git directory explicitly with `git rev-parse --path-format=absolute --git-common-dir`; refuse ambiguous resolution for cost persistence rather than falling back to a second checkout-local cursor. Store the shared journal under `<git-common-dir>/aitm-cost/`, with directories mode 0700 and files 0600. This is machine-local, ignored Git metadata, not tracked authority. Store disposable report snapshots under `<worktree>/.tmp/aitm/cost-cache/`. Use a schema/versioned journal; never interpret parse failure as an empty journal.
 
-An atomic frozen-event file is the commit point for both observations and cursor advancement. Source heads are derived from committed frozen files; a head-index file is a rebuildable cache, never a second authoritative commit. Intent, frozen, and delivered acknowledgments use separate atomic files keyed by the same operation ID. An intent without a frozen file is recoverable but is not a historical observation. Unknown remote outcome remains pending until exact read-back resolves it. Never purge pending data during ordinary cleanup.
+An atomic frozen-event file is the commit point for both observations and cursor advancement. Source heads are derived from committed frozen files; a head-index file is a rebuildable cache, never a second authoritative commit. Intent, frozen, and delivered acknowledgments use separate atomic files keyed by the same operation ID. An intent without a frozen file is recoverable but is not a historical observation. Unknown remote outcome remains pending until exact read-back resolves it. Never purge pending data during ordinary cleanup. Deleting or re-cloning the common Git directory loses undelivered frozen evidence; GitHub cannot reconstruct unobserved quantities. This accepted local durability limit must surface as missing coverage, never measured zero. Canonicalize the resolved common directory with `realpathSync`, using `evidence-v2/execution-context.mjs` as a resolution reference; do not copy its sandbox-specific containment root, since a linked worktree legitimately shares Git metadata outside the worktree.
 
-Report defaults are deliberately offline: `npx aitm cost 1719 [--json]` reads the last verified GitHub evidence snapshot, reports its `asOf` time and freshness limitations, and performs no network call. A fresh checkout first runs `npx aitm cost 1719 --refresh`; this explicitly reads GitHub timing, policy, session/run, delivery, and cost evidence, writes only the local cache, and then renders. No report option calls provider billing APIs or writes GitHub. Missing cache yields unavailable coverage, not zero. A whole-story summary is never complete for an active story with an unproven Done cutoff; a covered subwindow may be complete. Completeness is always qualified to the fetched authority snapshot, not a claim about unseen later edits.
+The spec reporting section calls for GitHub evidence while its security tests forbid network calls on the default report path. Resolve those requirements by reading a verified local snapshot by default and using explicit GitHub-only refresh; do not reinterpret default reporting as implicit network access. Report defaults are deliberately offline: `npx aitm cost 1719 [--json]` reads the last verified GitHub evidence snapshot, reports its `asOf` time and freshness limitations, and performs no network call. A fresh checkout first runs `npx aitm cost 1719 --refresh`; this explicitly reads GitHub timing, policy, session/run, delivery, and cost evidence, writes only the local cache, and then renders. No report option calls provider billing APIs or writes GitHub. Missing cache yields unavailable coverage, not zero. A whole-story summary is never complete for an active story with an unproven Done cutoff; a covered subwindow may be complete. Completeness is always qualified to the fetched authority snapshot, not a claim about unseen later edits.
 
 ## Task 1: Closed schemas and safe fixture vocabulary
 
@@ -136,7 +140,7 @@ assert.throws(() => validateCostPayload('lifecycle-transition', payload));
 const isQuantity = (value) => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value);
 ```
 
-- [ ] Run every payload family through `assertNoSecretRecordData` unchanged. Use safe keys such as `accessMode` and `runRef`; `dispatchRef` contains a forbidden key fragment and must not be published. Validate capability and rate-card projections as rigorously as event payloads. Reject an unsupported credential-shaped native category with a stable diagnostic rather than encoding it.
+- [ ] Run every payload family through `assertNoSecretRecordData` unchanged. Use safe keys such as `accessMode` and `runRef`; `dispatchRef` contains a forbidden key fragment and must not be published. Validate capability and rate-card projections as rigorously as event payloads. Reject an unsupported credential-shaped native category with a stable diagnostic rather than encoding it. Pin the safe plural vocabulary with tests: `input_tokens` as a supported category value passes the unchanged secret policy, while singular `input_token` fails; do not generalize arbitrary provider names into the vocabulary.
 - [ ] Add bounded-diagnostic tests proving rejected data cannot appear in error messages. No source observation contains prompt or tool-body fields; unknown fields are refused.
 - [ ] Re-run the schema test and `node --test scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs`; expect both to pass.
 - [ ] Commit the Task 1 files with `git commit -m '[#1719] Define cost payload and evidence contracts'` after explicitly staging only those files.
@@ -145,7 +149,7 @@ const isQuantity = (value) => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.t
 
 **Files:** Create `scripts/task-tracker/lib/cost/record-codec.mjs`, `comment-store.mjs`, `scripts/task-tracker/lib/github-records/comment-transport.mjs`, `scripts/tests/unit/task-tracker/lib/cost/record-codec.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/read-isolation.test.mjs`. Modify `scripts/task-tracker/lib/github-records/record-envelope.mjs` and `github-comment-store.mjs` only to share unchanged validation/transport primitives.
 
-**Interfaces:** Produce `renderCostRecord({ envelope, visibleMarkdown, maxBodyBytes })`, `parseCostRecord({ commentNodeId, body, expectedRepository, expectedIssue })`, `listCostRecords({ repository, issue, graphql })`, and `appendFrozenCostRecord({ frozen, authority, ports }) -> { body, recordId, commentNodeId }`. `listCostRecords` returns `{ records, diagnostics, enumerationStatus }`; status is `available` or `unavailable`. Extract `listCorrelatedCommentNodes({ repository, issue, graphql })` and `readCorrelatedCommentNode({ repository, issue, commentNodeId, graphql })` into `comment-transport.mjs`, preserving page limits, duplicate/cursor detection, correlation and provenance validation.
+**Interfaces:** Produce `renderCostRecord({ envelope, visibleMarkdown, maxBodyBytes = 60000 })`, `parseCostRecord({ commentNodeId, body, expectedRepository, expectedIssue })`, `listCostRecords({ repository, issue, graphql })`, and `appendFrozenCostRecord({ frozen, authority, ports }) -> { body, recordId, commentNodeId }`. `listCostRecords` returns `{ records, diagnostics, enumerationStatus }`; status is `available` or `unavailable`. Extract `listCorrelatedCommentNodes({ repository, issue, graphql })` and `readCorrelatedCommentNode({ repository, issue, commentNodeId, graphql })` into `comment-transport.mjs`, preserving page limits, duplicate/cursor detection, correlation and provenance validation.
 
 - [ ] Write codec tests for all four cost types, exact rendering, correlation, secret rejection, escaped-size expansion, mixed case/whitespace, duplicate markers, and rejected governance payloads. The one accepted marker grammar is `<!-- aitm-cost-record\n` followed by canonical escaped JSON and `\n-->\n` plus validated visible prose, starting at byte zero.
 - [ ] Run `node --test scripts/tests/unit/task-tracker/lib/cost/record-codec.test.mjs`; expect missing-module/export failure.
@@ -154,12 +158,20 @@ const isQuantity = (value) => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.t
 ```js
 const json = canonicalRecordJson(envelope).replaceAll('--', '-\\u002d');
 const body = `<!-- aitm-cost-record\n${json}\n-->\n${visibleMarkdown}`;
-if (Buffer.byteLength(json) > 256 * 1024 || Buffer.byteLength(body) > maxBodyBytes) {
+if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes <= 0) {
+  throw new TypeError('cost:body-budget');
+}
+const effectiveBodyBytes = Math.min(maxBodyBytes, 60000, 1024 * 1024);
+if (
+  Buffer.byteLength(json, 'utf8') > 256 * 1024 ||
+  Buffer.byteLength(body, 'utf8') > effectiveBodyBytes
+) {
   throw new TypeError('cost:record-size');
 }
 if (/<!--\s*aitm-record/i.test(body)) throw new TypeError('cost:generic-marker');
 ```
 
+- [ ] Test that omitted limits default to 60,000 UTF-8 bytes, smaller valid limits narrow the budget, and a caller-supplied 1 MiB limit cannot widen it. Reject zero, negative, fractional, nonnumeric and unsafe-integer limits; test escaped JSON and Unicode visible prose against the final body before freeze.
 - [ ] Extract the raw-node reader; leave `claimsAitmRecord` and generic fail-closed parsing unchanged. A cost reader catches only individual cost codec/payload failures after trustworthy node enumeration. It returns bounded comment-ID diagnostics; enumeration/correlation/provenance failures make the inventory unavailable.
 - [ ] Write the mixed-record integration test using valid governance and cost records plus one corrupt cost candidate. Exercise `resolveLifecycleGateEvidence`, workflow-preflight, and estimation forecast/outcome readers. Assert their governance results equal the results before cost comments were added. A malformed generic claimant must still throw.
 - [ ] Add missing, altered, quoted, noncanonical, oversized, and secret-bearing marker cases. Cost-like malformed candidates make cost coverage incomplete; markerless lost records are detected by the policy/timing inventory in Task 12. Output validation forbids raw markers in projections and diagnostics.
@@ -168,11 +180,11 @@ if (/<!--\s*aitm-record/i.test(body)) throw new TypeError('cost:generic-marker')
 
 ## Task 3: One timing suffix grammar and compatible rewrites
 
-**Files:** Modify `scripts/task-tracker/lib/timing-row-reader.mjs`, `timing-rows.mjs`, `heal-timing-sweep.mjs`, `timing-slug-rename.mjs`, `agent-review/validators/timing-log-sequence.mjs`, `scripts/task-tracker/timing-rollup.mjs`, and `backfill-timing-logs.mjs`. Extend `scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs`, `timing-rows.test.mjs`, `timing-slug-rename.test.mjs`, `heal-timing-sweep.test.mjs`, and `scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs`.
+**Files:** Modify `scripts/task-tracker/lib/timing-row-reader.mjs`, `timing-rows.mjs`, `heal-timing-sweep.mjs`, `heal-timing-log.mjs`, `timing-slug-rename.mjs`, `agent-review/validators/timing-log-sequence.mjs`, `scripts/task-tracker/timing-rollup.mjs`, `scripts/task-tracker/gh-timing-comment.mjs`, and `backfill-timing-logs.mjs`. Extend `scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs`, `timing-rows.test.mjs`, `timing-slug-rename.test.mjs`, `heal-timing-sweep.test.mjs`, `heal-timing-log.test.mjs`, and `scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs`.
 
-**Interfaces:** `splitTimingRowMarker(line)` retains `{ core, marker }` and adds `{ costEventId, costPolicyId, costDiagnostics }`. `parseTimingRow` exposes those same additions. All existing cell indices and `row-sec` behavior remain unchanged. Produce `appendCostTimingMarker({ row, eventId, policyId })` in the lexical leaf; it rejects a second valid cost marker and preserves existing suffix bytes.
+**Interfaces:** `splitTimingRowMarker(line)` retains `{ core, marker }` and adds `{ costEventId, costPolicyId, costDiagnostics }`. `parseTimingRow` exposes those same additions. All data-cell indices and valid `row-sec` values remain unchanged. Existing `aitm-transition` metadata moves out of the trailing pseudo-cell into the returned suffix, without changing cell counts or rendered row bytes. Explicitly retain legacy migration output byte-for-byte. Produce `appendCostTimingMarker({ row, eventId, policyId })` in the lexical leaf; it rejects a second valid cost marker and preserves existing suffix bytes. The canonical order is optional `aitm-transition move="..."`, then `row-sec`, then `aitm-cost-event`; append cost after the existing seconds comment. Include `readEstimationStageTiming(lines)` in the reader changes. Add `replaceRowSecInMarker({ marker, activeSec, idleSec })`, which replaces only the seconds comment and preserves every other suffix byte.
 
-- [ ] Add seven-column and eight-column row fixtures with no suffix, row seconds only, and composed row-seconds/cost suffixes. Use fixed valid ULIDs for both IDs.
+- [ ] Add seven-column and eight-column row fixtures with no suffix, row seconds only, and composed row-seconds/cost suffixes. Use fixed valid ULIDs for both IDs. Include the existing transition-only/transition-plus-seconds suffixes and the three-marker combination on both column counts. Assert unchanged legacy `ensureTimingRowFullMarkerCell` output bytes and preserved transition identity.
 - [ ] Add this preservation assertion and invalid/duplicate marker variants, then run the timing-reader test to observe a failure:
 
 ```js
@@ -186,10 +198,12 @@ assert.equal(readEstimationStageTiming([row]).stagesMs.develop, 60000);
 assert.ok(replaceTimingRowCells(row, { 7: ' revised ' }).endsWith(suffix));
 ```
 
-- [ ] Implement a suffix scanner after the final table pipe. Separate recognized comments from cells before interpreting cost IDs. Preserve the entire suffix byte-for-byte, including malformed cost comments, when valid timing seconds are present. Return cost diagnostics for duplicate, malformed or incorrectly ordered cost metadata without turning it into cells or dropping valid `row-sec` values.
+- [ ] Implement a suffix scanner that locates the final table delimiter outside HTML comments. Once a trailing comment region begins, preserve its entire remainder, including malformed or unterminated comments and embedded pipe characters, as suffix metadata rather than new cells. Separate recognized comments from cells before interpreting cost IDs. Preserve the entire suffix byte-for-byte, including malformed cost comments, when valid timing seconds are present. Return cost diagnostics for duplicate, malformed or incorrectly ordered cost metadata without turning it into cells or dropping valid `row-sec` values.
+- [ ] Update `heal-timing-log.mjs:renderCompletedRow` to retain the full suffix and restamp only its seconds through the lexical helper. Add a recomputation test proving seconds change while transition and cost markers remain byte-identical. Inspect `heal-timing-interval.mjs`: synthetic inserted historical rows intentionally carry seconds only, never invented historical cost IDs.
+- [ ] Route `gh-timing-comment.mjs:resumedBoundaryFrom` through the same lexical seconds-replacement helper. Test preserving composed suffix bytes while zeroing seconds. Make `timing-rollup.mjs:parseTimingRows` consume `parseTimingRow` instead of private cell/suffix splitting; test a malformed trailing cost comment containing a pipe without changing timing cells.
 - [ ] Route each named rewrite, rollup, healing, backfill and review consumer through this leaf; remove competing suffix parsing only where necessary. Do not assign IDs during historical healing or full-word-marker migration.
 - [ ] Extend rewrite tests to preserve the composed suffix and old missing-full-column migration. Test invalid cost markers with valid timing evidence and prove estimation seconds stay identical.
-- [ ] Run `node --test scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs scripts/tests/unit/task-tracker/lib/timing-rows.test.mjs scripts/tests/unit/task-tracker/lib/timing-slug-rename.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-sweep.test.mjs scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs`.
+- [ ] Run `node --test scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs scripts/tests/unit/task-tracker/lib/timing-rows.test.mjs scripts/tests/unit/task-tracker/lib/timing-slug-rename.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-sweep.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs`.
 - [ ] Run the existing timing-reader structure and legacy-row tests. Commit as `[#1719] Preserve composed timing cost markers across readers`.
 
 ## Task 4: Prospective capture policy and adapter registry
@@ -199,12 +213,13 @@ assert.ok(replaceTimingRowCells(row, { 7: ' revised ' }).endsWith(suffix));
 **Interfaces:** Produce `resolveCostPolicy({ config, priorPolicy, effectiveEventId, effectiveAt, createId }) -> { enabled, policy, diagnostics }`, `resolveSources({ policy, sessionRefs, runRefs }) -> { sources, diagnostics }`, `observeSources({ sources, adapters, cursors, signal, now }) -> Observation[]`, and `createFixtureAdapter({ observations })`. Each adapter has `{ id, version, capability, observe }`; `observe({ source, cursor, cutoff, signal })` returns an Observation, never writes externally or selects issue ownership.
 
 - [ ] Add disabled-config tests: absent `costAccounting` means no cost I/O, IDs, record publication, or changed output. Add invalid-enabled-config tests: capture declines safely with explicit local diagnostics; reports cannot treat invalid policy as complete.
-- [ ] Add the tracked, secret-free configuration shape below to config validation and precedence tests. Do not enable it in the repository's active configuration.
+- [ ] Add `costAccounting` to `config.mjs:DEFAULTS` as the disabled object below and to `TYPES` as `object`; otherwise `loadConfig` silently drops the option. Extend real `loadConfig` project/user/default precedence fixtures and `setConfigValue` tests, proving an explicitly enabled project object survives loading. Validate the closed nested shape and unchanged secret policy in a cost-specific validator: unknown or secret-shaped keys fail before publication; malformed cost configuration produces safe cost diagnostics and disabled capture without throwing from general lifecycle config loading. The absent-config and default-object paths must both remain byte-compatible. Add the tracked, secret-free configuration shape below to those tests. Do not enable it in the repository's active configuration.
 
 ```json
 {
   "costAccounting": {
     "enabled": false,
+    "readerRolloutFile": null,
     "captureMode": "local",
     "adapters": [],
     "rateCardCatalog": "config/cost-rate-cards",
@@ -235,9 +250,10 @@ assert.equal(result.policy, null);
 ```
 
 - [ ] Run `node --test scripts/tests/unit/task-tracker/lib/cost/policy.test.mjs scripts/tests/unit/task-tracker/lib/cost/adapter-registry.test.mjs`; expect failure before implementation.
+- [ ] Implement the reader rollout manifest preflight from Delivery order. Require schema `aitm.cost-reader-rollout/v1`, exact keys, a nonempty complete consumer inventory, canonical confirmation time, a published version/commit, every consumer at or above that floor, and the local reader capability. Manifest identity is local configuration evidence, not a replacement for immutable policy authority. Missing or invalid evidence disables capture safely.
 - [ ] Implement policy identity before publication, append-only replacement by effective event boundary, and safe capability projection `{ sourceKinds, counterMode, resolution, dimensions, accessMode, schemaVersion, maxCategories, maxReceipts, expectedDelayMs }`. No local credential configuration is copied into it.
 - [ ] Implement source selection from policy plus explicit session/run ownership. An expected unsupported source remains in the roster with an unavailable observation. Not-applicable requires a declared capability or ownership reason.
-- [ ] Bound adapter sampling with both per-source and overall abort deadlines. A timed-out or thrown adapter becomes an unavailable result with actual observation time and stable `<source>-<condition>` code. A fixture adapter returns scripted observations without network access; no timeout callback may later commit a second observation.
+- [ ] Bound adapter sampling with both per-source and overall abort deadlines. A timed-out or thrown adapter becomes an unavailable result with actual observation time and stable `<source>-<condition>` code. A fixture adapter returns scripted observations without network access; no timeout callback may later commit a second observation. `captureTimeoutMs` is the total additional cost-work budget, including local locking, sampling, freezing and economic publication; existing timing-operation timeouts remain independent. Spend only remaining time on cost writes, then defer the frozen item. A late uncertain remote success is resolved by exact read-back, never resampling. Abort-aware ports and a monotonic deadline prevent extra remote waits after budget exhaustion; synchronous local durability has a documented bounded-size I/O limitation and is measured in the pilot.
 - [ ] Add policy-publication-failure and policy-change tests: future timing markers retain intended policy IDs even if remote publication failed. Frozen old events keep their original policy.
 - [ ] Re-run both tests and the existing config tests. Commit as `[#1719] Add opt-in cost policy and source capabilities`.
 
@@ -315,6 +331,7 @@ assert.throws(() =>
 - [ ] Run `node --test scripts/tests/unit/task-tracker/lib/cost/outbox.test.mjs scripts/tests/integration/task-tracker/lib/cost/outbox-recovery.test.mjs`; expect failure.
 - [ ] Implement private atomic writes: exclusive temporary file in the same directory, write, fsync file, rename, fsync directory, then acknowledge. Refuse symlink/non-file collisions, corrupt journals and unsupported versions; report unavailable capture instead of replacing damaged state with an empty file.
 - [ ] Hold source locks from predecessor selection through observation freezing. One frozen file contains all observations and their predecessor references; only successfully available observations advance derived source heads. Persist each source head as the combination of observation identity and epoch; distinct events with the same source predecessor are a fork, not two additive successors. Release source locks before any remote write.
+- [ ] Before committing frozen state, render through the Task 2 codec with its fixed 60,000-byte maximum. Size failure yields a bounded unavailable observation/diagnostic and a validated small envelope; if even that cannot fit, retain the intended timing key as missing evidence without freezing an unpublishable body. Frozen replay never re-renders or widens the budget.
 - [ ] Freeze `recordId`, `createdAt`, authority grant/epoch/actor, predecessor/supersedes, payload/hash, marker version, visible prose, exact body and timing row. A retry does not invoke an envelope constructor or clock:
 
 ```js
@@ -367,10 +384,10 @@ assert.equal(result.row, row);
 ```
 
 - [ ] Run `node --test scripts/tests/integration/task-tracker/lib/cost/capture-transaction.test.mjs scripts/tests/integration/task-tracker/lib/cost/disabled-compatibility.test.mjs`; expect failure.
-- [ ] Implement the transaction in the spec's order: intent; bounded observations; atomic frozen state/cursors; keyed timing append and exact read-back; immutable cost append/read-back; optional projection refresh; delivery acknowledgment. Keep original lifecycle failures visible; contain only cost-subsystem failures.
+- [ ] Compose every enabled timing suffix only through Task 3's `appendCostTimingMarker`, after the existing seconds writer. `postTimingEvent` appends the prepared keyed row without reconstructing metadata. Audit cost-marker string literals in runtime code: the lexical leaf is the sole producer/parser; tests may contain fixtures. Implement the transaction in the spec's order: intent; bounded observations; atomic frozen state/cursors; keyed timing append and exact read-back; immutable cost append/read-back; optional projection refresh; delivery acknowledgment. Keep original lifecycle failures visible; contain only cost-subsystem failures.
 - [ ] Add event-keyed timing idempotency under the existing timing lock. A row with the same ID and exact row body is success. An ID with different bytes is a cost conflict, not permission to overwrite timing authority. Resolve an uncertain append by read-back before repeating it.
 - [ ] Wire `safePostTiming` and its queue path to retain the prepared row and operation ID. Cost recovery owns frozen replay; ordinary timing queue drain must call the low-level timing port and not sample again. Failed timing acceptance leaves cost ownership/lifecycle attribution unresolved even if the source observation was frozen.
-- [ ] Route all direct live timing emitters in the listed files through the capture boundary. Include hook emissions, review-approval rows, move-state audit rows, zero-duration flushes and interruption reengagement rows. Re-run `rg -n 'postTimingEvent\(' scripts/task-tracker` and account for every remaining call: low-level port, replay, or a documented historical repair. Historical repairs preserve existing markers and never manufacture historical snapshots.
+- [ ] Route all direct live timing emitters in the listed files through the capture boundary. Include hook emissions, review-approval rows, move-state audit rows with all three suffix markers, zero-duration flushes and interruption reengagement rows. Re-run `rg -n 'postTimingEvent\(' scripts/task-tracker` and account for every remaining call: low-level port, replay, or a documented historical repair. Historical repairs preserve existing markers and never manufacture historical snapshots.
 - [ ] Test lock order: reuse already-held issue authority; acquire sorted source locks locally and release them at freeze; acquire/release timing lock for append; append ledger under the caller's issue-mutation scope. Never acquire issue authority while holding a timing lock. Use instrumented lock ports to assert physical acquisition counts and order.
 - [ ] Inject adapter timeout, size overflow, pricing error, outbox disk failure, policy-publication failure, ledger failure and projection failure. Each must leave the lifecycle result unchanged. Even if local persistence fails, create intended marker IDs before the append so the independent inventory exposes missing cost evidence.
 - [ ] Re-run both tests and existing runtime/timing integration tests selected by changed imports; commit as `[#1719] Capture prospective timing costs with nonblocking recovery`.
@@ -490,7 +507,16 @@ assertConserved(
 
 **Files:** Create `scripts/task-tracker/lib/cost/coverage.mjs`, `aggregation.mjs`, `report.mjs`, `snapshot-cache.mjs`, `scripts/task-tracker/verbs/cost.mjs`, `scripts/tests/unit/task-tracker/lib/cost/coverage.test.mjs`, `report.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/report-command.test.mjs`. Modify `scripts/task-tracker/task-tracker.mjs` and `verbs/help-data.mjs`.
 
-**Interfaces:** Produce `buildCoverage({ timing, policies, sessions, runs, delivery, costRecords, diagnostics, asOf })`, `aggregateStoryCost({ issue, coverage, spans, lines, childReports })`, `buildCostReport({ snapshot, issue })`, `renderCostReport(report)`, and `refreshCostSnapshot({ issue, repository, github, cache })`. The report schema is `aitm.story-cost-report/v1`, with `{ issue, asOf, coverage, consumption, estimated, actual, residuals, stages, delivery, postTrunk, wholeStory, children, diagnostics }`. Coverage exposes `{ status, missing, diagnostics }`; `actual` and `estimated` are currency-keyed maps of `{ amount, status, missing }`. Each boundary (`delivery`, `postTrunk`, `wholeStory`) contains independent `actual` and `estimated` maps plus coverage. Empty maps with unavailable coverage represent no defensible amount, never a zero. Every amount is grouped by currency and accompanied by status and missing reasons.
+**Interfaces:** Produce `buildCoverage({ timing, policies, sessions, runs, delivery, costRecords, diagnostics, asOf })`, `aggregateStoryCost({ issue, coverage, spans, lines, childReports })`, `buildCostReport({ snapshot, issue })`, `renderCostReport(report)`, and `refreshCostSnapshot({ issue, repository, github, cache })`. The report schema is `aitm.story-cost-report/v1`, with `{ schema, issue, asOf, coverage, consumption, estimated, actual, residuals, stages, delivery, postTrunk, wholeStory, children, diagnostics }`. Coverage exposes `{ status, missing, diagnostics }`; `actual` and `estimated` are currency-keyed maps of `{ amount, status, missing }`. Each boundary (`delivery`, `postTrunk`, `wholeStory`) contains independent `actual` and `estimated` maps plus coverage. Empty maps with unavailable coverage represent no defensible amount, never a zero. Every amount is grouped by currency and accompanied by status and missing reasons.
+
+The report has these closed nested shapes. All `missing` and `diagnostics` arrays contain the bounded Diagnostic shape from Task 1. Status is `complete`, `partial`, `unavailable` or `not-applicable` everywhere; unavailable quantities/amounts are null, while a known subtotal may be partial.
+
+- `consumption` is `{ measured, estimated }`, each an array of `{ basis, category, unit, quantity, sourceIds, precision, status, missing }`. `basis` is `native` or `common`; category/unit pairs aggregate only when the adapter contracts prove compatibility after economic deduplication. Native counters remain distinct from normalized common views and are never summed with them. `quantity` is a canonical integer string or null. Measured precision is `exact`, `aggregate`, or `unavailable`; estimated entries use `estimated-consumption` or `unavailable`. Split differing precision into distinct entries rather than overstating it. A missing snapshot yields both arrays empty plus unavailable coverage; an expected known category without evidence has a null quantity and a missing reason.
+- Each boundary is `{ consumption, actual, estimated, coverage }` using those same shapes. Top-level consumption/money is the owning issue's whole-story view, with delivery/post-trunk partitioning only when proven; unknown windows remain in the whole-story subtotal when ownership and occurrence are established.
+- `stages` is an array of `{ stage, stageVisit, consumption, actual, estimated, coverage }`, including null stage/visit for unresolved attribution. `children` is an array of `{ issue, asOf, coverage, delivery, postTrunk, wholeStory }` for explicitly requested rollup scope. Child entries are projections of accepted identities, not additional additive lines.
+- `residuals` uses the exact reconciliation residual shape `{ sourceId, periodStart, periodEnd, quantity, unit, money, reason }`; unresolved values are null and residuals never enter owned totals without proven attribution. Empty stages/children/residuals arrays in a missing snapshot do not certify their absence.
+
+Subscription imports use accepted immutable `usageRefs` and validated observations/lines, not these report projections. Test the full JSON structure, measured/estimated separation, mixed precision, unknown units, repeated stage visits and unavailable forms.
 
 - [ ] Add a second-checkout fixture: ten keyed timing events, eight accepted cost envelopes and no original outbox. Assert two missing event IDs, known subtotal retained, whole-story coverage incomplete. Add unkeyed pre-enablement history, missing policy, unknown source roster, missing dependency, open run and missing terminal-watermark variants.
 - [ ] Add report tests for complete/partial/unavailable/not-applicable per quantity, currency, stage and boundary; an estimated-complete view must not upgrade actual billing. Run all three new tests; expect failure.
@@ -503,6 +529,12 @@ assert.equal(report.coverage.status, 'unavailable');
 assert.equal(report.asOf, null);
 assert.deepEqual(report.actual, {});
 assert.deepEqual(report.estimated, {});
+assert.equal(report.schema, 'aitm.story-cost-report/v1');
+assert.deepEqual(report.consumption, { measured: [], estimated: [] });
+assert.deepEqual(report.stages, []);
+assert.deepEqual(report.children, []);
+assert.deepEqual(report.residuals, []);
+assert.equal(report.wholeStory.coverage.status, 'unavailable');
 ```
 
 - [ ] Build the expected inventory from timing/policy/session/run/delivery authority before considering present cost records. Treat enumeration/provenance failure as unavailable. Invalid cost candidates prevent complete issue coverage even when their attribution cannot be recovered; do not silently discard them as irrelevant.
@@ -541,7 +573,7 @@ assert.doesNotMatch(body, /<!--\s*aitm-(?:cost-)?record/i);
 
 **Files:** Create `scripts/task-tracker/lib/cost/subscriptions.mjs`, `subscription-report.mjs`, `scripts/task-tracker/verbs/cost-subscription.mjs`, `scripts/tests/unit/task-tracker/lib/cost/subscriptions.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/subscription-command.test.mjs`. Modify the dispatcher/help data and cost reconciliation input validator.
 
-**Interfaces:** Produce `buildSubscriptionPeriod({ plan, period, fixedSpend, capacity, rules, usageRefs, residuals })`, `calculateSubscriptionView({ periodRecord, acceptedUsage, cards })`, `calculateSubscriptionUtilization({ capacity, usage, coverage }) -> { status, percentage, remaining }` for one declared capacity unit, and `renderSubscriptionReport(view)`. Capacity is an array of `{ category, purchased, unit }` or null; usage imports reference accepted story records by immutable identity. Preserve included and overage rules without treating included consumption as an additional invoice charge.
+**Interfaces:** Produce `buildSubscriptionPeriod({ plan, period, fixedSpend, capacity, rules, usageRefs, residuals })`, `calculateSubscriptionView({ periodRecord, acceptedUsage, cards })`, `calculateSubscriptionUtilization({ purchased, usage, coverage }) -> { status, percentage, remaining }` for one declared capacity unit, and `renderSubscriptionReport(view)`. The payload `capacity` is an array of `{ category, purchased, unit }` or null; the calculator accepts only one entry's `purchased` canonical nonnegative integer string or null, with measured `usage` in that same unit. Map entries explicitly by category/unit; reject passing the array or mixing units. Percentage is a two-decimal string rounded half-up with integer arithmetic; purchased 3 / usage 1 gives `33.33`. Remaining is the exact integer string `max(purchased - usage, 0)`, with overage reported separately. Null or zero purchased capacity, incomplete coverage, unknown units or unavailable usage yield null percentage/remaining and unavailable status; usage imports reference accepted story records by immutable identity. Preserve included and overage rules without treating included consumption as an additional invoice charge.
 
 - [ ] Test a USD 20 fixed-spend period with contractual capacity 100 and accepted usage 40: utilization 40%, remaining 60. Test unknown soft capacity: observed usage/fixed spend visible, utilization and remaining unavailable. Test exhaustion and metered overage separately.
 - [ ] Test that attaching subscription period evidence leaves story estimated/actual totals byte-identical. Run both new tests to observe failure.
@@ -550,7 +582,7 @@ assert.doesNotMatch(body, /<!--\s*aitm-(?:cost-)?record/i);
 import assert from 'node:assert/strict';
 import { calculateSubscriptionUtilization } from '../../../../../task-tracker/lib/cost/subscriptions.mjs';
 assert.deepEqual(
-  calculateSubscriptionUtilization({ capacity: null, usage: '40', coverage: 'complete' }),
+  calculateSubscriptionUtilization({ purchased: null, usage: '40', coverage: 'complete' }),
   {
     status: 'unavailable',
     percentage: null,
@@ -558,7 +590,7 @@ assert.deepEqual(
   }
 );
 assert.deepEqual(
-  calculateSubscriptionUtilization({ capacity: '100', usage: '40', coverage: 'complete' }),
+  calculateSubscriptionUtilization({ purchased: '100', usage: '40', coverage: 'complete' }),
   {
     status: 'complete',
     percentage: '40.00',
@@ -664,7 +696,8 @@ assert.equal(epicReport.wholeStory.estimated.USD.amount, '11.00');
 | 13        | Clock/authority changes cannot alter a frozen retry; escaped full-envelope limits apply                 | 2, 7          |
 
 - [ ] Add network tripwires to every fixture suite: default reports cannot call GitHub or provider ports; explicit refresh can only read GitHub; offline provider adapters cannot fetch; mutation adapters are called only from authorized capture/reconciliation/projection operations. Run the feature-disabled scenario against existing golden outputs.
-- [ ] Document prospective enablement: deploy all reader prerequisites; validate local adapters and catalog; publish intended policy identity; enable capture for new events only; inspect a fixture/dry-run report before a separately authorized pilot. Start with projections disabled. Disabling stops new capture and preserves immutable evidence/outbox; explicit reconciliation can finish already-authorized pending items. Never delete history or silently backfill.
+- [ ] Document prospective enablement: publish the reader-only release, record its exact minimum version/commit and test an old-reader/new-writer failure fixture; verify every shared-issue consumer and the Task 4 manifest before enabling either writer; validate local adapters and catalog; publish intended policy identity; enable capture for new events only; inspect a fixture/dry-run report before a separately authorized pilot. Start with projections disabled. Disabling stops new capture and preserves immutable evidence/outbox; explicit reconciliation can finish already-authorized pending items. Never delete history or silently backfill.
+- [ ] Measure the synthetic Task 16 scenario's timing-event and immutable-comment counts and report them in rollout evidence: one event comment per timing emission, plus policy/reconciliation records, with no implicit batching. Measure added action latency against the capture budget and verify deferred publication preserves exact bytes.
 - [ ] Document troubleshooting for unknown usage, unsupported schemas, stale snapshots, missing records, pending frozen writes, source forks, size bounds and missing cutoff proof. Recovery commands must use exact issue scope; local deletion is not a reconciliation technique.
 - [ ] Run the full validation commands below. Record actual results and exact implementation head in implementation evidence; do not claim these future checks were run merely because this plan was written.
 - [ ] Commit the Task 16 changes as `[#1719] Verify story cost accounting acceptance and rollout`.
@@ -706,10 +739,10 @@ Cost record corruption fixtures must also explicitly exercise the existing gover
 
 The three nonblocking suggestions from the accepted spec XPR are explicit here: frozen retry identity includes the entire envelope/body (Task 7); timing and transport compatibility precede writers (Tasks 2–3 before Task 8); cost record types have a closed, disjoint allowlist (Tasks 1–2).
 
-Self-review before submitting this plan for SAR:
+Author checks before submitting the revised plan for XPR:
 
 - [x] Check each coverage row and all thirteen failure cases against the ratified spec.
 - [x] Check exact file paths, exported signatures, payload field names, status vocabularies and dependency order.
 - [x] Check snippets for undefined contracts, incomplete examples and accidental unsafe payload keys.
 - [x] Validate Markdown, formatting, spelling, example syntax and source hash. Commit the plan with its required spelling vocabulary; no runtime implementation is included.
-- [ ] Hand off the committed plan for a separately requested SAR. No SAR response, implementation approval or live-access approval is implied by this commit.
+- [x] Hand off the plan for the separately requested XPR. Review acceptance does not imply implementation approval or live-access approval.
