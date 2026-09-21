@@ -250,6 +250,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const sessionReadinessAllowance = 1;
   // #1751 ships the complete early-promotion readiness collector.
   const earlyPromoteReadinessAllowance = 1;
+  // #1752 ships canonical action navigation for the completed early adapters.
+  const actionNavigationAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -266,7 +268,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     functionalDodProjectorAllowance +
     actionNormalizationAllowance +
     sessionReadinessAllowance +
-    earlyPromoteReadinessAllowance;
+    earlyPromoteReadinessAllowance +
+    actionNavigationAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

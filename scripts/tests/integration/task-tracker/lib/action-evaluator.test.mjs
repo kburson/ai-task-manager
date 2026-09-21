@@ -146,7 +146,7 @@ test('malformed complete guard output never passes shared execution', async () =
   assert.equal(result.guardResult.refusals[0].code, 'guard-result-invalid');
 });
 
-test('an unconverted action adapter is indeterminate, never ready', async () => {
+test('a completed promotion adapter without an outer effect ledger is indeterminate', async () => {
   const decision = await evaluateAction({
     actionId: 'promote',
     repository: 'owner/repo',
@@ -156,7 +156,7 @@ test('an unconverted action adapter is indeterminate, never ready', async () => 
     attempt: bodyAttempt(),
   });
   assert.equal(decision.status, 'indeterminate');
-  assert.equal(decision.blockers[0].code, 'action-not-explain-ready');
+  assert.ok(decision.blockers.some((blocker) => blocker.code === 'guard-result-invalid'));
 });
 
 test('a complete read-only adapter can report ready from one observed body', async () => {

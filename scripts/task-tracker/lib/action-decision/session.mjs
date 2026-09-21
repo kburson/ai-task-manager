@@ -274,7 +274,7 @@ export async function collectSessionReadiness({
     }
     const observation = await attempt.observe({
       resource,
-      identity: `${resource}:${issue}`,
+      identity: resource === 'issue-body' ? `issue:${issue}:1` : `issue:${issue}:2`,
       scope: ports.scope,
     });
     observations.push(observation);

@@ -43,6 +43,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       ports: {
         scope,
         cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
         runGuards: async () => ({
           ok: false,
           status: 'blocked',
@@ -97,6 +98,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       ports: {
         scope: 'plan-approval:1751',
         cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
         runGuards: async () => ({
           ok: false,
           status: 'blocked',
@@ -159,7 +161,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'plan',
       body,
       attempt,
-      ports: { scope, cfg: { repo: 'example/project' } },
+      ports: { scope, cfg: { repo: 'example/project' }, projectDir: process.cwd() },
     });
     assert.equal(conflicting.status, 'indeterminate');
     assert.deepEqual(
@@ -204,6 +206,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
         ports: {
           scope,
           cfg: { repo: 'example/project' },
+          projectDir: process.cwd(),
           runGuards: async (from, to) => {
             assert.equal(from, fromState);
             assert.equal(to, target);
@@ -248,6 +251,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       ports: {
         scope,
         cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
         runGuards: async () => {
           assert.fail('freeze must refuse before the guard evaluator');
         },
@@ -360,6 +364,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       ports: {
         scope,
         cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
         deps: {
           observeDependencyReadiness: async () => ({ status: 'ready', unfinished: [] }),
           reconcileDependencyDisposition: async () => {
@@ -425,7 +430,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'plan',
       body,
       attempt,
-      ports: { scope, cfg: { repo: 'example/project' }, runGuards },
+      ports: { scope, cfg: { repo: 'example/project' }, projectDir: process.cwd(), runGuards },
     });
     assert.equal(explanation.status, 'ready');
     dependencyDone = false;
@@ -497,6 +502,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       ports: {
         scope: 'shared-authority',
         cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
         currentSessionId: () => 'session-1751',
         loadSession: (id) => {
           seen.push(id);
@@ -549,6 +555,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       ports: {
         scope: 'real-plan-gate',
         cfg: { repo: 'example/project', gateAnalysisToDevelopment: false },
+        projectDir: process.cwd(),
         sessionPolicy,
         runGuards: refusal,
         loadPolicy: async () => ({ status: 'observed' }),
@@ -563,6 +570,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       deps: {
         assertBound: () => {},
         migrationFreezeActive: () => false,
+        resolveProjectDir: () => process.cwd(),
         fetchIssueBody: async () => ({ body }),
         getLiveState: async () => 'plan',
         sessionPolicy,
@@ -670,6 +678,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
           ...deps,
           assertBound: () => {},
           migrationFreezeActive: () => false,
+          resolveProjectDir: () => process.cwd(),
           fetchIssueBody: async () => ({ body: scenario.bodyValue }),
           getLiveState: async () => scenario.from,
           sessionPolicy: { gates: { analysisToDevelopment: true } },
