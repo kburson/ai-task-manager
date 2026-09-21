@@ -45,6 +45,7 @@ const args = (required, properties, optional = []) =>
   });
 const enumType = (...values) => Object.freeze({ type: 'enum', values: Object.freeze(values) });
 const stringType = Object.freeze({ type: 'string' });
+const headType = Object.freeze({ type: 'head' });
 
 const definition = ({
   code,
@@ -136,6 +137,10 @@ export const CODE_DEFINITIONS = Object.freeze({
   'unclassified-refusal': decisionBlocked('unclassified-refusal', registeredGuard),
   'migration-freeze': decisionBlocked('migration-freeze', registeredGuard),
   'plan-approval-missing': decisionBlocked('plan-approval-missing', registeredGuard, {
+    disposition: 'registered-remediation',
+  }),
+  'review-approval-missing': decisionBlocked('review-approval-missing', registeredGuard, {
+    argumentSchema: args(['head'], { head: headType }),
     disposition: 'registered-remediation',
   }),
   'normalization-authority-drift': definition({
@@ -280,6 +285,7 @@ function validateArgs(value, schema, path) {
       fail(`${path}.${key}`, 'positive-integer');
     }
     if (type.type === 'digest' && !DIGEST.test(member)) fail(`${path}.${key}`, 'digest');
+    if (type.type === 'head' && !HEAD.test(member)) fail(`${path}.${key}`, 'full-head');
     if (type.type === 'authority-subject') {
       exact(member, ['issue'], `${path}.${key}`);
       if (!Number.isInteger(member.issue) || member.issue <= 0) {
@@ -454,6 +460,15 @@ function requiredHumanRequests(decision) {
           kind: 'plan-approval',
           subject: { issue: blocker.remediation.args.issue, actionId: 'promote' },
           args: {},
+        },
+      ];
+    }
+    if (blocker.code === 'review-approval-missing') {
+      return [
+        {
+          kind: 'review-approval',
+          subject: { issue: blocker.remediation.args.issue, actionId: decision.actionId },
+          args: { head: blocker.args.head },
         },
       ];
     }
@@ -686,6 +701,16 @@ export function validateActionDecision(value) {
       blocker.remediation.id !== 'record-plan-approval'
     ) {
       fail('blockers.remediation', 'coupling');
+    }
+    if (blocker.code === 'review-approval-missing') {
+      if (
+        blocker.remediation.id !== 'request-review-approval' ||
+        blocker.remediation.args.issue !== value.issue ||
+        blocker.remediation.args.head !== blocker.args.head ||
+        blocker.args.head !== value.snapshot.head
+      ) {
+        fail('blockers.remediation', 'coupling');
+      }
     }
   }
   if (value.snapshot.state === 'done' && value.status !== 'ready') fail('status', 'terminal');
