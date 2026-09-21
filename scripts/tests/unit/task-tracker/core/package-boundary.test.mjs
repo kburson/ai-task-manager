@@ -246,6 +246,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const functionalDodProjectorAllowance = 1;
   // #1732 ships one execution-only normalization runtime module.
   const actionNormalizationAllowance = 1;
+  // #1750 ships the read-only session authority collector.
+  const sessionReadinessAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -260,7 +262,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     actionObservationAllowance +
     actionEvaluatorAllowance +
     functionalDodProjectorAllowance +
-    actionNormalizationAllowance;
+    actionNormalizationAllowance +
+    sessionReadinessAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

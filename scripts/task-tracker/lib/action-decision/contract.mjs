@@ -25,6 +25,12 @@ export const AUTHORITY_RESOURCE_IDS = Object.freeze([
   'delivery',
   'timing-log',
   'workflow-policy',
+  'local-config',
+  'session-state',
+  'worktree',
+  'github-user',
+  'occupancy',
+  'migration-journal',
 ]);
 export const REGISTERED_GUARD_IDS = Object.freeze(
   Object.keys(
@@ -139,7 +145,29 @@ export const CODE_DEFINITIONS = Object.freeze({
     'authority-collection',
   ]),
   'unclassified-refusal': decisionBlocked('unclassified-refusal', registeredGuard),
-  'migration-freeze': decisionBlocked('migration-freeze', registeredGuard),
+  'session-bind-mismatch': decisionBlocked('session-bind-mismatch', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'resume-not-paused': decisionBlocked('resume-not-paused', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'worktree-mismatch': decisionBlocked('worktree-mismatch', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'state-drift': decisionBlocked('state-drift', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'ownership-mismatch': decisionBlocked('ownership-mismatch', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'occupancy-conflict': decisionBlocked('occupancy-conflict', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'migration-freeze': decisionBlocked(
+    'migration-freeze',
+    ['registered-guard', 'authority-collection'],
+    { phases: ['evaluation', 'collection'] }
+  ),
   'plan-approval-missing': decisionBlocked('plan-approval-missing', registeredGuard, {
     disposition: 'registered-remediation',
   }),
@@ -446,7 +474,17 @@ function validateSnapshot(value, normalizations, issue) {
     nonemptyString(observation.identity, `${path}.identity`);
     if (identities.has(observation.identity)) fail(`${path}.identity`, 'duplicate');
     identities.add(observation.identity);
-    const identityIssue = /^(?:issue|evidence):(\d+)(?::\d+)?$/.exec(observation.identity);
+    const localIdentity = [
+      'local-config',
+      'session-state',
+      'worktree',
+      'github-user',
+      'occupancy',
+      'migration-journal',
+    ].includes(observation.source);
+    const identityIssue = localIdentity
+      ? new RegExp(`^${observation.source}:(\\d+)$`).exec(observation.identity)
+      : /^(?:issue|evidence):(\d+)(?::\d+)?$/.exec(observation.identity);
     if (!identityIssue || Number(identityIssue[1]) !== issue) {
       fail(`${path}.identity`, 'issue');
     }

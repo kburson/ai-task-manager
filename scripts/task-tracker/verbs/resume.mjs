@@ -40,6 +40,7 @@ import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 import { isTerminalReviewHandoffOpen } from '../lib/terminal-review-handoff.mjs';
 import { reconcileAfterSuccessfulBind } from '../lib/dependency-disposition.mjs';
+import { resumeEntryPrecondition } from '../lib/action-decision/session.mjs';
 
 function claimForBind(ctx, issue) {
   const claim = ctx.claimBindingOccupancy ?? claimBindingOccupancy;
@@ -153,13 +154,14 @@ export async function verbResume(ctx) {
   if (!target || !/^#?\d+$/.test(String(target))) {
     // No-arg path: require s.paused === true
     const s = loadState(statePath);
-    if (!s.paused) {
+    const entryRefusal = resumeEntryPrecondition(s);
+    if (entryRefusal === 'resume-not-paused') {
       console.log(
         'nothing to resume. Use "/task start <N>" to bind a task, or "/task resume <N>" to return to a specific paused/stopped issue.'
       );
       return;
     }
-    if (!s.lastActive) {
+    if (entryRefusal === 'session-bind-mismatch') {
       console.log('no previous task on record.');
       return;
     }
