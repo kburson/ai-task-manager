@@ -34,6 +34,9 @@
     ".ai-task-manager/memory/**",
     ".superpowers/**",
     "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/**",
-    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/**"
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/**",
+    "docs/superpowers/reviews/1719/spec/xpr/**/review-*-response-*.md",
+    "docs/superpowers/reviews/1719/spec/1719-xpr-author-response-r[12].md",
+    "docs/superpowers/reviews/1719/spec/1719-xpr-reviewer-response-r[123].md"
   ]
 }
