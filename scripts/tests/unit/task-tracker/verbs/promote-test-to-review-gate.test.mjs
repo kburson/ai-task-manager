@@ -62,7 +62,22 @@ function makeDeps({ body, live, liveAfter, spawnCode = 0, moveCode = 0 } = {}) {
   return {
     calls,
     deps: {
+      pexec: async (bin, args) => {
+        if (bin === 'git' && args[0] === 'rev-parse') {
+          return { stdout: `${'a'.repeat(40)}\n` };
+        }
+        if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+          return { stdout: body };
+        }
+        throw new Error(`unexpected command: ${bin} ${args.join(' ')}`);
+      },
       assertBound: () => {},
+      runGuards: async () => ({
+        status: 'ready',
+        ok: true,
+        refusals: [],
+        humanDecision: null,
+      }),
       fetchIssueBody: async () => ({ body }),
       mutateIssueBody: async () => ({ status: 'no-op', attempts: 1 }),
       getLiveState: async () => {
@@ -140,6 +155,40 @@ test('AC3 — a delegate that never reaches Review does not fall back to a direc
   assert.equal(r.status, 'transition-failed');
   assert.notEqual(r.status, 'promoted');
   assert.deepEqual(calls.moves, [], 'a failed delegate must not fall back to a direct move');
+});
+
+test('#1732 — a failed review delegate reports derived evidence already persisted', async () => {
+  const head = 'a'.repeat(40);
+  let liveBody =
+    readyTestBody() +
+    [
+      '## Definition of Done',
+      '### Functional (verified at Test)',
+      '- [x] All automated tests pass <!-- dod:functional:tests -->',
+      '- [x] Lint and format checks pass <!-- dod:functional:lint -->',
+      '- [x] All changes committed <!-- dod:functional:commits -->',
+      '- [ ] Acceptance criteria met <!-- dod:functional:acs -->',
+      '- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
+      '### Lifecycle (verified at Review)',
+      '- [ ] Agent Review Passed',
+      '### Housekeeping (verified at Close)',
+      '- [ ] Story closed and moved to Done',
+    ].join('\n');
+  const { deps } = makeDeps({ body: liveBody, live: 'test', liveAfter: 'test', spawnCode: 4 });
+  deps.pexec = async (bin) => (bin === 'git' ? { stdout: head } : { stdout: liveBody });
+  deps.normalizationMutateBody = async ({ mutate, validateFreshBaseAsync, evidenceStamp }) => {
+    assert.equal(evidenceStamp, true);
+    const next = mutate(liveBody);
+    await validateFreshBaseAsync(liveBody, next);
+    liveBody = next;
+    return { status: 'ok', body: liveBody };
+  };
+
+  const result = await runPromote({ issueNumber: 820, cfg, deps });
+  assert.equal(result.status, 'transition-failed');
+  assert.equal(result.normalizationPersisted, true);
+  assert.match(result.message, /normalization persisted/i);
+  assert.match(liveBody, /cmd="derive:all-acceptance-criteria-ticked"/);
 });
 
 test('AC3 — #881 model: a gate objection after entry leaves the issue in Review (no demote, no direct move)', async () => {

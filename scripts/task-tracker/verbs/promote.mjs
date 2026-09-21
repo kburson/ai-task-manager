@@ -41,7 +41,6 @@ import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
-import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { nowIso } from '../lib/evidence-runner.mjs';
 import {
   isAgentReviewComplete,
@@ -384,32 +383,14 @@ export async function runPromote({
   // This preserves the historical "verb didn't check X" boundary for guards
   // like `blocked-by-not-done` (test fixtures don't stub a real blocker lookup)
   // and `plan-exit-plan-approved` (fixtures don't stub the marker).
-  // #502 — the test→review exit guard (`testExitPreCloseCompletenessGuard`)
-  // scans `guardCtx.body` for unticked pre-close checkboxes but does NOT itself
-  // derive the two auto-derived Functional DoD keys (`acs`/`checkboxes`). Those
-  // are stamped+ticked by `deriveAndStampFunctionalDod` at close time, so a
-  // story whose every AC + non-self checkbox is genuinely complete would still
-  // be refused here on `acs`/`checkboxes` alone. `verbs/review.mjs` already runs
-  // the derive before its copy of this guard; the `promote` path must do the
-  // same. `deriveAndRescan` runs the derive (logging, never swallowing, any
-  // failure) and ALWAYS re-fetches the live body so the guard reads ground
-  // truth regardless of derive ok/noop/throw.
-  if (recorded === 'test' && target === 'review') {
-    const { scanBody } = await deriveAndRescan({
-      issueNumber,
-      repo: cfg.repo,
-      scanBody: body,
-      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
-    });
-    body = scanBody;
-  }
-
-  const guardCtx = {
+  // #1732 — Test→Review evaluates complete guards against the pure projected
+  // Functional DoD body. Only a ready result may persist derived evidence;
+  // failed write/readback/drift refuses before delegating the transition.
+  const guardContextBase = {
     issueNumber,
     repo: cfg.repo,
     fromState: recorded,
     toState: target,
-    body,
     cfg,
     deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
     projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
@@ -418,27 +399,46 @@ export async function runPromote({
       (deps.loadSession || loadSession)((deps.currentSessionId || currentSessionId)()),
   };
   const runGuardsFn = deps.runGuards || runGuards;
-  const { guardResult } = await evaluateCompleteGuards({
-    fromState: recorded,
-    toState: target,
-    context: guardCtx,
-    runGuards: runGuardsFn,
-    loadPolicy: async ({ requirementIds }) => {
-      const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
-      return loadBoundary({
-        repository: cfg.repo,
-        issue: issueNumber,
-        body,
-        requirementIds,
-        activity: `workflow-transition:${target}`,
-        state: recorded,
-        now: nowIso(),
-        runtime:
-          deps.workflowPolicyRuntime ||
-          createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
-      });
-    },
-  });
+  const evaluateForBody = (guardBody) =>
+    evaluateCompleteGuards({
+      fromState: recorded,
+      toState: target,
+      context: { ...guardContextBase, body: guardBody },
+      runGuards: runGuardsFn,
+      loadPolicy: async ({ requirementIds }) => {
+        const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+        return loadBoundary({
+          repository: cfg.repo,
+          issue: issueNumber,
+          body: guardBody,
+          requirementIds,
+          activity: `workflow-transition:${target}`,
+          state: recorded,
+          now: nowIso(),
+          runtime:
+            deps.workflowPolicyRuntime ||
+            createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+        });
+      },
+    });
+  let normalizationPersisted = false;
+  if (recorded === 'test' && target === 'review') {
+    const normalized = await deriveAndRescan({
+      issueNumber,
+      repo: cfg.repo,
+      scanBody: body,
+      deps: {
+        pexec: deps.pexec || pexec,
+        nowIso,
+        mutateBody: deps.normalizationMutateBody,
+        refreshAndEvaluate: async ({ projection }) =>
+          (await evaluateForBody(projection.body)).guardResult,
+      },
+    });
+    body = normalized.scanBody;
+    normalizationPersisted = normalized.persisted;
+  }
+  const { guardResult } = await evaluateForBody(body);
   // An indeterminate shared result is an authority failure, never a reason to
   // delegate to the lower mutator. Block it even when its producer has no
   // historical verb-specific status mapping.
@@ -529,6 +529,7 @@ export async function runPromote({
 
       return {
         status: 'promoted-with-warning',
+        normalizationPersisted,
         from: recorded,
         to: target,
         via:
@@ -542,7 +543,7 @@ export async function runPromote({
           transitionResult.kind === 'alias'
             ? `delegate /task ${transitionResult.verb}`
             : `move-state.mjs ${target}`
-        } exited ${transitionResult.exitCode}; board reached "${target}" — soft warning, markers verified.`,
+        } exited ${transitionResult.exitCode}; board reached "${target}" — soft warning, markers verified.${normalizationPersisted ? ' Functional DoD normalization persisted.' : ''}`,
       };
     }
 
@@ -576,6 +577,7 @@ export async function runPromote({
     }
     return {
       status: 'transition-failed',
+      normalizationPersisted,
       transitionResult,
       reconciledTo: drifted ? liveAfter : null,
       message:
@@ -586,7 +588,8 @@ export async function runPromote({
         } exited ${transitionResult.exitCode}; ` +
         (drifted
           ? `board drifted to "${liveAfter}"; marker reconciled.`
-          : `recorded state left at "${recorded}".`),
+          : `recorded state left at "${recorded}".`) +
+        (normalizationPersisted ? ' Functional DoD normalization persisted.' : ''),
     };
   }
 
@@ -607,11 +610,13 @@ export async function runPromote({
     if (liveAfter && liveAfter !== target) {
       return {
         status: 'transition-failed',
+        normalizationPersisted,
         transitionResult,
         reconciledTo: null,
         message:
           `promote: delegate /task ${transitionResult.verb} exited 0 but board is "${liveAfter}", ` +
-          `not "${target}" — refusing to report a false success. Recorded state left at "${recorded}".`,
+          `not "${target}" — refusing to report a false success. Recorded state left at "${recorded}".` +
+          (normalizationPersisted ? ' Functional DoD normalization persisted.' : ''),
       };
     }
   }
@@ -656,7 +661,7 @@ export async function runPromote({
       newTestsPost = await postNewAutomatedTestsComment({
         cfg,
         issueNumber,
-        cwd: guardCtx.projectDir,
+        cwd: guardContextBase.projectDir,
         deps: deps.newAutomatedTestsComment,
       });
     } catch (err) {
@@ -671,6 +676,7 @@ export async function runPromote({
 
   return {
     status: 'promoted',
+    normalizationPersisted,
     from: recorded,
     to: target,
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',

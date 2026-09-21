@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #68
+// @story #68 #1732
 // Unit tests for scripts/task-tracker/verbs/promote.mjs.
 //
 // All cases drive runPromote with stubbed deps — no network, no spawn.
@@ -53,6 +53,13 @@ function makeDeps({
   return {
     calls,
     deps: {
+      pexec: async (bin, args) => {
+        if (bin === 'git' && args[0] === 'rev-parse') return { stdout: `${'a'.repeat(40)}\n` };
+        if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+          return { stdout: secondFetch && fetchSecondBody !== undefined ? fetchSecondBody : body };
+        }
+        throw new Error(`unexpected command: ${bin} ${args.join(' ')}`);
+      },
       projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => {
