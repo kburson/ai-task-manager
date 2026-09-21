@@ -196,6 +196,36 @@ export const CODE_DEFINITIONS = Object.freeze({
       }),
     }
   ),
+  'review-test-evidence-refused': decisionBlocked(
+    'review-test-evidence-refused',
+    ['authority-collection'],
+    {
+      phases: ['collection'],
+      argumentSchema: args(['reason'], {
+        reason: enumType(
+          'directory-test-evidence-missing',
+          'receipt-malformed',
+          'head-unresolvable',
+          'fingerprint-unresolvable',
+          'test-started-sha-mismatch',
+          'dod-verified-sha-mismatch',
+          'stage-mismatch',
+          'issue-mismatch',
+          'sha-mismatch',
+          'vc-set-mismatch',
+          'node-major-mismatch',
+          'platform-mismatch',
+          'lockfile-mismatch',
+          'config-mismatch',
+          'sandbox-dirty',
+          'command-identity-mismatch',
+          'command-missing',
+          'command-duplicate',
+          'command-red'
+        ),
+      }),
+    }
+  ),
   'resume-not-paused': decisionBlocked('resume-not-paused', ['authority-collection'], {
     phases: ['collection'],
   }),
