@@ -248,6 +248,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const actionObservationAllowance = 1;
   // #1729 ships the complete shared action evaluator.
   const actionEvaluatorAllowance = 1;
+  // #1731 ships the pure Functional DoD projector used by explanation and execution.
+  const functionalDodProjectorAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -263,7 +265,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     actionDecisionContractAllowance +
     actionPresentationAllowance +
     actionObservationAllowance +
-    actionEvaluatorAllowance;
+    actionEvaluatorAllowance +
+    functionalDodProjectorAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
