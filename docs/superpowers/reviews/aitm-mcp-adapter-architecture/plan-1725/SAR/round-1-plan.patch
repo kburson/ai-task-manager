@@ -1,0 +1,307 @@
+--- a/docs/superpowers/plans/2026-09-20-1725-aitm-mcp-adapter-architecture.md
++++ b/docs/superpowers/plans/2026-09-20-1725-aitm-mcp-adapter-architecture.md
+@@ -28,6 +28,11 @@
+ `docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md`
+ at reviewed trunk commit
+ `267b91b9218b59342a0d70e0859a0e38523a3923`.
++
++**Review status:** Iterative Single Agent Review (SAR) in progress. This is an
++umbrella hydration plan, not an executable child plan or independent approval.
++Review records are retained under
++`docs/superpowers/reviews/aitm-mcp-adapter-architecture/plan-1725/SAR/`.
+ 
+ ## Global Constraints
+ 
+@@ -80,6 +85,9 @@
+   participating port. `behavioral` hosts remain supervised-only.
+ - GitLab, Bitbucket, and Jira adapters are separately published projects. Their
+   implementation is not folded into the core package.
++- New package tests use only `scripts/tests/unit/`, `integration/`, or `slow/`
++  lanes with a subsystem directory and the allocated child story tag;
++  conformance is a test subject, not a fourth lane.
+ - All implementation tasks use red-green-refactor cycles and preserve the
+   existing CLI behavior until the applicable phase exit gate passes.
+ 
+@@ -163,6 +171,9 @@
+    approved. Failure returns the umbrella architecture to design review.
+ 2. **Gate B — kernel mutation:** Tasks 4–10 complete serially. Each increment
+    retains its previous path until the next increment passes its cutover tests.
++   Tasks 4 and 7 establish the shared ABI, verified loader, and installation
++   admission prerequisites; Task 9 integrates a disabled/staged CLI path.
++   Task 10 alone certifies activation after the writer barrier passes.
+ 3. **Gate C — agent surface:** Tasks 11–13 complete before MCP is considered a
+    supported workflow path.
+ 4. **Gate D — portability and ecosystem:** Tasks 14–16 complete before external
+@@ -183,6 +194,13 @@
+ - Phase 1 children are approved serially in the order shown. Later phase
+   children may be created for visibility, but remain blocked on the preceding
+   delivery gate.
++- Each child plan names exact files, consumes/produces interfaces, executable
++  failing tests and expected outcomes, implementation steps, and its own exit
++  gate. The task summaries below are planning inputs, not coding instructions.
++- Phase mapping is explicit: Tasks 1–3 implement Phase 0; 4–10 Phase 1;
++  11 Phase 2; 12–13 Phase 3; 14–15 Phase 4; 16 Phase 5; 17–19 Phase 6;
++  and 20 Phase 7. Later publication or guided setup must not defer safety
++  prerequisites of earlier activation.
+ - Tasks 17–19 are external-project deliveries. Their child records track
+   compatibility and retained certification evidence; their source changes do
+   not land in the core repository.
+@@ -200,8 +218,11 @@
+ 
+ #### Files and Interfaces
+ 
+-- Create: `docs/superpowers/specs/2026-09-20-1725-aitm-mcp-phase-0-feasibility-design.md`
+-- Create: `docs/superpowers/plans/2026-09-20-1725-aitm-mcp-phase-0-feasibility.md`
++- Create the bounded Phase 0 specification and plan after this task receives
++  its child issue ID. Use the creation date and allocated child ID in
++  `docs/superpowers/specs/YYYY-MM-DD-<child-id>-aitm-mcp-phase-0-feasibility-design.md`
++  and `docs/superpowers/plans/YYYY-MM-DD-<child-id>-aitm-mcp-phase-0-feasibility.md`.
++  These are naming rules, not preallocated paths or permission to reuse #1725.
+ - Define: provisioned execution target, one-shot supervisor/dispatcher lifecycle,
+   request-worker channel, credential boundary, checkout-binding resolver, and
+   explicit unsupported-host outcomes.
+@@ -241,6 +262,9 @@
+ - Create: `src/feasibility/checkout-binding.mjs`
+ - Create: `src/feasibility/plugin-snapshot.mjs`
+ - Create: `scripts/tests/slow/feasibility/reference-topology.test.mjs`
++- The prototype uses an isolated draft SDK contract fixture; it does not depend
++  on Task 16 publication or establish the production ABI. Task 4 incorporates
++  its reviewed findings before production adapters are built.
+ - Produce a one-shot `dispatch(request) -> result` prototype and a staged,
+   content-addressed adapter loader with only the shared SDK edge externalized.
+ 
+@@ -320,10 +344,22 @@
+ - Create: `src/kernel/actions/inventory.mjs`.
+ - Create: `scripts/tests/unit/kernel/contracts.test.mjs` and
+   `scripts/tests/unit/kernel/action-inventory.test.mjs`.
+-- Modify: `package.json` to export only reviewed public contract surfaces.
+-
+-#### Steps
+-
++- Create the initial shared SDK contract at `src/adapter-sdk/index.mjs`,
++  `define-adapter.mjs`, and `manifest-schema.mjs`, plus reusable conformance
++  fixtures under `src/adapter-sdk/fixtures/` and
++  `scripts/tests/unit/adapter-sdk/contract.test.mjs`.
++- Modify: `package.json` public exports and `files` allowlist; include the
++  production `src/` closure and exclude test-only material. Preserve existing
++  entry points when adding an exports map.
++- Extend: `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
++  and add `scripts/tests/slow/package/kernel-consumer.test.mjs`.
++
++#### Steps
++
++- [ ] Ratify the initial ABI and package compatibility matrix now, with exact
++      contracts for `manifest`, `probe`, `read`, `execute`, `observe`,
++      `reconcile`, `evidence`, and `doctor`. Tasks 8–9 consume these same
++      interfaces and conformance fixtures; Task 16 publishes and extends them.
+ - [ ] Generate a retained inventory of every current command, provider mutation,
+       evidence write, approval gate, and recovery behavior.
+ - [ ] Write failing schema and canonical-serialization tests, including omitted
+@@ -333,11 +369,16 @@
+ - [ ] Classify each operation as portable, namespaced extension, or
+       `orchestrator-only`, with a named portable parent for internal primitives.
+ - [ ] Verify the inventory has no unclassified executable operation.
+-
+-**Verification Commands:**
+-
+-```sh
+-node --test scripts/tests/unit/kernel/contracts.test.mjs scripts/tests/unit/kernel/action-inventory.test.mjs
++- [ ] Install an actual packed tarball in an isolated consumer and import the
++      public SDK and kernel-dependent CLI there. Assert the production closure
++      is present and existing supported package entry points still resolve.
++      A repository self-link or pack dry-run cannot establish this result.
++
++**Verification Commands:**
++
++```sh
++node --test scripts/tests/unit/kernel/contracts.test.mjs scripts/tests/unit/kernel/action-inventory.test.mjs scripts/tests/unit/adapter-sdk/contract.test.mjs
++node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
+ npm test
+ ```
+ 
+@@ -436,7 +477,10 @@
+ 
+ - Create: `src/kernel/authority/ownership.mjs`, `admission.mjs`, and
+   `recovery.mjs`.
+-- Create: `src/kernel/runtime/execution-context.mjs` and `dispatcher.mjs`.
++- Create: `src/kernel/runtime/execution-context.mjs`, `dispatcher.mjs`,
++  `verified-loader.mjs`, and `installation-admission.mjs`.
++- Consume Task 4 ABI definitions and Phase 0 loader proof; create
++  `scripts/tests/integration/kernel/runtime-admission.test.mjs`.
+ - Create: `scripts/tests/integration/kernel/governed-action-flow.test.mjs` and
+   `scripts/tests/integration/kernel/recovery.test.mjs`.
+ 
+@@ -445,6 +489,14 @@
+ - [ ] Write red tests for conflicting scopes, canonical acquisition order,
+       stale owners, pause after the final check, in-flight takeover, clock skew,
+       and unresolved-effect blocking.
++- [ ] Promote the certified Phase 0 snapshot/SDK-edge mechanism into the
++      production verified loader. Verify complete code identity, immutable use,
++      explicit trust, active configuration generation, and authoritative policy
++      fingerprints at startup, admission, dispatch, and recovery. Test drift in
++      a long-lived process and an edit between validation and dispatch.
++- [ ] Establish the initial install-manifest/support contract for these checks
++      before any CLI activation. Task 14 extends it with guided authoring and
++      portability; it does not introduce the first production admission guard.
+ - [ ] Implement the request sequence from authenticated admission through
+       verified request append, fenced dispatch, observation, outcome append,
+       projection, and canonical result.
+@@ -458,7 +510,7 @@
+ **Verification Commands:**
+ 
+ ```sh
+-node --test scripts/tests/integration/kernel/governed-action-flow.test.mjs scripts/tests/integration/kernel/recovery.test.mjs
++node --test scripts/tests/integration/kernel/governed-action-flow.test.mjs scripts/tests/integration/kernel/recovery.test.mjs scripts/tests/integration/kernel/runtime-admission.test.mjs
+ npm test
+ ```
+ 
+@@ -477,7 +529,7 @@
+   `adapter-runtime.mjs`.
+ - Create: `src/adapters/local-git/adapter.mjs`, `binding.mjs`,
+   `effects.mjs`, and `recovery.mjs`.
+-- Create: `scripts/tests/conformance/local-git-adapter.test.mjs`.
++- Create: `scripts/tests/integration/conformance/local-git-adapter.test.mjs`.
+ 
+ #### Steps
+ 
+@@ -491,13 +543,13 @@
+       transport-specific default behavior.
+ - [ ] Implement local effect receipts and observation without silently pushing,
+       discarding, recreating, or moving repository artifacts.
+-- [ ] Run the adapter through the same preliminary ABI contract intended for
+-      external adapters.
+-
+-**Verification Commands:**
+-
+-```sh
+-node --test scripts/tests/conformance/local-git-adapter.test.mjs
++- [ ] Run the adapter through the Task 4 shared ABI and conformance contract used by
++      external adapters; there is no separate built-in contract.
++
++**Verification Commands:**
++
++```sh
++node --test scripts/tests/integration/conformance/local-git-adapter.test.mjs
+ npm test
+ ```
+ 
+@@ -518,7 +570,7 @@
+   `render-json.mjs`.
+ - Modify: `bin/aitm.mjs`, `bin/aitm-registry.mjs`, and existing command/verb
+   adapters to call application services.
+-- Create: `scripts/tests/conformance/github-adapter.test.mjs` and
++- Create: `scripts/tests/integration/conformance/github-adapter.test.mjs` and
+   `scripts/tests/integration/transports/cli-kernel-parity.test.mjs`.
+ 
+ #### Steps
+@@ -533,12 +585,13 @@
+ - [ ] Render existing human output from canonical objects and expose identical
+       minified objects under `--json`.
+ - [ ] Prove existing CLI tests pass without MCP and without a privileged GitHub
+-      route into policy or evidence.
+-
+-**Verification Commands:**
+-
+-```sh
+-node --test scripts/tests/conformance/github-adapter.test.mjs scripts/tests/integration/transports/cli-kernel-parity.test.mjs
++      route into policy or evidence. Use provisioned disposable fixtures and a
++      staged route; no existing project selects it before Task 10 activation.
++
++**Verification Commands:**
++
++```sh
++node --test scripts/tests/integration/conformance/github-adapter.test.mjs scripts/tests/integration/transports/cli-kernel-parity.test.mjs
+ npm test
+ npm run test:slow
+ ```
+@@ -631,6 +684,10 @@
+ 
+ - Create: `src/transports/mcp/server.mjs`, `tools.mjs`, `resources.mjs`, and
+   `structured-result.mjs`.
++- Create: `bin/aitm-mcp.mjs`; register the workspace-local `aitm-mcp` bin in
++  `package.json` and verify its production closure in the packed consumer.
++- Extend: `scripts/tests/slow/package/kernel-consumer.test.mjs` to launch the
++  installed MCP binary and exercise stdio initialization and discovery.
+ - Modify only after a reviewed dependency audit: `package.json` and
+   `package-lock.json` for one exact-pinned MCP runtime.
+ - Create: `scripts/tests/integration/transports/mcp-tools.test.mjs` and
+@@ -672,6 +729,10 @@
+ - Modify: `skill/adapters/*/SKILL.md`, `skill/shared/router.md`, and installed
+   lightweight bootstrap templates.
+ - Create: `docs/guides/mcp.md`.
++- Create: `src/host-bridges/registration.mjs` and
++  `scripts/tests/integration/host-bridges/mcp-bootstrap.test.mjs`.
++- Define the minimal host registration and discover-first bootstrap here;
++  Task 15 extends these for isolated-clone portability.
+ 
+ #### Steps
+ 
+@@ -681,6 +742,11 @@
+       request key and assert one durable action and equivalent outputs.
+ - [ ] Exercise stale approvals, stale generation, response loss, and recovery by
+       switching transports after the first attempt.
++- [ ] Register and launch the workspace-local MCP binary with relative package
++      paths; complete a supervised agent workflow using discovery/help alone.
++      Retain a reproducible smoke transcript and refusal diagnostics for hosts
++      requiring local registration. Only replace generated skills after this
++      startup check and parity pass.
+ - [ ] Replace detailed skill procedure with discover-first guidance while
+       retaining the CLI compatibility path and explicit raw-provider guard.
+ - [ ] Keep MCP Full-Auto disabled until Task 20 passes.
+@@ -688,7 +754,7 @@
+ **Verification Commands:**
+ 
+ ```sh
+-node --test scripts/tests/slow/transports/cli-mcp-parity.test.mjs
++node --test scripts/tests/slow/transports/cli-mcp-parity.test.mjs scripts/tests/integration/host-bridges/mcp-bootstrap.test.mjs
+ npm run lint
+ npm run format:check
+ ```
+@@ -745,8 +811,8 @@
+ 
+ #### Files and Interfaces
+ 
+-- Create: `src/host-bridges/learning-projection.mjs` and
+-  `src/host-bridges/registration.mjs`.
++- Create: `src/host-bridges/learning-projection.mjs`.
++- Extend: `src/host-bridges/registration.mjs` from Task 13.
+ - Create: `scripts/tests/slow/setup/portable-clone.test.mjs` and
+   `scripts/tests/unit/host-bridges/learning-projection.test.mjs`.
+ 
+@@ -783,16 +849,28 @@
+ 
+ #### Files and Interfaces
+ 
+-- Create: `src/adapter-sdk/index.mjs`, `define-adapter.mjs`,
+-  `manifest-schema.mjs`, `conformance.mjs`, and fixtures.
++- Extend the Task 4 SDK and shared conformance fixtures; create
++  `src/adapter-sdk/conformance.mjs` as their published runner.
++- Consume the production verified loader from Task 7; extend its independent
++  plugin checks rather than introducing a second runtime.
++- Create a replacement ADR under `docs/decisions/` using the next available
++  number at delivery time, explicitly superseding the GitHub-only authority
++  scope of `docs/decisions/0002-github-native-authority-records.md`.
+ - Create: `bin/aitm-adapter-conformance.mjs`.
+ - Create: `scripts/tests/slow/adapter-sdk/independent-plugin.test.mjs`.
+-- Modify: `package.json` exports and bins with the ratified first ABI version.
+-
+-#### Steps
+-
+-- [ ] Ratify and document the first public ABI version and its package-version
+-      compatibility matrix; do not equate ABI and package majors implicitly.
++- Extend: `package.json` exports, bins, and packed-file contract for the
++  conformance runner and its runtime fixtures using the Task 4 ratified ABI.
++- Extend: `scripts/tests/slow/package/kernel-consumer.test.mjs` to invoke the
++  installed conformance bin and prove all required fixtures are shipped.
++
++#### Steps
++
++- [ ] Publish the Task 4 ABI version and compatibility matrix. Any incompatible
++      evolution requires explicit review and regression certification of both
++      built-in adapters before publication.
++- [ ] Review and accept the replacement ADR before enabling any non-GitHub
++      backlog, including provider certification fixtures that activate one.
++      Retain the sole external authority, append-first, and recovery guarantees.
+ - [ ] Test manifest/port schemas, reference round trips, capability reporting,
+       retry/recovery, authorization, evidence, diagnostics, minified JSON, and
+       prohibited effects.
