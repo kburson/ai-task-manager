@@ -28,6 +28,8 @@ npm package exports, and isolated provider certification fixtures.
 `docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md`
 at reviewed trunk commit
 `267b91b9218b59342a0d70e0859a0e38523a3923`.
+This previously reviewed umbrella spec retains its original filename for
+provenance; it is not the naming pattern for newly allocated child artifacts.
 
 **Review status:** Revised through iterative Single Agent Review (SAR). This is an
 umbrella hydration plan, not an executable child plan or independent approval.
@@ -94,6 +96,20 @@ Review records are retained under
 - New package tests use only `scripts/tests/unit/`, `integration/`, or `slow/`
   lanes with a subsystem directory and the allocated child story tag;
   conformance is a test subject, not a fourth lane.
+- `npm test` runs the unit-only fast lane; `npm run test:integration` and
+  `npm run test:slow` own the other lanes. ADR 0001 §6 requires each new
+  committed implementation to receive one complete unit, integration, and slow
+  Test pass. Develop finalization owns lint/format; Review validates those
+  exact-revision receipts rather than rerunning unchanged work. Targeted
+  commands below are iteration checks, not substitutes for these child gates.
+- ADR 0001 amendments must approve mappings for new source roots and feature
+  buckets before their tests are introduced: Task 1 covers Phase 0 feasibility;
+  Task 4 covers production `src/` alongside retained `scripts/` and package-root
+  entry points. The canonical test root and three lanes remain unchanged.
+- Every in-repository implementation child runs the lint and format commands
+  in its verification block before delivery, including story attribution,
+  layout, and the 800-code-line hard cap (400-line review target). External
+  provider plans define their own equivalent mandatory gates.
 - All implementation tasks use red-green-refactor cycles and preserve the
   existing CLI behavior until the applicable phase exit gate passes.
 
@@ -229,6 +245,9 @@ new boundaries:
   `docs/superpowers/specs/YYYY-MM-DD-<child-id>-aitm-mcp-phase-0-feasibility-design.md`
   and `docs/superpowers/plans/YYYY-MM-DD-<child-id>-aitm-mcp-phase-0-feasibility.md`.
   These are naming rules, not preallocated paths or permission to reuse #1725.
+- Amend: `docs/decisions/0001-test-tree-convention.md` through this child
+  review to approve Phase 0 `src/feasibility/` mapping into the existing
+  `scripts/tests/<lane>/feasibility/` subtree before Task 2 creates tests.
 - Define: provisioned execution target, one-shot supervisor/dispatcher lifecycle,
   request-worker channel, credential boundary, checkout-binding resolver, and
   explicit unsupported-host outcomes.
@@ -339,6 +358,8 @@ npm run format:check
 ```sh
 node --test scripts/tests/slow/feasibility/github-reference-certification.test.mjs
 node scripts/benchmarks/mcp-architecture-operating-envelope.mjs --verify-report docs/reports/aitm-mcp-phase-0-feasibility.md
+npm run lint
+npm run format:check
 ```
 
 ### Task 4: Define Canonical Kernel Contracts and Action Inventory
@@ -352,6 +373,16 @@ node scripts/benchmarks/mcp-architecture-operating-envelope.mjs --verify-report 
 
 #### Files and Interfaces
 
+- Amend: `docs/decisions/0001-test-tree-convention.md` with the explicitly
+  reviewed production source/test mapping and allowed subsystem/feature-bucket
+  taxonomy for all three lanes. `scripts/` remains a production root alongside
+  `src/`; package-root and multi-module subjects keep explicitly owned buckets.
+- Modify: `.c8rc.json` to cover both `scripts/` and production `src/`, retaining
+  test/support exclusions and excluding Phase 0 prototypes.
+- Align source-root descriptions in
+  `scripts/maintenance/lint-test-coverage-reach.mjs` and
+  `scripts/maintenance/lint-test-coverage-reach-detector.mjs` with their actual
+  package-wide import-literal check; do not weaken that check.
 - Create: `src/kernel/contracts/` modules for authority references, principals,
   action requests, effects, results, errors, evidence, help, and JSON Schema.
 - Create: `src/kernel/actions/inventory.mjs`.
@@ -362,13 +393,29 @@ node scripts/benchmarks/mcp-architecture-operating-envelope.mjs --verify-report 
   fixtures under `src/adapter-sdk/fixtures/` and
   `scripts/tests/unit/adapter-sdk/contract.test.mjs`.
 - Modify: `package.json` public exports and `files` allowlist; include the
-  production `src/` closure and exclude test-only material. Preserve existing
+  production `src/` closure and exclude test-only material,
+  `scripts/benchmarks/**`, and `src/feasibility/**`. Preserve existing
   entry points when adding an exports map.
 - Extend: `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
   and add `scripts/tests/slow/package/kernel-consumer.test.mjs`.
 
 #### Steps
 
+- [ ] Approve the ADR 0001 production amendment before new production tests.
+      Enumerate source-relative mappings for `src/kernel/`, `src/adapter-sdk/`,
+      `src/transports/`, `src/setup/`, `src/host-bridges/`, and adapters, plus
+      explicit conformance/package feature buckets. Preserve existing `scripts/`
+      mappings, support-only exclusions, and fail-closed package-wide discovery;
+      document ownership where a feature spans both source roots.
+- [ ] Budget packed entries per child, following the existing reviewed allowance
+      pattern in `package-boundary.test.mjs`. Record the actual before/after
+      pack inventory and exact intentional delta with the allocated issue ID;
+      adjust only that child allowance when necessary. Baseline currently has
+      798 entries against an effective ceiling of 798, measured during XPR;
+      remeasure at each child rather than treating that number as permanent.
+      Do not add blanket headroom or relax forbidden-path assertions. Every
+      later child adding shipped files, including Tasks 5–16 and 20, inherits
+      this obligation and runs the package-boundary gate.
 - [ ] Ratify the initial ABI and package compatibility matrix now, with exact
       contracts for `manifest`, `probe`, `read`, `execute`, `observe`,
       `reconcile`, `evidence`, and `doctor`. Tasks 8–9 consume these same
@@ -395,6 +442,8 @@ node scripts/benchmarks/mcp-architecture-operating-envelope.mjs --verify-report 
 node --test scripts/tests/unit/kernel/contracts.test.mjs scripts/tests/unit/kernel/action-inventory.test.mjs scripts/tests/unit/adapter-sdk/contract.test.mjs
 node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 5: Build Append-Only Authority Replay and Evidence Recovery
@@ -445,6 +494,8 @@ npm test
 ```sh
 node --test scripts/tests/unit/kernel/authority-replay.test.mjs scripts/tests/integration/kernel/evidence-append-recovery.test.mjs scripts/tests/integration/kernel/retention.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 6: Add Principal, Request-Key, Approval, and Policy Services
@@ -491,6 +542,8 @@ npm test
 ```sh
 node --test scripts/tests/unit/kernel/identity-policy.test.mjs scripts/tests/unit/kernel/request-key.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 7: Implement Scoped Execution Ownership and Recovery Service
@@ -512,6 +565,12 @@ npm test
 - Extend: `scripts/package/install-contract.mjs` and
   `install-manifest-store.mjs` with the initial versioned runtime/admission
   contract used by Task 10 staging and activation.
+- Adapt: `bin/cli.mjs`, the existing install-manifest producer, to the versioned
+  contract without a second independent writer. Keep the legacy installer
+  behavior valid until Task 14 delegates it to shared setup services.
+- Retain regression coverage in
+  `scripts/tests/integration/package/install-manifest.test.mjs`,
+  `install-health.test.mjs`, and `doctor-cli.test.mjs`.
 - Consume Task 4 ABI definitions and Phase 0 loader proof; create
   `scripts/tests/integration/kernel/runtime-admission.test.mjs`.
 - Create: `scripts/tests/integration/kernel/governed-action-flow.test.mjs` and
@@ -530,6 +589,9 @@ npm test
 - [ ] Establish the initial install-manifest/support contract for these checks
       before any CLI activation. Task 14 extends it with guided authoring and
       portability; it does not introduce the first production admission guard.
+      Update the existing installer and manifest publisher together; prove
+      install/health/doctor behavior against the versioned contract and reject
+      unsupported formats without a partial tracked-file rewrite.
 - [ ] Implement the request sequence from authenticated admission through
       verified request append, fenced dispatch, observation, outcome append,
       projection, and canonical result.
@@ -555,7 +617,10 @@ npm test
 
 ```sh
 node --test scripts/tests/integration/kernel/governed-action-flow.test.mjs scripts/tests/integration/kernel/recovery.test.mjs scripts/tests/integration/kernel/runtime-admission.test.mjs scripts/tests/integration/kernel/bootstrap.test.mjs
+node --test scripts/tests/integration/package/install-manifest.test.mjs scripts/tests/integration/package/install-health.test.mjs scripts/tests/integration/package/doctor-cli.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 8: Implement the Public Port Runtime and Built-In Local Git Adapter
@@ -595,6 +660,8 @@ npm test
 ```sh
 node --test scripts/tests/integration/conformance/local-git-adapter.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 9: Move GitHub Behind the Adapter Contract and Route the CLI Through the Kernel
@@ -616,6 +683,9 @@ npm test
   adapters to call application services.
 - Create: `scripts/tests/integration/conformance/github-adapter.test.mjs` and
   `scripts/tests/integration/transports/cli-kernel-parity.test.mjs`.
+- Modify: `skill/adapters/*/SKILL.md`, `skill/shared/router.md`, installed
+  bootstrap templates, and automation callers named by the Task 4 inventory
+  to retain caller-held keys across retries before activation.
 - Extend: `scripts/tests/slow/package/kernel-consumer.test.mjs` with the
   kernel-backed CLI route; use a provisioned disposable fixture.
 - Create: `src/adapters/github/backpressure.mjs` and
@@ -641,11 +711,25 @@ npm test
 - [ ] Retain opt-in live GitHub certification results against the production
       adapter and the Phase 0 budgets before Task 10 enables its capabilities.
       Skipped live cases or simulator results do not certify live behavior.
+- [ ] Reject `orchestrator-only` primitives in the public CLI dispatcher and
+      every compatibility alias, including forged action names and direct
+      evidence-append requests. `cli-kernel-parity.test.mjs` must assert zero
+      provider effects and zero protocol writes for these refusals; internal
+      kernel calls remain reachable only through their governed parent action.
 - [ ] Add compatibility action definitions for every inventoried CLI operation
       and route commands through one application-service dispatcher.
 - [ ] Require stable caller keys for unattended CLI and compatibility aliases;
       reject missing keys before effects. Interactive key generation displays
       the key before submission. Test authorized key lookup after response loss.
+      The pre-cutover legacy route keeps existing behavior; the activated kernel
+      deliberately refuses a key-less unattended call. Task 9 owns caller/key
+      plumbing in `skill/adapters/*/SKILL.md`, `skill/shared/router.md`, installed
+      bootstrap templates, and inventoried automation entry points. Callers
+      persist one random key per intent before submission and reuse it on retry.
+      Update caller fixtures to supply keys; do not weaken the refusal to make
+      old key-less tests green. Task 10 blocks activation until identified
+      unattended writers are migrated or verifiably stopped. Task 13 later
+      replaces procedure with discovery without removing this key contract.
 - [ ] Preserve existing approval and mutation guards during CLI migration.
       Kernel Full-Auto must refuse behavioral-only or unverifiable assurance;
       Task 20 expands/certifies host bridges before enabling MCP Full-Auto.
@@ -661,6 +745,8 @@ npm test
 node --test scripts/tests/integration/conformance/github-adapter.test.mjs scripts/tests/integration/conformance/github-quota.test.mjs scripts/tests/integration/transports/cli-kernel-parity.test.mjs
 npm test
 npm run test:slow
+npm run lint
+npm run format:check
 ```
 
 Live certification requires the child plan to define an explicit opt-in command,
@@ -692,6 +778,8 @@ of those live operations.
 - [ ] Import Task 9 live certification and Task 7 verified installation/
       bootstrap results before activation. Retain every legacy approval mode,
       including unknown provenance, and preview unattended callers needing keys.
+      Verify Task 9 caller migration or writer shutdown before activation;
+      preview alone cannot satisfy this gate.
 - [ ] Stage generated files without activating them; preserve existing issue,
       board, branch, PR, journal, approval, and receipt references.
 - [ ] Fence or verifiably stop old writers, settle pending effects, capture the
@@ -710,6 +798,10 @@ of those live operations.
 ```sh
 node --test scripts/tests/slow/migration/kernel-cutover.test.mjs
 npm run test:slow
+npm test
+npm run test:integration
+npm run lint
+npm run format:check
 ```
 
 ### Task 11: Generate the Action Registry, Capability Graph, and Human Help
@@ -748,6 +840,8 @@ npm run test:slow
 ```sh
 node --test scripts/tests/unit/kernel/discovery.test.mjs scripts/tests/integration/transports/cli-help.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 12: Add the Tiered MCP Tools and Resources
@@ -791,6 +885,8 @@ npm test
 node --test scripts/tests/integration/transports/mcp-tools.test.mjs scripts/tests/integration/transports/mcp-resources.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
 npm audit --omit=dev
 npm pack --dry-run
+npm run lint
+npm run format:check
 ```
 
 ### Task 13: Prove CLI/MCP Parity and Replace the Procedural Skill Surface
@@ -836,6 +932,9 @@ npm pack --dry-run
 node --test scripts/tests/slow/transports/cli-mcp-parity.test.mjs scripts/tests/integration/host-bridges/mcp-bootstrap.test.mjs
 npm run lint
 npm run format:check
+npm test
+npm run test:integration
+npm run test:slow
 ```
 
 ### Task 14: Build Guided Setup, Tracked Configuration, and Staleness Admission
@@ -849,6 +948,12 @@ npm run format:check
 
 #### Files and Interfaces
 
+- Modify: `bin/cli.mjs` to retain the published `ai-task-manager` installer as
+  a compatibility transport over the same `src/setup/` services reached by
+  `aitm setup`; only the shared service publishes generated integration and
+  manifests, under the same staging and activation contract.
+- Retain: `scripts/tests/integration/package/install-manifest.test.mjs`,
+  `install-health.test.mjs`, and `doctor-cli.test.mjs` as regression gates.
 - Create: `src/setup/inspect.mjs`, `intent.mjs`, `plugin-discovery.mjs`,
   `selection.mjs`, `install-manifest.mjs`, and `staleness.mjs`.
 - Extend: `scripts/package/install-contract.mjs`, `install-observer.mjs`, and
@@ -866,7 +971,9 @@ npm run format:check
       paths, non-recursive scanning, trust preview, compatibility, lifecycle
       scripts, lock normalization, and no implicit setup.
 - [ ] Implement independently repeatable setup phases with staged output and
-      verified external bootstrap before atomic local publication.
+      verified external bootstrap before atomic local publication. Exercise both
+      installer entry points against the shared publication service; they may
+      not race independent manifest/configuration writers.
 - [ ] Before binding/runtime replacement, inventory pending actions and either
       settle them or certify continuing authorized recovery at original targets.
       Stage a compatible recovery runtime without changing active destinations;
@@ -895,7 +1002,10 @@ npm run format:check
 
 ```sh
 node --test scripts/tests/integration/setup/guided-setup.test.mjs scripts/tests/integration/setup/configuration-activation.test.mjs scripts/tests/integration/setup/staleness-recovery.test.mjs scripts/tests/unit/package/doctor.test.mjs
+node --test scripts/tests/integration/package/install-manifest.test.mjs scripts/tests/integration/package/install-health.test.mjs scripts/tests/integration/package/doctor-cli.test.mjs
 npm test
+npm run lint
+npm run format:check
 ```
 
 ### Task 15: Prove Portable Fresh-Clone Operation and Learning Projection
@@ -938,6 +1048,8 @@ npm test
 ```sh
 node --test scripts/tests/slow/setup/portable-clone.test.mjs scripts/tests/unit/host-bridges/learning-projection.test.mjs
 npm pack --dry-run
+npm run lint
+npm run format:check
 ```
 
 ### Task 16: Publish the Adapter SDK, Verified Loader, and Conformance Runner
@@ -965,11 +1077,19 @@ npm pack --dry-run
   `aitm-adapter.json`, and the tracked runtime `dist/adapter.mjs` used below.
   Its peer dependency resolves the packed SDK; it cannot import private core
   files or the source worktree. This consumer fixture is distinct from the
-  public runner fixtures under `src/adapter-sdk/fixtures/`.
+  public runner fixtures under `src/adapter-sdk/fixtures/`. The consumer fixture
+  under `scripts/tests/fixtures/adapters/reference/` is local-only and never
+  included in the core tarball; any temporary fixture package is assembled
+  exclusively by the test harness.
 - Extend: `package.json` exports, bins, and packed-file contract for the
   conformance runner and its runtime fixtures using the Task 4 ratified ABI.
 - Extend: `scripts/tests/slow/package/kernel-consumer.test.mjs` to invoke the
-  installed conformance bin and prove all required fixtures are shipped.
+  installed conformance bin and prove its required public runtime fixtures
+  under `src/adapter-sdk/fixtures/` are shipped.
+- Extend: `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` to
+  assert those public fixtures are present and every `scripts/tests/**` path,
+  including the reference consumer, remains excluded. Keep its path-based
+  prohibition; add only the exact reviewed per-child entry allowance.
 
 #### Steps
 
@@ -1000,8 +1120,14 @@ npm pack --dry-run
 
 ```sh
 node --test scripts/tests/slow/adapter-sdk/independent-plugin.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
+node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
 node bin/aitm-adapter-conformance.mjs scripts/tests/fixtures/adapters/reference/dist/adapter.mjs
 npm pack --dry-run
+npm test
+npm run test:integration
+npm run test:slow
+npm run lint
+npm run format:check
 ```
 
 ### Task 17: Certify the Independent GitLab Adapter Project
@@ -1149,6 +1275,7 @@ npm test
 npm run test:slow
 npm run lint
 npm run format:check
+npm run test:integration
 ```
 
 ## Acceptance-to-Task Traceability
@@ -1160,33 +1287,33 @@ criterion 14 additionally requires reviewed artifacts and explicit approval,
 which test execution cannot grant. Tasks 17–19 retain their external suites in
 their own projects; core composition fixtures do not certify those providers.
 
-| Spec criterion                     | Owning tasks             | Required executable verification                                                                                                                                              |
-| ---------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1                                  | 4, 7, 9, 12, 13          | `integration/transports/cli-kernel-parity.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`                                                                                |
-| 2                                  | 8, 9, 16–19              | `integration/conformance/local-git-adapter.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`; external composed-port suites                                           |
-| 3                                  | 4, 9, 16                 | `integration/conformance/github-adapter.test.mjs`; `slow/conformance/github-live.test.mjs`                                                                                    |
-| 4                                  | 14, 16–19                | `integration/setup/guided-setup.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`; `slow/package/kernel-consumer.test.mjs`                                            |
-| 5                                  | 4, 11–13                 | `unit/kernel/action-inventory.test.mjs`; `unit/kernel/discovery.test.mjs`; `integration/transports/mcp-tools.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`             |
-| 6                                  | 4, 9, 11–13              | `unit/kernel/contracts.test.mjs`; `integration/transports/cli-help.test.mjs`; `integration/transports/mcp-resources.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`      |
-| 7                                  | 1–3, 14, 15              | `integration/setup/guided-setup.test.mjs`; `slow/setup/portable-clone.test.mjs`; `slow/feasibility/reference-topology.test.mjs`                                               |
-| 8a                                 | 7, 14, 15                | `integration/kernel/runtime-admission.test.mjs`; `integration/setup/staleness-recovery.test.mjs`; `slow/setup/portable-clone.test.mjs`                                        |
-| 8b                                 | 14, 15                   | `integration/setup/staleness-recovery.test.mjs`; `unit/host-bridges/learning-projection.test.mjs`                                                                             |
-| 8c                                 | 7, 12, 14, 15            | `integration/kernel/recovery.test.mjs`; `integration/setup/staleness-recovery.test.mjs`; `slow/setup/portable-clone.test.mjs`                                                 |
-| 8d                                 | 2, 7, 15, 16             | `slow/feasibility/reference-topology.test.mjs`; `integration/kernel/runtime-admission.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`                               |
-| 9                                  | 5, 9, 10, 16, 19         | `integration/kernel/retention.test.mjs`; `integration/conformance/github-adapter.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`; external Jira retention suite     |
-| 10                                 | 5–7, 9, 13               | `unit/kernel/request-key.test.mjs`; `integration/kernel/recovery.test.mjs`; `integration/transports/cli-kernel-parity.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`    |
-| 11                                 | 14, 15                   | `unit/host-bridges/learning-projection.test.mjs`; `slow/setup/portable-clone.test.mjs`                                                                                        |
-| 12                                 | 9, 16, 20                | `integration/transports/cli-kernel-parity.test.mjs`; `slow/host-bridges/assurance.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`                                   |
-| 13                                 | 9, 10                    | `slow/migration/kernel-cutover.test.mjs`                                                                                                                                      |
-| 14                                 | 1–3 and every phase gate | `slow/feasibility/github-reference-certification.test.mjs`; retained criterion-to-test results and independently approved child artifacts                                     |
-| 15                                 | 1–3, 7                   | `slow/feasibility/reference-topology.test.mjs`; `integration/kernel/governed-action-flow.test.mjs`                                                                            |
-| 16                                 | 7, 9, 14, 16, 19         | `integration/kernel/bootstrap.test.mjs`; `integration/conformance/github-adapter.test.mjs`; `integration/setup/guided-setup.test.mjs`; external Jira bootstrap suite          |
-| 17                                 | 5, 7, 9, 16              | `integration/kernel/evidence-append-recovery.test.mjs`; `integration/kernel/governed-action-flow.test.mjs`; `integration/conformance/github-adapter.test.mjs`                 |
-| 18                                 | 6, 7, 10, 13, 20         | `unit/kernel/identity-policy.test.mjs`; `slow/migration/kernel-cutover.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`; `slow/host-bridges/assurance.test.mjs`           |
-| 19                                 | 7, 10, 14, 16            | `integration/kernel/recovery.test.mjs`; `integration/setup/configuration-activation.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`                                 |
-| 20                                 | 5                        | `unit/kernel/authority-replay.test.mjs`                                                                                                                                       |
-| 21                                 | 1–3, 8, 20               | `integration/conformance/local-git-adapter.test.mjs`; `slow/feasibility/reference-topology.test.mjs`; `slow/host-bridges/assurance.test.mjs`                                  |
-| Quota/retention operating envelope | 1, 3, 5, 9, 16           | `slow/feasibility/github-reference-certification.test.mjs`; `integration/conformance/github-quota.test.mjs`; `integration/kernel/retention.test.mjs`; Task 3 benchmark report |
+| Spec criterion                     | Owning tasks             | Required executable verification                                                                                                                                                                                       |
+| ---------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1                                  | 4, 7, 9, 12, 13          | `integration/transports/cli-kernel-parity.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`                                                                                                                         |
+| 2                                  | 8, 9, 16–19              | `integration/conformance/local-git-adapter.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`; external composed-port suites                                                                                    |
+| 3                                  | 4, 9, 16                 | `integration/conformance/github-adapter.test.mjs`; `slow/conformance/github-live.test.mjs`                                                                                                                             |
+| 4                                  | 14, 16–19                | `integration/setup/guided-setup.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`; `slow/package/kernel-consumer.test.mjs`                                                                                     |
+| 5                                  | 4, 11–13                 | `unit/kernel/action-inventory.test.mjs`; `unit/kernel/discovery.test.mjs`; `integration/transports/mcp-tools.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`; `integration/transports/cli-kernel-parity.test.mjs` |
+| 6                                  | 4, 9, 11–13              | `unit/kernel/contracts.test.mjs`; `integration/transports/cli-help.test.mjs`; `integration/transports/mcp-resources.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`                                               |
+| 7                                  | 1–3, 14, 15              | `integration/setup/guided-setup.test.mjs`; `slow/setup/portable-clone.test.mjs`; `slow/feasibility/reference-topology.test.mjs`                                                                                        |
+| 8a                                 | 7, 14, 15                | `integration/kernel/runtime-admission.test.mjs`; `integration/setup/staleness-recovery.test.mjs`; `slow/setup/portable-clone.test.mjs`                                                                                 |
+| 8b                                 | 14, 15                   | `integration/setup/staleness-recovery.test.mjs`; `unit/host-bridges/learning-projection.test.mjs`                                                                                                                      |
+| 8c                                 | 7, 12, 14, 15            | `integration/kernel/recovery.test.mjs`; `integration/setup/staleness-recovery.test.mjs`; `slow/setup/portable-clone.test.mjs`                                                                                          |
+| 8d                                 | 2, 7, 15, 16             | `slow/feasibility/reference-topology.test.mjs`; `integration/kernel/runtime-admission.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`                                                                        |
+| 9                                  | 5, 9, 10, 16, 19         | `integration/kernel/retention.test.mjs`; `integration/conformance/github-adapter.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`; external Jira retention suite                                              |
+| 10                                 | 5–7, 9, 13               | `unit/kernel/request-key.test.mjs`; `integration/kernel/recovery.test.mjs`; `integration/transports/cli-kernel-parity.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`                                             |
+| 11                                 | 14, 15                   | `unit/host-bridges/learning-projection.test.mjs`; `slow/setup/portable-clone.test.mjs`                                                                                                                                 |
+| 12                                 | 9, 16, 20                | `integration/transports/cli-kernel-parity.test.mjs`; `slow/host-bridges/assurance.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`                                                                            |
+| 13                                 | 9, 10                    | `slow/migration/kernel-cutover.test.mjs`                                                                                                                                                                               |
+| 14                                 | 1–3 and every phase gate | `slow/feasibility/github-reference-certification.test.mjs`; retained criterion-to-test results and independently approved child artifacts                                                                              |
+| 15                                 | 1–3, 7                   | `slow/feasibility/reference-topology.test.mjs`; `integration/kernel/governed-action-flow.test.mjs`                                                                                                                     |
+| 16                                 | 7, 9, 14, 16, 19         | `integration/kernel/bootstrap.test.mjs`; `integration/conformance/github-adapter.test.mjs`; `integration/setup/guided-setup.test.mjs`; external Jira bootstrap suite                                                   |
+| 17                                 | 5, 7, 9, 16              | `integration/kernel/evidence-append-recovery.test.mjs`; `integration/kernel/governed-action-flow.test.mjs`; `integration/conformance/github-adapter.test.mjs`                                                          |
+| 18                                 | 6, 7, 10, 13, 20         | `unit/kernel/identity-policy.test.mjs`; `slow/migration/kernel-cutover.test.mjs`; `slow/transports/cli-mcp-parity.test.mjs`; `slow/host-bridges/assurance.test.mjs`                                                    |
+| 19                                 | 7, 10, 14, 16            | `integration/kernel/recovery.test.mjs`; `integration/setup/configuration-activation.test.mjs`; `slow/adapter-sdk/independent-plugin.test.mjs`                                                                          |
+| 20                                 | 5                        | `unit/kernel/authority-replay.test.mjs`                                                                                                                                                                                |
+| 21                                 | 1–3, 8, 20               | `integration/conformance/local-git-adapter.test.mjs`; `slow/feasibility/reference-topology.test.mjs`; `slow/host-bridges/assurance.test.mjs`                                                                           |
+| Quota/retention operating envelope | 1, 3, 5, 9, 16           | `slow/feasibility/github-reference-certification.test.mjs`; `integration/conformance/github-quota.test.mjs`; `integration/kernel/retention.test.mjs`; Task 3 benchmark report                                          |
 
 ## Final Program Verification
 
@@ -1196,6 +1323,7 @@ results:
 
 ```sh
 npm test
+npm run test:integration
 npm run test:slow
 npm run lint
 npm run format:check
