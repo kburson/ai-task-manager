@@ -252,14 +252,60 @@ separate reconstructed records.
 ### Agent Cost Ledger
 
 The Agent Cost Ledger is a logical ledger of immutable AITM GitHub record
-envelopes attached to the owning issue. Each event envelope uses the existing
-canonical-record and comment-store contracts, including payload hashing,
-secret rejection, repository/issue correlation, and exact write read-back.
+envelopes attached to the owning issue. Each event envelope retains the existing
+canonical-record validation, payload hashing, secret rejection,
+repository/issue correlation, and exact write read-back. Its comment transport
+uses the isolated cost namespace below; the current generic comment-store
+reader must not be reused unchanged for cost evidence.
 
 A replaceable `Agent Cost Ledger` projection comment may render a compact table
 for people. It is a read model, not authority. It can be regenerated from the
 immutable event and reconciliation envelopes. A missing or stale projection
 does not invalidate accepted records.
+
+### Cost-record read isolation
+
+The existing generic comment reader parses every comment claiming `aitm-record`
+before consumers filter record types; one malformed claimant aborts the entire
+read. Cost capture must not enlarge that lifecycle-gating failure domain.
+Before enabling any cost writer, introduce a separate `aitm-cost-record`
+comment transport for all cost event, reconciliation, capture-policy, and
+subscription envelopes. This is an explicit transport extension, not a claim
+that the current generic reader already provides isolation. The envelope
+schema, canonicalization, hash, secret checks, correlation, provenance, and
+write/read-back validation stay unchanged. A dedicated codec renders and
+extracts the cost marker; only an allowlisted cost record type may use it.
+Governance records must never be accepted through this tolerant namespace.
+
+The cost marker starts the comment body and follows one canonical case and
+whitespace grammar shared by its writer and parser. Its name cannot match the
+existing generic `claimsAitmRecord` predicate. Shared lifecycle, workflow,
+contract, and estimation readers retain their current fail-closed policy for
+generic records and ignore cost-namespace comments before envelope parsing.
+Do not globally catch record errors or trust a malformed payload's claimed
+record type to exempt it from governance validation.
+
+The cost reader enumerates correlated GitHub comment nodes without first
+passing them through the generic record parser. It validates each cost
+candidate independently. A malformed, noncanonical, oversized, secret-bearing,
+or uncorrelated cost envelope contributes no quantity; a bounded diagnostic
+records its opaque comment identity and reason without copying its body.
+Other valid cost evidence remains readable. Missing or altered markers remain
+detectable through keyed timing/policy coverage. An unparseable candidate with
+unproven attribution prevents certifying the affected issue's cost coverage;
+it cannot be silently discarded as irrelevant. A transport-wide enumeration
+or provenance failure makes coverage unavailable, never complete.
+
+No cost-system projection, diagnostic, visible envelope prose, or reconciliation
+report posted to GitHub may contain text matching the generic record-claim
+predicate or a raw cost marker outside a valid cost envelope. Use bounded IDs
+and reason codes instead of quoting envelopes. Test the rendered comment,
+including escaped JSON, against that constraint before publication. Do not
+change the existing governance marker grammar or weaken fail-closed lifecycle
+behavior as part of this work. Arbitrary external edits that turn a comment
+into a generic governance-record claimant retain that existing failure policy;
+the isolation promise covers cost-namespace corruption and cost-generated
+output, not deliberate relabeling into governance authority.
 
 ### Local capture outbox
 
@@ -268,6 +314,11 @@ the event identifier, issue, timing descriptor, expected sources, source cursor
 references, and operation status. It then atomically freezes the observations,
 their actual observation times, predecessor identifiers, normalized payload,
 payload hash, and intended remote record identity before publishing them.
+The frozen identity includes the complete envelope (`recordId`, `createdAt`,
+`authority.grantId`, `authority.epoch`, `authority.actor`, links, and payload),
+the visible prose, transport marker version, and exact rendered body. Retries
+replay those bytes, not a new envelope generated from an identical payload.
+The envelope authority epoch is separate from the source's measurement epoch.
 The outbox is atomic and idempotent. It stores no credentials or
 prompt/tool-result content.
 
@@ -319,6 +370,11 @@ bounded array, for example:
 
 Use safe semantic keys such as `nativeCounters`, `category`, `value`, and
 `sourceLocator`, not native dictionary keys or `sourcePath`/`transcriptPath`.
+The policy also rejects key fragments such as `auth` and `pat`; adapter
+capability declarations need safe keys too. Keep credential setup requirements
+in local adapter configuration. Publish only a bounded non-secret capability
+projection with safe keys (for example, `accessMode`), never a verbatim adapter
+configuration object.
 All event, reconciliation, capture-policy, and subscription payloads must pass
 the existing `assertNoSecretRecordData` and credential-value checks unmodified.
 This design adds no safe-key exception and does not weaken secret detection.
@@ -334,8 +390,11 @@ an explicitly reviewed adapter/schema change can represent it safely.
 
 Payloads must fit the existing 256 KiB record-JSON ceiling and the smaller of
 the record layer's 1 MiB comment ceiling and the transport's accepted size.
-Adapters declare bounded category/line counts and enforce serialized byte
-limits before publication. Oversized evidence yields a small incomplete
+Adapters declare bounded category/line counts. Before publication, enforce the
+record-JSON bound on the complete canonical, HTML-comment-escaped envelope and
+the comment/transport bound on the final rendered body, including marker and
+visible prose. Raw payload size is not sufficient: escaping can expand bytes.
+Oversized evidence yields a small incomplete
 observation with a size diagnostic, not silently truncated counters or an
 endlessly retried oversized envelope. Diagnostic codes use the stable
 `<source>-<condition>` convention, for example `claude-transcript-unresolved`.
@@ -814,8 +873,20 @@ the affected remote view incomplete until the chain is available.
 
 ### Duplicate event
 
-An existing identical event/source payload is an idempotent success. A hash
-conflict is a hard reconciliation condition; neither record is overwritten.
+An existing event/source record with the intended record identity and exact
+frozen body is an idempotent success. An equal payload hash alone cannot prove
+write completion. Different envelope identity or body requires reconciliation
+even when payloads agree; a payload hash conflict is likewise a hard
+reconciliation condition. Neither record is overwritten.
+
+### Ledger read unavailable or corrupt
+
+Apply the cost-record read isolation contract above. Reject invalid cost
+envelopes individually, retain valid evidence as a known subtotal, and mark
+coverage incomplete. Never count malformed data as zero or as accepted
+authority. A failed enumeration yields unavailable coverage. Cost corruption
+must not abort lifecycle, workflow-preflight, or estimation reads; malformed
+generic governance records retain their existing fail-closed behavior.
 
 ### Out-of-order observation
 
@@ -937,6 +1008,11 @@ calls.
 - rejected native names and injected credential keys/values fail safely,
   without encoding-based bypass or a false complete observation;
 - serialized record/transport size bounds produce an incomplete diagnostic;
+- isolated cost-marker codec round-trips preserve all existing envelope
+  validation and cannot admit a governance record type;
+- malformed cost envelopes degrade cost coverage without poisoning shared
+  lifecycle/workflow/estimation readers;
+- rendered cost comments never claim the generic record namespace;
 - credential and prompt-content rejection;
 - redaction of account/key references;
 - feature-disabled byte compatibility;
@@ -1007,6 +1083,19 @@ The implementation plan must preserve these concrete invariants:
 11. Validate a many-to-many span replacement in one reconciliation payload while
     the envelope's `supersedes` remains one prior revision ID or null. Exercise
     payload-reference cycle checks and reject partial application.
+12. Put valid governance records, valid cost envelopes, and one malformed
+    cost-namespace envelope on an issue. `resolveLifecycleGateEvidence`,
+    workflow-preflight's record read, and estimation forecast/outcome reads
+    produce the same governance results as without the cost comments.
+    `npx aitm cost #N` returns the valid known subtotal and an incomplete
+    coverage diagnostic for the corrupt comment. Repeat for noncanonical,
+    oversized, missing-marker, and quoted-marker cost evidence. Separately
+    verify that malformed generic governance claimants still fail closed and
+    that cost-generated diagnostics/projections cannot emit either raw marker.
+13. Retry a frozen record after advancing the clock and local authority defaults.
+    Reuse the exact envelope identity and rendered body; an equal payload in
+    a newly generated envelope is not an exact read-back success. Exercise
+    rendered escaped-envelope limits, not only raw payload length.
 
 ## Acceptance-criteria traceability
 
