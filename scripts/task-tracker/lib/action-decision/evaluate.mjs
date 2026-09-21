@@ -85,11 +85,15 @@ export async function readExactTrunkTip({ remote, ref, cwd, execGit } = {}) {
 
 /** A configured local branch is a different, explicitly labeled authority. */
 export async function readLocalTrunkTip({ localRef, cwd, execGit } = {}) {
-  if (!validTrunkRef(localRef) || typeof execGit !== 'function') {
+  const qualifiedRef =
+    typeof localRef === 'string' && !localRef.startsWith('refs/')
+      ? `refs/heads/${localRef}`
+      : localRef;
+  if (!validTrunkRef(qualifiedRef) || typeof execGit !== 'function') {
     return unavailableTrunkAuthority('unsupported-ref');
   }
   try {
-    const result = await execGit(['rev-parse', '--verify', `${localRef}^{commit}`], { cwd });
+    const result = await execGit(['rev-parse', '--verify', `${qualifiedRef}^{commit}`], { cwd });
     const sha = (typeof result === 'string' ? result : result?.stdout)?.trim();
     if (!/^[a-f0-9]{40,64}$/.test(sha ?? '')) {
       return unavailableTrunkAuthority('local-tip-invalid');
@@ -99,7 +103,7 @@ export async function readLocalTrunkTip({ localRef, cwd, execGit } = {}) {
     return Object.freeze({
       status: 'observed',
       authority: 'local',
-      ref: localRef,
+      ref: qualifiedRef,
       sha,
       objectComplete: true,
       shallow: false,
