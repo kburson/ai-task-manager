@@ -14,6 +14,11 @@ import {
   parseVerificationReceipt,
 } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
+import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../lib/workflow-policy/enforcement.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import {
@@ -1448,7 +1453,37 @@ export async function verbReview(ctx) {
     // Persist derived Functional DoD proof only after ready, then scan a fresh
     // verified readback. Any write, authority, or readback failure refuses;
     // the old stale-body fallback is not an authorization path.
-    const { scanBody } = await deriveAndRescan({
+    const evaluateReviewProjection = async ({ projection }) =>
+      (
+        await evaluateCompleteGuards({
+          fromState: 'test',
+          toState: 'review',
+          context: {
+            issueNumber: Number(issueNum),
+            repo: cfg.repo,
+            body: projection.body,
+            cfg,
+            fromState: 'test',
+            toState: 'review',
+            lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+          },
+          runGuards: runGuardsFn,
+          loadPolicy: async ({ requirementIds }) =>
+            (ctx.loadWorkflowBoundary || loadWorkflowBoundary)({
+              repository: cfg.repo,
+              issue: Number(issueNum),
+              body: projection.body,
+              requirementIds,
+              activity: 'workflow-transition:review',
+              state: 'test',
+              now: nowIso(),
+              runtime:
+                ctx.workflowPolicyRuntime ||
+                createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+            }),
+        })
+      ).guardResult;
+    const { scanBody, persisted: normalizationPersisted } = await deriveAndRescan({
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
@@ -1457,20 +1492,14 @@ export async function verbReview(ctx) {
         nowIso,
         mutateBody: mutateBodyFn,
         readBack: ctx.normalizationReadBack,
-        refreshAndEvaluate:
-          ctx.normalizationEvaluate ||
-          (async ({ projection }) =>
-            runGuardsFn('test', 'review', {
-              issueNumber: Number(issueNum),
-              repo: cfg.repo,
-              body: projection.body,
-              cfg,
-              fromState: 'test',
-              toState: 'review',
-              lifecycleEvidence: reviewEvidence.lifecycleEvidence,
-            })),
+        refreshAndEvaluate: ctx.normalizationEvaluate || evaluateReviewProjection,
       },
     });
+    if (normalizationPersisted) {
+      console.log(
+        `[task-tracker] Functional DoD normalization persisted for ${target}; Review transition remains pending.`
+      );
+    }
     // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
     // call) now lives in `STATES.test.exitGuards` as the
     // `test-exit-pre-close-completeness` guard. Evaluate the full test→review
@@ -1479,15 +1508,7 @@ export async function verbReview(ctx) {
     // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
     // one indented line per offending checkbox, retry hint, exit 4.
     if (effectiveReviewCommandState === 'test') {
-      const guardResult = await runGuardsFn('test', 'review', {
-        issueNumber: Number(issueNum),
-        repo: cfg.repo,
-        body: scanBody,
-        cfg,
-        fromState: 'test',
-        toState: 'review',
-        lifecycleEvidence: reviewEvidence.lifecycleEvidence,
-      });
+      const guardResult = await evaluateReviewProjection({ projection: { body: scanBody } });
       const completenessRefusal = (guardResult.refusals || []).find(
         (r) => r.id === 'test-exit-pre-close-completeness'
       );

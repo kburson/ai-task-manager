@@ -933,19 +933,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 2157,
+          "line": 2173,
           "fingerprint": "sha256:e082d3e0bf8bd6bc08fa98eed3c52e616dc3c6329d243087f10166f7d85b6894",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3129,
+          "line": 3145,
           "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 4470,
+          "line": 4501,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }
@@ -968,61 +968,61 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 160,
+          "line": 165,
           "fingerprint": "sha256:5ae2aa31548c7b99021de00267554dcad722ef3c3098d2ba0f6c46b440a3fab9",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 174,
+          "line": 179,
           "fingerprint": "sha256:bcdf59cbc9f3d1cc0d316fc7dfba9ceba5ae313760647ed052417a2bb04d2987",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 195,
+          "line": 200,
           "fingerprint": "sha256:2c2d9762465336a65378c8f9abd348e900bf0b8dab628680ce9485672d33ddc8",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 205,
+          "line": 210,
           "fingerprint": "sha256:34230c4c068fe1caba35d588759884e27001bcb5a1c90ecda32d6c40e1d61d07",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 230,
+          "line": 235,
           "fingerprint": "sha256:12a924c9266eb99e05005e710513c4f923863e65c59240601f8770ecf04d97af",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 247,
+          "line": 252,
           "fingerprint": "sha256:4fd7737234de12682b5c0e66f1b6e97d308e88021d1649339f8f4ce8508f05f3",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 264,
+          "line": 269,
           "fingerprint": "sha256:2a7774416d42325ecc53793cb54ee966572837a12e045ebfb9bf2f4842b9b2f9",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 382,
+          "line": 387,
           "fingerprint": "sha256:856c72d633b8e4f45173703ef5a3b9df62e3f153120d5def4ac8a93357583a5e",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 462,
+          "line": 467,
           "fingerprint": "sha256:296880b56b3c5949acc2091bd40d31f4e94ff40cbd7a74c105d915cda0d2ec08",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 1161,
+          "line": 1166,
           "fingerprint": "sha256:492e8cc29829df9cabe2708fc7955250795a0821d1a29aee6fa0f99bc8dcf005",
           "kind": "refusal"
         }

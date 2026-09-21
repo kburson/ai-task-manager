@@ -66,6 +66,11 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
+import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../lib/workflow-policy/enforcement.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { resolveDocsOnlyLaneSkipProof } from '../lib/docs-only-lane-skip-proof.mjs';
@@ -2000,6 +2005,17 @@ export async function runReopenedCloseRecovery({
   return { body: mutation.body, transaction: applied.transaction, record: durableRecord };
 }
 
+// The ordinary close path already permits this one configured human-gate
+// bypass. Apply the same narrow policy to projected readiness before a write.
+export function applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed) {
+  if (!reviewGateBypassed || guardResult.status !== 'blocked') return guardResult;
+  const refusals = guardResult.refusals.filter(
+    (refusal) => refusal.id !== 'review-exit-review-approved'
+  );
+  if (refusals.length > 0) return guardResult;
+  return { ...guardResult, status: 'ready', ok: true, refusals: [], humanDecision: null };
+}
+
 export async function verbClose(ctx) {
   const convergenceTailProfile = resolveTailProfile(
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
@@ -3457,32 +3473,58 @@ export async function verbClose(ctx) {
           throw new NormalizationRefusalError('normalization-authority-drift');
         }
         const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
-        return runGuards('review', 'done', {
-          issueNumber: Number(closeIssueNum),
-          repo: cfg.repo,
+        const { guardResult } = await evaluateCompleteGuards({
           fromState: 'review',
           toState: 'done',
-          body: projectedBody,
-          lifecycleEvidence: projectedLifecycleEvidence,
-          cfg,
-          projectDir,
-          deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
+          context: {
+            issueNumber: Number(closeIssueNum),
+            repo: cfg.repo,
+            fromState: 'review',
+            toState: 'done',
+            body: projectedBody,
+            lifecycleEvidence: projectedLifecycleEvidence,
+            cfg,
+            projectDir,
+            deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
+          },
+          runGuards,
+          loadPolicy: async ({ requirementIds }) =>
+            (ctx.loadWorkflowBoundary || loadWorkflowBoundary)({
+              repository: cfg.repo,
+              issue: Number(closeIssueNum),
+              body: projectedBody,
+              requirementIds,
+              activity: 'workflow-transition:done',
+              state: 'review',
+              now: nowIso(),
+              runtime:
+                ctx.workflowPolicyRuntime ||
+                createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+            }),
         });
+        return applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed);
       };
-      const normalized = await deriveAndRescan({
-        issueNumber: closeIssueNum,
-        repo: cfg.repo,
-        scanBody: body,
-        deps: {
-          pexec,
-          nowIso,
-          refreshAndEvaluate: evaluateCloseProjection,
-          mutateBody: ctx.normalizationMutateBody,
-          readBack: ctx.normalizationReadBack,
-        },
-      });
+      const normalized = force
+        ? { scanBody: body, persisted: false }
+        : await deriveAndRescan({
+            issueNumber: closeIssueNum,
+            repo: cfg.repo,
+            scanBody: body,
+            deps: {
+              pexec,
+              nowIso,
+              refreshAndEvaluate: evaluateCloseProjection,
+              mutateBody: ctx.normalizationMutateBody,
+              readBack: ctx.normalizationReadBack,
+            },
+          });
       body = normalized.scanBody;
       closeBody = body;
+      if (normalized.persisted) {
+        console.log(
+          `[task-tracker] Functional DoD normalization persisted for ${closeTarget}; close transition remains pending.`
+        );
+      }
 
       closeLifecycleEvidence = await loadCloseLifecycleEvidence(body);
 
@@ -3549,18 +3591,7 @@ export async function verbClose(ctx) {
         // `origin/trunk` (a remote-tracking ref that is never checked out) so the
         // shared local `trunk` ref is never touched. Injected via the existing
         // `deps.closeGates.resolveTrunkRef` override hook. cfg.trunkRef still wins.
-        const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
-        const guardResult = await runGuards('review', 'done', {
-          issueNumber: Number(closeIssueNum),
-          repo: cfg.repo,
-          fromState: 'review',
-          toState: 'done',
-          body,
-          lifecycleEvidence: closeLifecycleEvidence,
-          cfg,
-          projectDir,
-          deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
-        });
+        const guardResult = await evaluateCloseProjection({ projection: { body } });
 
         const refusals = (guardResult.refusals || []).filter(
           (r) => !(r.id === 'review-exit-review-approved' && reviewGateBypassed)
