@@ -1,0 +1,99 @@
+--- a/docs/superpowers/plans/2026-09-20-1725-aitm-mcp-adapter-architecture.md
++++ b/docs/superpowers/plans/2026-09-20-1725-aitm-mcp-adapter-architecture.md
+@@ -29,7 +29,7 @@
+ at reviewed trunk commit
+ `267b91b9218b59342a0d70e0859a0e38523a3923`.
+ 
+-**Review status:** Iterative Single Agent Review (SAR) in progress. This is an
++**Review status:** Revised through iterative Single Agent Review (SAR). This is an
+ umbrella hydration plan, not an executable child plan or independent approval.
+ Review records are retained under
+ `docs/superpowers/reviews/aitm-mcp-adapter-architecture/plan-1725/SAR/`.
+@@ -85,6 +85,12 @@
+   participating port. `behavioral` hosts remain supervised-only.
+ - GitLab, Bitbucket, and Jira adapters are separately published projects. Their
+   implementation is not folded into the core package.
++- Provider tests use deterministic fixtures by default. Every live suite,
++  including Phase 0, is separately opted in against an explicitly authorized
++  disposable target. Missing credentials or opt-in produce a visible skip,
++  never a certification pass; retained live results are required by the
++  capability gate. Child plans specify the exact command and allowed effects
++  before any live operation.
+ - New package tests use only `scripts/tests/unit/`, `integration/`, or `slow/`
+   lanes with a subsystem directory and the allocated child story tag;
+   conformance is a test subject, not a fourth lane.
+@@ -377,8 +383,10 @@
+       `orchestrator-only`, with a named portable parent for internal primitives.
+ - [ ] Verify the inventory has no unclassified executable operation.
+ - [ ] Install an actual packed tarball in an isolated consumer and import the
+-      public SDK and kernel-dependent CLI there. Assert the production closure
++      public SDK and smoke-test the existing CLI there. Assert the production closure
+       is present and existing supported package entry points still resolve.
++      Task 9 adds kernel-backed CLI coverage once that route exists; Task 12
++      adds MCP startup and Task 16 adds the published conformance runner.
+       A repository self-link or pack dry-run cannot establish this result.
+ 
+ **Verification Commands:**
+@@ -501,6 +509,9 @@
+ - Create: `scripts/tests/integration/kernel/bootstrap.test.mjs`.
+ - Create: `src/kernel/runtime/execution-context.mjs`, `dispatcher.mjs`,
+   `verified-loader.mjs`, and `installation-admission.mjs`.
++- Extend: `scripts/package/install-contract.mjs` and
++  `install-manifest-store.mjs` with the initial versioned runtime/admission
++  contract used by Task 10 staging and activation.
+ - Consume Task 4 ABI definitions and Phase 0 loader proof; create
+   `scripts/tests/integration/kernel/runtime-admission.test.mjs`.
+ - Create: `scripts/tests/integration/kernel/governed-action-flow.test.mjs` and
+@@ -605,6 +616,8 @@
+   adapters to call application services.
+ - Create: `scripts/tests/integration/conformance/github-adapter.test.mjs` and
+   `scripts/tests/integration/transports/cli-kernel-parity.test.mjs`.
++- Extend: `scripts/tests/slow/package/kernel-consumer.test.mjs` with the
++  kernel-backed CLI route; use a provisioned disposable fixture.
+ - Create: `src/adapters/github/backpressure.mjs` and
+   `scripts/tests/integration/conformance/github-quota.test.mjs`.
+ - Create: `scripts/tests/slow/conformance/github-live.test.mjs` for explicitly
+@@ -683,7 +696,11 @@
+       board, branch, PR, journal, approval, and receipt references.
+ - [ ] Fence or verifiably stop old writers, settle pending effects, capture the
+       final legacy checkpoint, and read back one durable activation record.
+-- [ ] Keep the old path selected on pre-activation failure and the new authority
++- [ ] Inject lost activation-write/read-back responses and partial activation.
++      Until durable selection is reconciled, block both writer paths rather
++      than classifying uncertainty as a pre-activation failure. Retain the
++      migration identity and original record for safe lookup/recovery.
++- [ ] Keep the old path selected on proven pre-activation failure and the new authority
+       selected on post-activation local failure.
+ - [ ] Require a separately reviewed reverse cutover; never delete or relabel
+       historical evidence during rollback.
+@@ -771,7 +788,7 @@
+ **Verification Commands:**
+ 
+ ```sh
+-node --test scripts/tests/integration/transports/mcp-tools.test.mjs scripts/tests/integration/transports/mcp-resources.test.mjs
++node --test scripts/tests/integration/transports/mcp-tools.test.mjs scripts/tests/integration/transports/mcp-resources.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
+ npm audit --omit=dev
+ npm pack --dry-run
+ ```
+@@ -943,6 +960,12 @@
+   scope of `docs/decisions/0002-github-native-authority-records.md`.
+ - Create: `bin/aitm-adapter-conformance.mjs`.
+ - Create: `scripts/tests/slow/adapter-sdk/independent-plugin.test.mjs`.
++- Create the independently installable reference fixture at
++  `scripts/tests/fixtures/adapters/reference/`, including `package.json`,
++  `aitm-adapter.json`, and the tracked runtime `dist/adapter.mjs` used below.
++  Its peer dependency resolves the packed SDK; it cannot import private core
++  files or the source worktree. This consumer fixture is distinct from the
++  public runner fixtures under `src/adapter-sdk/fixtures/`.
+ - Extend: `package.json` exports, bins, and packed-file contract for the
+   conformance runner and its runtime fixtures using the Task 4 ratified ABI.
+ - Extend: `scripts/tests/slow/package/kernel-consumer.test.mjs` to invoke the
+@@ -976,7 +999,7 @@
+ **Verification Commands:**
+ 
+ ```sh
+-node --test scripts/tests/slow/adapter-sdk/independent-plugin.test.mjs
++node --test scripts/tests/slow/adapter-sdk/independent-plugin.test.mjs scripts/tests/slow/package/kernel-consumer.test.mjs
+ node bin/aitm-adapter-conformance.mjs scripts/tests/fixtures/adapters/reference/dist/adapter.mjs
+ npm pack --dry-run
+ ```
