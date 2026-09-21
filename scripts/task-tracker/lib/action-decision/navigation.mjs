@@ -26,6 +26,7 @@ export function resolveActionNavigation({ actionId, state } = {}) {
   const recorded = typeof state === 'object' && state !== null ? state.recorded : state;
   const live = typeof state === 'object' && state !== null ? state.live : recorded;
   const policy = actionPolicyFor(actionId, recorded);
+  if (recorded === 'done' && recorded === live) return route('terminal');
   if (policy.kind === 'unknown-action') {
     return route('indeterminate', null, null, blocker('unknown-vocabulary'));
   }
@@ -40,7 +41,6 @@ export function resolveActionNavigation({ actionId, state } = {}) {
   if (policy.kind === 'unknown-state' || policy.kind === 'bootstrap') {
     return route('indeterminate', null, null, blocker('state-unavailable', { reason: 'unknown' }));
   }
-  if (recorded === 'done') return route('terminal');
   if (!policy.ok) {
     return route('pending', policy.target ?? null, null, blocker('action-not-explain-ready'));
   }
