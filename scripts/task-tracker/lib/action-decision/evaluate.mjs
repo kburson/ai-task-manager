@@ -19,22 +19,42 @@ import {
  * the Git command transport; this seam never fetches, updates refs, or accepts
  * a remote-tracking ref as a substitute for the current remote tip.
  */
+const unavailableTrunkAuthority = (reason) =>
+  Object.freeze({
+    status: 'indeterminate',
+    code: 'attribution-authority-unavailable',
+    reason,
+  });
+
+const validTrunkRef = (ref) =>
+  typeof ref === 'string' && /^refs\/heads\/[A-Za-z0-9._/-]+$/.test(ref) && !ref.includes('..');
+
+async function verifyLocalGraph({ sha, cwd, execGit }) {
+  const output = async (args) => {
+    const result = await execGit(args, { cwd });
+    return typeof result === 'string' ? result : result?.stdout;
+  };
+  const shallow = (await output(['rev-parse', '--is-shallow-repository']))?.trim();
+  if (shallow !== 'false') return unavailableTrunkAuthority('shallow-or-unknown');
+  await output(['cat-file', '-e', `${sha}^{commit}`]);
+  const graph = await output(['rev-list', '--objects', '--missing=print', sha]);
+  if (!graph || !graph.split('\n').some((line) => line.startsWith(sha))) {
+    return unavailableTrunkAuthority('object-graph-invalid');
+  }
+  if (graph.split('\n').some((line) => line.startsWith('?'))) {
+    return unavailableTrunkAuthority('object-graph-incomplete');
+  }
+  return null;
+}
+
 export async function readExactTrunkTip({ remote, ref, cwd, execGit } = {}) {
-  const unavailable = (reason) =>
-    Object.freeze({
-      status: 'indeterminate',
-      code: 'attribution-authority-unavailable',
-      reason,
-    });
   if (
     typeof remote !== 'string' ||
     !/^[A-Za-z0-9._-]+$/.test(remote) ||
-    typeof ref !== 'string' ||
-    !/^refs\/heads\/[A-Za-z0-9._/-]+$/.test(ref) ||
-    ref.includes('..') ||
+    !validTrunkRef(ref) ||
     typeof execGit !== 'function'
   )
-    return unavailable('unsupported-ref');
+    return unavailableTrunkAuthority('unsupported-ref');
   const output = async (args) => {
     const result = await execGit(args, { cwd });
     return typeof result === 'string' ? result : result?.stdout;
@@ -44,20 +64,12 @@ export async function readExactTrunkTip({ remote, ref, cwd, execGit } = {}) {
     const lines = String(remoteOutput ?? '')
       .trim()
       .split('\n');
-    if (lines.length !== 1) return unavailable('remote-tip-invalid');
+    if (lines.length !== 1) return unavailableTrunkAuthority('remote-tip-invalid');
     const match = /^([a-f0-9]{40,64})\s+([^\s]+)$/.exec(lines[0]);
-    if (!match || match[2] !== ref) return unavailable('remote-tip-invalid');
+    if (!match || match[2] !== ref) return unavailableTrunkAuthority('remote-tip-invalid');
     const sha = match[1];
-    const shallow = (await output(['rev-parse', '--is-shallow-repository']))?.trim();
-    if (shallow !== 'false') return unavailable('shallow-or-unknown');
-    await output(['cat-file', '-e', `${sha}^{commit}`]);
-    const graph = await output(['rev-list', '--objects', '--missing=print', sha]);
-    if (!graph || !graph.split('\n').some((line) => line.startsWith(sha))) {
-      return unavailable('object-graph-invalid');
-    }
-    if (graph.split('\n').some((line) => line.startsWith('?'))) {
-      return unavailable('object-graph-incomplete');
-    }
+    const graphFailure = await verifyLocalGraph({ sha, cwd, execGit });
+    if (graphFailure) return graphFailure;
     return Object.freeze({
       status: 'observed',
       remote,
@@ -67,7 +79,33 @@ export async function readExactTrunkTip({ remote, ref, cwd, execGit } = {}) {
       shallow: false,
     });
   } catch {
-    return unavailable('remote-or-local-read-failed');
+    return unavailableTrunkAuthority('remote-or-local-read-failed');
+  }
+}
+
+/** A configured local branch is a different, explicitly labeled authority. */
+export async function readLocalTrunkTip({ localRef, cwd, execGit } = {}) {
+  if (!validTrunkRef(localRef) || typeof execGit !== 'function') {
+    return unavailableTrunkAuthority('unsupported-ref');
+  }
+  try {
+    const result = await execGit(['rev-parse', '--verify', `${localRef}^{commit}`], { cwd });
+    const sha = (typeof result === 'string' ? result : result?.stdout)?.trim();
+    if (!/^[a-f0-9]{40,64}$/.test(sha ?? '')) {
+      return unavailableTrunkAuthority('local-tip-invalid');
+    }
+    const graphFailure = await verifyLocalGraph({ sha, cwd, execGit });
+    if (graphFailure) return graphFailure;
+    return Object.freeze({
+      status: 'observed',
+      authority: 'local',
+      ref: localRef,
+      sha,
+      objectComplete: true,
+      shallow: false,
+    });
+  } catch {
+    return unavailableTrunkAuthority('local-read-failed');
   }
 }
 
@@ -76,6 +114,7 @@ export async function evaluateExactTrunkAttribution({
   issue,
   remote,
   ref,
+  localRef,
   cwd,
   execGit,
   hasAttributingCommit = defaultHasAttributingCommit,
@@ -87,7 +126,13 @@ export async function evaluateExactTrunkAttribution({
       reason: 'repository-path-required',
     });
   }
-  const tip = await readExactTrunkTip({ remote, ref, cwd, execGit });
+  if (localRef !== undefined && (remote !== undefined || ref !== undefined)) {
+    return unavailableTrunkAuthority('ambiguous-authority');
+  }
+  const tip =
+    localRef === undefined
+      ? await readExactTrunkTip({ remote, ref, cwd, execGit })
+      : await readLocalTrunkTip({ localRef, cwd, execGit });
   if (tip.status !== 'observed') return tip;
   try {
     const attributed = await hasAttributingCommit(issue, { refs: [tip.sha], cwd });
