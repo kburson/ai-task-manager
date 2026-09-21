@@ -13,6 +13,7 @@ import { runReviewPreflight } from '../review-preflight.mjs';
 import { readWorktreeIdentity } from '../worktree-binding-guard.mjs';
 import { reviewAgentValidationAction } from '../resident-actions/review-agent-validation.mjs';
 import { readResidentActionLedger } from '../resident-action-ledger-read.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import {
@@ -23,6 +24,27 @@ import { evaluateCompleteGuards } from './evaluate.mjs';
 import { createObservationAttempt } from './observations.mjs';
 
 const HEAD = /^[a-f0-9]{40,64}$/;
+const REVIEW_EVIDENCE_REASONS = new Set([
+  'directory-test-evidence-missing',
+  'receipt-malformed',
+  'head-unresolvable',
+  'fingerprint-unresolvable',
+  'test-started-sha-mismatch',
+  'dod-verified-sha-mismatch',
+  'stage-mismatch',
+  'issue-mismatch',
+  'sha-mismatch',
+  'vc-set-mismatch',
+  'node-major-mismatch',
+  'platform-mismatch',
+  'lockfile-mismatch',
+  'config-mismatch',
+  'sandbox-dirty',
+  'command-identity-mismatch',
+  'command-missing',
+  'command-duplicate',
+  'command-red',
+]);
 const authorityFailure = (source, issue, reason = 'invalid') => ({
   guardId: 'authority-collection',
   code: 'authority-read-failed',
@@ -57,6 +79,16 @@ function preflightCategory(reason) {
   if (/acceptance criterion|evidence command/.test(reason)) return 'acceptance-evidence';
   if (/deliverable-posted/.test(reason)) return 'deliverable';
   return null;
+}
+
+export async function readReviewLedgerComment({ repository, commentId, run = pexec } = {}) {
+  if (!/^[1-9]\d*$/.test(String(commentId))) throw new TypeError('review-ledger:comment-id');
+  const { stdout } = await run('gh', ['api', `repos/${repository}/issues/comments/${commentId}`]);
+  const comment = JSON.parse(stdout);
+  if (String(comment.id) !== String(commentId) || typeof comment.body !== 'string') {
+    throw new TypeError('review-ledger:comment-identity');
+  }
+  return { id: String(comment.id), body: comment.body };
 }
 
 /** The complete Test→Review registry and workflow-policy evaluation used by explanation and both verbs. */
@@ -99,8 +131,18 @@ export async function evaluateReviewReadiness({
   const readHead =
     deps.readHead ??
     (async () => (await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir })).stdout.trim());
-  const body = await readBody();
-  const head = await readHead();
+  let body;
+  let head;
+  try {
+    body = await readBody();
+    head = await readHead();
+  } catch {
+    return {
+      status: 'indeterminate',
+      blockers: [authorityFailure('issue-body', issue, 'unavailable')],
+      observations: [],
+    };
+  }
   const fromState = readLastKnownState(body).state;
   if (!['test', 'review'].includes(fromState)) {
     return { status: 'indeterminate', blockers: [drift()], observations: [] };
@@ -138,15 +180,27 @@ export async function evaluateReviewReadiness({
             .filter(({ stage }) => stage === 'review')
             .at(-1);
           value = {
-            ledger: await readResidentActionLedger({
+            ledger: await (deps.readResidentLedger ?? readResidentActionLedger)({
               body,
               stateVisitId: visit ? `review:${visit.visit}:${visit.ts}` : 'legacy:review:1',
               actionId: 'review-agent-validation',
-              readComment: deps.readLedgerComment ?? (async () => null),
+              readComment:
+                deps.readLedgerComment ??
+                ((commentId) => readReviewLedgerComment({ repository: cfg.repo, commentId })),
               rereadBody: readBody,
             }),
           };
         } else {
+          const resolveEvidence =
+            deps.resolveReviewEvidence ??
+            (await import('../../verbs/review.mjs')).resolveReviewVerificationEvidence;
+          const reviewEvidence = await resolveEvidence({
+            body,
+            issueNumber: issue,
+            repository: cfg.repo,
+            projectDir,
+            getHeadSha: async () => readHead(),
+          });
           value = {
             preflight: await (deps.runPreflight ?? runReviewPreflight)({
               issueNumber: issue,
@@ -154,6 +208,12 @@ export async function evaluateReviewReadiness({
               projectDir,
               cfg,
             }),
+            reviewEvidence: {
+              ok: reviewEvidence?.ok,
+              mode: reviewEvidence?.mode,
+              reasons: reviewEvidence?.reasons,
+              lifecycleEvidence: reviewEvidence?.lifecycleEvidence ?? null,
+            },
           };
         }
         break;
@@ -204,9 +264,6 @@ export async function evaluateReviewReadiness({
       if (observation.status !== 'observed' || observation.value.status === 'indeterminate') {
         return { status: 'paused', reason: 'review-policy-unavailable' };
       }
-      if (observation.value.outcome === 'waived') {
-        return { status: 'paused', reason: 'review-policy-unavailable-or-waived' };
-      }
       const ledgerObservation = await attempt.observe({
         resource: 'delivery',
         identity: `evidence:${issue}:3`,
@@ -218,7 +275,27 @@ export async function evaluateReviewReadiness({
         return { status: 'paused', reason: 'review-ledger-unavailable' };
       }
       return reviewAgentValidationAction.verify(
-        { now },
+        {
+          now,
+          review: {
+            repo: cfg.repo,
+            loadWorkflowBoundary: deps.loadWorkflowBoundary ?? loadWorkflowBoundary,
+            workflowPolicyRuntime: deps.workflowPolicyRuntime,
+            readComments:
+              deps.readReviewComments ??
+              (async () => {
+                const { stdout } = await pexec('gh', [
+                  'api',
+                  '--paginate',
+                  '--slurp',
+                  `repos/${cfg.repo}/issues/${issue}/comments`,
+                ]);
+                return JSON.parse(stdout)
+                  .flat()
+                  .map(({ id, body: commentBody }) => ({ id: String(id), body: commentBody }));
+              }),
+          },
+        },
         {
           issue: { value: issue },
           body: { value: residentBody },
@@ -328,6 +405,7 @@ export async function collectReviewReadiness({
     };
   }
   const preflight = delivery?.preflight;
+  const reviewEvidence = delivery?.reviewEvidence;
   if (
     typeof preflight?.ok !== 'boolean' ||
     !Array.isArray(preflight?.reasons) ||
@@ -356,6 +434,52 @@ export async function collectReviewReadiness({
     } else {
       preflightBlockers = [authorityFailure('delivery', issue, 'incomplete')];
       preflightIndeterminate = true;
+    }
+  }
+
+  if (fromState === 'test') {
+    if (
+      typeof reviewEvidence?.ok !== 'boolean' ||
+      !Array.isArray(reviewEvidence.reasons) ||
+      !['receipt-v1', 'legacy-marker', 'github-records-v1'].includes(reviewEvidence.mode) ||
+      (reviewEvidence.ok && reviewEvidence.reasons.length > 0)
+    ) {
+      return {
+        status: 'indeterminate',
+        blockers: [authorityFailure('delivery', issue, 'incomplete')],
+        observations,
+      };
+    }
+    if (!reviewEvidence.ok) {
+      if (
+        reviewEvidence.reasons.length === 0 ||
+        reviewEvidence.reasons.some(({ code }) => !REVIEW_EVIDENCE_REASONS.has(code))
+      ) {
+        return {
+          status: 'indeterminate',
+          blockers: [authorityFailure('delivery', issue, 'incomplete')],
+          observations,
+        };
+      }
+      preflightBlockers.push(
+        ...reviewEvidence.reasons.map(({ code }) => ({
+          guardId: 'authority-collection',
+          code: 'review-test-evidence-refused',
+          args: { reason: code },
+          noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
+        }))
+      );
+    }
+    if (
+      reviewEvidence.mode === 'github-records-v1' &&
+      canonicalRecordJson(reviewEvidence.lifecycleEvidence ?? null) !==
+        canonicalRecordJson(preflight.lifecycleEvidence ?? null)
+    ) {
+      return {
+        status: 'indeterminate',
+        blockers: [authorityFailure('delivery', issue, 'invalid')],
+        observations,
+      };
     }
   }
 
@@ -435,7 +559,7 @@ export async function collectReviewReadiness({
       repo: ports.cfg?.repo,
       projectDir: ports.projectDir,
       body: projection.body,
-      lifecycleEvidence: preflight.lifecycleEvidence ?? null,
+      lifecycleEvidence: reviewEvidence.lifecycleEvidence ?? preflight.lifecycleEvidence ?? null,
       toState: 'review',
     },
     runGuards: ports.runGuards,

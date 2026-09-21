@@ -35,6 +35,7 @@ function fixture({
   issueBody = bodyFor(state),
   boardState = state,
   preflight = null,
+  reviewEvidence = { ok: true, mode: 'receipt-v1', reasons: [] },
   worktree = { matches: true, headSha: HEAD, clean: true },
   resident = { status: 'incomplete', reason: 'review-entry-missing' },
   runGuards,
@@ -62,7 +63,7 @@ function fixture({
           'project-board': { state: boardState },
           worktree,
           'session-state': { active: '#1667', paused: false },
-          delivery: { preflight: effectivePreflight },
+          delivery: { preflight: effectivePreflight, reviewEvidence },
         }[request.resource];
         return { ...request, value };
       },
@@ -208,6 +209,23 @@ test('Review does not accept a contradictory successful preflight carrying refus
   assert.ok(decision.blockers.some(({ code }) => code === 'authority-read-failed'));
 });
 
+test('Review refuses a stale exact-HEAD Test receipt even when preflight and guards pass', async () => {
+  const item = fixture();
+  const decision = await item.decision('review');
+  assert.equal(decision.status, 'ready');
+  const stale = fixture({
+    reviewEvidence: { ok: false, mode: 'receipt-v1', reasons: [{ code: 'sha-mismatch' }] },
+  });
+  const refused = await stale.decision('review');
+  assert.equal(refused.status, 'blocked');
+  assert.ok(
+    refused.blockers.some(
+      ({ code, args }) => code === 'review-test-evidence-refused' && args.reason === 'sha-mismatch'
+    )
+  );
+  assert.deepEqual(stale.effects, []);
+});
+
 test('Review refuses a preflight computed from a different issue-body revision', async () => {
   const item = fixture({
     preflight: {
@@ -283,6 +301,29 @@ test('Review guards receive the current directory-backed Test evidence from pref
   assert.equal(decision.status, 'ready', JSON.stringify(decision));
 });
 
+test('Review refuses contradictory directory Test evidence read at one boundary', async () => {
+  const preflightEvidence = { sourceKind: 'github-records/v1', acceptedRecordIds: ['old-test'] };
+  const resolvedEvidence = { sourceKind: 'github-records/v1', acceptedRecordIds: ['new-test'] };
+  const item = fixture({
+    preflight: {
+      ok: true,
+      reasons: [],
+      headSha: HEAD,
+      bodyDigest: bodyDigest(bodyFor('test')),
+      lifecycleEvidence: preflightEvidence,
+    },
+    reviewEvidence: {
+      ok: true,
+      mode: 'github-records-v1',
+      reasons: [],
+      lifecycleEvidence: resolvedEvidence,
+    },
+  });
+  const decision = await item.decision('review');
+  assert.equal(decision.status, 'indeterminate');
+  assert.ok(decision.blockers.some(({ code }) => code === 'authority-read-failed'));
+});
+
 test('real Test-to-Review guards refuse missing exact-HEAD Test proof and incomplete ACs', async () => {
   const issueBody = bodyFor('test').replace('- [x] Review entry', '- [ ] Review entry');
   const item = fixture({ issueBody, runGuards });
@@ -344,6 +385,10 @@ test('live Review read adapter refreshes issue, board, HEAD, and preflight at th
         reads.push('preflight');
         return { ok: true, reasons: [], headSha: HEAD, bodyDigest: bodyDigest(bodyFor('test')) };
       },
+      resolveReviewEvidence: async () => {
+        reads.push('receipt');
+        return { ok: true, mode: 'receipt-v1', reasons: [] };
+      },
       runGuards: async () => ({
         ok: true,
         status: 'ready',
@@ -353,7 +398,7 @@ test('live Review read adapter refreshes issue, board, HEAD, and preflight at th
     },
   });
   assert.equal(result.status, 'ready', JSON.stringify(result));
-  assert.deepEqual(reads, ['body', 'head', 'body', 'board', 'preflight']);
+  assert.deepEqual(reads, ['body', 'head', 'body', 'board', 'receipt', 'preflight']);
   assert.ok(result.bundle.observations.some(({ resource }) => resource === 'delivery'));
 });
 
@@ -418,4 +463,76 @@ test('live Review-state policy read failure is typed indeterminate, never a reru
   });
   assert.equal(result.status, 'indeterminate');
   assert.ok(result.blockers.some(({ code }) => code === 'authority-read-failed'));
+});
+
+test('initial Review authority read failure is typed indeterminate', async () => {
+  const { evaluateReviewReadiness } =
+    await import('../../../../task-tracker/lib/action-decision/review.mjs');
+  const decision = await evaluateReviewReadiness({
+    issue: ISSUE,
+    cfg: { repo: REPOSITORY },
+    projectDir: process.cwd(),
+    deps: {
+      readBody: async () => {
+        throw new Error('GitHub unavailable');
+      },
+      readHead: async () => HEAD,
+    },
+  });
+  assert.equal(decision.status, 'indeterminate');
+  assert.ok(decision.blockers.some(({ code }) => code === 'authority-read-failed'));
+});
+
+test('resident ledger comment reader fetches the exact GitHub comment read-only', async () => {
+  const { readReviewLedgerComment } =
+    await import('../../../../task-tracker/lib/action-decision/review.mjs');
+  const calls = [];
+  const comment = await readReviewLedgerComment({
+    repository: REPOSITORY,
+    commentId: '123',
+    run: async (cmd, args) => {
+      calls.push([cmd, args]);
+      return { stdout: JSON.stringify({ id: 123, body: 'ledger-event' }) };
+    },
+  });
+  assert.deepEqual(comment, { id: '123', body: 'ledger-event' });
+  assert.deepEqual(calls, [['gh', ['api', 'repos/example/project/issues/comments/123']]]);
+});
+
+test('active semantic waiver with failed Review marker selects self-rerun', async () => {
+  const { evaluateReviewReadiness } =
+    await import('../../../../task-tracker/lib/action-decision/review.mjs');
+  const { stampReviewFailed } =
+    await import('../../../../task-tracker/lib/agent-review/review-gate.mjs');
+  const reviewBody = stampReviewFailed(bodyFor('review'), ['old failure']);
+  const decision = await evaluateReviewReadiness({
+    issue: ISSUE,
+    cfg: { repo: REPOSITORY },
+    projectDir: process.cwd(),
+    deps: {
+      readBody: async () => reviewBody,
+      readHead: async () => HEAD,
+      fetchBoard: async () => ({ state: 'review' }),
+      readWorktree: async () => ({ matches: true, headSha: HEAD }),
+      readSessionState: async () => ({ active: '#1667' }),
+      runPreflight: async () => ({
+        ok: true,
+        reasons: [],
+        headSha: HEAD,
+        bodyDigest: bodyDigest(reviewBody),
+      }),
+      loadWorkflowBoundary: async () => ({
+        status: 'policy-compatible',
+        isWaived: () => true,
+        decision: () => ({ outcome: 'waived', authority: { recordId: 'w1', revision: 1 } }),
+      }),
+      readResidentLedger: async () => ({
+        status: 'clean',
+        visitStatus: 'current',
+        events: [{ phase: 'waived' }],
+      }),
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.equal(decision.selectedAction, 'review');
 });
