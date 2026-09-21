@@ -294,13 +294,6 @@ export async function runGuards(
     if (requests.length > 0) out.humanDecision = { requests };
     else out.humanDecision = null;
     if (Object.keys(derived).length > 0) out.derived = derived;
-    if (
-      ctx &&
-      typeof ctx === 'object' &&
-      Object.prototype.hasOwnProperty.call(derived, 'refinementPlan')
-    ) {
-      Reflect.set(ctx, 'refinementPlan', derived.refinementPlan);
-    }
     return out;
   }
 

@@ -10,8 +10,9 @@ import {
   validateRemediation,
 } from './remediations.mjs';
 
-export const ACTION_DECISION_SCHEMA = 'aitm.action-decision/v1';
-export const ACTION_VOCABULARY_VERSION = 'aitm.action-vocabulary/v1';
+export const ACTION_DECISION_SCHEMA_V1 = 'aitm.action-decision/v1';
+export const ACTION_DECISION_SCHEMA = 'aitm.action-decision/v2';
+export const ACTION_VOCABULARY_VERSION = 'aitm.action-vocabulary/v2';
 export const BOUNDARY_PRODUCER_IDS = Object.freeze([
   'authority-collection',
   'action-navigation',
@@ -95,7 +96,10 @@ const authoritySubject = Object.freeze({ type: 'authority-subject' });
 const registeredGuard = Object.freeze(['registered-guard']);
 
 export const CODE_DEFINITIONS = Object.freeze({
-  'guard-error': decisionIndeterminate('guard-error', registeredGuard),
+  'guard-error': decisionIndeterminate('guard-error', [
+    'registered-guard',
+    'action-result-validation',
+  ]),
   'guard-result-invalid': decisionIndeterminate('guard-result-invalid', [
     'registered-guard',
     'action-result-validation',
@@ -343,7 +347,13 @@ function validateDisposition(blocker, definition, path) {
 
 export function validateBlocker(
   value,
-  { status, path = 'blocker', registeredGuardIds = REGISTERED_GUARD_IDS } = {}
+  {
+    status,
+    path = 'blocker',
+    registeredGuardIds = REGISTERED_GUARD_IDS,
+    mixedStatus = false,
+    schema = ACTION_DECISION_SCHEMA,
+  } = {}
 ) {
   record(value, path);
   const hasRemediation = Object.hasOwn(value, 'remediation');
@@ -358,7 +368,23 @@ export function validateBlocker(
   if (!definition || !['decision-blocker', 'execution-normalization'].includes(definition.domain)) {
     fail(`${path}.code`, 'domain');
   }
-  if (!definition.legalStatuses.includes(status)) fail(`${path}.code`, 'status');
+  if (
+    !definition.legalStatuses.includes(status) &&
+    !(
+      mixedStatus &&
+      status === 'indeterminate' &&
+      definition.domain === 'decision-blocker' &&
+      definition.legalStatuses.includes('blocked')
+    )
+  )
+    fail(`${path}.code`, 'status');
+  if (
+    schema === ACTION_DECISION_SCHEMA_V1 &&
+    value.code === 'guard-error' &&
+    value.guardId === 'action-result-validation'
+  ) {
+    fail(`${path}.guardId`, 'producer');
+  }
   validateProducer(value.guardId, definition, `${path}.guardId`, registeredGuardIds);
   validateArgs(value.args, definition.argumentSchema, `${path}.args`);
   validateDisposition(value, definition, path);
@@ -653,15 +679,26 @@ export function validateActionDecision(value) {
     ],
     'root'
   );
-  if (value.schema !== ACTION_DECISION_SCHEMA) fail('schema');
+  if (![ACTION_DECISION_SCHEMA_V1, ACTION_DECISION_SCHEMA].includes(value.schema)) fail('schema');
   if (!Number.isInteger(value.issue) || value.issue <= 0) fail('issue', 'positive-integer');
   if (value.actionId !== null) nonemptyString(value.actionId, 'actionId');
   if (!STATUSES.includes(value.status)) fail('status', 'enum');
   if (!Array.isArray(value.blockers)) fail('blockers', 'array');
   if (value.status === 'ready' && value.blockers.length !== 0) fail('blockers', 'ready-empty');
   if (value.status !== 'ready' && value.blockers.length === 0) fail('blockers', 'nonempty');
+  const mixedStatus =
+    value.schema === ACTION_DECISION_SCHEMA &&
+    value.status === 'indeterminate' &&
+    value.blockers.some(({ code }) =>
+      CODE_DEFINITIONS[code]?.legalStatuses.includes('indeterminate')
+    );
   value.blockers.forEach((blocker, index) =>
-    validateBlocker(blocker, { status: value.status, path: `blockers[${index}]` })
+    validateBlocker(blocker, {
+      status: value.status,
+      path: `blockers[${index}]`,
+      mixedStatus,
+      schema: value.schema,
+    })
   );
   const actionDescriptor = value.actionId === null ? null : actionDescriptorFor(value.actionId);
   const unknownVocabulary = value.blockers.some(({ code }) => code === 'unknown-vocabulary');

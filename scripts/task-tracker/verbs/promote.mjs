@@ -34,6 +34,7 @@ import { appendAuditMarker } from '../lib/markers.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
+import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
 import { resolveStoryIntentSource } from '../lib/story-intent-source.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
@@ -52,7 +53,6 @@ import { currentSessionId } from '../word-counter.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
-  requirementIdsForGuardRefusals,
 } from '../lib/workflow-policy/enforcement.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -375,9 +375,8 @@ export async function runPromote({
   // #336 — delegate forward-transition gate enforcement to the guard registry.
   // Every previously-inline gate for backlog→refine, refine→ready-for-plan,
   // ready-for-plan→plan, plan→develop,
-  // and develop→test now lives in `STATES[from].exitGuards`. Side-channel:
-  // `planEntryFieldsBody` stashes the resolved refinement plan on `guardCtx`
-  // so the refine→plan post-success hook can run `applyRefinementEstimate`.
+  // and develop→test now lives in `STATES[from].exitGuards`. The final guard
+  // result carries the refinement plan for the post-success estimate hook.
   //
   // Refusals from guards NOT in `REFUSAL_ID_TO_STATUS` are intentionally
   // ignored at verb level — they fall through to the subprocess `move-state.mjs`
@@ -419,27 +418,37 @@ export async function runPromote({
       (deps.loadSession || loadSession)((deps.currentSessionId || currentSessionId)()),
   };
   const runGuardsFn = deps.runGuards || runGuards;
-  let guardResult = await runGuardsFn(recorded, target, guardCtx);
-  const policyRequirementIds = requirementIdsForGuardRefusals(guardResult.refusals);
-  if (policyRequirementIds.length > 0) {
-    const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
-    guardCtx.workflowPolicy = await loadBoundary({
-      repository: cfg.repo,
-      issue: issueNumber,
-      body,
-      requirementIds: policyRequirementIds,
-      activity: `workflow-transition:${target}`,
-      state: recorded,
-      now: nowIso(),
-      runtime:
-        deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
-    });
-    guardResult = await runGuardsFn(recorded, target, guardCtx);
-  }
-  const mappedRefusals = (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
+  const { guardResult } = await evaluateCompleteGuards({
+    fromState: recorded,
+    toState: target,
+    context: guardCtx,
+    runGuards: runGuardsFn,
+    loadPolicy: async ({ requirementIds }) => {
+      const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+      return loadBoundary({
+        repository: cfg.repo,
+        issue: issueNumber,
+        body,
+        requirementIds,
+        activity: `workflow-transition:${target}`,
+        state: recorded,
+        now: nowIso(),
+        runtime:
+          deps.workflowPolicyRuntime ||
+          createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+      });
+    },
+  });
+  // An indeterminate shared result is an authority failure, never a reason to
+  // delegate to the lower mutator. Block it even when its producer has no
+  // historical verb-specific status mapping.
+  const mappedRefusals =
+    guardResult.status === 'indeterminate'
+      ? guardResult.refusals
+      : (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
   const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
   if (verbRefusal) return verbRefusal;
-  const refinementPlan = guardCtx.refinementPlan || null;
+  const refinementPlan = guardResult.derived?.refinementPlan ?? null;
 
   // #267 — Test → Review pre-flight gates (dod-verified marker + #257
   // completeness scan) migrated into `STATES.test.exitGuards` and reached via

@@ -11,6 +11,8 @@ import {
 } from '../../../../task-tracker/lib/lifecycle-policy/actions.mjs';
 import {
   ACTION_DECISION_SCHEMA,
+  ACTION_DECISION_SCHEMA_V1,
+  ACTION_VOCABULARY_VERSION,
   AUTHORITY_RESOURCE_IDS,
   BOUNDARY_PRODUCER_IDS,
   CODE_DEFINITIONS,
@@ -100,7 +102,9 @@ test('the remediation registry is closed and rejects bypasses', () => {
 });
 
 test('the decision vocabulary exposes its version and reserved boundary producers', () => {
-  assert.equal(ACTION_DECISION_SCHEMA, 'aitm.action-decision/v1');
+  assert.equal(ACTION_DECISION_SCHEMA, 'aitm.action-decision/v2');
+  assert.equal(ACTION_DECISION_SCHEMA_V1, 'aitm.action-decision/v1');
+  assert.equal(ACTION_VOCABULARY_VERSION, 'aitm.action-vocabulary/v2');
   assert.deepEqual(BOUNDARY_PRODUCER_IDS, [
     'authority-collection',
     'action-navigation',

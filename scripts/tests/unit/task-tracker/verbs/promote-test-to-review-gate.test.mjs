@@ -246,6 +246,7 @@ test('AC6 — review still delegates to close (when Agent Review genuinely passe
     '<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n\n' +
     '- [x] Agent Review Passed <!-- aitm-verified ts="2026-05-10T00:00:00Z" gate="agent-review" result="pass" -->\n';
   const { deps, calls } = makeDeps({ body, live: 'review', liveAfter: 'done' });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
 
   const r = await runPromote({ issueNumber: 822, cfg, deps });
 

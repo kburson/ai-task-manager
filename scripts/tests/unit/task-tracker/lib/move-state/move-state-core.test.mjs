@@ -221,10 +221,12 @@ test('pre-mutation boundary reloads policy only after a waivable guard refusal',
     _runGuards: async (_from, _to, guardCtx) => {
       calls.push(['guards', guardCtx.workflowPolicy || null]);
       return guardCtx.workflowPolicy
-        ? { ok: true, refusals: [] }
+        ? { ok: true, status: 'ready', refusals: [], humanDecision: null }
         : {
             ok: false,
+            status: 'blocked',
             refusals: [{ id: 'plan-exit-deep-dive', reason: 'deep-dive-missing' }],
+            humanDecision: null,
           };
     },
   });
@@ -281,10 +283,12 @@ test('Plan → Develop exposes the exact successful guard decision for durable a
       if (!guardCtx.workflowPolicy) {
         return {
           ok: false,
+          status: 'blocked',
           refusals: [{ id: 'plan-exit-plan-approved', reason: 'plan-approved-missing' }],
+          humanDecision: null,
         };
       }
-      return { ok: true, refusals: [] };
+      return { ok: true, status: 'ready', refusals: [], humanDecision: null };
     },
   };
 

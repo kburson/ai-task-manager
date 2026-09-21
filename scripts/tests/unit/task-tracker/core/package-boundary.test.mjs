@@ -246,6 +246,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const actionPresentationAllowance = 1;
   // #1728 ships the read-only authority observation collector.
   const actionObservationAllowance = 1;
+  // #1729 ships the complete shared action evaluator.
+  const actionEvaluatorAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -260,7 +262,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryAttributionCommandAllowance +
     actionDecisionContractAllowance +
     actionPresentationAllowance +
-    actionObservationAllowance;
+    actionObservationAllowance +
+    actionEvaluatorAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

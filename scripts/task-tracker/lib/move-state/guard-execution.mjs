@@ -21,6 +21,7 @@
 // registry is populated even if this module is exercised in isolation.
 
 import { runGuards } from '../guard-registry.mjs';
+import { evaluateCompleteGuards } from '../action-decision/evaluate.mjs';
 import { resolveStoryIntentSource } from '../story-intent-source.mjs';
 import '../guard-bootstrap.mjs';
 import { decideBodyFetchFailure } from '../body-fetch-gate.mjs';
@@ -34,7 +35,6 @@ import { currentSessionId } from '../../word-counter.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
-  requirementIdsForGuardRefusals,
 } from '../workflow-policy/enforcement.mjs';
 
 // #968 — worktree-aware `deps.closeGates` for the review→done exit-slot.
@@ -195,7 +195,7 @@ export async function runGuardExecution(ctx) {
     const projectDir = getProjectDir();
     const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir });
 
-    const guardCtx = {
+    let guardCtx = {
       issueNumber: Number(issueArg),
       repo: cfg.repo,
       fromState: resolvedFromState,
@@ -211,37 +211,36 @@ export async function runGuardExecution(ctx) {
         (ctx._loadSession || loadSession)((ctx._currentSessionId || currentSessionId)()),
     };
     const runGuardsFn = ctx._runGuards || runGuards;
-    let guardResult = await runGuardsFn(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
-
-    // #1628 — ordinary stories pay no exception-record read when the baseline
-    // guards pass. If (and only if) a waivable guard refuses, resolve the live
-    // scope-bound authority inside this mutation boundary and re-run the same
-    // complete guard pipeline. The locked body is authoritative; an unavailable,
-    // revoked, expired, ambiguous, or stale record exposes no waiver and the
-    // original refusal remains.
-    const policyRequirementIds = requirementIdsForGuardRefusals(guardResult.refusals);
-    if (policyRequirementIds.length > 0) {
-      const loadBoundary = ctx._loadWorkflowBoundary || loadWorkflowBoundary;
-      guardCtx.workflowPolicy = await loadBoundary({
-        repository: cfg.repo,
-        issue: Number(issueArg),
-        body: guardBody,
-        requirementIds: policyRequirementIds,
-        activity: `workflow-transition:${stateArg}`,
-        state: resolvedFromState,
-        now: new Date().toISOString(),
-        runtime:
-          ctx._workflowPolicyRuntime ||
-          createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
-      });
-      guardResult = await runGuardsFn(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
-    }
+    const complete = await evaluateCompleteGuards({
+      fromState: resolvedFromState,
+      toState: stateArg,
+      context: guardCtx,
+      runGuards: runGuardsFn,
+      guardPhasePolicy,
+      loadPolicy: async ({ requirementIds }) => {
+        const loadBoundary = ctx._loadWorkflowBoundary || loadWorkflowBoundary;
+        return loadBoundary({
+          repository: cfg.repo,
+          issue: Number(issueArg),
+          body: guardBody,
+          requirementIds,
+          activity: `workflow-transition:${stateArg}`,
+          state: resolvedFromState,
+          now: new Date().toISOString(),
+          runtime:
+            ctx._workflowPolicyRuntime ||
+            createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+        });
+      },
+    });
+    let guardResult = complete.guardResult;
+    guardCtx = complete.guardContext;
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
     // without its verified Backlog marker. Only when contiguity objects on one
     // of the two first-Refine arcs, read the body once more and re-evaluate that
-    // guard before any move mutation. Every unrelated refusal remains intact;
-    // refresh failure or genuine absence stays fail-closed.
+    // guard before any move mutation. The replacement body invalidates the
+    // first pass, so rerun the complete shared pipeline on its new scope.
     const refreshedContiguity = await refreshPreRefineContiguity({
       fromState: resolvedFromState,
       toState: stateArg,
@@ -251,8 +250,32 @@ export async function runGuardExecution(ctx) {
         (
           await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
         ).trim(),
+      rerunGuards: async (freshBody) =>
+        evaluateCompleteGuards({
+          fromState: resolvedFromState,
+          toState: stateArg,
+          context: { ...guardCtx, body: freshBody, workflowPolicy: undefined },
+          runGuards: runGuardsFn,
+          guardPhasePolicy,
+          loadPolicy: async ({ requirementIds }) => {
+            const loadBoundary = ctx._loadWorkflowBoundary || loadWorkflowBoundary;
+            return loadBoundary({
+              repository: cfg.repo,
+              issue: Number(issueArg),
+              body: freshBody,
+              requirementIds,
+              activity: `workflow-transition:${stateArg}`,
+              state: resolvedFromState,
+              now: new Date().toISOString(),
+              runtime:
+                ctx._workflowPolicyRuntime ||
+                createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+            });
+          },
+        }),
     });
     guardResult = refreshedContiguity.guardResult;
+    if (refreshedContiguity.guardContext) guardCtx = refreshedContiguity.guardContext;
 
     if (!guardResult.ok) {
       // Contiguity refusal (story #355): preserve the legacy inline banner

@@ -562,6 +562,7 @@ test('promote: review→done delegates to /task close', async () => {
     live: 'review',
     liveAfter: 'done',
   });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 104, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'done');
@@ -579,6 +580,7 @@ test('promote: review→done reports transition-failed when close exits 0 but bo
     spawnCode: 0,
     liveAfter: 'review',
   });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 710, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.match(r.message, /exited 0 but board is "review"/);
