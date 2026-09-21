@@ -790,3 +790,46 @@ test('configured local trunk ref retains explicit local provenance and scopes at
     false
   );
 });
+
+test('bare local trunk fallback resolves only the qualified local branch', async () => {
+  const sha = 'e'.repeat(40);
+  const calls = [];
+  const result = await evaluateExactTrunkAttribution({
+    issue: 1729,
+    cwd: '/repo-under-test',
+    localRef: 'trunk',
+    execGit: async (args) => {
+      calls.push(args);
+      if (args[0] === 'rev-parse' && args[1] === '--verify') return `${sha}\n`;
+      if (args[0] === 'rev-parse') return 'false\n';
+      if (args[0] === 'cat-file') return '';
+      if (args[0] === 'rev-list') return `${sha}\n`;
+      throw new Error('unexpected git command');
+    },
+    hasAttributingCommit: async () => true,
+  });
+  assert.equal(result.status, 'attributed');
+  assert.equal(result.tip.authority, 'local');
+  assert.equal(result.tip.ref, 'refs/heads/trunk');
+  assert.deepEqual(calls[0], ['rev-parse', '--verify', 'refs/heads/trunk^{commit}']);
+  assert.equal(
+    calls.some((args) => args[0] === 'ls-remote'),
+    false
+  );
+});
+
+test('local trunk authority refuses remote-tracking refs without a git read', async () => {
+  let reads = 0;
+  const result = await evaluateExactTrunkAttribution({
+    issue: 1729,
+    cwd: '/repo-under-test',
+    localRef: 'refs/remotes/origin/trunk',
+    execGit: async () => {
+      reads += 1;
+      throw new Error('unexpected git read');
+    },
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.equal(result.reason, 'unsupported-ref');
+  assert.equal(reads, 0);
+});
