@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -244,6 +244,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const actionDecisionContractAllowance = 4;
   // #1662 ships the single compact operational presentation runtime module.
   const actionPresentationAllowance = 1;
+  // #1728 ships the read-only authority observation collector.
+  const actionObservationAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -257,7 +259,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryAttributionRecordAllowance +
     deliveryAttributionCommandAllowance +
     actionDecisionContractAllowance +
-    actionPresentationAllowance;
+    actionPresentationAllowance +
+    actionObservationAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -275,6 +278,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
     'scripts/task-tracker/lib/graph-node-authority.mjs',
     'scripts/task-tracker/lib/governed-plan-policy.mjs',
+    'scripts/task-tracker/lib/action-decision/observations.mjs',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',
