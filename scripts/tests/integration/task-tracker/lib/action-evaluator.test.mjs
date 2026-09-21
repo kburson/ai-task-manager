@@ -93,6 +93,26 @@ test('qualifying refusal loads policy once and replaces the entire baseline resu
   assert.deepEqual(result.guardResult.derived, final.derived);
 });
 
+test('a non-applicable exception does not erase an ordinary guard refusal', async () => {
+  const calls = [];
+  const result = await evaluateCompleteGuards({
+    fromState: 'plan',
+    toState: 'develop',
+    context: { issueNumber: 1729, body },
+    runGuards: async (_from, _to, context) => {
+      calls.push(context.workflowPolicy ? 'final' : 'baseline');
+      return { ok: false, status: 'blocked', refusals: [waiverRefusal], humanDecision: null };
+    },
+    loadPolicy: async () => ({
+      status: 'blocked',
+      decisions: [{ id: 'approval.plan', outcome: 'not-applicable' }],
+    }),
+  });
+  assert.deepEqual(calls, ['baseline', 'final']);
+  assert.equal(result.guardResult.status, 'blocked');
+  assert.deepEqual(result.guardResult.refusals, [waiverRefusal]);
+});
+
 test('failed required policy collection is indeterminate and preserves known refusals', async () => {
   let guardCalls = 0;
   const result = await evaluateCompleteGuards({
@@ -732,4 +752,41 @@ test('incomplete exact remote history never invokes attribution', async () => {
   assert.equal(calls, 0);
   assert.equal(result.status, 'indeterminate');
   assert.equal(result.code, 'attribution-authority-unavailable');
+});
+
+test('configured local trunk ref retains explicit local provenance and scopes attribution', async () => {
+  const sha = 'd'.repeat(40);
+  const cwd = '/repo-under-test';
+  const calls = [];
+  const result = await evaluateExactTrunkAttribution({
+    issue: 1729,
+    cwd,
+    localRef: 'refs/heads/trunk',
+    execGit: async (args, options) => {
+      assert.equal(options.cwd, cwd);
+      calls.push(args);
+      if (args[0] === 'rev-parse' && args[1] === '--is-shallow-repository') return 'false\n';
+      if (args[0] === 'rev-parse') return `${sha}\n`;
+      if (args[0] === 'cat-file') return '';
+      if (args[0] === 'rev-list') return `${sha}\n`;
+      throw new Error('unexpected git command');
+    },
+    hasAttributingCommit: async (_issue, options) => {
+      assert.deepEqual(options, { cwd, refs: [sha] });
+      return true;
+    },
+  });
+  assert.equal(result.status, 'attributed');
+  assert.deepEqual(result.tip, {
+    status: 'observed',
+    authority: 'local',
+    ref: 'refs/heads/trunk',
+    sha,
+    objectComplete: true,
+    shallow: false,
+  });
+  assert.equal(
+    calls.some((args) => args[0] === 'ls-remote'),
+    false
+  );
 });
