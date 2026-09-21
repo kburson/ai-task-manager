@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1714 #1716 #1720
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -242,6 +242,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const deliveryAttributionCommandAllowance = 1;
   // #1661 ships three shared action-decision runtime assets and one guide.
   const actionDecisionContractAllowance = 4;
+  // #1662 ships the single compact operational presentation runtime module.
+  const actionPresentationAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -254,7 +256,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliverySourceInventoryAllowance +
     deliveryAttributionRecordAllowance +
     deliveryAttributionCommandAllowance +
-    actionDecisionContractAllowance;
+    actionDecisionContractAllowance +
+    actionPresentationAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
