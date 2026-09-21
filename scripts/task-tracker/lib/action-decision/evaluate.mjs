@@ -86,9 +86,7 @@ export async function readExactTrunkTip({ remote, ref, cwd, execGit } = {}) {
 /** A configured local branch is a different, explicitly labeled authority. */
 export async function readLocalTrunkTip({ localRef, cwd, execGit } = {}) {
   const qualifiedRef =
-    typeof localRef === 'string' && !localRef.startsWith('refs/')
-      ? `refs/heads/${localRef}`
-      : localRef;
+    typeof localRef === 'string' && !localRef.includes('/') ? `refs/heads/${localRef}` : localRef;
   if (!validTrunkRef(qualifiedRef) || typeof execGit !== 'function') {
     return unavailableTrunkAuthority('unsupported-ref');
   }
