@@ -19,3 +19,11 @@ Review `review-bd4fbcca64d8f812251c3846d92bb100` last reached reviewer-turn for 
 The installed launch-reviewer command obtains its response path from the original sealed invitation. Read-only inspection of the clean local ai-peer-review checkout at `7bb30d3` found the same public CLI routing: `invitationValues` supplies the original response to `buildClaudeReviewerResume`, whose stored-path checks are still response-specific. Newer execution-contract/preflight helpers exist, but the inspected public launch-reviewer command does not use them. Therefore simply selecting that package does not establish a supported fix, and no global package installation was performed.
 
 A supported continuation requires either restoration of the original ignored review workspace plus a corrected launcher, or a distinct replacement review using a verified launcher. Prior review documents can inform a replacement but cannot be represented as its acceptance authority. The extra authorized recovery ends here without another paid launch or an unapproved additional recovery.
+
+## Subsequent authorized fresh review
+
+The user subsequently authorized the tooling fixes and one fresh XPR. That
+review completed and was finalized as accepted in `d8e3e11b`. The original
+review's missing authority was not reconstructed. See
+`1719-xpr-completion.md` for the distinct review ID, preserved response mapping,
+verification, and remaining approval boundaries.
