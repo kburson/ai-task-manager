@@ -196,6 +196,16 @@ export const CODE_DEFINITIONS = Object.freeze({
       }),
     }
   ),
+  'delivery-preflight-refused': decisionBlocked(
+    'delivery-preflight-refused',
+    ['authority-collection'],
+    { phases: ['collection'], argumentSchema: args(['category'], { category: stringType }) }
+  ),
+  'delivery-provider-unavailable': decisionBlocked(
+    'delivery-provider-unavailable',
+    ['authority-collection'],
+    { phases: ['collection'] }
+  ),
   'review-test-evidence-refused': decisionBlocked(
     'review-test-evidence-refused',
     ['authority-collection'],

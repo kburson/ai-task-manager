@@ -53,6 +53,7 @@ import {
   validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
+  validateNoCommitDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
 import {
   DeliveryAuthorityError,
@@ -692,7 +693,7 @@ async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, mer
   return decision;
 }
 
-async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
+async function deliverNoCommit({ deps, issue, issueNumber, cfg, lineage, pullRequests }) {
   const deliverable = parseDeliverablePosted(issue.body);
   if (!deliverable) throw new TypeError('delivery-preflight:no-commit-deliverable');
   if (String(issue.projectState || '').toLowerCase() !== 'review') {
@@ -731,6 +732,14 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   if (!authorization || authorization.mode === 'missing') {
     throw new TypeError('delivery-preflight:review-authorization');
   }
+  validateNoCommitDeliveryPreflight({
+    issue: { ...issue, reviewAuthorization: authorization },
+    lineage,
+    pullRequests,
+    localHeadSha,
+    testReceiptSha,
+    acceptedReviewSha,
+  });
   const expected = buildNoCommitDeliveryRecord({
     recordId: requiredDependency(deps, 'createIntentId')(),
     repository: cfg.repo,
@@ -861,7 +870,14 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   // a no-commit kind for Develop/Test, provider delivery must not replace that
   // branch delivery with an issue-comment-only receipt (#1632).
   if (isIssueResidentDeliveryKind(issue.body) && pullRequestRefs.length === 0) {
-    return deliverNoCommit({ deps, issue, issueNumber, cfg });
+    return deliverNoCommit({
+      deps,
+      issue,
+      issueNumber,
+      cfg,
+      lineage,
+      pullRequests: pullRequestRefs,
+    });
   }
 
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
