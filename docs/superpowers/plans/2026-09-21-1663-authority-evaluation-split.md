@@ -1,6 +1,6 @@
 # #1663 Authority Evaluation Split Implementation Plan
 
-> **Status:** Proposed revision of accepted WBS 11, pending semantic peer review. This document does not authorize implementation, issue hydration, or a size waiver.
+> **Status:** The two-task split passed an independent Grok semantic review, recorded in `docs/superpowers/reviews/1663/plan/2026-09-21-1663-authority-split-grok-review.md`. The parent coordination Story Intent below is a follow-on Plan-gate repair. This document does not waive verification, approval, or size limits.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans after this plan is accepted and the governed child is approved.
 
@@ -11,6 +11,13 @@
 **Tech Stack:** Node.js ESM, `node:test`, the existing task-tracker action-decision and guard/workflow-policy modules.
 
 **Spec:** `docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-replacement.md`, Task 4; accepted hydration WBS `docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md`, WBS 11 (source commit `55dedc066701a9fce1066ac4ebebce58ed147638`); epic #1558 and child #1663. The original Task 4 contract and VC4 acceptance criteria remain authoritative; this revision changes only work ownership and sequence.
+
+## Story Intent
+
+- **Beneficiary:** lifecycle-action operator
+- **Capability:** inspect complete current action readiness through one read-only explanation consistent with mutation
+- **Need:** legacy collection and guard paths can omit a blocker or reuse stale authority across a two-pass decision
+- **Value or failure prevented:** decisions cannot treat partial guard evidence or stale observations as permission to act
 
 ## Global Constraints
 
