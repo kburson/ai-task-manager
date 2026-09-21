@@ -19,8 +19,13 @@ import {
   buildCandidateDecision,
   renderCandidateExplanation,
 } from '../../../helpers/guidance-characterization.mjs';
+import {
+  assertOracleTraceability,
+  assertSpecClauseIndex,
+} from '../../../helpers/guidance-clause-index.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(here, '../../../../..');
 const fixtureDir = path.resolve(here, '../../../fixtures/1558/action-decision-fixtures');
 const ISSUE = 1662;
 const OTHER_ISSUE = 1663;
@@ -94,6 +99,24 @@ function planApprovalRequest(issue = ISSUE) {
     actor: 'configured-approver',
     subject: { issue, actionId: 'promote' },
     args: {},
+  };
+}
+
+function reviewApprovalBlocker(issue = ISSUE, head = FULL_HEAD) {
+  return {
+    guardId: 'review-exit-review-approved',
+    code: 'review-approval-missing',
+    args: { head },
+    remediation: { id: 'request-review-approval', args: { issue, head } },
+  };
+}
+
+function reviewApprovalRequest(issue = ISSUE, actionId = 'deliver', head = FULL_HEAD) {
+  return {
+    kind: 'review-approval',
+    actor: 'configured-approver',
+    subject: { issue, actionId },
+    args: { head },
   };
 }
 
@@ -413,6 +436,27 @@ test('terminal Done and unresolved navigation preserve null-action semantics', (
   assert.throws(() => validateActionPresentation(invented));
 });
 
+test('unknown vocabulary projects no executable recommendation', () => {
+  const blocker = {
+    guardId: 'action-navigation',
+    code: 'unknown-vocabulary',
+    args: {},
+    noAutomaticRemediation: { reason: 'result-investigation-required' },
+  };
+  const fullDecision = decision({
+    actionId: 'rebind',
+    state: 'develop',
+    status: 'indeterminate',
+    blockers: [blocker],
+  });
+  fullDecision.guidanceIds = ['navigation.unknown'];
+
+  const result = presentActionDecision({ decision: fullDecision });
+  assert.equal(result.actionId, null);
+  assert.equal(result.status, 'indeterminate');
+  assert.deepEqual(result.blockers, [blocker]);
+});
+
 test('review approval requests require the configured approver and a full exact HEAD', () => {
   const request = {
     kind: 'review-approval',
@@ -423,6 +467,52 @@ test('review approval requests require the configured approver and a full exact 
   assert.deepEqual(validateHumanRequest(request), request);
   assert.throws(() => validateHumanRequest({ ...request, actor: 'human-operator' }));
   assert.throws(() => validateHumanRequest({ ...request, args: { head: FULL_HEAD.slice(0, 12) } }));
+});
+
+test('review approval blockers require one exact-HEAD human request', () => {
+  const blocker = reviewApprovalBlocker();
+  const fullDecision = decision({
+    actionId: 'deliver',
+    state: 'review',
+    status: 'blocked',
+    blockers: [blocker],
+    humanDecision: { requests: [reviewApprovalRequest()] },
+  });
+  const result = presentActionDecision({ decision: fullDecision });
+  assert.deepEqual(result.blockers, [blocker]);
+  assert.deepEqual(result.humanDecision.requests, [reviewApprovalRequest()]);
+
+  const missing = clone(fullDecision);
+  missing.humanDecision = null;
+  assert.equal(
+    presentActionDecision({ decision: missing }).blockers[0].code,
+    'guard-result-invalid'
+  );
+
+  const wrongHead = clone(fullDecision);
+  wrongHead.humanDecision.requests[0].args.head = 'f'.repeat(40);
+  assert.equal(
+    presentActionDecision({ decision: wrongHead }).blockers[0].code,
+    'guard-result-invalid'
+  );
+
+  const sixtyFourHead = 'a'.repeat(64);
+  const longHeadDecision = clone(fullDecision);
+  const { digest: _oldDigest, ...snapshot } = longHeadDecision.snapshot;
+  longHeadDecision.snapshot = actionDecisionSnapshot(
+    { ...snapshot, head: sixtyFourHead },
+    longHeadDecision.normalizations
+  );
+  longHeadDecision.blockers[0] = reviewApprovalBlocker(ISSUE, sixtyFourHead);
+  longHeadDecision.humanDecision.requests[0] = reviewApprovalRequest(
+    ISSUE,
+    'deliver',
+    sixtyFourHead
+  );
+  assert.deepEqual(
+    presentActionDecision({ decision: longHeadDecision }).blockers,
+    longHeadDecision.blockers
+  );
 });
 
 test('routine and diagnostic explanation envelopes enforce closed declared modes', () => {
@@ -460,6 +550,28 @@ test('routine and diagnostic explanation envelopes enforce closed declared modes
   trustedMessage.diagnosticMessages[0].untrusted = false;
   assert.throws(() => validateExplanationEnvelope(trustedMessage, { diagnostic: true }));
   assert.throws(() => validateExplanationEnvelope('{"schema":'));
+});
+
+test('routine guidance accepts catalog-owned sequences, but rejects unknown operations', () => {
+  const result = presentActionDecision({ decision: decision() });
+  const customGuidance = {
+    id: 'project.promote-with-local-policy',
+    digest: `sha256:${'9'.repeat(64)}`,
+    status: 'expanded',
+    agent: { instruction: [{ never: 'execute_free_text' }] },
+  };
+  const envelope = {
+    schema: EXPLANATION_SCHEMA,
+    result,
+    guidance: [customGuidance],
+  };
+  assert.equal(validateExplanationEnvelope(envelope), envelope);
+  const unknownOperation = clone(envelope);
+  unknownOperation.guidance[0].agent.instruction = [{ execute_shell: 'rm -rf .' }];
+  assert.throws(() => validateExplanationEnvelope(unknownOperation), /instruction/);
+  const unknownValue = clone(envelope);
+  unknownValue.guidance[0].agent.instruction = [{ never: 'ignore_authority' }];
+  assert.throws(() => validateExplanationEnvelope(unknownValue), /instruction/);
 });
 
 test('diagnostic result must equal the projection of the same full decision', () => {
@@ -517,23 +629,70 @@ test('evidence-only growth leaves routine bytes unchanged while operational grow
   );
 });
 
-test('production projection matches every Task 1b ready fixture and normalization oracle', () => {
+test('all Task 1b scenario lanes preserve operational values or refuse candidate-only guards', () => {
+  const index = JSON.parse(
+    readFileSync(path.join(projectRoot, 'scripts/tests/fixtures/1558/spec-clause-index.json'))
+  );
+  const traceability = JSON.parse(
+    readFileSync(path.join(projectRoot, 'scripts/tests/fixtures/1558/oracle-traceability.json'))
+  );
+  const indexed = assertSpecClauseIndex({
+    index,
+    specPath: index.source.path,
+    specText: readFileSync(path.join(projectRoot, index.source.path), 'utf8'),
+  });
+  const traced = assertOracleTraceability({ index, traceability, requireAllExecuted: true });
+  assert.equal(indexed.clauseCount, 70);
+  assert.equal(traced.executedCount, indexed.clauseCount);
+
+  let exercised = 0;
   for (const name of ['bind', 'resume', 'promote', 'test', 'review', 'deliver', 'close']) {
     const fixture = JSON.parse(readFileSync(path.join(fixtureDir, `${name}.json`), 'utf8'));
-    for (const scenario of ['ready', 'normalization'].filter((value) =>
-      fixture.scenarios.includes(value)
-    )) {
+    for (const scenario of fixture.scenarios) {
+      exercised += 1;
       const fullDecision = buildCandidateDecision({ fixture, scenario });
       const expected = renderCandidateExplanation({ decision: fullDecision }).result;
+      if (scenario === 'blocked') {
+        // The oracle's synthetic producer and precondition remediation are not
+        // registered live guards. Fail closed until a guard family is migrated.
+        const refused = presentActionDecision({ decision: fullDecision });
+        assert.equal(refused.status, 'indeterminate');
+        assert.equal(refused.blockers[0].code, 'guard-result-invalid');
+        assert.notDeepEqual(refused, expected);
+        continue;
+      }
       for (const normalization of fullDecision.normalizations) {
         normalization.decisionDigest = digest({
           normalizerId: normalization.normalizerId,
           decisions: normalization.decisions,
         });
       }
+      if (scenario === 'warning') {
+        for (const warning of fullDecision.warnings) {
+          if (warning.code === 'legacy-guard-warning') {
+            warning.args.guardId = 'plan-exit-plan-approved';
+          }
+        }
+        for (const warning of expected.warnings) {
+          if (warning.code === 'legacy-guard-warning') {
+            warning.args.guardId = 'plan-exit-plan-approved';
+          }
+        }
+      }
+      if (scenario === 'effective-policy-human-request') {
+        const blocker = fullDecision.blockers[0];
+        if (blocker.code === 'plan-approval-missing') {
+          blocker.guardId = 'plan-exit-plan-approved';
+          expected.blockers[0].guardId = blocker.guardId;
+        } else if (blocker.code === 'review-approval-missing') {
+          blocker.guardId = 'review-exit-review-approved';
+          expected.blockers[0].guardId = blocker.guardId;
+        }
+      }
       assert.deepEqual(presentActionDecision({ decision: fullDecision }), expected);
     }
   }
+  assert.equal(exercised, 42);
 });
 
 test('v1 is closed: additive fields or semantic changes require a new outer major', () => {

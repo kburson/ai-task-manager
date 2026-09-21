@@ -1,4 +1,6 @@
 const POSITIVE_INTEGER = Object.freeze({ type: 'positive-integer' });
+const HEAD = Object.freeze({ type: 'head' });
+const FULL_HEAD = /^[a-f0-9]{40,64}$/;
 
 const REMEDIATIONS = Object.freeze([
   Object.freeze({
@@ -16,6 +18,22 @@ const REMEDIATIONS = Object.freeze([
     destructive: false,
     fullAutoAllowed: true,
     guidanceId: 'transition.plan-to-develop',
+  }),
+  Object.freeze({
+    id: 'request-review-approval',
+    actionId: 'deliver',
+    verb: 'approve',
+    argumentSchema: Object.freeze({
+      type: 'object',
+      additionalProperties: false,
+      required: Object.freeze(['issue', 'head']),
+      properties: Object.freeze({ issue: POSITIVE_INTEGER, head: HEAD }),
+    }),
+    humanRequired: true,
+    providerAction: false,
+    destructive: false,
+    fullAutoAllowed: true,
+    guidanceId: 'transition.review-approval',
   }),
 ]);
 
@@ -37,6 +55,7 @@ function validateArgs(args, schema) {
     if (definition.type === 'positive-integer' && (!Number.isInteger(value) || value <= 0)) {
       fail(`args.${key}`);
     }
+    if (definition.type === 'head' && !FULL_HEAD.test(value)) fail(`args.${key}`);
   }
 }
 

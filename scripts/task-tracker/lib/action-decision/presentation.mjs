@@ -28,6 +28,12 @@ const PRESENTATION_KEYS = Object.freeze([
 ]);
 const STATUSES = Object.freeze(['ready', 'blocked', 'indeterminate']);
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
+const PROHIBITIONS = new Set([
+  'bypass_guard',
+  'execute_free_text',
+  'reuse_stale_decision',
+  'invoke_internal_mutator',
+]);
 
 function fail(path, detail = 'invalid') {
   throw new TypeError(`action-presentation:${path}:${detail}`);
@@ -136,8 +142,14 @@ export function validateActionPresentation(input) {
   validateAuthoritySubjects(value.blockers);
 
   const unresolvedNavigation = value.blockers.some(({ code }) => code === 'state-unavailable');
+  const unknownVocabulary = value.blockers.some(({ code }) => code === 'unknown-vocabulary');
   if (unresolvedNavigation && value.actionId !== null) fail('actionId', 'navigation');
-  if (value.actionId === null && value.status !== 'ready' && !unresolvedNavigation) {
+  if (
+    value.actionId === null &&
+    value.status !== 'ready' &&
+    !unresolvedNavigation &&
+    !unknownVocabulary
+  ) {
     fail('actionId', 'null');
   }
 
@@ -217,7 +229,9 @@ export function presentActionDecision({
 
   const result = {
     issue: validated.issue,
-    actionId: validated.actionId,
+    actionId: validated.blockers.some(({ code }) => code === 'unknown-vocabulary')
+      ? null
+      : validated.actionId,
     status: validated.status,
     blockers: structuredClone(validated.blockers),
     normalizations: validated.normalizations.map(({ normalizerId, decisions, disposition }) => ({
@@ -231,31 +245,7 @@ export function presentActionDecision({
   return validateActionPresentation(result);
 }
 
-function expectedGuidanceId(result) {
-  if (result.actionId !== null) return actionDescriptorFor(result.actionId)?.guidanceId ?? null;
-  return result.status === 'ready' ? 'state.done' : 'navigation.unresolved';
-}
-
-function expectedInstruction(result) {
-  if (result.actionId !== null) {
-    return [
-      { query: result.actionId },
-      { require_status: 'ready' },
-      { if_blocked: 'use_returned_remediation_ids' },
-      { execute: result.actionId },
-      { execution_revalidates: true },
-    ];
-  }
-  return result.status === 'ready'
-    ? [{ terminal_state: 'done' }, { recommendation: null }]
-    : [
-        { navigation: 'unresolved' },
-        { recommendation: null },
-        { if_blocked: 'use_returned_remediation_ids' },
-      ];
-}
-
-function validateGuidance(guidance, result) {
+function validateGuidance(guidance) {
   if (!Array.isArray(guidance) || guidance.length !== 1) fail('guidance', 'single-entry-array');
   const entry = guidance[0];
   if (entry?.status === 'expanded') {
@@ -264,18 +254,34 @@ function validateGuidance(guidance, result) {
     if (!Array.isArray(entry.agent.instruction) || entry.agent.instruction.length === 0) {
       fail('guidance[0].agent.instruction', 'nonempty-array');
     }
-    if (
-      canonicalRecordJson(entry.agent.instruction) !==
-      canonicalRecordJson(expectedInstruction(result))
-    ) {
-      fail('guidance[0].agent.instruction', 'coupling');
-    }
+    entry.agent.instruction.forEach((operation, index) => {
+      const path = `guidance[0].agent.instruction[${index}]`;
+      record(operation, path);
+      const keys = Object.keys(operation);
+      if (keys.length !== 1) fail(path, 'operation');
+      const [name] = keys;
+      const value = operation[name];
+      if (name === 'query' || name === 'execute') {
+        if (actionDescriptorFor(value) === null) fail(path, 'action');
+      } else if (name === 'never') {
+        if (!PROHIBITIONS.has(value)) fail(path, 'prohibition');
+      } else if (!(
+        (name === 'require_status' && value === 'ready') ||
+        (name === 'if_blocked' && value === 'use_returned_remediation_ids') ||
+        (name === 'execution_revalidates' && value === true) ||
+        (name === 'terminal_state' && value === 'done') ||
+        (name === 'navigation' && value === 'unresolved') ||
+        (name === 'recommendation' && value === null)
+      )) {
+        fail(path, 'operation');
+      }
+    });
   } else if (entry?.status === 'not-modified') {
     exact(entry, ['id', 'digest', 'status'], 'guidance[0]');
   } else {
     fail('guidance[0].status', 'enum');
   }
-  if (entry.id !== expectedGuidanceId(result)) fail('guidance[0].id', 'coupling');
+  nonemptyString(entry.id, 'guidance[0].id');
   if (!DIGEST.test(entry.digest)) fail('guidance[0].digest', 'digest');
 }
 
@@ -318,10 +324,13 @@ export function validateExplanationEnvelope(input, { diagnostic = false } = {}) 
   );
   if (envelope.schema !== EXPLANATION_SCHEMA) fail('schema', 'unsupported');
   const result = validateActionPresentation(envelope.result);
-  validateGuidance(envelope.guidance, result);
+  validateGuidance(envelope.guidance);
 
   if (diagnostic) {
     const fullDecision = validateActionDecision(envelope.fullDecision);
+    if (envelope.guidance[0].id !== fullDecision.guidanceIds[0]) {
+      fail('guidance[0].id', 'diagnostic-coupling');
+    }
     validateDiagnosticMessages(envelope.diagnosticMessages);
     const admissionWarnings = admissionWarningsFromDiagnostic(result, fullDecision);
     const expected = presentActionDecision({ decision: fullDecision, admissionWarnings });
