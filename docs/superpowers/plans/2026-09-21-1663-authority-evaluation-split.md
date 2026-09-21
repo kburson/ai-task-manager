@@ -24,10 +24,10 @@
 
 #### Story Intent
 
-- **Beneficiary:** An agent inspecting the readiness of a lifecycle action.
-- **Capability:** Collect a current, provenance-bearing, immutable observation attempt without effects or cross-command reuse.
-- **Need:** Guard and policy inputs must be identifiable, complete, and compatible before a readiness predicate consumes them.
-- **Value or failure prevented:** Missing reads, mismatched identities, and effect attempts cannot masquerade as ready authority.
+- **Beneficiary:** lifecycle-action operator
+- **Capability:** collect a current provenance-bearing immutable observation attempt without effects or cross-command reuse
+- **Need:** guard and policy inputs must be identifiable complete and compatible before a readiness predicate consumes them
+- **Value or failure prevented:** missing reads mismatched identities and effect attempts cannot masquerade as ready authority
 
 #### Files and implementation
 
@@ -52,10 +52,10 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/action-observations.test.m
 
 #### Story Intent
 
-- **Beneficiary:** An agent choosing or executing a lifecycle action.
-- **Capability:** Derive a complete current readiness result through the executor's shared guard predicates and consume derived promote data without context mutation.
-- **Need:** Explanation and mutation must agree on blockers, exception policy, bounded refresh, and the final guard result under fresh authority.
-- **Value or failure prevented:** An omitted blocker, stale observation, partial second pass, or lost refinement plan cannot authorize or corrupt a transition.
+- **Beneficiary:** lifecycle-action operator
+- **Capability:** derive complete current readiness through shared executor guards and consume promote data without context mutation
+- **Need:** explanation and mutation must agree on blockers exception policy bounded refresh and the final guard result under fresh authority
+- **Value or failure prevented:** omitted blockers stale observations partial second passes and lost refinement plans cannot authorize or corrupt a transition
 
 #### Files and implementation
 
