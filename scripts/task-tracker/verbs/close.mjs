@@ -64,7 +64,8 @@ import { resolveAcceptedDeliveryAuthority } from '../lib/delivery-authority.mjs'
 import { resolveLiveDeliveryReviewAuthority } from '../lib/delivery-preflight.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
-import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
+import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { resolveDocsOnlyLaneSkipProof } from '../lib/docs-only-lane-skip-proof.mjs';
@@ -3433,44 +3434,55 @@ export async function verbClose(ctx) {
         });
       }
 
-      // #303 / #315 — Derived Functional DoD keys (`acs`, `checkboxes`) are
-      // computed and stamped here, immediately before the close gate, via the
-      // shared `deriveAndStampFunctionalDod` helper (also called from
-      // verbs/review.mjs so review and close have identical derived-key
-      // behavior). `checkboxes` is derived after `acs` inside the helper so the
-      // newly-ticked `acs` box is counted. Atomic single push via mutateIssueBody.
-      try {
-        let derivedHeadSha = 'unknown';
-        try {
-          const { stdout: shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {});
-          derivedHeadSha = String(shaOut || '').trim() || 'unknown';
-        } catch {
-          // best-effort — sha=unknown is acceptable in the evidence marker
-        }
-        const mutated = await deriveAndStampFunctionalDod({
+      // Derived evidence is an execution normalization, not preflight
+      // authority. Evaluate the complete close gate against the pure projected
+      // body before any proof-introducing write, including every fresh retry.
+      const evaluateCloseProjection = async ({ projection }) => {
+        const projectedBody = projection.body;
+        const projectedLifecycleEvidence = await loadCloseLifecycleEvidence(projectedBody);
+        const projectedUnchecked = await resolvePreCloseCheckboxes({
+          body: projectedBody,
           issueNumber: closeIssueNum,
-          repo: cfg.repo,
-          sha: derivedHeadSha,
-          ts: nowIso(),
-          deps: { pexec },
+          projectDir,
+          scan: uncheckedPreCloseCheckboxes,
+          resolveLaneSkipProof: ctx.resolveDocsOnlyLaneSkipProof,
+          proofDeps: ctx.docsOnlyLaneSkipProofDeps,
         });
-        // Re-fetch body so the rest of the close gate sees the post-derivation
-        // state. Skipped on no-op.
-        if (mutated?.status === 'ok') {
-          const { stdout: refetched } = await pexec(
-            'gh',
-            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-            { timeout: GH_API_TIMEOUT_MS }
-          );
-          body = String(refetched || body);
-          closeBody = body;
+        const projectedLifecycleGate = assertLifecycleSatisfied({
+          body: projectedBody,
+          required: cfg.lifecycleCheckboxesRequired !== false,
+          lifecycleEvidence: projectedLifecycleEvidence,
+        });
+        if (projectedUnchecked.length > 0 || projectedLifecycleGate.block) {
+          throw new NormalizationRefusalError('normalization-authority-drift');
         }
-      } catch (err) {
-        // Derivation is best-effort. If it fails, the existing
-        // uncheckedPreCloseCheckboxes / lifecycle gate will surface the issue
-        // through the normal blocker path. Log and continue.
-        console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
-      }
+        const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
+        return runGuards('review', 'done', {
+          issueNumber: Number(closeIssueNum),
+          repo: cfg.repo,
+          fromState: 'review',
+          toState: 'done',
+          body: projectedBody,
+          lifecycleEvidence: projectedLifecycleEvidence,
+          cfg,
+          projectDir,
+          deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
+        });
+      };
+      const normalized = await deriveAndRescan({
+        issueNumber: closeIssueNum,
+        repo: cfg.repo,
+        scanBody: body,
+        deps: {
+          pexec,
+          nowIso,
+          refreshAndEvaluate: evaluateCloseProjection,
+          mutateBody: ctx.normalizationMutateBody,
+          readBack: ctx.normalizationReadBack,
+        },
+      });
+      body = normalized.scanBody;
+      closeBody = body;
 
       closeLifecycleEvidence = await loadCloseLifecycleEvidence(body);
 

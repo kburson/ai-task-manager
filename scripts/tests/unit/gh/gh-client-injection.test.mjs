@@ -1,4 +1,4 @@
-// @story #1409
+// @story #1409 #1732
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -112,12 +112,12 @@ test('unpark defaults resolve the shared client without changing the gh call', a
   }
 });
 
-test('derive-and-rescan falls back to the shared client without changing calls', async () => {
+test('ready-only derive-and-rescan reads body and execution HEAD through the shared client', async () => {
   const original = ghClient.pexec;
   const calls = [];
   ghClient.pexec = async (file, args, options) => {
     calls.push({ file, args, options });
-    if (file === 'git') return { stdout: 'abc123\n', stderr: '' };
+    if (file === 'git') return { stdout: `${'a'.repeat(40)}\n`, stderr: '' };
     return { stdout: 'live body', stderr: '' };
   };
   try {
@@ -126,21 +126,24 @@ test('derive-and-rescan falls back to the shared client without changing calls',
       repo: 'o/r',
       scanBody: 'stale body',
       deps: {
-        deriveAndStampFunctionalDod: async ({ deps }) => {
-          assert.equal(deps.pexec, pexec);
-          return { status: 'ok' };
-        },
+        refreshAndEvaluate: async () => ({
+          status: 'ready',
+          ok: true,
+          refusals: [],
+          humanDecision: null,
+        }),
         nowIso: () => '2026-08-29T00:00:00.000Z',
       },
     });
     assert.equal(result.scanBody, 'live body');
     assert.deepEqual(calls, [
-      { file: 'git', args: ['rev-parse', '--short', 'HEAD'], options: { timeout: 5000 } },
+      { file: 'git', args: ['rev-parse', 'HEAD'], options: { timeout: 5000 } },
       {
         file: 'gh',
         args: ['issue', 'view', '1409', '-R', 'o/r', '--json', 'body', '--jq', '.body'],
         options: { timeout: 30000 },
       },
+      { file: 'git', args: ['rev-parse', 'HEAD'], options: { timeout: 5000 } },
     ]);
   } finally {
     ghClient.pexec = original;

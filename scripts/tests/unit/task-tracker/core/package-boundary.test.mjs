@@ -244,6 +244,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const actionEvaluatorAllowance = 1;
   // #1731 ships the pure Functional DoD projector used by explanation and execution.
   const functionalDodProjectorAllowance = 1;
+  // #1732 ships one execution-only normalization runtime module.
+  const actionNormalizationAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -257,7 +259,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     actionPresentationAllowance +
     actionObservationAllowance +
     actionEvaluatorAllowance +
-    functionalDodProjectorAllowance;
+    functionalDodProjectorAllowance +
+    actionNormalizationAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
