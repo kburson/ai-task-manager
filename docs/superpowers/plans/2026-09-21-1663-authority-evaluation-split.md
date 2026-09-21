@@ -29,6 +29,8 @@
 - **Need:** Guard and policy inputs must be identifiable, complete, and compatible before a readiness predicate consumes them.
 - **Value or failure prevented:** Missing reads, mismatched identities, and effect attempts cannot masquerade as ready authority.
 
+#### Files and implementation
+
 **Estimate and units:** 8 hours; observation/provenance and typed failure boundary (4 h); read-only and no-effect tests plus handoff contract (4 h).
 
 **Files:** Create `scripts/task-tracker/lib/action-decision/observations.mjs` and `scripts/tests/unit/task-tracker/lib/action-observations.test.mjs`. Add narrowly scoped read-only seams to `scripts/task-tracker/lib/workflow-policy/{enforcement,preflight,snapshot}.mjs` as required. Do not migrate `runGuards.finish()` or `verbs/promote.mjs` in this child.
@@ -54,6 +56,8 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/action-observations.test.m
 - **Capability:** Derive a complete current readiness result through the executor's shared guard predicates and consume derived promote data without context mutation.
 - **Need:** Explanation and mutation must agree on blockers, exception policy, bounded refresh, and the final guard result under fresh authority.
 - **Value or failure prevented:** An omitted blocker, stale observation, partial second pass, or lost refinement plan cannot authorize or corrupt a transition.
+
+#### Files and implementation
 
 **Estimate and units:** 19 hours; complete evaluator and conditional policy pass (8 h); bounded refresh and provenance parity (5 h); atomic derived-result/promote migration and regression verification (6 h).
 
