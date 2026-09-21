@@ -47,5 +47,15 @@
     "conditional_quality_winner": "A",
     "causal_method_winner": null,
     "reason": "A has stronger high-consequence authority, recovery, retention, migration, and verification contracts; the two nonrandom trajectories cannot identify a universal order effect."
+  },
+  "retrospective_extensions": {
+    "stage_one_comparison": {
+      "record": "stage-1-comparison.md",
+      "artifact_manifest": "stage-artifacts.json",
+      "conditional_quality_winner": "A-stage-1-SAR",
+      "causal_method_winner": null,
+      "assessment_blinding": "not blinded",
+      "reason": "A stage one already contains stronger caller identity, bootstrap, evidence-append, approval, changed-binding, local-repository, migration, and adversarial-test contracts; B stage one is stronger on repository/version consistency, observability taxonomy, strict-host executor and attestation detail, and clarity."
+    }
   }
 }

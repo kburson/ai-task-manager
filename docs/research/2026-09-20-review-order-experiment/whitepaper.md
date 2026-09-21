@@ -19,7 +19,7 @@ This case study compares two completed review sequences applied to the same 883-
 
 The final artifact from **SAR → SPR → XPR is higher quality for this design's risk profile**. Its advantage is not that it is longer or accumulated more findings. It is that it contains materially stronger, testable contracts for first-authority bootstrap, evidence-write recovery, evidence retention, caller and approval identity, recovery after configuration changes, concurrent execution, migration cutover, operational feasibility, and acceptance-to-verification traceability. The XPR → SPR → SAR artifact is easier to read and better grounded in several current repository/version facts, but leaves more consequential policy to later implementers.
 
-That artifact-level result does not establish a universal causal winner. The experiment has two trajectories, no randomization, one artifact per order, and different starting states at every later stage. The Author accumulated context, the same models were reused, and review repairs changed what the next Reviewer saw. The defensible conclusion is narrower: for this high-consequence architecture, the late cross-provider challenge in SAR → SPR → XPR exposed and repaired risks that remained in the reverse sequence's final artifact.
+That artifact-level result does not establish a universal causal winner. The experiment has two trajectories, no randomization, one artifact per order, and different starting states at every later stage. The Author accumulated context, the same models were reused, and review repairs changed what the next Reviewer saw. The defensible conclusion is narrower: for this high-consequence architecture, SAR-first had already established much of A's eventual recovery and authority advantage at stage one; later SPR and XPR added important trust, retention, feasibility, operability, and consistency safeguards that remained absent from the reverse sequence's final artifact.
 
 A practical cost/quality policy to test is staged and conditional. Begin with SAR for repository-grounded defect removal, use a fresh SPR as the first independent gate, and reserve XPR for mature, high-impact designs or when the first independent review leaves uncertainty in trust, recovery, concurrency, or operations. Stop on evidence of convergence and regression closure, not after a fixed number of rounds. Cost conclusions in this paper separate measured model usage, hypothetical API-equivalent value, actual billed spend, subscription utilization, and wall-clock delay; unavailable categories remain unknown rather than zero.
 
@@ -91,6 +91,12 @@ The verified plugin-loader design requires a complete immutable executable closu
 
 A requires numeric action-rate, retained-byte, cold-replay, and recovery-latency budgets, yet supplies no values (A:1075-1111). This is a good requirement and an unresolved result. Its first implementation plan should also incorporate B's repository vocabulary and package-release detail. Finally, the specification's density increases the chance that an implementation team will miss a cross-section dependency.
 
+### How much of A's advantage existed after stage one
+
+The reconstructed end-stage snapshots show that most of A's decisive recovery structure predates late XPR. After five SAR passes, A already had caller-retained request identity, bootstrap recovery, evidence-append recovery, configuration-change recovery, approval provenance, fork-join semantics, local Git binding, fenced migration cutover, and detailed adversarial tests. Against the XPR-first stage-one artifact, that SAR result is already the conditional winner under the same rubric; the full evidence is in [stage-1-comparison.md](stage-1-comparison.md).
+
+Later stages still mattered, but they added a different layer. SPR added explicit fully trusted in-process plugin boundaries, executable-content identity, retention/retrieval guarantees, and exclusive canonical evidence ownership. Late XPR added the Phase 0 feasibility gate, callable evidence-only stale-state recovery, semantic compatibility rules, operating-budget obligations, initiating-principal authentication, explicit writable-binding selection, a concrete verified loader, and acceptance-to-test traceability. The final A advantage is therefore cumulative: SAR supplied much of the core failure closure, while independent reviewers challenged trust, feasibility, and internal consistency. It should not be attributed mainly to late cross-provider review.
+
 Under a safety/operations priority, A wins clearly. Under implementation/delivery, A wins if Phase 0 is treated as a real stop gate and B's brownfield details are incorporated. Under comprehension/maintainability, B wins narrowly. For a system whose purpose is governed mutation and durable recovery, the safety weighting is decisive.
 
 ## What the trajectories show about SAR, SPR, and XPR
@@ -117,7 +123,7 @@ Early XPR in B efficiently repaired broad baseline problems: missing generic inv
 
 Late XPR in A operated on a much more mature and more complex artifact. It forced the design to confront whether its non-CAS execution rule could work on the default provider, whether stale-state recovery had an exit, whether compatibility was semantic rather than exact-version equality, whether the protocol had an operating budget, how initiating identity worked, how plugin bytes stayed immutable after validation, and whether acceptance criteria had complete test coverage. The next XPR round found four new inconsistencies created or exposed by those repairs.
 
-This is the strongest process observation in the study: **a diverse reviewer applied after substantial maturation found consequential assumptions and repair regressions that same-author convergence had missed**. It does not prove that XPR is always superior. The Reviewer also made four premises that the Author qualified or withdrew, and the stage incurred launcher-recovery overhead. The value came from different challenge patterns plus repeated repair review.
+The stage reconstruction sharpens the process observation. Same-author SAR supplied much of A's eventual recovery advantage, and then a diverse reviewer applied after substantial maturation found consequential feasibility, operability, and repair-consistency issues that self-review had missed. Neither contribution subsumes the other. This does not prove that XPR is always superior or that SAR-first caused the stronger result. The XPR Reviewer also made four premises that the Author qualified or withdrew, and the stage incurred launcher-recovery overhead.
 
 ## Cost, latency, and the quality frontier
 
@@ -208,6 +214,8 @@ The candidate cost-quality policy emerging from this case is a gated sequence: S
 ## Methods and provenance appendix
 
 The complete rubric and assessment-order procedure are in [assessment-protocol.md](assessment-protocol.md). The frozen neutral-label judgment is in [preliminary-blinded-assessment.md](preliminary-blinded-assessment.md). The line-by-line dimension and trajectory matrix is in [comparison.md](comparison.md). Machine-readable specimen, participant, and count provenance is in [provenance.json](provenance.json). Cost sources, coverage, assumptions, and calculations are in [cost-evidence.md](cost-evidence.md) and [cost-evidence.json](cost-evidence.json).
+
+The request-driven, explicitly not-blinded first-stage extension is in [stage-1-comparison.md](stage-1-comparison.md), with all six end-stage artifact identities in [stage-artifacts.json](stage-artifacts.json).
 
 The [source map](source-map.md) gives exact Git object paths, protocol IDs, original review roots, event-defined duration boundaries, and reproduction commands for every `A:line` and `B:line` citation.
 

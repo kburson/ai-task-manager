@@ -22,6 +22,8 @@ Specimen A, produced by **SAR → SPR → XPR**, is the conditional quality winn
 
 This is an artifact judgment, not proof that the ordering caused the result. Each stage reviewed a different starting state; the Author accumulated context; the models and efforts were fixed rather than randomized; and there is one trajectory per order.
 
+A later request added an explicitly not-blinded comparison of the two terminal stage-one artifacts. [That extension](stage-1-comparison.md) finds that much of A's final recovery and authority advantage already existed after SAR, while later SPR/XPR added trust, retention, feasibility, and consistency safeguards. This narrows any interpretation that credits late XPR for A's entire advantage.
+
 ## Immutable specimens
 
 | Label           | Sequence        | Snapshot commit                            | SHA-256                                                            | Lines |

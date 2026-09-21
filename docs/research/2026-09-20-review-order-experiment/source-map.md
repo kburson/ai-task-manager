@@ -1,3 +1,5 @@
+<!-- cspell:words hashlib pathlib hexdigest -->
+
 # Reproducible source map
 
 ## Specification snapshots
@@ -53,3 +55,37 @@ These are protocol create-to-finalize wall clocks, not active reasoning time, te
 | B SPR     | `2026-09-20T22:18:52.612Z` | `2026-09-20T22:29:47.813Z` |         655.201 |
 
 SAR used sequential self-review records rather than the peer protocol, so no directly comparable create-to-finalize interval is reported. The wider usage-attribution windows and their exact boundaries are recorded separately in `cost-evidence.json`.
+
+## End-of-stage artifacts
+
+Stage 1 compares the terminal **SAR-only** artifact with the terminal **XPR-only** artifact, both derived from the same original baseline. Stage 2 compares SAR → SPR with XPR → SPR. Stage 3 compares the complete trajectories already evaluated in this paper. Stage completion is the terminal clean self-pass or peer consensus after corrections, not the first review response. These are recorded review dispositions, not claims of human ratification or absence of all defects.
+
+The [stage manifest](stage-artifacts.json) identifies both the commit containing the final corrected spec and the later commit recording stage completion. Each pair resolves to byte-identical spec content. The local copies below are derived, ignored scratch files; the immutable Git blobs and manifest are the durable sources.
+
+| Arm | Stage | Method | Final spec commit                          | Terminal evidence commit                   | Lines | Local snapshot                                           |
+| --- | ----: | ------ | ------------------------------------------ | ------------------------------------------ | ----: | -------------------------------------------------------- |
+| A   |     1 | SAR    | `c5cff0e6ce254cb8872d28fd24ecadc932d9b0a0` | `559df32bb43eb07dc26212c708847ef2fe9be7c8` | 1,377 | `.scratch/review-order-research/stages/A-stage-1-SAR.md` |
+| A   |     2 | SPR    | `0a7e3c6a6283feddd4a7d7f16d81ac856cc5f1eb` | `7a0b08c7ce42d83e80565227761414708ddf008d` | 1,508 | `.scratch/review-order-research/stages/A-stage-2-SPR.md` |
+| A   |     3 | XPR    | `267b91b9218b59342a0d70e0859a0e38523a3923` | `54d6daa3337ef4b2cde4e1bda8c103f4b5a0bd1d` | 1,853 | `.scratch/review-order-research/stages/A-stage-3-XPR.md` |
+| B   |     1 | XPR    | `09551213ec6ee18e90d2d6d39f3fff00e9ade055` | `49f0c84274ef4116523784f64e51e0de8cc0caad` | 1,118 | `.scratch/review-order-research/stages/B-stage-1-XPR.md` |
+| B   |     2 | SPR    | `6edf917bdd2d0441ad9c296f69419da08307f758` | `4693327ee3638cb5cee94265465dddfa01d5c475` | 1,224 | `.scratch/review-order-research/stages/B-stage-2-SPR.md` |
+| B   |     3 | SAR    | `20412884a31fc353096f826430c9da7962516792` | `5b54f897c7a5d039536cba1153579e3246f219f9` | 1,327 | `.scratch/review-order-research/stages/B-stage-3-SAR.md` |
+
+From the repository root, reconstruct and verify every checkpoint without checking out either branch:
+
+```bash
+python3 - <<'PY'
+import hashlib, json, pathlib, subprocess
+manifest = pathlib.Path('docs/research/2026-09-20-review-order-experiment/stage-artifacts.json')
+for snapshot in json.loads(manifest.read_text())["snapshots"]:
+    object_name = snapshot['artifact_commit'] + ':' + snapshot['artifact_path']
+    content = subprocess.check_output(['git', 'show', object_name])
+    assert hashlib.sha256(content).hexdigest() == snapshot['sha256']
+    output = pathlib.Path(snapshot['local_materialization'])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(content)
+    print(output)
+PY
+```
+
+The initial stage snapshots are `A-stage-1-SAR.md` and `B-stage-1-XPR.md` in `.scratch/review-order-research/stages/`. Line references in the stage comparison point to these exact blobs, rather than the final-spec A/B line numbers. Recreating these copies overwrites only the manifest-listed scratch outputs.
