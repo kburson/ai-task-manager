@@ -1,0 +1,7 @@
+# #1664 Plan-Exit Decomposition Decision
+
+`plan-estimate` converged #1664 at 24.5 human hours and XL, above the accepted #1558 WBS Task 12 split threshold of 24 hours. `promote 1664` correctly refused with `plan-exit-decomposition: must-split (size-xl, estimate-hours)`. A `split-plan --dry-run` against the original issue-local plan found only one Task 12 and would recreate the whole issue, not split it.
+
+The reviewed implementation plan already has two independently reviewable units. The [decomposition plan](../../../plans/2026-09-21-1664-functional-dod-decomposition.md) renders those as serial Task 1 (pure projection) and Task 2 (ready-only persistence/call sites), with distinct Story Intents and executable verifiers. This changes work packaging, not the accepted technical contract or #1664 scope. Task 2 depends on integrated Task 1. #1664 becomes their nested epic and still aggregates the original three acceptance criteria before merging into #1558.
+
+Semantic Story Intent review: both beneficiaries are the lifecycle executor; Task 1 enables read-only disclosure of ordered pending changes, while Task 2 ensures only fresh ready execution can persist them. Each has a concrete existing failure, a distinct prevented outcome, support in the issue/accepted WBS/deep dive, and standalone wording. The original Grok findings on v2 decision shape/digest and execution-time retry remain mandatory in their respective child scopes. Full-Auto author acceptance is limited to this mechanical decomposition; no terminal external reviewer verdict is asserted.
