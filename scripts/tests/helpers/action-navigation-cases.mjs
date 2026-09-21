@@ -154,7 +154,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       ['rebind', 'plan', 'unknown-vocabulary', 'rebind'],
       ['promote', 'mystery', 'state-unavailable', null],
       ['promote', { recorded: 'plan', live: 'develop' }, 'state-unavailable', null],
-      ['promote', 'develop', 'authority-read-failed', 'promote'],
+      ['promote', 'develop', 'state-unavailable', null],
       ['promote', 'test', 'action-not-explain-ready', 'promote'],
       ['promote', 'review', 'action-not-explain-ready', 'promote'],
     ]) {
@@ -172,7 +172,7 @@ export function registerActionNavigationCases({ test, body, now }) {
         issue,
         inputs: { state, head: 'a'.repeat(40), body },
         attempt,
-        deps: { effectAttempts: () => effects },
+        deps: { effectAttempts: () => effects, testPorts: { projectDir: '/fixture' } },
       });
       assert.equal(decision.status, 'indeterminate');
       assert.equal(decision.blockers[0].code, code);
