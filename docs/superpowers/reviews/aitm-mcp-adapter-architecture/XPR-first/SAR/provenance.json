@@ -1,0 +1,77 @@
+{
+  "sequence": ["XPR", "SPR", "SAR"],
+  "stage": "SAR",
+  "model": "gpt-6-astra",
+  "effort": "high",
+  "role": "same author; no delegated reviewer",
+  "genuine_author_session": "01a0c0c8-cd91-7511-983c-5403627fa61d",
+  "model_assurance": "Assigned agent model and effort, retained genuine runtime session; no independent provider attestation added by SAR",
+  "stage_start_commit": "d9bc49d5d79f6c903af961439df4753127d45d6c",
+  "baseline_spec_commit": "6edf917bdd2d0441ad9c296f69419da08307f758",
+  "baseline_spec_sha256": "dd2d36956fec9dabb3427429b23541ea5733ce50dd00560bdff4bb22de266c23",
+  "setup_commit": "0d2033b854e46db4bbab4424a2e798bc347f78a3",
+  "artifact": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+  "rounds": [
+    {
+      "round": 1,
+      "review_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SAR/self-review-r1.md",
+      "review_file_sha256": "163a537575e9723d377b2d10935f9468ba15c5c5dc892286e2c650e197f225e3",
+      "input_commit_sha": "0d2033b854e46db4bbab4424a2e798bc347f78a3",
+      "input_spec_sha256": "dd2d36956fec9dabb3427429b23541ea5733ce50dd00560bdff4bb22de266c23",
+      "result_spec_commit_sha": "8e5fb7cf5886f8577f4de53d254ae26bd32fa2c5",
+      "result_spec_sha256": "72b8730f8e4b41db6c3f7e888403428f363ef66555278a8b4176b9ec4dde0613",
+      "findings": 4,
+      "spec_changed": true,
+      "observed_review_recorded_at": "2026-09-20T22:39:36.022682+00:00"
+    },
+    {
+      "round": 2,
+      "review_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SAR/self-review-r2.md",
+      "review_file_sha256": "adb16ddbab96c4dfae13279cd1e420ea025aeb3788decf7bdb262917ac9d6b23",
+      "input_commit_sha": "8e5fb7cf5886f8577f4de53d254ae26bd32fa2c5",
+      "input_spec_sha256": "72b8730f8e4b41db6c3f7e888403428f363ef66555278a8b4176b9ec4dde0613",
+      "result_spec_commit_sha": "20412884a31fc353096f826430c9da7962516792",
+      "result_spec_sha256": "99c5ca567e533e6b1b7913dc98b2723b1f561ab5a0903cfa5d6fe227b449fddf",
+      "findings": 1,
+      "spec_changed": true,
+      "observed_review_recorded_at": "2026-09-20T22:45:39Z"
+    },
+    {
+      "round": 3,
+      "review_file": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SAR/self-review-r3.md",
+      "review_file_sha256": "712a318c64380cc3a5b43d1891accf8d7d83fabade9d8fa3b1532a18eb9555fe",
+      "input_commit_sha": "20412884a31fc353096f826430c9da7962516792",
+      "input_spec_sha256": "99c5ca567e533e6b1b7913dc98b2723b1f561ab5a0903cfa5d6fe227b449fddf",
+      "result_spec_commit_sha": "20412884a31fc353096f826430c9da7962516792",
+      "result_spec_sha256": "99c5ca567e533e6b1b7913dc98b2723b1f561ab5a0903cfa5d6fe227b449fddf",
+      "findings": 0,
+      "spec_changed": false,
+      "observed_review_recorded_at": "2026-09-20T22:48:19Z"
+    }
+  ],
+  "review_passes": 3,
+  "correction_cycles": 2,
+  "finding_records": 5,
+  "baseline_findings": 4,
+  "carried_forward_optional_findings": 1,
+  "introduced_by_sar_revision_findings": 1,
+  "terminal_clean": true,
+  "final_spec_commit_sha": "20412884a31fc353096f826430c9da7962516792",
+  "final_spec_sha256": "99c5ca567e533e6b1b7913dc98b2723b1f561ab5a0903cfa5d6fe227b449fddf",
+  "prior_collateral": {
+    "XPR": {
+      "path": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR",
+      "baseline_and_final_git_tree": "1ee0a7ea34ae045385542c551891c3d6db2b30f7",
+      "unchanged": true
+    },
+    "SPR": {
+      "path": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR",
+      "baseline_and_final_git_tree": "8bc7cabe40144fd4b601ccfa9ab16dbf311ace99",
+      "unchanged": true
+    }
+  },
+  "token_cost_coverage": "unknown",
+  "active_reasoning_duration": "unknown",
+  "human_approval_claimed": false,
+  "runtime_tests_implemented_or_executed": false
+}

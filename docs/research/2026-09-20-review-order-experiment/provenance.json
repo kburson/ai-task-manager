@@ -1,0 +1,61 @@
+{
+  "schema": "aitm.review-order-research-provenance/v1",
+  "date": "2026-09-20",
+  "baseline": {
+    "commit": "c2e33f4d0ae704900437a0659119bad6eb30dc01",
+    "path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+    "sha256": "7066ff40fdfffa399d279f453b3e4ee7dd0e26f96effcc2dff0475b76c2cf783",
+    "lines_wc_l": 883
+  },
+  "specimens": {
+    "A": {
+      "sequence": ["SAR", "SPR", "XPR"],
+      "commit": "94c32e12d845b621311a4597ac1dbaf3715c9d67",
+      "branch": "codex/aitm-mcp-adapter-architecture",
+      "sha256": "4c3e51d93861e93ced662efbdbd551221be1e5e114fe0c68c3d3219d822f2382",
+      "lines": 1853,
+      "finding_records": { "SAR": 11, "SPR": 4, "XPR": 13 },
+      "correction_cycles": { "SAR": 4, "SPR": 1, "XPR": 2 }
+    },
+    "B": {
+      "sequence": ["XPR", "SPR", "SAR"],
+      "commit": "5b54f897c7a5d039536cba1153579e3246f219f9",
+      "branch": "codex/aitm-mcp-adapter-xpr-first-fresh",
+      "sha256": "99c5ca567e533e6b1b7913dc98b2723b1f561ab5a0903cfa5d6fe227b449fddf",
+      "lines": 1327,
+      "finding_records": { "XPR": 8, "SPR": 1, "SAR": 5 },
+      "correction_cycles": { "XPR": 2, "SPR": 1, "SAR": 2 },
+      "classifications": {
+        "SPR_required_change_items_within_one_finding": 3,
+        "SAR_carried_forward_records": 1,
+        "SAR_repair_regression_records": 1
+      }
+    }
+  },
+  "participants": {
+    "author": { "model": "gpt-6-astra", "effort": "high" },
+    "SPR_reviewer": { "model": "gpt-5.6-sol", "effort": "medium" },
+    "XPR_reviewer": { "model": "claude-opus-5", "effort": "medium" },
+    "artifact_evaluator": {
+      "model": "gpt-5.6-sol",
+      "effort": "low",
+      "effort_source": "independently observed turn metadata",
+      "assessment_order": "rubric, neutral specimens, frozen preliminary judgment, manifest, review histories, cost evidence"
+    }
+  },
+  "primary_outcome": {
+    "conditional_quality_winner": "A",
+    "causal_method_winner": null,
+    "reason": "A has stronger high-consequence authority, recovery, retention, migration, and verification contracts; the two nonrandom trajectories cannot identify a universal order effect."
+  },
+  "retrospective_extensions": {
+    "stage_one_comparison": {
+      "record": "stage-1-comparison.md",
+      "artifact_manifest": "stage-artifacts.json",
+      "conditional_quality_winner": "A-stage-1-SAR",
+      "causal_method_winner": null,
+      "assessment_blinding": "not blinded",
+      "reason": "A stage one already contains stronger caller identity, bootstrap, evidence-append, approval, changed-binding, local-repository, migration, and adversarial-test contracts; B stage one is stronger on repository/version consistency, observability taxonomy, strict-host executor and attestation detail, and clarity."
+    }
+  }
+}

@@ -1,0 +1,505 @@
+{
+  "schema": "aitm.review-order-cost-evidence/v1",
+  "captured_at": "2026-09-20T23:10:03.613193+00:00",
+  "experiment_usage_cutoff_exclusive": "2026-09-20T22:57:24.856Z",
+  "currency": "USD",
+  "classification": "Sanitized observed token usage with hypothetical rate-card valuation; not an invoice or complete experiment cost",
+  "pricing_date": "2026-09-20",
+  "pricing_sources": [
+    "https://developers.openai.com/api/docs/pricing",
+    "https://developers.openai.com/api/docs/models/gpt-6-astra",
+    "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+    "https://platform.claude.com/docs/en/about-claude/pricing"
+  ],
+  "rates_usd_per_million": {
+    "gpt-6-astra": {
+      "uncached_input": 10,
+      "cached_input": 1,
+      "cache_write": 12.5,
+      "output": 50
+    },
+    "gpt-5.6-sol": {
+      "uncached_input": 4,
+      "cached_input": 0.4,
+      "cache_write": 5,
+      "output": 20
+    },
+    "claude-opus-5": {
+      "uncached_input": 5,
+      "cached_input": 0.5,
+      "cache_write_5m": 6.25,
+      "cache_write_1h": 10,
+      "output": 25
+    }
+  },
+  "pricing_assumptions": [
+    "Standard short-context OpenAI rate-card baseline; observed request inputs below 272000.",
+    "Second scenario doubles OpenAI rates for Fast mode, holding Anthropic standard. Codex usage lacks per-request service tier; priority is declared by host. Neither scenario is actual billing.",
+    "Anthropic cache-write TTL split preserved; no invented cache discount.",
+    "Output includes reasoning subset; never add reasoning again.",
+    "No taxes, negotiated rates, subscription allocation, human labor, separate tool/runtime charges, original spec authoring, abandoned reverse attempt, merge/CI, paper research, or unobserved calls.",
+    "No claim of all-in lower bound on actual paid cash. Unobserved costs are unknown, not zero."
+  ],
+  "windows": [
+    {
+      "arm": "A",
+      "stage": "SAR-r2-r5",
+      "start": "2026-09-20T19:37:53.168Z",
+      "end_exclusive": "2026-09-20T20:14:23.475Z"
+    },
+    {
+      "arm": "A",
+      "stage": "SPR",
+      "start": "2026-09-20T20:21:54.798Z",
+      "end_exclusive": "2026-09-20T20:45:08.761Z"
+    },
+    {
+      "arm": "A",
+      "stage": "XPR",
+      "start": "2026-09-20T20:48:32.449Z",
+      "end_exclusive": "2026-09-20T21:33:08.539Z"
+    },
+    {
+      "arm": "B",
+      "stage": "XPR",
+      "start": "2026-09-20T21:46:22.430Z",
+      "end_exclusive": "2026-09-20T22:17:08.032Z"
+    },
+    {
+      "arm": "B",
+      "stage": "SPR",
+      "start": "2026-09-20T22:17:08.032Z",
+      "end_exclusive": "2026-09-20T22:34:55.537Z"
+    },
+    {
+      "arm": "B",
+      "stage": "SAR",
+      "start": "2026-09-20T22:34:55.537Z",
+      "end_exclusive": "2026-09-20T22:57:24.856Z"
+    }
+  ],
+  "observed_usage_groups": [
+    {
+      "arm": "A",
+      "stage": "SAR-r2-r5",
+      "role": "author-and-orchestrator",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 55,
+      "first_usage_at": "2026-09-20T19:38:04.297Z",
+      "last_usage_at": "2026-09-20T20:13:26.866Z",
+      "usage": {
+        "uncached_input": 157526,
+        "cached_input": 6303616,
+        "cache_write": 0,
+        "output": 30901,
+        "reasoning_output_subset": 5797
+      },
+      "max_request_input_tokens": 183464,
+      "hypothetical_standard_api_usd": 9.423926,
+      "hypothetical_openai_fast_anthropic_standard_usd": 18.847852,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "A",
+      "stage": "SPR",
+      "role": "author-and-orchestrator",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 64,
+      "first_usage_at": "2026-09-20T20:22:07.999Z",
+      "last_usage_at": "2026-09-20T20:42:44.892Z",
+      "usage": {
+        "uncached_input": 128093,
+        "cached_input": 5845120,
+        "cache_write": 0,
+        "output": 24655,
+        "reasoning_output_subset": 4749
+      },
+      "max_request_input_tokens": 224576,
+      "hypothetical_standard_api_usd": 8.3588,
+      "hypothetical_openai_fast_anthropic_standard_usd": 16.7176,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "A",
+      "stage": "XPR",
+      "role": "author-and-orchestrator",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 91,
+      "first_usage_at": "2026-09-20T20:48:41.504Z",
+      "last_usage_at": "2026-09-20T21:31:57.777Z",
+      "usage": {
+        "uncached_input": 196880,
+        "cached_input": 11993728,
+        "cache_write": 0,
+        "output": 46171,
+        "reasoning_output_subset": 13467
+      },
+      "max_request_input_tokens": 213812,
+      "hypothetical_standard_api_usd": 16.271078,
+      "hypothetical_openai_fast_anthropic_standard_usd": 32.542156,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "XPR",
+      "role": "parent-orchestrator",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 18,
+      "first_usage_at": "2026-09-20T21:46:37.028Z",
+      "last_usage_at": "2026-09-20T22:16:25.250Z",
+      "usage": {
+        "uncached_input": 153952,
+        "cached_input": 2756992,
+        "cache_write": 0,
+        "output": 3115,
+        "reasoning_output_subset": 1646
+      },
+      "max_request_input_tokens": 166129,
+      "hypothetical_standard_api_usd": 4.452262,
+      "hypothetical_openai_fast_anthropic_standard_usd": 8.904524,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "SPR",
+      "role": "parent-orchestrator",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 33,
+      "first_usage_at": "2026-09-20T22:17:16.310Z",
+      "last_usage_at": "2026-09-20T22:34:03.398Z",
+      "usage": {
+        "uncached_input": 18009,
+        "cached_input": 5664256,
+        "cache_write": 0,
+        "output": 4366,
+        "reasoning_output_subset": 1321
+      },
+      "max_request_input_tokens": 177674,
+      "hypothetical_standard_api_usd": 6.062646,
+      "hypothetical_openai_fast_anthropic_standard_usd": 12.125292,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "SAR",
+      "role": "parent-orchestrator",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 27,
+      "first_usage_at": "2026-09-20T22:35:24.325Z",
+      "last_usage_at": "2026-09-20T22:52:33.223Z",
+      "usage": {
+        "uncached_input": 17466,
+        "cached_input": 4909440,
+        "cache_write": 0,
+        "output": 5890,
+        "reasoning_output_subset": 2146
+      },
+      "max_request_input_tokens": 190112,
+      "hypothetical_standard_api_usd": 5.3786,
+      "hypothetical_openai_fast_anthropic_standard_usd": 10.7572,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "A",
+      "stage": "SPR",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "observations": 25,
+      "first_usage_at": "2026-09-20T20:27:57.392Z",
+      "last_usage_at": "2026-09-20T20:38:11.264Z",
+      "usage": {
+        "uncached_input": 125878,
+        "cached_input": 2163072,
+        "cache_write": 0,
+        "output": 14846,
+        "reasoning_output_subset": 5049
+      },
+      "max_request_input_tokens": 141372,
+      "hypothetical_standard_api_usd": 1.6656608,
+      "hypothetical_openai_fast_anthropic_standard_usd": 3.3313216,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "XPR",
+      "role": "author",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 83,
+      "first_usage_at": "2026-09-20T21:46:29.594Z",
+      "last_usage_at": "2026-09-20T22:12:58.210Z",
+      "usage": {
+        "uncached_input": 139225,
+        "cached_input": 8011392,
+        "cache_write": 0,
+        "output": 28161,
+        "reasoning_output_subset": 2798
+      },
+      "max_request_input_tokens": 144690,
+      "hypothetical_standard_api_usd": 10.811692,
+      "hypothetical_openai_fast_anthropic_standard_usd": 21.623384,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "SPR",
+      "role": "author",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 46,
+      "first_usage_at": "2026-09-20T22:17:57.536Z",
+      "last_usage_at": "2026-09-20T22:33:48.233Z",
+      "usage": {
+        "uncached_input": 46489,
+        "cached_input": 7437568,
+        "cache_write": 0,
+        "output": 19382,
+        "reasoning_output_subset": 2933
+      },
+      "max_request_input_tokens": 182808,
+      "hypothetical_standard_api_usd": 8.871558,
+      "hypothetical_openai_fast_anthropic_standard_usd": 17.743116,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "SAR",
+      "role": "author",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "observations": 37,
+      "first_usage_at": "2026-09-20T22:35:45.750Z",
+      "last_usage_at": "2026-09-20T22:51:27.330Z",
+      "usage": {
+        "uncached_input": 109802,
+        "cached_input": 4376576,
+        "cache_write": 0,
+        "output": 24768,
+        "reasoning_output_subset": 5309
+      },
+      "max_request_input_tokens": 225085,
+      "hypothetical_standard_api_usd": 6.712996,
+      "hypothetical_openai_fast_anthropic_standard_usd": 13.425992,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "SPR",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "observations": 30,
+      "first_usage_at": "2026-09-20T22:19:34.005Z",
+      "last_usage_at": "2026-09-20T22:29:35.567Z",
+      "usage": {
+        "uncached_input": 104124,
+        "cached_input": 2772096,
+        "cache_write": 0,
+        "output": 14919,
+        "reasoning_output_subset": 4404
+      },
+      "max_request_input_tokens": 134986,
+      "hypothetical_standard_api_usd": 1.8237144,
+      "hypothetical_openai_fast_anthropic_standard_usd": 3.6474288,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "A",
+      "stage": "XPR",
+      "role": "reviewer",
+      "model": "claude-opus-5",
+      "effort": "medium (launch/protocol declaration)",
+      "observations": 40,
+      "first_usage_at": "2026-09-20T20:51:24.458Z",
+      "last_usage_at": "2026-09-20T21:27:30.923Z",
+      "usage": {
+        "uncached_input": 80,
+        "cached_input": 4901357,
+        "cache_write_5m": 0,
+        "cache_write_1h": 204897,
+        "output": 52250,
+        "reasoning_output_subset": 14416,
+        "server_web_search_requests": 0,
+        "server_web_fetch_requests": 0
+      },
+      "max_request_input_tokens": 204899,
+      "hypothetical_standard_api_usd": 5.8062985,
+      "hypothetical_openai_fast_anthropic_standard_usd": 5.8062985,
+      "actual_billed_usd": null
+    },
+    {
+      "arm": "B",
+      "stage": "XPR",
+      "role": "reviewer",
+      "model": "claude-opus-5",
+      "effort": "medium (launch/protocol declaration)",
+      "observations": 46,
+      "first_usage_at": "2026-09-20T21:48:47.497Z",
+      "last_usage_at": "2026-09-20T22:06:36.949Z",
+      "usage": {
+        "uncached_input": 92,
+        "cached_input": 4536276,
+        "cache_write_5m": 0,
+        "cache_write_1h": 157027,
+        "output": 43189,
+        "reasoning_output_subset": 13092,
+        "server_web_search_requests": 0,
+        "server_web_fetch_requests": 0
+      },
+      "max_request_input_tokens": 169553,
+      "hypothetical_standard_api_usd": 4.918593,
+      "hypothetical_openai_fast_anthropic_standard_usd": 4.918593,
+      "actual_billed_usd": null
+    }
+  ],
+  "stage_subtotals": [
+    {
+      "arm": "A",
+      "stage": "SAR-r2-r5",
+      "start": "2026-09-20T19:37:53.168Z",
+      "end_exclusive": "2026-09-20T20:14:23.475Z",
+      "hypothetical_standard_api_usd": 9.423926,
+      "hypothetical_openai_fast_anthropic_standard_usd": 18.847852,
+      "actual_billed_usd": null,
+      "coverage": "Partial: excludes SAR r1 and gaps"
+    },
+    {
+      "arm": "A",
+      "stage": "SPR",
+      "start": "2026-09-20T20:21:54.798Z",
+      "end_exclusive": "2026-09-20T20:45:08.761Z",
+      "hypothetical_standard_api_usd": 10.0244608,
+      "hypothetical_openai_fast_anthropic_standard_usd": 20.0489216,
+      "actual_billed_usd": null,
+      "coverage": "Partial: excludes SAR r1 and gaps"
+    },
+    {
+      "arm": "A",
+      "stage": "XPR",
+      "start": "2026-09-20T20:48:32.449Z",
+      "end_exclusive": "2026-09-20T21:33:08.539Z",
+      "hypothetical_standard_api_usd": 22.0773765,
+      "hypothetical_openai_fast_anthropic_standard_usd": 38.3484545,
+      "actual_billed_usd": null,
+      "coverage": "Partial: excludes SAR r1 and gaps"
+    },
+    {
+      "arm": "B",
+      "stage": "XPR",
+      "start": "2026-09-20T21:46:22.430Z",
+      "end_exclusive": "2026-09-20T22:17:08.032Z",
+      "hypothetical_standard_api_usd": 20.182547,
+      "hypothetical_openai_fast_anthropic_standard_usd": 35.446501,
+      "actual_billed_usd": null,
+      "coverage": "Observed author, reviewer where applicable, and parent orchestration within stated windows; not all-in billing"
+    },
+    {
+      "arm": "B",
+      "stage": "SPR",
+      "start": "2026-09-20T22:17:08.032Z",
+      "end_exclusive": "2026-09-20T22:34:55.537Z",
+      "hypothetical_standard_api_usd": 16.7579184,
+      "hypothetical_openai_fast_anthropic_standard_usd": 33.5158368,
+      "actual_billed_usd": null,
+      "coverage": "Observed author, reviewer where applicable, and parent orchestration within stated windows; not all-in billing"
+    },
+    {
+      "arm": "B",
+      "stage": "SAR",
+      "start": "2026-09-20T22:34:55.537Z",
+      "end_exclusive": "2026-09-20T22:57:24.856Z",
+      "hypothetical_standard_api_usd": 12.091596,
+      "hypothetical_openai_fast_anthropic_standard_usd": 24.183192,
+      "actual_billed_usd": null,
+      "coverage": "Observed author, reviewer where applicable, and parent orchestration within stated windows; not all-in billing"
+    }
+  ],
+  "telemetry_audit": [
+    {
+      "source_label": "root",
+      "provider": "openai",
+      "cutoff_exclusive": "2026-09-20T22:57:24.856Z",
+      "distinct_usage_observations": 356,
+      "duplicate_cumulative_observations_ignored": 4,
+      "cumulative_delta_mismatches": 0,
+      "counter_resets": 0,
+      "sanitized_usage_metadata_sha256": "4462b4bad5b86d97a7420c4b1fc0d0f7b81331ef1f50161ff113dd2ce7814fcd",
+      "model": "gpt-6-astra",
+      "effort": "high"
+    },
+    {
+      "source_label": "A-SPR-reviewer",
+      "provider": "openai",
+      "cutoff_exclusive": "2026-09-20T22:57:24.856Z",
+      "distinct_usage_observations": 25,
+      "duplicate_cumulative_observations_ignored": 0,
+      "cumulative_delta_mismatches": 0,
+      "counter_resets": 0,
+      "sanitized_usage_metadata_sha256": "c9de2ad983485f74b8a8fe30ca8ef1f7b05e3d397ba5698c15d5942d988d2a2f",
+      "model": "gpt-5.6-sol",
+      "effort": "medium"
+    },
+    {
+      "source_label": "B-author",
+      "provider": "openai",
+      "cutoff_exclusive": "2026-09-20T22:57:24.856Z",
+      "distinct_usage_observations": 166,
+      "duplicate_cumulative_observations_ignored": 1,
+      "cumulative_delta_mismatches": 0,
+      "counter_resets": 0,
+      "sanitized_usage_metadata_sha256": "6db3978f82edb9d85707938528abeeeefb73b0dd59e3a85e78e78403256104f0",
+      "model": "gpt-6-astra",
+      "effort": "high"
+    },
+    {
+      "source_label": "B-SPR-reviewer",
+      "provider": "openai",
+      "cutoff_exclusive": "2026-09-20T22:57:24.856Z",
+      "distinct_usage_observations": 30,
+      "duplicate_cumulative_observations_ignored": 1,
+      "cumulative_delta_mismatches": 0,
+      "counter_resets": 0,
+      "sanitized_usage_metadata_sha256": "2935b834da397aea018d557807fb081ccc1e7155e15847fec80241f3af98092f",
+      "model": "gpt-5.6-sol",
+      "effort": "medium"
+    },
+    {
+      "source_label": "A-XPR-reviewer",
+      "provider": "anthropic",
+      "assistant_records": 82,
+      "unique_message_ids": 40,
+      "duplicate_message_records_ignored": 42,
+      "same_id_usage_variations": 0,
+      "deduplication": "Last observed usage per message ID; duplicate records have identical usage when variation is zero.",
+      "sanitized_usage_metadata_sha256": "ddcfe173d09298d45a329e1719b1ff952b2b179eaa413dda9f3f2e089fa9d968",
+      "model": "claude-opus-5",
+      "effort": "medium declared by launch/protocol, not independently in usage"
+    },
+    {
+      "source_label": "B-XPR-reviewer",
+      "provider": "anthropic",
+      "assistant_records": 97,
+      "unique_message_ids": 46,
+      "duplicate_message_records_ignored": 51,
+      "same_id_usage_variations": 0,
+      "deduplication": "Last observed usage per message ID; duplicate records have identical usage when variation is zero.",
+      "sanitized_usage_metadata_sha256": "1f01ad8acd7408cd683453dda880ef8a085ee380391e560016637cc16a07e3fb",
+      "model": "claude-opus-5",
+      "effort": "medium declared by launch/protocol, not independently in usage"
+    }
+  ],
+  "unknowns": [
+    "Initial A SAR r1 usage unavailable in inspected sources.",
+    "A preflight, metadata reorganization, integration, excluded attempt, and gaps are not valued.",
+    "Server-side or separate MCP/tool/runtime costs not comprehensively captured.",
+    "Actual billing, subscription utilization, retries absent from local usage, provider reconciliation, and final effort-effective compute are unavailable.",
+    "Timestamp attribution uses usage observation time and may place boundary-straddling requests in the next window."
+  ]
+}
