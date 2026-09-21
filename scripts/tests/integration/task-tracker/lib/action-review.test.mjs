@@ -119,6 +119,21 @@ test('Review routing uses its complete collector even when generic guards are av
   assert.deepEqual(item.effects, []);
 });
 
+test('Review guards receive project config and a read-only dependency reconciliation port', async () => {
+  const item = fixture({
+    runGuards: async (_from, _to, context) => {
+      assert.equal(context.cfg?.repo, REPOSITORY);
+      assert.equal(context.readOnly, true);
+      assert.equal(typeof context.deps?.reconcileDependencyDisposition, 'function');
+      await context.deps.reconcileDependencyDisposition();
+      return { ok: true, status: 'ready', refusals: [], humanDecision: null };
+    },
+  });
+  const decision = await item.decision('review');
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.deepEqual(item.effects, []);
+});
+
 test('Review explanation refuses stale HEAD, unreadable evidence, and board drift', async (t) => {
   for (const [name, options, code] of [
     [

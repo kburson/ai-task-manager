@@ -577,10 +577,16 @@ export async function collectReviewReadiness({
     context: {
       issueNumber: issue,
       repo: ports.cfg?.repo,
+      cfg: ports.cfg,
       projectDir: ports.projectDir,
       body: projection.body,
       lifecycleEvidence: reviewEvidence.lifecycleEvidence ?? preflight.lifecycleEvidence ?? null,
       toState: 'review',
+      readOnly: true,
+      deps: {
+        ...(ports.deps ?? {}),
+        reconcileDependencyDisposition: async () => {},
+      },
     },
     runGuards: ports.runGuards,
     loadPolicy: ports.loadPolicy,
