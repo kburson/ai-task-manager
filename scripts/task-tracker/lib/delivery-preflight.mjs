@@ -14,6 +14,7 @@ import {
   loadWorkflowBoundary,
 } from './workflow-policy/enforcement.mjs';
 import { deliveryReviewHandoffOutcome } from './terminal-review-handoff.mjs';
+import { isIssueResidentDeliveryKind, parseDeliverablePosted } from './issue-kind.mjs';
 
 const INPUT_KEYS = [
   'acceptedReviewSha',
@@ -392,6 +393,32 @@ export function validateDeliveryPreflight(input = {}) {
 
 export function validateMergedDeliveryPreflight(input = {}) {
   return validatePreflight(input, { merged: true });
+}
+
+/** Pure predicates for the issue-resident lane before its comment/record transaction. */
+export function validateNoCommitDeliveryPreflight(input = {}) {
+  const { issue, lineage, pullRequests, localHeadSha, testReceiptSha, acceptedReviewSha } = input;
+  if (!isPlainObject(issue) || !isPlainObject(lineage) || !Array.isArray(pullRequests)) {
+    fail('input');
+  }
+  if (lineage.parentIssueNumber !== null || pullRequests.length !== 0) fail('child-lineage');
+  if (!isIssueResidentDeliveryKind(issue.body)) fail('input');
+  const deliverable = parseDeliverablePosted(issue.body);
+  if (!deliverable) fail('no-commit-deliverable');
+  if (issue.state !== 'OPEN') fail('issue-not-open');
+  if (issue.projectState !== 'Review') fail('issue-not-review');
+  if (!isSha(localHeadSha) || !isSha(testReceiptSha) || testReceiptSha !== acceptedReviewSha) {
+    fail('no-commit-review-evidence');
+  }
+  const authorization = issue.reviewAuthorization;
+  if (
+    !isPlainObject(authorization) ||
+    authorization.standing !== true ||
+    !['human', 'full-auto'].includes(authorization.mode)
+  ) {
+    fail('approval-evidence');
+  }
+  return deepFreeze({ deliverable, acceptedSha: acceptedReviewSha });
 }
 
 export function validateHistoricalRecoveryPreflight(input = {}) {

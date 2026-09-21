@@ -55,6 +55,7 @@ export function resolveActionNavigation({ actionId, state } = {}) {
       ? route('ready', 'review', 'review')
       : route('pending', 'review', null, blocker('action-not-explain-ready'));
   }
+  if (actionId === 'deliver') return route('ready', 'deliver', 'deliver');
   if (actionId !== 'promote') {
     return route('pending', policy.target ?? null, null, blocker('action-not-explain-ready'));
   }
