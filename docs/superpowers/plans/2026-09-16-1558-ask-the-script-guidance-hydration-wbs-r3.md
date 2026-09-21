@@ -467,6 +467,15 @@ As an agent choosing a lifecycle action,
 I want to have all operationally necessary information without repeated evidence metadata,
 So that routine guidance remains small while explicit investigation can inspect complete evidence.
 
+#### Story Intent
+
+- **Beneficiary:** agent choosing a lifecycle action
+- **Capability:** receive all operationally necessary action information without repeated evidence metadata
+- **Need:** routine guidance currently repeats evidence provenance even though action selection needs only the validated operational projection
+- **Value or failure prevented:** keep routine guidance small while preserving complete evidence for explicit investigation
+
+#### Files and delivery boundary
+
 **Scope/files:** Create `scripts/task-tracker/lib/action-decision/presentation.mjs` and `scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs`; extend Task 2 contract definitions and Task 1 conformance fixtures. Keep catalog lookup and CLI orchestration in Task 14. This module accepts validated values and performs no I/O, evaluation, logging, mutation, or authority collection.
 
 **Interfaces:** Export `presentActionDecision`, `validateActionPresentation`, and `validateExplanationEnvelope` with the names in the interface map. `ActionPresentationV1` has exactly `issue`, `actionId`, `status`, `blockers`, `normalizations`, `warnings`, `humanDecision`. It has no inner schema tag. The outer envelope versions result/guidance/diagnostic members together. Do not import guidance implementation into the core contract; pass already resolved guidance to envelope validation.
