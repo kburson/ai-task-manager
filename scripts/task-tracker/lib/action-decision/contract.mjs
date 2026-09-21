@@ -480,7 +480,7 @@ function requiredHumanRequests(decision) {
   });
 }
 
-function validateHumanDecision(value, decision) {
+export function validateHumanDecision(value, decision) {
   const required = requiredHumanRequests(decision);
   if (value === null) {
     if (required.length > 0) fail('humanDecision', 'required');
