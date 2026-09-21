@@ -25,7 +25,7 @@
 - Explanation cannot run review probes, spawn reviewers, persist a DoD projection, comment, stamp evidence, approve, move the board, or create a sandbox.
 - Keep existing Test→Review guards, Review resident/approval boundaries, `deriveAndRescan` persistence/readback, and exact-HEAD verification semantics.
 - Use leading `[#1667]` attribution; integrate into `feature/epic/1558`, not trunk.
-- Plan Size `XL`, Estimate `20.5` human hours; forecast record `01M32WN40M4BMG92JCQD96JYQ0`.
+- Plan Size `XL`, Estimate `20.5` human hours; the governed issue forecast record remains authoritative.
 
 ## File Map
 
