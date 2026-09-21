@@ -35,7 +35,9 @@ import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import { evaluateEarlyPromoteGuards } from '../lib/action-decision/promote.mjs';
 import { resolveStoryIntentSource } from '../lib/story-intent-source.mjs';
+import { isReadyForPlanMigrationActive } from '../lib/ready-for-plan-migration-freeze.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
@@ -278,6 +280,10 @@ export async function runPromote({
   if (!cfg) throw new Error('promote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
   assertBound(issueNumber);
+  // Preflight precedes the issue lock. Recheck at the locked effect boundary.
+  if ((deps.migrationFreezeActive ?? isReadyForPlanMigrationActive)()) {
+    return { status: 'migration-freeze' };
+  }
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
@@ -400,7 +406,9 @@ export async function runPromote({
   };
   const runGuardsFn = deps.runGuards || runGuards;
   const evaluateForBody = (guardBody) =>
-    evaluateCompleteGuards({
+    (['backlog', 'refine', 'ready-for-plan', 'plan'].includes(recorded)
+      ? evaluateEarlyPromoteGuards
+      : evaluateCompleteGuards)({
       fromState: recorded,
       toState: target,
       context: { ...guardContextBase, body: guardBody },
@@ -723,6 +731,10 @@ export async function verbPromote(rest, cfg, deps = {}) {
   }
 
   switch (result.status) {
+    case 'migration-freeze': {
+      process.stderr.write('PROMPT_REQUIRED: ready-for-plan-migration-freeze\n');
+      process.exit(14);
+    }
     case 'promoted': {
       process.stdout.write(
         `✓ #${issueNumber} promoted: ${result.from} → ${result.to}` +
