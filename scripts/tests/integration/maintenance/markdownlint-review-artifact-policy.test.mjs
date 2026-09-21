@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #1219 #1580 #1581
+// @story #1219 #1580 #1581 #1719
 // cspell:ignore Protocolwordzz
 
 import { spawnSync } from 'node:child_process';
@@ -23,6 +23,16 @@ const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
   'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
+  'docs/superpowers/reviews/**/review-*-author-response-*.md',
+  'docs/superpowers/reviews/**/review-*-reviewer-response-*.md',
+  'docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md',
+  'docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md',
+];
+const NATIVE_AND_XPR_RESPONSES = [
+  'docs/superpowers/reviews/999/spec/review-abc-author-response-1.md',
+  'docs/superpowers/reviews/999/spec/review-abc-reviewer-response-2.md',
+  'docs/superpowers/reviews/999/spec/999-xpr-author-response-r1.md',
+  'docs/superpowers/reviews/999/spec/999-xpr-reviewer-response-r12.md',
 ];
 const DISPLACED_REVIEW_PATHS = [
   'docs/superpowers/reviews/1381/plan/2026-08-23-1381-governed-delivery-convergence-r3-reviewer-claude-review.md',
@@ -63,7 +73,10 @@ test('Markdownlint replaces every exact reviewer exception with one role-based p
   );
   assert.deepEqual(
     config.ignores.filter((entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')),
-    [REVIEWER_IGNORE_GLOB, PEER_REVIEW_RESPONSE_IGNORE_GLOBS[1]]
+    [
+      REVIEWER_IGNORE_GLOB,
+      ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter((glob) => glob.includes('-reviewer-')),
+    ]
   );
   assert.deepEqual(
     config.ignores.filter((entry) => entry.includes('/reviews/') && entry.includes('-response-')),
@@ -71,7 +84,7 @@ test('Markdownlint replaces every exact reviewer exception with one role-based p
   );
   assert.match(workflow, new RegExp(REVIEWER_IGNORE_GLOB.replaceAll('*', '\\*')));
   for (const ignoreGlob of PEER_REVIEW_RESPONSE_IGNORE_GLOBS) {
-    assert.match(workflow, new RegExp(ignoreGlob.replaceAll('*', '\\*')));
+    assert.ok(workflow.includes(ignoreGlob), `workflow must document ${ignoreGlob}`);
     assert.ok(cspellConfig.ignorePaths.includes(ignoreGlob));
   }
   assert.match(workflow, /legacy[\s\S]*owner[\s\S]*responses[\s\S]*remain author-controlled/);
@@ -109,7 +122,8 @@ test('Markdownlint ignores sealed ai-peer-review responses but still governs leg
     writeFileSync(path.join(fixture, reviewerPath), invalidMarkdown);
     writeFileSync(path.join(fixture, legacyOwnerPath), invalidMarkdown);
 
-    for (const responsePath of [authorPath, reviewerPath]) {
+    for (const responsePath of [authorPath, reviewerPath, ...NATIVE_AND_XPR_RESPONSES]) {
+      writeFileSync(path.join(fixture, responsePath), invalidMarkdown);
       const response = runMarkdownlint(fixture, responsePath);
       assert.equal(response.status, 0, response.output);
       assert.match(response.output, /Summary: 0 issues in 0 files/);
@@ -146,7 +160,8 @@ test('CSpell ignores sealed ai-peer-review responses but still governs legacy ow
     writeFileSync(path.join(fixture, reviewerPath), misspelling);
     writeFileSync(path.join(fixture, legacyOwnerPath), misspelling);
 
-    for (const responsePath of [authorPath, reviewerPath]) {
+    for (const responsePath of [authorPath, reviewerPath, ...NATIVE_AND_XPR_RESPONSES]) {
+      writeFileSync(path.join(fixture, responsePath), misspelling);
       const response = runCspell(fixture, responsePath);
       assert.match(response.output, /Files checked: 0/);
       assert.doesNotMatch(response.output, /Protocolwordzz/);
