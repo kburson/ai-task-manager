@@ -112,6 +112,14 @@ example, be billed by Anthropic, Amazon Bedrock, Google Vertex AI, or a gateway.
 The accounting design therefore introduces a separate usage-source adapter
 boundary.
 
+The existing unavailable-result discipline in `word-counter.mjs` is
+Codex-specific: its Claude and Grok missing-transcript paths can return an
+`ok` zero word count. This is not usage evidence. Each new usage-source adapter
+owns source availability, schema recognition, cursor validity, and diagnostic
+codes for its host; it must independently prove a measured zero. Reusing a
+session/path resolver does not authorize trusting a counting helper's status
+or using words as provider tokens. Existing word-count behavior stays unchanged.
+
 ## Accounting definitions
 
 ### Consumption
@@ -210,12 +218,32 @@ durations, and lifecycle boundaries. Every newly emitted row receives a stable
 opaque event identifier in a trailing marker:
 
 ```text
-<!-- aitm-cost-event id="01..." policy="01..." -->
+| ... existing cells ... | <!-- row-sec: a=60 i=0 --> <!-- aitm-cost-event id="01..." policy="01..." -->
 ```
 
 The identifier is generated once in the durable capture intent and is reused by
 the timing row, cost record, retry queue, and reconciliation records. It is not
 derived from mutable display text or row position.
+
+The enabled writer emits the existing `row-sec` marker first and the cost
+marker second, both outside the final table pipe. The lexical leaf
+`scripts/task-tracker/lib/timing-row-reader.mjs` must learn this composed suffix
+before any writer emits it. `splitTimingRowMarker` separates the entire suffix
+from the cells; its `marker` retains both comments and their bytes, and parsed
+cost IDs are exposed separately. Existing `row-sec` extraction continues to
+work on that suffix. Cell replacement and full-word-marker migration preserve
+both comments verbatim. A malformed or duplicate cost marker cannot become a
+table cell or erase valid timing seconds: timing parsing remains valid where
+the original row is valid, but cost coverage reports a marker diagnostic.
+
+The implementation plan must route marker parsing/preservation through that
+lexical leaf in `timing-rollup.mjs`, `lib/timing-rows.mjs`,
+`backfill-timing-logs.mjs`, `lib/heal-timing-sweep.mjs`,
+`lib/timing-slug-rename.mjs`, and
+`lib/agent-review/validators/timing-log-sequence.mjs`, all relative to
+`scripts/task-tracker/`. Do not add competing marker grammars. Historical rows
+with no cost marker keep their existing parsing and rewrite behavior; this
+compatibility work does not authorize adding cost IDs to historical rows.
 
 Existing rows without identifiers remain valid timing evidence and are outside
 the prospective ledger unless an explicitly approved backfill later adds
@@ -273,24 +301,74 @@ Each immutable event record has an `aitm.agent-cost-event/v1` payload. Exact
 field names may be refined during implementation planning, but the following
 semantics are required.
 
+### Secret-policy-compatible representation
+
+The existing record secret policy rejects provider-native token counter names
+when used as object keys. Preserve supported native names as values in a
+bounded array, for example:
+
+```json
+{
+  "nativeCounters": [
+    { "category": "input_tokens", "value": 1234 },
+    { "category": "cache_read_input_tokens", "value": 800 }
+  ],
+  "sourceLocator": "receipt:example"
+}
+```
+
+Use safe semantic keys such as `nativeCounters`, `category`, `value`, and
+`sourceLocator`, not native dictionary keys or `sourcePath`/`transcriptPath`.
+All event, reconciliation, capture-policy, and subscription payloads must pass
+the existing `assertNoSecretRecordData` and credential-value checks unmodified.
+This design adds no safe-key exception and does not weaken secret detection.
+Adapters map only explicitly supported schema categories, never arbitrary
+provider-response keys or strings, into durable evidence. A rejected native
+name (including a singular credential-shaped name such as `input_token`) is an
+unsupported source schema: publish a bounded incomplete observation with an
+adapter diagnostic and no offending value. Do not escape, encode, or rename a
+rejected value to evade scanning, silently drop its measured quantity, or label
+the observation complete. Native counters are retained losslessly only for
+accepted supported observations; unsupported evidence stays unavailable until
+an explicitly reviewed adapter/schema change can represent it safely.
+
+Payloads must fit the existing 256 KiB record-JSON ceiling and the smaller of
+the record layer's 1 MiB comment ceiling and the transport's accepted size.
+Adapters declare bounded category/line counts and enforce serialized byte
+limits before publication. Oversized evidence yields a small incomplete
+observation with a size diagnostic, not silently truncated counters or an
+endlessly retried oversized envelope. Diagnostic codes use the stable
+`<source>-<condition>` convention, for example `claude-transcript-unresolved`.
+
 ### Event identity
 
-| Field              | Meaning                                                          |
-| ------------------ | ---------------------------------------------------------------- |
-| `eventId`          | Stable identifier shared with the Timing Log row                 |
-| `issue`            | Owning GitHub issue number                                       |
-| `timingEvent`      | Canonical timing event slug                                      |
-| `timingRecordedAt` | Instant recorded by the Timing Log                               |
-| `stage`            | Lifecycle stage that owned the interval                          |
-| `stageVisit`       | Monotonic visit number for repeated stages                       |
-| `boundary`         | `baseline`, `interval`, `delivery`, `post-trunk`, or `terminal`  |
-| `operationId`      | Idempotency/correlation identifier for the whole capture attempt |
+| Field              | Meaning                                                                   |
+| ------------------ | ------------------------------------------------------------------------- |
+| `eventId`          | Stable identifier shared with the Timing Log row                          |
+| `issue`            | Owning GitHub issue number                                                |
+| `timingEvent`      | Canonical timing event slug                                               |
+| `timingRecordedAt` | Instant recorded by the Timing Log                                        |
+| `stage`            | Lifecycle stage that owned the interval                                   |
+| `stageVisit`       | Monotonic visit number for repeated stages                                |
+| `eventRole`        | Lifecycle cutoff: `opening`, `ordinary`, `delivery-cutoff`, or `terminal` |
+| `operationId`      | Idempotency/correlation identifier for the whole capture attempt          |
 
 An interval wholly within one stage visit is charged to that stage. A
 `develop:completed` event therefore closes a Develop interval; it does not
 charge that interval to Test. The first source observation is a baseline with
 no delta. If it occurs after the accounting window opens, the unobserved opening
 span is a coverage gap, not evidence of zero or excluded pre-story consumption.
+
+Cutoff role, observation kind, and delivery classification are independent.
+Each source contribution carries `observationKind`: `baseline`, `interval`,
+or `unavailable`. Each contributing span carries `deliveryWindow`:
+`delivery`, `post-trunk`, `unknown`, or `not-applicable`. Here `delivery` means
+the delivery-to-trunk window, not a lifecycle event. Classify by measured span
+and accepted boundary evidence, never by the event's role alone. A terminal
+event can contain a post-trunk interval and a newly opened source baseline;
+both preserve their own observation kind, while the terminal role still anchors
+the Done coverage check. Unsupported splits are `unknown`, and no-commit
+deliverables have `not-applicable` delivery classification.
 
 ### Source identity
 
@@ -361,6 +439,15 @@ revisions, cycles, or invalid conservation of measured quantities prevent that
 revision from contributing; affected totals remain incomplete. Corrections to
 erroneous source quantities must explicitly identify the corrected evidence
 and explain any change in quantity instead of claiming a conserving split.
+
+The complete many-to-many replacement set is an array in the reconciliation
+payload, not the envelope's link fields. The existing scalar `supersedes`
+identifies only the prior reconciliation revision in that lineage, or is null
+for its first revision. `predecessor` retains the enclosing record chain.
+Projection validation traverses the payload's span references and input hashes
+as well as the scalar revision links. One envelope carries the whole atomic
+replacement; do not emit one independent revision per replaced span or widen
+the shared envelope link schema.
 
 ### Cost lines
 
@@ -845,6 +932,11 @@ calls.
 
 ### Security and compatibility tests
 
+- realistic supported multi-provider event, reconciliation, capture-policy,
+  and subscription payloads pass the unchanged record secret policy;
+- rejected native names and injected credential keys/values fail safely,
+  without encoding-based bypass or a false complete observation;
+- serialized record/transport size bounds produce an incomplete diagnostic;
 - credential and prompt-content rejection;
 - redaction of account/key references;
 - feature-disabled byte compatibility;
@@ -897,6 +989,24 @@ The implementation plan must preserve these concrete invariants:
 7. Reconcile competing correction revisions and missing dependencies without
    mixing original and replacement spans. Include delayed in-window evidence
    after Done, but exclude later consumption and require terminal coverage proof.
+8. Round-trip both historical seven-column and current eight-column timing rows
+   through `splitTimingRowMarker`, `parseTimingRow`,
+   `ensureTimingRowFullMarkerCell`, and `replaceTimingRowCells`. Enabled rows
+   retain the composed suffix byte-for-byte, correct cell counts and
+   `fullWordMarker`, and unchanged `readEstimationStageTiming` seconds. Exercise
+   healing, slug rename, rollup, and review validation; malformed/duplicate cost
+   markers flag coverage without damaging valid timing evidence. Disabled rows
+   and historical rows without cost markers retain existing behavior.
+9. For every supported host (Codex, Claude, and Grok), a missing, unreadable,
+   or unrecognized transcript produces unavailable usage with a stable reason,
+   even when a reused word helper returns an `ok` zero. A genuine measured zero
+   requires a successful recognized usage read and valid comparable cursors.
+10. At a post-trunk Done event, retain terminal cutoff role and each source's
+    independent baseline/interval/unavailable kind and delivery classification.
+    Neither terminal coverage nor the housekeeping subtotal may lose evidence.
+11. Validate a many-to-many span replacement in one reconciliation payload while
+    the envelope's `supersedes` remains one prior revision ID or null. Exercise
+    payload-reference cycle checks and reject partial application.
 
 ## Acceptance-criteria traceability
 
