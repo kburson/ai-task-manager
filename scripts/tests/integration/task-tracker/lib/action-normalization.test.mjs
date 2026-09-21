@@ -261,6 +261,32 @@ test('changed execution HEAD refuses even if projected decision intent would be 
   assert.equal(writes, 0);
 });
 
+test('a changed HEAD during a versioned retry refuses before another push', async () => {
+  let currentHead = HEAD;
+  let pushes = 0;
+  await assert.rejects(
+    persistReadyNormalizations({
+      issueNumber: 1732,
+      repo: 'owner/repo',
+      head: HEAD,
+      evaluatedAt: TIME,
+      refreshAndEvaluate: async () => ready,
+      readBack: async () => ({ body: body(), head: currentHead }),
+      mutateBody: async ({ mutate, validateFreshBaseAsync }) => {
+        const base = body();
+        await validateFreshBaseAsync(base, mutate(base));
+        pushes++;
+        currentHead = 'b'.repeat(40); // a concurrent versioned retry starts here
+        await validateFreshBaseAsync(base, mutate(base));
+        pushes++;
+        return { status: 'ok', body: base };
+      },
+    }),
+    { code: 'normalization-authority-drift' }
+  );
+  assert.equal(pushes, 1, 'stale-HEAD proof must not reach the retry push');
+});
+
 test('an empty authority body is a failed readback, never an idempotent no-op', async () => {
   await assert.rejects(
     persistReadyNormalizations({

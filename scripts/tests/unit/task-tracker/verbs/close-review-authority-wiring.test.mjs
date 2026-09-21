@@ -1,11 +1,37 @@
-// @story #925
+// @story #925 #1732
 import { strict as assert } from 'node:assert';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
+import {
+  applyCloseReviewApprovalBypass,
+  verbClose,
+} from '../../../../task-tracker/verbs/close.mjs';
+
+test('projected close readiness bypasses only the configured approval refusal', () => {
+  const approval = { id: 'review-exit-review-approved' };
+  const other = { id: 'review-exit-close-gates' };
+  const blocked = {
+    status: 'blocked',
+    ok: false,
+    refusals: [approval],
+    humanDecision: { requests: [{ kind: 'approval' }] },
+  };
+  assert.deepEqual(applyCloseReviewApprovalBypass(blocked, false), blocked);
+  assert.deepEqual(applyCloseReviewApprovalBypass(blocked, true), {
+    ...blocked,
+    status: 'ready',
+    ok: true,
+    refusals: [],
+    humanDecision: null,
+  });
+  const mixed = { ...blocked, refusals: [approval, other] };
+  assert.deepEqual(applyCloseReviewApprovalBypass(mixed, true), mixed);
+  const indeterminate = { ...blocked, status: 'indeterminate' };
+  assert.deepEqual(applyCloseReviewApprovalBypass(indeterminate, true), indeterminate);
+});
 
 async function runOfflineOrdinaryClose({ gateReviewToDone, reviewer }) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-close-authority-'));

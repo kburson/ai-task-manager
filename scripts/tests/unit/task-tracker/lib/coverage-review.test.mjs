@@ -152,7 +152,13 @@ function makeCtx(opts = {}) {
     }),
     runGuards: async (_f, _to, gctx) => {
       calls.guards.push(gctx);
-      return guardSeq[gi++] || { refusals: [] };
+      const result = guardSeq[gi++] || { refusals: [] };
+      return {
+        ...result,
+        status: result.refusals.length > 0 ? 'blocked' : 'ready',
+        ok: result.refusals.length === 0,
+        humanDecision: null,
+      };
     },
   };
   return { ctx, calls };

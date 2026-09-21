@@ -116,6 +116,17 @@ export async function persistReadyNormalizations({
         return projection.body;
       },
       validateFreshBaseAsync: async (base, next) => {
+        // A body-version retry may outlive the checkout captured at entry.
+        // Recheck the execution HEAD immediately before each attempted push.
+        let current;
+        try {
+          current = await readBack();
+        } catch (cause) {
+          throw new NormalizationRefusalError('normalization-authority-drift', cause);
+        }
+        if (current?.head !== head) {
+          throw new NormalizationRefusalError('normalization-authority-drift');
+        }
         const projection = projectFunctionalDod({ body: base, head, evaluatedAt });
         requireReady(await evaluateCurrent({ body: base, projection }));
         if (next !== projection.body) {
