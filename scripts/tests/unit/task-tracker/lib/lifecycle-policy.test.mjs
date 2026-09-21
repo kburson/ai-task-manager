@@ -1,4 +1,4 @@
-// @story #1008
+// @story #1008 #1667
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -54,7 +54,7 @@ test('navigation refuses rebind vocabulary and unknown or conflicting state', ()
   );
 });
 
-test('Done is terminal, Develop delegates Test readiness, and later delegates remain pending', () => {
+test('Done is terminal while Test and incomplete Review delegate to read-only readiness', () => {
   assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state: 'done' }), {
     status: 'terminal',
     target: null,
@@ -68,14 +68,11 @@ test('Done is terminal, Develop delegates Test readiness, and later delegates re
     delegate: 'test',
     blocker: null,
   });
-  for (const [state, target, delegate] of [
-    ['test', 'review', 'review'],
-    ['review', 'done', 'close'],
-  ]) {
+  for (const state of ['test', 'review']) {
     const route = resolveActionNavigation({ actionId: 'promote', state });
     assert.deepEqual(
-      [route.status, route.target, route.delegate, route.blocker.code],
-      ['pending', target, delegate, 'action-not-explain-ready']
+      [route.status, route.target, route.delegate, route.blocker],
+      ['ready', 'review', 'review', null]
     );
   }
 });

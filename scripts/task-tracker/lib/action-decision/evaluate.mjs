@@ -18,6 +18,7 @@ import { resolveActionNavigation } from './navigation.mjs';
 import { collectSessionReadiness } from './session.mjs';
 import { collectEarlyPromoteReadiness } from './promote.mjs';
 import { collectTestReadiness } from './test.mjs';
+import { collectReviewReadiness } from './review.mjs';
 
 /**
  * Read-only remote-tip authority for a later close adapter. The caller owns
@@ -381,8 +382,10 @@ export async function evaluateAction({
     throw new TypeError('action-evaluator:attempt');
   }
   if (
-    (actionId === 'rebind' || ['bind', 'resume', 'promote', 'test'].includes(actionId)) &&
-    typeof deps.runReadOnlyGuards !== 'function'
+    actionId === 'review' ||
+    (actionId === 'promote' && ['test', 'review'].includes(inputs?.state)) ||
+    ((actionId === 'rebind' || ['bind', 'resume', 'promote', 'test'].includes(actionId)) &&
+      typeof deps.runReadOnlyGuards !== 'function')
   ) {
     return evaluateCompletedAction({ actionId, repository, issue, inputs, attempt, deps });
   }
@@ -597,6 +600,8 @@ async function evaluateCompletedAction({
   let blockers = navigation.blocker ? [navigation.blocker] : [];
   let humanDecision = null;
   let warnings = [];
+  let normalizations = [];
+  let selectedAction = null;
   let collectorFailed = false;
   if (navigation.status === 'terminal') {
     const [bodyObservation, boardObservation] = await Promise.all([
@@ -626,6 +631,9 @@ async function evaluateCompletedAction({
     try {
       const testAction =
         actionId === 'test' || (actionId === 'promote' && canonicalState === 'develop');
+      const reviewAction =
+        actionId === 'review' ||
+        (actionId === 'promote' && ['test', 'review'].includes(canonicalState));
       const result = testAction
         ? await collectTestReadiness({
             issue,
@@ -635,25 +643,37 @@ async function evaluateCompletedAction({
             attempt,
             ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
           })
-        : actionId === 'promote'
-          ? await collectEarlyPromoteReadiness({
+        : reviewAction
+          ? await collectReviewReadiness({
               issue,
               fromState: canonicalState,
               body: inputs.body,
+              head: inputs.head,
               attempt,
-              ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
+              ports: { scope, cfg: inputs.config, ...(deps.reviewPorts ?? {}) },
             })
-          : await collectSessionReadiness({
-              actionId,
-              issue,
-              stateBefore: inputs.sessionState,
-              config: inputs.config,
-              attempt,
-              ports: { scope, ...(deps.sessionPorts ?? {}) },
-            });
+          : actionId === 'promote'
+            ? await collectEarlyPromoteReadiness({
+                issue,
+                fromState: canonicalState,
+                body: inputs.body,
+                attempt,
+                ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
+              })
+            : await collectSessionReadiness({
+                actionId,
+                issue,
+                stateBefore: inputs.sessionState,
+                config: inputs.config,
+                attempt,
+                ports: { scope, ...(deps.sessionPorts ?? {}) },
+              });
       status = result.status;
       blockers = result.blockers;
       warnings = result.warnings ?? [];
+      normalizations = result.normalizations ?? [];
+      selectedAction = result.selectedAction ?? null;
+      humanDecision = result.humanDecision ?? null;
       if (
         actionId === 'promote' &&
         blockers.some(({ code }) => code === 'authority-read-skipped')
@@ -748,18 +768,25 @@ async function evaluateCompletedAction({
     ];
   });
   if (requests.length > 0) humanDecision = { requests };
-  const bundle = attempt.finish();
+  const bundle = attempt.finish({
+    normalizationInputs: normalizations.map(({ normalizerId, inputDigest }) => ({
+      normalizerId,
+      inputDigest,
+    })),
+  });
   const decision = {
     schema: ACTION_DECISION_SCHEMA,
     issue,
     actionId:
       navigation.status === 'terminal' || blockers.some(({ code }) => code === 'state-unavailable')
         ? null
-        : actionId,
+        : selectedAction === 'review' && actionId === 'promote'
+          ? 'review'
+          : actionId,
     status,
     snapshot: snapshotFromBundle({ state: snapshotState, head: inputs.head, bundle }),
     blockers,
-    normalizations: [],
+    normalizations,
     warnings,
     humanDecision,
     guidanceIds: [
@@ -767,7 +794,9 @@ async function evaluateCompletedAction({
         ? 'state.done'
         : blockers.some(({ code }) => code === 'state-unavailable')
           ? 'navigation.unresolved'
-          : (descriptor?.guidanceId ?? 'navigation.unknown'),
+          : selectedAction === 'review' && actionId === 'promote'
+            ? 'action.review'
+            : (descriptor?.guidanceId ?? 'navigation.unknown'),
     ],
   };
   return Object.freeze(validateActionDecision(decision));
