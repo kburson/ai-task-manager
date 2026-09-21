@@ -16,7 +16,7 @@
 
 - **Beneficiary:** lifecycle-action operator
 - **Capability:** inspect complete current action readiness through one read-only explanation consistent with mutation
-- **Need:** legacy collection and guard paths can omit a blocker or reuse stale authority across a two-pass decision
+- **Need:** legacy collection and guard paths can omit a blocker or reuse stale authority
 - **Value or failure prevented:** decisions cannot treat partial guard evidence or stale observations as permission to act
 
 ## Global Constraints
