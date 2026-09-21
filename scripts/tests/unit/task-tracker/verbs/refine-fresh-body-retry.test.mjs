@@ -134,3 +134,45 @@ test('successful contiguity refresh preserves unrelated refusals', async () => {
   assert.equal(result.guardResult.ok, false);
   assert.deepEqual(result.guardResult.refusals, [blocked]);
 });
+
+test('shared refresh reruns every affected guard on the replacement body', async () => {
+  const newRefusal = { id: 'discuss-unresolved', reason: 'new body has a directive' };
+  const fullResult = { ok: false, status: 'blocked', refusals: [newRefusal], humanDecision: null };
+  const seenBodies = [];
+  const result = await refreshPreRefineContiguity({
+    fromState: 'backlog',
+    toState: 'refine',
+    issueNumber: 1729,
+    guardResult: refusal(),
+    fetchFreshBody: async () => 'fresh body',
+    rerunGuards: async (freshBody) => {
+      seenBodies.push(freshBody);
+      return { guardResult: fullResult, guardContext: { body: freshBody } };
+    },
+  });
+  assert.deepEqual(seenBodies, ['fresh body']);
+  assert.equal(result.refreshed, true);
+  assert.deepEqual(result.guardResult, fullResult);
+  assert.equal(result.guardContext.body, 'fresh body');
+});
+
+test('shared refresh classifies failed fresh authority as indeterminate', async () => {
+  const result = await refreshPreRefineContiguity({
+    fromState: 'backlog',
+    toState: 'refine',
+    issueNumber: 1729,
+    guardResult: { ...refusal(), status: 'blocked', humanDecision: null },
+    fetchFreshBody: async () => {
+      throw new Error('TLS handshake timeout');
+    },
+    rerunGuards: async () => {
+      throw new Error('must not run without a body');
+    },
+  });
+  assert.equal(result.guardResult.status, 'indeterminate');
+  assert.deepEqual(
+    result.guardResult.refusals.map(({ code }) => code),
+    [undefined, 'authority-read-failed']
+  );
+  assert.equal(result.refreshed, false);
+});

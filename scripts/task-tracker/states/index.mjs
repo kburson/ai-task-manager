@@ -19,9 +19,8 @@
 // A guard may refuse a transition; refusing returns `{ ok: false, reason }`.
 // Guards may shell out (async) or be pure-data (sync) — the registry awaits
 // either uniformly. A guard that throws is treated as a refusal whose reason
-// is the stringified error. Guards do NOT mutate state on success; the only
-// sanctioned side-effect is stashing a value on `ctx` (the body-fields
-// adapter side-channels its resolved `refinementPlan` this way).
+// is the stringified error. Guards do NOT mutate state on success. Derived
+// values such as a refinement plan travel in the returned guard result.
 //
 // ─────────────────────────────────────────────────────────────────────
 // Contract: Action

@@ -8,8 +8,8 @@
 //   2. Each adapter translates the underlying gate's
 //      `{ ok: false, blockers: string[] }` shape into the registry's
 //      `{ ok: false, reason: string }` shape via `blockers.join('; ')`.
-//   3. `planEntryFieldsBody` side-channels the resolved refinement plan onto
-//      `ctx.refinementPlan` so promote.mjs's post-success hook can consume it.
+//   3. `planEntryFieldsBody` returns the resolved refinement plan as derived
+//      data so promote.mjs's post-success hook can consume it.
 //   4. Adapter registration is idempotent — re-running bootstrap does not
 //      duplicate slot entries.
 

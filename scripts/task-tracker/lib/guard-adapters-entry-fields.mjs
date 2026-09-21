@@ -13,8 +13,8 @@
 //      "one guard refusal per gate, preserving original messages" via
 //      `blockers.join('; ')`.
 //   3. On the `plan-entry-fields-body` adapter, returns the resolved `plan` as
-//      derived data. The registry temporarily mirrors it to
-//      `ctx.refinementPlan` for the legacy refine post-success hook.
+//      derived data. Promote consumes the final guard result after all passes.
+//      No guard-context write-through is part of this adapter contract.
 //
 // Note on `plan-entry-fields-children-cleared`: the #276 body lists this as
 // a refine.exit guard wrapping "the epic-children recursion." In the
@@ -59,7 +59,7 @@ export const refineEntryFieldsPriority = {
 
 // refine.exit #1 — Size / Estimate / Priority / AC items / rationale before R4P.
 // On success, returns the resolved `plan` as derived data. The registry owns
-// the temporary legacy context mirror.
+// the immutable derived-result channel.
 export const planEntryFieldsBody = {
   id: 'plan-entry-fields-body',
   async run(ctx) {

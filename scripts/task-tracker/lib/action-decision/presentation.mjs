@@ -2,7 +2,10 @@
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { actionDescriptorFor } from '../lifecycle-policy/actions.mjs';
 import {
+  ACTION_DECISION_SCHEMA,
+  ACTION_DECISION_SCHEMA_V1,
   BOUNDARY_PRODUCER_IDS,
+  CODE_DEFINITIONS,
   REGISTERED_GUARD_IDS,
   validateActionDecision,
   validateBlocker,
@@ -10,7 +13,8 @@ import {
   validateWarning,
 } from './contract.mjs';
 
-export const EXPLANATION_SCHEMA = 'aitm.action-explanation/v1';
+export const EXPLANATION_SCHEMA_V1 = 'aitm.action-explanation/v1';
+export const EXPLANATION_SCHEMA = 'aitm.action-explanation/v2';
 
 // This is a closed wire contract. Any field or semantic change, including an
 // additive one, requires a new outer major plus renewed adapter, alias, shared-
@@ -123,8 +127,10 @@ function validateWarningOrder(warnings) {
   }
 }
 
-export function validateActionPresentation(input) {
+export function validateActionPresentation(input, { schema = ACTION_DECISION_SCHEMA } = {}) {
   const value = parse(input, 'root');
+  if (![ACTION_DECISION_SCHEMA_V1, ACTION_DECISION_SCHEMA].includes(schema))
+    fail('schema', 'unsupported');
   exact(value, PRESENTATION_KEYS, 'root');
   if (!Number.isInteger(value.issue) || value.issue <= 0) fail('issue', 'positive-integer');
   const descriptor = value.actionId === null ? null : actionDescriptorFor(value.actionId);
@@ -136,8 +142,19 @@ export function validateActionPresentation(input) {
   if (value.status !== 'ready' && value.blockers.length === 0) {
     fail('blockers', 'nonempty');
   }
+  const mixedStatus =
+    schema === ACTION_DECISION_SCHEMA &&
+    value.status === 'indeterminate' &&
+    value.blockers.some(({ code }) =>
+      CODE_DEFINITIONS[code]?.legalStatuses.includes('indeterminate')
+    );
   value.blockers.forEach((blocker, index) =>
-    validateBlocker(blocker, { status: value.status, path: `blockers[${index}]` })
+    validateBlocker(blocker, {
+      status: value.status,
+      path: `blockers[${index}]`,
+      mixedStatus,
+      schema,
+    })
   );
   validateAuthoritySubjects(value.blockers);
 
@@ -242,7 +259,7 @@ export function presentActionDecision({
     warnings: [...presentedAdmissionWarnings, ...structuredClone(validated.warnings)],
     humanDecision: structuredClone(validated.humanDecision),
   };
-  return validateActionPresentation(result);
+  return validateActionPresentation(result, { schema: validated.schema });
 }
 
 function validateGuidance(guidance) {
@@ -322,12 +339,16 @@ export function validateExplanationEnvelope(input, { diagnostic = false } = {}) 
       : ['schema', 'result', 'guidance'],
     'envelope'
   );
-  if (envelope.schema !== EXPLANATION_SCHEMA) fail('schema', 'unsupported');
-  const result = validateActionPresentation(envelope.result);
+  if (![EXPLANATION_SCHEMA_V1, EXPLANATION_SCHEMA].includes(envelope.schema))
+    fail('schema', 'unsupported');
+  const decisionSchema =
+    envelope.schema === EXPLANATION_SCHEMA_V1 ? ACTION_DECISION_SCHEMA_V1 : ACTION_DECISION_SCHEMA;
+  const result = validateActionPresentation(envelope.result, { schema: decisionSchema });
   validateGuidance(envelope.guidance);
 
   if (diagnostic) {
     const fullDecision = validateActionDecision(envelope.fullDecision);
+    if (fullDecision.schema !== decisionSchema) fail('fullDecision.schema', 'version-coupling');
     if (envelope.guidance[0].id !== fullDecision.guidanceIds[0]) {
       fail('guidance[0].id', 'diagnostic-coupling');
     }

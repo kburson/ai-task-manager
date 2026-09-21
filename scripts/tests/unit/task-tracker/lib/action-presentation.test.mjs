@@ -8,11 +8,16 @@ import { fileURLToPath } from 'node:url';
 
 import {
   EXPLANATION_SCHEMA,
+  EXPLANATION_SCHEMA_V1,
   presentActionDecision,
   validateActionPresentation,
   validateExplanationEnvelope,
 } from '../../../../task-tracker/lib/action-decision/presentation.mjs';
-import { validateHumanRequest } from '../../../../task-tracker/lib/action-decision/contract.mjs';
+import {
+  ACTION_DECISION_SCHEMA,
+  ACTION_DECISION_SCHEMA_V1,
+  validateHumanRequest,
+} from '../../../../task-tracker/lib/action-decision/contract.mjs';
 import { canonicalRecordJson } from '../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import { actionDecisionSnapshot } from '../../../helpers/action-decision-fixtures.mjs';
 import {
@@ -51,7 +56,7 @@ function decision({
   humanDecision = null,
 } = {}) {
   return {
-    schema: 'aitm.action-decision/v1',
+    schema: ACTION_DECISION_SCHEMA,
     issue,
     actionId,
     status,
@@ -695,7 +700,75 @@ test('all Task 1b scenario lanes preserve operational values or refuse candidate
   assert.equal(exercised, 42);
 });
 
-test('v1 is closed: additive fields or semantic changes require a new outer major', () => {
+test('v2 envelope preserves mixed-status blockers and v1 remains semantically closed', () => {
+  const known = planApprovalBlocker();
+  const unknown = authorityFailure({ source: 'workflow-policy' });
+  const fullDecision = decision({
+    status: 'indeterminate',
+    blockers: [known, unknown],
+    humanDecision: {
+      requests: [planApprovalRequest(), investigationRequest({ blocker: unknown })],
+    },
+  });
+  const result = presentActionDecision({ decision: fullDecision });
+  assert.deepEqual(result.blockers, [known, unknown]);
+  const envelope = {
+    schema: EXPLANATION_SCHEMA,
+    result,
+    guidance: [guidanceFor(result)],
+    fullDecision,
+    diagnosticMessages: [],
+  };
+  assert.equal(validateExplanationEnvelope(envelope, { diagnostic: true }), envelope);
+  assert.throws(() =>
+    validateExplanationEnvelope(
+      { ...envelope, schema: EXPLANATION_SCHEMA_V1 },
+      { diagnostic: true }
+    )
+  );
+  assert.throws(() =>
+    validateExplanationEnvelope(
+      {
+        ...envelope,
+        fullDecision: { ...fullDecision, schema: ACTION_DECISION_SCHEMA_V1 },
+      },
+      { diagnostic: true }
+    )
+  );
+  assert.throws(() =>
+    validateExplanationEnvelope(
+      {
+        ...envelope,
+        result: { ...result, blockers: [known] },
+      },
+      { diagnostic: true }
+    )
+  );
+});
+
+test('v1 routine and diagnostic envelopes remain readable for v1-only decisions', () => {
+  const fullDecision = decision({ schema: ACTION_DECISION_SCHEMA_V1 });
+  fullDecision.schema = ACTION_DECISION_SCHEMA_V1;
+  const result = presentActionDecision({ decision: fullDecision });
+  const envelope = {
+    schema: EXPLANATION_SCHEMA_V1,
+    result,
+    guidance: [guidanceFor(result)],
+    fullDecision,
+    diagnosticMessages: [],
+  };
+  assert.equal(validateExplanationEnvelope(envelope, { diagnostic: true }), envelope);
+  assert.equal(
+    validateExplanationEnvelope({
+      schema: EXPLANATION_SCHEMA_V1,
+      result,
+      guidance: envelope.guidance,
+    }).schema,
+    EXPLANATION_SCHEMA_V1
+  );
+});
+
+test('the current outer schema is closed: additive fields or semantic changes require another major', () => {
   const result = presentActionDecision({ decision: decision() });
   const envelope = {
     schema: EXPLANATION_SCHEMA,

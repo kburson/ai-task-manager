@@ -2,11 +2,12 @@
 // `/task refine` run (#1017).
 //
 // This helper runs before the move saga mutates board/body/timing state. It
-// re-evaluates only the contiguity guard, preserving every unrelated refusal.
-// A failed refresh or a genuinely absent marker retains the original
-// fail-closed decision.
+// retains the historical contiguity-only path for compatibility callers. The
+// shared evaluator caller supplies rerunGuards to replace the entire result
+// when the body changes, so no other body-dependent predicate stays stale.
 
 import { contiguityEntryGuard } from '../contiguity-entry-guard.mjs';
+import { indeterminateRefreshResult } from '../action-decision/evaluate.mjs';
 
 const PRE_REFINE_ARCS = new Set(['backlog→refine']);
 
@@ -20,6 +21,7 @@ export async function refreshPreRefineContiguity({
   issueNumber,
   guardResult,
   fetchFreshBody,
+  rerunGuards,
   guard = contiguityEntryGuard,
 } = {}) {
   const refusals = Array.isArray(guardResult?.refusals) ? guardResult.refusals : [];
@@ -40,11 +42,31 @@ export async function refreshPreRefineContiguity({
     }
   } catch (error) {
     return {
-      guardResult,
+      guardResult:
+        typeof rerunGuards === 'function'
+          ? indeterminateRefreshResult({ guardResult, refusals, issueNumber })
+          : guardResult,
       refreshed: false,
       attempts: 1,
       refreshError: error instanceof Error ? error.message : String(error),
     };
+  }
+
+  if (typeof rerunGuards === 'function') {
+    try {
+      const complete = await rerunGuards(freshBody);
+      if (!complete?.guardResult || !Array.isArray(complete.guardResult.refusals)) {
+        throw new TypeError('fresh full guard result is invalid');
+      }
+      return { ...complete, refreshed: true, attempts: 1 };
+    } catch (error) {
+      return {
+        guardResult: indeterminateRefreshResult({ guardResult, refusals, issueNumber }),
+        refreshed: false,
+        attempts: 1,
+        refreshError: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   let refreshedVerdict;
