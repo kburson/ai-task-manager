@@ -14,6 +14,7 @@ import { readWorktreeIdentity } from '../worktree-binding-guard.mjs';
 import { reviewAgentValidationAction } from '../resident-actions/review-agent-validation.mjs';
 import { readResidentActionLedger } from '../resident-action-ledger-read.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { classifyVisitOrder } from '../move-state/transition-commit.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import {
@@ -271,7 +272,28 @@ export async function evaluateReviewReadiness({
       });
       const ledger =
         ledgerObservation.status === 'observed' ? ledgerObservation.value.ledger : null;
-      if (ledger?.status !== 'clean' || !['empty', 'current'].includes(ledger.visitStatus)) {
+      if (ledger?.status !== 'clean') {
+        return { status: 'paused', reason: 'review-ledger-unavailable' };
+      }
+      let residentLedger = ledger;
+      if (ledger.visitStatus === 'different') {
+        const visits = parseEntryMarkers(residentBody).map((item, index) => ({
+          ...item,
+          state: item.stage,
+          id: `${item.stage}:${item.visit}:${item.ts}`,
+          occurrence: index + 1,
+        }));
+        const current = visits.filter(({ state }) => state === 'review').at(-1);
+        const previous = visits.find(({ id }) => id === ledger.head?.visit);
+        if (
+          !current ||
+          !previous ||
+          classifyVisitOrder({ current, head: previous }).status !== 'prior'
+        ) {
+          return { status: 'paused', reason: 'review-ledger-unavailable' };
+        }
+        residentLedger = { ...ledger, visitStatus: 'prior', events: [] };
+      } else if (!['empty', 'current', 'prior'].includes(ledger.visitStatus)) {
         return { status: 'paused', reason: 'review-ledger-unavailable' };
       }
       return reviewAgentValidationAction.verify(
@@ -300,7 +322,7 @@ export async function evaluateReviewReadiness({
           issue: { value: issue },
           body: { value: residentBody },
           headSha: { value: residentHead },
-          actionLedger: ledger,
+          actionLedger: residentLedger,
         }
       );
     });
@@ -437,12 +459,22 @@ export async function collectReviewReadiness({
     }
   }
 
-  if (fromState === 'test') {
+  if (
+    typeof reviewEvidence?.ok !== 'boolean' ||
+    !Array.isArray(reviewEvidence.reasons) ||
+    !['receipt-v1', 'legacy-marker', 'github-records-v1'].includes(reviewEvidence.mode) ||
+    (reviewEvidence.ok && reviewEvidence.reasons.length > 0)
+  ) {
+    return {
+      status: 'indeterminate',
+      blockers: [authorityFailure('delivery', issue, 'incomplete')],
+      observations,
+    };
+  }
+  if (!reviewEvidence.ok) {
     if (
-      typeof reviewEvidence?.ok !== 'boolean' ||
-      !Array.isArray(reviewEvidence.reasons) ||
-      !['receipt-v1', 'legacy-marker', 'github-records-v1'].includes(reviewEvidence.mode) ||
-      (reviewEvidence.ok && reviewEvidence.reasons.length > 0)
+      reviewEvidence.reasons.length === 0 ||
+      reviewEvidence.reasons.some(({ code }) => !REVIEW_EVIDENCE_REASONS.has(code))
     ) {
       return {
         status: 'indeterminate',
@@ -450,37 +482,25 @@ export async function collectReviewReadiness({
         observations,
       };
     }
-    if (!reviewEvidence.ok) {
-      if (
-        reviewEvidence.reasons.length === 0 ||
-        reviewEvidence.reasons.some(({ code }) => !REVIEW_EVIDENCE_REASONS.has(code))
-      ) {
-        return {
-          status: 'indeterminate',
-          blockers: [authorityFailure('delivery', issue, 'incomplete')],
-          observations,
-        };
-      }
-      preflightBlockers.push(
-        ...reviewEvidence.reasons.map(({ code }) => ({
-          guardId: 'authority-collection',
-          code: 'review-test-evidence-refused',
-          args: { reason: code },
-          noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
-        }))
-      );
-    }
-    if (
-      reviewEvidence.mode === 'github-records-v1' &&
-      canonicalRecordJson(reviewEvidence.lifecycleEvidence ?? null) !==
-        canonicalRecordJson(preflight.lifecycleEvidence ?? null)
-    ) {
-      return {
-        status: 'indeterminate',
-        blockers: [authorityFailure('delivery', issue, 'invalid')],
-        observations,
-      };
-    }
+    preflightBlockers.push(
+      ...reviewEvidence.reasons.map(({ code }) => ({
+        guardId: 'authority-collection',
+        code: 'review-test-evidence-refused',
+        args: { reason: code },
+        noAutomaticRemediation: { reason: 'legacy-guard-requires-human-investigation' },
+      }))
+    );
+  }
+  if (
+    reviewEvidence.mode === 'github-records-v1' &&
+    canonicalRecordJson(reviewEvidence.lifecycleEvidence ?? null) !==
+      canonicalRecordJson(preflight.lifecycleEvidence ?? null)
+  ) {
+    return {
+      status: 'indeterminate',
+      blockers: [authorityFailure('delivery', issue, 'invalid')],
+      observations,
+    };
   }
 
   if (fromState === 'review') {

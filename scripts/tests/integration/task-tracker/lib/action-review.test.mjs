@@ -226,6 +226,21 @@ test('Review refuses a stale exact-HEAD Test receipt even when preflight and gua
   assert.deepEqual(stale.effects, []);
 });
 
+test('Review-state rerun refuses stale exact-HEAD Test receipt before resident action', async () => {
+  const item = fixture({
+    state: 'review',
+    reviewEvidence: { ok: false, mode: 'receipt-v1', reasons: [{ code: 'sha-mismatch' }] },
+  });
+  const decision = await item.decision('review');
+  assert.equal(decision.status, 'blocked');
+  assert.ok(
+    decision.blockers.some(
+      ({ code, args }) => code === 'review-test-evidence-refused' && args.reason === 'sha-mismatch'
+    )
+  );
+  assert.deepEqual(item.effects, []);
+});
+
 test('Review refuses a preflight computed from a different issue-body revision', async () => {
   const item = fixture({
     preflight: {
@@ -529,6 +544,47 @@ test('active semantic waiver with failed Review marker selects self-rerun', asyn
       readResidentLedger: async () => ({
         status: 'clean',
         visitStatus: 'current',
+        events: [{ phase: 'waived' }],
+      }),
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.equal(decision.selectedAction, 'review');
+});
+
+test('Review re-entry with a clean older ledger head still selects current resident work', async () => {
+  const { evaluateReviewReadiness } =
+    await import('../../../../task-tracker/lib/action-decision/review.mjs');
+  const { stampEntryMarker } = await import('../../../../task-tracker/lib/stage-entry-markers.mjs');
+  const firstVisit = '2026-09-20T10:00:00Z';
+  const secondVisit = '2026-09-21T10:00:00Z';
+  const reviewBody = stampEntryMarker(
+    stampEntryMarker(bodyFor('review'), 'review', firstVisit),
+    'review',
+    secondVisit
+  );
+  const decision = await evaluateReviewReadiness({
+    issue: ISSUE,
+    cfg: { repo: REPOSITORY },
+    projectDir: process.cwd(),
+    deps: {
+      readBody: async () => reviewBody,
+      readHead: async () => HEAD,
+      fetchBoard: async () => ({ state: 'review' }),
+      readWorktree: async () => ({ matches: true, headSha: HEAD }),
+      readSessionState: async () => ({ active: '#1667' }),
+      runPreflight: async () => ({
+        ok: true,
+        reasons: [],
+        headSha: HEAD,
+        bodyDigest: bodyDigest(reviewBody),
+      }),
+      resolveReviewEvidence: async () => ({ ok: true, mode: 'legacy-marker', reasons: [] }),
+      loadWorkflowBoundary: async () => ({ status: 'policy-compatible', isWaived: () => false }),
+      readResidentLedger: async () => ({
+        status: 'clean',
+        visitStatus: 'different',
+        head: { visit: `review:1:${firstVisit}` },
         events: [{ phase: 'waived' }],
       }),
     },
