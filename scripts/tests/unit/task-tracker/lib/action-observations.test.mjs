@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
+import { validateBlocker } from '../../../../task-tracker/lib/action-decision/contract.mjs';
 import { createObservationAttempt } from '../../../../task-tracker/lib/action-decision/observations.mjs';
 
 const repository = 'kburson/ai-task-manager';
@@ -134,10 +135,12 @@ test('failed required read retains a typed indeterminate cause and source proven
   assert.equal(observed.status, 'indeterminate');
   assert.deepEqual(observed.cause, {
     code: 'authority-read-failed',
-    producerId: 'authority-collection',
+    guardId: 'authority-collection',
     args: { source: 'issue-body', reason: 'unavailable', subject: { issue: 1728 } },
-    detail: 'network offline',
+    noAutomaticRemediation: { reason: 'authority-investigation-required' },
   });
+  assert.deepEqual(validateBlocker(observed.cause, { status: 'indeterminate' }), observed.cause);
+  assert.equal(observed.provenance.detail, 'network offline');
   assert.equal(observed.resource, 'issue-body');
   assert.equal(observed.identity, 'issue:1728');
   assert.equal(attempt.finish().observations.length, 1);
@@ -165,6 +168,27 @@ test('missing source and incompatible repository, issue, or body fail closed', a
   }
 });
 
+test('accessor-bearing response cannot escape typed collection failure or poison the attempt', async () => {
+  const hostile = { ...response() };
+  Object.defineProperty(hostile, 'repository', {
+    enumerable: true,
+    get() {
+      throw new Error('getter exploded');
+    },
+  });
+  const attempt = createObservationAttempt({
+    repository,
+    issue: 1728,
+    boundaryId: 'explain:promote',
+    now: clock,
+    read: async () => hostile,
+  });
+  const observed = await attempt.observe(request);
+  assert.equal(observed.status, 'indeterminate');
+  assert.equal(observed.cause.args.reason, 'invalid');
+  assert.equal(attempt.finish().observations[0].status, 'indeterminate');
+});
+
 test('bundle digest binds canonical content and normalization inputs', async () => {
   const collect = async (value, normalizationInputs) => {
     const attempt = createObservationAttempt({
@@ -183,6 +207,17 @@ test('bundle digest binds canonical content and normalization inputs', async () 
     await collect('a', [{ normalizerId: 'x', inputDigest: 'sha256:a' }])
   );
   assert.equal(await collect('a', []), await collect('a', []));
+});
+
+test('an attempt with no observed source cannot finish as an authority bundle', () => {
+  const attempt = createObservationAttempt({
+    repository,
+    issue: 1728,
+    boundaryId: 'explain:promote',
+    now: clock,
+    read: async () => response(),
+  });
+  assert.throws(() => attempt.finish(), /action-observation:empty/);
 });
 
 test('collector leaves the outer effect-attempt ledger empty', async () => {
@@ -214,17 +249,30 @@ test('collector leaves the outer effect-attempt ledger empty', async () => {
   }
 });
 
-test('the harness catches forbidden fetch even when its exception is swallowed', () => {
+test('the outer ledger catches swallowed local, Git, and network effects inside a read port', async () => {
   const attempts = [];
-  const fetch = () => {
-    attempts.push('network:fetch');
-    throw new Error('fetch forbidden');
+  const forbidden = (name) => {
+    attempts.push(name);
+    throw new Error(`${name} forbidden`);
   };
+  const attempt = createObservationAttempt({
+    repository,
+    issue: 1728,
+    boundaryId: 'explain:promote',
+    now: clock,
+    read: async () => {
+      for (const name of ['network:fetch', 'file:write', 'git:update-ref']) {
+        try {
+          forbidden(name);
+        } catch {}
+      }
+      return response();
+    },
+  });
   try {
-    try {
-      fetch();
-    } catch {}
+    assert.equal((await attempt.observe(request)).status, 'observed');
   } finally {
-    assert.deepEqual(attempts, ['network:fetch']);
+    assert.deepEqual(attempts, ['network:fetch', 'file:write', 'git:update-ref']);
+    assert.throws(() => assert.deepEqual(attempts, []));
   }
 });

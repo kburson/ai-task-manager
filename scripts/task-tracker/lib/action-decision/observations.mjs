@@ -63,10 +63,11 @@ function failure({
     observedAt,
     cause: {
       code: 'authority-read-failed',
-      producerId: 'authority-collection',
+      guardId: 'authority-collection',
       args: { source: resource, reason, subject: { issue } },
-      detail,
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
     },
+    provenance: { detail },
   };
   return frozenCopy({ ...base, digest: digest(base) });
 }
@@ -147,7 +148,20 @@ export function createObservationAttempt({ repository, issue, boundaryId, now, r
         });
       }
       const observedAt = instant(now);
-      const incompatibility = compatible(result, request, repository, issue);
+      let snapshot = result;
+      if (result !== undefined && result !== null) {
+        try {
+          snapshot = frozenCopy(result);
+        } catch {
+          return failure({
+            ...request,
+            observedAt,
+            reason: 'invalid',
+            detail: 'invalid-response',
+          });
+        }
+      }
+      const incompatibility = compatible(snapshot, request, repository, issue);
       if (incompatibility) {
         return failure({
           ...request,
@@ -156,8 +170,8 @@ export function createObservationAttempt({ repository, issue, boundaryId, now, r
           detail: incompatibility,
         });
       }
-      const value = frozenCopy(result.value);
-      const revision = result.revision ?? null;
+      const value = snapshot.value;
+      const revision = snapshot.revision ?? null;
       return frozenCopy({
         status: 'observed',
         ...request,
@@ -176,6 +190,7 @@ export function createObservationAttempt({ repository, issue, boundaryId, now, r
 
   function finish({ normalizationInputs = [] } = {}) {
     if (invalidated || finished) throw new TypeError('action-observation:closed');
+    if (memo.size === 0) throw new TypeError('action-observation:empty');
     if ([...memo.values()].some((entry) => entry instanceof Promise)) {
       throw new TypeError('action-observation:pending');
     }
