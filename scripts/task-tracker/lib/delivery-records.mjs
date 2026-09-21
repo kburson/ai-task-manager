@@ -483,7 +483,7 @@ function dedupeKey(intent) {
   return `${intent.repository}\u0000${intent.issueNumber}\u0000${intent.prNumber}\u0000${intent.expectedHeadSha}`;
 }
 
-function authorizedIntentBytes(intent) {
+export function authorizedIntentBytes(intent) {
   return canonicalRecordJson(
     Object.fromEntries(AUTHORIZED_INTENT_KEYS.map((key) => [key, intent[key]]))
   );

@@ -53,6 +53,7 @@ const args = (required, properties, optional = []) =>
 const enumType = (...values) => Object.freeze({ type: 'enum', values: Object.freeze(values) });
 const stringType = Object.freeze({ type: 'string' });
 const headType = Object.freeze({ type: 'head' });
+const positiveIntegerType = Object.freeze({ type: 'positive-integer' });
 
 const definition = ({
   code,
@@ -201,10 +202,36 @@ export const CODE_DEFINITIONS = Object.freeze({
     ['authority-collection'],
     { phases: ['collection'], argumentSchema: args(['category'], { category: stringType }) }
   ),
+  'delivery-intent-divergence': decisionBlocked(
+    'delivery-intent-divergence',
+    ['authority-collection'],
+    { phases: ['collection'] }
+  ),
+  'delivery-record-conflict': decisionBlocked(
+    'delivery-record-conflict',
+    ['authority-collection'],
+    { phases: ['collection'] }
+  ),
   'delivery-provider-unavailable': decisionBlocked(
     'delivery-provider-unavailable',
     ['authority-collection'],
     { phases: ['collection'] }
+  ),
+  'delivery-manual-review-required': decisionBlocked(
+    'delivery-manual-review-required',
+    ['authority-collection'],
+    {
+      phases: ['collection'],
+      argumentSchema: args(['head', 'prNumber'], { head: headType, prNumber: positiveIntegerType }),
+    }
+  ),
+  'delivery-manual-review-refused': decisionBlocked(
+    'delivery-manual-review-refused',
+    ['authority-collection'],
+    {
+      phases: ['collection'],
+      argumentSchema: args(['reason'], { reason: stringType }),
+    }
   ),
   'review-test-evidence-refused': decisionBlocked(
     'review-test-evidence-refused',
@@ -633,6 +660,15 @@ function requiredHumanRequests(decision) {
         },
       ];
     }
+    if (blocker.code === 'delivery-manual-review-required') {
+      return [
+        {
+          kind: 'code-review-approval',
+          subject: { issue: decision.issue, actionId: 'deliver' },
+          args: { head: blocker.args.head, prNumber: blocker.args.prNumber },
+        },
+      ];
+    }
     if (
       [
         'authority-read-failed',
@@ -692,7 +728,11 @@ export function validateHumanDecision(value, decision) {
 
 export function validateHumanRequest(request, { path = 'humanRequest' } = {}) {
   exact(request, ['kind', 'actor', 'subject', 'args'], path);
-  if (!['plan-approval', 'review-approval', 'manual-investigation'].includes(request.kind)) {
+  if (
+    !['plan-approval', 'review-approval', 'code-review-approval', 'manual-investigation'].includes(
+      request.kind
+    )
+  ) {
     fail(`${path}.kind`, 'enum');
   }
   const actor = request.kind === 'manual-investigation' ? 'human-operator' : 'configured-approver';
@@ -712,9 +752,14 @@ export function validateHumanRequest(request, { path = 'humanRequest' } = {}) {
       ? noArgs()
       : request.kind === 'review-approval'
         ? args(['head'], { head: Object.freeze({ type: 'head' }) })
-        : args(['guardId', 'code'], { guardId: stringType, code: stringType });
+        : request.kind === 'code-review-approval'
+          ? args(['head', 'prNumber'], { head: headType, prNumber: positiveIntegerType })
+          : args(['guardId', 'code'], { guardId: stringType, code: stringType });
   validateArgs(request.args, schema, `${path}.args`);
-  if (request.kind === 'review-approval' && !HEAD.test(request.args.head)) {
+  if (
+    (request.kind === 'review-approval' || request.kind === 'code-review-approval') &&
+    !HEAD.test(request.args.head)
+  ) {
     fail(`${path}.args.head`, 'full-head');
   }
   return structuredClone(request);

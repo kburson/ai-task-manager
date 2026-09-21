@@ -658,7 +658,12 @@ async function evaluateCompletedAction({
             ? await collectDeliveryReadiness({
                 issue,
                 attempt,
-                ports: { scope, cfg: inputs.config, ...(deps.deliveryPorts ?? {}) },
+                ports: {
+                  scope,
+                  head: inputs.head,
+                  cfg: inputs.config,
+                  ...(deps.deliveryPorts ?? {}),
+                },
               })
             : actionId === 'promote'
               ? await collectEarlyPromoteReadiness({
@@ -751,6 +756,16 @@ async function evaluateCompletedAction({
           actor: 'configured-approver',
           subject: { issue: blocker.remediation.args.issue, actionId: 'promote' },
           args: {},
+        },
+      ];
+    }
+    if (blocker.code === 'delivery-manual-review-required') {
+      return [
+        {
+          kind: 'code-review-approval',
+          actor: 'configured-approver',
+          subject: { issue, actionId: 'deliver' },
+          args: { head: blocker.args.head, prNumber: blocker.args.prNumber },
         },
       ];
     }
