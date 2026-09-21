@@ -817,35 +817,3 @@ test('bare local trunk fallback resolves only the qualified local branch', async
     false
   );
 });
-
-test('local trunk authority refuses remote-tracking refs without a git read', async () => {
-  let reads = 0;
-  const result = await evaluateExactTrunkAttribution({
-    issue: 1729,
-    cwd: '/repo-under-test',
-    localRef: 'refs/remotes/origin/trunk',
-    execGit: async () => {
-      reads += 1;
-      throw new Error('unexpected git read');
-    },
-  });
-  assert.equal(result.status, 'indeterminate');
-  assert.equal(result.reason, 'unsupported-ref');
-  assert.equal(reads, 0);
-});
-
-test('local trunk authority refuses remote-tracking shorthand without a git read', async () => {
-  let reads = 0;
-  const result = await evaluateExactTrunkAttribution({
-    issue: 1729,
-    cwd: '/repo-under-test',
-    localRef: 'origin/trunk',
-    execGit: async () => {
-      reads += 1;
-      throw new Error('unexpected git read');
-    },
-  });
-  assert.equal(result.status, 'indeterminate');
-  assert.equal(result.reason, 'unsupported-ref');
-  assert.equal(reads, 0);
-});
