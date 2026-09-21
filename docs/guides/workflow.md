@@ -1359,7 +1359,15 @@ Markdownlint also excludes canonical immutable reviewer evidence matching
 `docs/superpowers/reviews/**/*-reviewer-*-review.md` and terminal
 historical external-review response envelopes matching
 `docs/superpowers/reviews/**/*-review-*-author-response-*.md` or
-`docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md`. These boundaries
+`docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md`. Native protocol
+responses and numbered XPR response aliases also use canonical filename rules:
+
+- `docs/superpowers/reviews/**/review-*-author-response-*.md`
+- `docs/superpowers/reviews/**/review-*-reviewer-response-*.md`
+- `docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md`
+- `docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md`
+
+These boundaries
 preserve externally authored bytes and protocol-sealed response digests without a
 growing per-file exception list. The sealed-response boundary applies to both
 Markdownlint and CSpell. This is not a directory-wide exemption: legacy owner

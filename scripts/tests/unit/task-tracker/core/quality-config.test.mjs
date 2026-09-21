@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #93 #1219 #1725
+// @story #93 #1219 #1719
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -16,8 +16,12 @@ const PEER_REVIEW_DIRECTORY = 'docs/peer-reviews/';
 const PEER_REVIEW_GLOB = 'docs/peer-reviews/**';
 const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
-  'docs/superpowers/reviews/**/{*-review-*,review-*}-author-response-*.md',
-  'docs/superpowers/reviews/**/{*-review-*,review-*}-reviewer-response-*.md',
+  'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
+  'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
+  'docs/superpowers/reviews/**/review-*-author-response-*.md',
+  'docs/superpowers/reviews/**/review-*-reviewer-response-*.md',
+  'docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md',
+  'docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md',
 ];
 
 const requiredFiles = [
@@ -111,7 +115,10 @@ assert.deepEqual(
   markdownlintConfig.ignores.filter(
     (entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')
   ),
-  [REVIEWER_IGNORE_GLOB, PEER_REVIEW_RESPONSE_IGNORE_GLOBS[1]],
+  [
+    REVIEWER_IGNORE_GLOB,
+    ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter((glob) => glob.includes('-reviewer-')),
+  ],
   'markdownlint must use canonical role and sealed-response globs, never exact reviewer files'
 );
 assert.deepEqual(
@@ -121,27 +128,6 @@ assert.deepEqual(
   PEER_REVIEW_RESPONSE_IGNORE_GLOBS,
   'markdownlint must exempt only the canonical sealed-response filename grammar'
 );
-for (const role of ['author', 'reviewer']) {
-  const glob = PEER_REVIEW_RESPONSE_IGNORE_GLOBS.find((entry) =>
-    entry.endsWith(`-${role}-response-*.md`)
-  );
-  for (const name of [
-    `review-abc123-${role}-response-1.md`,
-    `plan-review-abc123-${role}-response-2.md`,
-  ]) {
-    assert.ok(
-      path.matchesGlob(`docs/superpowers/reviews/example/plan/${name}`, glob),
-      `canonical sealed response must be preserved: ${name}`
-    );
-  }
-  for (const name of [`${role}-notes.md`, 'plan.md', 'XPR-ACCEPTANCE.md']) {
-    assert.ok(
-      !path.matchesGlob(`docs/superpowers/reviews/example/plan/${name}`, glob),
-      `ordinary review documents must remain linted: ${name}`
-    );
-  }
-}
-
 for (const responseGlob of PEER_REVIEW_RESPONSE_IGNORE_GLOBS) {
   assert.ok(
     cspell.ignorePaths.includes(responseGlob),
@@ -152,6 +138,33 @@ assert.ok(
   !prettierIgnore.includes('docs/superpowers/reviews/**'),
   'Prettier must use the canonical review-directory ignore instead of a redundant glob'
 );
+for (const filename of [
+  '1719/spec/xpr/1719-xpr-restart/review-abc-author-response-1.md',
+  '1719/spec/xpr/1719-xpr-restart/review-abc-reviewer-response-2.md',
+  '1719/spec/1719-xpr-author-response-r1.md',
+  '1719/spec/1719-xpr-reviewer-response-r12.md',
+]) {
+  assert.ok(
+    PEER_REVIEW_RESPONSE_IGNORE_GLOBS.some((glob) =>
+      path.matchesGlob(`${IMMUTABLE_REVIEW_DIRECTORY}${filename}`, glob)
+    ),
+    `sealed response must be preserved: ${filename}`
+  );
+}
+for (const filename of [
+  '1719/spec/1719-xpr-completion.md',
+  '1719/spec/1719-xpr-recovery-status.md',
+  '1719/spec/sar-response-r1.md',
+  '1719/spec/review-abc-review-manifest.md',
+  '1719/spec/1719-xpr-reviewer-response-notes.md',
+]) {
+  assert.ok(
+    !PEER_REVIEW_RESPONSE_IGNORE_GLOBS.some((glob) =>
+      path.matchesGlob(`${IMMUTABLE_REVIEW_DIRECTORY}${filename}`, glob)
+    ),
+    `ordinary review documentation must still be linted: ${filename}`
+  );
+}
 const immutableReviewBytes = readFileSync(path.join(repoRoot, IMMUTABLE_REVIEW_ARCHIVE));
 assert.equal(
   createHash('sha256').update(immutableReviewBytes).digest('hex'),

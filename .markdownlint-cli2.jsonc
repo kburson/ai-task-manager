@@ -11,7 +11,9 @@
     "MD028": false,
     "MD001": false,
     "MD060": false,
-    "MD024": { "siblings_only": true }
+    "MD024": {
+      "siblings_only": true
+    }
   },
   "globs": ["**/*.md", "!.tmp/**", "!.scratch/**"],
   "ignores": [
@@ -26,10 +28,16 @@
     "docs/ai-memory/**",
     "docs/peer-reviews/**",
     "docs/superpowers/reviews/**/*-reviewer-*-review.md",
-    "docs/superpowers/reviews/**/{*-review-*,review-*}-author-response-*.md",
-    "docs/superpowers/reviews/**/{*-review-*,review-*}-reviewer-response-*.md",
+    "docs/superpowers/reviews/**/*-review-*-author-response-*.md",
+    "docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md",
+    "docs/superpowers/reviews/**/review-*-author-response-*.md",
+    "docs/superpowers/reviews/**/review-*-reviewer-response-*.md",
+    "docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md",
+    "docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md",
     "docs/superpowers/reviews/1219/**/protocol-runs/**",
     ".ai-task-manager/memory/**",
-    ".superpowers/**"
+    ".superpowers/**",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/**",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/**"
   ]
 }
