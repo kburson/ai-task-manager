@@ -10,6 +10,7 @@ import { evaluateSessionReadiness } from '../../../../task-tracker/lib/action-de
 import { validateBlocker } from '../../../../task-tracker/lib/action-decision/contract.mjs';
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import { registerEarlyPromoteCases } from '../../../helpers/action-early-promote-cases.mjs';
+import { registerActionNavigationCases } from '../../../helpers/action-navigation-cases.mjs';
 import { runPreflight } from '../../../../task-tracker/lib/verb-preflight.mjs';
 import { resolveSessionActionInvocation } from '../../../../task-tracker/task-tracker.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -825,3 +826,4 @@ test('real injected resume execution refreshes freeze and preserves its exit 14 
 });
 
 registerEarlyPromoteCases({ test, body, now });
+registerActionNavigationCases({ test, body, now });

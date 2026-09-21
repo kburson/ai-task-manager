@@ -13,6 +13,9 @@ import {
   REGISTERED_GUARD_IDS,
   validateActionDecision,
 } from './contract.mjs';
+import { resolveActionNavigation } from './navigation.mjs';
+import { collectSessionReadiness } from './session.mjs';
+import { collectEarlyPromoteReadiness } from './promote.mjs';
 
 /**
  * Read-only remote-tip authority for a later close adapter. The caller owns
@@ -375,6 +378,12 @@ export async function evaluateAction({
   if (!attempt || typeof attempt.observe !== 'function' || typeof attempt.finish !== 'function') {
     throw new TypeError('action-evaluator:attempt');
   }
+  if (
+    (actionId === 'rebind' || ['bind', 'resume', 'promote'].includes(actionId)) &&
+    typeof deps.runReadOnlyGuards !== 'function'
+  ) {
+    return evaluateCompletedAction({ actionId, repository, issue, inputs, attempt, deps });
+  }
   const descriptor = actionDescriptorFor(actionId);
   const body = inputs?.body;
   const scope = computeScopeIdentity({ repository, issue, body });
@@ -552,6 +561,164 @@ export async function evaluateAction({
     warnings,
     humanDecision,
     guidanceIds: [descriptor?.guidanceId ?? 'navigation.unknown'],
+  };
+  return Object.freeze(validateActionDecision(decision));
+}
+
+async function evaluateCompletedAction({
+  actionId,
+  repository,
+  issue,
+  inputs = {},
+  attempt,
+  deps,
+}) {
+  const descriptor = actionDescriptorFor(actionId);
+  const navigation = resolveActionNavigation({ actionId, state: inputs.state });
+  const canonicalState =
+    typeof inputs.state === 'string' ? inputs.state : (inputs.state?.recorded ?? 'unknown');
+  const invalid = {
+    guardId: 'action-result-validation',
+    code: 'guard-result-invalid',
+    args: {},
+    noAutomaticRemediation: { reason: 'result-investigation-required' },
+  };
+  let scope = `session:${issue}`;
+  try {
+    scope = computeScopeIdentity({ repository, issue, body: inputs.body });
+  } catch {
+    // The collector reports an unreadable body as authority, never a grant.
+  }
+  let status = 'indeterminate';
+  let blockers = navigation.blocker ? [navigation.blocker] : [];
+  let humanDecision = null;
+  let collectorFailed = false;
+  if (navigation.status === 'terminal') status = 'ready';
+  else if (navigation.status === 'ready') {
+    try {
+      const result =
+        actionId === 'promote'
+          ? await collectEarlyPromoteReadiness({
+              issue,
+              fromState: canonicalState,
+              body: inputs.body,
+              attempt,
+              ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
+            })
+          : await collectSessionReadiness({
+              actionId,
+              issue,
+              stateBefore: inputs.sessionState,
+              config: inputs.config,
+              attempt,
+              ports: { scope, ...(deps.sessionPorts ?? {}) },
+            });
+      status = result.status;
+      blockers = result.blockers;
+      if (
+        actionId === 'promote' &&
+        blockers.some(({ code }) => code === 'authority-read-skipped')
+      ) {
+        await attempt.observe({
+          resource: 'migration-journal',
+          identity: `migration-journal:${issue}`,
+          scope,
+        });
+      }
+      if (actionId !== 'promote') {
+        const board = result.observations?.find(
+          (observation) =>
+            observation.resource === 'project-board' && observation.status === 'observed'
+        );
+        if (board && board.value?.state !== canonicalState) {
+          status = 'indeterminate';
+          blockers = [
+            ...blockers,
+            {
+              guardId: 'action-navigation',
+              code: 'state-unavailable',
+              args: { reason: 'conflicting' },
+              noAutomaticRemediation: { reason: 'state-investigation-required' },
+            },
+          ];
+        }
+      }
+    } catch {
+      status = 'indeterminate';
+      blockers = [invalid];
+      collectorFailed = true;
+    }
+  }
+  if (navigation.status !== 'ready' || collectorFailed) {
+    await attempt.observe({ resource: 'issue-body', identity: `issue:${issue}:0`, scope });
+  }
+  let attemptedEffects;
+  try {
+    attemptedEffects = deps.effectAttempts();
+  } catch {
+    attemptedEffects = null;
+  }
+  if (
+    navigation.status !== 'terminal' &&
+    (!Array.isArray(attemptedEffects) || attemptedEffects.length > 0)
+  ) {
+    status = 'indeterminate';
+    if (!blockers.some(({ code }) => code === invalid.code)) blockers = [...blockers, invalid];
+  }
+  const requests = blockers.flatMap((blocker) => {
+    if (blocker.code === 'plan-approval-missing') {
+      return [
+        {
+          kind: 'plan-approval',
+          actor: 'configured-approver',
+          subject: { issue: blocker.remediation.args.issue, actionId: 'promote' },
+          args: {},
+        },
+      ];
+    }
+    if (
+      ![
+        'authority-read-failed',
+        'authority-read-skipped',
+        'unclassified-refusal',
+        'state-unavailable',
+      ].includes(blocker.code)
+    )
+      return [];
+    return [
+      {
+        kind: 'manual-investigation',
+        actor: 'human-operator',
+        subject: {
+          issue: blocker.args.subject?.issue ?? issue,
+          actionId: blocker.code === 'state-unavailable' ? null : actionId,
+        },
+        args: { guardId: blocker.guardId, code: blocker.code },
+      },
+    ];
+  });
+  if (requests.length > 0) humanDecision = { requests };
+  const bundle = attempt.finish();
+  const decision = {
+    schema: ACTION_DECISION_SCHEMA,
+    issue,
+    actionId:
+      navigation.status === 'terminal' || blockers.some(({ code }) => code === 'state-unavailable')
+        ? null
+        : actionId,
+    status,
+    snapshot: snapshotFromBundle({ state: canonicalState, head: inputs.head, bundle }),
+    blockers,
+    normalizations: [],
+    warnings: [],
+    humanDecision,
+    guidanceIds: [
+      navigation.status === 'terminal'
+        ? 'state.done'
+        : blockers.some(({ code }) => code === 'state-unavailable')
+          ? 'navigation.unresolved'
+          : (descriptor?.guidanceId ?? 'navigation.unknown'),
+    ],
   };
   return Object.freeze(validateActionDecision(decision));
 }
