@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #93 #1219
+// @story #93 #1219 #1725
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -16,8 +16,8 @@ const PEER_REVIEW_DIRECTORY = 'docs/peer-reviews/';
 const PEER_REVIEW_GLOB = 'docs/peer-reviews/**';
 const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
-  'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
-  'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
+  'docs/superpowers/reviews/**/{*-review-*,review-*}-author-response-*.md',
+  'docs/superpowers/reviews/**/{*-review-*,review-*}-reviewer-response-*.md',
 ];
 
 const requiredFiles = [
@@ -121,6 +121,27 @@ assert.deepEqual(
   PEER_REVIEW_RESPONSE_IGNORE_GLOBS,
   'markdownlint must exempt only the canonical sealed-response filename grammar'
 );
+for (const role of ['author', 'reviewer']) {
+  const glob = PEER_REVIEW_RESPONSE_IGNORE_GLOBS.find((entry) =>
+    entry.endsWith(`-${role}-response-*.md`)
+  );
+  for (const name of [
+    `review-abc123-${role}-response-1.md`,
+    `plan-review-abc123-${role}-response-2.md`,
+  ]) {
+    assert.ok(
+      path.matchesGlob(`docs/superpowers/reviews/example/plan/${name}`, glob),
+      `canonical sealed response must be preserved: ${name}`
+    );
+  }
+  for (const name of [`${role}-notes.md`, 'plan.md', 'XPR-ACCEPTANCE.md']) {
+    assert.ok(
+      !path.matchesGlob(`docs/superpowers/reviews/example/plan/${name}`, glob),
+      `ordinary review documents must remain linted: ${name}`
+    );
+  }
+}
+
 for (const responseGlob of PEER_REVIEW_RESPONSE_IGNORE_GLOBS) {
   assert.ok(
     cspell.ignorePaths.includes(responseGlob),

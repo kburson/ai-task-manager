@@ -25,11 +25,9 @@
     "docs/postmortems/**",
     "docs/ai-memory/**",
     "docs/peer-reviews/**",
-    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/plan-1725/**/review-*-author-response-*.md",
-    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/plan-1725/**/review-*-reviewer-response-*.md",
     "docs/superpowers/reviews/**/*-reviewer-*-review.md",
-    "docs/superpowers/reviews/**/*-review-*-author-response-*.md",
-    "docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md",
+    "docs/superpowers/reviews/**/{*-review-*,review-*}-author-response-*.md",
+    "docs/superpowers/reviews/**/{*-review-*,review-*}-reviewer-response-*.md",
     "docs/superpowers/reviews/1219/**/protocol-runs/**",
     ".ai-task-manager/memory/**",
     ".superpowers/**"
