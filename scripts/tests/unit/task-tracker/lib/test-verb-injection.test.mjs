@@ -4,13 +4,12 @@
 // backtick-wrapped verification command. Asserts:
 //   1. The malicious payload is REJECTED by the allowlist validator — no shell side effect.
 //   2. CLI exits non-zero (failures present).
-//   3. The posted failure comment names the rejection reason ("forbidden semicolon").
+//   3. Entry preflight refuses before comments, body writes, or a sandbox.
 //   4. No `aitm-dod-verified` marker is written to the issue body.
 //
-// Strategy: stand up a sandbox project + fake `gh` + fake `git` + stubbed
-// `npm` (since /task test calls `npm ci`) and invoke the CLI via
-// `node task-tracker.mjs test #999`. The gh shim records any comment body
-// and any body-file write to side files we can inspect.
+// Strategy: stand up a sandbox project + fake `gh` + fake `git` and invoke
+// the CLI via `node task-tracker.mjs test #999`. The gh shim records any
+// comment or body write so the preflight's no-effect boundary is observable.
 
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -25,6 +24,7 @@ import {
   existsSync,
 } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { inspectTestDeclarations } from '../../../../task-tracker/lib/action-decision/test.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,8 +52,9 @@ try {
   // Mirror the git-tracked .ai-task-manager/ layout a real checkout carries.
   writeFileSync(path.join(sandbox, '.ai-task-manager', 'pickup-directive.md'), '');
   writeFileSync(path.join(sandbox, '.ai-task-manager', 'definition-of-done.md'), '');
+  mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
   writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify({ active: '#999', lastActive: '#999', entryStartTs: null, wordsAtEntryStart: 0 })
   );
   // Stage-aware Test now finalizes Develop and fingerprints both the outer
@@ -61,6 +62,11 @@ try {
   // repository worktree contains so this fixture can still reach the command
   // injection boundary it exists to exercise.
   writeFileSync(path.join(sandbox, 'package-lock.json'), '{}\n');
+  // The read-only entry preflight resolves the checkout's real Git metadata.
+  // Model a detached worktree at the same HEAD returned by the git shim.
+  const headSha = 'abcdef1234567890abcdef1234567890abcdef12';
+  mkdirSync(path.join(sandbox, '.git'), { recursive: true });
+  writeFileSync(path.join(sandbox, '.git', 'HEAD'), `${headSha}\n`);
   mkdirSync(path.join(sandbox, 'scripts'), { recursive: true });
 
   const pwnedMarker = path.join(sandbox, 'PWNED.txt');
@@ -72,6 +78,14 @@ try {
     '<!-- aitm-entered-plan ts="2026-08-31T00:02:00.000Z" -->',
     '<!-- aitm-entered-develop ts="2026-08-31T00:03:00.000Z" -->',
     '<!-- aitm-entered-test ts="2026-08-31T00:04:00.000Z" -->',
+    '',
+    '## User Story',
+    '',
+    'As an operator I want a safe Test rerun.',
+    '',
+    '## Scope',
+    '',
+    'Reject shell metacharacters in Verification Commands.',
     '',
     '## Acceptance Criteria',
     '',
@@ -89,7 +103,6 @@ try {
 
   // git shim: stub worktree add/remove + rev-parse HEAD. worktree add creates
   // the target dir so existsSync sees it; worktree remove deletes it.
-  const headSha = 'abcdef1234567890abcdef1234567890abcdef12';
   const gitShim = path.join(binDir, 'git');
   writeFileSync(
     gitShim,
@@ -200,19 +213,15 @@ process.exit(0);
     TT_SKIP_NETWORK: '',
   };
 
-  let stdout = '',
-    stderr = '',
+  let stderr = '',
     exitCode = 0;
   try {
-    const r = await pexec('node', [CLI, 'test', '#999'], {
+    await pexec('node', [CLI, 'test', '#999'], {
       cwd: sandbox,
       env,
       timeout: 30000,
     });
-    stdout = r.stdout;
-    stderr = r.stderr;
   } catch (err) {
-    stdout = err.stdout || '';
     stderr = err.stderr || '';
     exitCode = err.code ?? 1;
   }
@@ -224,38 +233,18 @@ process.exit(0);
   );
 
   assert.notEqual(exitCode, 0, '/task test must exit non-zero when a VC is rejected');
+  assert.match(stderr, /entry preflight blocked/);
+  assert.match(stderr, /test-verification-command-invalid/);
+  const declaration = inspectTestDeclarations(fixtureBody, { projectDir: sandbox });
+  assert.equal(declaration.blockers.length, 1);
+  assert.match(declaration.blockers[0].args.reason, /forbidden semicolon/);
 
   const ghCalls = existsSync(path.join(sandbox, 'gh-calls.log'))
     ? readFileSync(path.join(sandbox, 'gh-calls.log'), 'utf8')
     : '(none)';
-  assert.ok(
-    existsSync(recordedCommentPath),
-    `gh issue comment was never called\nstdout:\n${stdout}\nstderr:\n${stderr}\ngh calls:\n${ghCalls}`
-  );
-  const comment = readFileSync(recordedCommentPath, 'utf8');
-  assert.match(
-    comment,
-    /forbidden semicolon/,
-    `expected rejection reason in failure comment; comment was:\n${comment}`
-  );
-  assert.match(comment, /node --version/, 'green VC is represented in the result table');
-  assert.match(comment, /node x; touch/, 'rejected VC is represented in the result table');
-
-  // The entry marker (aitm-test-started) is stamped BEFORE the VC runs, so the
-  // body file will exist on red. What MUST NOT appear is the dod-verified exit
-  // marker. Allow either: body file missing, or body file present without
-  // aitm-dod-verified.
-  if (existsSync(recordedBodyPath)) {
-    const writtenBody = readFileSync(recordedBodyPath, 'utf8');
-    assert.ok(
-      !/aitm-dod-verified[: ]/.test(writtenBody),
-      'aitm-dod-verified marker must NOT be stamped on red verification'
-    );
-    assert.ok(
-      /aitm-test-started[: ]/.test(writtenBody),
-      'aitm-test-started entry marker must be stamped before VC runs'
-    );
-  }
+  assert.equal(existsSync(recordedCommentPath), false, `preflight must not comment: ${ghCalls}`);
+  assert.equal(existsSync(recordedBodyPath), false, 'preflight must not write issue body');
+  assert.doesNotMatch(ghCalls, /\["issue","edit"/);
 
   console.log('test-verb-injection.test.mjs: all passed');
 } finally {

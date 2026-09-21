@@ -148,6 +148,37 @@ export const CODE_DEFINITIONS = Object.freeze({
   'session-bind-mismatch': decisionBlocked('session-bind-mismatch', ['authority-collection'], {
     phases: ['collection'],
   }),
+  'test-verification-commands-missing': decisionBlocked(
+    'test-verification-commands-missing',
+    ['authority-collection'],
+    { phases: ['collection'] }
+  ),
+  'test-verification-command-invalid': decisionBlocked(
+    'test-verification-command-invalid',
+    ['authority-collection'],
+    {
+      phases: ['collection'],
+      argumentSchema: args(['command', 'reason'], { command: stringType, reason: stringType }),
+    }
+  ),
+  'test-head-mismatch': decisionBlocked('test-head-mismatch', ['authority-collection'], {
+    phases: ['collection'],
+    argumentSchema: args(['expected', 'actual'], { expected: headType, actual: headType }),
+  }),
+  'test-receipt-malformed': decisionBlocked('test-receipt-malformed', ['authority-collection'], {
+    phases: ['collection'],
+  }),
+  'test-directory-evidence-invalid': decisionBlocked(
+    'test-directory-evidence-invalid',
+    ['authority-collection'],
+    {
+      phases: ['collection'],
+    }
+  ),
+  'test-provider-invalid': decisionBlocked('test-provider-invalid', ['authority-collection'], {
+    phases: ['collection'],
+    argumentSchema: args(['reason'], { reason: stringType }),
+  }),
   'resume-not-paused': decisionBlocked('resume-not-paused', ['authority-collection'], {
     phases: ['collection'],
   }),
@@ -244,6 +275,15 @@ export const CODE_DEFINITIONS = Object.freeze({
     statuses: ['ready', 'blocked', 'indeterminate'],
     phases: ['evaluation'],
     argumentSchema: args(['guardId'], { guardId: stringType }),
+    disposition: 'none',
+  }),
+  'test-develop-finalization-pending': definition({
+    code: 'test-develop-finalization-pending',
+    domain: 'operational-warning',
+    producers: ['authority-collection'],
+    severity: 'warning',
+    statuses: ['ready', 'blocked', 'indeterminate'],
+    phases: ['collection'],
     disposition: 'none',
   }),
   'guidance-annotation-failed': definition({
