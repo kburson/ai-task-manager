@@ -96,6 +96,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       deps: {
         effectAttempts: () => effects,
         promotePorts: {
+          projectDir: process.cwd(),
           runGuards: async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null }),
         },
       },
