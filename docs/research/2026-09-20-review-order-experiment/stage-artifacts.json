@@ -1,0 +1,102 @@
+{
+  "schema": "aitm.review-stage-artifacts/v1",
+  "baseline_sha256": "7066ff40fdfffa399d279f453b3e4ee7dd0e26f96effcc2dff0475b76c2cf783",
+  "definition": "End-of-stage means the final corrected specification accepted at the terminal clean SAR pass or peer-review consensus, not the first review round or later evidence-only commit.",
+  "materialization": "Exact Git blobs, unchanged bytes, reconstructed under ignored .scratch; regenerate from artifact_commit:artifact_path and validate sha256.",
+  "snapshots": [
+    {
+      "arm": "baseline",
+      "stage": 0,
+      "method": "none",
+      "artifact_commit": "c2e33f4d0ae704900437a0659119bad6eb30dc01",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "7066ff40fdfffa399d279f453b3e4ee7dd0e26f96effcc2dff0475b76c2cf783",
+      "lines": 883,
+      "local_materialization": ".scratch/review-order-research/stages/baseline.md"
+    },
+    {
+      "arm": "A",
+      "stage": 1,
+      "method": "SAR",
+      "artifact_commit": "c5cff0e6ce254cb8872d28fd24ecadc932d9b0a0",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "5c3907545d5d3b12738b72b85d8afaa0bea5cdd12f4592e418ed2ec17798825b",
+      "lines": 1377,
+      "local_materialization": ".scratch/review-order-research/stages/A-stage-1-SAR.md",
+      "terminal_evidence_commit": "559df32bb43eb07dc26212c708847ef2fe9be7c8",
+      "terminal_disposition": "clean self-review r5",
+      "review_passes_or_turns": 5,
+      "correction_cycles": 4
+    },
+    {
+      "arm": "A",
+      "stage": 2,
+      "method": "SPR",
+      "artifact_commit": "0a7e3c6a6283feddd4a7d7f16d81ac856cc5f1eb",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "58a41985ff691814e0374a27e32d097a34ed95390d459321c0391121cec1b125",
+      "lines": 1508,
+      "local_materialization": ".scratch/review-order-research/stages/A-stage-2-SPR.md",
+      "terminal_evidence_commit": "7a0b08c7ce42d83e80565227761414708ddf008d",
+      "terminal_disposition": "reviewer consensus r2",
+      "review_passes_or_turns": 2,
+      "correction_cycles": 1
+    },
+    {
+      "arm": "A",
+      "stage": 3,
+      "method": "XPR",
+      "artifact_commit": "267b91b9218b59342a0d70e0859a0e38523a3923",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "4c3e51d93861e93ced662efbdbd551221be1e5e114fe0c68c3d3219d822f2382",
+      "lines": 1853,
+      "local_materialization": ".scratch/review-order-research/stages/A-stage-3-XPR.md",
+      "terminal_evidence_commit": "54d6daa3337ef4b2cde4e1bda8c103f4b5a0bd1d",
+      "terminal_disposition": "reviewer consensus r3",
+      "review_passes_or_turns": 3,
+      "correction_cycles": 2
+    },
+    {
+      "arm": "B",
+      "stage": 1,
+      "method": "XPR",
+      "artifact_commit": "09551213ec6ee18e90d2d6d39f3fff00e9ade055",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "1912963ac7bfa0f7565e3cb1758a0dc27c0695712db1b22612ffb8207ece8c1e",
+      "lines": 1118,
+      "local_materialization": ".scratch/review-order-research/stages/B-stage-1-XPR.md",
+      "terminal_evidence_commit": "49f0c84274ef4116523784f64e51e0de8cc0caad",
+      "terminal_disposition": "reviewer consensus r3",
+      "review_passes_or_turns": 3,
+      "correction_cycles": 2
+    },
+    {
+      "arm": "B",
+      "stage": 2,
+      "method": "SPR",
+      "artifact_commit": "6edf917bdd2d0441ad9c296f69419da08307f758",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "dd2d36956fec9dabb3427429b23541ea5733ce50dd00560bdff4bb22de266c23",
+      "lines": 1224,
+      "local_materialization": ".scratch/review-order-research/stages/B-stage-2-SPR.md",
+      "terminal_evidence_commit": "4693327ee3638cb5cee94265465dddfa01d5c475",
+      "terminal_disposition": "reviewer consensus r2",
+      "review_passes_or_turns": 2,
+      "correction_cycles": 1
+    },
+    {
+      "arm": "B",
+      "stage": 3,
+      "method": "SAR",
+      "artifact_commit": "20412884a31fc353096f826430c9da7962516792",
+      "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+      "sha256": "99c5ca567e533e6b1b7913dc98b2723b1f561ab5a0903cfa5d6fe227b449fddf",
+      "lines": 1327,
+      "local_materialization": ".scratch/review-order-research/stages/B-stage-3-SAR.md",
+      "terminal_evidence_commit": "5b54f897c7a5d039536cba1153579e3246f219f9",
+      "terminal_disposition": "clean self-review r3",
+      "review_passes_or_turns": 3,
+      "correction_cycles": 2
+    }
+  ]
+}

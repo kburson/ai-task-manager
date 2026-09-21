@@ -1,0 +1,11 @@
+{
+  "schema": "aitm.experiment-history-archive/v1",
+  "purpose": "Preserve original reverse-experiment Git objects without merging or pushing that branch. Canonical specification remains the SAR-SPR-XPR result on trunk.",
+  "archive": "xpr-first-history.bundle",
+  "sha256": "70ed65600dbb76de50dbaac1e4906bac9fe8ee1a75e93439fced343f5e607748",
+  "bytes": 182409,
+  "prerequisite_commit": "c2e33f4d0ae704900437a0659119bad6eb30dc01",
+  "archived_tip": "8acc023b25be38f57abf418bdda54a8248e6e7a9",
+  "import_command": "git bundle unbundle docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/archive/xpr-first-history.bundle",
+  "import_effect": "Imports objects only; does not check out, merge, or create the archived branch."
+}
