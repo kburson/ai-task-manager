@@ -1116,6 +1116,15 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-explain.te
 
 ### Task 24: Hydrate the guidance catalog and migrate human documentation
 
+#### Story Intent
+
+- **Beneficiary:** Maintainer reviewing lifecycle instructions
+- **Capability:** Inspect concise agent guidance and complete human explanations in one catalog
+- **Need:** Replacing skill prose can otherwise omit operational obligations or hide project customization
+- **Value or failure prevented:** Maintainers can verify the slimmer guidance retains guarded behavior and visible recovery instructions
+
+#### Files and delivery boundary
+
 **Baseline-plan-section:** `### Task 15: Hydrate the guidance catalog and migrate human documentation`. All Task references in the copied body below retain baseline numbering.
 
 **User story:**
