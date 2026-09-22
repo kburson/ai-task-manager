@@ -7,14 +7,15 @@ import {
   chmodSync,
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { configPath, SHARED_DIR, statePath } from '../task-tracker/paths.mjs';
+import { mkdtempProjectIsolated } from '../task-tracker/lib/scratch-dir.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bin = path.join(root, 'bin/aitm.mjs');
@@ -143,7 +144,7 @@ function commandText(argv) {
 }
 
 export function captureGuidanceExplain() {
-  const fixtureDir = mkdtempSync(path.join(tmpdir(), 'aitm-guidance-capture-'));
+  const fixtureDir = mkdtempProjectIsolated('aitm-guidance-capture-');
   const config = {
     repo: 'example/project',
     projectId: 'P1',
@@ -152,24 +153,18 @@ export function captureGuidanceExplain() {
   const authorityLog = path.join(fixtureDir, 'authority.jsonl');
   const fakeGh = fakeGhSource();
   try {
-    mkdirSync(path.join(fixtureDir, '.ai-task-manager'), { recursive: true });
-    mkdirSync(path.join(fixtureDir, '.tmp/aitm/state'), { recursive: true });
+    mkdirSync(path.join(fixtureDir, SHARED_DIR), { recursive: true });
+    mkdirSync(path.dirname(statePath(fixtureDir)), { recursive: true });
     mkdirSync(path.join(fixtureDir, 'fake-bin'), { recursive: true });
-    writeFileSync(
-      path.join(fixtureDir, '.ai-task-manager/task-tracker.json'),
-      `${JSON.stringify(config, null, 2)}\n`
-    );
-    writeFileSync(path.join(fixtureDir, '.tmp/aitm/state/task-tracker-state.json'), '{}\n');
+    writeFileSync(configPath(fixtureDir), `${JSON.stringify(config, null, 2)}\n`);
+    writeFileSync(statePath(fixtureDir), '{}\n');
     copyFileSync(
       path.join(root, 'instructions/aitm-guidance.yml'),
-      path.join(fixtureDir, '.ai-task-manager/aitm-guidance.yml')
+      path.join(fixtureDir, SHARED_DIR, 'aitm-guidance.yml')
     );
     writeFileSync(path.join(fixtureDir, 'fake-bin/gh'), fakeGh);
     chmodSync(path.join(fixtureDir, 'fake-bin/gh'), 0o755);
-    git(['init', '-q'], { cwd: fixtureDir });
-    git(['config', 'user.email', 'capture@example.com'], { cwd: fixtureDir });
-    git(['config', 'user.name', 'Capture Fixture'], { cwd: fixtureDir });
-    git(['add', '.'], { cwd: fixtureDir });
+    git(['add', '-f', `${SHARED_DIR}/aitm-guidance.yml`], { cwd: fixtureDir });
     git(['commit', '-qm', 'baseline fixture'], { cwd: fixtureDir });
 
     const baseEnv = {
@@ -225,7 +220,7 @@ export function captureGuidanceExplain() {
       run('diagnostic', [...args, '--diagnostic', '--json']),
     ];
 
-    const catalogPath = path.join(fixtureDir, '.ai-task-manager/aitm-guidance.yml');
+    const catalogPath = path.join(fixtureDir, SHARED_DIR, 'aitm-guidance.yml');
     const originalCatalog = readFileSync(catalogPath, 'utf8');
     const changedCatalog = originalCatalog.replace(
       '          { never: bypass_guard },\n          { execution_revalidates: true },',
@@ -233,7 +228,7 @@ export function captureGuidanceExplain() {
     );
     if (changedCatalog === originalCatalog) throw new Error('capture:agent-change-anchor');
     writeFileSync(catalogPath, changedCatalog);
-    git(['add', '.ai-task-manager/aitm-guidance.yml'], { cwd: fixtureDir });
+    git(['add', '-f', `${SHARED_DIR}/aitm-guidance.yml`], { cwd: fixtureDir });
     git(['commit', '-qm', 'agent guidance change'], { cwd: fixtureDir });
     const agentChange = run('agent-change', [...args, '--known', firstReceipt, '--json']);
     scenarios.push(agentChange);
