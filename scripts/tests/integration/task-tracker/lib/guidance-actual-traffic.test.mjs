@@ -51,10 +51,7 @@ test('actual explanation evidence is public subprocess traffic anchored to one s
       Array.isArray(scenario.argv) && scenario.argv.some((value) => value.endsWith('/bin/aitm.mjs'))
     );
     assert.equal(scenario.stdin, '');
-    assert.equal(typeof scenario.stderr, 'string');
-    if (scenario.stderr) {
-      assert.match(scenario.stderr, /^\[task-tracker\] projectDir override: .* for #2100\n$/);
-    }
+    assert.equal(scenario.stderr, '');
     assert.equal(scenario.exitCode, 0);
     const parsed = JSON.parse(scenario.stdout);
     assert.equal(parsed.schema, scenario.typed.schema);

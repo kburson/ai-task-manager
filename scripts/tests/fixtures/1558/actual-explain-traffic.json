@@ -1,9 +1,9 @@
 {
   "schema": "aitm.guidance-actual-cli-capture/v2",
   "captureKind": "actual-public-cli-subprocess",
-  "capturedAt": "2026-09-22T21:05:56.349Z",
+  "capturedAt": "2026-09-22T21:19:33.201Z",
   "identity": {
-    "sourceCommit": "4af9b0140fc774a17254bd3e8dfd89bce88e7d39",
+    "sourceCommit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
     "implementationFiles": [
       {
         "path": "bin/aitm.mjs",
@@ -11,7 +11,7 @@
       },
       {
         "path": "scripts/task-tracker/verbs/explain.mjs",
-        "sha256": "sha256:9b901b9aac89ad5439c302cc3aaf46ad21dd13021ec455b91e016f5193d15041"
+        "sha256": "sha256:50bd19d46abf55085b42ada8f8a73d3c384cec8049408153a513757cefb59224"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/evaluate.mjs",
@@ -153,7 +153,7 @@
         "--json"
       ],
       "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"snapshot\":{\"state\":\"plan\",\"head\":\"98a2c866807cd8bc768264dd984b903faf521b5b\",\"digest\":\"sha256:8917d7fb3a7ae8d29fe9008f63a3837d8602bf6d9480aec37ef06cc6d0727e9d\",\"startedAt\":\"2026-09-22T21:05:51.445Z\",\"completedAt\":\"2026-09-22T21:05:51.446Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:bac3ed8a1c9ebfb78028a8aef3aa6579ecfd43d2ebdcae09828283e72d7acd16\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:88cecb5e07f0956940c2a6a5696ead0f490f918f34b870ac7f0205417aa9d7a7\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:5140b57923bb6f70c1cbb404ccaffca5ae291195145d555c3abd5c0a96566277\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:6e98c396e15074b0570196413815badb705173ffc54ca469ed9c14493c43cb7a\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:66a5e7736ede4fafcb28d111cfdf4e15f23e3cfba9b076c369e284f924239997\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:9de16c1d0ea1f2cb78430fdc5c5f0cabf769fac2428f97c06d64c9a878d7a4c9\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-22T21:05:51.445Z\",\"digest\":\"sha256:f0a85e15528502fcd65e09bc33bfd0e0b2c4d2251834b9c16281d1f54405bb16\"}]},\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"snapshot\":{\"state\":\"plan\",\"head\":\"14baeb6dd2c378db65224ae9f80dd2bbadb30fb5\",\"digest\":\"sha256:918e177e3ed2138eb9348ba4af7230384329223572922bbb0e5ea37be8055754\",\"startedAt\":\"2026-09-22T21:19:28.362Z\",\"completedAt\":\"2026-09-22T21:19:28.363Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-22T21:19:28.362Z\",\"digest\":\"sha256:46da0fb00d47d940091ea9ad294228392e843b0c8607cf2b2b9f105cb9a83b05\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:c24b8bb6ad4abde67d84e4dae8cc40baa21db75e8e1b143c9d8a8fe0e4264463\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:b56eac3db39968950cfa3c489a7198b6e8e53a2b5f1cd3d68bdf72049eeebd3e\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:d052e2dbd0dcae58670a9e1f4b924d191a199f691358794537b49207f46cafe4\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:9eef927db958e592c294398f2b009d8e41b63fff6850ec4bd53a3105d271bb13\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:e31c8e49dfec234882faf76cfe02e291df0430b0e1eb31001f105ac47317a9d5\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:65c38284e3cee41d85929753340de0e4ef9f8f670aeaf0dc5776df173563ac14\"}]},\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
       "stderr": "",
       "exitCode": 0,
       "remoteAuthorityReads": 4,
@@ -232,7 +232,7 @@
       ],
       "stdin": "",
       "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"test\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"session-bind-mismatch\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"authority-collection\",\"code\":\"test-verification-commands-missing\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-epic-children-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-epic-children-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.test\",\"digest\":\"sha256:14de80e480a4d7e3fb15e4cfd63489eb0544e6223300a047d958fe50a9a4935f\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"test\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"test\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
-      "stderr": "[task-tracker] projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/.scratch/test/aitm-guidance-capture-lIJHWl for #2100\n",
+      "stderr": "",
       "exitCode": 0,
       "remoteAuthorityReads": 8,
       "typed": {
@@ -258,7 +258,7 @@
       ],
       "stdin": "",
       "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"review\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"review\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.review\",\"digest\":\"sha256:640b0fc35317634c36002c66c981390db7bf7818d665dc61a3aed7b7684cdb40\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"review\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"review\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
-      "stderr": "[task-tracker] projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/.scratch/test/aitm-guidance-capture-lIJHWl for #2100\n",
+      "stderr": "",
       "exitCode": 0,
       "remoteAuthorityReads": 6,
       "typed": {
@@ -383,14 +383,14 @@
   "measurement": {
     "proxyRule": "ceil(concatenated UTF-16 characters / 4)",
     "actualTraffic": {
-      "characters": 19303,
-      "bytes": 19303,
-      "proxyTokens": 4826
+      "characters": 18897,
+      "bytes": 18897,
+      "proxyTokens": 4725
     },
     "lifecycleTraffic": {
-      "characters": 12788,
-      "bytes": 12788,
-      "proxyTokens": 3197
+      "characters": 12382,
+      "bytes": 12382,
+      "proxyTokens": 3096
     },
     "currentFullStaticSource": "scripts/tests/fixtures/1558/context-comparison.json",
     "currentFullStaticProxyTokens": {
@@ -490,8 +490,8 @@
       }
     },
     "modeledFullLifecycleTotals": {
-      "claude": 4037,
-      "codex": 4030
+      "claude": 3936,
+      "codex": 3929
     },
     "lifecycleScenarioNames": [
       "ready-first-load",
