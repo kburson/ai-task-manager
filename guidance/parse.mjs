@@ -114,6 +114,9 @@ export function parseGuidanceSource(input) {
         parent.seen.add(key);
         parent.pendingKey = key;
         ranges.set(path, range);
+        if (parent.seen.size === 1 && /\[\d+\]$/.test(parent.path)) {
+          ranges.set(parent.path, range);
+        }
       }
       parent.expectingKey = false;
       return null;
@@ -139,6 +142,11 @@ export function parseGuidanceSource(input) {
     }
     const parent = frames.at(-1);
     const path = childPath(parent, event);
+    if (path && !ranges.has(path)) {
+      const start = event.type === EVENT_ID.SCALAR ? keyRange(event).start : eventStart(event);
+      const end = event.type === EVENT_ID.SCALAR ? keyRange(event).end : eventEnd(event);
+      ranges.set(path, { start, end });
+    }
     if (event.anchorStart >= 0) {
       diagnostics.push(
         diagnostic(

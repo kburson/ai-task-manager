@@ -105,7 +105,7 @@ function checkBindingList(value, path, allowed, add) {
   });
 }
 
-function checkInstruction(instruction, path, actionIds, add) {
+function checkInstruction(instruction, path, actionIds, boundActionIds, add) {
   if (!isRecord(instruction) || Object.keys(instruction).length !== 1) {
     add('agent-instruction-shape', path, 'Agent instruction must have exactly one operation');
     return;
@@ -128,7 +128,17 @@ function checkInstruction(instruction, path, actionIds, add) {
     (operation === 'if_blocked' && value === 'use_returned_remediation_ids') ||
     (operation === 'never' && PROHIBITION_IDS.includes(value)) ||
     (operation === 'execution_revalidates' && value === true);
-  if (!valid) add('invalid-agent-value', path, `Invalid ${operation} value: ${String(value)}`);
+  if (!valid) {
+    add('invalid-agent-value', path, `Invalid ${operation} value: ${String(value)}`);
+  } else if (['query', 'execute'].includes(operation) && !boundActionIds.includes(value)) {
+    add(
+      'instruction-action-unbound',
+      path,
+      `${operation} names registered action ${value} outside this entry's action_ids binding`,
+      boundActionIds,
+      'Bind the action to this entry or correct the instruction value.'
+    );
+  }
 }
 
 function checkStringList(value, path, add) {
@@ -271,6 +281,7 @@ function checkEntry(entry, index, requirements, seenIds, packageRoot, add) {
           item,
           `${path}.agent.instruction[${itemIndex}]`,
           requirements.actionIds,
+          Array.isArray(entry.binds?.action_ids) ? entry.binds.action_ids : [],
           add
         )
       );

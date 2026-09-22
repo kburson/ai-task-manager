@@ -160,6 +160,32 @@ test('validator rejects duplicate IDs and unregistered agent operations without 
   );
 });
 
+test('value-level diagnostics use raw instruction-key and binding-value positions', () => {
+  const source = packagedGuidanceSource()
+    .replace('{ query: bind }', '{ execute_shell: bind }')
+    .replace('action_ids: [bind]', 'action_ids: [bogus]');
+  const result = validateGuidance({ source, packageRoot: PACKAGE_ROOT });
+  const instruction = result.errors.find(({ code }) => code === 'unknown-agent-operation');
+  const binding = result.errors.find(
+    ({ code, path }) => code === 'unknown-reference' && path === 'entries[0].binds.action_ids[0]'
+  );
+  assert.deepEqual([instruction.line, instruction.column], [15, 13]);
+  assert.deepEqual([binding.line, binding.column], [11, 27]);
+});
+
+test('an instruction cannot query or execute a registered action outside its entry binding', () => {
+  const source = packagedGuidanceSource()
+    .replace('{ query: bind }', '{ query: close }')
+    .replace('{ execute: bind }', '{ execute: close }');
+  const result = validateGuidance({ source, packageRoot: PACKAGE_ROOT });
+  assert.deepEqual(
+    result.errors
+      .filter(({ code }) => code === 'instruction-action-unbound')
+      .map(({ path }) => path),
+    ['entries[0].agent.instruction[0]', 'entries[0].agent.instruction[3]']
+  );
+});
+
 test('documentation references resolve shipped paths and reject traversal', () => {
   assert.equal(
     resolveDocumentationReference(
