@@ -1,0 +1,16 @@
+{
+  "schema": "aitm.guidance-release/v1",
+  "package": "@kburson/ai-task-manager",
+  "packageVersion": "0.1.0",
+  "catalogPath": "instructions/aitm-guidance.yml",
+  "catalogFileDigest": "sha256:04792dc3848f875ecb7e544ffd67a12bdae84b4e4a2ce264e9fe41407e7b32ec",
+  "parser": {
+    "name": "js-yaml",
+    "version": "5.4.2"
+  },
+  "compiler": {
+    "name": "aitm-guidance",
+    "version": 1,
+    "adapter": "js-yaml-events-v1"
+  }
+}
