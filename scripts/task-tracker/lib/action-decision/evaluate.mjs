@@ -20,6 +20,7 @@ import { collectEarlyPromoteReadiness } from './promote.mjs';
 import { collectTestReadiness } from './test.mjs';
 import { collectReviewReadiness } from './review.mjs';
 import { collectDeliveryReadiness } from './deliver.mjs';
+import { collectCloseReadiness } from './close.mjs';
 
 /**
  * Read-only remote-tip authority for a later close adapter. The caller owns
@@ -383,6 +384,7 @@ export async function evaluateAction({
     throw new TypeError('action-evaluator:attempt');
   }
   if (
+    actionId === 'close' ||
     actionId === 'review' ||
     actionId === 'deliver' ||
     (actionId === 'promote' && ['test', 'review'].includes(inputs?.state)) ||
@@ -636,51 +638,58 @@ async function evaluateCompletedAction({
       const reviewAction =
         actionId === 'review' ||
         (actionId === 'promote' && ['test', 'review'].includes(canonicalState));
-      const result = testAction
-        ? await collectTestReadiness({
-            issue,
-            fromState: canonicalState,
-            body: inputs.body,
-            head: inputs.head,
-            attempt,
-            ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
-          })
-        : reviewAction
-          ? await collectReviewReadiness({
+      const result =
+        actionId === 'close'
+          ? await collectCloseReadiness({
               issue,
-              fromState: canonicalState,
-              body: inputs.body,
-              head: inputs.head,
               attempt,
-              ports: { scope, cfg: inputs.config, ...(deps.reviewPorts ?? {}) },
+              ports: { scope, head: inputs.head, cfg: inputs.config, ...(deps.closePorts ?? {}) },
             })
-          : actionId === 'deliver'
-            ? await collectDeliveryReadiness({
+          : testAction
+            ? await collectTestReadiness({
                 issue,
+                fromState: canonicalState,
+                body: inputs.body,
+                head: inputs.head,
                 attempt,
-                ports: {
-                  scope,
-                  head: inputs.head,
-                  cfg: inputs.config,
-                  ...(deps.deliveryPorts ?? {}),
-                },
+                ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
               })
-            : actionId === 'promote'
-              ? await collectEarlyPromoteReadiness({
+            : reviewAction
+              ? await collectReviewReadiness({
                   issue,
                   fromState: canonicalState,
                   body: inputs.body,
+                  head: inputs.head,
                   attempt,
-                  ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
+                  ports: { scope, cfg: inputs.config, ...(deps.reviewPorts ?? {}) },
                 })
-              : await collectSessionReadiness({
-                  actionId,
-                  issue,
-                  stateBefore: inputs.sessionState,
-                  config: inputs.config,
-                  attempt,
-                  ports: { scope, ...(deps.sessionPorts ?? {}) },
-                });
+              : actionId === 'deliver'
+                ? await collectDeliveryReadiness({
+                    issue,
+                    attempt,
+                    ports: {
+                      scope,
+                      head: inputs.head,
+                      cfg: inputs.config,
+                      ...(deps.deliveryPorts ?? {}),
+                    },
+                  })
+                : actionId === 'promote'
+                  ? await collectEarlyPromoteReadiness({
+                      issue,
+                      fromState: canonicalState,
+                      body: inputs.body,
+                      attempt,
+                      ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
+                    })
+                  : await collectSessionReadiness({
+                      actionId,
+                      issue,
+                      stateBefore: inputs.sessionState,
+                      config: inputs.config,
+                      attempt,
+                      ports: { scope, ...(deps.sessionPorts ?? {}) },
+                    });
       status = result.status;
       blockers = result.blockers;
       warnings = result.warnings ?? [];
