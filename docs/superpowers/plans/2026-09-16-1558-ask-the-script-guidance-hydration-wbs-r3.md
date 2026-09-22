@@ -960,6 +960,13 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-source-tru
 
 ### Task 21: Integrate exhaustive entrypoint admission and success annotation
 
+#### Story Intent
+
+- **Beneficiary:** Operational CLI user and issue maintainer
+- **Capability:** Admit every supported command before effects and record one divergence notice after a successful mutation
+- **Need:** Aliases, direct entrypoints, and startup imports could bypass source trust while repeated edits could duplicate audit comments
+- **Value or failure prevented:** Invalid guidance cannot act through an unclassified route and a diverged source leaves a single visible audit trail
+
 **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12b`.
 
 **User story:**
