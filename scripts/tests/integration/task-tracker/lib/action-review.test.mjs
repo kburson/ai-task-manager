@@ -375,14 +375,14 @@ test('Review resident reruns only incomplete evidence and does not recommend clo
   assert.deepEqual(pending.effects, []);
 });
 
-test('Review-state Promote selects a Review rerun only from current resident evidence', async () => {
+test('Review-state Promote delegates to Close rather than a Review rerun', async () => {
   const incomplete = fixture({ state: 'review' });
   const complete = fixture({ state: 'review', resident: { status: 'complete' } });
   const rerun = await incomplete.decision('promote');
   const afterComplete = await complete.decision('promote');
-  assert.equal(rerun.status, 'ready', JSON.stringify(rerun));
-  assert.equal(rerun.actionId, 'review');
-  assert.ok(rerun.guidanceIds.includes('action.review'));
+  assert.equal(rerun.status, 'indeterminate', JSON.stringify(rerun));
+  assert.equal(rerun.actionId, 'close');
+  assert.ok(rerun.guidanceIds.includes('action.close'));
   assert.notEqual(afterComplete.status, 'ready');
   assert.deepEqual(incomplete.effects, []);
   assert.deepEqual(complete.effects, []);

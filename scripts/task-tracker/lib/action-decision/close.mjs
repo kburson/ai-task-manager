@@ -4,6 +4,10 @@ import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
 import { fetchAssignmentSnapshot } from '../assignment-snapshot.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  evaluateWorkflowBoundary,
+} from '../workflow-policy/enforcement.mjs';
 import { projectFunctionalDod } from '../functional-dod-project.mjs';
 import {
   requireDeliveryReceipt,
@@ -578,9 +582,23 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
       humanDecision = guardResult.humanDecision;
     }
   }
+  const seenAuthoritySources = new Set();
+  const uniqueBlockers = blockers.filter((blocker) => {
+    if (!['authority-read-failed', 'authority-read-skipped'].includes(blocker.code)) return true;
+    const source = blocker.args?.source;
+    const subject = blocker.args?.subject?.issue;
+    const key = `${source}:${subject}`;
+    if (seenAuthoritySources.has(key)) return false;
+    seenAuthoritySources.add(key);
+    return true;
+  });
+  const orderedBlockers = [
+    ...uniqueBlockers.filter((blocker) => blocker.code === 'state-unavailable'),
+    ...uniqueBlockers.filter((blocker) => blocker.code !== 'state-unavailable'),
+  ];
   return {
-    status: indeterminate ? 'indeterminate' : blockers.length ? 'blocked' : 'ready',
-    blockers,
+    status: indeterminate ? 'indeterminate' : orderedBlockers.length ? 'blocked' : 'ready',
+    blockers: orderedBlockers,
     warnings,
     normalizations,
     humanDecision,
@@ -726,7 +744,16 @@ export async function evaluateCloseReadiness({
         value = await requireReader('readChildren')({ issue, body, cfg });
       else if (request.identity === `evidence:${issue}:4`)
         value = await production.readGuardAuthority({ delivery });
-      else throw new TypeError('close-readiness:source');
+      else if (
+        request.resource === 'workflow-policy' &&
+        request.identity === `workflow-policy:${issue}`
+      ) {
+        const runtime =
+          deps.workflowPolicyRuntime ??
+          createGithubWorkflowBoundaryRuntime({ repository: cfg.repo });
+        value = await runtime.listRecords(issue);
+        if (!Array.isArray(value)) throw new TypeError('close-readiness:workflow-policy-records');
+      } else throw new TypeError('close-readiness:source');
       return { ...request, value };
     },
   });
@@ -757,7 +784,27 @@ export async function evaluateCloseReadiness({
             };
           return production.runReadOnlyGuards(from, to, context, observation.value);
         }),
-      loadPolicy: deps.loadPolicy,
+      loadPolicy:
+        deps.loadPolicy ??
+        (async ({ requirementIds }) => {
+          const observation = await attempt.observe({
+            resource: 'workflow-policy',
+            identity: `workflow-policy:${issue}`,
+            scope,
+          });
+          if (observation.status !== 'observed')
+            return { status: 'indeterminate', cause: observation.cause };
+          return evaluateWorkflowBoundary({
+            repository: cfg.repo,
+            issue,
+            body,
+            records: observation.value,
+            requirementIds,
+            activity: 'workflow-transition:done',
+            state: 'review',
+            now: now(),
+          });
+        }),
       deps: deps.guardDeps,
     },
   });

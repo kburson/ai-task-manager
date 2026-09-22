@@ -759,6 +759,12 @@ async function evaluateCompletedAction({
   }
   const effectiveActionId =
     actionId === 'promote' && selectedAction === 'close' ? 'close' : actionId;
+  const decisionActionId =
+    navigation.status === 'terminal' || blockers.some(({ code }) => code === 'state-unavailable')
+      ? null
+      : selectedAction === 'review' && actionId === 'promote'
+        ? 'review'
+        : effectiveActionId;
   const requests = blockers.flatMap((blocker) => {
     if (blocker.code === 'plan-approval-missing') {
       return [
@@ -805,7 +811,7 @@ async function evaluateCompletedAction({
         actor: 'human-operator',
         subject: {
           issue: blocker.args.subject?.issue ?? issue,
-          actionId: blocker.code === 'state-unavailable' ? null : effectiveActionId,
+          actionId: decisionActionId,
         },
         args: { guardId: blocker.guardId, code: blocker.code },
       },
@@ -821,12 +827,7 @@ async function evaluateCompletedAction({
   const decision = {
     schema: ACTION_DECISION_SCHEMA,
     issue,
-    actionId:
-      navigation.status === 'terminal' || blockers.some(({ code }) => code === 'state-unavailable')
-        ? null
-        : selectedAction === 'review' && actionId === 'promote'
-          ? 'review'
-          : effectiveActionId,
+    actionId: decisionActionId,
     status,
     snapshot: snapshotFromBundle({ state: snapshotState, head: inputs.head, bundle }),
     blockers,

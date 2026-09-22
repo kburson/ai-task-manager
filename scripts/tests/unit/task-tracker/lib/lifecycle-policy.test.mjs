@@ -1,4 +1,4 @@
-// @story #1008 #1667
+// @story #1008 #1667 #1669
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -54,7 +54,7 @@ test('navigation refuses rebind vocabulary and unknown or conflicting state', ()
   );
 });
 
-test('Done is terminal while Test and incomplete Review delegate to read-only readiness', () => {
+test('Done is terminal while Test and Review delegate to their read-only readiness', () => {
   assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state: 'done' }), {
     status: 'terminal',
     target: null,
@@ -68,11 +68,14 @@ test('Done is terminal while Test and incomplete Review delegate to read-only re
     delegate: 'test',
     blocker: null,
   });
-  for (const state of ['test', 'review']) {
+  for (const [state, target, delegate] of [
+    ['test', 'review', 'review'],
+    ['review', 'done', 'close'],
+  ]) {
     const route = resolveActionNavigation({ actionId: 'promote', state });
     assert.deepEqual(
       [route.status, route.target, route.delegate, route.blocker],
-      ['ready', 'review', 'review', null]
+      ['ready', target, delegate, null]
     );
   }
 });

@@ -76,6 +76,7 @@ function makeCtx(statePath, dir, over = {}) {
     resumeTerminalIssueBindingRelease: async () => ({ status: 'released' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
+    fetchSubIssueBoardSnapshot: async () => ({ status: 'ok', children: [] }),
     getIssueBoardState: async () => 'review',
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],

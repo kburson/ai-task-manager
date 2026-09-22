@@ -529,9 +529,9 @@ test('stale restart is incompatible with force, repair, answer, and disposition 
   }
 });
 
-test('ordinary close retains same-SHA resume and stale-SHA refusal without restart writes', async () => {
+test('ordinary close adopts a same-SHA Done board and refuses stale SHA without restart writes', async () => {
   const sameSha = await runClose({
-    boardState: 'review',
+    boardState: 'done',
     closeSnapshot: { issueClosed: false, stateReason: null },
     body: upsertDeliveredCloseTransaction(closeBody(), {
       ...staleRestartTransaction(),
