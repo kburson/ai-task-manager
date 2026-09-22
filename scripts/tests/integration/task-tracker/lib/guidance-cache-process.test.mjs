@@ -219,6 +219,26 @@ test('a corrupted invalid manifest cannot authorize an operational route', () =>
   }
 });
 
+test('a valid manifest missing required fingerprints is rebuilt', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-manifest-fingerprints-');
+  try {
+    assert.equal(loadGuidance({ projectRoot: root }).valid, true);
+    const manifestPath = path.join(root, '.tmp/aitm/guidance-cache/manifest.v1.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    delete manifest.fingerprints;
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    const loaded = loadGuidance({ projectRoot: root });
+    assert.equal(loaded.valid, true);
+    assert.equal(typeof loaded.fingerprints, 'object');
+    assert.equal(
+      loaded.fingerprints.catalogFileDigest,
+      JSON.parse(readFileSync(manifestPath, 'utf8')).catalogDigest
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('missing, corrupt, schema-mismatched, and digest-mismatched artifacts rebuild', () => {
   const root = mkdtempProjectIsolated('aitm-1674-corruption-');
   try {
