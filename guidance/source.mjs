@@ -63,7 +63,7 @@ function normalizedDigest(bytes) {
   return `sha256:${createHash('sha256').update(normalized, 'utf8').digest('hex')}`;
 }
 
-function packageObservation(moduleUrl) {
+function packageObservation(moduleUrl, { readSource = true } = {}) {
   let modulePath;
   try {
     modulePath = realpathSync(fileURLToPath(moduleUrl));
@@ -102,15 +102,25 @@ function packageObservation(moduleUrl) {
   ) {
     return { error: 'guidance-release-manifest-invalid', packageRoot, sourcePath };
   }
-  let source;
-  let digest;
-  try {
-    source = readFileSync(sourcePath);
-    digest = normalizedDigest(source);
-  } catch {
-    return { error: 'guidance-package-source-unreadable', packageRoot, sourcePath };
+  let source = null;
+  let digest = null;
+  if (readSource) {
+    try {
+      source = readFileSync(sourcePath);
+      digest = normalizedDigest(source);
+    } catch {
+      return { error: 'guidance-package-source-unreadable', packageRoot, sourcePath };
+    }
   }
-  return { packageRoot, sourcePath, source, digest, manifest };
+  return {
+    packageRoot,
+    sourcePath,
+    source,
+    digest,
+    manifest,
+    manifestPath,
+    packageVersion: identity.version,
+  };
 }
 
 function observeTracking(projectRoot) {
@@ -145,6 +155,76 @@ function observeTracking(projectRoot) {
   } catch {
     return { tracked: null, code: 'guidance-project-tracking-indeterminate' };
   }
+}
+
+/** Select the source and recheck tracking without opening the YAML catalog. */
+export function observeGuidanceSource({
+  projectRoot = resolveGuidanceProjectRoot(),
+  moduleUrl = import.meta.url,
+  publishedOnly = false,
+} = {}) {
+  const packageResult = packageObservation(moduleUrl, { readSource: false });
+  if (!publishedOnly && projectRoot === null) {
+    const { source: _source, ...rest } = failure(
+      'guidance-project-root-indeterminate',
+      'project',
+      null,
+      'git-root-unavailable'
+    );
+    return rest;
+  }
+  const projectPath = projectRoot === null ? null : path.join(projectRoot, PROJECT_GUIDANCE_PATH);
+  const projectFileType = projectPath === null ? 'missing' : regularFile(projectPath);
+  const selectedProject = !publishedOnly && projectFileType !== 'missing';
+  const sourceType = selectedProject ? 'project' : 'package';
+  const selectedPath = selectedProject ? projectPath : packageResult.sourcePath;
+  if (packageResult.error) {
+    const { source: _source, ...rest } = failure(
+      packageResult.error,
+      sourceType,
+      selectedPath ?? null,
+      packageResult.error
+    );
+    return rest;
+  }
+  if (selectedProject && projectFileType !== 'regular') {
+    const { source: _source, ...rest } = failure(
+      'guidance-project-source-invalid-type',
+      sourceType,
+      projectPath,
+      projectFileType
+    );
+    return rest;
+  }
+  const tracking = selectedProject
+    ? observeTracking(projectRoot)
+    : { tracked: null, modified: false };
+  if (selectedProject && tracking.tracked === null) {
+    const { source: _source, ...rest } = failure(
+      tracking.code,
+      sourceType,
+      projectPath,
+      'tracking-indeterminate'
+    );
+    return rest;
+  }
+  return {
+    sourceType,
+    path: selectedPath,
+    reason: selectedProject ? 'project-override' : 'running-package',
+    trust: selectedProject
+      ? tracking.tracked
+        ? 'project-owned'
+        : 'project-untracked'
+      : 'published',
+    tracked: tracking.tracked,
+    warnings: tracking.modified ? ['guidance-project-source-uncommitted'] : [],
+    packageRoot: packageResult.packageRoot,
+    packageVersion: packageResult.packageVersion,
+    packagePath: packageResult.sourcePath,
+    releaseManifestPath: packageResult.manifestPath,
+    publishedCatalogFileDigest: packageResult.manifest.catalogFileDigest,
+  };
 }
 
 /** Select exactly one catalog. The default module URL binds package identity to this running module. */
