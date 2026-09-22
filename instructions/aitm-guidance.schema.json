@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aitm.guidance-catalog/v1",
+  "title": "AITM guidance catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "catalog_version", "provenance", "entries"],
+  "properties": {
+    "schema": { "const": "aitm.guidance-catalog/v1" },
+    "catalog_version": { "const": 1 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["based_on_package", "based_on_catalog_digest"],
+      "properties": {
+        "based_on_package": { "type": "string", "minLength": 1 },
+        "based_on_catalog_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "bindingList": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "instruction": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "query": { "type": "string", "minLength": 1 },
+        "require_status": { "const": "ready" },
+        "if_blocked": { "const": "use_returned_remediation_ids" },
+        "execute": { "type": "string", "minLength": 1 },
+        "never": {
+          "enum": [
+            "bypass_guard",
+            "execute_free_text",
+            "reuse_stale_decision",
+            "invoke_internal_mutator"
+          ]
+        },
+        "execution_revalidates": { "const": true }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "anchor": { "type": "string", "minLength": 1 }
+      }
+    },
+    "example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "purpose"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "binds", "agent", "human"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "binds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action_ids", "guard_ids", "remediation_ids"],
+          "properties": {
+            "action_ids": { "$ref": "#/$defs/bindingList" },
+            "guard_ids": { "$ref": "#/$defs/bindingList" },
+            "remediation_ids": { "$ref": "#/$defs/bindingList" }
+          }
+        },
+        "agent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["instruction"],
+          "properties": {
+            "instruction": {
+              "type": "array",
+              "maxItems": 64,
+              "items": { "$ref": "#/$defs/instruction" }
+            }
+          }
+        },
+        "human": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "explanation"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1 },
+            "explanation": { "type": "string", "minLength": 1, "maxLength": 32768 },
+            "triggered_when": { "type": "array", "items": { "type": "string" } },
+            "execution": { "type": "array", "items": { "type": "string" } },
+            "examples": { "type": "array", "items": { "$ref": "#/$defs/example" } },
+            "documentation": { "type": "array", "items": { "$ref": "#/$defs/documentation" } }
+          }
+        }
+      }
+    }
+  },
+  "x-aitm-limits": {
+    "normalizedSourceBytes": 1048576,
+    "diagnosticExcerptCharacters": 2048,
+    "agentProxy": 1000,
+    "humanProxy": 16000,
+    "entryProxy": 17000,
+    "aggregateAgentProxy": 64000,
+    "aggregateHumanProxy": 160000,
+    "catalogProxy": 240000
+  }
+}
