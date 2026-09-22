@@ -4,7 +4,6 @@ import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'explain', { surface: 'direct-verb' });
 import { buildExplanationEnvelope } from '../../../guidance/protocol.mjs';
 import { loadGuidance } from '../../../guidance/cache.mjs';
-import { createHash } from 'node:crypto';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { loadConfig } from '../config.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
@@ -12,11 +11,6 @@ import { getProjectDir, statePath } from '../paths.mjs';
 import { loadState } from '../state.mjs';
 import { fetchAssignmentSnapshot } from '../lib/assignment-snapshot.mjs';
 import { loadReadyForPlanMigrationJournal } from '../lib/ready-for-plan-migration-freeze.mjs';
-import { actionDescriptorFor } from '../lib/lifecycle-policy/actions.mjs';
-import {
-  ACTION_DECISION_SCHEMA,
-  validateActionDecision,
-} from '../lib/action-decision/contract.mjs';
 import { createObservationAttempt } from '../lib/action-decision/observations.mjs';
 import { evaluateAction } from '../lib/action-decision/evaluate.mjs';
 import { evaluateSessionReadiness } from '../lib/action-decision/session.mjs';
@@ -113,108 +107,6 @@ export async function runExplain(
   return envelope;
 }
 
-function snapshotFromBundle({ state, head, bundle }) {
-  const observations = bundle.observations.map((observation) => ({
-    source: observation.resource,
-    identity: observation.identity,
-    observedAt: observation.observedAt,
-    digest: observation.digest,
-  }));
-  const core = {
-    state,
-    head,
-    startedAt: bundle.startedAt,
-    completedAt: bundle.completedAt,
-    observations,
-    normalizationInputs: bundle.normalizationInputs,
-  };
-  return {
-    state,
-    head,
-    digest: `sha256:${createHash('sha256').update(JSON.stringify(core)).digest('hex')}`,
-    startedAt: bundle.startedAt,
-    completedAt: bundle.completedAt,
-    observations,
-  };
-}
-
-function decisionFromReadiness({ issue, requestedAction, effectiveAction, state, head, result }) {
-  const descriptor = actionDescriptorFor(requestedAction);
-  const blockers = result.blockers ?? [];
-  const unresolved = blockers.some(({ code }) => code === 'state-unavailable');
-  const requests = blockers.flatMap((blocker) => {
-    if (blocker.code === 'plan-approval-missing') {
-      return [
-        {
-          kind: 'plan-approval',
-          actor: 'configured-approver',
-          subject: { issue: blocker.remediation.args.issue, actionId: 'promote' },
-          args: {},
-        },
-      ];
-    }
-    if (blocker.code === 'delivery-manual-review-required') {
-      return [
-        {
-          kind: 'code-review-approval',
-          actor: 'configured-approver',
-          subject: { issue, actionId: 'deliver' },
-          args: { head: blocker.args.head, prNumber: blocker.args.prNumber },
-        },
-      ];
-    }
-    if (blocker.code === 'review-approval-missing') {
-      return [
-        {
-          kind: 'review-approval',
-          actor: 'configured-approver',
-          subject: { issue: blocker.remediation.args.issue, actionId: effectiveAction },
-          args: { head: blocker.args.head },
-        },
-      ];
-    }
-    if (
-      ![
-        'authority-read-failed',
-        'authority-read-skipped',
-        'unclassified-refusal',
-        'state-unavailable',
-      ].includes(blocker.code)
-    )
-      return [];
-    return [
-      {
-        kind: 'manual-investigation',
-        actor: 'human-operator',
-        subject: {
-          issue: blocker.args?.subject?.issue ?? issue,
-          actionId: unresolved ? null : requestedAction,
-        },
-        args: { guardId: blocker.guardId, code: blocker.code },
-      },
-    ];
-  });
-  const decision = {
-    schema: ACTION_DECISION_SCHEMA,
-    issue,
-    actionId: unresolved ? null : requestedAction,
-    status: result.status,
-    snapshot: snapshotFromBundle({
-      state: unresolved ? 'unknown' : state,
-      head,
-      bundle: result.bundle,
-    }),
-    blockers,
-    normalizations: result.normalizations ?? [],
-    warnings: result.warnings ?? [],
-    humanDecision: requests.length > 0 ? { requests } : (result.humanDecision ?? null),
-    guidanceIds: [
-      unresolved ? 'navigation.unresolved' : (descriptor?.guidanceId ?? 'navigation.unknown'),
-    ],
-  };
-  return validateActionDecision(decision);
-}
-
 async function readIssueBody({ issue, repository }) {
   return (
     await pexec('gh', [
@@ -231,15 +123,101 @@ async function readIssueBody({ issue, repository }) {
   ).stdout;
 }
 
+function observationKey({ resource, identity, scope }) {
+  return JSON.stringify([resource, identity, scope]);
+}
+
+async function replayAttempt({ repository, issue, actionId, bundle }) {
+  const observations = new Map(
+    bundle.observations.map((observation) => [observationKey(observation), observation])
+  );
+  const attempt = createObservationAttempt({
+    repository,
+    issue,
+    boundaryId: `explain:${actionId}:${issue}`,
+    now: () => new Date().toISOString(),
+    read: async (request) => {
+      const observation = observations.get(observationKey(request));
+      if (!observation || observation.status !== 'observed') {
+        throw new Error(observation?.provenance?.detail ?? 'authority observation unavailable');
+      }
+      return { ...request, value: observation.value, revision: observation.revision ?? undefined };
+    },
+  });
+  for (const observation of bundle.observations) {
+    await attempt.observe({
+      resource: observation.resource,
+      identity: observation.identity,
+      scope: observation.scope,
+    });
+  }
+  return attempt;
+}
+
+function liveAttempt({ repository, issue, actionId, body, cfg, projectRoot }) {
+  return createObservationAttempt({
+    repository,
+    issue,
+    boundaryId: `explain:${actionId}:${issue}`,
+    now: () => new Date().toISOString(),
+    read: async (request) => {
+      let value;
+      if (request.resource === 'issue-body') value = { number: issue, body };
+      else if (request.resource === 'project-board') {
+        value = await fetchAssignmentSnapshot({ issueNumber: issue, cfg });
+      } else if (request.resource === 'migration-journal') {
+        const journal = loadReadyForPlanMigrationJournal({ projectDir: projectRoot });
+        value = { active: Boolean(journal && journal.phase !== 'final-verification') };
+      } else {
+        throw new TypeError(`explain:unsupported-read:${request.resource}`);
+      }
+      return { ...request, value };
+    },
+  });
+}
+
+function failedAttempt({ repository, issue, actionId }) {
+  return createObservationAttempt({
+    repository,
+    issue,
+    boundaryId: `explain:${actionId}:${issue}`,
+    now: () => new Date().toISOString(),
+    read: async () => {
+      throw new Error('initial authority read unavailable');
+    },
+  });
+}
+
 /** Production evaluation entry. It exposes read ports only and never builds the mutation context. */
 export async function evaluateExplanation({ issue, actionId, projectRoot = getProjectDir() } = {}) {
   const cfg = loadConfig();
   const repository = cfg.repo;
   if (typeof repository !== 'string' || !repository.includes('/')) fail('repository');
-  const body = await readIssueBody({ issue, repository });
+  let body;
+  let head;
+  let sessionState;
+  try {
+    body = await readIssueBody({ issue, repository });
+    head = (await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim();
+    sessionState = loadState(statePath(projectRoot));
+  } catch {
+    const decision = await evaluateAction({
+      actionId,
+      repository,
+      issue,
+      inputs: {
+        state: 'unknown',
+        head: '0'.repeat(40),
+        body: '',
+        sessionState: {},
+        config: cfg,
+      },
+      attempt: failedAttempt({ repository, issue, actionId }),
+      deps: { effectAttempts: () => [] },
+    });
+    return { decision, diagnosticMessages: [] };
+  }
   const state = readLastKnownState(body).state ?? 'unknown';
-  const head = (await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim();
-  const sessionState = loadState(statePath(projectRoot));
   const requestedAction = actionId;
   const effectiveAction =
     actionId === 'promote' && state === 'develop'
@@ -249,9 +227,9 @@ export async function evaluateExplanation({ issue, actionId, projectRoot = getPr
         : actionId === 'promote' && state === 'review'
           ? 'close'
           : actionId;
-  let result;
+  let readiness = null;
   if (effectiveAction === 'bind' || effectiveAction === 'resume') {
-    result = await evaluateSessionReadiness({
+    readiness = await evaluateSessionReadiness({
       actionId: effectiveAction,
       issue,
       stateBefore: sessionState,
@@ -260,52 +238,36 @@ export async function evaluateExplanation({ issue, actionId, projectRoot = getPr
       invokingDir: projectRoot,
     });
   } else if (effectiveAction === 'test') {
-    result = await evaluateTestReadiness({ issue, cfg, projectDir: projectRoot, body, head });
+    readiness = await evaluateTestReadiness({ issue, cfg, projectDir: projectRoot, body, head });
   } else if (effectiveAction === 'review') {
-    result = await evaluateReviewReadiness({ issue, cfg, projectDir: projectRoot });
+    readiness = await evaluateReviewReadiness({ issue, cfg, projectDir: projectRoot });
   } else if (effectiveAction === 'close') {
-    result = await evaluateCloseReadiness({ issue, cfg, projectDir: projectRoot });
-  } else {
-    const scopeReader = async (request) => {
-      let value;
-      if (request.resource === 'issue-body') value = { number: issue, body };
-      else if (request.resource === 'project-board')
-        value = await fetchAssignmentSnapshot({ issueNumber: issue, cfg });
-      else if (request.resource === 'migration-journal') {
-        const journal = loadReadyForPlanMigrationJournal({ projectDir: projectRoot });
-        value = { active: Boolean(journal && journal.phase !== 'final-verification') };
-      } else throw new TypeError(`explain:unsupported-read:${request.resource}`);
-      return { ...request, value };
-    };
-    const attempt = createObservationAttempt({
-      repository,
-      issue,
-      boundaryId: `action:${actionId}:${issue}`,
-      now: () => new Date().toISOString(),
-      read: scopeReader,
-    });
-    const decision = await evaluateAction({
-      actionId,
-      repository,
-      issue,
-      inputs: { state, head, body, sessionState, config: cfg },
-      attempt,
-      deps: {
-        effectAttempts: () => [],
-        promotePorts: { cfg, projectDir: projectRoot },
-      },
-    });
-    return { decision, diagnosticMessages: [] };
+    readiness = await evaluateCloseReadiness({ issue, cfg, projectDir: projectRoot });
   }
-  return {
-    decision: decisionFromReadiness({
-      issue,
-      requestedAction,
-      effectiveAction,
-      state,
-      head,
-      result,
-    }),
-    diagnosticMessages: [],
-  };
+  const attempt = readiness?.bundle
+    ? await replayAttempt({ repository, issue, actionId, bundle: readiness.bundle })
+    : liveAttempt({ repository, issue, actionId, body, cfg, projectRoot });
+  const decision = await evaluateAction({
+    actionId: requestedAction,
+    repository,
+    issue,
+    inputs: { state, head, body, sessionState, config: cfg },
+    attempt,
+    deps: {
+      effectAttempts: () => [],
+      ...(readiness?.bundle
+        ? {
+            collectReadiness: async () => {
+              const { bundle: _bundle, ...result } = readiness;
+              return result;
+            },
+          }
+        : {}),
+      promotePorts: { cfg, projectDir: projectRoot },
+      testPorts: { cfg, projectDir: projectRoot },
+      reviewPorts: { cfg, projectDir: projectRoot },
+      closePorts: { cfg, projectDir: projectRoot },
+    },
+  });
+  return { decision, diagnosticMessages: [] };
 }

@@ -14,6 +14,9 @@ export const AGENT_OPERATIONS = Object.freeze([
   'execute',
   'never',
   'execution_revalidates',
+  'terminal_state',
+  'navigation',
+  'recommendation',
 ]);
 
 export const PROHIBITION_IDS = Object.freeze([

@@ -172,8 +172,19 @@ export function runGuidanceCli(
       source: loaded.source?.path ?? null,
       sourceType: loaded.source?.sourceType ?? null,
       trust: loaded.source?.trust ?? null,
-      catalogDigest: loaded.catalogDigest,
-      ...entry,
+      id: entry.id,
+      revision: entry.revision,
+      summary: entry.summary,
+      explanation: entry.explanation,
+      triggers: entry.triggered_when ?? [],
+      execution: entry.execution ?? [],
+      examples: entry.examples ?? [],
+      references: entry.documentation ?? [],
+      fingerprints: {
+        humanDigest: entry.humanDigest,
+        entryDigest: entry.entryDigest,
+        catalogDigest: loaded.catalogDigest,
+      },
     };
     stdout.write(
       json

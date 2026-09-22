@@ -227,3 +227,29 @@ entries:
     human:
       summary: Obtain current-head review approval.
       explanation: An eligible reviewer must approve the exact head when manual review is required; an earlier explanation grants nothing.
+  - id: navigation.unknown
+    revision: 1
+    binds: { action_ids: [], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ recommendation: null }, { never: execute_free_text }, { never: invoke_internal_mutator }]
+    human:
+      summary: The requested action is not registered.
+      explanation: No executable recommendation is available because the action is outside the closed lifecycle vocabulary.
+  - id: navigation.unresolved
+    revision: 1
+    binds: { action_ids: [], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction: [{ navigation: unresolved }, { recommendation: null }, { never: bypass_guard }]
+    human:
+      summary: Current lifecycle navigation is unresolved.
+      explanation: Conflicting or unavailable state authority prevents selection of an executable lifecycle action.
+  - id: state.done
+    revision: 1
+    binds: { action_ids: [], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ terminal_state: done }, { recommendation: null }, { never: execute_free_text }]
+    human:
+      summary: The issue is already terminal.
+      explanation: Done is a terminal state, so the explanation reports current authority without recommending another lifecycle action.

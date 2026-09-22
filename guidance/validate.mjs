@@ -127,7 +127,10 @@ function checkInstruction(instruction, path, actionIds, boundActionIds, add) {
     (operation === 'require_status' && value === 'ready') ||
     (operation === 'if_blocked' && value === 'use_returned_remediation_ids') ||
     (operation === 'never' && PROHIBITION_IDS.includes(value)) ||
-    (operation === 'execution_revalidates' && value === true);
+    (operation === 'execution_revalidates' && value === true) ||
+    (operation === 'terminal_state' && value === 'done') ||
+    (operation === 'navigation' && value === 'unresolved') ||
+    (operation === 'recommendation' && value === null);
   if (!valid) {
     add('invalid-agent-value', path, `Invalid ${operation} value: ${String(value)}`);
   } else if (['query', 'execute'].includes(operation) && !boundActionIds.includes(value)) {

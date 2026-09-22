@@ -70,6 +70,45 @@ test('module-relative package source ignores project node_modules and ignored ro
   }
 });
 
+test('human explanation exposes closed guidance fields and fingerprints', () => {
+  const f = fixture();
+  try {
+    const output = [];
+    const code = runGuidanceCli(['explain', 'action.promote', '--json'], {
+      projectRoot: f.dir,
+      moduleUrl: f.moduleUrl,
+      stdout: { write: (value) => output.push(value) },
+      stderr: { write: () => {} },
+    });
+    assert.equal(code, 0);
+    const report = JSON.parse(output.join(''));
+    assert.deepEqual(Object.keys(report), [
+      'schema',
+      'source',
+      'sourceType',
+      'trust',
+      'id',
+      'revision',
+      'summary',
+      'explanation',
+      'triggers',
+      'execution',
+      'examples',
+      'references',
+      'fingerprints',
+    ]);
+    assert.deepEqual(report.triggers, []);
+    assert.deepEqual(report.execution, []);
+    assert.deepEqual(report.examples, []);
+    assert.equal(report.references[0].path, 'docs/guides/guard-architecture.md');
+    assert.match(report.fingerprints.humanDigest, /^sha256:[a-f0-9]{64}$/);
+    assert.match(report.fingerprints.entryDigest, /^sha256:[a-f0-9]{64}$/);
+    assert.match(report.fingerprints.catalogDigest, /^sha256:[a-f0-9]{64}$/);
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test('tracked project catalog wholly shadows package, including modified and invalid content', () => {
   const f = fixture();
   try {
@@ -194,8 +233,8 @@ test('offline recovery source and validate inspect selected, candidate, and publ
       0
     );
     assert.equal(JSON.parse(output.pop()).sourceType, 'candidate');
-    assert.equal(runGuidanceCli(['explain', 'action.promote'], options), 2);
-    assert.match(errors.join(''), /unknown command explain/);
+    assert.equal(runGuidanceCli(['explain', 'action.promote'], options), 1);
+    assert.match(errors.join(''), /unknown or unavailable guidance ID action\.promote/);
   } finally {
     rmSync(f.dir, { recursive: true, force: true });
   }
