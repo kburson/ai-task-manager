@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1675
 // /task skill CLI. Dispatches verbs to per-verb modules under ./verbs/.
 // Shared runtime context lives in ./runtime.mjs.
 
@@ -29,6 +30,18 @@ import { selectEvidenceProtocol } from './lib/evidence-v2/protocol.mjs';
 import { guardEvidenceMutation } from './lib/evidence-v2/entry-guard.mjs';
 import { admitGuidance } from '../../guidance/admission.mjs';
 import { annotateSuccessfulGuidanceMutation } from '../../guidance/annotation.mjs';
+
+function guidanceAdmissionWarnings(admission) {
+  if (admission?.trust !== 'project-owned-diverged') return [];
+  const digest = admission.validation?.source?.catalogFileDigest;
+  if (!/^sha256:[a-f0-9]{64}$/.test(digest ?? '')) return [];
+  return [
+    {
+      code: 'guidance-source-diverged',
+      args: { source: '.ai-task-manager/aitm-guidance.yml', digest },
+    },
+  ];
+}
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -412,6 +425,32 @@ if (_isMain)
       process.exitCode = 1;
       return;
     }
+    // #1675 — explanations are admitted, read-only commands. Intercept them
+    // before worktree relocation/binding, buildContext, lifecycle preflight,
+    // locks, timing, cursors, annotations, and mutation verb dispatch.
+    try {
+      const explanationArgv = process.argv.slice(2);
+      if (!earlyHelpTarget(explanationArgv)) {
+        const { evaluateExplanation, parseExplainInvocation, runExplain } =
+          await import('./verbs/explain.mjs');
+        const request = parseExplainInvocation(explanationArgv);
+        if (request.matched) {
+          await runExplain(request, {
+            evaluate: (input) => evaluateExplanation({ ...input, projectRoot: process.cwd() }),
+            projectRoot: process.cwd(),
+            admissionWarnings: guidanceAdmissionWarnings(admission),
+          });
+          process.exitCode = 0;
+          return;
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof TypeError) || !String(error.message).startsWith('explain:'))
+        throw error;
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 2;
+      return;
+    }
     const executionContext = readEvidenceExecutionContext();
     if (executionContext?.schema === 'aitm.rehearsal-context/v1')
       assertRecordedTransport(executionContext);
@@ -516,6 +555,8 @@ if (_isMain)
     await guardEvidenceVerb(ctx);
     try {
       switch (ctx.verb) {
+        case 'explain':
+          throw new TypeError('explain:early-route-required');
         case 'status': {
           const { verbStatus } = await import('./verbs/status.mjs');
           await verbStatus(ctx);

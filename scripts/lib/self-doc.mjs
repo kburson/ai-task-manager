@@ -1,3 +1,4 @@
+// @story #1675
 // #413 — Self-documenting CLI support for the `aitm` orchestrator.
 //
 // Single source of truth for the help text of every operator-facing support
@@ -722,10 +723,12 @@ const DIRECT_SELF_DOC = Object.freeze({
     classification: 'agent-callable-standalone',
     synopsis: 'Inspect and validate the selected guidance source without operational effects.',
     routable: true,
-    usage: 'aitm guidance <validate|source> [--json] [--file <path>|--published] [--refresh]',
+    usage:
+      'aitm guidance <validate|source|explain> [ID] [--json] [--file <path>|--published] [--refresh]',
     arguments: [
       argument('validate', 'Validate the selected or candidate catalog.'),
       argument('source', 'Report source selection and trust.'),
+      argument('explain ID', 'Show the selected human guidance entry without action evaluation.'),
     ],
     preconditions: ['Works even when the selected catalog is invalid.'],
     effects: ['Reads guidance and source-trust evidence; writes nothing.'],

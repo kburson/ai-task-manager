@@ -1,4 +1,4 @@
-// @story #1662
+// @story #1662 #1675
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { actionDescriptorFor } from '../lifecycle-policy/actions.mjs';
 import {
@@ -32,6 +32,7 @@ const PRESENTATION_KEYS = Object.freeze([
 ]);
 const STATUSES = Object.freeze(['ready', 'blocked', 'indeterminate']);
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
+const SOURCE_RECEIPT = /^aitm-guidance-source:project-owned-diverged:(sha256:[a-f0-9]{64})$/;
 const PROHIBITIONS = new Set([
   'bypass_guard',
   'execute_free_text',
@@ -332,19 +333,27 @@ function admissionWarningsFromDiagnostic(result, fullDecision) {
 export function validateExplanationEnvelope(input, { diagnostic = false } = {}) {
   if (typeof diagnostic !== 'boolean') fail('diagnostic', 'boolean');
   const envelope = parse(input, 'envelope');
-  exact(
-    envelope,
-    diagnostic
-      ? ['schema', 'result', 'guidance', 'fullDecision', 'diagnosticMessages']
-      : ['schema', 'result', 'guidance'],
-    'envelope'
-  );
+  const keys = diagnostic
+    ? ['schema', 'result', 'guidance', 'fullDecision', 'diagnosticMessages']
+    : ['schema', 'result', 'guidance'];
+  if (Object.hasOwn(envelope, 'sourceReceipt')) keys.push('sourceReceipt');
+  exact(envelope, keys, 'envelope');
   if (![EXPLANATION_SCHEMA_V1, EXPLANATION_SCHEMA].includes(envelope.schema))
     fail('schema', 'unsupported');
   const decisionSchema =
     envelope.schema === EXPLANATION_SCHEMA_V1 ? ACTION_DECISION_SCHEMA_V1 : ACTION_DECISION_SCHEMA;
   const result = validateActionPresentation(envelope.result, { schema: decisionSchema });
   validateGuidance(envelope.guidance);
+  const sourceWarnings = result.warnings.filter(({ code }) => code === 'guidance-source-diverged');
+  if (sourceWarnings.length > 1) fail('result.warnings', 'source-receipt');
+  if (sourceWarnings.length === 1) {
+    const match = SOURCE_RECEIPT.exec(envelope.sourceReceipt ?? '');
+    if (!match || match[1] !== sourceWarnings[0].args.digest) {
+      fail('sourceReceipt', 'warning-coupling');
+    }
+  } else if (Object.hasOwn(envelope, 'sourceReceipt')) {
+    fail('sourceReceipt', 'unexpected');
+  }
 
   if (diagnostic) {
     const fullDecision = validateActionDecision(envelope.fullDecision);

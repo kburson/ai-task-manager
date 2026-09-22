@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'guidance');
-// @story #1672
+// @story #1672 #1675
 // Offline, read-only recovery surface. #1673 routes `aitm guidance` here.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,7 @@ import { loadGuidance } from '../../guidance/cache.mjs';
 import { emitSelfDoc } from '../lib/self-doc.mjs';
 
 const HELP =
-  'Usage: npx aitm guidance <validate|source> [--json] [--file <path>|--published] [--refresh]\n';
+  'Usage: npx aitm guidance <validate|source|explain> [ID] [--json] [--file <path>|--published] [--refresh]\n';
 
 function publicValidation(result, selected) {
   const source =
@@ -99,13 +99,19 @@ export function runGuidanceCli(
     stderr = process.stderr,
   } = {}
 ) {
-  const [command, ...flags] = argv;
+  const [command, ...rawFlags] = argv;
   if (!command || ['help', '--help', '-h', '?'].includes(command)) {
     emitSelfDoc('guidance', (value) => stdout.write(value));
     return 0;
   }
-  if (!['validate', 'source'].includes(command)) {
+  if (!['validate', 'source', 'explain'].includes(command)) {
     stderr.write(`guidance: unknown command ${command}\n${HELP}`);
+    return 2;
+  }
+  const humanId = command === 'explain' ? rawFlags[0] : null;
+  const flags = command === 'explain' ? rawFlags.slice(1) : rawFlags;
+  if (command === 'explain' && (!humanId || humanId.startsWith('--'))) {
+    stderr.write('guidance: explain needs one guidance ID\n');
     return 2;
   }
   const allowed =
@@ -153,6 +159,28 @@ export function runGuidanceCli(
         : `Source: ${report.path ?? 'unavailable'}\nSelection: ${report.reason}\nTrust: ${report.trust}\n`
     );
     return selected.trust === 'indeterminate' ? 1 : 0;
+  }
+  if (command === 'explain') {
+    const loaded = loadGuidance({ projectRoot, moduleUrl, need: 'human' });
+    const entry = loaded.humanCatalog?.byId?.[humanId];
+    if (!loaded.valid || !entry) {
+      stderr.write(`guidance: unknown or unavailable guidance ID ${humanId}\n`);
+      return 1;
+    }
+    const report = {
+      schema: 'aitm.guidance-human-explanation/v1',
+      source: loaded.source?.path ?? null,
+      sourceType: loaded.source?.sourceType ?? null,
+      trust: loaded.source?.trust ?? null,
+      catalogDigest: loaded.catalogDigest,
+      ...entry,
+    };
+    stdout.write(
+      json
+        ? `${JSON.stringify(report)}\n`
+        : `${entry.id}: ${entry.summary}\n\n${entry.explanation}\n`
+    );
+    return 0;
   }
   let report;
   if (file !== null) {

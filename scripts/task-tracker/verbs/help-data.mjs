@@ -1,3 +1,4 @@
+// @story #1675
 // Per-verb reference data for `/task help` (#667).
 //
 // This module is the single data source behind the reworked help surface. It is
@@ -47,6 +48,23 @@ const GATE_REFUSAL = {
 
 export const VERB_REFERENCE = {
   // ── lifecycle ────────────────────────────────────────────────────────────
+  explain: {
+    topic: 'lifecycle',
+    summary: 'Read a fresh compact action explanation without performing the action.',
+    usage:
+      '/task explain <N> [--action <id>] [--known <id@digest>] [--known-source <receipt>] [--diagnostic] --json',
+    flags: [
+      { flag: '--action <id>', desc: 'select an action; defaults to promote/navigation' },
+      { flag: '--known <id@digest>', desc: 'repeatable exact agent-guidance receipt' },
+      { flag: '--known-source <receipt>', desc: 'suppress only a matching source warning' },
+      {
+        flag: '--diagnostic',
+        desc: 'include the same full decision and untrusted raw diagnostics',
+      },
+      { flag: '--json', desc: 'required closed JSON transport' },
+    ],
+    examples: ['/task explain 1675 --json', '/task next 1675 --explain --json'],
+  },
   status: {
     topic: 'lifecycle',
     summary: 'Show the active task, elapsed time, and words since the last marker.',

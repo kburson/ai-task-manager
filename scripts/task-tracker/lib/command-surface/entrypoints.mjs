@@ -1,3 +1,4 @@
+// @story #1675
 export const ENTRYPOINT_CLASSIFICATIONS = Object.freeze([
   'agent-callable-verb',
   'agent-callable-standalone',
@@ -49,6 +50,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
     ['scripts/task-tracker/verbs/approve.mjs', 'approve'],
     ['scripts/task-tracker/verbs/assign.mjs', 'assign'],
     ['scripts/task-tracker/verbs/demote.mjs', 'demote'],
+    ['scripts/task-tracker/verbs/explain.mjs', 'explain'],
     ['scripts/task-tracker/verbs/shelve.mjs', 'shelve'],
     ['scripts/task-tracker/verbs/park.mjs', 'park'],
     ['scripts/task-tracker/verbs/plan-approve.mjs', 'plan-approve'],

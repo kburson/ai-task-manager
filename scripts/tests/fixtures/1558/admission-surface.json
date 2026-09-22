@@ -314,6 +314,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "explain",
+      "canonical": "explain",
+      "route": "verbs/explain.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "fleet",
       "canonical": "fleet",
       "route": "verbs/fleet.mjs",
