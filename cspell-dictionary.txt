@@ -549,3 +549,5 @@ transcriptpath
 unisolated
 unsubmitted
 enoent
+reparses
+sharedindex
