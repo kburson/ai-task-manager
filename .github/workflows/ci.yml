@@ -87,10 +87,10 @@ jobs:
       # The real-git close-gate tests (#733) resolve trunk via a LOCAL
       # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
       # merge ref with no such branch, so those tests fail spuriously (#745).
-      # Materialize it. On push/schedule/dispatch a local `trunk` already exists,
-      # so this step is pull_request-only.
+      # A manual dispatch on a child branch also lacks local `trunk`; materialize
+      # it for both event types. Push/schedule on trunk already have the ref.
       - name: Materialize local trunk ref for real-git tests (#745)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
@@ -200,9 +200,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # Real-git close-gate tests (#733) need a local
-      # `trunk` branch, absent on a pull_request detached checkout (#745).
+      # `trunk` branch, absent on a pull_request detached checkout or a manual
+      # dispatch on a child branch (#745).
       - name: Materialize local trunk ref for real-git tests (#745)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
