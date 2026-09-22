@@ -115,7 +115,7 @@ test('source: pre-walk delegates the gate decision to move-state (review-approva
   // the move is refused, decideBoardMoveFailure surfaces it, and the issue is
   // never closed. Assert the wiring that produces that outcome.
   const guardIdx = closeSrc.indexOf(PRE_WALK_GUARD);
-  const block = closeSrc.slice(guardIdx, guardIdx + 1100);
+  const block = closeSrc.slice(guardIdx, guardIdx + 1900);
   assert.ok(
     /runMoveStateDone\(s\.active,\s*\{\s*silent:\s*true,\s*reviewAuthority:\s*terminalReviewAuthority\(\),\s*\}\)/s.test(
       block

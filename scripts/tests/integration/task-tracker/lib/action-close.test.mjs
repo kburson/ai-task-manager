@@ -166,7 +166,12 @@ test('production guard adapter reads dependencies and refuses missing local comm
   await assert.rejects(ports.readGuardAuthority(), /missing local object/);
 });
 
-async function productionCloseFixture({ issueState = 'OPEN', bodyOnRead, revisionOnRead } = {}) {
+async function productionCloseFixture({
+  issueState = 'OPEN',
+  bodyOnRead,
+  revisionOnRead,
+  policyGuard = false,
+} = {}) {
   const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
     'base64url'
   );
@@ -194,6 +199,23 @@ async function productionCloseFixture({ issueState = 'OPEN', bodyOnRead, revisio
     projectDir: process.cwd(),
     now,
     deps: {
+      ...(policyGuard
+        ? {
+            workflowPolicyRuntime: { listRecords: async () => [] },
+            runReadOnlyGuards: async (_from, _to, context) =>
+              context.workflowPolicy
+                ? { ok: true, status: 'ready', refusals: [], humanDecision: null, warns: [] }
+                : {
+                    ok: false,
+                    status: 'blocked',
+                    refusals: [
+                      { id: 'body-gates-entry-done', code: 'unclassified-refusal', args: {} },
+                    ],
+                    humanDecision: null,
+                    warns: [],
+                  },
+          }
+        : {}),
       resolveBoundDir: () => process.cwd(),
       worktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
       fetchBoard: async () => ({ state: 'review' }),
@@ -254,6 +276,12 @@ test('production close reaches ready with fresh authority and only read transpor
         : ['view', 'list'].includes(args[1]) || args[0] === 'api'
     )
   );
+});
+
+test('production close observes workflow policy when a guard requires enrichment', async () => {
+  const { result } = await productionCloseFixture({ policyGuard: true });
+  assert.equal(result.status, 'ready', JSON.stringify(result));
+  assert.ok(result.bundle.observations.some(({ resource }) => resource === 'workflow-policy'));
 });
 
 test('production close cannot select ordinary completion for a CLOSED GitHub issue in Review', async () => {

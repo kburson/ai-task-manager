@@ -65,6 +65,7 @@ import { resolveLiveDeliveryReviewAuthority } from '../lib/delivery-preflight.mj
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+import { projectFunctionalDod } from '../lib/functional-dod-project.mjs';
 import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
@@ -2017,6 +2018,21 @@ export function applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed) 
   return { ...guardResult, status: 'ready', ok: true, refusals: [], humanDecision: null };
 }
 
+export async function verifyFreshCloseProjection({ body, head, evaluatedAt, evaluate }) {
+  if (typeof evaluate !== 'function') {
+    throw new Error('close-authority-drift: fresh guard evaluator unavailable');
+  }
+  const projection = projectFunctionalDod({ body, head, evaluatedAt });
+  if (projection.normalization) {
+    throw new Error('close-authority-drift: new normalization required');
+  }
+  const result = await evaluate({ projection });
+  if (result?.status !== 'ready' || result.ok !== true || (result.refusals?.length ?? 0) > 0) {
+    throw new Error('close-authority-drift: fresh Review-to-Done guards refused');
+  }
+  return result;
+}
+
 function closeDeliveryAuthorityIdentity(gate) {
   if (!gate?.gateInput || !gate?.authorization || !gate?.receipt) {
     throw new Error('close-authority-drift: incomplete delivery gate');
@@ -2539,6 +2555,7 @@ export async function verbClose(ctx) {
   // classified as delivered, dead, or unauthorized before any mutation.
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
+  let resumeClosedIssue = false;
   let reopenedCloseRecoveryRecord = null;
   let falseDeliveryCloseRecoveryRecord = null;
   let deliveredCloseSupersessionRecord = null;
@@ -2636,6 +2653,7 @@ export async function verbClose(ctx) {
       // pre-#925 two-signal decision contract.
       decision = decideCloseConvergence(decisionInput);
     } else if (closeSnapshot.issueClosed === true) {
+      resumeClosedIssue = true;
       Object.assign(decisionInput, {
         stateReason: closeSnapshot.stateReason,
       });
@@ -3463,6 +3481,57 @@ export async function verbClose(ctx) {
     }
   }
 
+  const evaluateCloseProjection = async ({ projection }) => {
+    const projectedBody = projection.body;
+    const projectedLifecycleEvidence = await loadCloseLifecycleEvidence(projectedBody);
+    const projectedUnchecked = await resolvePreCloseCheckboxes({
+      body: projectedBody,
+      issueNumber: closeIssueNum,
+      projectDir,
+      scan: uncheckedPreCloseCheckboxes,
+      resolveLaneSkipProof: ctx.resolveDocsOnlyLaneSkipProof,
+      proofDeps: ctx.docsOnlyLaneSkipProofDeps,
+    });
+    const projectedLifecycleGate = assertLifecycleSatisfied({
+      body: projectedBody,
+      required: cfg.lifecycleCheckboxesRequired !== false,
+      lifecycleEvidence: projectedLifecycleEvidence,
+    });
+    if (projectedUnchecked.length > 0 || projectedLifecycleGate.block) {
+      throw new NormalizationRefusalError('normalization-authority-drift');
+    }
+    const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
+    const { guardResult } = await evaluateCompleteGuards({
+      fromState: 'review',
+      toState: 'done',
+      context: {
+        issueNumber: Number(closeIssueNum),
+        repo: cfg.repo,
+        fromState: 'review',
+        toState: 'done',
+        body: projectedBody,
+        lifecycleEvidence: projectedLifecycleEvidence,
+        cfg,
+        projectDir,
+        deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
+      },
+      runGuards,
+      loadPolicy: async ({ requirementIds }) =>
+        (ctx.loadWorkflowBoundary || loadWorkflowBoundary)({
+          repository: cfg.repo,
+          issue: Number(closeIssueNum),
+          body: projectedBody,
+          requirementIds,
+          activity: 'workflow-transition:done',
+          state: 'review',
+          now: nowIso(),
+          runtime:
+            ctx.workflowPolicyRuntime ||
+            createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+        }),
+    });
+    return applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed);
+  };
   if (!SKIP_NETWORK && !terminalResume) {
     try {
       const { stdout } = await pexec(
@@ -3517,57 +3586,6 @@ export async function verbClose(ctx) {
       // Derived evidence is an execution normalization, not preflight
       // authority. Evaluate the complete close gate against the pure projected
       // body before any proof-introducing write, including every fresh retry.
-      const evaluateCloseProjection = async ({ projection }) => {
-        const projectedBody = projection.body;
-        const projectedLifecycleEvidence = await loadCloseLifecycleEvidence(projectedBody);
-        const projectedUnchecked = await resolvePreCloseCheckboxes({
-          body: projectedBody,
-          issueNumber: closeIssueNum,
-          projectDir,
-          scan: uncheckedPreCloseCheckboxes,
-          resolveLaneSkipProof: ctx.resolveDocsOnlyLaneSkipProof,
-          proofDeps: ctx.docsOnlyLaneSkipProofDeps,
-        });
-        const projectedLifecycleGate = assertLifecycleSatisfied({
-          body: projectedBody,
-          required: cfg.lifecycleCheckboxesRequired !== false,
-          lifecycleEvidence: projectedLifecycleEvidence,
-        });
-        if (projectedUnchecked.length > 0 || projectedLifecycleGate.block) {
-          throw new NormalizationRefusalError('normalization-authority-drift');
-        }
-        const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
-        const { guardResult } = await evaluateCompleteGuards({
-          fromState: 'review',
-          toState: 'done',
-          context: {
-            issueNumber: Number(closeIssueNum),
-            repo: cfg.repo,
-            fromState: 'review',
-            toState: 'done',
-            body: projectedBody,
-            lifecycleEvidence: projectedLifecycleEvidence,
-            cfg,
-            projectDir,
-            deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
-          },
-          runGuards,
-          loadPolicy: async ({ requirementIds }) =>
-            (ctx.loadWorkflowBoundary || loadWorkflowBoundary)({
-              repository: cfg.repo,
-              issue: Number(closeIssueNum),
-              body: projectedBody,
-              requirementIds,
-              activity: 'workflow-transition:done',
-              state: 'review',
-              now: nowIso(),
-              runtime:
-                ctx.workflowPolicyRuntime ||
-                createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
-            }),
-        });
-        return applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed);
-      };
       const normalized = force
         ? { scanBody: body, persisted: false }
         : await deriveAndRescan({
@@ -4199,7 +4217,7 @@ export async function verbClose(ctx) {
       !falseDeliveryRestart.enabled &&
       (await refuseDeliveryGate({
         refresh: true,
-        durableTransaction: deliveredCloseTransaction,
+        durableTransaction: resumeDeliveredCloseTransaction ? deliveredCloseTransaction : null,
       }))
     )
       return;
@@ -4207,6 +4225,27 @@ export async function verbClose(ctx) {
     if (needsDeliveredCloseStep('board')) {
       const observedBoardState = await getIssueBoardState(closeIssueNum);
       if (observedBoardState === 'done') await markDeliveredCloseStep('board');
+    }
+    if (
+      !falseDeliveryRestart.enabled &&
+      !restartedDeliveredCloseTransaction &&
+      !resumeClosedIssue &&
+      needsDeliveredCloseStep('board')
+    ) {
+      try {
+        await verifyFreshCloseProjection({
+          body: resolvedDeliveryGate.deliveryBody,
+          head:
+            resolvedDeliveryGate.gateInput.observedLocalHeadSha ??
+            resolvedDeliveryGate.gateInput.localHeadSha,
+          evaluatedAt: nowIso(),
+          evaluate: evaluateCloseProjection,
+        });
+      } catch (error) {
+        console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${error.message}.`);
+        process.exitCode = 1;
+        return;
+      }
     }
     if (needsDeliveredCloseStep('board')) {
       const preMove = await runMoveStateDone(s.active, {
@@ -4299,7 +4338,7 @@ export async function verbClose(ctx) {
       !falseDeliveryRestart.enabled &&
       (await refuseDeliveryGate({
         refresh: true,
-        durableTransaction: deliveredCloseTransaction,
+        durableTransaction: resumeDeliveredCloseTransaction ? deliveredCloseTransaction : null,
       }))
     )
       return;
