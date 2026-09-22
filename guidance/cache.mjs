@@ -19,6 +19,7 @@ const ARTIFACTS = {
   human: ['human-catalog.v1.json', 'aitm.guidance-human-catalog/v1', 'humanCatalog'],
   diagnostics: ['diagnostics.v1.json', 'aitm.guidance-diagnostics/v1', 'diagnostics'],
 };
+const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
 // Parsed artifacts are process-local only. Bytes are still rehashed on every
 // read, and callers get clones so one response cannot mutate another.
 const parsedArtifacts = new Map();
@@ -90,7 +91,26 @@ function validDescriptor(descriptor, need) {
   return (
     descriptor?.path === ARTIFACTS[need][0] &&
     typeof descriptor.digest === 'string' &&
-    /^sha256:[a-f0-9]{64}$/.test(descriptor.digest)
+    SHA256_DIGEST.test(descriptor.digest)
+  );
+}
+
+function validFingerprints(fingerprints, catalogDigest) {
+  return (
+    fingerprints !== null &&
+    typeof fingerprints === 'object' &&
+    fingerprints.catalogFileDigest === catalogDigest &&
+    SHA256_DIGEST.test(fingerprints.catalogSemanticDigest) &&
+    Array.isArray(fingerprints.entryDigests) &&
+    fingerprints.entryDigests.length > 0 &&
+    fingerprints.entryDigests.every(
+      (entry) =>
+        typeof entry?.id === 'string' &&
+        entry.id.length > 0 &&
+        SHA256_DIGEST.test(entry.agentDigest) &&
+        SHA256_DIGEST.test(entry.humanDigest) &&
+        SHA256_DIGEST.test(entry.entryDigest)
+    )
   );
 }
 
@@ -110,8 +130,8 @@ function coherentManifest(manifest) {
     return (
       manifest.code === null &&
       typeof manifest.catalogDigest === 'string' &&
-      /^sha256:[a-f0-9]{64}$/.test(manifest.catalogDigest) &&
-      manifest.fingerprints !== null &&
+      SHA256_DIGEST.test(manifest.catalogDigest) &&
+      validFingerprints(manifest.fingerprints, manifest.catalogDigest) &&
       validDescriptor(artifacts.agent, 'agent') &&
       validDescriptor(artifacts.human, 'human') &&
       !Object.hasOwn(artifacts, 'diagnostics')
