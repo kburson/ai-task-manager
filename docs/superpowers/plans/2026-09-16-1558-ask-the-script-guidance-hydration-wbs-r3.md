@@ -882,6 +882,8 @@ So that malformed or ambiguous YAML never becomes operational instruction.
 - **Need:** malformed YAML, ambiguous references, or incomplete entries can otherwise be mistaken for usable guidance
 - **Value or failure prevented:** invalid guidance cannot be silently accepted, partially loaded, or mislocated during repair
 
+#### Files and delivery boundary
+
 **Scope/files:** Create `guidance/{positions,parse,validate,documentation,requirements,fingerprints}.mjs`, `instructions/aitm-guidance.schema.json`, a complete seed `instructions/aitm-guidance.yml`, `scripts/tests/helpers/guidance-fixtures.mjs`, and `scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs`. Modify `package.json`/`package-lock.json` to move exact `js-yaml: "5.4.2"` from `devDependencies` to `dependencies` and explicit `instructions/` allowlist.
 
 **Interfaces:** Produces `validateGuidance` and deterministic normalized entries/digests with source ranges. Completeness comes from core-required guidance IDs/bindings in `requirements.mjs`, not from the candidate catalog declaring itself complete. The seed contains every required lifecycle entry; Task 15 migrates richer human content and proves source-rule coverage.
