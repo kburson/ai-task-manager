@@ -86,11 +86,51 @@ function readArtifact(cacheDir, descriptor, need) {
   }
 }
 
+function validDescriptor(descriptor, need) {
+  return (
+    descriptor?.path === ARTIFACTS[need][0] &&
+    typeof descriptor.digest === 'string' &&
+    /^sha256:[a-f0-9]{64}$/.test(descriptor.digest)
+  );
+}
+
+function coherentManifest(manifest) {
+  if (
+    !manifest ||
+    typeof manifest.valid !== 'boolean' ||
+    !manifest.selected ||
+    typeof manifest.selected.path !== 'string' ||
+    !Array.isArray(manifest.warnings) ||
+    !manifest.artifacts ||
+    typeof manifest.artifacts !== 'object'
+  )
+    return false;
+  const artifacts = manifest.artifacts;
+  if (manifest.valid) {
+    return (
+      manifest.code === null &&
+      typeof manifest.catalogDigest === 'string' &&
+      /^sha256:[a-f0-9]{64}$/.test(manifest.catalogDigest) &&
+      manifest.fingerprints !== null &&
+      validDescriptor(artifacts.agent, 'agent') &&
+      validDescriptor(artifacts.human, 'human') &&
+      !Object.hasOwn(artifacts, 'diagnostics')
+    );
+  }
+  return (
+    typeof manifest.code === 'string' &&
+    manifest.code.length > 0 &&
+    !Object.hasOwn(artifacts, 'agent') &&
+    !Object.hasOwn(artifacts, 'human') &&
+    validDescriptor(artifacts.diagnostics, 'diagnostics')
+  );
+}
+
 function readWarm(cacheDir, identity, need) {
   const manifest = readJson(path.join(cacheDir, MANIFEST));
   if (
     manifest?.schema !== 'aitm.guidance-cache-manifest/v1' ||
-    typeof manifest.valid !== 'boolean' ||
+    !coherentManifest(manifest) ||
     JSON.stringify(manifest.identity) !== JSON.stringify(identity.identity)
   )
     return null;

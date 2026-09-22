@@ -11,7 +11,14 @@ import { PROJECT_GUIDANCE_PATH } from './source.mjs';
 export function classifyFileStat(realPath, stat) {
   if (!stat.isFile()) return { decision: 'indeterminate', code: 'guidance-source-not-regular' };
   const fields = ['dev', 'ino', 'size', 'mtimeNs', 'ctimeNs'];
-  if (fields.some((field) => typeof stat[field] !== 'bigint')) {
+  if (
+    fields.some((field) => typeof stat[field] !== 'bigint') ||
+    stat.dev <= 0n ||
+    stat.ino <= 0n ||
+    stat.size < 0n ||
+    stat.mtimeNs <= 0n ||
+    stat.ctimeNs <= 0n
+  ) {
     return { decision: 'hash-and-recheck-tracking', realPath };
   }
   return {

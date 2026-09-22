@@ -19,7 +19,7 @@ import test from 'node:test';
 
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { checkCacheBudgets } from '../../../../maintenance/benchmark-guidance-cache.mjs';
-import { classifyGuidanceRoute } from '../../../../../guidance/admission.mjs';
+import { admitGuidance, classifyGuidanceRoute } from '../../../../../guidance/admission.mjs';
 import { loadGuidance } from '../../../../../guidance/cache.mjs';
 import {
   observeCacheIdentity,
@@ -186,6 +186,34 @@ test('invalid ordinary load is manifest-only while explicit diagnostics load rem
     rmSync(diagnosticFile);
     assert.ok(loadGuidance({ projectRoot: root, need: 'diagnostics' }).errors.length > 0);
     assert.equal(existsSync(diagnosticFile), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a corrupted invalid manifest cannot authorize an operational route', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-manifest-validity-');
+  try {
+    const override = path.join(root, '.ai-task-manager', 'aitm-guidance.yml');
+    mkdirSync(path.dirname(override), { recursive: true });
+    writeFileSync(override, 'schema: invalid\n');
+    execFileSync('git', ['add', '-f', '.ai-task-manager/aitm-guidance.yml'], { cwd: root });
+    assert.equal(loadGuidance({ projectRoot: root }).valid, false);
+    const manifestPath = path.join(root, '.tmp/aitm/guidance-cache/manifest.v1.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    manifest.valid = true;
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    let effects = 0;
+    const result = admitGuidance({
+      projectRoot: root,
+      argv: ['promote'],
+      onAdmitted: () => {
+        effects += 1;
+      },
+    });
+    assert.equal(result.admitted, false);
+    assert.equal(effects, 0);
+    assert.equal(JSON.parse(readFileSync(manifestPath, 'utf8')).valid, false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
