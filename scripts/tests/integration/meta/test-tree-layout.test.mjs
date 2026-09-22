@@ -118,8 +118,8 @@ const underLaneRoot = (rel, lane) => rel.startsWith(laneRootPrefix(lane));
 
 // A lane subdir S (e.g. "gh/lib") is a valid subsystem mirror iff it is the
 // core/meta bucket, the external-package review integration bucket, or a real
-// source directory exists at scripts/<S> or scripts/task-tracker/<S> (the two
-// package roots whose layouts are mirrored).
+// source directory exists at scripts/<S> or scripts/task-tracker/<S>, or the
+// package's top-level guidance runtime owns the `guidance` test subtree.
 function isValidSubsystem(sub) {
   if (
     sub === 'core' ||
@@ -135,6 +135,7 @@ function isValidSubsystem(sub) {
     ? sub.slice('task-tracker/'.length)
     : sub;
   return (
+    (sub === 'guidance' && existsSync(path.join(REPO_ROOT, 'guidance'))) ||
     existsSync(path.join(REPO_ROOT, 'scripts', sub)) ||
     existsSync(path.join(REPO_ROOT, 'scripts', 'task-tracker', sub)) ||
     existsSync(path.join(REPO_ROOT, 'scripts', taskTrackerRelative)) ||

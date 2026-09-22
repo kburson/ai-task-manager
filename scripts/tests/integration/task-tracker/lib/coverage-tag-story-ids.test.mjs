@@ -35,6 +35,19 @@ function run(cwd) {
   return spawnSync(process.execPath, [SCRIPT], { cwd, encoding: 'utf8' });
 }
 
+function runLibraryOutsideProject(cwd) {
+  const scriptUrl = pathToFileURL(SCRIPT).href;
+  return spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      `import { main } from ${JSON.stringify(scriptUrl)}; process.exit(main());`,
+    ],
+    { cwd, encoding: 'utf8' }
+  );
+}
+
 function write(cwd, rel, content) {
   const full = path.join(cwd, rel);
   mkdirSync(path.dirname(full), { recursive: true });
@@ -76,7 +89,7 @@ test('tagger preserves a valid header with a later template shebang line', () =>
   const content = '// @story #42\nconst x = `\n#!/usr/bin/env node\n`;\n';
   const fixture = write(cwd, 'scripts/gh/template-shebang.test.mjs', content);
 
-  const result = run(cwd);
+  const result = runLibraryOutsideProject(cwd);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Tagged: 0, Fixed shebang order: 0, Skipped \(already correct\): 1/);
   assert.equal(readFileSync(fixture, 'utf8'), content);
@@ -119,7 +132,7 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
     '// cspell:ignore metachar\n// @story #10\n#!/usr/bin/env node\nconsole.log(5)\n'
   );
 
-  const res = run(cwd);
+  const res = runLibraryOutsideProject(cwd);
   assert.equal(res.status, 0, res.stderr);
   assert.match(res.stdout, /Tagged: 3, Fixed shebang order: 2, Skipped \(already correct\): 2/);
   // No git repo → findCreationIssue throws → fallback list printed.
@@ -174,7 +187,7 @@ test('tagger moves cspell after the exact story header and repairs numeric-prefi
     '// @story #7oops\nexport const y = 2;\n'
   );
 
-  const result = run(cwd);
+  const result = runLibraryOutsideProject(cwd);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     readFileSync(cspellFirst, 'utf8'),

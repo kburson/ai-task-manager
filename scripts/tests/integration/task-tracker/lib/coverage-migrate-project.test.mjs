@@ -10,19 +10,19 @@
 // (so the wizard is bypassed) and `--dry-run`, `main()` reloads config and throws
 // `repo not configured` when no repo is resolved, caught by the top-level handler
 // which prints `migrate-project: repo not configured` and exits 1 — before any
-// `gh`/GraphQL call. The smoke drives that guard from an isolated cwd+HOME so no
-// real project config leaks in.
+// `gh`/GraphQL call. The smoke drives that guard from an isolated Git project
+// and HOME so direct-entrypoint admission succeeds but no real config leaks in.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../../../gh/migrate-project.mjs', import.meta.url));
 
 test('migrate-project smoke: --skip-init --dry-run with no resolvable config → exits 1 with repo-not-configured guard, offline', () => {
-  const cwd = mkdtempOutsideRepo('migrate-project-');
+  const cwd = mkdtempProjectIsolated('migrate-project-');
   // Isolate config resolution: cwd has no .ai-task-manager config, HOME points at
   // the same empty dir so the user-level config path is also empty, and the
   // project-dir env overrides are removed so getProjectDir() falls back to cwd.
