@@ -5,176 +5,316 @@
     {
       "guardId": "backlog-exit-child-parent-refine-or-plan",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:59b5cc9b1766d596bf1cf64b7f24ab630e16a0e2c06a1d0ddabddea9bb7a30a2"
+      },
       "rationale": "Parent state is mutable; an untyped legacy parent-state refusal cannot select a safe automatic move."
     },
     {
       "guardId": "blocked-by-not-done",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:440a6954be5b13e7d6cdd01f9646e2b0cbd4e0ae73023c8c5f304161acb2ed31"
+      },
       "rationale": "A dependency edge or completion state needs current graph authority before any unblock remedy."
     },
     {
       "guardId": "body-gates-entry-done",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:5ee029bf5925274bc877c801db708b9b9538dd1119c48ce76dbe4e505b46dffa"
+      },
       "rationale": "Untyped close-body refusals or warnings cannot infer checkbox completion or delivery approval."
     },
     {
       "guardId": "body-gates-entry-review",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:5ee029bf5925274bc877c801db708b9b9538dd1119c48ce76dbe4e505b46dffa"
+      },
       "rationale": "Untyped Review-body refusals or warnings cannot imply exact-head Test or review evidence."
     },
     {
       "guardId": "body-gates-entry-test",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:5ee029bf5925274bc877c801db708b9b9538dd1119c48ce76dbe4e505b46dffa"
+      },
       "rationale": "Untyped Test-body refusals or warnings cannot supply missing AC or verifier proof."
     },
     {
       "guardId": "child-cannot-lead-epic-exit",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:f410556a0e60d3b6f58d422436924fa252b484c9c5acb3cf2f996988a13a8ad0"
+      },
       "rationale": "Child and epic ordering depends on live parent state and cannot be inferred from prose."
     },
     {
       "guardId": "contiguity-entry",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:e769f8a03a1f3b33a97da14d362e27e9b16bb7c536917a324213907fb40053ef"
+      },
       "rationale": "State-contiguity drift requires reconciliation of board and body authority, not an automatic jump."
     },
     {
       "guardId": "develop-exit-code-complete",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:22050d679231a84bdcbe15e641279af8569d24cf76c8cba17b51719c0e89dd87"
+      },
       "rationale": "Code-completion refusal lacks typed evidence to authorize Test entry or checkbox changes."
     },
     {
       "guardId": "develop-exit-commit-trail-head",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:59c2e20215cf59ab2b12b3c99191bf08f89161ca36677ba1031035df87427aac"
+      },
       "rationale": "Commit attribution must use the exact current HEAD; an untyped refusal cannot stamp it."
     },
     {
       "guardId": "develop-exit-epic-children-done",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:96c2a6f697e8bb253baea2d05020ab76256838c11198d02c0878ca4b6c3de6ce"
+      },
       "rationale": "Epic child completion is a live graph property and must not be guessed from a legacy message."
     },
     {
       "guardId": "develop-exit-receipt",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:2adb3a565a95101924c7fd0c10200ce6a651ca7a86dd7e2973824bc9f8229412"
+      },
       "rationale": "A missing or stale verification receipt cannot be synthesized by explanation."
     },
     {
       "guardId": "discuss-unresolved",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:7e325d2ebab1c23ae3090d189c460ce96d47a4d7dfbec56254880bbd3f0593ff"
+      },
       "rationale": "An unresolved discussion token is a human decision boundary with no safe automatic resolution."
     },
     {
       "guardId": "plan-entry-fields-board",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:768d465ef8c4420cd3680af2acd55ebab678ee1edac2b28419fa58d09194c284"
+      },
       "rationale": "Board planning fields require current project evidence; legacy text is not a field update."
     },
     {
       "guardId": "plan-entry-fields-body",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:768d465ef8c4420cd3680af2acd55ebab678ee1edac2b28419fa58d09194c284"
+      },
       "rationale": "Body planning fields require current versioned evidence; untyped output cannot repair them."
     },
     {
       "guardId": "plan-exit-decomposition",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:74aa5d8e9035bc8c020146c4bf2ab57e4d64e8fe6d4713d7d82a61c5336a7ba3"
+      },
       "rationale": "Decomposition warnings and refusals require the reviewed WBS and cannot be waived by generic prose."
     },
     {
       "guardId": "plan-exit-deep-dive",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:287d3da83be6da08fa6e60abf0eb55760ffc619f1c1b2589318991dd04437892"
+      },
       "rationale": "The deep-dive marker and canonical placement require governed evidence, not an inferred completion."
     },
     {
       "guardId": "plan-exit-epic-children-r4p-or-beyond",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:9d6956a5766ba4be2cb5875b63d9de458a0f0075a5c6825c8ce64f71246a40f1"
+      },
       "rationale": "Epic Plan exit depends on all current child states and cannot be inferred from a partial list."
     },
     {
       "guardId": "plan-exit-ownership",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:a28c7c4fe65d6fd0f637ebba993ffefa862ed69d7ae9a3a90f0557f6fe261617"
+      },
       "rationale": "Exclusive owner and occupancy claims require current board and worktree authority."
     },
     {
       "guardId": "plan-exit-plan-approved",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:a3d2e296bc8a99fb2f1cf376b9d63357833da9e8761d006e6c2f782065537b67"
+      },
       "rationale": "Plan approval needs an explicit valid marker or exception; no untyped text can approve it."
     },
     {
       "guardId": "plan-exit-plan-metadata",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:3c6068151363ceca93293da8dbd0ed9a02549b098f4b9a387ae8a817f7a4a81e"
+      },
       "rationale": "Linked plan source and selector conflicts require source repair rather than a guessed plan."
     },
     {
       "guardId": "plan-exit-planned-estimate",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:8a51e5e9c5514ed3be365edefa2800f203b817f415fad6edd87a97b4005f106f"
+      },
       "rationale": "Plan estimate and forecast are governed records; an untyped refusal cannot change their values."
     },
     {
       "guardId": "plan-exit-story-approval-binding",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:098e0b8b79081d67cf770fea5e2f54f6fb5c84df448a66bf992bb8b05ec0d234"
+      },
       "rationale": "Story intent and approval bindings must match current plan bytes and scope."
     },
     {
       "guardId": "plan-exit-vc-presence",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:cb64324e58e6f85a5bb76ecea715de439fb549cced83d9e1d4dcf445615975d6"
+      },
       "rationale": "Required verification commands need explicit root declarations, not generated execution from free text."
     },
     {
       "guardId": "ready-for-plan-exit-epic-children-r4p-or-beyond",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:9d6956a5766ba4be2cb5875b63d9de458a0f0075a5c6825c8ce64f71246a40f1"
+      },
       "rationale": "Epic planning admission depends on complete current child state authority."
     },
     {
       "guardId": "refine-exit-child-parent-developing-or-beyond",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:b17b6115fe1e82009909fbd97dbfd749daf0244c31797c96c7922805535c8753"
+      },
       "rationale": "Refinement cannot overtake a developing parent; current parent state must be checked."
     },
     {
       "guardId": "refine-exit-complete-marker",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:dead10b27b5ad0f4370c05d1c90e2b12731d69d51fc63833c41375e27e37fdab"
+      },
       "rationale": "A missing refinement marker requires governed refinement completion evidence."
     },
     {
       "guardId": "refine-exit-current-snapshot",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:42b72b90ec7ae69545e21f6df832b03f067c75d76979dfcc977c0e8946009a3f"
+      },
       "rationale": "Refinement snapshot drift requires current board and body comparison, not a stale value."
     },
     {
       "guardId": "refine-exit-stub-placeholder",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:aaea599f0aa1238cfdeee9f211a8adb52cba3cf3fde177eb57ae5ca570348283"
+      },
       "rationale": "Stub placeholder content needs human shaping before readiness can be asserted."
     },
     {
       "guardId": "refine-exit-wip-budget",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:ce14af5cf36f12a93cfda423403a3d4c92f4f305c1f733ad385b2382c8980e1d"
+      },
       "rationale": "A saturated planning WIP budget is a current scheduling constraint, not an auto-override."
     },
     {
       "guardId": "review-exit-close-gates",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:62019b0d1a104c0d2de2ca989a275412b78626a4052822dc5e074eced13a2774"
+      },
       "rationale": "Close-gate refusals and warnings combine delivery, approval, and timing authority."
     },
     {
       "guardId": "review-exit-epic-child-disposition",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:62bfa2819aadffe73da5e1f1bdf01fc07a35a0e0c38cbf1d5dd346194143e9c1"
+      },
       "rationale": "Child disposition must be verified against current graph and issue records before epic close."
     },
     {
       "guardId": "review-exit-epic-children-done",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:b8f6624648513c2f2e6c70de194f713d1c20e943ce27b372e6eeaee75133858f"
+      },
       "rationale": "Epic close requires all relevant children done or explicitly excluded under current authority."
     },
     {
       "guardId": "review-exit-review-approved",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:6ba0d9f5caa9e190c65e43bd752a8ffeba57ea1c0c7c9ac93c5716216cdade76"
+      },
       "rationale": "Review approval requires a current explicit marker; an untyped refusal cannot provide it."
     },
     {
       "guardId": "test-exit-dod-verified",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:e8f96e7c4e34dc2ac511d941e6606f5ebd6e8a01ed93cb03b36baf00217b8982"
+      },
       "rationale": "Functional DoD needs exact-head receipts and cannot be satisfied by a legacy message."
     },
     {
       "guardId": "test-exit-pre-close-completeness",
       "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:8e92475aa99410f36fba17c33e609de6a9c2290d49e9f2f20091a4dc188c2072"
+      },
       "rationale": "Pre-close checkboxes require individual verification and current body evidence."
     }
   ]

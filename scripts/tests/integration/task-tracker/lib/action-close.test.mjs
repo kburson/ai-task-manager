@@ -8,6 +8,7 @@ import { createObservationAttempt } from '../../../../task-tracker/lib/action-de
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import * as closeReadiness from '../../../../task-tracker/lib/action-decision/close.mjs';
 import { upsertUnauthorizedCloseRecovery } from '../../../../task-tracker/lib/closed-issue-convergence.mjs';
+import { assertCloseDeliveryAuthorityStable } from '../../../../task-tracker/verbs/close.mjs';
 
 const ISSUE = 1669;
 const HEAD = 'a'.repeat(40);
@@ -276,6 +277,30 @@ test('production close reaches ready with fresh authority and only read transpor
         : ['view', 'list'].includes(args[1]) || args[0] === 'api'
     )
   );
+});
+
+test('production close collector and terminal authority guard refuse changed delivery after ready', async () => {
+  const ready = await productionCloseFixture();
+  assert.equal(ready.result.status, 'ready', JSON.stringify(ready.result));
+  const gate = () => ({
+    authorization: { mode: 'full-auto', approvedSha: HEAD },
+    gateInput: {
+      acceptedSha: HEAD,
+      reviewAuthority: { outcome: 'passed', acceptedSha: HEAD },
+      observedLocalHeadSha: HEAD,
+      pullRequests: [{ number: 70, headRefOid: HEAD, state: 'MERGED' }],
+      records: { liveIntent: { record: { intentId: 'intent-1', expectedHeadSha: HEAD } } },
+    },
+    receipt: { mode: 'pr', receipt: { intentId: 'intent-1', expectedHeadSha: HEAD } },
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    recoveryReviewApprovedSha: HEAD,
+  });
+  const before = gate();
+  const changed = gate();
+  changed.gateInput.pullRequests[0].headRefOid = 'b'.repeat(40);
+  assert.doesNotThrow(() => assertCloseDeliveryAuthorityStable(before, before));
+  assert.throws(() => assertCloseDeliveryAuthorityStable(before, changed), /close-authority-drift/);
 });
 
 test('production close observes workflow policy when a guard requires enrichment', async () => {

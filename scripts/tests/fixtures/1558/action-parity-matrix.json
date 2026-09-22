@@ -60,16 +60,14 @@
           "test": "missing repository configuration is indeterminate even with a complete board fixture"
         },
         "changedAuthority": {
-          "disposition": "manual",
-          "rationale": "The existing injected resume executor proves a fresh freeze refusal, but does not pair a prior ready explanation with that same executor run; this remains explicitly manual parity review.",
-          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
-          "test": "real injected resume execution refreshes freeze and preserves its exit 14 refusal"
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+          "test": "production resume collector and guarded preflight refuse a post-ready migration freeze"
         },
         "postReadyFailure": {
-          "disposition": "manual",
-          "rationale": "The injected resume executor preserves exit 14 and zero effects after a freeze; a separately named prior-ready-to-failure scenario is not yet automated.",
-          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
-          "test": "real injected resume execution refreshes freeze and preserves its exit 14 refusal"
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+          "test": "production resume collector and guarded preflight refuse a post-ready migration freeze"
         }
       }
     },
@@ -99,7 +97,7 @@
         "postReadyFailure": {
           "disposition": "typed",
           "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
-          "test": "a migration freeze activated before locked execution refuses without reading or moving"
+          "test": "a ready early explanation is not a grant after dependency readiness changes"
         }
       }
     },
@@ -157,10 +155,9 @@
           "test": "Review refuses a preflight computed from a different issue-body revision"
         },
         "postReadyFailure": {
-          "disposition": "manual",
-          "rationale": "The resident Review rerun rejects stale exact-HEAD Test evidence before action, while a complete successful prior-ready then failed-write sequence remains separately inventoried.",
+          "disposition": "typed",
           "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
-          "test": "Review-state rerun refuses stale exact-HEAD Test receipt before resident action"
+          "test": "Review execution refuses a stale Test receipt after a ready collector decision"
         }
       }
     },
@@ -219,8 +216,8 @@
         },
         "postReadyFailure": {
           "disposition": "typed",
-          "file": "scripts/tests/unit/task-tracker/verbs/close-projected-guard-refresh.test.mjs",
-          "test": "fresh terminal guard refusal and missing evaluator cannot grant a close"
+          "file": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+          "test": "production close collector and terminal authority guard refuse changed delivery after ready"
         }
       }
     }

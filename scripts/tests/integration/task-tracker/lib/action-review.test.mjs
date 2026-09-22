@@ -1,12 +1,16 @@
 // @story #1667
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { test } from 'node:test';
 
 import { evaluateAction } from '../../../../task-tracker/lib/action-decision/evaluate.mjs';
 import { createObservationAttempt } from '../../../../task-tracker/lib/action-decision/observations.mjs';
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
+import { verbReview } from '../../../../task-tracker/verbs/review.mjs';
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const ISSUE = 1667;
 const REPOSITORY = 'example/project';
@@ -241,19 +245,47 @@ test('Review refuses a stale exact-HEAD Test receipt even when preflight and gua
   assert.deepEqual(stale.effects, []);
 });
 
-test('Review-state rerun refuses stale exact-HEAD Test receipt before resident action', async () => {
-  const item = fixture({
-    state: 'review',
-    reviewEvidence: { ok: false, mode: 'receipt-v1', reasons: [{ code: 'sha-mismatch' }] },
-  });
-  const decision = await item.decision('review');
-  assert.equal(decision.status, 'blocked');
-  assert.ok(
-    decision.blockers.some(
-      ({ code, args }) => code === 'review-test-evidence-refused' && args.reason === 'sha-mismatch'
-    )
+test('Review execution refuses a stale Test receipt after a ready collector decision', async () => {
+  const ready = fixture();
+  const readyDecision = await ready.decision('review');
+  assert.equal(readyDecision.status, 'ready', JSON.stringify(readyDecision));
+  assert.deepEqual(ready.effects, []);
+
+  const projectDir = mkdtempProjectIsolated('aitm-review-parity-');
+  const statePath = path.join(projectDir, 'state.json');
+  writeFileSync(
+    statePath,
+    JSON.stringify({ active: '#1667', lastActive: '#1667', entryStartTs: null, lastWordMarker: 0 })
   );
-  assert.deepEqual(item.effects, []);
+  const effects = [];
+  const previousExit = process.exit;
+  process.exit = (code) => {
+    const error = new Error(`exit:${code}`);
+    error.code = code;
+    throw error;
+  };
+  try {
+    await assert.rejects(
+      verbReview({
+        cfg: { repo: REPOSITORY },
+        statePath,
+        projectDir,
+        rest: ['#1667'],
+        SKIP_NETWORK: false,
+        drainQueueIfAny: async () => {},
+        nowIso: now,
+        runReviewPreflight: async () => {
+          effects.push('preflight');
+          return { ok: false, reasons: ['Test receipt SHA no longer matches HEAD'] };
+        },
+      }),
+      (error) => error.code === 4
+    );
+  } finally {
+    process.exit = previousExit;
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+  assert.deepEqual(effects, ['preflight']);
 });
 
 test('Review refuses a preflight computed from a different issue-body revision', async () => {
