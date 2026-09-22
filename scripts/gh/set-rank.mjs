@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'set-rank');
 // Set the Rank (number) field on an existing GitHub issue's project item.
 // Usage: node scripts/gh/set-rank.mjs <issue#> <n>
 //

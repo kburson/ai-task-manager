@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'guidance');
 // @story #1672
 // Offline, read-only recovery surface. #1673 routes `aitm guidance` here.
 import { readFileSync } from 'node:fs';
@@ -11,6 +13,7 @@ import {
   loadSelectedGuidance,
 } from '../../guidance/source.mjs';
 import { validateGuidance } from '../../guidance/validate.mjs';
+import { emitSelfDoc } from '../lib/self-doc.mjs';
 
 const HELP =
   'Usage: npx aitm guidance <validate|source> [--json] [--file <path>|--published] [--refresh]\n';
@@ -93,7 +96,7 @@ export function runGuidanceCli(
 ) {
   const [command, ...flags] = argv;
   if (!command || ['help', '--help', '-h', '?'].includes(command)) {
-    stdout.write(HELP);
+    emitSelfDoc('guidance', (value) => stdout.write(value));
     return 0;
   }
   if (!['validate', 'source'].includes(command)) {

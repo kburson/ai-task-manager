@@ -13,6 +13,9 @@ export function classifyGuidanceRoute(argv) {
   if (argv.length === 0 || HELP.has(command)) return 'recovery';
   if (argv.length === 1 && ['--version', '-v', 'version'].includes(command)) return 'recovery';
   if (argv.length === 2 && COMMAND_HELP.has(subcommand)) return 'recovery';
+  if (command === 'ai-task-manager' && ['version', '-v', '--version'].includes(subcommand)) {
+    return 'recovery';
+  }
   if (command === 'guidance' && ['validate', 'source'].includes(subcommand)) return 'recovery';
   return 'operational';
 }

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'scaffold-web-issue');
 // @story #675 (AC1)
 //
 // `preflight-issue.mjs` is the only place that stamps `aitm-entered-backlog`,

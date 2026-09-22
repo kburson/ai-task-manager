@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'verify-delivery-incident-reconciliation');
 
 import { fileURLToPath } from 'node:url';
 

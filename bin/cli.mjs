@@ -67,6 +67,7 @@ import {
   guardBootstrapCommand,
   hookBootstrapCommand,
 } from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
+import { admitGuidance } from '../guidance/admission.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -1993,7 +1994,7 @@ if (process.argv[1]) {
 }
 const [, , command = 'help', ...rest] = process.argv;
 
-const PACKAGE_COMMANDS = new Set([
+export const PACKAGE_COMMANDS = new Set([
   'help',
   '?',
   '--help',
@@ -2014,7 +2015,11 @@ const packageSubcommandHelp =
   wantsHelp(rest) ||
   (command === 'configure' && rest[0] === 'preferences' && wantsHelp(rest.slice(1)));
 
-if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
+const guidanceAdmission = invokedDirectly ? admitGuidance({ argv: [command, ...rest] }) : null;
+if (invokedDirectly && !guidanceAdmission.admitted) {
+  process.stderr.write(guidanceAdmission.diagnostic);
+  process.exitCode = 1;
+} else if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
   process.stderr.write(
     `ai-task-manager: unknown command "${command}"\nUsage: npx ai-task-manager <install|uninstall|init|repair|statusline|configure|memory-resync|version>\n`
   );

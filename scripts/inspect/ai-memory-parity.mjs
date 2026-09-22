@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'ai-memory-parity');
 // ai-memory-parity.mjs (#518) — verify the `docs/ai-memory/` seed on the
 // `ai-memory` branch is at parity with the maintainer's live auto-memory
 // source-of-truth, and that the branch is rebased on trunk.

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'verify-open-issue-bodies');
 // AC4 (#171) — read-only backfill sweep.
 //
 // Runs the canonical `verifyIssueBody` over every OPEN issue in the repo and

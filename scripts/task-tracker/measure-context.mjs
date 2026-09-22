@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'measure-context');
 // Measure the agent-context cost of the task skill in named scenarios:
 //
 // Foundational modes (back-compat with Epic #114):

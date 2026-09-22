@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'ensure-wave-parent');
 // ensure-wave-parent.mjs — orchestrator pre-flight that runs BEFORE the
 // per-child dispatch-prep loop on a fan-out.
 //

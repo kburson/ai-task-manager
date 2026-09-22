@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-entry-markers');
 // Generalized heal for stage-entry markers. Backfills missing markers and
 // re-stamps out-of-order chains for the lifecycle stages (refine, plan, develop,
 // test, review) that historically traversed before entry-marker

@@ -242,6 +242,20 @@ test('restrictive downstream tarball install runs CLI and generated provider hoo
     assert.equal(existsSync(alias), false, 'consumer must not need the dogfood alias');
     const manifest = JSON.parse(readFileSync(join(installedRoot, 'package.json'), 'utf8'));
     assert.equal(manifest.scripts.prepare, undefined);
+    const guidance = run(
+      join(consumerDir, 'node_modules', '.bin', 'aitm'),
+      ['guidance', 'validate', '--json'],
+      consumerDir,
+      { env }
+    );
+    const validation = JSON.parse(guidance.stdout);
+    assert.equal(validation.valid, true);
+    assert.equal(validation.sourceType, 'package');
+    assert.equal(
+      existsSync(join(consumerDir, '.ai-task-manager', 'aitm-guidance.yml')),
+      false,
+      'production install must not create a project override'
+    );
 
     const help = run(join(consumerDir, 'node_modules', '.bin', 'aitm'), ['help'], consumerDir, {
       env,
@@ -265,6 +279,11 @@ test('restrictive downstream tarball install runs CLI and generated provider hoo
       ],
       consumerDir,
       { env }
+    );
+    assert.equal(
+      existsSync(join(consumerDir, '.ai-task-manager', 'aitm-guidance.yml')),
+      false,
+      'provider setup must not create a project override'
     );
 
     const claude = JSON.parse(readFileSync(join(consumerDir, '.claude', 'settings.json'), 'utf8'));

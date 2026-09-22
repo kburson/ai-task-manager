@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-timing-log');
 // EPIC #823 timing model v2 (C4) — historical ⏱ Timing Log heal driver.
 //
 // A one-time, idempotent, re-runnable sweep that upgrades v1 timing logs to the

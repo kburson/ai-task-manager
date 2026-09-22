@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'migrate-fields-encoding');
 // Migrate one or more GitHub issue bodies from the legacy fenced fields-DB block
 // (or stacked drift) to the single-line `<!-- aitm-fields: ... -->` encoding.
 //

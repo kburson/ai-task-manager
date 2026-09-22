@@ -716,6 +716,22 @@ function directDoc(name, contract) {
 }
 
 const DIRECT_SELF_DOC = Object.freeze({
+  guidance: directDoc('guidance', {
+    group: 'Diagnostics',
+    path: 'scripts/task-tracker/guidance.mjs',
+    classification: 'agent-callable-standalone',
+    synopsis: 'Inspect and validate the selected guidance source without operational effects.',
+    routable: true,
+    usage: 'aitm guidance <validate|source> [--json] [--file <path>|--published] [--refresh]',
+    arguments: [
+      argument('validate', 'Validate the selected or candidate catalog.'),
+      argument('source', 'Report source selection and trust.'),
+    ],
+    preconditions: ['Works even when the selected catalog is invalid.'],
+    effects: ['Reads guidance and source-trust evidence; writes nothing.'],
+    output: ['Prints validation errors or selected source details.'],
+    relatedCommands: ['aitm help', 'aitm doctor'],
+  }),
   aitm: directDoc('aitm', {
     group: 'CLI',
     path: 'bin/aitm.mjs',

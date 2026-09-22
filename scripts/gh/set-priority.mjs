@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'set-priority');
 // Set Priority field on a GitHub issue (and optionally all sub-issues).
 // Usage: node scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]
 // Priorities: p0 | p1 | p2 | p3

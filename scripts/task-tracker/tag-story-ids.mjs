@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'tag-story-ids');
 // @story #309
 // Run-once script: prepend `// @story #NNN` to every *.test.mjs file.
 // Uses git log to find the issue that created each file; falls back to #309.

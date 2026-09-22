@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'update-event-fields');
 import { existsSync, readFileSync } from 'node:fs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
