@@ -137,7 +137,7 @@ test('reviewed audit records action-free delivery and reuses exact readback', as
   assert.equal(delivered.receipt.issueKind, 'audit');
   assert.equal(delivered.receipt.deliverableUrl, DELIVERABLE_URL);
   assert.equal(delivered.receipt.acceptedSha, HEAD);
-  assert.equal(harness.calls.pullRequestsListed, 1);
+  assert.equal(harness.calls.pullRequestsListed, 2);
   assert.equal(harness.calls.commentsCreated, 1);
   assert.match(harness.comments[0].body, /^<!-- aitm-no-commit-delivery /);
 
@@ -146,7 +146,36 @@ test('reviewed audit records action-free delivery and reuses exact readback', as
   assert.deepEqual(repeated.receipt, delivered.receipt);
   assert.equal(repeated.action, null);
   assert.equal(harness.calls.commentsCreated, 1);
-  assert.equal(harness.calls.pullRequestsListed, 2);
+  assert.equal(harness.calls.pullRequestsListed, 3);
+});
+
+test('no-commit delivery refuses an issue-body change before posting its record', async () => {
+  let reads = 0;
+  const harness = makeHarness({
+    deps: {
+      async fetchIssue() {
+        reads += 1;
+        return {
+          number: 1407,
+          state: 'OPEN',
+          projectState: 'Review',
+          assignees: ['kburson'],
+          agentReviewPassed: true,
+          body: reads === 1 ? BODY : `${BODY}\n<!-- changed -->`,
+        };
+      },
+    },
+  });
+  await assert.rejects(
+    runDeliver({
+      issueNumber: 1407,
+      cfg: { repo: 'kburson/ai-task-manager', assignee: 'kburson', trunkRef: 'origin/trunk' },
+      state: { active: '#1407', entryStartTs: '2026-08-30T16:00:00.000Z' },
+      deps: harness.deps,
+    }),
+    /delivery-preflight:authority-drift/
+  );
+  assert.equal(harness.calls.commentsCreated, 0);
 });
 
 test('review-waived audit records action-free delivery without pass evidence', async () => {

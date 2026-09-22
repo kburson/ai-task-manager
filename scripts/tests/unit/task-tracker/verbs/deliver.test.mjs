@@ -54,7 +54,12 @@ test('first open-PR call posts one exact intent before emitting one action and e
   );
 
   assert.equal(harness.calls.createIssueComment, 1);
-  assert.deepEqual(harness.calls.events.slice(-3), ['intent:post', 'comments:read', 'action:emit']);
+  assert.deepEqual(harness.calls.events.slice(-4), [
+    'intent:post',
+    'comments:read',
+    'comments:read',
+    'action:emit',
+  ]);
   const posted = harness.data.comments[0].body;
   const parsedIntent = JSON.parse(posted.match(/^<!-- aitm-delivery-intent (.+) -->/)[1]);
   assert.equal(posted, renderDeliveryIntentComment(parsedIntent));
@@ -149,8 +154,8 @@ test('same-head pending intent reruns live preflight and re-emits byte-identical
 
   assert.equal(second.status, 'action-required');
   assert.equal(harness.calls.createIssueComment, 1);
-  assert.equal(harness.calls.fetchPullRequest, 2);
-  assert.equal(harness.calls.fetchRequiredChecks, 2);
+  assert.equal(harness.calls.fetchPullRequest, 5);
+  assert.equal(harness.calls.fetchRequiredChecks, 5);
   assert.equal(serializeProviderActionRequired(second.action), firstJson);
 });
 
@@ -172,7 +177,7 @@ test('merged exact head is independently verified and receives one durable recei
     'receipt:post',
     'comments:read',
   ]);
-  assert.equal(harness.calls.fetchOriginTrunk, 1);
+  assert.equal(harness.calls.fetchOriginTrunk, 2);
   assert.deepEqual(harness.calls.attributingCommits, []);
 });
 
@@ -305,7 +310,7 @@ test('repeated exact receipt re-verifies live PR and trunk without creating anot
   assert.equal(repeated.status, 'already-delivered');
   assert.deepEqual(repeated.receipt, delivered.receipt);
   assert.equal(harness.calls.createIssueComment, postsAfterDelivery);
-  assert.equal(harness.calls.fetchOriginTrunk, 2);
+  assert.equal(harness.calls.fetchOriginTrunk, 3);
 });
 
 test('advanced local head recovers one historical receipt from a prior durable intent', async () => {
@@ -790,7 +795,7 @@ test('repeated external recovery re-verifies as already delivered without timest
   assert.equal(repeated.recovery, true);
   assert.equal(repeated.receipt.provider, 'external');
   assert.equal(harness.calls.createIssueComment, 2);
-  assert.equal(harness.calls.fetchOriginTrunk, 2);
+  assert.equal(harness.calls.fetchOriginTrunk, 3);
 });
 
 test('changed head requires fresh Test and review evidence then supersedes the prior intent', async () => {

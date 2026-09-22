@@ -375,6 +375,18 @@ export const CODE_DEFINITIONS = Object.freeze({
     phases: ['collection'],
     disposition: 'none',
   }),
+  'delivery-metadata-warning': definition({
+    code: 'delivery-metadata-warning',
+    domain: 'operational-warning',
+    producers: ['authority-collection'],
+    severity: 'warning',
+    statuses: ['ready', 'blocked', 'indeterminate'],
+    phases: ['collection'],
+    argumentSchema: args(['reason'], {
+      reason: enumType('missing-source-attribution'),
+    }),
+    disposition: 'none',
+  }),
   'guidance-annotation-failed': definition({
     code: 'guidance-annotation-failed',
     domain: 'audit-warning',

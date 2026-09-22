@@ -26,7 +26,10 @@ import {
   NEXT_HEAD,
   trackerState,
 } from '../../../unit/task-tracker/verbs/deliver-test-harness.mjs';
-import { createDefaultDeliverDeps } from '../../../../task-tracker/verbs/deliver.mjs';
+import {
+  createDefaultDeliverDeps,
+  resolveDeliveryProviderCapability,
+} from '../../../../task-tracker/verbs/deliver.mjs';
 
 const ISSUE = 1668;
 const REPOSITORY = 'example/project';
@@ -241,6 +244,55 @@ test('merged PR with a live intent and exact read-only trunk proof is explainabl
   assert.equal(harness.calls.createIssueComment, previousComments);
 });
 
+test('merged PR without an intent is explainable when read-only external proof succeeds', async () => {
+  const harness = makeHarness({ prState: 'MERGED' });
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      fetchRemoteTrunkHeadSha: async () => 'e'.repeat(40),
+      resolveLocalTrunkHeadSha: async () => 'e'.repeat(40),
+      providerActionAvailable: false,
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.equal(harness.calls.createIssueComment, 0);
+});
+
+test('merged external proof retains source-attribution metadata warnings', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    commitSubjects: ['Unattributed source change'],
+    prCommitSubjects: ['Unattributed source change'],
+  });
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      fetchRemoteTrunkHeadSha: async () => 'e'.repeat(40),
+      resolveLocalTrunkHeadSha: async () => 'e'.repeat(40),
+      providerActionAvailable: false,
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.deepEqual(decision.warnings, [
+    {
+      code: 'delivery-metadata-warning',
+      args: { reason: 'missing-source-attribution' },
+    },
+  ]);
+});
+
 test('merged PR with a matching receipt remains explainable without new records', async () => {
   const harness = makeHarness();
   assert.equal((await executeDelivery(harness)).status, 'action-required');
@@ -289,6 +341,27 @@ test('default merged proof ports observe remote and local trunk without fetching
     ['git', ['ls-remote', '--heads', 'origin', 'trunk']],
     ['git', ['rev-parse', 'refs/remotes/origin/trunk']],
   ]);
+});
+
+test('default delivery dependency advertises only the configured provider-action capability', () => {
+  const context = { projectDir: process.cwd(), cfg: { repo: REPOSITORY } };
+  assert.equal(createDefaultDeliverDeps(context).providerActionAvailable, false);
+  assert.equal(
+    createDefaultDeliverDeps({
+      ...context,
+      cfg: {
+        repo: REPOSITORY,
+        fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+      },
+    }).providerActionAvailable,
+    true
+  );
+  const configured = {
+    fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+  };
+  assert.equal(resolveDeliveryProviderCapability('codex', configured), true);
+  assert.equal(resolveDeliveryProviderCapability('grok', configured), false);
+  assert.equal(resolveDeliveryProviderCapability('unknown-provider', configured), null);
 });
 
 test('a stale local trunk mirror cannot prove merged delivery readiness', async () => {
@@ -727,5 +800,25 @@ test('execution refuses changed ledger after a prior ready explanation', async (
     body: '<!-- aitm-delivery-intent {bad} -->',
   });
   await assert.rejects(executeDelivery(harness), /delivery-records:/);
+  assert.equal(harness.calls.createIssueComment, 0);
+});
+
+test('execution refreshes PR head after preflight and before posting an intent', async () => {
+  const harness = makeHarness();
+  harness.deps.resolvePullRequestReviewGate = async () => {
+    harness.data.prHead = NEXT_HEAD;
+    return false;
+  };
+  await assert.rejects(executeDelivery(harness), /delivery-preflight:/);
+  assert.equal(harness.calls.createIssueComment, 0);
+});
+
+test('execution refreshes lineage before posting an intent', async () => {
+  const harness = makeHarness();
+  harness.deps.resolvePullRequestReviewGate = async () => {
+    harness.data.lineage = { parentIssueNumber: 1558, deliveryTarget: 'epic' };
+    return false;
+  };
+  await assert.rejects(executeDelivery(harness), /delivery-preflight:/);
   assert.equal(harness.calls.createIssueComment, 0);
 });

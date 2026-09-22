@@ -224,7 +224,7 @@ test('open-PR preflight omits a locally verified two-parent ancestry merge', asy
   const result = await deliver(harness);
 
   assert.equal(result.status, 'action-required');
-  assert.equal(harness.calls.inspectSourceCommit, 1);
+  assert.equal(harness.calls.inspectSourceCommit, 3);
   assert.deepEqual(result.intent.attributionTokens, ['#939']);
 });
 
