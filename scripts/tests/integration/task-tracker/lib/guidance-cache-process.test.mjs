@@ -183,6 +183,9 @@ test('invalid ordinary load is manifest-only while explicit diagnostics load rem
       JSON.parse(readFileSync(diagnosticFile, 'utf8')).schema,
       'aitm.guidance-diagnostics/v1'
     );
+    rmSync(diagnosticFile);
+    assert.ok(loadGuidance({ projectRoot: root, need: 'diagnostics' }).errors.length > 0);
+    assert.equal(existsSync(diagnosticFile), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -228,6 +231,22 @@ test('missing, corrupt, schema-mismatched, and digest-mismatched artifacts rebui
     badSchema.schema = 'unexpected';
     writeFileSync(manifestPath, JSON.stringify(badSchema));
     assertRebuilt();
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a missing or truncated human artifact rebuilds only on explicit human demand', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-human-rebuild-');
+  try {
+    assert.equal(loadGuidance({ projectRoot: root, need: 'human' }).valid, true);
+    const humanPath = path.join(root, '.tmp/aitm/guidance-cache/human-catalog.v1.json');
+    writeFileSync(humanPath, '{');
+    assert.equal(loadGuidance({ projectRoot: root, need: 'manifest' }).valid, true);
+    assert.equal(readFileSync(humanPath, 'utf8'), '{');
+    assert.ok(loadGuidance({ projectRoot: root, need: 'human' }).humanCatalog.byId['action.bind']);
+    rmSync(humanPath);
+    assert.ok(loadGuidance({ projectRoot: root, need: 'human' }).humanCatalog.byId['action.bind']);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -511,6 +530,28 @@ test('source observation detects project override adoption without reading YAML'
   }
 });
 
+test('override adoption and deletion invalidate an earlier package result', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-override-lifecycle-');
+  try {
+    const first = loadGuidance({ projectRoot: root });
+    assert.equal(first.valid, true);
+    assert.equal(first.source.sourceType, 'package');
+    const override = path.join(root, '.ai-task-manager', 'aitm-guidance.yml');
+    mkdirSync(path.dirname(override), { recursive: true });
+    writeFileSync(override, 'schema: invalid\n');
+    execFileSync('git', ['add', '-f', '.ai-task-manager/aitm-guidance.yml'], { cwd: root });
+    const adopted = loadGuidance({ projectRoot: root });
+    assert.equal(adopted.valid, false);
+    assert.equal(adopted.source.sourceType, 'project');
+    rmSync(override);
+    const deleted = loadGuidance({ projectRoot: root });
+    assert.equal(deleted.valid, true);
+    assert.equal(deleted.source.sourceType, 'package');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('an explicitly selected Git index cannot reuse the default index identity', () => {
   const root = mkdtempProjectIsolated('aitm-1674-index-');
   try {
@@ -686,6 +727,30 @@ test('concurrent cold writers leave one digest-consistent warm generation', asyn
       readdirSync(cacheDir).some((name) => name.endsWith('.tmp')),
       false
     );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('one process memoizes a verified agent index without sharing mutable results', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-index-memo-');
+  try {
+    assert.equal(loadGuidance({ projectRoot: root, need: 'agent' }).valid, true);
+    const originalParse = JSON.parse;
+    let indexParses = 0;
+    JSON.parse = function parseWithIndexCount(value, ...args) {
+      if (String(value).includes('"schema":"aitm.guidance-agent-index/v1"')) indexParses += 1;
+      return originalParse.call(this, value, ...args);
+    };
+    try {
+      const warm = loadGuidance({ projectRoot: root, need: 'agent' });
+      warm.agentIndex.byId['action.bind'].instruction = 'caller mutation';
+      const repeated = loadGuidance({ projectRoot: root, need: 'agent' });
+      assert.notEqual(repeated.agentIndex.byId['action.bind'].instruction, 'caller mutation');
+      assert.equal(indexParses, 0, 'the verified artifact was already parsed in this process');
+    } finally {
+      JSON.parse = originalParse;
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

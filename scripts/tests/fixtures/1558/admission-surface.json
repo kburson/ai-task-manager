@@ -1760,11 +1760,10 @@
       "command": "guidance",
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
-        "node:fs",
         "node:path",
         "node:url",
         "../../guidance/source.mjs",
-        "../../guidance/validate.mjs",
+        "../../guidance/cache.mjs",
         "../lib/self-doc.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
