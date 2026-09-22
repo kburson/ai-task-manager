@@ -55,7 +55,7 @@ function git(args, options = {}) {
   return result.stdout.trim();
 }
 
-function staticModel(adapter) {
+export function measureProposedStatic(adapter) {
   const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md';
   const plan = readFileSync(path.join(root, planPath), 'utf8');
   const extract = (pattern, id) => {
@@ -250,7 +250,10 @@ export function captureGuidanceExplain() {
       bytes: Buffer.byteLength(trafficText),
       proxyTokens: Math.ceil(trafficText.length / 4),
     };
-    const staticModels = { claude: staticModel('claude'), codex: staticModel('codex') };
+    const staticModels = {
+      claude: measureProposedStatic('claude'),
+      codex: measureProposedStatic('codex'),
+    };
     const comparison = JSON.parse(
       readFileSync(path.join(root, 'scripts/tests/fixtures/1558/context-comparison.json'))
     );

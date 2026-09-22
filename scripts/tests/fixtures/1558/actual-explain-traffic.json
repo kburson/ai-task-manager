@@ -1,192 +1,336 @@
 {
-  "schema": "aitm.guidance-actual-cli-capture/v1",
+  "schema": "aitm.guidance-actual-cli-capture/v2",
   "captureKind": "actual-public-cli-subprocess",
-  "capturedAt": "2026-09-22T20:26:55.576Z",
+  "capturedAt": "2026-09-22T20:45:16.464Z",
   "identity": {
-    "runnerPath": "bin/aitm.mjs",
-    "runnerSha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e",
-    "guidancePath": "instructions/aitm-guidance.yml",
-    "guidanceSha256": "sha256:76c999b20066a25ebea5ce555f2b55c239a1d9b6b6a3d25122b63cf98fdf50fb",
-    "sourceCommit": "cedafd4635026bed7b3ff11c26afa25bb1c69cb9",
-    "issueSnapshots": [1675, 1661]
+    "sourceCommit": "dcc067e14e1d92d055e50faed12b4fc6ca9a839e",
+    "implementationFiles": [
+      {
+        "path": "bin/aitm.mjs",
+        "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+      },
+      {
+        "path": "scripts/task-tracker/verbs/explain.mjs",
+        "sha256": "sha256:9b901b9aac89ad5439c302cc3aaf46ad21dd13021ec455b91e016f5193d15041"
+      },
+      {
+        "path": "scripts/task-tracker/lib/action-decision/evaluate.mjs",
+        "sha256": "sha256:c1561f628088f9678aa084c359b1fc8a289e79125d509960c53ac2e8a353c61e"
+      },
+      {
+        "path": "instructions/aitm-guidance.yml",
+        "sha256": "sha256:76c999b20066a25ebea5ce555f2b55c239a1d9b6b6a3d25122b63cf98fdf50fb"
+      },
+      {
+        "path": "scripts/maintenance/capture-guidance-explain.mjs",
+        "sha256": "sha256:dbdf395f4cb49a57913102e6335a45d69c710d2ae18f9dc4a8008ac28c75e7bb"
+      }
+    ],
+    "fixture": {
+      "bodySha256": "sha256:40a2d339893c63de1fbf526d80ee3e7e58a7a9ba038ffdd8be7c44282bd617aa",
+      "configSha256": "sha256:18de30189ff258f8bb8011da8c017d5b10c72e683104a0bbbec18ea3df7b6d13",
+      "fakeGhSha256": "sha256:7cf02e6b88387dac24bd1cc3564e811a2911f11213652d0becefb324047a8116",
+      "baselineGuidanceSha256": "sha256:76c999b20066a25ebea5ce555f2b55c239a1d9b6b6a3d25122b63cf98fdf50fb"
+    }
   },
   "scenarios": [
     {
-      "name": "blocked-first-load",
+      "name": "ready-first-load",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
         "explain",
-        "1675",
-        "--json"
-      ],
-      "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1675,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
-      "stderr": "",
-      "exitCode": 0,
-      "typed": {
-        "schema": "aitm.action-explanation/v2",
-        "status": "blocked",
-        "actionId": "promote",
-        "guidanceIds": ["action.promote"],
-        "guidanceStatuses": ["expanded"]
-      },
-      "proxyTokens": 317
-    },
-    {
-      "name": "matching-receipt",
-      "argv": [
-        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
-        "explain",
-        "1675",
-        "--known",
-        "action.promote@sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc",
-        "--json"
-      ],
-      "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1675,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"not-modified\"}]}\n",
-      "stderr": "",
-      "exitCode": 0,
-      "typed": {
-        "schema": "aitm.action-explanation/v2",
-        "status": "blocked",
-        "actionId": "promote",
-        "guidanceIds": ["action.promote"],
-        "guidanceStatuses": ["not-modified"]
-      },
-      "proxyTokens": 268
-    },
-    {
-      "name": "compaction-reset",
-      "argv": [
-        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
-        "explain",
-        "1675",
-        "--json"
-      ],
-      "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1675,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
-      "stderr": "",
-      "exitCode": 0,
-      "typed": {
-        "schema": "aitm.action-explanation/v2",
-        "status": "blocked",
-        "actionId": "promote",
-        "guidanceIds": ["action.promote"],
-        "guidanceStatuses": ["expanded"]
-      },
-      "proxyTokens": 317
-    },
-    {
-      "name": "diagnostic",
-      "argv": [
-        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
-        "explain",
-        "1675",
-        "--diagnostic",
-        "--json"
-      ],
-      "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1675,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":1675,\"actionId\":\"promote\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"develop\",\"head\":\"cedafd4635026bed7b3ff11c26afa25bb1c69cb9\",\"digest\":\"sha256:ad6ecd8cee94ac75cceae8a0dc62609c051d26e39f442ca1b7222d4a810ac736\",\"startedAt\":\"2026-09-22T20:26:53.234Z\",\"completedAt\":\"2026-09-22T20:26:53.235Z\",\"observations\":[{\"source\":\"issue-body\",\"identity\":\"issue:1675:1\",\"observedAt\":\"2026-09-22T20:26:53.234Z\",\"digest\":\"sha256:de46119ce40ccdb084919da65ad9e04a2029469b896d7a306e8bc70cc046c3ee\"},{\"source\":\"project-board\",\"identity\":\"issue:1675:2\",\"observedAt\":\"2026-09-22T20:26:53.234Z\",\"digest\":\"sha256:542a1c8cdfb22a9fb7e867f679cd0b85fce471ea1b954156b368bf61bca8405e\"},{\"source\":\"worktree\",\"identity\":\"worktree:1675\",\"observedAt\":\"2026-09-22T20:26:53.234Z\",\"digest\":\"sha256:5da3eabdab9e029668775179c0d55028a79661fcf5f23850e911bdd4c32b052e\"},{\"source\":\"session-state\",\"identity\":\"session-state:1675\",\"observedAt\":\"2026-09-22T20:26:53.234Z\",\"digest\":\"sha256:92e422ed0ef6710e3c68703f0fd05a0de27be5a048eb45fd0e420367acfd8e72\"}]},\"blockers\":[{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}}]},\"guidanceIds\":[\"action.promote\"]},\"diagnosticMessages\":[]}\n",
-      "stderr": "",
-      "exitCode": 0,
-      "typed": {
-        "schema": "aitm.action-explanation/v2",
-        "status": "blocked",
-        "actionId": "promote",
-        "guidanceIds": ["action.promote"],
-        "guidanceStatuses": ["expanded"]
-      },
-      "proxyTokens": 804
-    },
-    {
-      "name": "terminal",
-      "argv": [
-        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
-        "explain",
-        "1661",
-        "--json"
-      ],
-      "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1661,\"actionId\":null,\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"state.done\",\"digest\":\"sha256:bc1496f9d969d9d2f27be116227fbf0efd418773668683b73f3aca7d1068b45a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"terminal_state\":\"done\"},{\"recommendation\":null},{\"never\":\"execute_free_text\"}]}}]}\n",
-      "stderr": "",
-      "exitCode": 0,
-      "typed": {
-        "schema": "aitm.action-explanation/v2",
-        "status": "ready",
-        "actionId": null,
-        "guidanceIds": ["state.done"],
-        "guidanceStatuses": ["expanded"]
-      },
-      "proxyTokens": 102
-    },
-    {
-      "name": "unknown-action",
-      "argv": [
-        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
-        "explain",
-        "1675",
-        "--action",
-        "not-a-real-action",
-        "--json"
-      ],
-      "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1675,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"unknown-vocabulary\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"action-not-explain-ready\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"navigation.unknown\",\"digest\":\"sha256:7f6c3dda5e69e6f032476ab40cf1e28b896cb14128b615cc6a3589a8db2738a9\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"recommendation\":null},{\"never\":\"execute_free_text\"},{\"never\":\"invoke_internal_mutator\"}]}}]}\n",
-      "stderr": "",
-      "exitCode": 0,
-      "typed": {
-        "schema": "aitm.action-explanation/v2",
-        "status": "indeterminate",
-        "actionId": null,
-        "guidanceIds": ["navigation.unknown"],
-        "guidanceStatuses": ["expanded"]
-      },
-      "proxyTokens": 142
-    },
-    {
-      "name": "authority-unavailable",
-      "argv": [
-        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
-        "bin/aitm.mjs",
-        "explain",
-        "1675",
+        "2100",
         "--action",
         "bind",
         "--json"
       ],
       "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1675,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"unknown\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1675,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
       "stderr": "",
       "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 124
+    },
+    {
+      "name": "matching-receipt",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"not-modified\"}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 78
+    },
+    {
+      "name": "compaction-reset",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 124
+    },
+    {
+      "name": "blocked-authority-drift",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"state-drift\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}},{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"conflicting\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
       "typed": {
         "schema": "aitm.action-explanation/v2",
         "status": "indeterminate",
         "actionId": null,
         "guidanceIds": ["navigation.unresolved"],
-        "guidanceStatuses": ["expanded"]
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
       },
-      "proxyTokens": 188
+      "proxyTokens": 222
+    },
+    {
+      "name": "diagnostic",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--diagnostic",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"snapshot\":{\"state\":\"plan\",\"head\":\"7963de0ff7a6c2d947eadca7dab3fd7d10da34ce\",\"digest\":\"sha256:67b93b14254ddc267acc69490cd26e3538d5bcfcdb797217a6b4c085c61cdd2a\",\"startedAt\":\"2026-09-22T20:45:15.058Z\",\"completedAt\":\"2026-09-22T20:45:15.059Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:f361583f35d4e39bdacf3e7fcc3eb0fdca5a518d7e98636f17db7e887b9c0bb6\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:264360366079abfb1e079da27212a2f916c275c03a5bec022aca472da33db163\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:df6ed888be5901a6b0af89c09e03c90fcfc14bc866d92e9771803ebfac4fdbfb\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:bd1249ab9f9511742d07b8d99115e02a2e0993b3a4d64286044dbd9550de598e\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:f87747275b9c96b6b66c905f915a0db405de92f3b460302fd8cbba6cb1cce3b2\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:90fb365a113b4cfbee841da6c46d9401772d907583825469703e08889c336fe8\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-22T20:45:15.058Z\",\"digest\":\"sha256:2db0c66538a14359445a825c08764b92f8e3d99c07c3be020836153e52fc3a02\"}]},\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 556
+    },
+    {
+      "name": "agent-change",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83"
+      },
+      "proxyTokens": 209
+    },
+    {
+      "name": "source-only-change",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"not-modified\"}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9"
+      },
+      "proxyTokens": 154
     }
   ],
   "measurement": {
-    "proxyRule": "ceil(stdout UTF-8 bytes / 4)",
-    "actualTrafficProxyTokens": 2138,
+    "proxyRule": "ceil(concatenated UTF-16 characters / 4)",
+    "actualTraffic": {
+      "characters": 7449,
+      "bytes": 7449,
+      "proxyTokens": 1863
+    },
+    "currentFullStaticSource": "scripts/tests/fixtures/1558/context-comparison.json",
     "currentFullStaticProxyTokens": {
       "claude": 17642,
       "codex": 17556
     },
-    "modeledProposedStaticProxyTokens": {
-      "claude": 840,
-      "codex": 833
+    "modeledProposedStatic": {
+      "claude": {
+        "files": [
+          {
+            "id": "shim",
+            "sourcePath": "skill/SKILL.md",
+            "sourceSection": "complete-file",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "id": "router-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 router",
+            "characters": 1435,
+            "bytes": 1435,
+            "proxyTokens": 359,
+            "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+          },
+          {
+            "id": "pickup-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 pickup",
+            "characters": 564,
+            "bytes": 564,
+            "proxyTokens": 141,
+            "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+          },
+          {
+            "id": "adapter-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 adapter.claude",
+            "characters": 410,
+            "bytes": 410,
+            "proxyTokens": 103,
+            "sha256": "sha256:99beb2a4d5ce6acaa002b8af6fcf943b35afeed02a2ec963539581a258818faa"
+          }
+        ],
+        "totals": {
+          "characters": 3355,
+          "bytes": 3355,
+          "proxyTokens": 840
+        }
+      },
+      "codex": {
+        "files": [
+          {
+            "id": "shim",
+            "sourcePath": "skill/SKILL.md",
+            "sourceSection": "complete-file",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "id": "router-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 router",
+            "characters": 1435,
+            "bytes": 1435,
+            "proxyTokens": 359,
+            "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+          },
+          {
+            "id": "pickup-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 pickup",
+            "characters": 564,
+            "bytes": 564,
+            "proxyTokens": 141,
+            "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+          },
+          {
+            "id": "adapter-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 adapter.codex",
+            "characters": 383,
+            "bytes": 383,
+            "proxyTokens": 96,
+            "sha256": "sha256:ef20067ef6bb8bcd2bbcfa4a2bc6c2e5712ac410d4e920c67f84ee6f55e78674"
+          }
+        ],
+        "totals": {
+          "characters": 3328,
+          "bytes": 3328,
+          "proxyTokens": 833
+        }
+      }
     },
     "modeledTotalsWithActualTraffic": {
-      "claude": 2978,
-      "codex": 2971
+      "claude": 2703,
+      "codex": 2696
     },
     "budgets": {
       "routerPlusPickupWorking": 4000,
