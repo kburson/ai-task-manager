@@ -19,6 +19,9 @@ const ARTIFACTS = {
   human: ['human-catalog.v1.json', 'aitm.guidance-human-catalog/v1', 'humanCatalog'],
   diagnostics: ['diagnostics.v1.json', 'aitm.guidance-diagnostics/v1', 'diagnostics'],
 };
+// Parsed artifacts are process-local only. Bytes are still rehashed on every
+// read, and callers get clones so one response cannot mutate another.
+const parsedArtifacts = new Map();
 
 function digest(bytes) {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
@@ -70,8 +73,14 @@ function readArtifact(cacheDir, descriptor, need) {
   try {
     const bytes = readFileSync(path.join(cacheDir, filename));
     if (digest(bytes) !== descriptor.digest) return null;
+    const memoKey = `${schema}:${descriptor.digest}`;
+    const memoized = parsedArtifacts.get(memoKey);
+    if (memoized) return structuredClone(memoized);
     const artifact = JSON.parse(bytes.toString('utf8'));
-    return artifact?.schema === schema ? artifact : null;
+    if (artifact?.schema !== schema) return null;
+    if (parsedArtifacts.size >= 32) parsedArtifacts.clear();
+    parsedArtifacts.set(memoKey, artifact);
+    return structuredClone(artifact);
   } catch {
     return null;
   }
