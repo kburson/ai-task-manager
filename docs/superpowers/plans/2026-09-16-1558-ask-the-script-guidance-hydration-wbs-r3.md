@@ -1057,6 +1057,8 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-cache.test.mjs sc
 - **Need:** Routine sessions currently repeat guidance or expose more provenance than the next decision requires
 - **Value or failure prevented:** Agents keep authority fresh and auditable without routine context inflation or treating an explanation receipt as execution authority
 
+#### Files and delivery boundary
+
 **Baseline-plan-section:** `### Task 14: Expose routine explanations, receipts, and explicit diagnostics`. All Task references in the copied body below retain baseline numbering.
 
 **User story:**
