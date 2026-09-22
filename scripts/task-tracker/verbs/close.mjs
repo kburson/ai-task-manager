@@ -2039,6 +2039,40 @@ export function assertCloseDeliveryAuthorityStable(before, after) {
   }
 }
 
+/** A missing or partial child read is never evidence of an empty epic. */
+export function requireCloseChildrenSnapshot(snapshot) {
+  if (snapshot?.status !== 'ok' || !Array.isArray(snapshot.children)) {
+    throw new Error('close-child-authority-unavailable');
+  }
+  const childStates = snapshot.children.map((child) => {
+    if (
+      !Number.isSafeInteger(child?.number) ||
+      child.number <= 0 ||
+      ![
+        'backlog',
+        'refine',
+        'ready-for-plan',
+        'plan',
+        'develop',
+        'test',
+        'review',
+        'done',
+      ].includes(child.boardState)
+    ) {
+      throw new Error('close-child-authority-unavailable');
+    }
+    return { num: child.number, state: child.boardState };
+  });
+  if (new Set(childStates.map(({ num }) => num)).size !== childStates.length) {
+    throw new Error('close-child-authority-unavailable');
+  }
+  return {
+    childStates,
+    notReady: childStates.filter(({ state }) => state !== 'review' && state !== 'done'),
+    reviewChildren: childStates.filter(({ state }) => state === 'review'),
+  };
+}
+
 export async function verbClose(ctx) {
   const convergenceTailProfile = resolveTailProfile(
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
@@ -3766,8 +3800,46 @@ export async function verbClose(ctx) {
   };
   const needsDeliveredCloseStep = (step) =>
     deliveredCloseTransaction === null || !deliveredCloseTransaction.completedSteps.includes(step);
+  const refreshCloseChildren = async () => {
+    try {
+      if (typeof fetchSubIssueBoardSnapshot !== 'function') {
+        throw new Error('close-child-authority-unavailable');
+      }
+      const children = requireCloseChildrenSnapshot(
+        await fetchSubIssueBoardSnapshot(closeIssueNum)
+      );
+      if (children.notReady.length > 0) {
+        console.error(
+          `[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${children.notReady.length} child issue(s) not in Review:`
+        );
+        children.notReady.forEach(({ num, state }) => console.error(`   #${num}: ${state}`));
+        process.exitCode = 1;
+        return null;
+      }
+      return children;
+    } catch (error) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: child authority could not be refreshed (${error.message}).`
+      );
+      process.exitCode = 1;
+      return null;
+    }
+  };
+  let initialCloseChildren = null;
   if (!SKIP_NETWORK && closeIssueNum) {
-    if (await refuseDeliveryGate({ refresh: true })) return;
+    if (
+      !force &&
+      !falseDeliveryRestart.enabled &&
+      (await refuseDeliveryGate({
+        refresh: true,
+        durableTransaction: resumeDeliveredCloseTransaction,
+      }))
+    )
+      return;
+    if (!force && !falseDeliveryRestart.enabled) {
+      initialCloseChildren = await refreshCloseChildren();
+      if (!initialCloseChildren) return;
+    }
     const acceptedSha = resolvedDeliveryGate?.gateInput?.acceptedSha;
     const existing = readDeliveredCloseTransactions(closeBody);
     const resolved = resolveDeliveredCloseTransaction({
@@ -3791,11 +3863,15 @@ export async function verbClose(ctx) {
     await drainQueueOnce();
 
     if (!SKIP_NETWORK && closeIssueNum) {
-      const subNums = await fetchSubIssues(closeIssueNum);
+      const subNums = initialCloseChildren
+        ? initialCloseChildren.childStates.map(({ num }) => num)
+        : await fetchSubIssues(closeIssueNum);
       if (subNums.length > 0) {
-        const childStates = await Promise.all(
-          subNums.map(async (n) => ({ num: n, state: await getIssueBoardState(n) }))
-        );
+        const childStates = initialCloseChildren
+          ? initialCloseChildren.childStates
+          : await Promise.all(
+              subNums.map(async (n) => ({ num: n, state: await getIssueBoardState(n) }))
+            );
         const notReady = childStates.filter((c) => c.state !== 'review' && c.state !== 'done');
         if (notReady.length > 0 && !force) {
           console.error(
@@ -4119,7 +4195,15 @@ export async function verbClose(ctx) {
   // recovers. The post-close move (#385) then degrades to a benign `done → done`
   // no-op, exactly as on the force path.
   if (!force && !SKIP_NETWORK && closeIssueNum) {
-    if (await refuseDeliveryGate({ refresh: true })) return;
+    if (
+      !falseDeliveryRestart.enabled &&
+      (await refuseDeliveryGate({
+        refresh: true,
+        durableTransaction: deliveredCloseTransaction,
+      }))
+    )
+      return;
+    if (!falseDeliveryRestart.enabled && !(await refreshCloseChildren())) return;
     if (needsDeliveredCloseStep('board')) {
       const observedBoardState = await getIssueBoardState(closeIssueNum);
       if (observedBoardState === 'done') await markDeliveredCloseStep('board');
@@ -4210,7 +4294,16 @@ export async function verbClose(ctx) {
   // (and the short-circuit above will converge the lagging side). `gh issue
   // close` is idempotent — closing an already-closed issue is a no-op.
   if (needsDeliveredCloseStep('issue') && !SKIP_NETWORK && closeIssueNum) {
-    if (await refuseDeliveryGate({ refresh: true })) return;
+    if (
+      !force &&
+      !falseDeliveryRestart.enabled &&
+      (await refuseDeliveryGate({
+        refresh: true,
+        durableTransaction: deliveredCloseTransaction,
+      }))
+    )
+      return;
+    if (!force && !falseDeliveryRestart.enabled && !(await refreshCloseChildren())) return;
     const observedIssue = getIssueCloseSnapshot
       ? await getIssueCloseSnapshot(closeIssueNum)
       : { issueClosed: await getIssueClosedState(closeIssueNum), stateReason: null };
