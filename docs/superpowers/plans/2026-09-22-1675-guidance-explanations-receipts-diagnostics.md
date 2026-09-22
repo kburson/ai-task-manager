@@ -8,6 +8,13 @@
 
 Expose a compact, fresh, read-only `aitm explain` command and an explicit diagnostic mode over the existing action-decision engine. Repeated agent instructions may be suppressed only by caller-provided matching receipts. Human guidance remains separately queryable, and actual public-CLI traffic becomes the feasibility evidence for later #1558 migration work.
 
+## Story Intent
+
+- **Beneficiary:** Agent choosing the next governed lifecycle action
+- **Capability:** Obtain compact fresh operational guidance and request complete evidence explicitly
+- **Need:** Routine sessions currently repeat guidance or expose more provenance than the next decision requires
+- **Value or failure prevented:** Agents keep authority fresh and auditable without routine context inflation or treating an explanation receipt as execution authority
+
 ## Constraints
 
 - Evaluate authority exactly once per invocation and never accept effect-capable ports.

@@ -1050,6 +1050,13 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-cache.test.mjs sc
 
 ### Task 23: Expose routine explanations, receipts, and explicit diagnostics
 
+#### Story Intent
+
+- **Beneficiary:** Agent choosing the next governed lifecycle action
+- **Capability:** Obtain compact fresh operational guidance and request complete evidence explicitly
+- **Need:** Routine sessions currently repeat guidance or expose more provenance than the next decision requires
+- **Value or failure prevented:** Agents keep authority fresh and auditable without routine context inflation or treating an explanation receipt as execution authority
+
 **Baseline-plan-section:** `### Task 14: Expose routine explanations, receipts, and explicit diagnostics`. All Task references in the copied body below retain baseline numbering.
 
 **User story:**
