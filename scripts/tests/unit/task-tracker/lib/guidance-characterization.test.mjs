@@ -321,7 +321,7 @@ test('committed decision and both command modes reproduce the accepted generatio
       writeStdout: (value) => (stdout += value),
       writeStderr: (value) => (stderr += value),
     });
-    assert.equal(status, 0, stderr);
+    assert.equal(status, args.includes('--assert-feasible') ? 1 : 0, stderr);
     assert.deepEqual(JSON.parse(stdout), expected);
   }
 

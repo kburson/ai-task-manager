@@ -416,8 +416,10 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
   ) {
     fail('actual-cli-capture');
   }
-  const scenarioNames = capture.measurement?.lifecycleScenarioNames;
-  if (!Array.isArray(scenarioNames) || scenarioNames.length !== 7) fail('lifecycle-scenarios');
+  const scenarioNames = capture.scenarios.map(({ name }) => name);
+  if (new Set(scenarioNames).size !== scenarioNames.length || scenarioNames.length !== 13) {
+    fail('captured-scenarios');
+  }
   const actualText = capture.scenarios
     .map(({ argv, stdout, stderr }) => `${argv.join(' ')}\n${stdout}${stderr}`)
     .join('');
@@ -429,9 +431,6 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
     })
   )
     fail('actual-traffic-drift');
-  if (capture.scenarios.filter(({ name }) => scenarioNames.includes(name)).length !== 7) {
-    fail('lifecycle-scenarios');
-  }
   const lifecycleText = capture.scenarios
     .filter(({ name }) => scenarioNames.includes(name))
     .map(({ argv, stdout, stderr }) => `${argv.join(' ')}\n${stdout}${stderr}`)
@@ -441,8 +440,8 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
     bytes: Buffer.byteLength(lifecycleText),
     proxyTokens: Math.ceil(lifecycleText.length / 4),
   };
-  if (!isDeepStrictEqual(lifecycleTraffic, capture.measurement.lifecycleTraffic)) {
-    fail('actual-lifecycle-drift');
+  if (!isDeepStrictEqual(lifecycleTraffic, capture.measurement.actualTraffic)) {
+    fail('actual-captured-traffic-drift');
   }
   const clean = capture.scenarios.find(({ name }) => name === 'ready-first-load');
   const blocked = capture.scenarios.find(({ name }) => name === 'blocked-migration-freeze');
@@ -462,6 +461,16 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
     claude: `${PROPOSED_ROOT}/claude.md`,
     codex: `${PROPOSED_ROOT}/codex.md`,
   };
+  // The proposed router/adapters still require these JIT rule reads. Count
+  // their exact installed bytes until a replacement proposal removes them.
+  const loadedTier2Paths = [
+    'skill/shared/rules/bind.md',
+    'skill/shared/rules/state-walk.md',
+    'skill/shared/rules/review.md',
+    'skill/shared/rules/deliver.md',
+    'skill/shared/rules/close.md',
+    'skill/shared/rules/commit-trail.md',
+  ];
   const staticText = Object.fromEntries(
     Object.entries(staticPaths).map(([id, relativePath]) => [
       id,
@@ -511,15 +520,23 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
         .static.totals.proxyTokens
     )
       fail(`current-static-drift-${adapter}`);
-    const files = ['shim', 'router', 'pickup', adapter].map((id) => {
-      const content = staticText[id];
+    const files = [
+      ...['shim', 'router', 'pickup', adapter].map((id) => ({ id, path: staticPaths[id] })),
+      ...loadedTier2Paths.map((relativePath) => ({
+        id: `tier2:${path.basename(relativePath, '.md')}`,
+        path: relativePath,
+      })),
+    ].map(({ id, path: relativePath }) => {
+      const content = id.startsWith('tier2:')
+        ? readInput(relativePath).toString('utf8')
+        : staticText[id];
       return {
         id,
-        path: staticPaths[id],
+        path: relativePath,
         characters: content.length,
         bytes: Buffer.byteLength(content),
         proxyTokens: Math.ceil(content.length / 4),
-        sha256: sha256(readInput(staticPaths[id])),
+        sha256: sha256(readInput(relativePath)),
       };
     });
     const staticProxyTokens = files.reduce((total, file) => total + file.proxyTokens, 0);
@@ -545,8 +562,8 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
     };
   }
   const evaluation = evaluateFeasibility({
-    completenessPassed: true,
-    fidelityPassed: true,
+    completenessPassed: false,
+    fidelityPassed: false,
     fixedBudgets,
     adapters: evaluatedInput,
   });
@@ -554,7 +571,13 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
     schema: 'aitm.guidance-obligation-complete-recheck/v1',
     owner: { issue: 1676, parent: 1558, foundationIssue: 1660 },
     captureKind: capture.captureKind,
-    staticObligations: 'mapped-complete-proposed-not-installed',
+    staticObligations: 'incomplete-proposed-not-installed',
+    trafficScope: 'all-captured-scenarios-not-a-coherent-lifecycle',
+    openEvidence: [
+      'rule-map-omits-bind-discussion-and-deferred-pickup-protocol',
+      'proposed-static-still-loads-tier2-lifecycle-rules',
+      'actual-cli-capture-does-not-prove-one-coherent-full-lifecycle',
+    ],
     inputs: [
       inputRecord('historical-foundation', `${FIXTURE_ROOT}/feasibility-decision.json`),
       inputRecord('rule-guidance-map', mapPath),
@@ -563,6 +586,7 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
       ...Object.entries(staticPaths).map(([id, relativePath]) =>
         inputRecord('proposed-static', relativePath, { id })
       ),
+      ...loadedTier2Paths.map((relativePath) => inputRecord('loaded-tier2', relativePath)),
     ],
     mappedObligations: map.rows.length,
     retainedProtocolObligations: map.rows.filter(({ retainedProtocolRule }) => retainedProtocolRule)
@@ -577,7 +601,7 @@ export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {
     checks: evaluation.checks,
     verdict: evaluation.verdict,
     interpretation:
-      'Proposed static text plus the pinned #1675 actual public-CLI lifecycle; final installed adapter and traffic proof remains a later release gate.',
+      'NO-GO: this is an all-captured-scenarios stress total, not a coherent lifecycle proof. The proposed text still loads Tier-2 rules, and the obligation map is incomplete. Migration stays blocked pending a complete map, replacement static text, and coherent actual-CLI transcript.',
   };
 }
 
@@ -593,6 +617,9 @@ export function buildObligationCompleteComparison({ projectRoot } = {}) {
   return {
     schema: 'aitm.guidance-obligation-complete-comparison/v1',
     source: 'actual-public-cli-subprocess-plus-proposed-static',
+    trafficScope: report.trafficScope,
+    staticObligations: report.staticObligations,
+    openEvidence: report.openEvidence,
     inputs: report.inputs,
     mappedObligations: report.mappedObligations,
     retainedProtocolObligations: report.retainedProtocolObligations,

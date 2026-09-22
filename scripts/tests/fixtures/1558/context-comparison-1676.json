@@ -1,6 +1,13 @@
 {
   "schema": "aitm.guidance-obligation-complete-comparison/v1",
   "source": "actual-public-cli-subprocess-plus-proposed-static",
+  "trafficScope": "all-captured-scenarios-not-a-coherent-lifecycle",
+  "staticObligations": "incomplete-proposed-not-installed",
+  "openEvidence": [
+    "rule-map-omits-bind-discussion-and-deferred-pickup-protocol",
+    "proposed-static-still-loads-tier2-lifecycle-rules",
+    "actual-cli-capture-does-not-prove-one-coherent-full-lifecycle"
+  ],
   "inputs": [
     {
       "role": "historical-foundation",
@@ -51,6 +58,36 @@
       "id": "codex",
       "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
       "sha256": "sha256:b97242b233d0ffb229eeecf4a982e49a8dd15a75e3e230747e0f508ebd914a89"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/bind.md",
+      "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/state-walk.md",
+      "sha256": "sha256:2e2aa56635381f382e20cffa768bfb734c25b7f63c9d9b5a9bd2f64d4f87de05"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/review.md",
+      "sha256": "sha256:b72500d5ba0a0a4415b039e075e9d8bb50b59babb14732da2cecb58f4728abb2"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/deliver.md",
+      "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/close.md",
+      "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/commit-trail.md",
+      "sha256": "sha256:da5238ae68c90b922436cff92bf217fd483a9f74ba5b7c463318262aee3f26cf"
     }
   ],
   "mappedObligations": 33,
@@ -78,16 +115,16 @@
     "blocked": 159
   },
   "actualLifecycleTraffic": {
-    "characters": 12382,
-    "bytes": 12382,
-    "proxyTokens": 3096
+    "characters": 18897,
+    "bytes": 18897,
+    "proxyTokens": 4725
   },
   "adapters": {
     "claude": {
-      "currentLoadedFullProxyTokens": 20738,
+      "currentLoadedFullProxyTokens": 22367,
       "provisionalEarlierStaticProxyTokens": 840,
-      "proposedStaticProxyTokens": 1198,
-      "proposedFullProxyTokens": 4294,
+      "proposedStaticProxyTokens": 10887,
+      "proposedFullProxyTokens": 15612,
       "files": [
         {
           "id": "shim",
@@ -120,14 +157,62 @@
           "bytes": 833,
           "proxyTokens": 209,
           "sha256": "sha256:6f0b3e048709884b324fbeb88896e1c8747a222cd4c03400f8d085467ab29653"
+        },
+        {
+          "id": "tier2:bind",
+          "path": "skill/shared/rules/bind.md",
+          "characters": 5466,
+          "bytes": 5499,
+          "proxyTokens": 1367,
+          "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+        },
+        {
+          "id": "tier2:state-walk",
+          "path": "skill/shared/rules/state-walk.md",
+          "characters": 7461,
+          "bytes": 7507,
+          "proxyTokens": 1866,
+          "sha256": "sha256:2e2aa56635381f382e20cffa768bfb734c25b7f63c9d9b5a9bd2f64d4f87de05"
+        },
+        {
+          "id": "tier2:review",
+          "path": "skill/shared/rules/review.md",
+          "characters": 8666,
+          "bytes": 8701,
+          "proxyTokens": 2167,
+          "sha256": "sha256:b72500d5ba0a0a4415b039e075e9d8bb50b59babb14732da2cecb58f4728abb2"
+        },
+        {
+          "id": "tier2:deliver",
+          "path": "skill/shared/rules/deliver.md",
+          "characters": 5202,
+          "bytes": 5202,
+          "proxyTokens": 1301,
+          "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+        },
+        {
+          "id": "tier2:close",
+          "path": "skill/shared/rules/close.md",
+          "characters": 10433,
+          "bytes": 10469,
+          "proxyTokens": 2609,
+          "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+        },
+        {
+          "id": "tier2:commit-trail",
+          "path": "skill/shared/rules/commit-trail.md",
+          "characters": 1513,
+          "bytes": 1527,
+          "proxyTokens": 379,
+          "sha256": "sha256:da5238ae68c90b922436cff92bf217fd483a9f74ba5b7c463318262aee3f26cf"
         }
       ]
     },
     "codex": {
-      "currentLoadedFullProxyTokens": 20652,
+      "currentLoadedFullProxyTokens": 22281,
       "provisionalEarlierStaticProxyTokens": 833,
-      "proposedStaticProxyTokens": 1202,
-      "proposedFullProxyTokens": 4298,
+      "proposedStaticProxyTokens": 10891,
+      "proposedFullProxyTokens": 15616,
       "files": [
         {
           "id": "shim",
@@ -160,9 +245,57 @@
           "bytes": 849,
           "proxyTokens": 213,
           "sha256": "sha256:b97242b233d0ffb229eeecf4a982e49a8dd15a75e3e230747e0f508ebd914a89"
+        },
+        {
+          "id": "tier2:bind",
+          "path": "skill/shared/rules/bind.md",
+          "characters": 5466,
+          "bytes": 5499,
+          "proxyTokens": 1367,
+          "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+        },
+        {
+          "id": "tier2:state-walk",
+          "path": "skill/shared/rules/state-walk.md",
+          "characters": 7461,
+          "bytes": 7507,
+          "proxyTokens": 1866,
+          "sha256": "sha256:2e2aa56635381f382e20cffa768bfb734c25b7f63c9d9b5a9bd2f64d4f87de05"
+        },
+        {
+          "id": "tier2:review",
+          "path": "skill/shared/rules/review.md",
+          "characters": 8666,
+          "bytes": 8701,
+          "proxyTokens": 2167,
+          "sha256": "sha256:b72500d5ba0a0a4415b039e075e9d8bb50b59babb14732da2cecb58f4728abb2"
+        },
+        {
+          "id": "tier2:deliver",
+          "path": "skill/shared/rules/deliver.md",
+          "characters": 5202,
+          "bytes": 5202,
+          "proxyTokens": 1301,
+          "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+        },
+        {
+          "id": "tier2:close",
+          "path": "skill/shared/rules/close.md",
+          "characters": 10433,
+          "bytes": 10469,
+          "proxyTokens": 2609,
+          "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+        },
+        {
+          "id": "tier2:commit-trail",
+          "path": "skill/shared/rules/commit-trail.md",
+          "characters": 1513,
+          "bytes": 1527,
+          "proxyTokens": 379,
+          "sha256": "sha256:da5238ae68c90b922436cff92bf217fd483a9f74ba5b7c463318262aee3f26cf"
         }
       ]
     }
   },
-  "verdict": "GO"
+  "verdict": "NO-GO"
 }

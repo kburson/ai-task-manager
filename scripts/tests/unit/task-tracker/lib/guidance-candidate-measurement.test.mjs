@@ -33,10 +33,11 @@ test('obligation-complete recheck binds exact proposed files and actual CLI capt
   const report = buildObligationCompleteRecheck({ projectRoot });
   assert.equal(report.schema, 'aitm.guidance-obligation-complete-recheck/v1');
   assert.equal(report.captureKind, 'actual-public-cli-subprocess');
-  assert.equal(report.staticObligations, 'mapped-complete-proposed-not-installed');
-  assert.equal(report.verdict, 'GO');
-  assert.equal(report.adapters.claude.files.length, 4);
-  assert.equal(report.adapters.codex.files.length, 4);
+  assert.equal(report.staticObligations, 'incomplete-proposed-not-installed');
+  assert.equal(report.trafficScope, 'all-captured-scenarios-not-a-coherent-lifecycle');
+  assert.equal(report.verdict, 'NO-GO');
+  assert.equal(report.adapters.claude.files.length, 10);
+  assert.equal(report.adapters.codex.files.length, 10);
   assert.ok(report.inputs.some(({ role }) => role === 'rule-guidance-map'));
   assert.ok(report.inputs.some(({ role }) => role === 'actual-cli-capture'));
   assert.equal(validateObligationCompleteRecheck(report, { projectRoot }), report);
@@ -50,6 +51,21 @@ test('obligation-complete recheck binds exact proposed files and actual CLI capt
     () => validateObligationCompleteRecheck(changed, { projectRoot }),
     /decision-drift/
   );
+});
+
+test('a feasibility recheck counts every captured query and every rule its proposal loads', async () => {
+  const { buildObligationCompleteRecheck } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const report = buildObligationCompleteRecheck({ projectRoot });
+  assert.equal(report.actualLifecycleTraffic.proxyTokens, 4725);
+  for (const adapter of ['claude', 'codex']) {
+    const paths = report.adapters[adapter].files.map(({ path: file }) => file);
+    for (const rule of ['bind', 'state-walk', 'review', 'deliver', 'close', 'commit-trail']) {
+      assert.ok(paths.includes(`skill/shared/rules/${rule}.md`), `${adapter}:${rule}`);
+    }
+    assert.ok(report.adapters[adapter].proposedFullProxyTokens > 5600);
+  }
+  assert.equal(report.verdict, 'NO-GO');
 });
 
 test('recheck rejects missing map, static bytes, actual capture, and provisional substitution', async () => {
