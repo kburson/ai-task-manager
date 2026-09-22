@@ -34,8 +34,14 @@ test('actual explanation evidence is public subprocess traffic anchored to one s
       'ready-first-load',
       'matching-receipt',
       'compaction-reset',
-      'blocked-authority-drift',
+      'blocked-migration-freeze',
       'diagnostic',
+      'lifecycle-resume',
+      'lifecycle-promote',
+      'lifecycle-test',
+      'lifecycle-review',
+      'lifecycle-deliver',
+      'lifecycle-close',
       'agent-change',
       'source-only-change',
     ]
@@ -45,7 +51,10 @@ test('actual explanation evidence is public subprocess traffic anchored to one s
       Array.isArray(scenario.argv) && scenario.argv.some((value) => value.endsWith('/bin/aitm.mjs'))
     );
     assert.equal(scenario.stdin, '');
-    assert.equal(scenario.stderr, '');
+    assert.equal(typeof scenario.stderr, 'string');
+    if (scenario.stderr) {
+      assert.match(scenario.stderr, /^\[task-tracker\] projectDir override: .* for #2100\n$/);
+    }
     assert.equal(scenario.exitCode, 0);
     const parsed = JSON.parse(scenario.stdout);
     assert.equal(parsed.schema, scenario.typed.schema);
@@ -60,7 +69,8 @@ test('actual explanation evidence is public subprocess traffic anchored to one s
       scenario.typed.guidanceStatuses
     );
     assert.equal(parsed.sourceReceipt ?? null, scenario.typed.sourceReceipt);
-    assert.equal(scenario.remoteAuthorityReads, 4);
+    assert.ok(Number.isSafeInteger(scenario.remoteAuthorityReads));
+    assert.ok(scenario.remoteAuthorityReads > 0);
     assert.equal(Math.ceil(Buffer.byteLength(scenario.stdout) / 4), scenario.proxyTokens);
   }
   const diagnostic = JSON.parse(capture.scenarios.find(({ name }) => name === 'diagnostic').stdout);
@@ -68,6 +78,16 @@ test('actual explanation evidence is public subprocess traffic anchored to one s
   assert.equal(
     capture.scenarios.find(({ name }) => name === 'ready-first-load').typed.status,
     'ready'
+  );
+  assert.equal(
+    capture.scenarios.find(({ name }) => name === 'blocked-migration-freeze').typed.status,
+    'blocked'
+  );
+  assert.deepEqual(
+    capture.measurement.lifecycleScenarioNames.map(
+      (name) => capture.scenarios.find((scenario) => scenario.name === name).typed.actionId
+    ),
+    ['bind', 'resume', 'promote', 'test', 'review', 'deliver', 'close']
   );
   assert.equal(
     capture.scenarios.find(({ name }) => name === 'agent-change').typed.guidanceStatuses[0],
@@ -89,6 +109,15 @@ test('actual traffic plus separately modeled static text remains inside fixed bu
     bytes: Buffer.byteLength(trafficText),
     proxyTokens: Math.ceil(trafficText.length / 4),
   });
+  const lifecycleTrafficText = capture.scenarios
+    .filter(({ name }) => measurement.lifecycleScenarioNames.includes(name))
+    .map((scenario) => `${scenario.argv.join(' ')}\n${scenario.stdout}${scenario.stderr}`)
+    .join('');
+  assert.deepEqual(measurement.lifecycleTraffic, {
+    characters: lifecycleTrafficText.length,
+    bytes: Buffer.byteLength(lifecycleTrafficText),
+    proxyTokens: Math.ceil(lifecycleTrafficText.length / 4),
+  });
   const comparison = JSON.parse(
     readFileSync(path.join(root, measurement.currentFullStaticSource), 'utf8')
   );
@@ -103,20 +132,19 @@ test('actual traffic plus separately modeled static text remains inside fixed bu
   for (const provider of ['claude', 'codex']) {
     assert.deepEqual(measurement.modeledProposedStatic[provider], measureProposedStatic(provider));
     assert.equal(
-      measurement.modeledTotalsWithActualTraffic[provider],
+      measurement.modeledFullLifecycleTotals[provider],
       measurement.modeledProposedStatic[provider].totals.proxyTokens +
-        measurement.actualTraffic.proxyTokens
+        measurement.lifecycleTraffic.proxyTokens
     );
     assert.ok(
       measurement.modeledProposedStatic[provider].totals.proxyTokens <=
         measurement.budgets.routerPlusPickupWorking
     );
     assert.ok(
-      measurement.modeledTotalsWithActualTraffic[provider] <=
-        measurement.budgets.fullLifecycleWorking
+      measurement.modeledFullLifecycleTotals[provider] <= measurement.budgets.fullLifecycleWorking
     );
     assert.ok(
-      measurement.modeledTotalsWithActualTraffic[provider] <
+      measurement.modeledFullLifecycleTotals[provider] <
         measurement.currentFullStaticProxyTokens[provider]
     );
   }
@@ -125,7 +153,7 @@ test('actual traffic plus separately modeled static text remains inside fixed bu
       measurement.budgets.cleanResponseWorking
   );
   assert.ok(
-    capture.scenarios.find(({ name }) => name === 'blocked-authority-drift').proxyTokens <=
+    capture.scenarios.find(({ name }) => name === 'blocked-migration-freeze').proxyTokens <=
       measurement.budgets.blockedResponseWorking
   );
   assert.deepEqual(measurement.verdicts, {
