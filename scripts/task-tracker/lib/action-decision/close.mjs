@@ -169,7 +169,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
           deps: ports.deps ?? {},
         },
         runGuards: ports.runGuards,
-        loadPolicy: ports.loadPolicy,
+        loadPolicy: ports.loadPolicy ?? (async () => ({ status: 'indeterminate' })),
       });
       indeterminate ||= guardResult.status === 'indeterminate';
       blockers.push(...guardResult.refusals.map(typed));

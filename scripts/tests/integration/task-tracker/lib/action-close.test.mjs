@@ -263,3 +263,69 @@ test('Done remains terminal and cannot select another close', () => {
   const result = resolveActionNavigation({ actionId: 'close', state: 'done' });
   assert.deepEqual(result, { status: 'terminal', target: null, delegate: null, blocker: null });
 });
+
+test('Review promotion delegates to the close collector', async () => {
+  const fixture = closeFixture();
+  const navigation = resolveActionNavigation({ actionId: 'promote', state: 'review' });
+  assert.equal(navigation.delegate, 'close');
+  const result = await evaluateAction({
+    actionId: 'promote',
+    repository: REPO,
+    issue: ISSUE,
+    inputs: { state: 'review', body: BODY, head: HEAD },
+    attempt: fixture.attempt,
+    deps: { closePorts: fixture.ports, effectAttempts: () => fixture.effects },
+  });
+  assert.equal(result.status, 'ready');
+  assert.equal(result.actionId, 'close');
+});
+
+test('close retains approval and investigation requests simultaneously', async () => {
+  const fixture = closeFixture({
+    unreadable: 'evidence:1669:3',
+    guards: async () => ({
+      ok: false,
+      status: 'blocked',
+      refusals: [
+        {
+          id: 'review-exit-review-approved',
+          code: 'review-approval-missing',
+          args: { head: HEAD },
+          remediation: { id: 'request-review-approval', args: { issue: ISSUE, head: HEAD } },
+        },
+      ],
+      humanDecision: {
+        requests: [
+          {
+            kind: 'review-approval',
+            actor: 'configured-approver',
+            subject: { issue: ISSUE, actionId: 'close' },
+            args: { head: HEAD },
+          },
+        ],
+      },
+    }),
+  });
+  const result = await fixture.evaluate();
+  assert.equal(result.status, 'indeterminate');
+  assert.ok(result.humanDecision.requests.some(({ kind }) => kind === 'review-approval'));
+  assert.ok(result.humanDecision.requests.some(({ kind }) => kind === 'manual-investigation'));
+});
+
+test('missing workflow-policy reader is a typed indeterminate result', async () => {
+  const fixture = closeFixture({
+    guards: async () => ({
+      ok: false,
+      status: 'blocked',
+      refusals: [{ id: 'body-gates-entry-done', code: 'unclassified-refusal', args: {} }],
+      humanDecision: null,
+    }),
+  });
+  const result = await closeReadiness.collectCloseReadiness({
+    issue: ISSUE,
+    attempt: fixture.attempt,
+    ports: fixture.ports,
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.ok(result.blockers.some(({ code }) => code === 'authority-read-failed'));
+});

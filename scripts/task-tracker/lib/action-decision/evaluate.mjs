@@ -636,60 +636,60 @@ async function evaluateCompletedAction({
       const testAction =
         actionId === 'test' || (actionId === 'promote' && canonicalState === 'develop');
       const reviewAction =
-        actionId === 'review' ||
-        (actionId === 'promote' && ['test', 'review'].includes(canonicalState));
-      const result =
-        actionId === 'close'
-          ? await collectCloseReadiness({
+        actionId === 'review' || (actionId === 'promote' && canonicalState === 'test');
+      const closeAction =
+        actionId === 'close' || (actionId === 'promote' && canonicalState === 'review');
+      const result = closeAction
+        ? await collectCloseReadiness({
+            issue,
+            attempt,
+            ports: { scope, head: inputs.head, cfg: inputs.config, ...(deps.closePorts ?? {}) },
+          })
+        : testAction
+          ? await collectTestReadiness({
               issue,
+              fromState: canonicalState,
+              body: inputs.body,
+              head: inputs.head,
               attempt,
-              ports: { scope, head: inputs.head, cfg: inputs.config, ...(deps.closePorts ?? {}) },
+              ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
             })
-          : testAction
-            ? await collectTestReadiness({
+          : reviewAction
+            ? await collectReviewReadiness({
                 issue,
                 fromState: canonicalState,
                 body: inputs.body,
                 head: inputs.head,
                 attempt,
-                ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
+                ports: { scope, cfg: inputs.config, ...(deps.reviewPorts ?? {}) },
               })
-            : reviewAction
-              ? await collectReviewReadiness({
+            : actionId === 'deliver'
+              ? await collectDeliveryReadiness({
                   issue,
-                  fromState: canonicalState,
-                  body: inputs.body,
-                  head: inputs.head,
                   attempt,
-                  ports: { scope, cfg: inputs.config, ...(deps.reviewPorts ?? {}) },
+                  ports: {
+                    scope,
+                    head: inputs.head,
+                    cfg: inputs.config,
+                    ...(deps.deliveryPorts ?? {}),
+                  },
                 })
-              : actionId === 'deliver'
-                ? await collectDeliveryReadiness({
+              : actionId === 'promote'
+                ? await collectEarlyPromoteReadiness({
                     issue,
+                    fromState: canonicalState,
+                    body: inputs.body,
                     attempt,
-                    ports: {
-                      scope,
-                      head: inputs.head,
-                      cfg: inputs.config,
-                      ...(deps.deliveryPorts ?? {}),
-                    },
+                    ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
                   })
-                : actionId === 'promote'
-                  ? await collectEarlyPromoteReadiness({
-                      issue,
-                      fromState: canonicalState,
-                      body: inputs.body,
-                      attempt,
-                      ports: { scope, cfg: inputs.config, ...(deps.promotePorts ?? {}) },
-                    })
-                  : await collectSessionReadiness({
-                      actionId,
-                      issue,
-                      stateBefore: inputs.sessionState,
-                      config: inputs.config,
-                      attempt,
-                      ports: { scope, ...(deps.sessionPorts ?? {}) },
-                    });
+                : await collectSessionReadiness({
+                    actionId,
+                    issue,
+                    stateBefore: inputs.sessionState,
+                    config: inputs.config,
+                    attempt,
+                    ports: { scope, ...(deps.sessionPorts ?? {}) },
+                  });
       status = result.status;
       blockers = result.blockers;
       warnings = result.warnings ?? [];
@@ -757,6 +757,8 @@ async function evaluateCompletedAction({
       }
     }
   }
+  const effectiveActionId =
+    actionId === 'promote' && selectedAction === 'close' ? 'close' : actionId;
   const requests = blockers.flatMap((blocker) => {
     if (blocker.code === 'plan-approval-missing') {
       return [
@@ -778,6 +780,16 @@ async function evaluateCompletedAction({
         },
       ];
     }
+    if (blocker.code === 'review-approval-missing') {
+      return [
+        {
+          kind: 'review-approval',
+          actor: 'configured-approver',
+          subject: { issue: blocker.remediation.args.issue, actionId: effectiveActionId },
+          args: { head: blocker.args.head },
+        },
+      ];
+    }
     if (
       ![
         'authority-read-failed',
@@ -793,7 +805,7 @@ async function evaluateCompletedAction({
         actor: 'human-operator',
         subject: {
           issue: blocker.args.subject?.issue ?? issue,
-          actionId: blocker.code === 'state-unavailable' ? null : actionId,
+          actionId: blocker.code === 'state-unavailable' ? null : effectiveActionId,
         },
         args: { guardId: blocker.guardId, code: blocker.code },
       },
@@ -814,7 +826,7 @@ async function evaluateCompletedAction({
         ? null
         : selectedAction === 'review' && actionId === 'promote'
           ? 'review'
-          : actionId,
+          : effectiveActionId,
     status,
     snapshot: snapshotFromBundle({ state: snapshotState, head: inputs.head, bundle }),
     blockers,
@@ -828,7 +840,9 @@ async function evaluateCompletedAction({
           ? 'navigation.unresolved'
           : selectedAction === 'review' && actionId === 'promote'
             ? 'action.review'
-            : (descriptor?.guidanceId ?? 'navigation.unknown'),
+            : selectedAction === 'close' && actionId === 'promote'
+              ? 'action.close'
+              : (descriptor?.guidanceId ?? 'navigation.unknown'),
     ],
   };
   return Object.freeze(validateActionDecision(decision));
