@@ -54,12 +54,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 124
@@ -86,12 +82,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "not-modified"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["not-modified"],
         "sourceReceipt": null
       },
       "proxyTokens": 78
@@ -116,12 +108,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 124
@@ -146,12 +134,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "blocked",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 159
@@ -177,12 +161,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 556
@@ -207,12 +187,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "resume",
-        "guidanceIds": [
-          "action.resume"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.resume"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 128
@@ -237,12 +213,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "indeterminate",
         "actionId": "promote",
-        "guidanceIds": [
-          "action.promote"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.promote"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 901
@@ -267,12 +239,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "blocked",
         "actionId": "test",
-        "guidanceIds": [
-          "action.test"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.test"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 642
@@ -297,12 +265,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "indeterminate",
         "actionId": "review",
-        "guidanceIds": [
-          "action.review"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.review"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 228
@@ -327,12 +291,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "indeterminate",
         "actionId": "deliver",
-        "guidanceIds": [
-          "action.deliver"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.deliver"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 229
@@ -357,12 +317,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "indeterminate",
         "actionId": "close",
-        "guidanceIds": [
-          "action.close"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.close"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": null
       },
       "proxyTokens": 519
@@ -389,12 +345,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "expanded"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
         "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83"
       },
       "proxyTokens": 209
@@ -421,12 +373,8 @@
         "schema": "aitm.action-explanation/v2",
         "status": "ready",
         "actionId": "bind",
-        "guidanceIds": [
-          "action.bind"
-        ],
-        "guidanceStatuses": [
-          "not-modified"
-        ],
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["not-modified"],
         "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9"
       },
       "proxyTokens": 154
