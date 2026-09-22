@@ -58,6 +58,7 @@
     "NOTICE",
     "bin/",
     "config/",
+    "guidance/",
     "skill/",
     "hooks/",
     "scripts/",
@@ -71,6 +72,7 @@
     "docs/guides/",
     "docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md",
     "docs/introduction/",
+    "instructions/",
     "docs/ai-memory/",
     "!docs/ai-memory/archive/**",
     "templates/"
@@ -103,13 +105,13 @@
     "cspell": "^10.3.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
-    "js-yaml": "^5.4.2",
     "markdownlint-cli2": "^0.23.2",
     "prettier": "^3.9.6",
     "puppeteer": "^25.11.0"
   },
   "dependencies": {
-    "espree": "^11.2.0"
+    "espree": "^11.2.0",
+    "js-yaml": "5.4.2"
   },
   "overrides": {
     "smol-toml": "1.8.0"

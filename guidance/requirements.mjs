@@ -1,0 +1,59 @@
+// @story #1671
+
+import { listLifecycleActions } from '../scripts/task-tracker/lib/lifecycle-policy/actions.mjs';
+import { listRemediations } from '../scripts/task-tracker/lib/action-decision/remediations.mjs';
+import { STATE_MACHINE } from '../scripts/task-tracker/states/index.mjs';
+
+export const CATALOG_SCHEMA = 'aitm.guidance-catalog/v1';
+export const VALIDATION_SCHEMA = 'aitm.guidance-validation/v1';
+
+export const AGENT_OPERATIONS = Object.freeze([
+  'query',
+  'require_status',
+  'if_blocked',
+  'execute',
+  'never',
+  'execution_revalidates',
+]);
+
+export const PROHIBITION_IDS = Object.freeze([
+  'bypass_guard',
+  'execute_free_text',
+  'reuse_stale_decision',
+  'invoke_internal_mutator',
+]);
+
+export const GUIDANCE_LIMITS = Object.freeze({
+  normalizedSourceBytes: 1024 * 1024,
+  entries: 512,
+  idCharacters: 128,
+  instructionsPerEntry: 64,
+  bindingsPerList: 64,
+  explanationCharacters: 32 * 1024,
+  diagnosticExcerptCharacters: 2 * 1024,
+  agentProxy: 1000,
+  humanProxy: 16000,
+  entryProxy: 17000,
+  aggregateAgentProxy: 64000,
+  aggregateHumanProxy: 160000,
+  catalogProxy: 240000,
+});
+
+export function coreGuidanceRequirements() {
+  const actions = listLifecycleActions();
+  const remediations = listRemediations();
+  const guardIds = new Set();
+  for (const stateName of STATE_MACHINE.order) {
+    const state = STATE_MACHINE.get(stateName);
+    for (const guard of [...state.entryGuards, ...state.exitGuards]) guardIds.add(guard.id);
+  }
+  return {
+    actionIds: new Set(actions.map(({ id }) => id)),
+    guardIds,
+    remediationIds: new Set(remediations.map(({ id }) => id)),
+    requiredEntries: [
+      ...actions.map(({ id, guidanceId }) => ({ id: guidanceId, actionId: id })),
+      ...remediations.map(({ id, guidanceId }) => ({ id: guidanceId, remediationId: id })),
+    ],
+  };
+}
