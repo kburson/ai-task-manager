@@ -29,7 +29,7 @@
 | `prepare`, `record`, `show`, `revise`, `revoke` command and host authority       | Create `scripts/task-tracker/verbs/delivery-attribution-exception.mjs`; modify `task-tracker.mjs`, `command-surface/routing.mjs`, `command-surface/catalog.mjs`, and `verbs/help-data.mjs` |
 | Open-PR preflight, late revalidation, retry, and delivery verification           | Modify `scripts/task-tracker/lib/delivery-preflight.mjs`, `scripts/task-tracker/verbs/deliver.mjs`, `scripts/task-tracker/lib/delivery-verification.mjs`                                   |
 | v2 intent, v3 receipt, exact-key legacy compatibility                            | Modify `scripts/task-tracker/lib/delivery-records.mjs`; use one exported authorized-intent projection in `deliver.mjs`                                                                     |
-| Operator workflow, package contents, tests                                       | Modify `skill/shared/rules/deliver.md`, `docs/guides/workflow.md`, `package.json` only if the packed file list needs it; create focused tests under existing unit/integration test roots   |
+| Operator workflow, package contents, tests                                       | Modify `skill/shared/rules/deliver.md` and `docs/guides/workflow.md`; create focused tests under existing unit/integration test roots                                                      |
 
 The steps below name the intended module boundaries. Check their exact exports and call sites against the current files when implementing; keep a single definition for each canonical digest, schema projection, and mapping evaluator.
 
