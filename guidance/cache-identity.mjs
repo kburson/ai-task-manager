@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { CATALOG_SCHEMA, VALIDATION_SCHEMA, coreGuidanceRequirements } from './requirements.mjs';
+import { PROJECT_GUIDANCE_PATH } from './source.mjs';
 
 export function classifyFileStat(realPath, stat) {
   if (!stat.isFile()) return { decision: 'indeterminate', code: 'guidance-source-not-regular' };
@@ -56,6 +57,14 @@ export function observeGitIndexIdentity(
     const index = observeFileIdentity(indexPath);
     if (index.decision !== 'stat')
       return { decision: 'hash-and-recheck-tracking', gitDir, indexPath };
+    // Git may rewrite stat-cache bytes during `status` without changing any staged entry.
+    // The staged-entry stream is the stable semantic identity of this effective index.
+    const staged = execFileSync('git', ['ls-files', '--stage', '-z'], {
+      cwd: projectRoot,
+      env,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      maxBuffer: 16 * 1024 * 1024,
+    });
     const sharedIndexes = readdirSync(gitDir)
       .filter((name) => /^sharedindex\.[a-f0-9]+$/.test(name))
       .sort()
@@ -63,7 +72,14 @@ export function observeGitIndexIdentity(
     if (sharedIndexes.some((entry) => entry.decision !== 'stat')) {
       return { decision: 'hash-and-recheck-tracking', gitDir, indexPath };
     }
-    return { decision: 'stat', gitDir, indexPath, index, sharedIndexes };
+    return {
+      decision: 'stat',
+      gitDir,
+      indexPath,
+      stagedEntriesDigest: sha256(staged),
+      trackedPath: PROJECT_GUIDANCE_PATH,
+      sharedIndexes,
+    };
   } catch {
     return { decision: 'hash-and-recheck-tracking' };
   }
