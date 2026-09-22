@@ -967,6 +967,8 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-source-tru
 - **Need:** Aliases, direct entrypoints, and startup imports could bypass source trust while repeated edits could duplicate audit comments
 - **Value or failure prevented:** Invalid guidance cannot act through an unclassified route and a diverged source leaves a single visible audit trail
 
+#### Files and delivery boundary
+
 **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12b`.
 
 **User story:**
