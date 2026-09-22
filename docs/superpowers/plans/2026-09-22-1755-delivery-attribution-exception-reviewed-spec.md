@@ -20,6 +20,13 @@
 - Keep all existing binding, lifecycle, ownership, dependency, clean-tree, exact-head Test/Review, CI, mergeability, protection, provider-action, reachability, and receipt gates.
 - No ai-peer-review mutation or exception activation, npm publication, paid provider call, or new issue is part of this plan.
 
+## Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** authorize exact attribution for historical source commits during one PR delivery
+- **Need:** immutable mixed history currently blocks delivery after valid Test, Review, and CI evidence
+- **Value or failure prevented:** a reviewed PR reaches trunk without rewriting accepted history or silently bypassing provenance checks
+
 ## File Map and Interface Contract
 
 | Responsibility                                                                   | Files                                                                                                                                                                                      |
@@ -37,6 +44,17 @@ The steps below name the intended module boundaries. Check their exact exports a
 
 ### Task 1: Canonical raw inventory and SHA-preserving classification
 
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** verify the full ordered PR source history against local commit objects before evaluating an exception
+- **Need:** PR commit metadata and local objects can diverge while duplicate subjects obscure commit identity
+- **Value or failure prevented:** an exception cannot authorize a changed, missing, or unreachable source commit
+
+#### Implementation
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-attribution-exception.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-source-inventory.test.mjs`
+
 **Files:** Create `scripts/task-tracker/lib/delivery-attribution-exception.mjs`; modify `scripts/task-tracker/verbs/deliver.mjs`; create `scripts/tests/unit/task-tracker/lib/delivery-attribution-exception.test.mjs`; extend `scripts/tests/unit/task-tracker/verbs/deliver-source-inventory.test.mjs`.
 
 **Interfaces:** `canonicalSourceInventory(sourceCommits, expectedHeadSha)` returns `{ commits, sourceDigest }`, where each commit has exactly `{ oid, messageHeadline }`; digest covers ordered canonical `(oid, full subject)` pairs, including verified merges. `classifySourceCommitSubjects` additionally returns `attributableCommits` and `verifiedMergeShas` while preserving its ordinary subject outputs. `verifyLocalSourceInventory({ commits, headSha, inspectLocalCommit })` proves the exact GitHub inventory against local objects. Add a dedicated local commit-object reader for this exceptional path; do not reuse or alter `inspectCommitObject`, whose `commitTitle` also feeds merge classification and verification. Read each object by oid, extract `message.split(/\r?\n/, 1)[0]` without trim/fold/filter, and prove reachability with `git merge-base --is-ancestor <oid> HEAD`; do not derive a range inventory.
@@ -48,6 +66,17 @@ The steps below name the intended module boundaries. Check their exact exports a
 - [ ] Run `node scripts/task-tracker/verify-develop.mjs`, then commit the tested boundary with a `[#1755]` subject.
 
 ### Task 2: Exact mapping evaluator without relaxing ordinary attribution
+
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** map each otherwise unattributed source SHA to one authorized issue while preserving ordinary attribution checks
+- **Need:** subject-only attribution cannot distinguish duplicate subjects or identify exactly which commits need an exception
+- **Value or failure prevented:** delivery attribution remains deterministic and refuses missing, extra, or ambiguous mappings
+
+#### Implementation
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-attribution-exception.test.mjs scripts/tests/unit/task-tracker/lib/delivery-attribution.test.mjs`
 
 **Files:** Modify `scripts/task-tracker/lib/delivery-attribution-exception.mjs` and `scripts/task-tracker/lib/delivery-attribution.mjs`; extend `scripts/tests/unit/task-tracker/lib/delivery-attribution-exception.test.mjs` and `scripts/tests/unit/task-tracker/lib/delivery-attribution.test.mjs`.
 
@@ -61,6 +90,17 @@ The steps below name the intended module boundaries. Check their exact exports a
 
 ### Task 3: Immutable record schema, proposal digest, and append-only chain
 
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** resolve one current immutable exception record for the exact delivery scope
+- **Need:** edited, expired, revoked, or competing records could otherwise be mistaken for current authority
+- **Value or failure prevented:** every authorized exception has an auditable, unambiguous history
+
+#### Implementation
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-attribution-exception-record.test.mjs`
+
 **Files:** Create `scripts/task-tracker/lib/delivery-attribution-exception-record.mjs` and `scripts/tests/unit/task-tracker/lib/delivery-attribution-exception-record.test.mjs`.
 
 **Interfaces:** `buildDeliveryAttributionProposal({ exceptionId, operationId, repository, issueNumber, prNumber, baseRef, headRef, headSha, sourceDigest, mappings, attributionTokens, expiresAt })` returns canonical proposal bytes and digest. `renderDeliveryAttributionExceptionComment(record)` and `parseDeliveryAttributionExceptionComment(comment, context)` use a new exact-key versioned envelope. `resolveActiveDeliveryAttributionException(comments, scope, now)` accepts one unedited live head and refuses malformed or competing chains. A revision names its predecessor and requires a fresh exception/revision ID and authority; revocation appends a terminal link. The full inventory is represented only by its digest, while mappings retain `(oid, subject, issue)`.
@@ -72,6 +112,17 @@ The steps below name the intended module boundaries. Check their exact exports a
 - [ ] Run `node scripts/task-tracker/verify-develop.mjs`, then commit the tested record boundary with a `[#1755]` subject.
 
 ### Task 4: Two-pass CLI and Codex-only user authority
+
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** prepare an exact proposal and record it only after a verified Codex user message authorizes that proposal
+- **Need:** request files and agent-authored text do not prove that the user approved the live operation
+- **Value or failure prevented:** inspection stays read-only and exception activation has verifiable human authority
+
+#### Implementation
+
+Run: `node --test scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs`
 
 **Files:** Create `scripts/task-tracker/verbs/delivery-attribution-exception.mjs` and `scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs`; modify `scripts/task-tracker/task-tracker.mjs`, `scripts/task-tracker/lib/command-surface/routing.mjs`, `scripts/task-tracker/lib/command-surface/catalog.mjs` (command record, `VERB_CONTRACTS`, `VERB_RELATED_COMMANDS`, `VERB_POSITIONAL_ARGUMENTS`), and `scripts/task-tracker/verbs/help-data.mjs` (`VERB_REFERENCE`) following `workflow-exception`.
 
@@ -87,6 +138,17 @@ Leave `delivery-attribution-exception` out of `PREFLIGHT_MODE` in `task-tracker.
 
 ### Task 5: Open-PR preflight, late revalidation, and operation-bound intent
 
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** apply a matching exception to one open-PR operation and revalidate its source history immediately before merge
+- **Need:** PR scope or source commits can change between the initial check and provider action
+- **Value or failure prevented:** a stale authorization cannot carry a changed delivery across the merge boundary
+
+#### Implementation
+
+Run: `node --test scripts/tests/unit/task-tracker/verbs/deliver-source-inventory.test.mjs scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs`
+
 **Files:** Modify `scripts/task-tracker/lib/delivery-preflight.mjs`, `scripts/task-tracker/verbs/deliver.mjs`, `scripts/task-tracker/lib/delivery-records.mjs`; extend `scripts/tests/unit/task-tracker/verbs/deliver-source-inventory.test.mjs` and `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`; create `scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs` with `// @story #1755` on its first line.
 
 **Interfaces:** Open-PR `validateDeliveryPreflight` accepts an optional SHA-bearing classified inventory and active record. Its ordinary `string[]` path remains strict. Only an attribution failure can invoke the scoped evaluator. Keep `attributionDisposition` and exception references alongside `commitText`, never inside it: the existing `{ metadataWarnings = [], ...commitText }` spread would otherwise pass extra keys to `buildDeliveryIntent`'s exact-key validator. A waived `aitm.delivery-intent/v2` adds `attributionDisposition`, exception record ID, operation ID, raw digest, proposal digest, exact mappings, and resulting tokens. Export one `authorizedIntentBytes(intent)` projection from `delivery-records.mjs` and import it in `deliver.mjs`, replacing the two local key lists; compare schema and all waived fields along with existing commit text fields.
@@ -99,6 +161,17 @@ Leave `delivery-attribution-exception` out of `PREFLIGHT_MODE` in `task-tracker.
 
 ### Task 6: Waived receipt and merge verification
 
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** verify the merge against the authorized mapping and read a receipt that identifies the waived attribution
+- **Need:** an ordinary-looking receipt could hide an exception or misstate the actual merge attribution
+- **Value or failure prevented:** delivery evidence truthfully records the waiver and rejects contradictory merge results
+
+#### Implementation
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs`
+
 **Files:** Modify `scripts/task-tracker/lib/delivery-records.mjs`, `scripts/task-tracker/lib/delivery-verification.mjs`, `scripts/task-tracker/verbs/deliver.mjs`; extend `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs` and `scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs`; create `scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs` with `// @story #1755` on its first line.
 
 **Interfaces:** `aitm.delivery-receipt/v3` explicitly carries `attributionDisposition: 'waived'` and immutable exception/intent references. `delivery-verification.mjs` includes those fields in its fixed `receiptInput` object and verifies live source inventory, recorded exception, authorized intent, and actual merge attribution. Ordinary v1 intent and v1/v2 receipt schemas remain exact-key readable; ordinary selection still emits v1 intent and v1 or warning-bearing v2 receipt.
@@ -110,6 +183,17 @@ Leave `delivery-attribution-exception` out of `PREFLIGHT_MODE` in `task-tracker.
 - [ ] Re-run those three tests and `node --test scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs`. Run `node scripts/task-tracker/verify-develop.mjs`, then commit the tested receipt boundary with a `[#1755]` subject.
 
 ### Task 7: Operator guide, package smoke, and release gates
+
+#### Story Intent
+
+- **Beneficiary:** AITM delivery operator
+- **Capability:** follow and verify the packaged exception workflow from preparation through governed delivery
+- **Need:** missing package files or unclear instructions could make the approved workflow unusable or unsafe in an installed copy
+- **Value or failure prevented:** operators can execute the supported flow with tested commands and visible authorization boundaries
+
+#### Implementation
+
+Run: `node --test scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs`
 
 **Files:** Modify `skill/shared/rules/deliver.md`, `docs/guides/workflow.md`, and `scripts/task-tracker/verbs/help-data.mjs`; extend `scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs`; create `scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs` with `// @story #1755` on its first line.
 
