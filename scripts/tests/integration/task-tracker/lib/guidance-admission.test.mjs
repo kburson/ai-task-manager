@@ -12,6 +12,7 @@ import { agentCommandCatalog } from '../../../../task-tracker/lib/command-surfac
 import { EXECUTABLE_ENTRYPOINTS } from '../../../../task-tracker/lib/command-surface/entrypoints.mjs';
 import { SCRIPTS, VERBS } from '../../../../../bin/aitm-registry.mjs';
 import { PACKAGE_COMMANDS } from '../../../../../bin/cli.mjs';
+import * as taskTracker from '../../../../task-tracker/task-tracker.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const aitm = path.join(root, 'bin/aitm.mjs');
@@ -112,6 +113,139 @@ test('direct verb hub refuses invalid guidance before context construction', () 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('direct verb executables refuse invalid guidance before their own main paths', () => {
+  const dir = invalidProject();
+  try {
+    for (const entry of EXECUTABLE_ENTRYPOINTS.filter(
+      (row) => row.classification === 'agent-callable-verb'
+    )) {
+      const result = invoke([], dir, path.join(root, entry.path));
+      assert.equal(result.status, 1, `${entry.path}: ${result.stderr}`);
+      assert.match(result.stderr, /AITM guidance catalog is invalid/, entry.path);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('direct verb help-shaped arguments cannot bypass admission', () => {
+  const dir = invalidProject();
+  try {
+    for (const entry of EXECUTABLE_ENTRYPOINTS.filter(
+      (row) => row.classification === 'agent-callable-verb'
+    )) {
+      const result = invoke(['--help'], dir, path.join(root, entry.path));
+      assert.equal(result.status, 1, `${entry.path}: ${result.stderr}`);
+      assert.match(result.stderr, /AITM guidance catalog is invalid/, entry.path);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('unsupported direct-hub recovery words are admitted as operational', () => {
+  const dir = invalidProject();
+  try {
+    for (const args of [['guidance', 'validate'], ['version']]) {
+      const result = invoke(args, dir, taskHub);
+      assert.equal(result.status, 1, `${args.join(' ')}: ${result.stderr}`);
+      assert.match(result.stderr, /AITM guidance catalog is invalid/);
+      assert.doesNotMatch(result.stderr, /unknown verb/);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('session annotation requires a durable issue write, not a zero-exit or local change', () => {
+  const { annotationMutationSucceeded, annotationTargetIssue } = taskTracker;
+  assert.equal(typeof annotationMutationSucceeded, 'function');
+  for (const verb of ['resume', 'pause', 'stop', 'update', 'start', '#1673']) {
+    assert.equal(annotationMutationSucceeded({ verb, durableIssueWriteObserved: false }), false);
+  }
+  assert.equal(
+    annotationMutationSucceeded({ verb: 'resume', durableIssueWriteObserved: true }),
+    true
+  );
+  assert.equal(
+    annotationMutationSucceeded({ verb: 'update', durableIssueWriteObserved: true }),
+    true
+  );
+  for (const verb of ['pause', 'stop', 'update']) {
+    assert.equal(annotationTargetIssue({ verb, rest: [], stateBefore: { active: '#1673' } }), 1673);
+    assert.equal(
+      annotationTargetIssue({ verb, rest: ['123'], stateBefore: { active: '#1673' } }),
+      1673
+    );
+  }
+  assert.equal(
+    annotationMutationSucceeded({ verb: 'approve', verbResult: 'already-approved' }),
+    false
+  );
+  assert.equal(annotationMutationSucceeded({ verb: 'approve', verbResult: 'approved' }), true);
+  assert.equal(
+    annotationMutationSucceeded({ verb: 'plan-approve', verbResult: 'already-approved' }),
+    false
+  );
+  assert.equal(
+    annotationMutationSucceeded({ verb: 'plan-approve', verbResult: 'repaired-approval' }),
+    true
+  );
+  for (const [verb, result] of [
+    ['deliver', { status: 'already-delivered' }],
+    ['test', 'already-verified'],
+    ['test', 'directory-evidence-accepted'],
+    ['close', { action: 'already-closed' }],
+    ['end', { action: 'already-closed' }],
+    ['close', { status: 'untouched' }],
+    ['close', { status: 'completed' }],
+  ]) {
+    assert.equal(annotationMutationSucceeded({ verb, verbResult: result }), false, verb);
+  }
+  assert.equal(
+    annotationMutationSucceeded({ verb: 'deliver', verbResult: { status: 'delivered' } }),
+    true
+  );
+  assert.equal(annotationMutationSucceeded({ verb: 'test', verbResult: 'passed' }), true);
+  assert.equal(
+    annotationMutationSucceeded({
+      verb: 'close',
+      verbResult: { action: 'finalize', status: 'completed' },
+    }),
+    true
+  );
+  assert.equal(
+    annotationMutationSucceeded({
+      verb: 'close',
+      verbResult: { action: 'noop', status: 'completed' },
+    }),
+    false
+  );
+  assert.equal(
+    annotationMutationSucceeded({
+      verb: 'close',
+      verbResult: { action: 'noop', status: 'completed' },
+      durableIssueWriteObserved: true,
+    }),
+    true
+  );
+});
+
+test('timing-post observation distinguishes durable issue writes from queued rows', async () => {
+  const { observeGuidanceTimingWrites } = taskTracker;
+  assert.equal(typeof observeGuidanceTimingWrites, 'function');
+  const outcomes = [{ ok: false, queued: true }, { ok: true, skipped: true }, { ok: true }];
+  const safePostTiming = async () => outcomes.shift();
+  const ctx = { safePostTiming, timingRecorder: { safePostTiming } };
+  const observation = observeGuidanceTimingWrites(ctx, 1673);
+  await ctx.safePostTiming('#1673', 'queued');
+  assert.equal(observation.durableIssueWriteObserved, false);
+  await ctx.safePostTiming('#1673', 'skipped');
+  assert.equal(observation.durableIssueWriteObserved, false);
+  await ctx.timingRecorder.safePostTiming('#1673', 'posted');
+  assert.equal(observation.durableIssueWriteObserved, true);
 });
 
 test('package installer refuses invalid guidance before init writes', () => {

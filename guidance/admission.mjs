@@ -5,11 +5,19 @@ const HELP = new Set(['help', '?', '--help', '-h']);
 const COMMAND_HELP = new Set(['help', '?', '--help', '-h']);
 
 /** Shared recovery classification for the #1673 dispatcher and direct entrypoints. */
-export function classifyGuidanceRoute(argv) {
+export function classifyGuidanceRoute(argv, { surface = 'router' } = {}) {
   if (!Array.isArray(argv) || argv.some((part) => typeof part !== 'string')) {
     throw new TypeError('guidance route must be a string argument array');
   }
   const [command, subcommand] = argv;
+  if (surface === 'direct-verb') return 'operational';
+  if (surface === 'task-hub') {
+    return (argv.length === 1 && HELP.has(command)) ||
+      (argv.length === 2 && (command === 'help' || COMMAND_HELP.has(subcommand)))
+      ? 'recovery'
+      : 'operational';
+  }
+  if (surface !== 'router') throw new TypeError(`unknown guidance route surface: ${surface}`);
   if (argv.length === 0 || HELP.has(command)) return 'recovery';
   if (argv.length === 1 && ['--version', '-v', 'version'].includes(command)) return 'recovery';
   if (argv.length === 2 && COMMAND_HELP.has(subcommand)) return 'recovery';
@@ -34,8 +42,14 @@ export function compactGuidanceRefusal(selected) {
 }
 
 /** Admission performs no effects before full source selection and validation. */
-export function admitGuidance({ projectRoot, moduleUrl, argv = [], onAdmitted = null } = {}) {
-  if (classifyGuidanceRoute(argv) === 'recovery') {
+export function admitGuidance({
+  projectRoot,
+  moduleUrl,
+  argv = [],
+  surface,
+  onAdmitted = null,
+} = {}) {
+  if (classifyGuidanceRoute(argv, { surface }) === 'recovery') {
     return { admitted: true, recovery: true, code: null };
   }
   const selected = resolveGuidanceSource({ projectRoot, moduleUrl });

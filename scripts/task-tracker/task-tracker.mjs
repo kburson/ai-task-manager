@@ -88,10 +88,71 @@ const ANNOTATED_LIFECYCLE_VERBS = new Set([
   'plan',
   'plan-approve',
   'approve',
+  'pause',
+  'stop',
+  'update',
 ]);
 
+function isSessionGuidanceVerb(verb) {
+  return (
+    verb === 'start' ||
+    verb === 'resume' ||
+    verb === 'pause' ||
+    verb === 'stop' ||
+    verb === 'update'
+  );
+}
+
+export function annotationMutationSucceeded({
+  verb,
+  durableIssueWriteObserved = false,
+  verbResult,
+}) {
+  if (verb === 'approve') return verbResult === 'approved';
+  if (verb === 'plan-approve') {
+    return new Set([
+      'approved',
+      're-stamped-entry',
+      'repaired-approval',
+      'repaired-story-binding',
+      'repaired-from-evidence',
+      'repaired-from-transition-authority',
+    ]).has(verbResult);
+  }
+  if (verb === 'deliver') return verbResult?.status === 'delivered';
+  if (verb === 'test') return ['passed', 'reverified'].includes(verbResult);
+  if (verb === 'close' || verb === 'end') {
+    if (verbResult?.action === 'already-closed' || verbResult?.status === 'untouched') return false;
+    if (verbResult?.status === 'completed') {
+      return verbResult?.action === 'finalize' || durableIssueWriteObserved;
+    }
+    return true;
+  }
+  if (!isSessionGuidanceVerb(verb) && !/^#\d+$/.test(verb)) return true;
+  return durableIssueWriteObserved;
+}
+
+export function observeGuidanceTimingWrites(ctx, annotationIssue) {
+  const observation = { durableIssueWriteObserved: false };
+  const original = ctx.safePostTiming;
+  ctx.safePostTiming = async (issue, row) => {
+    const outcome = await original(issue, row);
+    const issueNumber = Number(String(issue).replace(/^#/, ''));
+    if (issueNumber === annotationIssue && outcome?.ok === true && !outcome.skipped) {
+      observation.durableIssueWriteObserved = true;
+    }
+    return outcome;
+  };
+  if (ctx.timingRecorder) ctx.timingRecorder.safePostTiming = ctx.safePostTiming;
+  return observation;
+}
+
 export function annotationTargetIssue({ verb, rest, stateBefore }) {
-  const explicit = /^#\d+$/.test(verb) ? verb : targetFromRest(rest);
+  const explicit = /^#\d+$/.test(verb)
+    ? verb
+    : ['pause', 'stop', 'update'].includes(verb)
+      ? null
+      : targetFromRest(rest);
   const selected =
     explicit || stateBefore?.active || (verb === 'resume' ? stateBefore?.lastActive : null);
   const number = Number(String(selected ?? '').replace(/^#/, ''));
@@ -345,7 +406,7 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
-    const admission = admitGuidance({ argv: process.argv.slice(2) });
+    const admission = admitGuidance({ argv: process.argv.slice(2), surface: 'task-hub' });
     if (!admission.admitted) {
       process.stderr.write(admission.diagnostic);
       process.exitCode = 1;
@@ -375,13 +436,25 @@ if (_isMain)
         ctx.verb === 'review' &&
         ctx.rest.some((arg) => arg === '--probe' || arg.startsWith('--probe='))
       );
+    const annotationStateBefore = shouldAnnotate
+      ? (await import('./state.mjs')).loadState(ctx.statePath)
+      : null;
     const annotationIssue = shouldAnnotate
       ? annotationTargetIssue({
           verb: ctx.verb,
           rest: ctx.rest,
-          stateBefore: (await import('./state.mjs')).loadState(ctx.statePath),
+          stateBefore: annotationStateBefore,
         })
       : null;
+    const timingObservation =
+      annotationIssue !== null &&
+      (isSessionGuidanceVerb(ctx.verb) ||
+        /^#\d+$/.test(ctx.verb) ||
+        ctx.verb === 'close' ||
+        ctx.verb === 'end')
+        ? observeGuidanceTimingWrites(ctx, annotationIssue)
+        : null;
+    let annotationVerbResult;
     try {
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
@@ -476,7 +549,7 @@ if (_isMain)
         case 'close':
         case 'end': {
           const { verbClose } = await import('./verbs/close.mjs');
-          await verbClose(ctx);
+          annotationVerbResult = await verbClose(ctx);
           break;
         }
         case 'pause': {
@@ -506,7 +579,7 @@ if (_isMain)
         }
         case 'test': {
           const { verbTest } = await import('./verbs/test.mjs');
-          await verbTest(ctx);
+          annotationVerbResult = await verbTest(ctx);
           break;
         }
         case 'review': {
@@ -516,7 +589,7 @@ if (_isMain)
         }
         case 'deliver': {
           const { verbDeliver } = await import('./verbs/deliver.mjs');
-          await verbDeliver(ctx);
+          annotationVerbResult = await verbDeliver(ctx);
           break;
         }
         case 'incident-ledger': {
@@ -686,12 +759,12 @@ if (_isMain)
         }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
-          await verbApprove(ctx.rest, ctx.cfg);
+          annotationVerbResult = await verbApprove(ctx.rest, ctx.cfg);
           break;
         }
         case 'plan-approve': {
           const { verbPlanApprove } = await import('./verbs/plan-approve.mjs');
-          await verbPlanApprove(ctx.rest, ctx.cfg);
+          annotationVerbResult = await verbPlanApprove(ctx.rest, ctx.cfg);
           break;
         }
         case 'user-story':
@@ -809,7 +882,15 @@ if (_isMain)
           console.error(`unknown verb: ${ctx.verb}`);
           process.exit(2);
       }
-      if (annotationIssue !== null && !process.exitCode) {
+      if (
+        annotationIssue !== null &&
+        !process.exitCode &&
+        annotationMutationSucceeded({
+          verb: ctx.verb,
+          durableIssueWriteObserved: timingObservation?.durableIssueWriteObserved,
+          verbResult: annotationVerbResult,
+        })
+      ) {
         const outcome = await annotateSuccessfulGuidanceMutation({
           admission,
           issue: annotationIssue,

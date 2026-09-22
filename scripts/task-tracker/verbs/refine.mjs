@@ -13,6 +13,8 @@
 //
 // Pure core: `runRefine({ args, cfg, deps })`. All I/O is injectable for tests.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'refine', { surface: 'direct-verb' });
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

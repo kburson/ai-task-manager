@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'assign', { surface: 'direct-verb' });
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';

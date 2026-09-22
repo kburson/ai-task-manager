@@ -9,6 +9,8 @@
 // Refuses if the issue is not in `review` state.
 
 // cspell:ignore optout optouts Optouts
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'approve', { surface: 'direct-verb' });
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -689,7 +691,7 @@ export async function verbApprove(rest, cfg, deps = {}) {
       process.stdout.write(
         `#${issueNumber} has accepted ${result.provenance} approval evidence for the current commit. \`/task close #${issueNumber}\` may now proceed.\n`
       );
-      return;
+      return result.status;
     case 'directory-evidence-invalid':
       process.stderr.write(
         `⛔ #${issueNumber} directory approval evidence is invalid: ${result.reasons
@@ -701,10 +703,10 @@ export async function verbApprove(rest, cfg, deps = {}) {
       process.stdout.write(
         `✓ Review approved for #${issueNumber} at ${result.ts}. \`/task close #${issueNumber}\` may now proceed.\n`
       );
-      return;
+      return result.status;
     case 'already-approved':
       process.stdout.write(`#${issueNumber} already has a review-approval marker — no change.\n`);
-      return;
+      return result.status;
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(3);

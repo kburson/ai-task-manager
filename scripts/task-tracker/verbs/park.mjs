@@ -2,6 +2,8 @@
 // Compatibility spelling for Shelve (#1215). Park no longer preserves active
 // estimates or accepts Plan; every call uses the canonical Shelve transaction.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'park', { surface: 'direct-verb' });
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
