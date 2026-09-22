@@ -8,6 +8,10 @@ This is the single authoritative map of how kanban-state guards are registered
 and executed. It covers the registry, the bootstrap, the per-state adapter
 modules, the `runGuards` call site, and the exit/entry slot model.
 
+The catalog in [Ask-the-Script](ask-the-script.md) explains these guards through
+closed action and remediation IDs. It does not register or waive guards;
+`runGuards` and the sanctioned execution boundaries retain that authority.
+
 ## The flow at a glance
 
 ```

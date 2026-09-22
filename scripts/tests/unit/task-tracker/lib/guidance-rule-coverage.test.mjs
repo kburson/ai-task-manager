@@ -132,3 +132,47 @@ test('coverage rejects a broken shipped-document anchor', () => {
   changed.rows.find(({ id }) => id === 'delivery.envelope').documentation.anchor = 'does-not-exist';
   assert.ok(coverageErrors(changed, entries).includes('documentation-anchor:delivery.envelope'));
 });
+
+test('shipped guidance documents adoption, trust, recovery, receipts, and historical scope', () => {
+  const guide = readTracked('docs/guides/ask-the-script.md');
+  const requiredAnchors = [
+    'locate-and-adopt-a-project-catalog',
+    'trust-states-and-validation',
+    'blocked-operation-recovery',
+    'independent-guidance-receipts',
+    'cache-and-annotation-recovery',
+  ];
+  for (const anchor of requiredAnchors) {
+    assert.equal(
+      resolveDocumentationReference(
+        { path: 'docs/guides/ask-the-script.md', anchor },
+        { packageRoot: ROOT }
+      ).ok,
+      true,
+      anchor
+    );
+  }
+  for (const phrase of [
+    'npx aitm guidance source',
+    'git add .ai-task-manager/aitm-guidance.yml',
+    'project-owned-current',
+    'project-owned-diverged',
+    'project-untracked',
+    'published-tampered',
+    'indeterminate',
+    '--known-source',
+    '--known',
+    'compaction',
+    'guidance-annotation-failed',
+    '.tmp/aitm/guidance-cache/',
+  ]) {
+    assert.ok(guide.includes(phrase), phrase);
+  }
+  assert.ok(readTracked('docs/guides/workflow.md').includes('docs/guides/ask-the-script.md'));
+  assert.ok(readTracked('docs/guides/guard-architecture.md').includes('ask-the-script.md'));
+  assert.ok(
+    readTracked('docs/superpowers/specs/2026-09-08-aitm-yml-pipeline-engine-design.md').includes(
+      '2026-09-15-1558-ask-the-script-guidance-design.md'
+    )
+  );
+});

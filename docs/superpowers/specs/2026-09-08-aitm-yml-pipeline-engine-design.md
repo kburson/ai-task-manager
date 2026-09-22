@@ -230,6 +230,10 @@ Note on the word _generation_: under D7 there is no generation log and no retain
 
 ### Epic A — Ask-the-script
 
+For Epic A, the accepted [#1558 guidance design](2026-09-15-1558-ask-the-script-guidance-design.md)
+supersedes the provisional outline below. The other epics and decisions in
+this historical design retain their own scope.
+
 Read-only API over the existing guard registry. No new state machinery. Independent of B and C; ships first. **A2 must be designed against Epic D's verdict schema rather than retrofitted to it.**
 
 - **A1** `runGuards` probe mode: evaluate a transition's guards without performing it, returning every refusal.
