@@ -207,6 +207,11 @@ export const CODE_DEFINITIONS = Object.freeze({
     ['authority-collection'],
     { phases: ['collection'] }
   ),
+  'delivery-merged-verification-refused': decisionBlocked(
+    'delivery-merged-verification-refused',
+    ['authority-collection'],
+    { phases: ['collection'], argumentSchema: args(['category'], { category: stringType }) }
+  ),
   'delivery-record-conflict': decisionBlocked(
     'delivery-record-conflict',
     ['authority-collection'],

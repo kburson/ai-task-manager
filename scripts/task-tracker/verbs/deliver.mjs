@@ -1985,6 +1985,35 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     async fetchOriginTrunk({ remote, branch }) {
       await run('git', ['fetch', remote, branch]);
     },
+    async fetchRemoteTrunkHeadSha({ branch }) {
+      if (
+        typeof branch !== 'string' ||
+        !/^[A-Za-z0-9._/-]+$/.test(branch) ||
+        branch.includes('..')
+      ) {
+        throw deliverError('trunk-branch');
+      }
+      const { stdout } = await run('git', ['ls-remote', '--heads', 'origin', branch]);
+      const line = String(stdout || '').trim();
+      const match = line.match(
+        new RegExp(`^([0-9a-f]{40})\\trefs/heads/${branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+      );
+      if (!match) throw deliverError('remote-trunk-head');
+      return match[1];
+    },
+    async resolveLocalTrunkHeadSha({ branch }) {
+      if (
+        typeof branch !== 'string' ||
+        !/^[A-Za-z0-9._/-]+$/.test(branch) ||
+        branch.includes('..')
+      ) {
+        throw deliverError('trunk-branch');
+      }
+      const { stdout } = await run('git', ['rev-parse', `refs/remotes/origin/${branch}`]);
+      const sha = String(stdout || '').trim();
+      if (!SHA_RE.test(sha)) throw deliverError('local-trunk-head');
+      return sha;
+    },
     async isAncestor({ ancestor, descendant }) {
       try {
         await run('git', ['merge-base', '--is-ancestor', ancestor, descendant]);

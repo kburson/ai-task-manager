@@ -13,6 +13,7 @@ import { selectEvidenceProtocol } from '../evidence-v2/protocol.mjs';
 import {
   authorizedIntentBytes,
   buildDeliveryIntent,
+  buildDeliveryReceipt,
   parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
 } from '../delivery-records.mjs';
@@ -22,8 +23,13 @@ import {
   sameNoCommitDeliveryAuthority,
 } from '../no-commit-delivery-record.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import {
+  verifyDeliveredPullRequest,
+  DeliveryVerificationError,
+} from '../delivery-verification.mjs';
 import { createObservationAttempt } from './observations.mjs';
-import { openSourceCommitSubjects } from '../../verbs/deliver.mjs';
+import { mergedSourceCommitSubjects, openSourceCommitSubjects } from '../../verbs/deliver.mjs';
 
 const authorityFailure = (issue, source = 'delivery') => ({
   guardId: 'authority-collection',
@@ -31,6 +37,86 @@ const authorityFailure = (issue, source = 'delivery') => ({
   args: { source, reason: 'incomplete', subject: { issue } },
   noAutomaticRemediation: { reason: 'authority-investigation-required' },
 });
+
+async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
+  const selected = preflightInput.pullRequests.length === 1 ? preflightInput.pullRequests[0] : null;
+  if (
+    !selected ||
+    typeof deps.fetchRemoteTrunkHeadSha !== 'function' ||
+    typeof deps.resolveLocalTrunkHeadSha !== 'function'
+  ) {
+    return { status: 'unavailable' };
+  }
+  try {
+    const projection = projectDeliveryRecords(
+      comments
+        .map((comment) =>
+          parseDeliveryCommentForPullRequest(comment, {
+            repository: preflightInput.config.repo,
+            issueNumber: issue,
+            prNumber: selected.number,
+          })
+        )
+        .filter(Boolean)
+    );
+    const live = projection.liveIntent;
+    if (!live) return { status: 'unsupported' };
+    const preflight = validateMergedDeliveryPreflight(preflightInput);
+    const branch = preflight.pr.baseRefName;
+    const [remoteSha, localSha] = await Promise.all([
+      deps.fetchRemoteTrunkHeadSha({ branch }),
+      deps.resolveLocalTrunkHeadSha({ branch }),
+    ]);
+    if (!/^[0-9a-f]{40}$/.test(remoteSha) || remoteSha !== localSha) {
+      return { status: 'unavailable' };
+    }
+    const verification = await verifyDeliveredPullRequest({
+      acceptedSha: preflight.expectedHeadSha,
+      intent: live.record,
+      intentCreatedAt: live.createdAt,
+      pullRequest: selected,
+      recovery: live.record.provider === 'external',
+      localHeadSha: preflightInput.localHeadSha,
+      testReceiptSha: preflightInput.testReceiptSha,
+      acceptedReviewSha: preflightInput.acceptedReviewSha,
+      fetchOriginTrunk: async ({ remote, branch: requestedBranch }) => {
+        if (remote !== 'origin' || requestedBranch !== branch) {
+          throw new TypeError('delivery-readiness:trunk-ref');
+        }
+      },
+      isAncestor: deps.isAncestor,
+      inspectMergeCommit: deps.inspectMergeCommit,
+      attributingCommits: deps.attributingCommits,
+    });
+    const metadataWarnings = [
+      ...new Set([
+        ...(preflight.metadataWarnings ?? []),
+        ...(verification.receiptInput.metadataWarnings ?? []),
+      ]),
+    ].sort();
+    const receipt = buildDeliveryReceipt({
+      ...verification.receiptInput,
+      ...(metadataWarnings.length ? { metadataWarnings } : {}),
+    });
+    if (
+      projection.matchingReceipt &&
+      canonicalRecordJson(projection.matchingReceipt.record) !== canonicalRecordJson(receipt)
+    ) {
+      return { status: 'refused', category: 'receipt-divergence' };
+    }
+    return {
+      status: 'verified',
+      expectedHeadSha: preflight.expectedHeadSha,
+      mergeCommitSha: verification.receiptInput.mergeCommitSha,
+      trunkHeadSha: remoteSha,
+    };
+  } catch (error) {
+    if (error instanceof DeliveryVerificationError || error instanceof DeliveryPreflightError) {
+      return { status: 'refused', category: error.category };
+    }
+    return { status: 'unavailable' };
+  }
+}
 
 export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = {}) {
   const scope = ports.scope;
@@ -150,21 +236,46 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
       observations: [body, delivery],
     };
   }
-  // A merged PR still requires live trunk ancestry and merge-byte verification.
-  // This collector has no effect-free parity for that execution-only proof.
   if (merged) {
-    return {
-      status: 'indeterminate',
-      blockers: [
-        {
-          guardId: 'action-navigation',
-          code: 'action-not-explain-ready',
-          args: {},
-          noAutomaticRemediation: { reason: 'action-not-explain-ready' },
-        },
-      ],
-      observations: [body, delivery],
-    };
+    const proof = value.mergedProof;
+    if (proof?.status !== 'verified') {
+      return proof?.status === 'refused'
+        ? {
+            status: 'blocked',
+            blockers: [
+              {
+                guardId: 'authority-collection',
+                code: 'delivery-merged-verification-refused',
+                args: { category: proof.category },
+                noAutomaticRemediation: { reason: 'authority-investigation-required' },
+              },
+            ],
+            observations: [body, delivery],
+          }
+        : {
+            status: 'indeterminate',
+            blockers: [
+              {
+                guardId: 'action-navigation',
+                code: 'action-not-explain-ready',
+                args: {},
+                noAutomaticRemediation: { reason: 'action-not-explain-ready' },
+              },
+            ],
+            observations: [body, delivery],
+          };
+    }
+    if (
+      proof.expectedHeadSha !== input.acceptedReviewSha ||
+      proof.mergeCommitSha !== (selected.mergeCommitSha ?? selected.mergeCommit?.oid) ||
+      !/^[0-9a-f]{40}$/.test(proof.trunkHeadSha)
+    ) {
+      return {
+        status: 'indeterminate',
+        blockers: [authorityFailure(issue)],
+        observations: [body, delivery],
+      };
+    }
   }
   if (!merged && !noCommit && value?.providerActionAvailable === false) {
     return {
@@ -223,7 +334,7 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
       throw new TypeError('delivery-readiness:head');
     }
     const live = projection?.liveIntent?.record;
-    if (live && !merged && live.expectedHeadSha === preflight.expectedHeadSha) {
+    if (live && live.expectedHeadSha === preflight.expectedHeadSha) {
       const expected = buildDeliveryIntent({
         intentId: live.intentId,
         supersedesIntentId: live.supersedesIntentId,
@@ -235,8 +346,14 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
         expectedHeadSha: preflight.expectedHeadSha,
         mergeMethod: preflight.mergeMethod,
         attributionTokens: preflight.commitText.attributionTokens,
-        commitTitle: preflight.commitText.commitTitle,
-        commitMessage: preflight.commitText.commitMessage,
+        commitTitle:
+          merged && live.provider === 'external'
+            ? live.commitTitle
+            : preflight.commitText.commitTitle,
+        commitMessage:
+          merged && live.provider === 'external'
+            ? live.commitMessage
+            : preflight.commitText.commitMessage,
         provider: live.provider,
         sessionId: live.sessionId,
         clientCreatedAt: live.clientCreatedAt,
@@ -408,7 +525,7 @@ export async function evaluateDeliveryReadiness({
     const commitSubjects = noCommit
       ? []
       : selected?.state === 'MERGED' || selected?.merged === true
-        ? []
+        ? await mergedSourceCommitSubjects(selected, deps.inspectSourceCommit)
         : await openSourceCommitSubjects(
             await deps.listCommitSubjects({ range: 'origin/trunk..HEAD' }),
             selected,
@@ -432,34 +549,41 @@ export async function evaluateDeliveryReadiness({
         pullRequest: evidence,
       });
     }
+    const preflightInput = {
+      issue: {
+        ...observedIssue,
+        agentReviewPassed: reviewAuthority.outcome === 'passed',
+        reviewAuthority,
+        reviewAuthorization,
+      },
+      binding: {
+        issueNumber: Number(String(state?.active || '').replace(/^#/, '')),
+        branch,
+        timerState: state?.entryStartTs ? 'running' : 'paused',
+      },
+      lineage,
+      pullRequests,
+      localHeadSha,
+      testReceiptSha,
+      acceptedReviewSha,
+      checks,
+      dirtyPaths,
+      config: { ...cfg, assignee, repositoryMergeMethods },
+      commitSubjects,
+    };
+    const merged = selected?.state === 'MERGED' || selected?.merged === true;
+    const mergedProof =
+      merged && Array.isArray(comments)
+        ? await readOnlyMergedProof({ issue, preflightInput, comments, deps })
+        : null;
     return {
       ...request,
       value: {
-        preflightInput: {
-          issue: {
-            ...observedIssue,
-            agentReviewPassed: reviewAuthority.outcome === 'passed',
-            reviewAuthority,
-            reviewAuthorization,
-          },
-          binding: {
-            issueNumber: Number(String(state?.active || '').replace(/^#/, '')),
-            branch,
-            timerState: state?.entryStartTs ? 'running' : 'paused',
-          },
-          lineage,
-          pullRequests,
-          localHeadSha,
-          testReceiptSha,
-          acceptedReviewSha,
-          checks,
-          dirtyPaths,
-          config: { ...cfg, assignee, repositoryMergeMethods },
-          commitSubjects,
-        },
+        preflightInput,
         providerActionAvailable: deps.providerActionAvailable,
         manualReviewDecision,
         comments,
+        mergedProof,
         ...(deps.executionContext ? { executionContext: deps.executionContext } : {}),
       },
     };

@@ -26,6 +26,7 @@ import {
   NEXT_HEAD,
   trackerState,
 } from '../../../unit/task-tracker/verbs/deliver-test-harness.mjs';
+import { createDefaultDeliverDeps } from '../../../../task-tracker/verbs/deliver.mjs';
 
 const ISSUE = 1668;
 const REPOSITORY = 'example/project';
@@ -214,6 +215,130 @@ test('merged PR reconstruction does not infer a provider action', async () => {
     ['action-not-explain-ready']
   );
   assert.deepEqual(item.effects, []);
+});
+
+test('merged PR with a live intent and exact read-only trunk proof is explainable', async () => {
+  const harness = makeHarness();
+  const pending = await executeDelivery(harness);
+  assert.equal(pending.status, 'action-required');
+  harness.data.prState = 'MERGED';
+  const previousComments = harness.calls.createIssueComment;
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      fetchRemoteTrunkHeadSha: async () => 'e'.repeat(40),
+      resolveLocalTrunkHeadSha: async () => 'e'.repeat(40),
+      providerActionAvailable: false,
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.equal(harness.calls.createIssueComment, previousComments);
+});
+
+test('merged PR with a matching receipt remains explainable without new records', async () => {
+  const harness = makeHarness();
+  assert.equal((await executeDelivery(harness)).status, 'action-required');
+  harness.data.prState = 'MERGED';
+  assert.equal((await executeDelivery(harness)).status, 'delivered');
+  const commentsBefore = harness.calls.createIssueComment;
+  const fetchesBefore = harness.calls.fetchOriginTrunk;
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      fetchRemoteTrunkHeadSha: async () => 'e'.repeat(40),
+      resolveLocalTrunkHeadSha: async () => 'e'.repeat(40),
+      providerActionAvailable: false,
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.equal(harness.calls.createIssueComment, commentsBefore);
+  assert.equal(harness.calls.fetchOriginTrunk, fetchesBefore);
+});
+
+test('default merged proof ports observe remote and local trunk without fetching refs', async () => {
+  const commands = [];
+  const deps = createDefaultDeliverDeps(
+    { projectDir: process.cwd(), cfg: { repo: REPOSITORY } },
+    {
+      exec: async (command, args) => {
+        commands.push([command, args]);
+        return {
+          stdout:
+            args[0] === 'ls-remote'
+              ? `${'e'.repeat(40)}\trefs/heads/trunk\n`
+              : `${'e'.repeat(40)}\n`,
+        };
+      },
+    }
+  );
+  assert.equal(await deps.fetchRemoteTrunkHeadSha({ branch: 'trunk' }), 'e'.repeat(40));
+  assert.equal(await deps.resolveLocalTrunkHeadSha({ branch: 'trunk' }), 'e'.repeat(40));
+  assert.deepEqual(commands, [
+    ['git', ['ls-remote', '--heads', 'origin', 'trunk']],
+    ['git', ['rev-parse', 'refs/remotes/origin/trunk']],
+  ]);
+});
+
+test('a stale local trunk mirror cannot prove merged delivery readiness', async () => {
+  const harness = makeHarness();
+  assert.equal((await executeDelivery(harness)).status, 'action-required');
+  harness.data.prState = 'MERGED';
+  const previousComments = harness.calls.createIssueComment;
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      fetchRemoteTrunkHeadSha: async () => 'e'.repeat(40),
+      resolveLocalTrunkHeadSha: async () => 'f'.repeat(40),
+      providerActionAvailable: false,
+    },
+  });
+  assert.equal(decision.status, 'indeterminate', JSON.stringify(decision));
+  assert.equal(harness.calls.fetchOriginTrunk, 0);
+  assert.equal(harness.calls.createIssueComment, previousComments);
+});
+
+test('merged intent cannot explain ready after configured method diverges', async () => {
+  const harness = makeHarness();
+  assert.equal((await executeDelivery(harness)).status, 'action-required');
+  harness.data.prState = 'MERGED';
+  harness.data.configuredMergeMethod = 'merge';
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: {
+      ...deliveryCfg(),
+      fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'merge' },
+    },
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      fetchRemoteTrunkHeadSha: async () => 'e'.repeat(40),
+      resolveLocalTrunkHeadSha: async () => 'e'.repeat(40),
+      providerActionAvailable: false,
+    },
+  });
+  assert.equal(decision.status, 'blocked', JSON.stringify(decision));
+  assert.ok(decision.blockers.some(({ code }) => code === 'delivery-intent-divergence'));
 });
 
 test('issue-resident no-commit delivery is explainable without a merge provider', async () => {
@@ -558,5 +683,49 @@ test('execution refuses withdrawn exact-head human PR approval after explanation
   });
   const result = await executeDelivery(harness);
   assert.equal(result.status, 'manual-review-required');
+  assert.equal(harness.calls.createIssueComment, 0);
+});
+
+test('execution refuses changed CI after a prior ready explanation', async () => {
+  const harness = makeHarness();
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      providerActionAvailable: true,
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  harness.data.checks.required[0].conclusion = 'FAILURE';
+  await assert.rejects(executeDelivery(harness), /delivery-preflight:required-check-not-green/);
+  assert.equal(harness.calls.createIssueComment, 0);
+});
+
+test('execution refuses changed ledger after a prior ready explanation', async () => {
+  const harness = makeHarness();
+  const fetchIssue = harness.deps.fetchIssue;
+  const decision = await deliveryDecision.evaluateDeliveryReadiness({
+    issue: 939,
+    cfg: deliveryCfg(),
+    projectDir: process.cwd(),
+    state: trackerState(),
+    deps: {
+      ...harness.deps,
+      fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: BODY }),
+      providerActionAvailable: true,
+    },
+  });
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  harness.data.comments.push({
+    id: 'changed-ledger',
+    createdAt: '2026-09-21T22:00:00.000Z',
+    body: '<!-- aitm-delivery-intent {bad} -->',
+  });
+  await assert.rejects(executeDelivery(harness), /delivery-records:/);
   assert.equal(harness.calls.createIssueComment, 0);
 });
