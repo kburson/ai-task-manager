@@ -305,6 +305,138 @@ test('a source changed on both cold read attempts refuses indeterminate without 
       code: 'guidance-source-changed-during-read',
     });
     assert.equal(existsSync(path.join(root, '.tmp/aitm/guidance-cache/manifest.v1.json')), false);
+    const admissionUrl = new URL('../../../../../guidance/admission.mjs', import.meta.url).href;
+    const admissionScript = `
+      import { admitGuidance } from ${JSON.stringify(admissionUrl)};
+      let effects = 0;
+      const result = admitGuidance({ projectRoot: process.cwd(), argv: ['promote'],
+        onAdmitted: () => { effects += 1; } });
+      process.stderr.write(JSON.stringify({
+        admitted: result.admitted, detailCode: result.detailCode, effects,
+      }));
+    `;
+    const admission = spawnSync(
+      process.execPath,
+      ['--import', preload, '--input-type=module', '-e', admissionScript],
+      { cwd: root, encoding: 'utf8' }
+    );
+    assert.equal(admission.status, 0, admission.stderr);
+    assert.equal(admission.stdout, '');
+    assert.deepEqual(JSON.parse(admission.stderr), {
+      admitted: false,
+      detailCode: 'guidance-source-changed-during-read',
+      effects: 0,
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('operational admission uses a warm manifest without validator calls', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-admission-');
+  try {
+    assert.equal(loadGuidance({ projectRoot: root }).valid, true);
+    const warm = loadWithParserTraps(root, 'manifest');
+    assert.equal(warm.status, 0, warm.stderr);
+    const admissionUrl = new URL('../../../../../guidance/admission.mjs', import.meta.url).href;
+    const script = `
+      import { admitGuidance } from ${JSON.stringify(admissionUrl)};
+      let effects = 0;
+      const result = admitGuidance({
+        projectRoot: process.cwd(), argv: ['promote'],
+        onAdmitted: () => { effects += 1; },
+      });
+      process.stderr.write(JSON.stringify({ admitted: result.admitted, effects }));
+    `;
+    const child = spawnSync(
+      process.execPath,
+      ['--import', path.join(root, 'guidance-trap.mjs'), '--input-type=module', '-e', script],
+      { cwd: root, encoding: 'utf8' }
+    );
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, '');
+    assert.deepEqual(JSON.parse(child.stderr), { admitted: true, effects: 1 });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('explicit validation loads warm diagnostics without invoking the validator', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-validation-');
+  try {
+    assert.equal(loadGuidance({ projectRoot: root, need: 'diagnostics' }).valid, true);
+    assert.equal(loadWithParserTraps(root, 'manifest').status, 0);
+    const cliUrl = new URL('../../../../task-tracker/guidance.mjs', import.meta.url).href;
+    const script = `
+      import { runGuidanceCli } from ${JSON.stringify(cliUrl)};
+      let output = '';
+      const status = runGuidanceCli(['validate', '--json'], {
+        cwd: process.cwd(), projectRoot: process.cwd(),
+        stdout: { write(value) { output += value; } },
+        stderr: { write(value) { throw Error(value); } },
+      });
+      process.stderr.write(JSON.stringify({ status, valid: JSON.parse(output).valid }));
+    `;
+    const child = spawnSync(
+      process.execPath,
+      ['--import', path.join(root, 'guidance-trap.mjs'), '--input-type=module', '-e', script],
+      { cwd: root, encoding: 'utf8' }
+    );
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, '');
+    assert.deepEqual(JSON.parse(child.stderr), { status: 0, valid: true });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('explicit refresh bypasses a warm manifest and parses exactly once', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-refresh-');
+  try {
+    assert.equal(loadGuidance({ projectRoot: root }).valid, true);
+    const preload = path.join(root, 'parse-count.mjs');
+    writeFileSync(
+      preload,
+      `import { registerHooks } from 'node:module';
+       registerHooks({ load(url, context, nextLoad) {
+         const loaded = nextLoad(url, context);
+         if (!url.endsWith('/guidance/parse.mjs')) return loaded;
+         const original = String(loaded.source);
+         const anchor = 'export function parseGuidanceSource(input) {';
+         if (!original.includes(anchor)) throw Error('parse instrumentation anchor missing');
+         return {
+           ...loaded,
+           source: original.replace(anchor,
+             anchor + ' globalThis.__aitmParseCalls = (globalThis.__aitmParseCalls ?? 0) + 1;'),
+         };
+       }});
+      `
+    );
+    const cliUrl = new URL('../../../../task-tracker/guidance.mjs', import.meta.url).href;
+    const script = `
+      import { runGuidanceCli } from ${JSON.stringify(cliUrl)};
+      let output = '';
+      const status = runGuidanceCli(['validate', '--json', '--refresh'], {
+        cwd: process.cwd(), projectRoot: process.cwd(),
+        stdout: { write(value) { output += value; } },
+        stderr: { write(value) { throw Error(value); } },
+      });
+      process.stderr.write(JSON.stringify({
+        status, valid: JSON.parse(output).valid,
+        parserCalls: globalThis.__aitmParseCalls ?? 0,
+      }));
+    `;
+    const child = spawnSync(
+      process.execPath,
+      ['--import', preload, '--input-type=module', '-e', script],
+      {
+        cwd: root,
+        encoding: 'utf8',
+      }
+    );
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, '');
+    assert.deepEqual(JSON.parse(child.stderr), { status: 0, valid: true, parserCalls: 1 });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

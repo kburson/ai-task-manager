@@ -1,5 +1,6 @@
 // @story #1672
-import { loadSelectedGuidance, resolveGuidanceSource } from './source.mjs';
+import { loadGuidance } from './cache.mjs';
+import { observeGuidanceSource } from './source.mjs';
 
 const HELP = new Set(['help', '?', '--help', '-h']);
 const COMMAND_HELP = new Set(['help', '?', '--help', '-h']);
@@ -52,8 +53,8 @@ export function admitGuidance({
   if (classifyGuidanceRoute(argv, { surface }) === 'recovery') {
     return { admitted: true, recovery: true, code: null };
   }
-  const selected = resolveGuidanceSource({ projectRoot, moduleUrl });
-  const validation = loadSelectedGuidance(selected);
+  const validation = loadGuidance({ projectRoot, moduleUrl, need: 'manifest' });
+  const selected = validation.source ?? observeGuidanceSource({ projectRoot, moduleUrl });
   if (!validation.valid) {
     return {
       admitted: false,

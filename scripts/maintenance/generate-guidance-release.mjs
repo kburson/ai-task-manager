@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'espree';
 
 import { decodeGuidanceSource } from '../../guidance/positions.mjs';
+import { certifyGuidanceCache } from './certify-guidance-cache.mjs';
 
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const CATALOG = 'instructions/aitm-guidance.yml';
@@ -133,9 +134,8 @@ export function assertGuidanceConsumerRelease(packageRoot = DEFAULT_ROOT) {
     );
   });
   if (consumers.length > 0) {
-    // #1674 must replace this refusal with an evidence-bound B2 certification
-    // check after warm parser avoidance and invalidation tests exist.
-    throw new Error(`guidance-b2-certification-absent: ${consumers.join(', ')}`);
+    const certification = certifyGuidanceCache(packageRoot);
+    return { ok: true, consumers, certification };
   }
   return { ok: true, consumers: [] };
 }
@@ -158,8 +158,12 @@ function main(argv) {
     return 0;
   }
   if (mode === '--assert-consumer-release') {
-    assertGuidanceConsumerRelease();
-    process.stdout.write('guidance consumer release check: no loader consumers\n');
+    const result = assertGuidanceConsumerRelease();
+    process.stdout.write(
+      result.consumers.length > 0
+        ? 'guidance consumer release certified: cross-process B2 cache and production package\n'
+        : 'guidance consumer release check: no loader consumers\n'
+    );
     return 0;
   }
   const result = checkGuidanceRelease();

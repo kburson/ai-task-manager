@@ -119,11 +119,11 @@ test('computed guidance import cannot evade the B2 release refusal', () => {
   }
 });
 
-test('publication command is still blocked by B2-absent consumer certification', () => {
+test('publication command proves B2 consumer certification on the package under test', () => {
   const result = spawnSync('npm', ['run', 'lint:guidance-release-consumer'], {
     cwd: root,
     encoding: 'utf8',
   });
-  assert.notEqual(result.status, 0);
-  assert.match(`${result.stdout}${result.stderr}`, /guidance-b2-certification-absent/);
+  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  assert.match(`${result.stdout}${result.stderr}`, /guidance consumer release certified/);
 });

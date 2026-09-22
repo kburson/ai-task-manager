@@ -85,8 +85,12 @@ function readWarm(cacheDir, identity, need) {
     JSON.stringify(manifest.identity) !== JSON.stringify(identity.identity)
   )
     return null;
-  if (need === 'manifest' || (!manifest.valid && need !== 'diagnostics')) {
-    return manifestResult(manifest);
+  if (
+    need === 'manifest' ||
+    (!manifest.valid && need !== 'diagnostics') ||
+    (manifest.valid && need === 'diagnostics')
+  ) {
+    return manifestResult(manifest, null, need);
   }
   const descriptor = manifest.artifacts?.[need];
   const artifact = readArtifact(cacheDir, descriptor, need);
