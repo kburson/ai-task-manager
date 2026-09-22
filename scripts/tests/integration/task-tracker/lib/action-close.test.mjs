@@ -7,6 +7,7 @@ import { evaluateAction } from '../../../../task-tracker/lib/action-decision/eva
 import { createObservationAttempt } from '../../../../task-tracker/lib/action-decision/observations.mjs';
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import * as closeReadiness from '../../../../task-tracker/lib/action-decision/close.mjs';
+import { upsertUnauthorizedCloseRecovery } from '../../../../task-tracker/lib/closed-issue-convergence.mjs';
 
 const ISSUE = 1669;
 const HEAD = 'a'.repeat(40);
@@ -165,7 +166,7 @@ test('production guard adapter reads dependencies and refuses missing local comm
   await assert.rejects(ports.readGuardAuthority(), /missing local object/);
 });
 
-test('production close reaches ready with fresh authority and only read transports', async () => {
+async function productionCloseFixture({ issueState = 'OPEN', bodyOnRead, revisionOnRead } = {}) {
   const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
     'base64url'
   );
@@ -180,6 +181,7 @@ test('production close reaches ready with fresh authority and only read transpor
     `<!-- aitm-verification-receipt stage="test" data="${data}" -->`,
   ].join('\n');
   const commands = [];
+  let issueReads = 0;
   const result = await closeReadiness.evaluateCloseReadiness({
     issue: ISSUE,
     cfg: {
@@ -197,6 +199,8 @@ test('production close reaches ready with fresh authority and only read transpor
       fetchBoard: async () => ({ state: 'review' }),
       run: async (command, args) => {
         commands.push([command, args]);
+        if (command === 'gh' && args[0] === 'issue' && !args.includes('blockedBy,blocking'))
+          issueReads += 1;
         if (command === 'gh' && args[0] === 'issue')
           return {
             stdout: args.includes('blockedBy,blocking')
@@ -204,7 +208,15 @@ test('production close reaches ready with fresh authority and only read transpor
                   blockedBy: { nodes: [], totalCount: 0 },
                   blocking: { nodes: [], totalCount: 0 },
                 })
-              : body,
+              : args.includes('body')
+                ? body
+                : JSON.stringify({
+                    number: ISSUE,
+                    body: bodyOnRead?.(issueReads, body) ?? body,
+                    state: issueState,
+                    stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
+                    updatedAt: revisionOnRead?.(issueReads) ?? now(),
+                  }),
           };
         if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
         if (command === 'gh' && args.includes('graphql'))
@@ -228,6 +240,11 @@ test('production close reaches ready with fresh authority and only read transpor
       },
     },
   });
+  return { result, commands };
+}
+
+test('production close reaches ready with fresh authority and only read transports', async () => {
+  const { result, commands } = await productionCloseFixture();
   assert.equal(result.status, 'ready', JSON.stringify(result));
   assert.ok(result.bundle.observations.some(({ identity }) => identity === 'evidence:1669:4'));
   assert.ok(
@@ -239,11 +256,72 @@ test('production close reaches ready with fresh authority and only read transpor
   );
 });
 
+test('production close cannot select ordinary completion for a CLOSED GitHub issue in Review', async () => {
+  const { result } = await productionCloseFixture({ issueState: 'CLOSED' });
+  assert.equal(result.status, 'indeterminate');
+  assert.ok(result.blockers.some(({ code }) => code === 'state-unavailable'));
+});
+
+test('production close refuses issue-body changes even when semantic scope is unchanged', async () => {
+  const { result } = await productionCloseFixture({
+    bodyOnRead: (read, body) => (read > 1 ? `${body}\n<!-- changed approval authority -->` : body),
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.ok(
+    result.bundle.observations.some(
+      ({ provenance }) => provenance?.detail === 'close-readiness:issue-authority-drift'
+    )
+  );
+});
+
+test('production close refuses a changed issue revision with byte-identical body', async () => {
+  const { result } = await productionCloseFixture({
+    revisionOnRead: (read) => (read > 1 ? '2026-09-21T00:00:01.000Z' : now()),
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.ok(
+    result.bundle.observations.some(
+      ({ provenance }) => provenance?.detail === 'close-readiness:issue-authority-drift'
+    )
+  );
+});
+
+test('production close cannot bypass pending recovery on an OPEN issue in Review', async () => {
+  const { result } = await productionCloseFixture({
+    bodyOnRead: (_read, body) =>
+      upsertUnauthorizedCloseRecovery(body, {
+        tx: 'close-recovery-1669',
+        phase: 'review',
+        stateReason: 'completed',
+        actor: 'operator',
+        ts: now(),
+        unticked: [],
+      }),
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.ok(result.blockers.some(({ code }) => code === 'state-unavailable'));
+});
+
+test('production close retains immutable initial and current issue revisions', async () => {
+  const { result } = await productionCloseFixture();
+  const sources = result.bundle.observations.filter(({ resource }) => resource === 'issue-body');
+  assert.equal(sources.length, 2);
+  assert.deepEqual(
+    sources.map(({ identity }) => identity),
+    ['issue:1669:0', 'issue:1669:1']
+  );
+  for (const source of sources) {
+    assert.equal(source.value.state, 'OPEN');
+    assert.equal(source.revision, now());
+    assert.ok(Object.isFrozen(source.value));
+  }
+});
+
 function closeFixture({ values = {}, guards, unreadable } = {}) {
   const effects = [];
   const scope = computeScopeIdentity({ repository: REPO, issue: ISSUE, body: BODY });
   const authority = {
-    'issue-body': { number: ISSUE, body: BODY },
+    'issue-body': { number: ISSUE, body: BODY, state: 'OPEN' },
     'project-board': { state: 'review' },
     worktree: { matches: true, headSha: HEAD },
     'evidence:1669:1': {
