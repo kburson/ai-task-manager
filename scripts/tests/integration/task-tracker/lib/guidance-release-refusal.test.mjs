@@ -104,6 +104,18 @@ test('indirect loader import in another shipped module cannot bypass release ref
   }
 });
 
+test('direct cache loader import cannot bypass B2 release refusal', () => {
+  const dir = fixture({ withoutDirectConsumers: true });
+  try {
+    const adapter = path.join(dir, 'scripts/task-tracker/lib/cache-consumer.mjs');
+    mkdirSync(path.dirname(adapter), { recursive: true });
+    writeFileSync(adapter, "import '../../../guidance/cache.mjs';\n");
+    assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('computed guidance import cannot evade the B2 release refusal', () => {
   const dir = fixture({ withoutDirectConsumers: true });
   try {

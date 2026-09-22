@@ -17,6 +17,18 @@ test('missing inode metadata requires a content-hash fallback', () => {
   assert.equal(result.decision, 'hash-and-recheck-tracking');
 });
 
+test('zero inode metadata requires a content-hash fallback', () => {
+  const result = classifyFileStat('/selected.yml', {
+    isFile: () => true,
+    dev: 1n,
+    ino: 0n,
+    size: 5n,
+    mtimeNs: 10n,
+    ctimeNs: 10n,
+  });
+  assert.equal(result.decision, 'hash-and-recheck-tracking');
+});
+
 test('valid compilation makes a direct agent index without human prose', () => {
   const validation = {
     valid: true,

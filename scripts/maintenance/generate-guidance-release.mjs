@@ -103,7 +103,7 @@ function isLoaderImport(packageRoot, file, specifier) {
       ? path.join(packageRoot, specifier.slice('@kburson/ai-task-manager/'.length))
       : null;
   if (!target) return false;
-  return ['guidance/source.mjs', 'guidance/admission.mjs'].some(
+  return ['guidance/source.mjs', 'guidance/admission.mjs', 'guidance/cache.mjs'].some(
     (relative) => target === path.join(packageRoot, relative)
   );
 }
@@ -115,6 +115,7 @@ export function assertGuidanceConsumerRelease(packageRoot = DEFAULT_ROOT) {
   const recoveryOnly = new Set([
     'guidance/source.mjs',
     'guidance/admission.mjs',
+    'guidance/cache.mjs',
     'scripts/task-tracker/guidance.mjs',
   ]);
   const consumers = shippedRuntimeFiles(packageRoot).filter((relative) => {
@@ -124,7 +125,7 @@ export function assertGuidanceConsumerRelease(packageRoot = DEFAULT_ROOT) {
     // a shipped runtime module constructs a guidance loader path, even when
     // `import(target)` has no literal module specifier.
     if (
-      /guidance[\s\S]{0,160}(?:admission|source)\.mjs|(?:admission|source)\.mjs[\s\S]{0,160}guidance/.test(
+      /guidance[\s\S]{0,160}(?:admission|source|cache)\.mjs|(?:admission|source|cache)\.mjs[\s\S]{0,160}guidance/.test(
         source
       )
     )
