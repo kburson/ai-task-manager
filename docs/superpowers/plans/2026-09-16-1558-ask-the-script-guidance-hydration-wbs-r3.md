@@ -932,6 +932,8 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-validator.test.mj
 - **Need:** An invalid or tampered project catalog could otherwise be silently replaced by package guidance or reach operational effects
 - **Value or failure prevented:** Operations fail before effects and a partial loader cannot ship without its required cache certification
 
+#### Files and delivery boundary
+
 **User story:**
 
 As a maintainer adopting guidance,

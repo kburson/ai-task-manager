@@ -17,8 +17,8 @@ The accepted design is `2026-09-15-1558-ask-the-script-guidance-design.md` §§8
 ## Plan Metadata
 
 - Priority: P2
-- Size: L
-- Estimate: 22 hours
+- Size: XL (29-hour converged Plan forecast; Refine baseline was L)
+- Estimate: 29 hours (converged Plan estimate; 22-hour accepted WBS baseline retained as historical input)
 - Labels: epic-1558, guidance
 
 ## Story Intent
