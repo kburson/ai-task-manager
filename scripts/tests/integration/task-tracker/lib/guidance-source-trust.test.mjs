@@ -299,3 +299,23 @@ test('failed Git-root discovery from a nested directory is indeterminate, not pa
     rmSync(f.dir, { recursive: true, force: true });
   }
 });
+
+test('candidate validation reports untracked activation without rejecting valid content', () => {
+  const f = fixture();
+  try {
+    mkdirSync(path.dirname(f.projectPath), { recursive: true });
+    writeFileSync(f.projectPath, source);
+    const output = [];
+    const code = runGuidanceCli(['validate', '--file', f.projectPath, '--json'], {
+      projectRoot: f.dir,
+      moduleUrl: f.moduleUrl,
+      stdout: { write: (value) => output.push(value) },
+    });
+    assert.equal(code, 0);
+    const report = JSON.parse(output.join(''));
+    assert.equal(report.valid, true);
+    assert.deepEqual(report.warnings, ['candidate-untracked']);
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
