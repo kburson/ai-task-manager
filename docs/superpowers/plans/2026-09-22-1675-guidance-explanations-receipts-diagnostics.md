@@ -88,7 +88,7 @@ Steps:
 1. Execute deterministic public CLI scenarios for first load, matching repeat, agent change, source-only change, compaction/reset, blocked result, and explicit diagnostics.
 2. Record complete stdin/argv/stdout/stderr and typed fields with stable source/runner/fixture digests. Compare actual semantics against candidate expectations without relabeling candidate output as actual evidence. Update candidate envelope fixtures only where accepted Task 23 explicitly requires the initial `sourceReceipt` transport, while retaining prior candidate reports and identities as historical inputs; never rewrite Task 1a legacy bytes.
 3. Enforce 240-byte clean and 400-byte blocked routine limits. Count source warning and receipt once each when present.
-4. Publish current unslimmed totals separately from the modeled proposed-static end state. Combine actual traffic only with explicitly identified proposed adapter text and enforce 4,000/5,600 feasibility plus improvement over the equivalent legacy baseline.
+4. Publish current full totals separately from the modeled proposed-static end state. Combine actual traffic only with explicitly identified proposed adapter text and enforce 4,000/5,600 feasibility plus improvement over the equivalent legacy baseline.
 5. Cross-check authority reads and cardinalities against the preserved Task 1 inventory. A breach fails VC14 and blocks later migration work.
 
 ## Task 5: Verify, review, and deliver
