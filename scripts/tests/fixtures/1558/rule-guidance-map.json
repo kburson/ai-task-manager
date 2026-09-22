@@ -1,0 +1,236 @@
+{
+  "schema": "aitm.rule-guidance-map/v1",
+  "rows": [
+    {
+      "id": "session.timer",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Timer must be active before any work.",
+      "retainedProtocolRule": "skill/shared/router.md",
+      "protocolAnchor": "Never touch source files, run tests, edit issue bodies",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "session.pause",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Pause on blocking question.",
+      "retainedProtocolRule": "skill/shared/router.md",
+      "protocolAnchor": "Before any blocking user prompt",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "session.preferences",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Honor project preferences.",
+      "retainedProtocolRule": "skill/shared/rules/preferences.md",
+      "protocolAnchor": "## Decision points",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "session.compaction",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Post-Compact/Clear: follow the boot index before any verb.",
+      "retainedProtocolRule": ".ai-task-manager/templates/session-boot.md",
+      "protocolAnchor": "## Recovery protocol (post-Compact / post-Clear)",
+      "guidanceId": "protocol.receipts",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "binding.identity",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "Timer must not already be running on a different issue.",
+      "enforcementPath": "scripts/task-tracker/verbs/start.mjs",
+      "guidanceId": "action.bind",
+      "actionId": "bind",
+      "documentation": { "path": "docs/guides/workflow.md", "anchor": "kanban-board-states" }
+    },
+    {
+      "id": "binding.drift",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "Drift check.",
+      "enforcementPath": "scripts/task-tracker/verbs/start.mjs",
+      "guidanceId": "action.bind",
+      "actionId": "bind",
+      "documentation": { "path": "docs/guides/workflow.md", "anchor": "kanban-board-states" }
+    },
+    {
+      "id": "pickup.deep-dive",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Deep Dive before any code.",
+      "enforcementPath": "scripts/task-tracker/source-edit-gate.mjs",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "pickup.per-ac",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Verify each DoD/AC.",
+      "enforcementPath": "scripts/task-tracker/lib/review-preflight.mjs",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "state.contiguous",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "Forward one state. Reads current state, picks legal next state, runs the gate.",
+      "enforcementPath": "scripts/task-tracker/verbs/promote.mjs",
+      "guidanceId": "action.promote",
+      "actionId": "promote",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "state.exceptions",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "Only a current explicit `aitm.workflow-exception/v1` GitHub record",
+      "enforcementPath": "scripts/task-tracker/lib/workflow-policy/enforcement.mjs",
+      "guidanceId": "transition.plan-to-develop",
+      "actionId": "promote",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "state.plan-approval",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "`/task promote` from Plan refuses unless",
+      "enforcementPath": "scripts/task-tracker/states/plan.mjs",
+      "guidanceId": "transition.plan-to-develop",
+      "actionId": "promote",
+      "guardId": "plan-exit-plan-approved",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "test.exact-receipt",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "`/task ac-stamp <label>` and `/task test` are Develop/Test-stage helpers",
+      "enforcementPath": "scripts/task-tracker/verbs/test.mjs",
+      "guidanceId": "action.test",
+      "actionId": "test",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "review.reuse",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "Confirm the Test receipt.",
+      "enforcementPath": "scripts/task-tracker/verbs/review.mjs",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": { "path": "docs/guides/workflow.md", "anchor": "kanban-board-states" }
+    },
+    {
+      "id": "review.approval",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "Approve** → `/task approve #N`",
+      "enforcementPath": "scripts/task-tracker/states/review.mjs",
+      "guidanceId": "transition.review-approval",
+      "actionId": "deliver",
+      "guardId": "review-exit-review-approved",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "delivery.envelope",
+      "sourcePath": "skill/shared/rules/deliver.md",
+      "sourceAnchor": "exit `20` with exactly one",
+      "retainedProtocolRule": "skill/shared/rules/deliver.md",
+      "protocolAnchor": "This is the only envelope that",
+      "guidanceId": "action.deliver",
+      "actionId": "deliver",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "delivery.no-shell",
+      "sourcePath": "skill/shared/rules/deliver.md",
+      "sourceAnchor": "Never invoke a shell merge",
+      "retainedProtocolRule": "skill/shared/rules/deliver.md",
+      "protocolAnchor": "Never invoke a shell merge",
+      "guidanceId": "action.deliver",
+      "actionId": "deliver",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "delivery.reconcile",
+      "sourcePath": "skill/shared/rules/deliver.md",
+      "sourceAnchor": "After success, refusal, timeout, or ambiguity, rerun",
+      "retainedProtocolRule": "skill/shared/rules/deliver.md",
+      "protocolAnchor": "Never retry the external mutation before that rerun",
+      "guidanceId": "action.deliver",
+      "actionId": "deliver",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      }
+    },
+    {
+      "id": "close.approval",
+      "sourcePath": "skill/shared/rules/close.md",
+      "sourceAnchor": "## Review-approval gate",
+      "enforcementPath": "scripts/task-tracker/verbs/close.mjs",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "guardId": "review-exit-review-approved",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "close.dirty",
+      "sourcePath": "skill/shared/rules/close.md",
+      "sourceAnchor": "## Dirty-Workspace Gate 2",
+      "enforcementPath": "scripts/task-tracker/verbs/close.mjs",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "commit.trace",
+      "sourcePath": "skill/shared/rules/commit-trail.md",
+      "sourceAnchor": "Every successful `git commit` made while an issue is bound",
+      "enforcementPath": "scripts/task-tracker/commit-trail-handler.mjs",
+      "guidanceId": "protocol.commit-trail",
+      "documentation": { "path": "docs/guides/workflow.md", "anchor": "kanban-board-states" }
+    }
+  ]
+}

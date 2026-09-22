@@ -10,7 +10,10 @@ import { parseGuidanceSource } from '../../../../../guidance/parse.mjs';
 import { validateGuidance } from '../../../../../guidance/validate.mjs';
 import { resolveDocumentationReference } from '../../../../../guidance/documentation.mjs';
 import { fingerprintCatalog, fingerprintEntry } from '../../../../../guidance/fingerprints.mjs';
-import { GUIDANCE_LIMITS } from '../../../../../guidance/requirements.mjs';
+import {
+  GUIDANCE_LIMITS,
+  REQUIRED_PROTOCOL_GUIDANCE_IDS,
+} from '../../../../../guidance/requirements.mjs';
 import {
   GUIDANCE_PACKAGE_ROOT,
   packagedGuidanceSource,
@@ -162,21 +165,27 @@ test('validator rejects duplicate IDs and unregistered agent operations without 
 
 test('value-level diagnostics use raw instruction-key and binding-value positions', () => {
   const source = packagedGuidanceSource()
-    .replace('{ query: bind }', '{ execute_shell: bind }')
-    .replace('action_ids: [bind]', 'action_ids: [bogus]');
+    .replace('- query: bind', '- execute_shell: bind')
+    .replace('      action_ids:\n        - bind', '      action_ids:\n        - bogus');
   const result = validateGuidance({ source, packageRoot: PACKAGE_ROOT });
   const instruction = result.errors.find(({ code }) => code === 'unknown-agent-operation');
   const binding = result.errors.find(
     ({ code, path }) => code === 'unknown-reference' && path === 'entries[0].binds.action_ids[0]'
   );
-  assert.deepEqual([instruction.line, instruction.column], [15, 13]);
-  assert.deepEqual([binding.line, binding.column], [11, 27]);
+  assert.deepEqual(
+    [instruction.line, instruction.column],
+    Object.values(createPositionIndex(source).positionAt(source.indexOf('execute_shell:')))
+  );
+  assert.deepEqual(
+    [binding.line, binding.column],
+    Object.values(createPositionIndex(source).positionAt(source.indexOf('bogus')))
+  );
 });
 
 test('an instruction cannot query or execute a registered action outside its entry binding', () => {
   const source = packagedGuidanceSource()
-    .replace('{ query: bind }', '{ query: close }')
-    .replace('{ execute: bind }', '{ execute: close }');
+    .replace('- query: bind', '- query: close')
+    .replace('- execute: bind', '- execute: close');
   const result = validateGuidance({ source, packageRoot: PACKAGE_ROOT });
   assert.deepEqual(
     result.errors
@@ -298,14 +307,14 @@ test('packaged seed validates offline with all core IDs, five digests and catalo
   });
   assert.deepEqual(result.errors, []);
   assert.equal(result.valid, true);
-  assert.equal(result.entries.length, 17);
+  assert.equal(result.entries.length, 21);
   assert.deepEqual(
-    result.entries.slice(-3).map(({ id }) => id),
-    ['navigation.unknown', 'navigation.unresolved', 'state.done']
+    result.entries.slice(-4).map(({ id }) => id),
+    REQUIRED_PROTOCOL_GUIDANCE_IDS
   );
   assert.match(result.fingerprints.catalogSemanticDigest, /^sha256:[a-f0-9]{64}$/);
   assert.match(result.fingerprints.catalogFileDigest, /^sha256:[a-f0-9]{64}$/);
-  assert.equal(result.fingerprints.entryDigests.length, 17);
+  assert.equal(result.fingerprints.entryDigests.length, 21);
   assert.ok(result.budgets.catalogProxy <= 240000 * 0.8);
   assert.ok(result.budgets.agentProxy <= 64000 * 0.8);
   assert.ok(result.budgets.humanProxy <= 160000 * 0.8);
@@ -379,7 +388,10 @@ test('fatal source diagnostics retain the requested source profile', () => {
 });
 
 test('duplicate registered bindings are rejected even though both references resolve', () => {
-  const source = packagedGuidanceSource().replace('action_ids: [bind]', 'action_ids: [bind, bind]');
+  const source = packagedGuidanceSource().replace(
+    '      action_ids:\n        - bind',
+    '      action_ids:\n        - bind\n        - bind'
+  );
   const result = validateGuidance({ source, packageRoot: PACKAGE_ROOT });
   assert.ok(
     result.errors.some(

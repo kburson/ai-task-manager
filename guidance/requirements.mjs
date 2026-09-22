@@ -26,6 +26,16 @@ export const PROHIBITION_IDS = Object.freeze([
   'invoke_internal_mutator',
 ]);
 
+// Protocol obligations have no executable action binding. Requiring their
+// entries prevents a valid catalog from silently dropping guidance that still
+// belongs in the installed agent adapters until the later migration child.
+export const REQUIRED_PROTOCOL_GUIDANCE_IDS = Object.freeze([
+  'protocol.session',
+  'protocol.receipts',
+  'protocol.pickup',
+  'protocol.commit-trail',
+]);
+
 export const GUIDANCE_LIMITS = Object.freeze({
   normalizedSourceBytes: 1024 * 1024,
   entries: 512,
@@ -57,6 +67,7 @@ export function coreGuidanceRequirements() {
     requiredEntries: [
       ...actions.map(({ id, guidanceId }) => ({ id: guidanceId, actionId: id })),
       ...remediations.map(({ id, guidanceId }) => ({ id: guidanceId, remediationId: id })),
+      ...REQUIRED_PROTOCOL_GUIDANCE_IDS.map((id) => ({ id })),
     ],
   };
 }
