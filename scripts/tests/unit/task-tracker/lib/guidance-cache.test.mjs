@@ -22,6 +22,9 @@ import {
   observeGitIndexIdentity,
 } from '../../../../../guidance/cache-identity.mjs';
 import { observeGuidanceSource } from '../../../../../guidance/source.mjs';
+import { loadSelectedGuidance, resolveGuidanceSource } from '../../../../../guidance/source.mjs';
+import { compileGuidance } from '../../../../../guidance/compile.mjs';
+import { loadGuidance } from '../../../../../guidance/cache.mjs';
 
 test('source replacement with preserved mtime changes the cache identity', () => {
   const root = mkdtempProjectIsolated('aitm-1674-identity-');
@@ -155,6 +158,41 @@ test('runtime and published-digest changes invalidate an otherwise identical sou
     assert.notEqual(before.decision, 'indeterminate');
     assert.notDeepEqual(changedVersion.identity, before.identity);
     assert.notDeepEqual(changedDigest.identity, before.identity);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('valid compilation makes a direct agent index without human prose', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-compile-');
+  try {
+    const validation = loadSelectedGuidance(resolveGuidanceSource({ projectRoot: root }));
+    assert.equal(validation.valid, true);
+    const compiled = compileGuidance(validation);
+    assert.deepEqual(compiled, compileGuidance(validation));
+    assert.ok(compiled.agentIndex.byId['action.bind']);
+    assert.equal(Object.hasOwn(compiled.agentIndex.byId['action.bind'], 'human'), false);
+    assert.equal(JSON.stringify(compiled.agentIndex).includes('explanation'), false);
+    assert.equal(typeof compiled.humanCatalog.byId['action.bind'].explanation, 'string');
+    assert.equal(compiled.diagnostics, null);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a candidate path cannot reuse active package validation', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-candidate-');
+  try {
+    const candidatePath = path.join(root, 'candidate.yml');
+    writeFileSync(candidatePath, 'schema: invalid\n');
+    const candidate = loadGuidance({
+      projectRoot: root,
+      profile: 'candidate',
+      candidatePath,
+      need: 'diagnostics',
+    });
+    assert.equal(candidate.valid, false);
+    assert.ok(candidate.errors.length > 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
