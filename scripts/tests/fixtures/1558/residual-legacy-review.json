@@ -1,0 +1,181 @@
+{
+  "schema": "aitm.residual-legacy-review/v1",
+  "meaning": "These are inventory-backed fallback dispositions for untyped legacy guard output, not evidence that every typed guard path is manual. Unknown guard IDs, missing sites, and malformed typed output remain refusals.",
+  "entries": [
+    {
+      "guardId": "backlog-exit-child-parent-refine-or-plan",
+      "disposition": "manual-investigation",
+      "rationale": "Parent state is mutable; an untyped legacy parent-state refusal cannot select a safe automatic move."
+    },
+    {
+      "guardId": "blocked-by-not-done",
+      "disposition": "manual-investigation",
+      "rationale": "A dependency edge or completion state needs current graph authority before any unblock remedy."
+    },
+    {
+      "guardId": "body-gates-entry-done",
+      "disposition": "manual-investigation",
+      "rationale": "Untyped close-body refusals or warnings cannot infer checkbox completion or delivery approval."
+    },
+    {
+      "guardId": "body-gates-entry-review",
+      "disposition": "manual-investigation",
+      "rationale": "Untyped Review-body refusals or warnings cannot imply exact-head Test or review evidence."
+    },
+    {
+      "guardId": "body-gates-entry-test",
+      "disposition": "manual-investigation",
+      "rationale": "Untyped Test-body refusals or warnings cannot supply missing AC or verifier proof."
+    },
+    {
+      "guardId": "child-cannot-lead-epic-exit",
+      "disposition": "manual-investigation",
+      "rationale": "Child and epic ordering depends on live parent state and cannot be inferred from prose."
+    },
+    {
+      "guardId": "contiguity-entry",
+      "disposition": "manual-investigation",
+      "rationale": "State-contiguity drift requires reconciliation of board and body authority, not an automatic jump."
+    },
+    {
+      "guardId": "develop-exit-code-complete",
+      "disposition": "manual-investigation",
+      "rationale": "Code-completion refusal lacks typed evidence to authorize Test entry or checkbox changes."
+    },
+    {
+      "guardId": "develop-exit-commit-trail-head",
+      "disposition": "manual-investigation",
+      "rationale": "Commit attribution must use the exact current HEAD; an untyped refusal cannot stamp it."
+    },
+    {
+      "guardId": "develop-exit-epic-children-done",
+      "disposition": "manual-investigation",
+      "rationale": "Epic child completion is a live graph property and must not be guessed from a legacy message."
+    },
+    {
+      "guardId": "develop-exit-receipt",
+      "disposition": "manual-investigation",
+      "rationale": "A missing or stale verification receipt cannot be synthesized by explanation."
+    },
+    {
+      "guardId": "discuss-unresolved",
+      "disposition": "manual-investigation",
+      "rationale": "An unresolved discussion token is a human decision boundary with no safe automatic resolution."
+    },
+    {
+      "guardId": "plan-entry-fields-board",
+      "disposition": "manual-investigation",
+      "rationale": "Board planning fields require current project evidence; legacy text is not a field update."
+    },
+    {
+      "guardId": "plan-entry-fields-body",
+      "disposition": "manual-investigation",
+      "rationale": "Body planning fields require current versioned evidence; untyped output cannot repair them."
+    },
+    {
+      "guardId": "plan-exit-decomposition",
+      "disposition": "manual-investigation",
+      "rationale": "Decomposition warnings and refusals require the reviewed WBS and cannot be waived by generic prose."
+    },
+    {
+      "guardId": "plan-exit-deep-dive",
+      "disposition": "manual-investigation",
+      "rationale": "The deep-dive marker and canonical placement require governed evidence, not an inferred completion."
+    },
+    {
+      "guardId": "plan-exit-epic-children-r4p-or-beyond",
+      "disposition": "manual-investigation",
+      "rationale": "Epic Plan exit depends on all current child states and cannot be inferred from a partial list."
+    },
+    {
+      "guardId": "plan-exit-ownership",
+      "disposition": "manual-investigation",
+      "rationale": "Exclusive owner and occupancy claims require current board and worktree authority."
+    },
+    {
+      "guardId": "plan-exit-plan-approved",
+      "disposition": "manual-investigation",
+      "rationale": "Plan approval needs an explicit valid marker or exception; no untyped text can approve it."
+    },
+    {
+      "guardId": "plan-exit-plan-metadata",
+      "disposition": "manual-investigation",
+      "rationale": "Linked plan source and selector conflicts require source repair rather than a guessed plan."
+    },
+    {
+      "guardId": "plan-exit-planned-estimate",
+      "disposition": "manual-investigation",
+      "rationale": "Plan estimate and forecast are governed records; an untyped refusal cannot change their values."
+    },
+    {
+      "guardId": "plan-exit-story-approval-binding",
+      "disposition": "manual-investigation",
+      "rationale": "Story intent and approval bindings must match current plan bytes and scope."
+    },
+    {
+      "guardId": "plan-exit-vc-presence",
+      "disposition": "manual-investigation",
+      "rationale": "Required verification commands need explicit root declarations, not generated execution from free text."
+    },
+    {
+      "guardId": "ready-for-plan-exit-epic-children-r4p-or-beyond",
+      "disposition": "manual-investigation",
+      "rationale": "Epic planning admission depends on complete current child state authority."
+    },
+    {
+      "guardId": "refine-exit-child-parent-developing-or-beyond",
+      "disposition": "manual-investigation",
+      "rationale": "Refinement cannot overtake a developing parent; current parent state must be checked."
+    },
+    {
+      "guardId": "refine-exit-complete-marker",
+      "disposition": "manual-investigation",
+      "rationale": "A missing refinement marker requires governed refinement completion evidence."
+    },
+    {
+      "guardId": "refine-exit-current-snapshot",
+      "disposition": "manual-investigation",
+      "rationale": "Refinement snapshot drift requires current board and body comparison, not a stale value."
+    },
+    {
+      "guardId": "refine-exit-stub-placeholder",
+      "disposition": "manual-investigation",
+      "rationale": "Stub placeholder content needs human shaping before readiness can be asserted."
+    },
+    {
+      "guardId": "refine-exit-wip-budget",
+      "disposition": "manual-investigation",
+      "rationale": "A saturated planning WIP budget is a current scheduling constraint, not an auto-override."
+    },
+    {
+      "guardId": "review-exit-close-gates",
+      "disposition": "manual-investigation",
+      "rationale": "Close-gate refusals and warnings combine delivery, approval, and timing authority."
+    },
+    {
+      "guardId": "review-exit-epic-child-disposition",
+      "disposition": "manual-investigation",
+      "rationale": "Child disposition must be verified against current graph and issue records before epic close."
+    },
+    {
+      "guardId": "review-exit-epic-children-done",
+      "disposition": "manual-investigation",
+      "rationale": "Epic close requires all relevant children done or explicitly excluded under current authority."
+    },
+    {
+      "guardId": "review-exit-review-approved",
+      "disposition": "manual-investigation",
+      "rationale": "Review approval requires a current explicit marker; an untyped refusal cannot provide it."
+    },
+    {
+      "guardId": "test-exit-dod-verified",
+      "disposition": "manual-investigation",
+      "rationale": "Functional DoD needs exact-head receipts and cannot be satisfied by a legacy message."
+    },
+    {
+      "guardId": "test-exit-pre-close-completeness",
+      "disposition": "manual-investigation",
+      "rationale": "Pre-close checkboxes require individual verification and current body evidence."
+    }
+  ]
+}
