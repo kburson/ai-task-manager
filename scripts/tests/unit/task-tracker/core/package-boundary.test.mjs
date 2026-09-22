@@ -275,6 +275,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #1673 adds the serialized guidance annotation and direct-entrypoint gate.
   // The measured dry-run package surface grows from 827 to 829 entries.
   const guidanceEntrypointAllowance = 2;
+  // #1674 ships the cache identity, compiler, and read-many loader only.
+  // The measured production surface grows from 829 to 832 entries.
+  const guidanceCacheAllowance = 3;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -302,7 +305,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     closeReadinessAllowance +
     guidanceValidationAllowance +
     guidanceSourceTrustAllowance +
-    guidanceEntrypointAllowance;
+    guidanceEntrypointAllowance +
+    guidanceCacheAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -324,6 +328,9 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'guidance/source.mjs',
     'guidance/admission.mjs',
     'guidance/annotation.mjs',
+    'guidance/cache-identity.mjs',
+    'guidance/compile.mjs',
+    'guidance/cache.mjs',
     'scripts/task-tracker/lib/direct-guidance-admission.mjs',
     'scripts/task-tracker/guidance.mjs',
     'instructions/aitm-guidance.yml',

@@ -56,6 +56,23 @@ jobs:
       - run: npm ci
       - run: npm run lint:guidance-release-consumer
 
+  guidance-cache-benchmark:
+    name: Guidance cache runtime budget
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Measure five fresh-process cache cases
+        run: node scripts/maintenance/benchmark-guidance-cache.mjs --samples=7
+      - name: Enforce CI-derived budget with 20 percent headroom
+        if: ${{ hashFiles('scripts/tests/fixtures/1558/cache-budgets.json') != '' }}
+        run: node scripts/maintenance/benchmark-guidance-cache.mjs --samples=7 --check-budget
+
   fast:
     name: Fast lane (format, lint, unit + integration)
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}

@@ -3,16 +3,15 @@ import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'guidance');
 // @story #1672
 // Offline, read-only recovery surface. #1673 routes `aitm guidance` here.
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   resolveGuidanceProjectRoot,
   resolveGuidanceSource,
-  loadSelectedGuidance,
+  observeGuidanceSource,
 } from '../../guidance/source.mjs';
-import { validateGuidance } from '../../guidance/validate.mjs';
+import { loadGuidance } from '../../guidance/cache.mjs';
 import { emitSelfDoc } from '../lib/self-doc.mjs';
 
 const HELP =
@@ -25,19 +24,20 @@ function publicValidation(result, selected) {
       : selected?.sourceType === 'package'
         ? 'instructions/aitm-guidance.yml'
         : result.source;
-  const errors = Array.isArray(result.errors)
-    ? result.errors
-    : [
-        {
-          code: result.code ?? 'guidance-catalog-invalid',
-          path: '',
-          line: 1,
-          column: 1,
-          message: `Selected guidance source is ${selected?.trust ?? 'indeterminate'}`,
-          expected: [],
-          remediation: 'Inspect the source and repair the reported trust failure.',
-        },
-      ];
+  const errors =
+    Array.isArray(result.errors) && (result.valid || result.errors.length > 0)
+      ? result.errors
+      : [
+          {
+            code: result.code ?? 'guidance-catalog-invalid',
+            path: '',
+            line: 1,
+            column: 1,
+            message: `Selected guidance source is ${selected?.trust ?? 'indeterminate'}`,
+            expected: [],
+            remediation: 'Inspect the source and repair the reported trust failure.',
+          },
+        ];
   return {
     schema: 'aitm.guidance-validation/v1',
     valid: Boolean(result.valid),
@@ -49,14 +49,16 @@ function publicValidation(result, selected) {
   };
 }
 
-function validateCandidate(file, projectRoot, moduleUrl, cwd) {
+function validateCandidate(file, projectRoot, moduleUrl, cwd, refresh) {
   const absolute = path.resolve(cwd, file);
   try {
-    const source = readFileSync(absolute);
-    const result = validateGuidance({
-      source,
-      sourcePath: absolute,
+    const result = loadGuidance({
+      projectRoot,
+      moduleUrl,
       profile: 'candidate',
+      candidatePath: absolute,
+      need: 'diagnostics',
+      refresh,
     });
     const activePath =
       projectRoot === null ? null : path.join(projectRoot, '.ai-task-manager/aitm-guidance.yml');
@@ -66,11 +68,14 @@ function validateCandidate(file, projectRoot, moduleUrl, cwd) {
     } else if (absolute !== activePath) {
       warnings.push('candidate-not-active-project-path');
     } else {
-      const selected = resolveGuidanceSource({ projectRoot, moduleUrl });
+      const selected = observeGuidanceSource({ projectRoot, moduleUrl });
       if (selected.trust === 'project-untracked') warnings.push('candidate-untracked');
       if (selected.trust === 'indeterminate') warnings.push('candidate-tracking-indeterminate');
     }
-    return publicValidation({ ...result, warnings }, null);
+    return publicValidation(
+      { ...result, source: absolute, sourceType: 'candidate', warnings },
+      null
+    );
   } catch {
     return publicValidation(
       {
@@ -110,6 +115,7 @@ export function runGuidanceCli(
   let file = null;
   let published = false;
   let json = false;
+  let refresh = false;
   for (let index = 0; index < flags.length; index += 1) {
     const flag = flags[index];
     if (!allowed.has(flag)) {
@@ -125,7 +131,7 @@ export function runGuidanceCli(
       index += 1;
     } else if (flag === '--published') published = true;
     else if (flag === '--json') json = true;
-    // --refresh is accepted but B1 has no cache to bypass.
+    else if (flag === '--refresh') refresh = true;
   }
   if (file !== null && published) {
     stderr.write('guidance: --file and --published are mutually exclusive\n');
@@ -150,10 +156,17 @@ export function runGuidanceCli(
   }
   let report;
   if (file !== null) {
-    report = validateCandidate(file, projectRoot, moduleUrl, cwd);
+    report = validateCandidate(file, projectRoot, moduleUrl, cwd, refresh);
   } else {
-    const selected = resolveGuidanceSource({ projectRoot, moduleUrl, publishedOnly: published });
-    report = publicValidation(loadSelectedGuidance(selected), selected);
+    const validation = loadGuidance({
+      projectRoot,
+      moduleUrl,
+      publishedOnly: published,
+      profile: published ? 'published' : 'active-project',
+      need: 'diagnostics',
+      refresh,
+    });
+    report = publicValidation(validation, validation.source);
   }
   if (json) {
     stdout.write(`${JSON.stringify(report)}\n`);
