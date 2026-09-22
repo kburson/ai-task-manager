@@ -18,7 +18,7 @@
 - Bind repository, issue, PR, base/head refs, head SHA, full ordered raw inventory digest, exact post-classification SHA mappings, expiry, and unique exception and operation IDs.
 - Refuse malformed, ambiguous, stale, edited, revoked, expired, or competing records; append revisions and revocations without erasing history.
 - Keep all existing binding, lifecycle, ownership, dependency, clean-tree, exact-head Test/Review, CI, mergeability, protection, provider-action, reachability, and receipt gates.
-- No ai-peer-review mutation or exception activation, npm publication, paid provider call, or new issue is part of this plan.
+- No ai-peer-review mutation or exception activation, npm publication, or paid provider call is part of this plan. Decompose these seven tasks into sanctioned child issues of #1755 before implementation.
 
 ## Story Intent
 
