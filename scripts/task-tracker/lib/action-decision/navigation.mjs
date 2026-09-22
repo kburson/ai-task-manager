@@ -56,6 +56,7 @@ export function resolveActionNavigation({ actionId, state } = {}) {
       : route('pending', 'review', null, blocker('action-not-explain-ready'));
   }
   if (actionId === 'deliver') return route('ready', 'deliver', 'deliver');
+  if (actionId === 'close') return route('ready', 'done', 'close');
   if (actionId !== 'promote') {
     return route('pending', policy.target ?? null, null, blocker('action-not-explain-ready'));
   }
@@ -76,7 +77,7 @@ export function resolveActionNavigation({ actionId, state } = {}) {
       return route('ready', target, 'review');
     }
     if (recorded === 'review' && target === 'done' && policy.delegate === 'close') {
-      return route('ready', 'review', 'review');
+      return route('ready', 'done', 'close');
     }
     return route('pending', target, policy.delegate ?? null, blocker('action-not-explain-ready'));
   }
