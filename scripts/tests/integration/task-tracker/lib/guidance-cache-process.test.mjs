@@ -1,14 +1,31 @@
 // @story #1674
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { checkCacheBudgets } from '../../../../maintenance/benchmark-guidance-cache.mjs';
+import { classifyGuidanceRoute } from '../../../../../guidance/admission.mjs';
 import { loadGuidance } from '../../../../../guidance/cache.mjs';
-import { observeCacheIdentity } from '../../../../../guidance/cache-identity.mjs';
+import {
+  observeCacheIdentity,
+  observeFileIdentity,
+  observeGitIndexIdentity,
+} from '../../../../../guidance/cache-identity.mjs';
 import { observeGuidanceSource, resolveGuidanceSource } from '../../../../../guidance/source.mjs';
 const sourceUrl = new URL('../../../../../guidance/source.mjs', import.meta.url).href;
 const identityUrl = new URL('../../../../../guidance/cache-identity.mjs', import.meta.url).href;
@@ -437,6 +454,238 @@ test('explicit refresh bypasses a warm manifest and parses exactly once', () => 
     assert.equal(child.status, 0, child.stderr);
     assert.equal(child.stdout, '');
     assert.deepEqual(JSON.parse(child.stderr), { status: 0, valid: true, parserCalls: 1 });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('source replacement with preserved mtime changes the cache identity', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-identity-');
+  try {
+    const source = path.join(root, 'guidance.yml');
+    const replacement = path.join(root, 'replacement.yml');
+    writeFileSync(source, 'first\n');
+    const before = observeFileIdentity(source);
+    writeFileSync(replacement, 'other\n');
+    const originalTime = statSync(source).mtime;
+    utimesSync(replacement, originalTime, originalTime);
+    renameSync(replacement, source);
+    assert.equal(readFileSync(source, 'utf8'), 'other\n');
+    assert.notDeepEqual(observeFileIdentity(source), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('chmod changes source ctime even when catalog bytes are unchanged', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-ctime-');
+  try {
+    const source = path.join(root, 'guidance.yml');
+    writeFileSync(source, 'same bytes\n');
+    const before = observeFileIdentity(source);
+    chmodSync(source, 0o600);
+    const after = observeFileIdentity(source);
+    assert.notDeepEqual(after, before);
+    assert.equal(after.mtimeNs, before.mtimeNs);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('source observation detects project override adoption without reading YAML', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-source-');
+  try {
+    const before = observeGuidanceSource({ projectRoot: root });
+    assert.equal(before.sourceType, 'package');
+    assert.equal(Object.hasOwn(before, 'source'), false);
+    const override = path.join(root, '.ai-task-manager', 'aitm-guidance.yml');
+    mkdirSync(path.dirname(override), { recursive: true });
+    writeFileSync(override, 'invalid: true\n');
+    execFileSync('git', ['add', '-f', '.ai-task-manager/aitm-guidance.yml'], { cwd: root });
+    const after = observeGuidanceSource({ projectRoot: root });
+    assert.equal(after.sourceType, 'project');
+    assert.equal(after.tracked, true);
+    assert.equal(Object.hasOwn(after, 'source'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('an explicitly selected Git index cannot reuse the default index identity', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-index-');
+  try {
+    writeFileSync(path.join(root, 'guidance.yml'), 'first\n');
+    execFileSync('git', ['add', '-f', 'guidance.yml'], { cwd: root });
+    const regular = observeGitIndexIdentity(root);
+    const selectedIndex = path.join(root, 'selected.index');
+    execFileSync('git', ['read-tree', '--empty'], {
+      cwd: root,
+      env: { ...process.env, GIT_INDEX_FILE: selectedIndex },
+    });
+    const alternate = observeGitIndexIdentity(root, { gitIndexFile: selectedIndex });
+    assert.equal(regular.decision, 'stat');
+    assert.equal(alternate.decision, 'stat');
+    assert.notDeepEqual(alternate, regular);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a linked .git file resolves its own effective worktree index', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-linked-index-');
+  const linked = path.join(root, 'linked');
+  try {
+    execFileSync('git', ['worktree', 'add', '-q', '--detach', linked, 'HEAD'], { cwd: root });
+    assert.match(readFileSync(path.join(linked, '.git'), 'utf8'), /^gitdir: /);
+    const primary = observeGitIndexIdentity(root);
+    const before = observeGitIndexIdentity(linked);
+    assert.equal(before.decision, 'stat');
+    assert.notEqual(before.indexPath, primary.indexPath);
+    writeFileSync(path.join(linked, 'new-guidance.yml'), 'first\n');
+    execFileSync('git', ['add', '-f', 'new-guidance.yml'], { cwd: linked });
+    assert.notDeepEqual(observeGitIndexIdentity(linked), before);
+  } finally {
+    if (existsSync(linked)) {
+      execFileSync('git', ['worktree', 'remove', '--force', linked], { cwd: root });
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a split-index shared file change invalidates the worktree index identity', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-split-index-');
+  try {
+    execFileSync('git', ['update-index', '--split-index'], { cwd: root });
+    const gitDir = path.resolve(
+      root,
+      execFileSync('git', ['rev-parse', '--git-dir'], { cwd: root, encoding: 'utf8' }).trim()
+    );
+    const shared = readdirSync(gitDir).find((name) => name.startsWith('sharedindex.'));
+    assert.ok(shared, 'Git must create the split-index dependency');
+    const before = observeGitIndexIdentity(root);
+    const changed = new Date(Date.now() + 5000);
+    utimesSync(path.join(gitDir, shared), changed, changed);
+    assert.notDeepEqual(observeGitIndexIdentity(root), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('candidate validation identity never equals active-project validation identity', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-profile-');
+  try {
+    const selected = observeGuidanceSource({ projectRoot: root });
+    const active = observeCacheIdentity({ selected, projectRoot: root, profile: 'active-project' });
+    const candidatePath = path.join(root, 'candidate.yml');
+    writeFileSync(candidatePath, 'invalid: true\n');
+    const candidate = observeCacheIdentity({
+      selected,
+      projectRoot: root,
+      profile: 'candidate',
+      candidatePath,
+    });
+    assert.notEqual(active.decision, 'indeterminate');
+    assert.notEqual(candidate.decision, 'indeterminate');
+    assert.notDeepEqual(active, candidate);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('runtime and published-digest changes invalidate an otherwise identical source', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-runtime-');
+  try {
+    const selected = observeGuidanceSource({ projectRoot: root });
+    const options = { selected, projectRoot: root, profile: 'published' };
+    const before = observeCacheIdentity(options);
+    const changedVersion = observeCacheIdentity({
+      ...options,
+      selected: { ...selected, packageVersion: 'changed-version' },
+    });
+    const changedDigest = observeCacheIdentity({
+      ...options,
+      selected: { ...selected, publishedCatalogFileDigest: 'sha256:changed' },
+    });
+    assert.notEqual(before.decision, 'indeterminate');
+    assert.notDeepEqual(changedVersion.identity, before.identity);
+    assert.notDeepEqual(changedDigest.identity, before.identity);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a candidate path cannot reuse active package validation', () => {
+  const root = mkdtempProjectIsolated('aitm-1674-candidate-');
+  try {
+    const candidatePath = path.join(root, 'candidate.yml');
+    writeFileSync(candidatePath, 'schema: invalid\n');
+    const candidate = loadGuidance({
+      projectRoot: root,
+      profile: 'candidate',
+      candidatePath,
+      need: 'diagnostics',
+    });
+    assert.equal(candidate.valid, false);
+    assert.ok(candidate.errors.length > 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('CI cache budgets reject a timing that consumes the reserved headroom', () => {
+  const measured = {
+    cases: {
+      cold: { medianMs: 200, p95Ms: 208 },
+      warmManifest: { medianMs: 140, p95Ms: 157 },
+      warmAgent: { medianMs: 145, p95Ms: 158 },
+      human: { medianMs: 150, p95Ms: 160 },
+      invalidDiagnostics: { medianMs: 155, p95Ms: 163 },
+    },
+  };
+  assert.equal(checkCacheBudgets(measured), true);
+  measured.cases.warmManifest.p95Ms = 257;
+  assert.throws(() => checkCacheBudgets(measured), /exceeds 80% working ceiling/);
+});
+
+test('nested package preferences help is a recovery route before cache admission', () => {
+  assert.equal(classifyGuidanceRoute(['configure', 'preferences', '--help']), 'recovery');
+});
+
+test('concurrent cold writers leave one digest-consistent warm generation', async () => {
+  const root = mkdtempProjectIsolated('aitm-1674-concurrent-');
+  try {
+    const cacheUrl = new URL('../../../../../guidance/cache.mjs', import.meta.url).href;
+    const script = `
+      import { loadGuidance } from ${JSON.stringify(cacheUrl)};
+      const result = loadGuidance({ projectRoot: process.cwd(), need: 'agent' });
+      if (!result.valid || !result.agentIndex?.byId?.['action.bind']) process.exitCode = 2;
+    `;
+    const launch = () =>
+      new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, ['--input-type=module', '-e', script], {
+          cwd: root,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (chunk) => (stdout += chunk));
+        child.stderr.on('data', (chunk) => (stderr += chunk));
+        child.once('error', reject);
+        child.once('close', (code) => resolve({ code, stdout, stderr }));
+      });
+    const results = await Promise.all([launch(), launch()]);
+    for (const result of results) {
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(result.stdout, '');
+    }
+    const warm = loadWithParserTraps(root, 'agent');
+    assert.equal(warm.status, 0, warm.stderr);
+    assert.equal(warm.stdout, '');
+    const cacheDir = path.join(root, '.tmp/aitm/guidance-cache');
+    assert.equal(
+      readdirSync(cacheDir).some((name) => name.endsWith('.tmp')),
+      false
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

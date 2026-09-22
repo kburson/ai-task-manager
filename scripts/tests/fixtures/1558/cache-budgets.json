@@ -1,0 +1,25 @@
+{
+  "schema": "aitm.guidance-cache-budgets/v1",
+  "provenance": {
+    "workflowRun": "https://github.com/kburson/ai-task-manager/actions/runs/35752436187",
+    "jobId": 106829735973,
+    "sourceCommit": "6d5fe005ae2614e3425568f264891293f5d52648",
+    "runner": "ubuntu-latest",
+    "node": "v24.20.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "samplesPerCase": 7,
+    "method": "fresh Node process per sample; nearest-rank p95; five section 20.1 cases"
+  },
+  "cases": {
+    "cold": { "ciP95Ms": 207.96, "ceilingMs": 400 },
+    "warmManifest": { "ciP95Ms": 157, "ceilingMs": 320 },
+    "warmAgent": { "ciP95Ms": 157.69, "ceilingMs": 320 },
+    "human": { "ciP95Ms": 159.37, "ceilingMs": 320 },
+    "invalidDiagnostics": { "ciP95Ms": 163.05, "ceilingMs": 340 }
+  },
+  "baselineComparison": {
+    "b1LocalSource": "docs/superpowers/plans/2026-09-22-1673-entrypoint-admission.md",
+    "scope": "B1 CLI cold measurements are a separate local comparison, not these CI cache budgets"
+  }
+}

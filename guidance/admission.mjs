@@ -22,6 +22,13 @@ export function classifyGuidanceRoute(argv, { surface = 'router' } = {}) {
   if (argv.length === 0 || HELP.has(command)) return 'recovery';
   if (argv.length === 1 && ['--version', '-v', 'version'].includes(command)) return 'recovery';
   if (argv.length === 2 && COMMAND_HELP.has(subcommand)) return 'recovery';
+  if (
+    argv.length === 3 &&
+    command === 'configure' &&
+    subcommand === 'preferences' &&
+    COMMAND_HELP.has(argv[2])
+  )
+    return 'recovery';
   if (command === 'ai-task-manager' && ['version', '-v', '--version'].includes(subcommand)) {
     return 'recovery';
   }
