@@ -998,6 +998,15 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-admission.
 
 ### Task 22: Compile and cache valid and invalid guidance results
 
+#### Story Intent
+
+- **Beneficiary:** User of one-shot AITM commands
+- **Capability:** Reuse validated static guidance across separate processes
+- **Need:** B1 reparses and fully validates unchanged YAML on every invocation
+- **Value or failure prevented:** Routine commands avoid repeated parse and validation work without accepting stale guidance or stale authority
+
+#### Files and delivery boundary
+
 **Baseline-plan-section:** `### Task 13: Compile and cache valid and invalid guidance results`. All Task references in the copied body below retain baseline numbering.
 
 **User story:**
