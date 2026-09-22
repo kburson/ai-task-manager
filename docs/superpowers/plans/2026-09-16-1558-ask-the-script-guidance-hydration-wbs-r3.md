@@ -925,6 +925,13 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-validator.test.mj
 
 **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12a`.
 
+#### Story Intent
+
+- **Beneficiary:** Maintainer adopting guidance in a project
+- **Capability:** Select and validate an explicitly trusted catalog while retaining offline recovery
+- **Need:** An invalid or tampered project catalog could otherwise be silently replaced by package guidance or reach operational effects
+- **Value or failure prevented:** Operations fail before effects and a partial loader cannot ship without its required cache certification
+
 **User story:**
 
 As a maintainer adopting guidance,
