@@ -1,0 +1,183 @@
+{
+  "schema": "aitm.guidance-obligation-complete-recheck/v1",
+  "owner": {
+    "issue": 1676,
+    "parent": 1558,
+    "foundationIssue": 1660
+  },
+  "captureKind": "actual-public-cli-subprocess",
+  "staticObligations": "mapped-complete-proposed-not-installed",
+  "inputs": [
+    {
+      "role": "historical-foundation",
+      "path": "scripts/tests/fixtures/1558/feasibility-decision.json",
+      "sha256": "sha256:c5a403c655573248a42094b74e726d9f0d6a6c22840c535e9c4429b41c4c4a5a"
+    },
+    {
+      "role": "rule-guidance-map",
+      "path": "scripts/tests/fixtures/1558/rule-guidance-map.json",
+      "sha256": "sha256:89e0ba134b224ae252f8f4986ebdd227bd804ca70269d42af41ce51e8bb81509"
+    },
+    {
+      "role": "actual-cli-capture",
+      "path": "scripts/tests/fixtures/1558/actual-explain-traffic.json",
+      "sha256": "sha256:01352ddc23f480fbfee6ce2fde40922ee25993ce2c846d964378ef6ea71d2702"
+    },
+    {
+      "role": "hydrated-catalog",
+      "path": "instructions/aitm-guidance.yml",
+      "sha256": "sha256:ceda155d9d05eb6defe84ed4f55026312d0c63f96433f1ea8f9e48662403d63d"
+    },
+    {
+      "role": "proposed-static",
+      "id": "shim",
+      "path": "skill/SKILL.md",
+      "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+    },
+    {
+      "role": "proposed-static",
+      "id": "router",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+      "sha256": "sha256:e074f6e93924b7eea7690ae2375c26bf13dc58bd9285c30d372b0e06b0616259"
+    },
+    {
+      "role": "proposed-static",
+      "id": "pickup",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+      "sha256": "sha256:f21f3e93b1924dacf7c3652d4f4079df457d0706bbb33eef0c224bad41b69e1e"
+    },
+    {
+      "role": "proposed-static",
+      "id": "claude",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+      "sha256": "sha256:6f0b3e048709884b324fbeb88896e1c8747a222cd4c03400f8d085467ab29653"
+    },
+    {
+      "role": "proposed-static",
+      "id": "codex",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+      "sha256": "sha256:b97242b233d0ffb229eeecf4a982e49a8dd15a75e3e230747e0f508ebd914a89"
+    }
+  ],
+  "mappedObligations": 33,
+  "retainedProtocolObligations": 16,
+  "fixedBudgets": {
+    "routerPlusPickup": {
+      "absolute": 5000,
+      "working": 4000
+    },
+    "clean": {
+      "absolute": 300,
+      "working": 240
+    },
+    "blocked": {
+      "absolute": 500,
+      "working": 400
+    },
+    "fullLifecycle": {
+      "absolute": 7000,
+      "working": 5600
+    }
+  },
+  "actualResponses": {
+    "clean": 124,
+    "blocked": 159
+  },
+  "actualLifecycleTraffic": {
+    "characters": 12382,
+    "bytes": 12382,
+    "proxyTokens": 3096
+  },
+  "adapters": {
+    "claude": {
+      "files": [
+        {
+          "id": "shim",
+          "path": "skill/SKILL.md",
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "id": "router",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+          "characters": 1755,
+          "bytes": 1755,
+          "proxyTokens": 439,
+          "sha256": "sha256:e074f6e93924b7eea7690ae2375c26bf13dc58bd9285c30d372b0e06b0616259"
+        },
+        {
+          "id": "pickup",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+          "characters": 1250,
+          "bytes": 1250,
+          "proxyTokens": 313,
+          "sha256": "sha256:f21f3e93b1924dacf7c3652d4f4079df457d0706bbb33eef0c224bad41b69e1e"
+        },
+        {
+          "id": "claude",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+          "characters": 833,
+          "bytes": 833,
+          "proxyTokens": 209,
+          "sha256": "sha256:6f0b3e048709884b324fbeb88896e1c8747a222cd4c03400f8d085467ab29653"
+        }
+      ],
+      "proposedStaticProxyTokens": 1198,
+      "actualLifecycleTrafficProxyTokens": 3096,
+      "currentLoadedFullProxyTokens": 20738,
+      "proposedFullProxyTokens": 4294,
+      "provisionalEarlierStaticProxyTokens": 840
+    },
+    "codex": {
+      "files": [
+        {
+          "id": "shim",
+          "path": "skill/SKILL.md",
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "id": "router",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+          "characters": 1755,
+          "bytes": 1755,
+          "proxyTokens": 439,
+          "sha256": "sha256:e074f6e93924b7eea7690ae2375c26bf13dc58bd9285c30d372b0e06b0616259"
+        },
+        {
+          "id": "pickup",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+          "characters": 1250,
+          "bytes": 1250,
+          "proxyTokens": 313,
+          "sha256": "sha256:f21f3e93b1924dacf7c3652d4f4079df457d0706bbb33eef0c224bad41b69e1e"
+        },
+        {
+          "id": "codex",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+          "characters": 849,
+          "bytes": 849,
+          "proxyTokens": 213,
+          "sha256": "sha256:b97242b233d0ffb229eeecf4a982e49a8dd15a75e3e230747e0f508ebd914a89"
+        }
+      ],
+      "proposedStaticProxyTokens": 1202,
+      "actualLifecycleTrafficProxyTokens": 3096,
+      "currentLoadedFullProxyTokens": 20652,
+      "proposedFullProxyTokens": 4298,
+      "provisionalEarlierStaticProxyTokens": 833
+    }
+  },
+  "checks": {
+    "completeness": "pass",
+    "fidelity": "pass",
+    "budgets": "pass",
+    "reduction": "pass"
+  },
+  "verdict": "GO",
+  "interpretation": "Proposed static text plus the pinned #1675 actual public-CLI lifecycle; final installed adapter and traffic proof remains a later release gate."
+}

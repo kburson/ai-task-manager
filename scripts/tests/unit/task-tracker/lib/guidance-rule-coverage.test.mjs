@@ -7,34 +7,13 @@ import { test } from 'node:test';
 
 import { resolveDocumentationReference } from '../../../../../guidance/documentation.mjs';
 import { parseGuidanceSource } from '../../../../../guidance/parse.mjs';
+import { REQUIRED_RULE_OBLIGATION_IDS } from '../../../../../guidance/requirements.mjs';
 import { validateGuidance } from '../../../../../guidance/validate.mjs';
 import { GUIDANCE_PACKAGE_ROOT } from '../../../helpers/guidance-fixtures.mjs';
 
 const ROOT = GUIDANCE_PACKAGE_ROOT;
 const MAP_PATH = 'scripts/tests/fixtures/1558/rule-guidance-map.json';
 const CATALOG_PATH = 'instructions/aitm-guidance.yml';
-const REQUIRED_OBLIGATIONS = Object.freeze([
-  'session.timer',
-  'session.pause',
-  'session.preferences',
-  'session.compaction',
-  'binding.identity',
-  'binding.drift',
-  'pickup.deep-dive',
-  'pickup.per-ac',
-  'state.contiguous',
-  'state.exceptions',
-  'state.plan-approval',
-  'test.exact-receipt',
-  'review.reuse',
-  'review.approval',
-  'delivery.envelope',
-  'delivery.no-shell',
-  'delivery.reconcile',
-  'close.approval',
-  'close.dirty',
-  'commit.trace',
-]);
 
 function readTracked(relativePath) {
   assert.equal(path.isAbsolute(relativePath), false, relativePath);
@@ -92,7 +71,7 @@ function coverageErrors(map, entries) {
     const resolved = resolveDocumentationReference(row.documentation, { packageRoot: ROOT });
     if (!resolved.ok) errors.push(`documentation-anchor:${row.id}`);
   }
-  for (const id of REQUIRED_OBLIGATIONS) {
+  for (const id of REQUIRED_RULE_OBLIGATION_IDS) {
     if (!ids.has(id)) errors.push(`unmapped-obligation:${id}`);
   }
   return errors;

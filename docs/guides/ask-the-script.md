@@ -54,6 +54,26 @@ their distinct codes. Thrown guards become `guard-error`; malformed or invalid
 typed results become `guard-result-invalid`. Both are indeterminate and carry a
 closed investigation disposition rather than becoming legacy blocked text.
 
+## Session and pickup protocol
+
+Start the timer on the exact issue before source edits, tests, issue writes, or
+commits. Set the role at bind (`orchestrator` for an epic, `agent` for a child),
+honor the recorded worktree and project preferences, and pause for a blocking
+question. Track new follow-up work with an issue before starting it. Use the
+sanctioned issue writer; direct `gh issue create` or close and direct
+`move-state.mjs` calls bypass lifecycle records. If the board and recorded
+state disagree, reconcile before another lifecycle verb.
+
+For Plan-or-later pickup, a failed bootstrap stops source edits. Complete the
+deep dive before code, then verify each demonstrable AC and functional DoD item
+with its own declared command and exact-head evidence. Do not tick epic boxes
+until every child reaches Review. Re-read the latest user message before a
+state move or issue switch. On a mistake, stop and surface it before repair;
+write issue bodies through the sanctioned operation. A child agent following
+the Pickup Directive reports `CODE_COMPLETE` for the orchestrator to review.
+The Review rule describes the review command's terminal behavior when that
+command is invoked; it does not transfer the child agent's role boundary.
+
 ## Locate and adopt a project catalog
 
 Run `npx aitm guidance source --json` from the project to see the selected

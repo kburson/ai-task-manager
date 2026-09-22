@@ -511,17 +511,19 @@ entries:
       summary: Keep issue work bound and timed.
       explanation: >-
         Start the issue timer before work, pause it for blocking questions, and honor current project
-        preferences and the recorded worktree.
+        preferences, role, and recorded worktree. Track follow-up work before starting it and reconcile
+        board drift before another lifecycle action.
       triggered_when:
         - Before issue work or a blocking question.
       execution:
-        - Bind to the exact issue; pause and resume through AITM as the work state changes.
+        - Bind to the exact issue and role; pause and resume through AITM as the work state changes.
+        - Create follow-up issues through the sanctioned issue writer and reconcile board drift before continuing.
       examples:
         - command: npx aitm start 1676 --role agent
           purpose: Keep issue work bound and timed.
       documentation:
         - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+          anchor: session-and-pickup-protocol
   - id: protocol.receipts
     revision: 1
     binds:
@@ -561,17 +563,19 @@ entries:
       summary: Complete pickup and evidence checkpoints.
       explanation: >-
         Deep dive precedes source edits; each demonstrable acceptance criterion and functional DoD item gets
-        its own verification evidence.
+        its own verification evidence. Bootstrap failures stop source edits; epic boxes wait for child Review.
+        Child agents report CODE_COMPLETE for orchestrator Review and close.
       triggered_when:
         - When an issue reaches Plan or later and pickup instructions apply.
       execution:
         - Post the deep dive, stamp its completion, run declared verifiers, and cite exact evidence per item.
+        - Re-read user input before state moves, stop on a mistake, and use the sanctioned issue-body route.
       examples:
         - command: npx aitm ensureChecked "Deep dive complete"
           purpose: Complete pickup and evidence checkpoints.
       documentation:
         - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+          anchor: session-and-pickup-protocol
   - id: protocol.commit-trail
     revision: 1
     binds:

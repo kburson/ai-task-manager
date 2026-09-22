@@ -12,10 +12,12 @@ import {
   assertOracleTraceability,
   assertSpecClauseIndex,
 } from '../tests/helpers/guidance-clause-index.mjs';
+import { REQUIRED_RULE_OBLIGATION_IDS } from '../../guidance/requirements.mjs';
 
 const ACTIONS = ['bind', 'resume', 'promote', 'test', 'review', 'deliver', 'close'];
 const ADAPTERS = ['claude', 'codex'];
 const FIXTURE_ROOT = 'scripts/tests/fixtures/1558';
+const PROPOSED_ROOT = `${FIXTURE_ROOT}/obligation-complete-static`;
 const USAGE = 'usage: measure-guidance-candidate --all [--assert-feasible] --json';
 
 function fail(reason) {
@@ -377,6 +379,250 @@ export function validateFeasibilityDecision(decision, { projectRoot } = {}) {
   return decision;
 }
 
+/** The #1660 report above remains the immutable provisional foundation record. */
+export function buildObligationCompleteRecheck({ projectRoot, readRelative } = {}) {
+  if (typeof projectRoot !== 'string' || projectRoot === '') fail('project-root');
+  const readInput = (relativePath) => {
+    try {
+      return (readRelative ?? ((name) => readBytes(projectRoot, name)))(relativePath);
+    } catch {
+      fail(`required-input-missing:${relativePath}`);
+    }
+  };
+  const jsonInput = (relativePath) => JSON.parse(readInput(relativePath).toString('utf8'));
+  const inputRecord = (role, relativePath, { id } = {}) => ({
+    role,
+    ...(id ? { id } : {}),
+    path: relativePath,
+    sha256: sha256(readInput(relativePath)),
+  });
+  const historical = readJson(projectRoot, `${FIXTURE_ROOT}/feasibility-decision.json`);
+  validateFeasibilityDecision(historical, { projectRoot });
+  const mapPath = `${FIXTURE_ROOT}/rule-guidance-map.json`;
+  const capturePath = `${FIXTURE_ROOT}/actual-explain-traffic.json`;
+  const map = jsonInput(mapPath);
+  const capture = jsonInput(capturePath);
+  if (
+    map.schema !== 'aitm.rule-guidance-map/v1' ||
+    !Array.isArray(map.rows) ||
+    map.rows.length === 0
+  ) {
+    fail('rule-map');
+  }
+  if (
+    capture.schema !== 'aitm.guidance-actual-cli-capture/v2' ||
+    capture.captureKind !== 'actual-public-cli-subprocess' ||
+    !Array.isArray(capture.scenarios)
+  ) {
+    fail('actual-cli-capture');
+  }
+  const scenarioNames = capture.measurement?.lifecycleScenarioNames;
+  if (!Array.isArray(scenarioNames) || scenarioNames.length !== 7) fail('lifecycle-scenarios');
+  const actualText = capture.scenarios
+    .map(({ argv, stdout, stderr }) => `${argv.join(' ')}\n${stdout}${stderr}`)
+    .join('');
+  if (
+    !isDeepStrictEqual(capture.measurement.actualTraffic, {
+      characters: actualText.length,
+      bytes: Buffer.byteLength(actualText),
+      proxyTokens: Math.ceil(actualText.length / 4),
+    })
+  )
+    fail('actual-traffic-drift');
+  if (capture.scenarios.filter(({ name }) => scenarioNames.includes(name)).length !== 7) {
+    fail('lifecycle-scenarios');
+  }
+  const lifecycleText = capture.scenarios
+    .filter(({ name }) => scenarioNames.includes(name))
+    .map(({ argv, stdout, stderr }) => `${argv.join(' ')}\n${stdout}${stderr}`)
+    .join('');
+  const lifecycleTraffic = {
+    characters: lifecycleText.length,
+    bytes: Buffer.byteLength(lifecycleText),
+    proxyTokens: Math.ceil(lifecycleText.length / 4),
+  };
+  if (!isDeepStrictEqual(lifecycleTraffic, capture.measurement.lifecycleTraffic)) {
+    fail('actual-lifecycle-drift');
+  }
+  const clean = capture.scenarios.find(({ name }) => name === 'ready-first-load');
+  const blocked = capture.scenarios.find(({ name }) => name === 'blocked-migration-freeze');
+  if (!clean || !blocked) fail('actual-response-cases');
+  const responseProxy = (scenario) => Math.ceil(scenario.stdout.length / 4);
+  if (
+    responseProxy(clean) !== clean.proxyTokens ||
+    responseProxy(blocked) !== blocked.proxyTokens
+  ) {
+    fail('actual-response-drift');
+  }
+
+  const staticPaths = {
+    shim: 'skill/SKILL.md',
+    router: `${PROPOSED_ROOT}/router.md`,
+    pickup: `${PROPOSED_ROOT}/pickup.md`,
+    claude: `${PROPOSED_ROOT}/claude.md`,
+    codex: `${PROPOSED_ROOT}/codex.md`,
+  };
+  const staticText = Object.fromEntries(
+    Object.entries(staticPaths).map(([id, relativePath]) => [
+      id,
+      readInput(relativePath).toString('utf8'),
+    ])
+  );
+  const rowIds = new Set();
+  for (const row of map.rows) {
+    if (typeof row.id !== 'string' || rowIds.has(row.id)) fail('rule-map-duplicate');
+    rowIds.add(row.id);
+    if (!row.sourcePath || !readInput(row.sourcePath).toString('utf8').includes(row.sourceAnchor)) {
+      fail(`rule-map-source-${row.id}`);
+    }
+    if (Boolean(row.enforcementPath) === Boolean(row.retainedProtocolRule)) {
+      fail(`rule-map-authority-${row.id}`);
+    }
+    if (row.enforcementPath) readInput(row.enforcementPath);
+    if (row.retainedProtocolRule) {
+      if (!readInput(row.retainedProtocolRule).toString('utf8').includes(row.protocolAnchor)) {
+        fail(`rule-map-protocol-${row.id}`);
+      }
+      if (!Array.isArray(row.proposedStatic) || row.proposedStatic.length === 0) {
+        fail(`rule-map-static-${row.id}`);
+      }
+      for (const adapter of row.proposedStatic) {
+        if (
+          !['router', 'pickup', 'claude', 'codex'].includes(adapter) ||
+          !staticText[adapter].includes(`[${row.id}]`)
+        )
+          fail(`rule-map-static-${row.id}`);
+      }
+    }
+  }
+  if (
+    rowIds.size !== REQUIRED_RULE_OBLIGATION_IDS.length ||
+    REQUIRED_RULE_OBLIGATION_IDS.some((id) => !rowIds.has(id))
+  )
+    fail('rule-map-incomplete');
+
+  const fixedBudgets = historical.fixedBudgets;
+  const adapters = {};
+  const evaluatedInput = {};
+  for (const adapter of ADAPTERS) {
+    if (
+      capture.measurement.currentFullStaticProxyTokens[adapter] !==
+      readJson(projectRoot, `${FIXTURE_ROOT}/context-comparison.json`).adapters[adapter].legacy
+        .static.totals.proxyTokens
+    )
+      fail(`current-static-drift-${adapter}`);
+    const files = ['shim', 'router', 'pickup', adapter].map((id) => {
+      const content = staticText[id];
+      return {
+        id,
+        path: staticPaths[id],
+        characters: content.length,
+        bytes: Buffer.byteLength(content),
+        proxyTokens: Math.ceil(content.length / 4),
+        sha256: sha256(readInput(staticPaths[id])),
+      };
+    });
+    const staticProxyTokens = files.reduce((total, file) => total + file.proxyTokens, 0);
+    const proposedFull = staticProxyTokens + lifecycleTraffic.proxyTokens;
+    const currentFull =
+      capture.measurement.currentFullStaticProxyTokens[adapter] + lifecycleTraffic.proxyTokens;
+    adapters[adapter] = {
+      files,
+      proposedStaticProxyTokens: staticProxyTokens,
+      actualLifecycleTrafficProxyTokens: lifecycleTraffic.proxyTokens,
+      currentLoadedFullProxyTokens: currentFull,
+      proposedFullProxyTokens: proposedFull,
+      provisionalEarlierStaticProxyTokens:
+        capture.measurement.modeledProposedStatic[adapter].totals.proxyTokens,
+    };
+    evaluatedInput[adapter] = {
+      staticProxyTokens,
+      cleanProxyTokens: responseProxy(clean),
+      blockedProxyTokens: responseProxy(blocked),
+      lifecycleProxyTokens: proposedFull,
+      legacyTotalProxyTokens: historical.adapters[adapter].totalContext.legacy,
+      candidateTotalProxyTokens: proposedFull,
+    };
+  }
+  const evaluation = evaluateFeasibility({
+    completenessPassed: true,
+    fidelityPassed: true,
+    fixedBudgets,
+    adapters: evaluatedInput,
+  });
+  return {
+    schema: 'aitm.guidance-obligation-complete-recheck/v1',
+    owner: { issue: 1676, parent: 1558, foundationIssue: 1660 },
+    captureKind: capture.captureKind,
+    staticObligations: 'mapped-complete-proposed-not-installed',
+    inputs: [
+      inputRecord('historical-foundation', `${FIXTURE_ROOT}/feasibility-decision.json`),
+      inputRecord('rule-guidance-map', mapPath),
+      inputRecord('actual-cli-capture', capturePath),
+      inputRecord('hydrated-catalog', 'instructions/aitm-guidance.yml'),
+      ...Object.entries(staticPaths).map(([id, relativePath]) =>
+        inputRecord('proposed-static', relativePath, { id })
+      ),
+    ],
+    mappedObligations: map.rows.length,
+    retainedProtocolObligations: map.rows.filter(({ retainedProtocolRule }) => retainedProtocolRule)
+      .length,
+    fixedBudgets,
+    actualResponses: {
+      clean: responseProxy(clean),
+      blocked: responseProxy(blocked),
+    },
+    actualLifecycleTraffic: lifecycleTraffic,
+    adapters,
+    checks: evaluation.checks,
+    verdict: evaluation.verdict,
+    interpretation:
+      'Proposed static text plus the pinned #1675 actual public-CLI lifecycle; final installed adapter and traffic proof remains a later release gate.',
+  };
+}
+
+export function validateObligationCompleteRecheck(report, { projectRoot, readRelative } = {}) {
+  if (!isDeepStrictEqual(report, buildObligationCompleteRecheck({ projectRoot, readRelative }))) {
+    fail('decision-drift');
+  }
+  return report;
+}
+
+export function buildObligationCompleteComparison({ projectRoot } = {}) {
+  const report = buildObligationCompleteRecheck({ projectRoot });
+  return {
+    schema: 'aitm.guidance-obligation-complete-comparison/v1',
+    source: 'actual-public-cli-subprocess-plus-proposed-static',
+    inputs: report.inputs,
+    mappedObligations: report.mappedObligations,
+    retainedProtocolObligations: report.retainedProtocolObligations,
+    fixedBudgets: report.fixedBudgets,
+    actualResponses: report.actualResponses,
+    actualLifecycleTraffic: report.actualLifecycleTraffic,
+    adapters: Object.fromEntries(
+      ADAPTERS.map((adapter) => [
+        adapter,
+        {
+          currentLoadedFullProxyTokens: report.adapters[adapter].currentLoadedFullProxyTokens,
+          provisionalEarlierStaticProxyTokens:
+            report.adapters[adapter].provisionalEarlierStaticProxyTokens,
+          proposedStaticProxyTokens: report.adapters[adapter].proposedStaticProxyTokens,
+          proposedFullProxyTokens: report.adapters[adapter].proposedFullProxyTokens,
+          files: report.adapters[adapter].files,
+        },
+      ])
+    ),
+    verdict: report.verdict,
+  };
+}
+
+export function validateObligationCompleteComparison(comparison, { projectRoot } = {}) {
+  if (!isDeepStrictEqual(comparison, buildObligationCompleteComparison({ projectRoot }))) {
+    fail('comparison-drift');
+  }
+  return comparison;
+}
+
 function parseArgs(args) {
   const report = ['--all', '--json'];
   const assertion = ['--all', '--assert-feasible', '--json'];
@@ -395,7 +641,7 @@ export function runMeasurementCommand(
 ) {
   try {
     const options = parseArgs(args);
-    const decision = buildFeasibilityDecision({ projectRoot });
+    const decision = buildObligationCompleteRecheck({ projectRoot });
     writeStdout(`${JSON.stringify(decision, null, 2)}\n`);
     return measurementExitCode(decision, options);
   } catch (error) {

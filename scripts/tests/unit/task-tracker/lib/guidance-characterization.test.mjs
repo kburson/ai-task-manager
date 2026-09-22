@@ -304,9 +304,11 @@ test('missing, stale, shortened or relabeled inputs cannot become a decision', a
 });
 
 test('committed decision and both command modes reproduce the accepted generation', async () => {
-  const { buildFeasibilityDecision, runMeasurementCommand } = await measurementTool();
-  const expected = buildFeasibilityDecision({ projectRoot });
-  assert.deepEqual(json('feasibility-decision.json'), expected);
+  const { buildFeasibilityDecision, buildObligationCompleteRecheck, runMeasurementCommand } =
+    await measurementTool();
+  assert.deepEqual(json('feasibility-decision.json'), buildFeasibilityDecision({ projectRoot }));
+  const expected = buildObligationCompleteRecheck({ projectRoot });
+  assert.deepEqual(json('feasibility-recheck-1676.json'), expected);
 
   for (const args of [
     ['--all', '--json'],

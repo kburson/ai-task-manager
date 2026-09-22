@@ -36,6 +36,45 @@ export const REQUIRED_PROTOCOL_GUIDANCE_IDS = Object.freeze([
   'protocol.commit-trail',
 ]);
 
+// The retained rule inventory is a closed release input. A recheck cannot
+// certify a shortened map merely because the remaining rows are internally
+// consistent.
+export const REQUIRED_RULE_OBLIGATION_IDS = Object.freeze([
+  'session.timer',
+  'session.pause',
+  'session.preferences',
+  'session.compaction',
+  'session.track',
+  'session.issue-create',
+  'session.close-route',
+  'session.role',
+  'binding.identity',
+  'binding.drift',
+  'pickup.deep-dive',
+  'pickup.per-ac',
+  'pickup.bootstrap',
+  'pickup.checkboxes',
+  'pickup.epic',
+  'pickup.checkpoint',
+  'pickup.mistake',
+  'pickup.body',
+  'pickup.agent-terminal',
+  'state.contiguous',
+  'state.exceptions',
+  'state.plan-approval',
+  'state.reconcile',
+  'test.exact-receipt',
+  'review.reuse',
+  'review.no-verifier',
+  'review.approval',
+  'delivery.envelope',
+  'delivery.no-shell',
+  'delivery.reconcile',
+  'close.approval',
+  'close.dirty',
+  'commit.trace',
+]);
+
 export const GUIDANCE_LIMITS = Object.freeze({
   normalizedSourceBytes: 1024 * 1024,
   entries: 512,

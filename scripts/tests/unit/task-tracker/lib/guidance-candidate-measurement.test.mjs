@@ -23,6 +23,100 @@ function clone(value) {
   return structuredClone(value);
 }
 
+test('obligation-complete recheck binds exact proposed files and actual CLI capture', async () => {
+  const {
+    buildObligationCompleteRecheck,
+    validateObligationCompleteRecheck,
+    buildObligationCompleteComparison,
+    validateObligationCompleteComparison,
+  } = await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const report = buildObligationCompleteRecheck({ projectRoot });
+  assert.equal(report.schema, 'aitm.guidance-obligation-complete-recheck/v1');
+  assert.equal(report.captureKind, 'actual-public-cli-subprocess');
+  assert.equal(report.staticObligations, 'mapped-complete-proposed-not-installed');
+  assert.equal(report.verdict, 'GO');
+  assert.equal(report.adapters.claude.files.length, 4);
+  assert.equal(report.adapters.codex.files.length, 4);
+  assert.ok(report.inputs.some(({ role }) => role === 'rule-guidance-map'));
+  assert.ok(report.inputs.some(({ role }) => role === 'actual-cli-capture'));
+  assert.equal(validateObligationCompleteRecheck(report, { projectRoot }), report);
+  assert.deepEqual(json('feasibility-recheck-1676.json'), report);
+  const comparison = buildObligationCompleteComparison({ projectRoot });
+  assert.deepEqual(json('context-comparison-1676.json'), comparison);
+  assert.equal(validateObligationCompleteComparison(comparison, { projectRoot }), comparison);
+  const changed = clone(report);
+  changed.adapters.codex.files[2].sha256 = 'sha256:' + '0'.repeat(64);
+  assert.throws(
+    () => validateObligationCompleteRecheck(changed, { projectRoot }),
+    /decision-drift/
+  );
+});
+
+test('recheck rejects missing map, static bytes, actual capture, and provisional substitution', async () => {
+  const { buildObligationCompleteRecheck, validateObligationCompleteRecheck } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const readRelative = (name) => readFileSync(path.join(projectRoot, name));
+  for (const missing of [
+    'scripts/tests/fixtures/1558/rule-guidance-map.json',
+    'scripts/tests/fixtures/1558/obligation-complete-static/router.md',
+    'scripts/tests/fixtures/1558/actual-explain-traffic.json',
+  ]) {
+    assert.throws(
+      () =>
+        buildObligationCompleteRecheck({
+          projectRoot,
+          readRelative: (name) => {
+            if (name === missing) throw new Error('missing');
+            return readRelative(name);
+          },
+        }),
+      /required-input-missing/
+    );
+  }
+  const original = buildObligationCompleteRecheck({ projectRoot });
+  assert.throws(
+    () =>
+      buildObligationCompleteRecheck({
+        projectRoot,
+        readRelative: (name) => {
+          const bytes = readRelative(name);
+          if (!name.endsWith('/rule-guidance-map.json')) return bytes;
+          const map = JSON.parse(bytes.toString('utf8'));
+          map.rows.pop();
+          return Buffer.from(JSON.stringify(map));
+        },
+      }),
+    /rule-map-incomplete/
+  );
+  assert.throws(
+    () =>
+      validateObligationCompleteRecheck(original, {
+        projectRoot,
+        readRelative: (name) => {
+          const bytes = readRelative(name);
+          return name.endsWith('/router.md')
+            ? Buffer.concat([bytes, Buffer.from('changed')])
+            : bytes;
+        },
+      }),
+    /decision-drift/
+  );
+  assert.throws(
+    () =>
+      buildObligationCompleteRecheck({
+        projectRoot,
+        readRelative: (name) => {
+          const bytes = readRelative(name);
+          if (!name.endsWith('/actual-explain-traffic.json')) return bytes;
+          const capture = JSON.parse(bytes.toString('utf8'));
+          capture.captureKind = 'candidate-model-not-actual-cli';
+          return Buffer.from(JSON.stringify(capture));
+        },
+      }),
+    /actual-cli-capture/
+  );
+});
+
 async function measurement() {
   return import('../../../helpers/guidance-characterization.mjs');
 }
