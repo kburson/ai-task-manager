@@ -9,6 +9,7 @@ import { loadConfig } from '../config.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { getProjectDir, statePath } from '../paths.mjs';
 import { loadState } from '../state.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { fetchAssignmentSnapshot } from '../lib/assignment-snapshot.mjs';
 import { loadReadyForPlanMigrationJournal } from '../lib/ready-for-plan-migration-freeze.mjs';
 import { createObservationAttempt } from '../lib/action-decision/observations.mjs';
@@ -219,6 +220,11 @@ export async function evaluateExplanation({ issue, actionId, projectRoot = getPr
   }
   const state = readLastKnownState(body).state ?? 'unknown';
   const requestedAction = actionId;
+  const resolveBoundDirSilently = ({ issue: targetIssue }) =>
+    resolveProjectDir({
+      issue: targetIssue,
+      deps: { invokingDir: projectRoot, logOverride: () => {} },
+    });
   const effectiveAction =
     actionId === 'promote' && state === 'develop'
       ? 'test'
@@ -238,11 +244,28 @@ export async function evaluateExplanation({ issue, actionId, projectRoot = getPr
       invokingDir: projectRoot,
     });
   } else if (effectiveAction === 'test') {
-    readiness = await evaluateTestReadiness({ issue, cfg, projectDir: projectRoot, body, head });
+    readiness = await evaluateTestReadiness({
+      issue,
+      cfg,
+      projectDir: projectRoot,
+      body,
+      head,
+      deps: { resolveBoundDir: resolveBoundDirSilently },
+    });
   } else if (effectiveAction === 'review') {
-    readiness = await evaluateReviewReadiness({ issue, cfg, projectDir: projectRoot });
+    readiness = await evaluateReviewReadiness({
+      issue,
+      cfg,
+      projectDir: projectRoot,
+      deps: { resolveBoundDir: resolveBoundDirSilently },
+    });
   } else if (effectiveAction === 'close') {
-    readiness = await evaluateCloseReadiness({ issue, cfg, projectDir: projectRoot });
+    readiness = await evaluateCloseReadiness({
+      issue,
+      cfg,
+      projectDir: projectRoot,
+      deps: { resolveBoundDir: resolveBoundDirSilently },
+    });
   }
   const attempt = readiness?.bundle
     ? await replayAttempt({ repository, issue, actionId, bundle: readiness.bundle })
