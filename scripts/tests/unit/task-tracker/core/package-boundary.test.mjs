@@ -278,6 +278,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #1674 ships the cache identity, compiler, and read-many loader only.
   // The measured production surface grows from 829 to 832 entries.
   const guidanceCacheAllowance = 3;
+  // #1675 ships the receipt protocol and public read-only explanation verb.
+  // The measured production surface grows from 832 to 834 entries.
+  const guidanceExplanationAllowance = 2;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -306,7 +309,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     guidanceValidationAllowance +
     guidanceSourceTrustAllowance +
     guidanceEntrypointAllowance +
-    guidanceCacheAllowance;
+    guidanceCacheAllowance +
+    guidanceExplanationAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
