@@ -348,7 +348,7 @@ test('admission inventory accounts for every canonical command, alias, and class
     }
     if (entry.gateCall === null) assert.ok(entry.exception, entry.path);
   }
-  assert.equal(VERBS.size, 72);
+  assert.equal(VERBS.size, 73);
   assert.equal(Object.keys(SCRIPTS).length, 23);
   assert.deepEqual(
     new Set(inventory.commands.filter((row) => row.route === 'standalone').map((row) => row.token)),
