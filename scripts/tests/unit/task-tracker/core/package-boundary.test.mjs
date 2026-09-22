@@ -256,6 +256,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const testEntryReadinessAllowance = 1;
   // #1667 ships the read-only Review-entry authority collector.
   const reviewEntryReadinessAllowance = 1;
+  // #1668 ships the read-only delivery authority collector.
+  const deliveryReadinessAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -275,7 +277,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     earlyPromoteReadinessAllowance +
     actionNavigationAllowance +
     testEntryReadinessAllowance +
-    reviewEntryReadinessAllowance;
+    reviewEntryReadinessAllowance +
+    deliveryReadinessAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

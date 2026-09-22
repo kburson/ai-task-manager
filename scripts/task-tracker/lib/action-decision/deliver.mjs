@@ -26,6 +26,7 @@ import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import {
   verifyDeliveredPullRequest,
+  verifyExternalDeliveredPullRequest,
   DeliveryVerificationError,
 } from '../delivery-verification.mjs';
 import { createObservationAttempt } from './observations.mjs';
@@ -60,7 +61,6 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
         .filter(Boolean)
     );
     const live = projection.liveIntent;
-    if (!live) return { status: 'unsupported' };
     const preflight = validateMergedDeliveryPreflight(preflightInput);
     const branch = preflight.pr.baseRefName;
     const [remoteSha, localSha] = await Promise.all([
@@ -70,12 +70,9 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
     if (!/^[0-9a-f]{40}$/.test(remoteSha) || remoteSha !== localSha) {
       return { status: 'unavailable' };
     }
-    const verification = await verifyDeliveredPullRequest({
+    const common = {
       acceptedSha: preflight.expectedHeadSha,
-      intent: live.record,
-      intentCreatedAt: live.createdAt,
       pullRequest: selected,
-      recovery: live.record.provider === 'external',
       localHeadSha: preflightInput.localHeadSha,
       testReceiptSha: preflightInput.testReceiptSha,
       acceptedReviewSha: preflightInput.acceptedReviewSha,
@@ -87,7 +84,32 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
       isAncestor: deps.isAncestor,
       inspectMergeCommit: deps.inspectMergeCommit,
       attributingCommits: deps.attributingCommits,
-    });
+    };
+    const verification = live
+      ? await verifyDeliveredPullRequest({
+          ...common,
+          intent: live.record,
+          intentCreatedAt: live.createdAt,
+          recovery: live.record.provider === 'external',
+        })
+      : await verifyExternalDeliveredPullRequest({
+          ...common,
+          intentInput: {
+            intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+            supersedesIntentId: null,
+            issueNumber: issue,
+            repository: preflightInput.config.repo,
+            prNumber: preflight.pr.number,
+            baseRef: preflight.pr.baseRefName,
+            headRef: preflight.pr.headRefName,
+            expectedHeadSha: preflight.expectedHeadSha,
+            mergeMethod: preflight.mergeMethod,
+            attributionTokens: preflight.commitText.attributionTokens,
+            provider: 'external',
+            sessionId: 'read-only-delivery-probe',
+            clientCreatedAt: selected.mergedAt,
+          },
+        });
     const metadataWarnings = [
       ...new Set([
         ...(preflight.metadataWarnings ?? []),
@@ -109,6 +131,7 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
       expectedHeadSha: preflight.expectedHeadSha,
       mergeCommitSha: verification.receiptInput.mergeCommitSha,
       trunkHeadSha: remoteSha,
+      metadataWarnings,
     };
   } catch (error) {
     if (error instanceof DeliveryVerificationError || error instanceof DeliveryPreflightError) {
@@ -330,6 +353,20 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
     const preflight = merged
       ? validateMergedDeliveryPreflight(input)
       : validateDeliveryPreflight(input);
+    if (!merged && projection?.matchingReceipt) {
+      return {
+        status: 'blocked',
+        blockers: [
+          {
+            guardId: 'authority-collection',
+            code: 'delivery-record-conflict',
+            args: {},
+            noAutomaticRemediation: { reason: 'authority-investigation-required' },
+          },
+        ],
+        observations: [body, delivery],
+      };
+    }
     if (preflight.expectedHeadSha !== value.preflightInput.localHeadSha) {
       throw new TypeError('delivery-readiness:head');
     }
@@ -430,7 +467,15 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
       observations: [body, delivery],
     };
   }
-  return { status: 'ready', blockers: [], observations: [body, delivery] };
+  return {
+    status: 'ready',
+    blockers: [],
+    warnings: (value.mergedProof?.metadataWarnings ?? []).map((reason) => ({
+      code: 'delivery-metadata-warning',
+      args: { reason },
+    })),
+    observations: [body, delivery],
+  };
 }
 
 /** Production entry: build one fresh, read-only delivery observation from existing dependency ports. */

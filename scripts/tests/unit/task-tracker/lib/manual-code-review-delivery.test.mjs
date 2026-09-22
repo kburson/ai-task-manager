@@ -222,7 +222,13 @@ test('delivery checks CI before requesting a reviewer and emits no delivery inte
     expectedHeadSha: HEAD,
     reviewRequested: true,
   });
-  assert.deepEqual(harness.calls.events, ['comments:read', 'checks:read', 'review:request']);
+  assert.deepEqual(harness.calls.events, [
+    'comments:read',
+    'checks:read',
+    'checks:read',
+    'comments:read',
+    'review:request',
+  ]);
   assert.equal(harness.calls.createIssueComment, 0);
   assert.equal(harness.calls.requestPullRequestReview, 1);
 });

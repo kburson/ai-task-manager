@@ -61,8 +61,9 @@ test('advanced local head explicitly reconstructs a missing intent after proving
   harness.deps.createIssueComment = async (input) => {
     // Both the preliminary observation and independent verification must finish
     // before even the reconciliation record may be posted.
-    assert.equal(harness.calls.fetchOriginTrunk, 1);
-    assert.equal(harness.calls.isAncestor, 1);
+    const receiptWrite = input.body.startsWith('<!-- aitm-delivery-receipt ');
+    assert.equal(harness.calls.fetchOriginTrunk, receiptWrite ? 2 : 1);
+    assert.equal(harness.calls.isAncestor, receiptWrite ? 2 : 1);
     assert.equal(harness.calls.inspectMergeCommit, 2);
     return append(input);
   };
@@ -185,8 +186,8 @@ for (const prefixLength of [1, 2, 3]) {
     assert.equal(result.status, prefixLength === 3 ? 'already-delivered' : 'delivered');
     assert.equal(result.mode, 'historical-reconstruction');
     assert.equal(result.recovery, true);
-    assert.equal(harness.calls.fetchOriginTrunk, 1);
-    assert.equal(harness.calls.isAncestor, 1);
+    assert.equal(harness.calls.fetchOriginTrunk, prefixLength === 3 ? 1 : 2);
+    assert.equal(harness.calls.isAncestor, prefixLength === 3 ? 1 : 2);
     assert.equal(harness.calls.createIssueComment, 3 - prefixLength);
     assert.equal(harness.data.comments.length, 3);
     assert.deepEqual(harness.data.comments.slice(0, prefixLength), comments);
