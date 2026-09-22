@@ -12,6 +12,7 @@
       "sha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
       "generationSha256": "sha256:fa73a6eb8fe5fde63eff448cd039f932589392f84f9e15d473a8ff01cd921006",
       "fixturePhysicalRequests": 66,
+      "fixtureComparableReads": 44,
       "fixtureSamples": 28
     },
     "observationInventory": {
@@ -39,6 +40,7 @@
     "kind": "createObservationAttempt-read-port-ledger/v1",
     "unit": "physical-read-port-invocation",
     "countingRule": "Count one invocation of the supplied read port. An exact memo hit is zero; refresh:true is one additional invocation. Skipped authority and all effects are excluded.",
+    "legacyComparisonRule": "The frozen 66-request WBS4 transport total includes mutations and provider attempts. Comparable legacy reads exclude both kinds (44 total); action-level read-port counts are separate fixed scenarios, not a numeric speedup claim.",
     "scenarioFixture": "scripts/tests/helpers/action-authority-cost.mjs",
     "resourceMapping": [
       { "current": "issue-body", "wbs4": "issue-body", "disposition": "equivalent" },
@@ -80,7 +82,12 @@
         "issue-owner",
         "mutation-lock:no-direct"
       ],
-      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+      "legacyTransport": {
+        "sampleCount": 4,
+        "allPhysicalCount": 6,
+        "comparableReadCount": 4,
+        "excludedKinds": ["mutation"]
+      }
     },
     {
       "id": "resume",
@@ -104,7 +111,12 @@
         "issue-owner",
         "mutation-lock:no-direct"
       ],
-      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+      "legacyTransport": {
+        "sampleCount": 4,
+        "allPhysicalCount": 6,
+        "comparableReadCount": 4,
+        "excludedKinds": ["mutation"]
+      }
     },
     {
       "id": "promote",
@@ -122,7 +134,12 @@
         "dependency-graph:not-in-fixed-scenario",
         "migration-journal:no-direct"
       ],
-      "legacyTransport": { "sampleCount": 4, "physicalCount": 14, "excludedKinds": ["mutation"] }
+      "legacyTransport": {
+        "sampleCount": 4,
+        "allPhysicalCount": 14,
+        "comparableReadCount": 12,
+        "excludedKinds": ["mutation"]
+      }
     },
     {
       "id": "test",
@@ -136,7 +153,12 @@
         "session-state:session-state:1670"
       ],
       "legacyEquivalence": ["issue-body", "board-state", "worktree-binding", "session-state"],
-      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+      "legacyTransport": {
+        "sampleCount": 4,
+        "allPhysicalCount": 6,
+        "comparableReadCount": 4,
+        "excludedKinds": ["mutation"]
+      }
     },
     {
       "id": "review",
@@ -153,11 +175,16 @@
       "legacyEquivalence": [
         "issue-body",
         "board-state",
-        "worktree-binding",
+        "worktree-binding:added-current",
         "session-state",
         "verification-evidence"
       ],
-      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+      "legacyTransport": {
+        "sampleCount": 4,
+        "allPhysicalCount": 6,
+        "comparableReadCount": 4,
+        "excludedKinds": ["mutation"]
+      }
     },
     {
       "id": "deliver",
@@ -168,7 +195,8 @@
       "legacyEquivalence": ["issue-body", "review-approval|delivery-record:split"],
       "legacyTransport": {
         "sampleCount": 4,
-        "physicalCount": 14,
+        "allPhysicalCount": 14,
+        "comparableReadCount": 4,
         "excludedKinds": ["mutation", "provider-attempt"]
       }
     },
@@ -193,7 +221,12 @@
         "review-approval",
         "dependency-graph:via-children"
       ],
-      "legacyTransport": { "sampleCount": 4, "physicalCount": 14, "excludedKinds": ["mutation"] }
+      "legacyTransport": {
+        "sampleCount": 4,
+        "allPhysicalCount": 14,
+        "comparableReadCount": 12,
+        "excludedKinds": ["mutation"]
+      }
     }
   ],
   "liveService": {
