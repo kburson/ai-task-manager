@@ -15,6 +15,230 @@ const BODY =
 const REPO = 'example/project';
 const now = () => '2026-09-21T00:00:00.000Z';
 
+test('production child reader retains complete paginated child identity and refuses malformed pages', async () => {
+  assert.equal(typeof closeReadiness.createCloseReadOnlyPorts, 'function');
+  const calls = [];
+  const ports = closeReadiness.createCloseReadOnlyPorts({
+    issue: ISSUE,
+    cfg: { repo: REPO },
+    projectDir: process.cwd(),
+    deps: {
+      run: async (command, args) => {
+        calls.push([command, args]);
+        return {
+          stdout: JSON.stringify([
+            [{ number: 1701, state: 'closed', state_reason: 'completed', body: '' }],
+            [{ number: 1702, state: 'closed', state_reason: 'not_planned', body: '' }],
+          ]),
+        };
+      },
+      fetchBoard: async () => ({ state: 'done' }),
+    },
+  });
+  const result = await ports.readChildren({ issue: ISSUE });
+  assert.equal(result.complete, true);
+  assert.deepEqual(
+    result.children.map(({ number }) => number),
+    [1701, 1702]
+  );
+  assert.equal(result.children[1].closeReason, 'not_planned');
+  assert.ok(calls[0][1].includes('--paginate'));
+  const malformed = closeReadiness.createCloseReadOnlyPorts({
+    issue: ISSUE,
+    cfg: { repo: REPO },
+    projectDir: process.cwd(),
+    deps: { run: async () => ({ stdout: '{}' }) },
+  });
+  await assert.rejects(malformed.readChildren({ issue: ISSUE }), /children/);
+});
+
+test('production worktree reader compares binding identity and observes dirty paths without writing', async () => {
+  assert.equal(typeof closeReadiness.createCloseReadOnlyPorts, 'function');
+  const calls = [];
+  const ports = closeReadiness.createCloseReadOnlyPorts({
+    issue: ISSUE,
+    cfg: { repo: REPO },
+    projectDir: process.cwd(),
+    deps: {
+      resolveBoundDir: () => process.cwd(),
+      worktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
+      run: async (command, args) => {
+        calls.push([command, args]);
+        return { stdout: args[0] === 'rev-parse' ? HEAD : ' M edited.mjs\n' };
+      },
+    },
+  });
+  const result = await ports.readWorktree();
+  assert.equal(result.matches, true);
+  assert.equal(result.headSha, HEAD);
+  assert.deepEqual(result.dirtyPaths, ['edited.mjs']);
+  assert.ok(
+    calls.every(([command, args]) => command === 'git' && ['rev-parse', 'status'].includes(args[0]))
+  );
+});
+
+test('production delivery reader uses canonical parent lineage and current receipt evidence', async () => {
+  const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
+    'base64url'
+  );
+  const body = `${BODY}\n- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" result="pass" -->\n<!-- aitm-verification-receipt stage="test" data="${data}" -->`;
+  const calls = [];
+  const ports = closeReadiness.createCloseReadOnlyPorts({
+    issue: ISSUE,
+    cfg: { repo: REPO, trunkRef: 'origin/trunk' },
+    projectDir: process.cwd(),
+    deps: {
+      readGraph: async () => ({
+        parent: 1558,
+        children: [],
+        parentAuthoritativeBranch: 'feature/epic/1558',
+      }),
+      run: async (command, args) => {
+        calls.push([command, args]);
+        if (command === 'git' && args[0] === 'branch') return { stdout: 'feature/child/1669' };
+        if (command === 'git' && args[0] === 'rev-parse') return { stdout: HEAD };
+        if (command === 'git' && args[0] === 'ls-remote')
+          return { stdout: `${HEAD}\trefs/heads/feature/epic/1558\n` };
+        if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
+        throw new Error(`unexpected ${command} ${args.join(' ')}`);
+      },
+    },
+  });
+  assert.equal(typeof ports.readDelivery, 'function');
+  const delivery = await ports.readDelivery({ body });
+  assert.equal(delivery.gateInput.lineage.deliveryTarget, 'feature/epic/1558');
+  assert.equal(delivery.gateInput.acceptedSha, HEAD);
+  assert.ok(calls.every(([command, args]) => !(command === 'git' && args[0] === 'fetch')));
+});
+
+test('production delivery rejects evidence-v2 without invoking its mutating close runner', async () => {
+  const ports = closeReadiness.createCloseReadOnlyPorts({
+    issue: ISSUE,
+    cfg: { repo: REPO },
+    projectDir: process.cwd(),
+    deps: {
+      run: async () => {
+        throw new Error('unexpected external call');
+      },
+    },
+  });
+  assert.equal(typeof ports.readDelivery, 'function');
+  await assert.rejects(
+    ports.readDelivery({ body: `${BODY}\n<!-- aitm-evidence-v2 data="unavailable" -->` }),
+    /evidence-v2-read-only-cycle-unavailable/
+  );
+});
+
+test('production guard adapter reads dependencies and refuses missing local commit objects', async () => {
+  const ports = closeReadiness.createCloseReadOnlyPorts({
+    issue: ISSUE,
+    cfg: { repo: REPO, projectId: 'P' },
+    projectDir: process.cwd(),
+    deps: {
+      run: async (command, args) => {
+        if (command === 'gh' && args[0] === 'api')
+          return {
+            stdout: JSON.stringify([
+              [
+                {
+                  id: 1,
+                  body: `### 🔗 Commits\n<!-- aitm-commits: ${HEAD} -->`,
+                  created_at: now(),
+                },
+              ],
+            ]),
+          };
+        if (command === 'gh' && args[0] === 'issue')
+          return {
+            stdout: JSON.stringify({
+              blockedBy: { nodes: [], totalCount: 0 },
+              blocking: { nodes: [], totalCount: 0 },
+            }),
+          };
+        if (command === 'git' && args[0] === 'cat-file') throw new Error('missing local object');
+        if (command === 'git' && args[0] === 'status') return { stdout: '' };
+        throw new Error(`unexpected ${command} ${args.join(' ')}`);
+      },
+    },
+  });
+  assert.equal(typeof ports.readGuardAuthority, 'function');
+  await assert.rejects(ports.readGuardAuthority(), /missing local object/);
+});
+
+test('production close reaches ready with fresh authority and only read transports', async () => {
+  const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
+    'base64url'
+  );
+  const body = [
+    BODY,
+    ...['backlog', 'refine', 'plan', 'develop', 'test', 'review'].map(
+      (stage, index) => `<!-- aitm-entered-${stage}: 2026-06-07T0${index}:00:00Z -->`
+    ),
+    `<!-- aitm-dod-verified: ${HEAD}:2026-06-07T07:00:00Z -->`,
+    '<!-- aitm-review-approved: 2026-06-07T08:00:00Z -->',
+    '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" result="pass" -->',
+    `<!-- aitm-verification-receipt stage="test" data="${data}" -->`,
+  ].join('\n');
+  const commands = [];
+  const result = await closeReadiness.evaluateCloseReadiness({
+    issue: ISSUE,
+    cfg: {
+      repo: REPO,
+      projectId: 'P',
+      trunkRef: 'origin/trunk',
+      lifecycleCheckboxesRequired: false,
+      fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
+    },
+    projectDir: process.cwd(),
+    now,
+    deps: {
+      resolveBoundDir: () => process.cwd(),
+      worktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
+      fetchBoard: async () => ({ state: 'review' }),
+      run: async (command, args) => {
+        commands.push([command, args]);
+        if (command === 'gh' && args[0] === 'issue')
+          return {
+            stdout: args.includes('blockedBy,blocking')
+              ? JSON.stringify({
+                  blockedBy: { nodes: [], totalCount: 0 },
+                  blocking: { nodes: [], totalCount: 0 },
+                })
+              : body,
+          };
+        if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
+        if (command === 'gh' && args.includes('graphql'))
+          return {
+            stdout: JSON.stringify({
+              data: { repository: { issue: { number: ISSUE, body, parent: null } } },
+            }),
+          };
+        if (command === 'gh' && args[0] === 'api') return { stdout: '[[]]' };
+        if (command === 'git' && args[0] === 'rev-parse')
+          return { stdout: args.includes('--is-shallow-repository') ? 'false' : HEAD };
+        if (command === 'git' && args[0] === 'branch') return { stdout: 'trunk' };
+        if (command === 'git' && args[0] === 'status') return { stdout: '' };
+        if (command === 'git' && args[0] === 'cat-file') return { stdout: '' };
+        if (command === 'git' && args[0] === 'rev-list') return { stdout: HEAD };
+        if (command === 'git' && args[0] === 'ls-remote')
+          return { stdout: `${HEAD}\trefs/heads/trunk\n` };
+        if (command === 'git' && args[0] === 'log')
+          return { stdout: `${HEAD}\t[#1669] Close readiness\t2026-09-21T00:00:00Z\n` };
+        throw new Error(`unexpected ${command} ${args.join(' ')}`);
+      },
+    },
+  });
+  assert.equal(result.status, 'ready', JSON.stringify(result));
+  assert.ok(result.bundle.observations.some(({ identity }) => identity === 'evidence:1669:4'));
+  assert.ok(
+    commands.every(([command, args]) =>
+      command === 'git'
+        ? !['fetch', 'update-ref', 'checkout'].includes(args[0])
+        : ['view', 'list'].includes(args[1]) || args[0] === 'api'
+    )
+  );
+});
+
 function closeFixture({ values = {}, guards, unreadable } = {}) {
   const effects = [];
   const scope = computeScopeIdentity({ repository: REPO, issue: ISSUE, body: BODY });
@@ -131,6 +355,9 @@ test('production close adapter fails closed without read-only delivery and guard
     projectDir: process.cwd(),
     now,
     deps: {
+      run: async () => {
+        throw new Error('reader unavailable');
+      },
       readBody: async () => BODY,
       readHead: async () => HEAD,
       fetchBoard: async () => ({ state: 'review' }),
@@ -139,6 +366,94 @@ test('production close adapter fails closed without read-only delivery and guard
   });
   assert.equal(result.status, 'indeterminate');
   assert.ok(result.blockers.some(({ code }) => code === 'authority-read-failed'));
+});
+
+test('production guards pin both child and epic delivery proofs to the verified immutable tip', async () => {
+  const approved = [
+    '## Scope',
+    ...['backlog', 'refine', 'plan', 'develop', 'test', 'review'].map(
+      (stage, index) => `<!-- aitm-entered-${stage}: 2026-06-07T0${index}:00:00Z -->`
+    ),
+    `<!-- aitm-dod-verified: ${HEAD}:2026-06-07T07:00:00Z -->`,
+    '<!-- aitm-review-approved: 2026-06-07T08:00:00Z -->',
+  ].join('\n');
+  for (const epic of [false, true]) {
+    const commands = [];
+    const cfg = { repo: REPO, projectId: 'P', lifecycleCheckboxesRequired: false };
+    const ports = closeReadiness.createCloseReadOnlyPorts({
+      issue: ISSUE,
+      cfg,
+      projectDir: process.cwd(),
+      deps: {
+        run: async (command, args) => {
+          commands.push([command, args]);
+          if (command === 'git' && args[0] === 'log' && args.includes(HEAD))
+            return {
+              stdout: `${HEAD}\x1f[#1701] Delivered\x1fAuthor\x1f2026-09-21T00:00:00Z\x1f\n`,
+            };
+          throw new Error(`unexpected ${command} ${args.join(' ')}`);
+        },
+      },
+    });
+    const result = await ports.runReadOnlyGuards(
+      'review',
+      'done',
+      {
+        issueNumber: ISSUE,
+        cfg,
+        body: approved + (epic ? '\n<!-- aitm-issue-kind: epic -->' : ''),
+        toState: 'done',
+        headSha: HEAD,
+        children: epic
+          ? [
+              {
+                number: 1701,
+                state: 'done',
+                boardState: 'done',
+                issueState: 'closed',
+                closeReason: 'completed',
+              },
+            ]
+          : [],
+        delivery: {
+          gateInput: {
+            issueNumber: ISSUE,
+            lineage: {
+              parentIssueNumber: epic ? null : 1558,
+              deliveryTarget: 'trunk',
+              localTrunkLaneAuthorized: true,
+            },
+            branch: 'trunk',
+            pullRequests: [],
+          },
+          graph: [
+            [
+              ISSUE,
+              {
+                parent: epic ? null : 1558,
+                children: [],
+                parentAuthoritativeBranch: 'feature/epic/1558',
+              },
+            ],
+          ],
+        },
+        attribution: { status: 'attributed', tip: { sha: HEAD } },
+      },
+      {
+        comments: [{ body: `### 🔗 Commits\n<!-- aitm-commits: ${HEAD} -->` }],
+        files: { [HEAD]: [] },
+        dirty: [],
+        parentState: 'review',
+        dependency: { status: 'ready', blockedBy: [], unfinished: [], states: [] },
+      }
+    );
+    assert.equal(result.status, 'ready', JSON.stringify(result));
+    assert.ok(
+      commands.every(
+        ([command, args]) => command === 'git' && args[0] === 'log' && args.includes(HEAD)
+      )
+    );
+  }
 });
 
 test('collector preserves all seven fields on read failure and does not execute effects', async () => {
