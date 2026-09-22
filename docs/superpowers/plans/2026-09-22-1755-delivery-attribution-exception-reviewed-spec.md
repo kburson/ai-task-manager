@@ -22,7 +22,7 @@
 
 ## Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** authorize exact attribution for historical source commits during one PR delivery
 - **Need:** immutable mixed history currently blocks delivery after valid Test, Review, and CI evidence
 - **Value or failure prevented:** a reviewed PR reaches trunk without rewriting accepted history or silently bypassing provenance checks
@@ -46,7 +46,7 @@ The steps below name the intended module boundaries. Check their exact exports a
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** verify the full ordered PR source history against local commit objects before evaluating an exception
 - **Need:** PR commit metadata and local objects can diverge while duplicate subjects obscure commit identity
 - **Value or failure prevented:** an exception cannot authorize a changed, missing, or unreachable source commit
@@ -69,7 +69,7 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-attribution-excep
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** map each otherwise unattributed source SHA to one authorized issue while preserving ordinary attribution checks
 - **Need:** subject-only attribution cannot distinguish duplicate subjects or identify exactly which commits need an exception
 - **Value or failure prevented:** delivery attribution remains deterministic and refuses missing, extra, or ambiguous mappings
@@ -92,7 +92,7 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-attribution-excep
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** resolve one current immutable exception record for the exact delivery scope
 - **Need:** edited, expired, revoked, or competing records could otherwise be mistaken for current authority
 - **Value or failure prevented:** every authorized exception has an auditable, unambiguous history
@@ -115,7 +115,7 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-attribution-excep
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** prepare an exact proposal and record it only after a verified Codex user message authorizes that proposal
 - **Need:** request files and agent-authored text do not prove that the user approved the live operation
 - **Value or failure prevented:** inspection stays read-only and exception activation has verifiable human authority
@@ -140,7 +140,7 @@ Leave `delivery-attribution-exception` out of `PREFLIGHT_MODE` in `task-tracker.
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** apply a matching exception to one open-PR operation and revalidate its source history immediately before merge
 - **Need:** PR scope or source commits can change between the initial check and provider action
 - **Value or failure prevented:** a stale authorization cannot carry a changed delivery across the merge boundary
@@ -163,7 +163,7 @@ Run: `node --test scripts/tests/unit/task-tracker/verbs/deliver-source-inventory
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** verify the merge against the authorized mapping and read a receipt that identifies the waived attribution
 - **Need:** an ordinary-looking receipt could hide an exception or misstate the actual merge attribution
 - **Value or failure prevented:** delivery evidence truthfully records the waiver and rejects contradictory merge results
@@ -186,7 +186,7 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs 
 
 #### Story Intent
 
-- **Beneficiary:** AITM delivery operator
+- **Beneficiary:** delivery operator
 - **Capability:** follow and verify the packaged exception workflow from preparation through governed delivery
 - **Need:** missing package files or unclear instructions could make the approved workflow unusable or unsafe in an installed copy
 - **Value or failure prevented:** operators can execute the supported flow with tested commands and visible authorization boundaries
