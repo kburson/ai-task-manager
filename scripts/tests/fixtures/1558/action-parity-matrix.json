@@ -1,5 +1,15 @@
 {
   "schema": "aitm.action-parity-matrix/v1",
+  "certification": {
+    "scope": "A2-seven-action-conformance",
+    "status": "certified",
+    "evidence": [
+      "action-parity-matrix.json",
+      "action-authority-cost.json",
+      "residual-legacy-review.json"
+    ],
+    "releaseMeaning": "evaluator-parity-only; not package release"
+  },
   "actions": [
     {
       "id": "bind",
@@ -51,11 +61,13 @@
         },
         "changedAuthority": {
           "disposition": "manual",
+          "rationale": "The existing injected resume executor proves a fresh freeze refusal, but does not pair a prior ready explanation with that same executor run; this remains explicitly manual parity review.",
           "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
           "test": "real injected resume execution refreshes freeze and preserves its exit 14 refusal"
         },
         "postReadyFailure": {
           "disposition": "manual",
+          "rationale": "The injected resume executor preserves exit 14 and zero effects after a freeze; a separately named prior-ready-to-failure scenario is not yet automated.",
           "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
           "test": "real injected resume execution refreshes freeze and preserves its exit 14 refusal"
         }
@@ -146,6 +158,7 @@
         },
         "postReadyFailure": {
           "disposition": "manual",
+          "rationale": "The resident Review rerun rejects stale exact-HEAD Test evidence before action, while a complete successful prior-ready then failed-write sequence remains separately inventoried.",
           "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
           "test": "Review-state rerun refuses stale exact-HEAD Test receipt before resident action"
         }

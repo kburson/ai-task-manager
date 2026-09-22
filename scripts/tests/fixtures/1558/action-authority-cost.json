@@ -1,0 +1,220 @@
+{
+  "schema": "aitm.action-authority-cost/v1",
+  "capturedAt": "2026-09-22T03:07:26.566Z",
+  "source": {
+    "wbs4AuthorityBaseline": {
+      "path": "scripts/tests/fixtures/1558/authority-baseline.json",
+      "sha256": "sha256:32ec5ddac931a44c880339b6cad987f3099b8019b5f020858fff22c76ecc5a51",
+      "sourceCommit": "8f3547e4fdab9f05f293d9b65e95b62f3972424c"
+    },
+    "legacyBaseline": {
+      "path": "scripts/tests/fixtures/1558/legacy-baseline.json",
+      "sha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
+      "generationSha256": "sha256:fa73a6eb8fe5fde63eff448cd039f932589392f84f9e15d473a8ff01cd921006",
+      "fixturePhysicalRequests": 66,
+      "fixtureSamples": 28
+    },
+    "observationInventory": {
+      "path": "scripts/tests/fixtures/1558/action-observation-inventory.json",
+      "sha256": "sha256:d88fed95e3a3ae03305f095c88affe393481772f53652e16ffbabbc9f4a05b1f"
+    },
+    "measurementHelper": {
+      "path": "scripts/tests/helpers/action-authority-cost.mjs",
+      "sha256": "sha256:91cc086f7bf8dd1cc296460b252b6afecde388244980b6c0ab53d3efe288aa0a"
+    },
+    "legacyTranscripts": [
+      {
+        "adapter": "claude",
+        "path": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/claude.json",
+        "sha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48"
+      },
+      {
+        "adapter": "codex",
+        "path": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/codex.json",
+        "sha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec"
+      }
+    ]
+  },
+  "deterministic": {
+    "kind": "createObservationAttempt-read-port-ledger/v1",
+    "unit": "physical-read-port-invocation",
+    "countingRule": "Count one invocation of the supplied read port. An exact memo hit is zero; refresh:true is one additional invocation. Skipped authority and all effects are excluded.",
+    "scenarioFixture": "scripts/tests/helpers/action-authority-cost.mjs",
+    "resourceMapping": [
+      { "current": "issue-body", "wbs4": "issue-body", "disposition": "equivalent" },
+      { "current": "project-board", "wbs4": "board-state", "disposition": "equivalent" },
+      { "current": "worktree", "wbs4": "worktree-binding", "disposition": "equivalent" },
+      { "current": "session-state", "wbs4": "session-state", "disposition": "equivalent" },
+      { "current": "github-user", "wbs4": "issue-owner", "disposition": "equivalent" },
+      { "current": "local-config", "wbs4": "project-policy", "disposition": "equivalent" },
+      { "current": "workflow-policy", "wbs4": "project-policy", "disposition": "split-from" },
+      {
+        "current": "delivery",
+        "wbs4": "verification-evidence|review-approval|delivery-record",
+        "disposition": "split-from"
+      },
+      { "current": "occupancy", "wbs4": null, "disposition": "no-direct-legacy-equivalent" },
+      { "current": "migration-journal", "wbs4": null, "disposition": "no-direct-legacy-equivalent" }
+    ]
+  },
+  "actions": [
+    {
+      "id": "bind",
+      "scenarioId": "authority-cost.bind.fixed-collector",
+      "requestCount": 7,
+      "ceiling": 9,
+      "requestKeys": [
+        "local-config:local-config:1670",
+        "session-state:session-state:1670",
+        "worktree:worktree:1670",
+        "occupancy:occupancy:1670",
+        "migration-journal:migration-journal:1670",
+        "project-board:issue:1670:2",
+        "issue-body:issue:1670:1"
+      ],
+      "legacyEquivalence": [
+        "session-state",
+        "worktree-binding",
+        "issue-body",
+        "board-state",
+        "issue-owner",
+        "mutation-lock:no-direct"
+      ],
+      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+    },
+    {
+      "id": "resume",
+      "scenarioId": "authority-cost.resume.fixed-collector",
+      "requestCount": 7,
+      "ceiling": 9,
+      "requestKeys": [
+        "local-config:local-config:1670",
+        "session-state:session-state:1670",
+        "worktree:worktree:1670",
+        "occupancy:occupancy:1670",
+        "migration-journal:migration-journal:1670",
+        "project-board:issue:1670:2",
+        "issue-body:issue:1670:1"
+      ],
+      "legacyEquivalence": [
+        "session-state",
+        "worktree-binding",
+        "issue-body",
+        "board-state",
+        "issue-owner",
+        "mutation-lock:no-direct"
+      ],
+      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+    },
+    {
+      "id": "promote",
+      "scenarioId": "authority-cost.promote.fixed-collector",
+      "requestCount": 3,
+      "ceiling": 4,
+      "requestKeys": [
+        "issue-body:issue:1670:1",
+        "project-board:issue:1670:2",
+        "migration-journal:migration-journal:1670"
+      ],
+      "legacyEquivalence": [
+        "issue-body",
+        "board-state",
+        "dependency-graph:not-in-fixed-scenario",
+        "migration-journal:no-direct"
+      ],
+      "legacyTransport": { "sampleCount": 4, "physicalCount": 14, "excludedKinds": ["mutation"] }
+    },
+    {
+      "id": "test",
+      "scenarioId": "authority-cost.test.fixed-collector",
+      "requestCount": 4,
+      "ceiling": 5,
+      "requestKeys": [
+        "issue-body:issue:1670:1",
+        "project-board:issue:1670:2",
+        "worktree:worktree:1670",
+        "session-state:session-state:1670"
+      ],
+      "legacyEquivalence": ["issue-body", "board-state", "worktree-binding", "session-state"],
+      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+    },
+    {
+      "id": "review",
+      "scenarioId": "authority-cost.review.fixed-collector",
+      "requestCount": 5,
+      "ceiling": 7,
+      "requestKeys": [
+        "issue-body:issue:1670:1",
+        "project-board:issue:1670:2",
+        "worktree:worktree:1670",
+        "session-state:session-state:1670",
+        "delivery:evidence:1670:1"
+      ],
+      "legacyEquivalence": [
+        "issue-body",
+        "board-state",
+        "worktree-binding",
+        "session-state",
+        "verification-evidence"
+      ],
+      "legacyTransport": { "sampleCount": 4, "physicalCount": 6, "excludedKinds": ["mutation"] }
+    },
+    {
+      "id": "deliver",
+      "scenarioId": "authority-cost.deliver.fixed-collector",
+      "requestCount": 2,
+      "ceiling": 3,
+      "requestKeys": ["issue-body:issue:1670", "delivery:evidence:1670:1"],
+      "legacyEquivalence": ["issue-body", "review-approval|delivery-record:split"],
+      "legacyTransport": {
+        "sampleCount": 4,
+        "physicalCount": 14,
+        "excludedKinds": ["mutation", "provider-attempt"]
+      }
+    },
+    {
+      "id": "close",
+      "scenarioId": "authority-cost.close.fixed-collector",
+      "requestCount": 6,
+      "ceiling": 8,
+      "requestKeys": [
+        "issue-body:issue:1670:1",
+        "project-board:issue:1670:2",
+        "worktree:worktree:1670",
+        "delivery:evidence:1670:1",
+        "delivery:evidence:1670:2",
+        "delivery:evidence:1670:3"
+      ],
+      "legacyEquivalence": [
+        "issue-body",
+        "board-state",
+        "worktree-binding",
+        "delivery-record",
+        "review-approval",
+        "dependency-graph:via-children"
+      ],
+      "legacyTransport": { "sampleCount": 4, "physicalCount": 14, "excludedKinds": ["mutation"] }
+    }
+  ],
+  "liveService": {
+    "kind": "controlled-read-only",
+    "command": [
+      "gh",
+      "issue",
+      "view",
+      "1656",
+      "--repo",
+      "kburson/ai-task-manager",
+      "--json",
+      "number,state"
+    ],
+    "runtime": { "node": "v26.8.1", "gh": "gh version 2.97.0 (2026-07-31)" },
+    "observedAt": "2026-09-22T03:07:26.566Z",
+    "sampleCount": 5,
+    "samplesMs": [912, 490, 402, 383, 340],
+    "medianMs": 402,
+    "p95Ms": 912,
+    "percentile": "nearest-rank",
+    "mutations": 0
+  }
+}
