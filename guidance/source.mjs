@@ -13,6 +13,20 @@ export const PACKAGE_GUIDANCE_PATH = 'instructions/aitm-guidance.yml';
 export const RELEASE_MANIFEST_PATH = 'instructions/aitm-guidance.release.json';
 const PACKAGE_NAME = '@kburson/ai-task-manager';
 
+export function resolveGuidanceProjectRoot(cwd = process.cwd()) {
+  try {
+    return realpathSync(
+      execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim()
+    );
+  } catch {
+    return null;
+  }
+}
+
 function failure(code, sourceType, selectedPath, reason) {
   return {
     sourceType,
@@ -135,13 +149,16 @@ function observeTracking(projectRoot) {
 
 /** Select exactly one catalog. The default module URL binds package identity to this running module. */
 export function resolveGuidanceSource({
-  projectRoot = process.cwd(),
+  projectRoot = resolveGuidanceProjectRoot(),
   moduleUrl = import.meta.url,
   publishedOnly = false,
 } = {}) {
   const packageResult = packageObservation(moduleUrl);
-  const projectPath = path.join(projectRoot, PROJECT_GUIDANCE_PATH);
-  const projectFileType = regularFile(projectPath);
+  if (!publishedOnly && projectRoot === null) {
+    return failure('guidance-project-root-indeterminate', 'project', null, 'git-root-unavailable');
+  }
+  const projectPath = projectRoot === null ? null : path.join(projectRoot, PROJECT_GUIDANCE_PATH);
+  const projectFileType = projectPath === null ? 'missing' : regularFile(projectPath);
   const selectedProject = !publishedOnly && projectFileType !== 'missing';
   const selectedPath = selectedProject ? projectPath : packageResult.sourcePath;
   const sourceType = selectedProject ? 'project' : 'package';

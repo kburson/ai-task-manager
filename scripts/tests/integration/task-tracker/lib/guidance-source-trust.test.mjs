@@ -1,7 +1,7 @@
 // @story #1672
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -76,10 +76,12 @@ test('tracked project catalog wholly shadows package, including modified and inv
     adopt(f);
     let selected = resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: f.moduleUrl });
     assert.equal(selected.trust, 'project-owned-current');
+    assert.deepEqual(selected.warnings, ['guidance-project-source-uncommitted']);
     assert.equal(loadSelectedGuidance(selected).valid, true);
     writeFileSync(f.projectPath, `${source.toString('utf8')}\n# local comment\n`);
     selected = resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: f.moduleUrl });
     assert.equal(selected.trust, 'project-owned-diverged');
+    assert.deepEqual(selected.warnings, ['guidance-project-source-uncommitted']);
     assert.equal(loadSelectedGuidance(selected).valid, true);
     writeFileSync(f.projectPath, 'schema: invalid\n');
     selected = resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: f.moduleUrl });
@@ -213,6 +215,86 @@ test('missing release manifest and non-regular override are named failures', () 
       resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: f.moduleUrl }).code,
       'guidance-project-source-invalid-type'
     );
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test('symlinked package and unsupported virtual or missing source resolve by name', () => {
+  const f = fixture();
+  try {
+    const linked = path.join(f.dir, 'linked-package');
+    symlinkSync(f.packageRoot, linked, 'dir');
+    const linkedUrl = pathToFileURL(path.join(linked, 'guidance/source.mjs')).href;
+    const selected = resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: linkedUrl });
+    assert.equal(selected.trust, 'published');
+    assert.equal(selected.path, path.join(f.packageRoot, 'instructions/aitm-guidance.yml'));
+    assert.equal(
+      resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: 'virtual:source' }).code,
+      'guidance-package-resolution-unsupported'
+    );
+    rmSync(path.join(f.packageRoot, 'instructions/aitm-guidance.yml'));
+    assert.equal(
+      resolveGuidanceSource({ projectRoot: f.dir, moduleUrl: f.moduleUrl }).code,
+      'guidance-package-source-unavailable'
+    );
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test('a project file outside the asserted Git root is indeterminate, never published', () => {
+  const f = fixture();
+  try {
+    const nested = path.join(f.dir, 'not-the-root');
+    const candidate = path.join(nested, '.ai-task-manager/aitm-guidance.yml');
+    mkdirSync(path.dirname(candidate), { recursive: true });
+    writeFileSync(candidate, source);
+    const selected = resolveGuidanceSource({ projectRoot: nested, moduleUrl: f.moduleUrl });
+    assert.equal(selected.trust, 'indeterminate');
+    assert.equal(selected.code, 'guidance-project-root-indeterminate');
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test('actual recovery CLI finds a tracked override from a nested Git directory', () => {
+  const f = fixture();
+  try {
+    adopt(f);
+    const nested = path.join(f.dir, 'src', 'nested');
+    mkdirSync(nested, { recursive: true });
+    const cli = path.join(root, 'scripts/task-tracker/guidance.mjs');
+    const report = JSON.parse(
+      execFileSync(process.execPath, [cli, 'source', '--json'], {
+        cwd: nested,
+        encoding: 'utf8',
+      })
+    );
+    assert.equal(report.sourceType, 'project');
+    assert.equal(report.trust, 'project-owned-current');
+    assert.equal(report.path, f.projectPath);
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test('failed Git-root discovery from a nested directory is indeterminate, not package fallback', () => {
+  const f = fixture();
+  try {
+    adopt(f);
+    const nested = path.join(f.dir, 'src', 'nested');
+    mkdirSync(nested, { recursive: true });
+    const cli = path.join(root, 'scripts/task-tracker/guidance.mjs');
+    const result = spawnSync(process.execPath, [cli, 'source', '--json'], {
+      cwd: nested,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: f.dir },
+    });
+    assert.equal(result.status, 1);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.trust, 'indeterminate');
+    assert.equal(report.code, 'guidance-project-root-indeterminate');
   } finally {
     rmSync(f.dir, { recursive: true, force: true });
   }

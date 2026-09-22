@@ -2,9 +2,10 @@
 // @story #1672
 // Publisher-only fingerprint generation. Runtime checks this file; it never restamps it.
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse } from 'espree';
 
 import { decodeGuidanceSource } from '../../guidance/positions.mjs';
 
@@ -45,20 +46,90 @@ export function checkGuidanceRelease(packageRoot = DEFAULT_ROOT) {
     : { ok: false, code: 'guidance-release-manifest-disagreement' };
 }
 
-/** Detect the first consumer release without relying on a manually toggled flag. */
+function shippedRuntimeFiles(packageRoot) {
+  const files = [];
+  for (const directory of ['bin', 'scripts', 'guidance']) {
+    const stack = [path.join(packageRoot, directory)];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      for (const entry of readdirSync(current, { withFileTypes: true })) {
+        const absolute = path.join(current, entry.name);
+        const relative = path.relative(packageRoot, absolute).replaceAll(path.sep, '/');
+        if (entry.isDirectory()) {
+          if (relative === 'scripts/tests' || relative === 'scripts/maintenance') continue;
+          stack.push(absolute);
+        } else if (entry.isFile() && /\.[cm]?js$/.test(entry.name)) {
+          files.push(relative);
+        }
+      }
+    }
+  }
+  return files.sort();
+}
+
+function importSpecifiers(source) {
+  const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
+  const specifiers = [];
+  const stack = [ast];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+    if (
+      ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(node.type)
+    ) {
+      if (typeof node.source?.value === 'string') specifiers.push(node.source.value);
+    } else if (node.type === 'ImportExpression' && typeof node.source?.value === 'string') {
+      specifiers.push(node.source.value);
+    } else if (
+      node.type === 'CallExpression' &&
+      node.callee?.name === 'require' &&
+      typeof node.arguments?.[0]?.value === 'string'
+    ) {
+      specifiers.push(node.arguments[0].value);
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) stack.push(...value);
+      else if (value && typeof value === 'object') stack.push(value);
+    }
+  }
+  return specifiers;
+}
+
+function isLoaderImport(packageRoot, file, specifier) {
+  const target = specifier.startsWith('.')
+    ? path.resolve(packageRoot, path.dirname(file), specifier)
+    : specifier.startsWith('@kburson/ai-task-manager/')
+      ? path.join(packageRoot, specifier.slice('@kburson/ai-task-manager/'.length))
+      : null;
+  if (!target) return false;
+  return ['guidance/source.mjs', 'guidance/admission.mjs'].some(
+    (relative) => target === path.join(packageRoot, relative)
+  );
+}
+
+/** Scan every shipped runtime module, including indirect loader consumers. */
 export function assertGuidanceConsumerRelease(packageRoot = DEFAULT_ROOT) {
   const agreement = checkGuidanceRelease(packageRoot);
   if (!agreement.ok) throw new Error(agreement.code);
-  const consumers = [
-    'bin/aitm.mjs',
-    'bin/cli.mjs',
-    'scripts/task-tracker/task-tracker.mjs',
-    'bin/aitm-registry.mjs',
-  ].filter((relative) => {
+  const recoveryOnly = new Set([
+    'guidance/source.mjs',
+    'guidance/admission.mjs',
+    'scripts/task-tracker/guidance.mjs',
+  ]);
+  const consumers = shippedRuntimeFiles(packageRoot).filter((relative) => {
+    if (recoveryOnly.has(relative)) return false;
     const source = readFileSync(path.join(packageRoot, relative), 'utf8');
-    return (
-      /guidance\/(?:source|admission)\.mjs|task-tracker\/guidance\.mjs/.test(source) ||
-      /['"]guidance['"]\s*:\s*(?:routableContract|contract)/.test(source)
+    // Computed import targets cannot be resolved statically. Fail closed when
+    // a shipped runtime module constructs a guidance loader path, even when
+    // `import(target)` has no literal module specifier.
+    if (
+      /guidance[\s\S]{0,160}(?:admission|source)\.mjs|(?:admission|source)\.mjs[\s\S]{0,160}guidance/.test(
+        source
+      )
+    )
+      return true;
+    return importSpecifiers(source).some((specifier) =>
+      isLoaderImport(packageRoot, relative, specifier)
     );
   });
   if (consumers.length > 0) {
