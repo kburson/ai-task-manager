@@ -1,0 +1,80 @@
+// @story #1672
+import assert from 'node:assert/strict';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  assertGuidanceConsumerRelease,
+  checkGuidanceRelease,
+  expectedGuidanceRelease,
+} from '../../../../maintenance/generate-guidance-release.mjs';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
+const files = [
+  'package.json',
+  'instructions/aitm-guidance.yml',
+  'instructions/aitm-guidance.release.json',
+  'bin/aitm.mjs',
+  'bin/cli.mjs',
+  'bin/aitm-registry.mjs',
+  'scripts/task-tracker/task-tracker.mjs',
+];
+
+function fixture() {
+  const dir = mkdtempProjectIsolated('guidance-release-');
+  for (const file of files) {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    copyFileSync(path.join(root, file), path.join(dir, file));
+  }
+  return dir;
+}
+
+test('checked-in release identity agrees with raw catalog and separate parser metadata', () => {
+  const expected = expectedGuidanceRelease(root);
+  assert.match(expected.catalogFileDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.deepEqual(expected.parser, { name: 'js-yaml', version: '5.4.2' });
+  assert.equal(expected.compiler.adapter, 'js-yaml-events-v1');
+  assert.deepEqual(checkGuidanceRelease(root), { ok: true, code: null });
+});
+
+test('read-only CI agreement rejects catalog change rather than restamping', () => {
+  const dir = fixture();
+  try {
+    const catalog = path.join(dir, 'instructions/aitm-guidance.yml');
+    writeFileSync(catalog, `${readFileSync(catalog, 'utf8')}\n# changed\n`);
+    assert.deepEqual(checkGuidanceRelease(dir), {
+      ok: false,
+      code: 'guidance-release-manifest-disagreement',
+    });
+    assert.equal(
+      readFileSync(path.join(dir, 'instructions/aitm-guidance.release.json'), 'utf8'),
+      readFileSync(path.join(root, 'instructions/aitm-guidance.release.json'), 'utf8')
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('first operational loader consumer is refused until B2 certification exists', () => {
+  const dir = fixture();
+  try {
+    assert.deepEqual(assertGuidanceConsumerRelease(dir), { ok: true, consumers: [] });
+    const entrypoint = path.join(dir, 'bin/aitm.mjs');
+    writeFileSync(
+      entrypoint,
+      `${readFileSync(entrypoint, 'utf8')}\nimport '../guidance/admission.mjs';\n`
+    );
+    assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
+    // A caller-provided certification file is not an escape hatch in B1.
+    writeFileSync(
+      path.join(dir, 'instructions/aitm-guidance.b2-certification.json'),
+      '{"certified":true}\n'
+    );
+    assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

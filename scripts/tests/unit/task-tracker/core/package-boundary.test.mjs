@@ -262,6 +262,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const closeReadinessAllowance = 1;
   // #1671 ships six validator modules, a schema, and a complete seed catalog.
   const guidanceValidationAllowance = 8;
+  // #1672 intentionally ships two source/admission modules, the offline
+  // recovery CLI, the release manifest, and the project-adoption guide.
+  // Measured dry-run package surface grows from 822 to 827 entries.
+  const guidanceSourceTrustAllowance = 5;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -284,7 +288,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     reviewEntryReadinessAllowance +
     deliveryReadinessAllowance +
     closeReadinessAllowance +
-    guidanceValidationAllowance;
+    guidanceValidationAllowance +
+    guidanceSourceTrustAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -303,10 +308,25 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/task-tracker/lib/graph-node-authority.mjs',
     'scripts/task-tracker/lib/governed-plan-policy.mjs',
     'scripts/task-tracker/lib/action-decision/observations.mjs',
+    'guidance/source.mjs',
+    'guidance/admission.mjs',
+    'scripts/task-tracker/guidance.mjs',
+    'instructions/aitm-guidance.yml',
+    'instructions/aitm-guidance.schema.json',
+    'instructions/aitm-guidance.release.json',
+    'docs/guides/aitm-guidance-source.md',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',
   ]) {
     assert.ok(files.has(required), `required runtime file missing from package: ${required}`);
   }
+});
+
+test('package-boundary: production parser and guidance release guard are declared', () => {
+  const pkg = JSON.parse(readFileSync(join(repoRoot(), 'package.json'), 'utf8'));
+  assert.equal(pkg.dependencies['js-yaml'], '5.4.2');
+  assert.match(pkg.scripts.prepublishOnly, /lint:guidance-release/);
+  assert.match(pkg.scripts['lint:guidance-release'], /--check/);
+  assert.match(pkg.scripts['lint:guidance-release'], /--assert-consumer-release/);
 });

@@ -1,0 +1,11 @@
+# Guidance source trust and recovery
+
+AITM normally uses the catalog shipped with the running package. `npx aitm guidance source` reports that package catalog's absolute path, selection reason, and trust classification. A checkout, linked worktree, global installation, or relocated package can have a different path; copy the path actually reported by your running installation.
+
+To adopt a project-owned catalog deliberately, copy the reported packaged catalog to `.ai-task-manager/aitm-guidance.yml` and track that exact file with Git. It is the only supported project override. AITM does not create it during initialization or upgrade. The project file replaces the entire package catalog, not selected entries. A root-level `aitm-guidance.yml` is ignored. An untracked, invalid, or unreadable selected override blocks operations rather than falling back to the packaged catalog. Staged or modified tracked content is permitted but reported as uncommitted provenance.
+
+Run `npx aitm guidance validate` for the active catalog, `npx aitm guidance validate --published` for the packaged catalog, or `npx aitm guidance validate --file <path>` to inspect a candidate without installing it. Add `--json` for structured diagnostics. These recovery commands are offline and read-only. While the selected catalog is invalid, ordinary operations and human guidance explanation remain blocked; help, version, source inspection, and validation remain available. Removing the project override restores packaged selection on the next invocation.
+
+The release fingerprint detects accidental or unauthorized changes to the packaged raw catalog. It does not prove publisher authenticity against an actor who can edit both the catalog and its checked-in manifest. A tracked project override is locally maintained, not publisher-attested. A source-trust result or guidance explanation never authorizes an operation; sanctioned execution still refreshes current authority and guards.
+
+The B1 source loader and B2 compiled cache are a joint consumer-release requirement. Development may contain the B1 modules before the cache is ready, but the operational loader must not be released to consumers until B2 certification passes. The release check intentionally refuses a loader consumer while that certification is absent.
