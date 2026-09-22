@@ -27,6 +27,8 @@ import {
 } from './lib/evidence-v2/execution-context.mjs';
 import { selectEvidenceProtocol } from './lib/evidence-v2/protocol.mjs';
 import { guardEvidenceMutation } from './lib/evidence-v2/entry-guard.mjs';
+import { admitGuidance } from '../../guidance/admission.mjs';
+import { annotateSuccessfulGuidanceMutation } from '../../guidance/annotation.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -67,6 +69,34 @@ const INIT_EXEMPT = new Set([
   'status',
   'fleet',
 ]);
+
+const ANNOTATED_LIFECYCLE_VERBS = new Set([
+  'start',
+  'resume',
+  'promote',
+  'next',
+  'test',
+  'review',
+  'deliver',
+  'close',
+  'end',
+  'refine',
+  'demote',
+  'shelve',
+  'park',
+  'cancel-plan',
+  'plan',
+  'plan-approve',
+  'approve',
+]);
+
+export function annotationTargetIssue({ verb, rest, stateBefore }) {
+  const explicit = /^#\d+$/.test(verb) ? verb : targetFromRest(rest);
+  const selected =
+    explicit || stateBefore?.active || (verb === 'resume' ? stateBefore?.lastActive : null);
+  const number = Number(String(selected ?? '').replace(/^#/, ''));
+  return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
 
 // #208 — shared preflight verbs. `target-required` parses `#N` from rest and
 // enforces bind-match. `target-optional` falls back to active when no `#N` is
@@ -315,6 +345,12 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
+    const admission = admitGuidance({ argv: process.argv.slice(2) });
+    if (!admission.admitted) {
+      process.stderr.write(admission.diagnostic);
+      process.exitCode = 1;
+      return;
+    }
     const executionContext = readEvidenceExecutionContext();
     if (executionContext?.schema === 'aitm.rehearsal-context/v1')
       assertRecordedTransport(executionContext);
@@ -331,6 +367,21 @@ if (_isMain)
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
     const ctx = buildContext(foreignWorktree.argv, { executionContext });
+    const shouldAnnotate =
+      admission.trust === 'project-owned-diverged' &&
+      !ctx.SKIP_NETWORK &&
+      (ANNOTATED_LIFECYCLE_VERBS.has(ctx.verb) || /^#\d+$/.test(ctx.verb)) &&
+      !(
+        ctx.verb === 'review' &&
+        ctx.rest.some((arg) => arg === '--probe' || arg.startsWith('--probe='))
+      );
+    const annotationIssue = shouldAnnotate
+      ? annotationTargetIssue({
+          verb: ctx.verb,
+          rest: ctx.rest,
+          stateBefore: (await import('./state.mjs')).loadState(ctx.statePath),
+        })
+      : null;
     try {
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
@@ -757,6 +808,20 @@ if (_isMain)
           }
           console.error(`unknown verb: ${ctx.verb}`);
           process.exit(2);
+      }
+      if (annotationIssue !== null && !process.exitCode) {
+        const outcome = await annotateSuccessfulGuidanceMutation({
+          admission,
+          issue: annotationIssue,
+          repository: ctx.cfg.repo,
+          projectDir: ctx.projectDir,
+          mutationSucceeded: true,
+        });
+        if (outcome.status === 'warning') {
+          process.stderr.write(
+            'guidance-annotation-failed: lifecycle mutation succeeded; issue audit annotation was not verified\n'
+          );
+        }
       }
     } catch (err) {
       console.error(`task-tracker error: ${err.message}`);

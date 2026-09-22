@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-backlog');
 // Backlog healer — normalize body encodings, reconcile aitm-fields against the
 // `⏱ Timing Log`, and validate the project's custom-field schema in one pass.
 //

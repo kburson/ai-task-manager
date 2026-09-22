@@ -37,6 +37,7 @@ import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, TASK_TRACKER_PATH, SCRIPTS, kind, groupedListing } from './aitm-registry.mjs';
 import { prepareActionCaptureEnv } from '../scripts/task-tracker/lib/action-capture.mjs';
 import { emitSelfDoc } from '../scripts/lib/self-doc.mjs';
+import { admitGuidance, classifyGuidanceRoute } from '../guidance/admission.mjs';
 
 const HELP_NAMES = new Set(['help', '?', '--help', '-h', undefined, '']);
 // Flag-shaped help tokens task-tracker recognizes only in the command-help slot.
@@ -45,13 +46,14 @@ const HELP_FLAGS = new Set(['--help', '-h', '?']);
 // NOT a flag, so task-tracker would otherwise swallow it as verb positional
 // data; the verb router below normalizes it to `--help`.
 const isHelpWord = (a) => a === 'help';
-const scriptDelegateOptions = (name) =>
-  name === 'doctor'
+const recoveryEnv = ({ env }) => env;
+const scriptDelegateOptions = (name, recovery = false) =>
+  name === 'doctor' || recovery
     ? {
         command: name,
         // Doctor is deliberately independent of task/session state. Preserve the
         // caller environment without consulting action-capture configuration.
-        prepareEnv: ({ env }) => env,
+        prepareEnv: recoveryEnv,
       }
     : { command: name };
 
@@ -121,6 +123,14 @@ export function delegate(targetPath, args, options = {}) {
 
 export function run(argv = process.argv.slice(2)) {
   const [name, ...rest] = argv;
+  const recovery = classifyGuidanceRoute(argv) === 'recovery';
+  if (kind(name)) {
+    const admission = admitGuidance({ argv });
+    if (!admission.admitted) {
+      process.stderr.write(admission.diagnostic);
+      return 1;
+    }
+  }
 
   // Top-level help entry: bare invocation, or `help`/`?`/`--help`/`-h` as the
   // command. A trailing non-flag token selects a specific command to document.
@@ -132,18 +142,24 @@ export function run(argv = process.argv.slice(2)) {
         return delegate(
           path.join(REPO_ROOT, SCRIPTS[target].path),
           ['help'],
-          scriptDelegateOptions(target)
+          scriptDelegateOptions(target, true)
         );
       }
       // A verb (or an unknown token → verbHelp falls back to the top-level
       // listing) routes through task-tracker's help renderer.
-      return delegate(TASK_TRACKER_PATH, [target, '--help'], { command: target });
+      return delegate(TASK_TRACKER_PATH, [target, '--help'], {
+        command: target,
+        prepareEnv: recoveryEnv,
+      });
     }
     // Bare top-level: the orchestrator command index (names-only, incl. scripts)
     // followed by the /task verb reference (topics + state map + gate model).
     emitSelfDoc('aitm');
     printListing();
-    return delegate(TASK_TRACKER_PATH, ['--help'], { command: 'help' });
+    return delegate(TASK_TRACKER_PATH, ['--help'], {
+      command: 'help',
+      prepareEnv: recoveryEnv,
+    });
   }
 
   const k = kind(name);
@@ -152,11 +168,14 @@ export function run(argv = process.argv.slice(2)) {
     // word to the help flag task-tracker recognizes (it already honors ?/-h/
     // --help). Every other arg passes through untouched.
     const forwarded = rest.length === 1 && isHelpWord(rest[0]) ? ['--help'] : rest;
-    return delegate(TASK_TRACKER_PATH, [name, ...forwarded], { command: name });
+    return delegate(TASK_TRACKER_PATH, [name, ...forwarded], {
+      command: name,
+      ...(recovery ? { prepareEnv: recoveryEnv } : {}),
+    });
   }
   if (k === 'script') {
     const target = path.join(REPO_ROOT, SCRIPTS[name].path);
-    return delegate(target, rest, scriptDelegateOptions(name));
+    return delegate(target, rest, scriptDelegateOptions(name, recovery));
   }
 
   process.stderr.write(`aitm: unknown command "${name}"\n\n`);

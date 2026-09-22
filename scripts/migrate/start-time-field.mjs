@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'start-time-field');
 // One-shot migration: populate the new `Start time` TEXT field on every project
 // item from the issue's timing-log first `start` row. Idempotent (skips writes
 // when current value matches). Optional --delete-old-fields removes the

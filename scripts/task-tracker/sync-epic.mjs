@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'sync-epic');
 // #905 — re-sync an epic branch onto trunk (design: "Epic↔trunk re-sync").
 //
 //   node scripts/task-tracker/sync-epic.mjs <epic#>

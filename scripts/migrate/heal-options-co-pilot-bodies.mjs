@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-options-co-pilot-bodies');
 // One-off: heal every kburson/options-co-pilot issue body by appending the AITM
 // fields-block (`<!-- ai-task-manager:fields:start -->` … `:end -->`) populated
 // from the project's custom field values. Operates remotely — no local clone

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'log-issue-time');
 // Read an issue's ⏱ Timing Log comment, compute totals, and write them to GitHub Projects V2.
 //
 // Engaged / Session = sum of all Active Min rows until richer Codex

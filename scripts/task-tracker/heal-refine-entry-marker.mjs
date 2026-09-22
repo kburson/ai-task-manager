@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-refine-entry-marker');
 // One-shot heal — backfills `aitm-entered-refine` on issues that traversed
 // Refine before stage-entry marker stamping was wired (#140) or before the
 // chain-integrity close gate (#138) treated the marker as required.

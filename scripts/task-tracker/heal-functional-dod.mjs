@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-functional-dod');
 // #403 — Detect + heal issues whose Functional DoD section predates the keyed
 // template (#303). Such issues carry the five Functional checkbox lines but
 // without their `dod:functional:KEY` markers, so `parseFunctionalDodKeys`

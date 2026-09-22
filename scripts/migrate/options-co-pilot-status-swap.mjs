@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'options-co-pilot-status-swap');
 // One-off: side-by-side Status field swap for kburson/options-co-pilot.
 //
 // Existing Status options: Backlog | Ready | In progress | In review | Done

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'cut-epic-branch');
 // #905 — cut an epic branch at its correct base, by construction.
 //
 //   node scripts/task-tracker/cut-epic-branch.mjs <issue#>

@@ -266,6 +266,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // recovery CLI, the release manifest, and the project-adoption guide.
   // Measured dry-run package surface grows from 822 to 827 entries.
   const guidanceSourceTrustAllowance = 5;
+  // #1673 adds the serialized guidance annotation and direct-entrypoint gate.
+  // The measured dry-run package surface grows from 827 to 829 entries.
+  const guidanceEntrypointAllowance = 2;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -289,7 +292,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryReadinessAllowance +
     closeReadinessAllowance +
     guidanceValidationAllowance +
-    guidanceSourceTrustAllowance;
+    guidanceSourceTrustAllowance +
+    guidanceEntrypointAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -310,6 +314,8 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/task-tracker/lib/action-decision/observations.mjs',
     'guidance/source.mjs',
     'guidance/admission.mjs',
+    'guidance/annotation.mjs',
+    'scripts/task-tracker/lib/direct-guidance-admission.mjs',
     'scripts/task-tracker/guidance.mjs',
     'instructions/aitm-guidance.yml',
     'instructions/aitm-guidance.schema.json',
@@ -326,7 +332,15 @@ test('package-boundary: runtime entry points are still shipped', () => {
 test('package-boundary: production parser and guidance release guard are declared', () => {
   const pkg = JSON.parse(readFileSync(join(repoRoot(), 'package.json'), 'utf8'));
   assert.equal(pkg.dependencies['js-yaml'], '5.4.2');
-  assert.match(pkg.scripts.prepublishOnly, /lint:guidance-release/);
+  assert.match(pkg.scripts.prepublishOnly, /lint:guidance-release-consumer/);
   assert.match(pkg.scripts['lint:guidance-release'], /--check/);
-  assert.match(pkg.scripts['lint:guidance-release'], /--assert-consumer-release/);
+  assert.doesNotMatch(pkg.scripts['lint:guidance-release'], /--assert-consumer-release/);
+  assert.match(pkg.scripts['lint:guidance-release-consumer'], /--assert-consumer-release/);
+});
+
+test('package-boundary: tag and explicit release CI retain the B2 consumer gate', () => {
+  const workflow = readFileSync(join(repoRoot(), '.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /tags: \['v\*'\]/);
+  assert.match(workflow, /release_candidate:/);
+  assert.match(workflow, /guidance-release:\n[\s\S]*?lint:guidance-release-consumer/);
 });

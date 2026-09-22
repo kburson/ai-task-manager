@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'init-repair');
 // Repair an existing .ai-task-manager/task-tracker.json by backfilling empty
 // kanbanOption* fields and provisioning additive package-defined fields that
 // terminal workflow correctness requires.

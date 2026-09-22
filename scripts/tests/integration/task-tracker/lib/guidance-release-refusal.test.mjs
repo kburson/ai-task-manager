@@ -1,6 +1,7 @@
 // @story #1672
 import assert from 'node:assert/strict';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -23,12 +24,24 @@ const files = [
   'scripts/task-tracker/task-tracker.mjs',
 ];
 
-function fixture() {
+function fixture({ withoutDirectConsumers = false } = {}) {
   const dir = mkdtempProjectIsolated('guidance-release-');
   mkdirSync(path.join(dir, 'guidance'), { recursive: true });
   for (const file of files) {
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     copyFileSync(path.join(root, file), path.join(dir, file));
+  }
+  if (withoutDirectConsumers) {
+    for (const file of ['bin/aitm.mjs', 'bin/cli.mjs', 'scripts/task-tracker/task-tracker.mjs']) {
+      const target = path.join(dir, file);
+      writeFileSync(
+        target,
+        readFileSync(target, 'utf8').replace(
+          /^import .*guidance\/(?:admission|annotation)\.mjs';\n/gm,
+          ''
+        )
+      );
+    }
   }
   return dir;
 }
@@ -62,12 +75,6 @@ test('read-only CI agreement rejects catalog change rather than restamping', () 
 test('first operational loader consumer is refused until B2 certification exists', () => {
   const dir = fixture();
   try {
-    assert.deepEqual(assertGuidanceConsumerRelease(dir), { ok: true, consumers: [] });
-    const entrypoint = path.join(dir, 'bin/aitm.mjs');
-    writeFileSync(
-      entrypoint,
-      `${readFileSync(entrypoint, 'utf8')}\nimport '../guidance/admission.mjs';\n`
-    );
     assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
     // A caller-provided certification file is not an escape hatch in B1.
     writeFileSync(
@@ -81,7 +88,7 @@ test('first operational loader consumer is refused until B2 certification exists
 });
 
 test('indirect loader import in another shipped module cannot bypass release refusal', () => {
-  const dir = fixture();
+  const dir = fixture({ withoutDirectConsumers: true });
   try {
     const adapter = path.join(dir, 'scripts/task-tracker/lib/indirect-guidance.mjs');
     mkdirSync(path.dirname(adapter), { recursive: true });
@@ -98,7 +105,7 @@ test('indirect loader import in another shipped module cannot bypass release ref
 });
 
 test('computed guidance import cannot evade the B2 release refusal', () => {
-  const dir = fixture();
+  const dir = fixture({ withoutDirectConsumers: true });
   try {
     const adapter = path.join(dir, 'scripts/task-tracker/lib/computed-guidance.mjs');
     mkdirSync(path.dirname(adapter), { recursive: true });
@@ -110,4 +117,13 @@ test('computed guidance import cannot evade the B2 release refusal', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('publication command is still blocked by B2-absent consumer certification', () => {
+  const result = spawnSync('npm', ['run', 'lint:guidance-release-consumer'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}${result.stderr}`, /guidance-b2-certification-absent/);
 });

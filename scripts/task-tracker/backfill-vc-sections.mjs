@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'backfill-vc-sections');
 // #427 — One-shot, idempotent heal that back-fills a `## Verification Commands`
 // (VC) section onto open issues created before #410 made the section mandatory.
 //

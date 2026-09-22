@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'assigned-to-ready-for-plan');
 // #1217 — dry-run and apply the live Assigned -> Ready for Planning cutover.
 
 import { loadConfig } from '../task-tracker/config.mjs';

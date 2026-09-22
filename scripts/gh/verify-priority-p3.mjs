@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'verify-priority-p3');
 // #404 — verify the P3 ("Chore") priority option is provisioned end-to-end:
 //   1. `.ai-task-manager/task-tracker.json` carries a non-empty `priorityOptionP3`.
 //   2. The live GitHub Project Priority single-select field has a `P3` option

@@ -34,6 +34,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
     ['scripts/task-tracker/cut-child-worktree.mjs', 'cut-child-worktree'],
     ['scripts/task-tracker/cut-epic-branch.mjs', 'cut-epic-branch'],
     ['scripts/task-tracker/heal-backlog.mjs', 'heal-backlog'],
+    ['scripts/task-tracker/guidance.mjs', 'guidance'],
     ['scripts/task-tracker/measure-context.mjs', 'measure-context'],
     ['scripts/task-tracker/merge-back.mjs', 'merge-back'],
     ['scripts/task-tracker/preflight-issue.mjs', 'preflight-issue'],
@@ -133,8 +134,6 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/task-tracker/assert-file-excludes.mjs',
       'scripts/task-tracker/config-get.mjs',
       'scripts/task-tracker/config-init.mjs',
-      // #1672 recovery implementation; #1673 promotes it to routed public surface.
-      'scripts/task-tracker/guidance.mjs',
       'scripts/task-tracker/orchestrator-lock.mjs',
       'scripts/task-tracker/task-tracker.mjs',
       'scripts/task-tracker/tools/coverage-threshold.mjs',

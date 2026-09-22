@@ -194,8 +194,8 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
   retired: Object.freeze(['idle', 'active-work']),
   definitions: TIMING_DEFINITIONS,
   emitters: Object.freeze([
-    timingEmitter('scripts/gh/dispatch-prep.mjs', 105, 'event-call', "'start'", ['start']),
-    timingEmitter('scripts/gh/ensure-wave-parent.mjs', 335, 'event-call', "'start'", ['start']),
+    timingEmitter('scripts/gh/dispatch-prep.mjs', 107, 'event-call', "'start'", ['start']),
+    timingEmitter('scripts/gh/ensure-wave-parent.mjs', 337, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
       331,

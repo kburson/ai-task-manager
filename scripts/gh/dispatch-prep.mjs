@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'dispatch-prep');
 // dispatch-prep.mjs — orchestrator-side pre-flight for a sub-issue about to be
 // handed to an agent. Flips the board to In Progress and posts a `start` timing
 // row, so the issue is observably claimed even if the agent's bootstrap fails.

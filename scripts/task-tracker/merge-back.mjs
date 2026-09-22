@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'merge-back');
 // #905 — merge a child branch back into its epic (design: "Merge-back protocol").
 //
 //   node scripts/task-tracker/merge-back.mjs <child#> <worktree-path>

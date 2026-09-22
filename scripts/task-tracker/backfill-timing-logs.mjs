@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'backfill-timing-logs');
 // Backfill historical 0m timing-log rows (#242 — child f of #238).
 //
 // Pre-#159 state-move verbs appended timing rows with hardcoded

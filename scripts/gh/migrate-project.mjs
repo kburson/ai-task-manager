@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'migrate-project');
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';

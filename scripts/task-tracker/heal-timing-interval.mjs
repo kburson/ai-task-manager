@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-timing-interval');
 // #1249 — dry-run-first, locked repair for one caller-reported AFK interval.
 
 import {

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'preflight-issue');
 // cspell:ignore optout
 // Preflight check before any `gh issue create` from the task skill.
 //

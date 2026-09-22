@@ -95,6 +95,7 @@ export const INTERNAL = {
 
 // kind('promote') -> 'verb'; kind('set-priority') -> 'script'; else null.
 export function kind(name) {
+  if (typeof name === 'string' && /^#\d+$/.test(name)) return 'verb';
   if (VERBS.has(name)) return 'verb';
   if (Object.prototype.hasOwnProperty.call(SCRIPTS, name)) return 'script';
   return null;
