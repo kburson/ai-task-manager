@@ -4,6 +4,11 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
+import {
+  normalizeRefusal,
+  REGISTERED_GUARD_IDS,
+  validateWarning,
+} from '../../../../task-tracker/lib/action-decision/contract.mjs';
 import { listLifecycleActions } from '../../../../task-tracker/lib/lifecycle-policy/actions.mjs';
 
 const FIXTURE_ROOT = new URL('../../../fixtures/1558/', import.meta.url);
@@ -69,14 +74,49 @@ test('aggregate parity executes the seven action suites, not only their metadata
   }
 });
 
-test('authority cost and residual legacy evidence are complete before A2 certification', () => {
+test('authority cost evidence is present before A2 certification', () => {
   const cost = fixture('action-authority-cost.json');
-  const residual = fixture('residual-legacy-review.json');
   assert.equal(cost.schema, 'aitm.action-authority-cost/v1');
-  assert.equal(residual.schema, 'aitm.residual-legacy-review/v1');
   assert.deepEqual(
     cost.actions.map(({ id }) => id),
     ACTIONS
   );
-  assert.ok(residual.entries.length > 0);
+});
+
+test('legacy refusal and warning fallbacks remain inventoried and fail closed', () => {
+  const residual = fixture('residual-legacy-review.json');
+  assert.equal(residual.schema, 'aitm.residual-legacy-review/v1');
+  const inventory = JSON.parse(
+    readFileSync(
+      new URL('../../../../task-tracker/lib/action-decision/legacy-refusals.json', import.meta.url),
+      'utf8'
+    )
+  );
+  assert.deepEqual(
+    residual.entries.map(({ guardId }) => guardId),
+    REGISTERED_GUARD_IDS
+  );
+  for (const entry of residual.entries) {
+    assert.equal(entry.disposition, 'manual-investigation');
+    assert.ok(entry.rationale.length > 20, `${entry.guardId} requires a reviewed reason`);
+    assert.equal(inventory.guards[entry.guardId].complete, true);
+    assert.ok(inventory.guards[entry.guardId].sites.length > 0);
+    assert.ok(
+      inventory.guards[entry.guardId].sites.every(({ kind }) =>
+        ['refusal', 'warning'].includes(kind)
+      )
+    );
+  }
+  assert.throws(
+    () =>
+      normalizeRefusal(
+        { reason: 'new legacy refusal' },
+        { guardId: 'unregistered-new-guard', legacyInventory: inventory }
+      ),
+    /not fully inventoried/
+  );
+  assert.throws(
+    () => validateWarning({ code: 'new-unknown-warning', args: {} }, { status: 'blocked' }),
+    /domain/
+  );
 });
