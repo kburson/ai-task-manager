@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'unassign', { surface: 'direct-verb' });
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';

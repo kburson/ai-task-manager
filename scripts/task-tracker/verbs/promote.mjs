@@ -15,6 +15,8 @@
 // Pure core: `runPromote({ issueNumber, cfg, deps })`. All side-effecting
 // callers are injected so tests stay offline.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'promote', { surface: 'direct-verb' });
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

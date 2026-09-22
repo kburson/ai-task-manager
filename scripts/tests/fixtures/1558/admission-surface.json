@@ -2386,6 +2386,7 @@
       "classification": "agent-callable-verb",
       "command": "approve",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",
@@ -2412,16 +2413,17 @@
         "../lib/workflow-policy/scope-identity.mjs",
         "../lib/verification-receipt.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/assign.mjs",
       "classification": "agent-callable-verb",
       "command": "assign",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "node:child_process",
         "node:crypto",
         "node:util",
@@ -2435,16 +2437,17 @@
         "../lib/argv-strict.mjs",
         "../lib/bind-context.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/demote.mjs",
       "classification": "agent-callable-verb",
       "command": "demote",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",
@@ -2459,26 +2462,33 @@
         "../lib/state-cursor.mjs",
         "../lib/github-records/contract-write.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/park.mjs",
       "classification": "agent-callable-verb",
       "command": "park",
-      "staticImports": ["node:path", "node:url", "./shelve.mjs", "../lib/shelve-transaction.mjs"],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "./shelve.mjs",
+        "../lib/shelve-transaction.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/plan-approve.mjs",
       "classification": "agent-callable-verb",
       "command": "plan-approve",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",
@@ -2499,16 +2509,17 @@
         "../lib/governed-plan-policy.mjs",
         "../lib/plan-approval-evidence-repair.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/promote.mjs",
       "classification": "agent-callable-verb",
       "command": "promote",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "node:child_process",
         "node:path",
         "node:url",
@@ -2544,16 +2555,17 @@
         "../word-counter.mjs",
         "../lib/workflow-policy/enforcement.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/reconcile.mjs",
       "classification": "agent-callable-verb",
       "command": "reconcile",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",
@@ -2577,16 +2589,17 @@
         "../../gh/move-state.mjs",
         "../lib/project-dir.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/refine.mjs",
       "classification": "agent-callable-verb",
       "command": "refine",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",
@@ -2606,16 +2619,17 @@
         "../lib/estimation/estimate-granularity.mjs",
         "../lib/refinement-snapshot.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/shelve.mjs",
       "classification": "agent-callable-verb",
       "command": "shelve",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "node:path",
         "node:url",
         "../paths.mjs",
@@ -2625,16 +2639,17 @@
         "../lib/lifecycle-policy/index.mjs",
         "../lib/shelve-transaction.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verbs/unassign.mjs",
       "classification": "agent-callable-verb",
       "command": "unassign",
       "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
         "node:path",
         "node:url",
         "node:child_process",
@@ -2649,10 +2664,10 @@
         "../lib/bind-context.mjs",
         "./assign.mjs"
       ],
-      "firstPotentialEffect": "verb hub dispatch",
-      "gateCall": "verb hub admission",
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
       "exception": null,
-      "fixtureId": null
+      "fixtureId": "invalid-tracked-override"
     },
     {
       "path": "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs",

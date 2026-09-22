@@ -1592,7 +1592,7 @@ export async function verbTest(ctx) {
       // verb needs no intervening re-`start`. `pause` remains the sole verb that
       // nulls `active`.
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     }
     case 'reverified': {
       // #444 — already in Test; the sandbox re-ran the current VC set in place
@@ -1605,20 +1605,20 @@ export async function verbTest(ctx) {
         console.error(`  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}`);
       }
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     }
     case 'already-verified':
       console.log(
         `✓ #${issueNumber} already has a valid exact-SHA Test receipt (${result.receipt.receiptId}); standard commands were not rerun.`
       );
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     case 'directory-evidence-accepted':
       console.log(
         `✓ #${issueNumber} already has accepted current-contract exact-SHA Test evidence; body receipts were not consulted.`
       );
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     case 'move-failed': {
       // #406 — sandbox passed but the board move was refused. Do NOT print the
       // success banner; surface the move-state child's real refusal reason and

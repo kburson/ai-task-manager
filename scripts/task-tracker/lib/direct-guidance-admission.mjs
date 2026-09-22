@@ -5,7 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { admitGuidance } from '../../../guidance/admission.mjs';
 
 /** Guard a supported direct executable without affecting library imports. */
-export function enforceDirectGuidance(moduleUrl, command, argv = process.argv.slice(2)) {
+export function enforceDirectGuidance(
+  moduleUrl,
+  command,
+  { argv = process.argv.slice(2), surface = 'router' } = {}
+) {
   const invokedPath = process.argv.at(1);
   if (!invokedPath) return false;
   let direct;
@@ -16,7 +20,7 @@ export function enforceDirectGuidance(moduleUrl, command, argv = process.argv.sl
     return false;
   }
   if (!direct) return false;
-  const admission = admitGuidance({ argv: [command, ...argv] });
+  const admission = admitGuidance({ argv: [command, ...argv], surface });
   if (!admission.admitted) {
     process.stderr.write(admission.diagnostic);
     process.exit(1);

@@ -65,7 +65,7 @@ Create `scripts/tests/fixtures/1558/admission-surface.json` and `scripts/tests/i
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs scripts/tests/unit/guidance/annotation.test.mjs
 ```
 
 ### Task 2: Annotate only successful diverged mutations
@@ -103,9 +103,22 @@ Modify `package.json`, `.github/workflows/ci.yml`, `scripts/maintenance/generate
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs scripts/tests/unit/guidance/annotation.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs
 npm run lint
 npm run format:check
 npm test
 npm run test:slow
 ```
+
+## B1 Cold-Process Baseline (2026-09-22)
+
+Measured against implementation commit `cceecc90dd1e5d50f4064241af85ba5569bfd25e` on local Node v26.8.1, with `TT_SKIP_NETWORK=1`. Each sample starts a fresh Node process; elapsed milliseconds include dispatcher and subprocess overhead, source selection, parse, and full validation where applicable. These are local observations for #1674's B2 comparison, not CI-calibrated budgets or a warm-cache claim.
+
+| Command                                                  | Five elapsed samples (ms)              | Median (ms) | Exit |
+| -------------------------------------------------------- | -------------------------------------- | ----------: | ---: |
+| `node bin/aitm.mjs status`                               | 1025.4, 1048.6, 1020.1, 1013.7, 1010.1 |      1020.1 |    0 |
+| `node bin/aitm.mjs words-count`                          | 760.2, 768.6, 762.4, 763.1, 763.4      |       763.1 |    0 |
+| `node scripts/task-tracker/task-tracker.mjs status`      | 887.2, 908.6, 884.3, 879.1, 883.4      |       884.3 |    0 |
+| `node bin/aitm.mjs guidance validate` (recovery control) | 196.9, 197.2, 193.1, 196.6, 195.7      |       196.6 |    0 |
+
+`aitm doctor` was also sampled (220.2–244.8 ms) but exited 1 on this development worktree's bootstrap-health report, so it is not used as a successful operational baseline. Publication remains refused until B2 certification is supplied by #1674.
