@@ -28,8 +28,8 @@ The current registry exposes 72 verb/alias tokens and 20 routed support scripts 
 ## Plan Metadata
 
 - Priority: P2
-- Size: L
-- Estimate: 22 hours (accepted WBS three-unit allocation: 10+6+6)
+- Size: XL (governed Plan forecast; Refine baseline was L)
+- Estimate: 29.5 hours (governed Plan forecast; accepted WBS three-unit 22-hour allocation remains the historical baseline)
 - Labels: epic-1558, guidance
 
 ## Story Intent
