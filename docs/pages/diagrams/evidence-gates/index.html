@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evidence gates across the state machine · AITM</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, sans-serif;
+        color: #24232f;
+        background: #f7f6fb;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      main {
+        max-width: 92rem;
+        margin: auto;
+        padding: 1.25rem clamp(1rem, 3vw, 3rem) 4rem;
+      }
+      a {
+        color: #4433a6;
+      }
+      h1 {
+        margin-bottom: 0.35rem;
+        font-size: clamp(1.7rem, 3vw, 2.4rem);
+      }
+      p {
+        max-width: 72ch;
+        line-height: 1.55;
+      }
+      figure {
+        margin: 2rem 0;
+        padding: 1rem;
+        background: white;
+        border: 1px solid #dcd9e8;
+        border-radius: 0.75rem;
+      }
+      figcaption {
+        font-weight: 650;
+        margin: 0.2rem 0 1rem;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+      }
+      button {
+        border: 1px solid #7665bd;
+        background: #f6f2ff;
+        color: #32256f;
+        border-radius: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover,
+      button:focus-visible {
+        background: #e8dfff;
+      }
+      .viewport {
+        overflow: auto;
+        max-height: 75vh;
+        overscroll-behavior: contain;
+        border: 1px solid #e7e5ee;
+        border-radius: 0.4rem;
+        background: white;
+        touch-action: pan-x pan-y pinch-zoom;
+      }
+      .viewport img {
+        display: block;
+        max-width: none;
+        height: auto;
+      }
+      .source {
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+      }
+      .note {
+        border-left: 0.25rem solid #7b68c3;
+        padding: 0.2rem 1rem;
+        background: #eeebf9;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="../../">AITM diagrams</a></nav>
+      <h1>Evidence gates across the state machine</h1>
+      <p>
+        Two landscape diagrams from article 09 of the agentic delivery series. On a narrow screen,
+        drag across the image to pan; use the controls or open the original PNG to zoom.
+      </p>
+
+      <figure>
+        <figcaption>Backlog through Develop</figcaption>
+        <div class="controls" data-viewer>
+          <button type="button" data-zoom="out" aria-label="Zoom out on Backlog through Develop">
+            −
+          </button>
+          <button type="button" data-zoom="in" aria-label="Zoom in on Backlog through Develop">
+            +
+          </button>
+          <button type="button" data-zoom="reset">Reset view</button>
+          <a href="backlog-to-develop.png">Open original PNG</a>
+        </div>
+        <div class="viewport" tabindex="0" aria-label="Scrollable diagram: Backlog through Develop">
+          <img
+            src="backlog-to-develop.png"
+            width="2352"
+            height="213"
+            alt="Backlog goes to Refine, then to Ready for Planning after size, estimate, and priority; Plan goes to Develop after deep-dive evidence."
+          />
+        </div>
+        <div class="source"><a href="backlog-to-develop.mmd">Mermaid source</a></div>
+      </figure>
+
+      <figure>
+        <figcaption>Develop through Done</figcaption>
+        <div class="controls" data-viewer>
+          <button type="button" data-zoom="out" aria-label="Zoom out on Develop through Done">
+            −
+          </button>
+          <button type="button" data-zoom="in" aria-label="Zoom in on Develop through Done">
+            +
+          </button>
+          <button type="button" data-zoom="reset">Reset view</button>
+          <a href="develop-to-done.png">Open original PNG</a>
+        </div>
+        <div class="viewport" tabindex="0" aria-label="Scrollable diagram: Develop through Done">
+          <img
+            src="develop-to-done.png"
+            width="2352"
+            height="471"
+            alt="Develop goes to Test with code-complete evidence. Passing verification advances Test to Review; failure returns to Develop. Review can return changes to Develop or advance to Done after human approval, when configured."
+          />
+        </div>
+        <div class="source"><a href="develop-to-done.mmd">Mermaid source</a></div>
+      </figure>
+
+      <p class="note">
+        * Human approval at Review → Done is configurable in the AITM skill package. The user can
+        require the agent to stop for approval or allow automatic approval and inspect the evidence
+        afterward.
+      </p>
+    </main>
+    <script>
+      for (const figure of document.querySelectorAll('figure')) {
+        const viewport = figure.querySelector('.viewport');
+        const image = viewport.querySelector('img');
+        let zoom = 1;
+        const fit = () => {
+          const base = Math.max(viewport.clientWidth, 1100);
+          image.style.width = `${Math.round(base * zoom)}px`;
+        };
+        figure.querySelector('[data-zoom="in"]').addEventListener('click', () => {
+          zoom = Math.min(zoom * 1.25, 4);
+          fit();
+        });
+        figure.querySelector('[data-zoom="out"]').addEventListener('click', () => {
+          zoom = Math.max(zoom / 1.25, 0.5);
+          fit();
+        });
+        figure.querySelector('[data-zoom="reset"]').addEventListener('click', () => {
+          zoom = 1;
+          fit();
+        });
+        new ResizeObserver(fit).observe(viewport);
+        fit();
+      }
+    </script>
+  </body>
+</html>
