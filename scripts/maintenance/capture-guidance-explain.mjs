@@ -9,6 +9,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
@@ -16,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { configPath, SHARED_DIR, statePath } from '../task-tracker/paths.mjs';
 import { mkdtempProjectIsolated } from '../task-tracker/lib/scratch-dir.mjs';
+import { readyForPlanMigrationJournalPath } from '../task-tracker/lib/ready-for-plan-migration-freeze.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bin = path.join(root, 'bin/aitm.mjs');
@@ -110,10 +112,18 @@ function fakeGhSource() {
   return `#!/usr/bin/env node
 const { appendFileSync } = require('node:fs');
 const args = process.argv.slice(2);
-const body = ${JSON.stringify(body)};
+const boardState = process.env.CAPTURE_BOARD_STATE || 'Plan';
+const body = ${JSON.stringify(body)}.replace(
+  'state="plan"',
+  'state="' + boardState.toLowerCase() + '"'
+);
 appendFileSync(process.env.CAPTURE_AUTHORITY_LOG, JSON.stringify({ args }) + '\\n');
 if (args[0] === 'issue' && args[1] === 'view') {
-  process.stdout.write(body);
+  process.stdout.write(
+    args.includes('--jq')
+      ? body
+      : JSON.stringify({ number: ${issue}, body, state: 'OPEN', stateReason: null, labels: [] })
+  );
   process.exit(0);
 }
 if (args[0] === 'api' && args[1] === 'graphql') {
@@ -125,7 +135,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
         assignees: { nodes: [] },
         projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' }, fieldValueByName: {
-          name: process.env.CAPTURE_BOARD_STATE || 'Plan'
+          name: boardState
         } }], pageInfo: { hasNextPage: false, endCursor: null } }
       } } } }));
     } else {
@@ -184,7 +194,9 @@ export function captureGuidanceExplain() {
         timeout: 30_000,
       });
       if (result.error) throw result.error;
-      if (result.status !== 0) throw new Error(result.stderr || `capture:${name}:exit`);
+      if (result.status !== 0) {
+        throw new Error(`capture:${name}:exit\n${result.stderr}`);
+      }
       const parsed = JSON.parse(result.stdout);
       const remoteAuthorityReads = readFileSync(authorityLog, 'utf8')
         .split('\n')
@@ -216,9 +228,28 @@ export function captureGuidanceExplain() {
       first,
       run('matching-receipt', [...args, '--known', firstReceipt, '--json']),
       run('compaction-reset', [...args, '--json']),
-      run('blocked-authority-drift', [...args, '--json'], { CAPTURE_BOARD_STATE: 'Develop' }),
-      run('diagnostic', [...args, '--diagnostic', '--json']),
     ];
+    const migrationJournal = readyForPlanMigrationJournalPath(fixtureDir);
+    mkdirSync(path.dirname(migrationJournal), { recursive: true });
+    writeFileSync(migrationJournal, '{"phase":"active-capture"}\n');
+    scenarios.push(run('blocked-migration-freeze', [...args, '--json']));
+    unlinkSync(migrationJournal);
+    scenarios.push(run('diagnostic', [...args, '--diagnostic', '--json']));
+    const lifecycleStates = {
+      resume: 'Plan',
+      promote: 'Plan',
+      test: 'Develop',
+      review: 'Test',
+      deliver: 'Review',
+      close: 'Review',
+    };
+    for (const [actionId, boardState] of Object.entries(lifecycleStates)) {
+      scenarios.push(
+        run(`lifecycle-${actionId}`, ['explain', String(issue), '--action', actionId, '--json'], {
+          CAPTURE_BOARD_STATE: boardState,
+        })
+      );
+    }
 
     const catalogPath = path.join(fixtureDir, SHARED_DIR, 'aitm-guidance.yml');
     const originalCatalog = readFileSync(catalogPath, 'utf8');
@@ -245,6 +276,24 @@ export function captureGuidanceExplain() {
       bytes: Buffer.byteLength(trafficText),
       proxyTokens: Math.ceil(trafficText.length / 4),
     };
+    const lifecycleScenarioNames = [
+      'ready-first-load',
+      'lifecycle-resume',
+      'lifecycle-promote',
+      'lifecycle-test',
+      'lifecycle-review',
+      'lifecycle-deliver',
+      'lifecycle-close',
+    ];
+    const lifecycleTrafficText = scenarios
+      .filter(({ name }) => lifecycleScenarioNames.includes(name))
+      .map((scenario) => commandText(scenario.argv) + scenario.stdout + scenario.stderr)
+      .join('');
+    const lifecycleTraffic = {
+      characters: lifecycleTrafficText.length,
+      bytes: Buffer.byteLength(lifecycleTrafficText),
+      proxyTokens: Math.ceil(lifecycleTrafficText.length / 4),
+    };
     const staticModels = {
       claude: measureProposedStatic('claude'),
       codex: measureProposedStatic('codex'),
@@ -258,10 +307,10 @@ export function captureGuidanceExplain() {
         comparison.adapters[adapter].legacy.static.totals.proxyTokens,
       ])
     );
-    const totals = Object.fromEntries(
+    const lifecycleTotals = Object.fromEntries(
       ['claude', 'codex'].map((adapter) => [
         adapter,
-        staticModels[adapter].totals.proxyTokens + actualTraffic.proxyTokens,
+        staticModels[adapter].totals.proxyTokens + lifecycleTraffic.proxyTokens,
       ])
     );
     const budgets = {
@@ -271,7 +320,7 @@ export function captureGuidanceExplain() {
       blockedResponseWorking: 400,
     };
     const clean = scenarios.find(({ name }) => name === 'ready-first-load');
-    const blocked = scenarios.find(({ name }) => name === 'blocked-authority-drift');
+    const blocked = scenarios.find(({ name }) => name === 'blocked-migration-freeze');
     return {
       schema: 'aitm.guidance-actual-cli-capture/v2',
       captureKind: 'actual-public-cli-subprocess',
@@ -298,10 +347,12 @@ export function captureGuidanceExplain() {
       measurement: {
         proxyRule: 'ceil(concatenated UTF-16 characters / 4)',
         actualTraffic,
+        lifecycleTraffic,
         currentFullStaticSource: 'scripts/tests/fixtures/1558/context-comparison.json',
         currentFullStaticProxyTokens: currentFull,
         modeledProposedStatic: staticModels,
-        modeledTotalsWithActualTraffic: totals,
+        modeledFullLifecycleTotals: lifecycleTotals,
+        lifecycleScenarioNames,
         budgets,
         verdicts: {
           routerPlusPickup: Object.fromEntries(
@@ -313,13 +364,16 @@ export function captureGuidanceExplain() {
           fullLifecycle: Object.fromEntries(
             ['claude', 'codex'].map((adapter) => [
               adapter,
-              totals[adapter] <= budgets.fullLifecycleWorking,
+              lifecycleTotals[adapter] <= budgets.fullLifecycleWorking,
             ])
           ),
           cleanResponse: clean.proxyTokens <= budgets.cleanResponseWorking,
           blockedResponse: blocked.proxyTokens <= budgets.blockedResponseWorking,
           improvesCurrentFull: Object.fromEntries(
-            ['claude', 'codex'].map((adapter) => [adapter, totals[adapter] < currentFull[adapter]])
+            ['claude', 'codex'].map((adapter) => [
+              adapter,
+              lifecycleTotals[adapter] < currentFull[adapter],
+            ])
           ),
         },
       },
