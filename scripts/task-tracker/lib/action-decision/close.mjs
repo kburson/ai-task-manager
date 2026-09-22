@@ -462,11 +462,22 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
   const children = await read('delivery', `evidence:${issue}:3`);
   const body = bodyValue?.body;
   const head = worktree?.headSha;
-  if (bodyValue && (bodyValue.number !== issue || typeof body !== 'string')) fail('issue-body');
+  const recoveryPresent = typeof body === 'string' && hasUnauthorizedCloseRecoveryMarker(body);
+  const recovery = recoveryPresent ? readUnauthorizedCloseRecovery(body) : null;
+  if (
+    bodyValue &&
+    (bodyValue.number !== issue ||
+      typeof body !== 'string' ||
+      !['OPEN', 'CLOSED'].includes(bodyValue.state))
+  )
+    fail('issue-body');
   if (
     bodyValue &&
     board &&
-    (readLastKnownState(body).state !== 'review' || board.state !== 'review')
+    (readLastKnownState(body).state !== 'review' ||
+      board.state !== 'review' ||
+      bodyValue.state === 'CLOSED' ||
+      (recoveryPresent && recovery?.phase !== 'complete'))
   ) {
     indeterminate = true;
     blockers.push({
@@ -595,22 +606,38 @@ export async function evaluateCloseReadiness({
   if (!cfg?.repo || typeof projectDir !== 'string')
     throw new TypeError('close-readiness:configuration');
   const production = createCloseReadOnlyPorts({ issue, cfg, projectDir, deps });
-  const readBody =
-    deps.readBody ??
-    (async () =>
-      (
-        await production.run('gh', [
-          'issue',
-          'view',
-          String(issue),
-          '-R',
-          cfg.repo,
-          '--json',
-          'body',
-          '--jq',
-          '.body',
-        ])
-      ).stdout);
+  const readIssue = async () => {
+    const value = deps.readIssue
+      ? await deps.readIssue()
+      : JSON.parse(
+          (
+            await production.run('gh', [
+              'issue',
+              'view',
+              String(issue),
+              '-R',
+              cfg.repo,
+              '--json',
+              'number,body,state,stateReason,updatedAt',
+            ])
+          ).stdout
+        );
+    if (
+      value?.number !== issue ||
+      typeof value.body !== 'string' ||
+      !['OPEN', 'CLOSED'].includes(value.state) ||
+      typeof value.updatedAt !== 'string' ||
+      !Number.isFinite(Date.parse(value.updatedAt))
+    )
+      throw new TypeError('close-readiness:issue-authority-invalid');
+    return Object.freeze({
+      number: value.number,
+      body: value.body,
+      state: value.state,
+      stateReason: value.stateReason ?? null,
+      updatedAt: value.updatedAt,
+    });
+  };
   const readHead =
     deps.readHead ??
     (async () =>
@@ -619,8 +646,10 @@ export async function evaluateCloseReadiness({
   let head;
   let scope = `close:${issue}`;
   let initialError;
+  let initialIssue;
   try {
-    body = await readBody();
+    initialIssue = await readIssue();
+    body = initialIssue.body;
     head = await readHead();
     scope = computeScopeIdentity({ repository: cfg.repo, issue, body });
   } catch (error) {
@@ -641,8 +670,19 @@ export async function evaluateCloseReadiness({
       if (initialError) throw initialError;
       let value;
       if (request.resource === 'issue-body') {
-        body = await readBody();
-        value = { number: issue, body };
+        if (request.identity === `issue:${issue}:0`) value = initialIssue;
+        else {
+          value = await readIssue();
+          if (
+            value.body !== initialIssue.body ||
+            value.updatedAt !== initialIssue.updatedAt ||
+            value.state !== initialIssue.state ||
+            value.stateReason !== initialIssue.stateReason
+          )
+            throw new TypeError('close-readiness:issue-authority-drift');
+          body = value.body;
+        }
+        return { ...request, value, revision: value.updatedAt };
       } else if (request.resource === 'project-board')
         value = await (deps.fetchBoard ?? fetchAssignmentSnapshot)({ issueNumber: issue, cfg });
       else if (request.resource === 'worktree')
@@ -690,6 +730,7 @@ export async function evaluateCloseReadiness({
       return { ...request, value };
     },
   });
+  await attempt.observe({ resource: 'issue-body', identity: `issue:${issue}:0`, scope });
   const result = await collectCloseReadiness({
     issue,
     attempt,
