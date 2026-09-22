@@ -67,6 +67,7 @@ import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -2016,6 +2017,28 @@ export function applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed) 
   return { ...guardResult, status: 'ready', ok: true, refusals: [], humanDecision: null };
 }
 
+function closeDeliveryAuthorityIdentity(gate) {
+  if (!gate?.gateInput || !gate?.authorization || !gate?.receipt) {
+    throw new Error('close-authority-drift: incomplete delivery gate');
+  }
+  const { body: _body, ...gateInput } = gate.gateInput;
+  return canonicalRecordJson({
+    authorization: gate.authorization,
+    gateInput,
+    receipt: gate.receipt,
+    testReceiptSha: gate.testReceiptSha,
+    acceptedReviewSha: gate.acceptedReviewSha,
+    recoveryReviewApprovedSha: gate.recoveryReviewApprovedSha,
+  });
+}
+
+/** Body-normalization bytes may change, but accepted delivery authority may not. */
+export function assertCloseDeliveryAuthorityStable(before, after) {
+  if (closeDeliveryAuthorityIdentity(before) !== closeDeliveryAuthorityIdentity(after)) {
+    throw new Error('close-authority-drift: delivery or review authority changed');
+  }
+}
+
 export async function verbClose(ctx) {
   const convergenceTailProfile = resolveTailProfile(
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
@@ -2265,9 +2288,14 @@ export async function verbClose(ctx) {
 
   // #939 — resolve the receipt gate lazily after non-terminal convergence
   // inspection, but before any path performs a new terminal mutation.
-  const ensureDeliveryAuthorized = async ({ durableTransaction = null } = {}) => {
+  const ensureDeliveryAuthorized = async ({ durableTransaction = null, refresh = false } = {}) => {
     if (SKIP_NETWORK || !closeIssueNum) return resolvedDeliveryGate;
-    if (resolvedDeliveryGate) return resolvedDeliveryGate;
+    if (resolvedDeliveryGate && !refresh) return resolvedDeliveryGate;
+    const previousGate = resolvedDeliveryGate;
+    if (refresh) {
+      closeLifecycleEvidenceLoaded = false;
+      cachedCloseLifecycleEvidence = null;
+    }
     const deliveryBody = ctx.loadCloseDeliveryBody
       ? await ctx.loadCloseDeliveryBody({
           issueNumber: Number(closeIssueNum),
@@ -2378,8 +2406,7 @@ export async function verbClose(ctx) {
             defaultAttributingCommits(issueNumber, { cwd: projectDir, ...options })),
       },
     });
-    resolvedReviewAuthorization = authorization;
-    resolvedDeliveryGate = {
+    const nextGate = {
       authorization,
       gateInput,
       receipt: freshReceipt,
@@ -2389,6 +2416,9 @@ export async function verbClose(ctx) {
       recoveryReviewApprovedSha,
       deliveryBody,
     };
+    if (previousGate) assertCloseDeliveryAuthorityStable(previousGate, nextGate);
+    resolvedReviewAuthorization = authorization;
+    resolvedDeliveryGate = nextGate;
     return resolvedDeliveryGate;
   };
   const refuseDeliveryGate = async (options) => {
@@ -3737,6 +3767,7 @@ export async function verbClose(ctx) {
   const needsDeliveredCloseStep = (step) =>
     deliveredCloseTransaction === null || !deliveredCloseTransaction.completedSteps.includes(step);
   if (!SKIP_NETWORK && closeIssueNum) {
+    if (await refuseDeliveryGate({ refresh: true })) return;
     const acceptedSha = resolvedDeliveryGate?.gateInput?.acceptedSha;
     const existing = readDeliveredCloseTransactions(closeBody);
     const resolved = resolveDeliveredCloseTransaction({
@@ -4088,6 +4119,7 @@ export async function verbClose(ctx) {
   // recovers. The post-close move (#385) then degrades to a benign `done → done`
   // no-op, exactly as on the force path.
   if (!force && !SKIP_NETWORK && closeIssueNum) {
+    if (await refuseDeliveryGate({ refresh: true })) return;
     if (needsDeliveredCloseStep('board')) {
       const observedBoardState = await getIssueBoardState(closeIssueNum);
       if (observedBoardState === 'done') await markDeliveredCloseStep('board');
@@ -4178,6 +4210,7 @@ export async function verbClose(ctx) {
   // (and the short-circuit above will converge the lagging side). `gh issue
   // close` is idempotent — closing an already-closed issue is a no-op.
   if (needsDeliveredCloseStep('issue') && !SKIP_NETWORK && closeIssueNum) {
+    if (await refuseDeliveryGate({ refresh: true })) return;
     const observedIssue = getIssueCloseSnapshot
       ? await getIssueCloseSnapshot(closeIssueNum)
       : { issueClosed: await getIssueClosedState(closeIssueNum), stateReason: null };
