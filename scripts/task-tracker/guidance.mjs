@@ -5,7 +5,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { resolveGuidanceSource, loadSelectedGuidance } from '../../guidance/source.mjs';
+import {
+  resolveGuidanceProjectRoot,
+  resolveGuidanceSource,
+  loadSelectedGuidance,
+} from '../../guidance/source.mjs';
 import { validateGuidance } from '../../guidance/validate.mjs';
 
 const HELP =
@@ -42,8 +46,8 @@ function publicValidation(result, selected) {
   };
 }
 
-function validateCandidate(file, projectRoot, moduleUrl) {
-  const absolute = path.resolve(projectRoot, file);
+function validateCandidate(file, projectRoot, moduleUrl, cwd) {
+  const absolute = path.resolve(cwd, file);
   try {
     const source = readFileSync(absolute);
     const result = validateGuidance({
@@ -51,9 +55,12 @@ function validateCandidate(file, projectRoot, moduleUrl) {
       sourcePath: absolute,
       profile: 'candidate',
     });
-    const activePath = path.join(projectRoot, '.ai-task-manager/aitm-guidance.yml');
+    const activePath =
+      projectRoot === null ? null : path.join(projectRoot, '.ai-task-manager/aitm-guidance.yml');
     const warnings = [];
-    if (absolute !== activePath) {
+    if (activePath === null) {
+      warnings.push('candidate-tracking-indeterminate');
+    } else if (absolute !== activePath) {
       warnings.push('candidate-not-active-project-path');
     } else {
       const selected = resolveGuidanceSource({ projectRoot, moduleUrl });
@@ -76,7 +83,13 @@ function validateCandidate(file, projectRoot, moduleUrl) {
 
 export function runGuidanceCli(
   argv = process.argv.slice(2),
-  { projectRoot = process.cwd(), moduleUrl, stdout = process.stdout, stderr = process.stderr } = {}
+  {
+    cwd = process.cwd(),
+    projectRoot = resolveGuidanceProjectRoot(cwd),
+    moduleUrl,
+    stdout = process.stdout,
+    stderr = process.stderr,
+  } = {}
 ) {
   const [command, ...flags] = argv;
   if (!command || ['help', '--help', '-h', '?'].includes(command)) {
@@ -134,7 +147,7 @@ export function runGuidanceCli(
   }
   let report;
   if (file !== null) {
-    report = validateCandidate(file, projectRoot, moduleUrl);
+    report = validateCandidate(file, projectRoot, moduleUrl, cwd);
   } else {
     const selected = resolveGuidanceSource({ projectRoot, moduleUrl, publishedOnly: published });
     report = publicValidation(loadSelectedGuidance(selected), selected);

@@ -25,6 +25,7 @@ const files = [
 
 function fixture() {
   const dir = mkdtempProjectIsolated('guidance-release-');
+  mkdirSync(path.join(dir, 'guidance'), { recursive: true });
   for (const file of files) {
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     copyFileSync(path.join(root, file), path.join(dir, file));
@@ -72,6 +73,38 @@ test('first operational loader consumer is refused until B2 certification exists
     writeFileSync(
       path.join(dir, 'instructions/aitm-guidance.b2-certification.json'),
       '{"certified":true}\n'
+    );
+    assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('indirect loader import in another shipped module cannot bypass release refusal', () => {
+  const dir = fixture();
+  try {
+    const adapter = path.join(dir, 'scripts/task-tracker/lib/indirect-guidance.mjs');
+    mkdirSync(path.dirname(adapter), { recursive: true });
+    writeFileSync(adapter, "import '../../../guidance/admission.mjs';\n");
+    const entrypoint = path.join(dir, 'bin/aitm.mjs');
+    writeFileSync(
+      entrypoint,
+      `${readFileSync(entrypoint, 'utf8')}\nimport '../scripts/task-tracker/lib/indirect-guidance.mjs';\n`
+    );
+    assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('computed guidance import cannot evade the B2 release refusal', () => {
+  const dir = fixture();
+  try {
+    const adapter = path.join(dir, 'scripts/task-tracker/lib/computed-guidance.mjs');
+    mkdirSync(path.dirname(adapter), { recursive: true });
+    writeFileSync(
+      adapter,
+      "const target = '../../../guidance/' + 'admission.mjs';\nawait import(target);\n"
     );
     assert.throws(() => assertGuidanceConsumerRelease(dir), /guidance-b2-certification-absent/);
   } finally {
