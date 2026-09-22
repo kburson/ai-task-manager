@@ -1,0 +1,6 @@
+flowchart LR
+    Develop -->|Code complete\nevidence| Test
+    Test -->|Verification\npassed| Review
+    Review -->|Human\napproval *| Done
+    Test -->|Failure\nevidence| Develop
+    Review -->|Changes requested| Develop
