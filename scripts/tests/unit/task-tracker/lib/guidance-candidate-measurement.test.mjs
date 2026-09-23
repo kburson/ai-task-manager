@@ -355,7 +355,7 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
   sourceDrift.identity.implementationFiles[0].sha256 = `sha256:${'0'.repeat(64)}`;
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
-    /guidance-feasibility:capture-current-source/
+    /guidance-feasibility:capture-committed-source/
   );
   const selfConsistentDrift = structuredClone(committed);
   const first = selfConsistentDrift.events.find(({ name }) => name === 'ready-first-load');

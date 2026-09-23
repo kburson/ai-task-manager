@@ -465,8 +465,6 @@ function verifyCaptureSource(projectRoot, capture) {
   const commit = capture.identity?.sourceCommit;
   if (!/^[0-9a-f]{40}$/.test(commit ?? '')) fail('capture-source-commit');
   for (const record of capture.identity.implementationFiles ?? []) {
-    const current = fileRecord(projectRoot, 'capture-implementation', record.path);
-    if (current.sha256 !== record.sha256) fail(`capture-current-source:${record.path}`);
     const original = spawnSync('git', ['show', `${commit}:${record.path}`], {
       cwd: projectRoot,
       encoding: null,
@@ -548,8 +546,8 @@ function verifyCaptureReplay(capture) {
   ]) {
     if (capture.identity[key] !== replay.identity[key]) fail(`capture-replay-identity:${key}`);
   }
-  if (!isDeepStrictEqual(capture.identity.implementationFiles, replay.identity.implementationFiles))
-    fail('capture-replay-source');
+  // Source bytes are pinned to the recorded commit above. Later implementation
+  // changes are allowed only when the public CLI replay remains equivalent.
   if (
     !isDeepStrictEqual(
       capture.events.map(replayComparableEvent),

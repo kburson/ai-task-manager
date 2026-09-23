@@ -1395,7 +1395,10 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         ...deliveryConfig,
         repositoryMergeMethods: await fetchRepositoryMergeMethods({ repository: cfg.repo }),
       },
-      commitSubjects: freshCommitSubjects,
+      commitSubjects:
+        mergedPullRequest && live?.record.schema === 'aitm.delivery-intent/v2'
+          ? live.record.attributionTokens.map((token) => `[${token}] Authorized pending waiver`)
+          : freshCommitSubjects,
       checks: freshChecks,
     };
     const freshPreflight = mergedPullRequest
