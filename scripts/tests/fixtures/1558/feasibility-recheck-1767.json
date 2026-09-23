@@ -11,7 +11,7 @@
       {
         "role": "recertification-decision-runner",
         "path": "scripts/maintenance/measure-guidance-candidate.mjs",
-        "sha256": "sha256:d75b61e763e0f8ebc0ab3113b52396f5ce9db739b27ff7feba3749d079e09a25"
+        "sha256": "sha256:d05ed37fc19974a5d9d285f5d60f6bb479e91447024f264e5fe7d5f97eb885bd"
       },
       {
         "role": "obligation-map",
@@ -64,7 +64,7 @@
         "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894"
       }
     ],
-    "decisionSourceCommit": "d6cdf4f2840c85bb16ad080e99672033d05d8058",
+    "decisionSourceCommit": "9ca824c32a0ea595679be6b0b990967889ad276d",
     "captureSourceCommit": "48f74428a10b7a1b7296ee6a768708a6a6c11450",
     "captureImplementationFiles": [
       {
