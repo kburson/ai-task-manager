@@ -3,11 +3,13 @@ import { createHash } from 'node:crypto';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { createRecordId } from './github-records/record-envelope.mjs';
 import { MAX_DELIVERY_COMMIT_MESSAGE_BYTES } from './delivery-attribution.mjs';
+import { renderDeliveryAttributionExceptionComment } from './delivery-attribution-exception-record.mjs';
 
 const INTENT_SCHEMA = 'aitm.delivery-intent/v1';
 const INTENT_SCHEMA_V2 = 'aitm.delivery-intent/v2';
 const RECEIPT_SCHEMA_V1 = 'aitm.delivery-receipt/v1';
 const RECEIPT_SCHEMA_V2 = 'aitm.delivery-receipt/v2';
+const RECEIPT_SCHEMA_V3 = 'aitm.delivery-receipt/v3';
 const INTENT_MARKER = 'aitm-delivery-intent';
 const RECEIPT_MARKER = 'aitm-delivery-receipt';
 const HIDDEN_MARKER_RE = /^<!--\s*aitm-delivery-(?:intent|receipt)(?=\s)/gm;
@@ -80,8 +82,11 @@ const RECEIPT_KEYS_V1 = [
   'verifiedTrunkRef',
 ];
 const RECEIPT_KEYS_V2 = [...RECEIPT_KEYS_V1, 'metadataWarnings'];
+const WAIVED_RECEIPT_KEYS = ['attributionDisposition', 'exceptionRecordId', 'exceptionRecord'];
+const RECEIPT_KEYS_V3 = [...RECEIPT_KEYS_V1, ...WAIVED_RECEIPT_KEYS];
 const RECEIPT_INPUT_KEYS_V1 = RECEIPT_KEYS_V1.filter((key) => !['schema', 'result'].includes(key));
 const RECEIPT_INPUT_KEYS_V2 = [...RECEIPT_INPUT_KEYS_V1, 'metadataWarnings'];
+const RECEIPT_INPUT_KEYS_V3 = [...RECEIPT_INPUT_KEYS_V1, ...WAIVED_RECEIPT_KEYS];
 const PARSED_RECORD_KEYS = ['createdAt', 'id', 'record'];
 const CONTEXT_KEYS = ['issueNumber', 'prNumber', 'repository'];
 const AUTHORIZED_INTENT_KEYS = [
@@ -323,10 +328,36 @@ function validateReceipt(receipt) {
       ? RECEIPT_KEYS_V1
       : receipt?.schema === RECEIPT_SCHEMA_V2
         ? RECEIPT_KEYS_V2
-        : null;
+        : receipt?.schema === RECEIPT_SCHEMA_V3
+          ? Object.hasOwn(receipt, 'metadataWarnings')
+            ? [...RECEIPT_KEYS_V3, 'metadataWarnings']
+            : RECEIPT_KEYS_V3
+          : null;
   if (expectedKeys === null) throw deliveryError('receipt-schema');
   if (!hasExactlyKeys(receipt, expectedKeys)) throw deliveryError('receipt-keys');
   if (receipt.schema === RECEIPT_SCHEMA_V2) assertMetadataWarnings(receipt.metadataWarnings);
+  if (receipt.schema === RECEIPT_SCHEMA_V3) {
+    if (receipt.attributionDisposition !== 'waived') throw deliveryError('attribution-disposition');
+    renderDeliveryAttributionExceptionComment(receipt.exceptionRecord);
+    if (receipt.exceptionRecordId !== receipt.exceptionRecord.recordId)
+      throw deliveryError('exception-record-id');
+    if (receipt.exceptionRecord.kind === 'revocation') throw deliveryError('revoked-exception');
+    const proposal = receipt.exceptionRecord.proposal;
+    if (
+      proposal.issueNumber !== receipt.issueNumber ||
+      proposal.prNumber !== receipt.prNumber ||
+      proposal.headSha !== receipt.expectedHeadSha ||
+      proposal.baseRef !== receipt.baseRef
+    )
+      throw deliveryError('exception-scope');
+    if (Object.hasOwn(receipt, 'metadataWarnings')) {
+      assertMetadataWarnings(receipt.metadataWarnings);
+      if (
+        receipt.metadataWarnings.some((warning) => warning !== 'missing-merge-attribution-trailer')
+      )
+        throw deliveryError('waived-metadata-warnings');
+    }
+  }
   if (receipt.result !== 'delivered') throw deliveryError('receipt-result');
   assertRecordId(receipt.intentId, 'intent-id');
   assertPositiveInteger(receipt.issueNumber, 'issue-number');
@@ -385,12 +416,18 @@ export function buildDeliveryIntent(input = {}) {
 }
 
 export function buildDeliveryReceipt(input = {}) {
+  const waived = Object.hasOwn(input, 'attributionDisposition');
   const warningBearing = Object.hasOwn(input, 'metadataWarnings');
-  if (!hasExactlyKeys(input, warningBearing ? RECEIPT_INPUT_KEYS_V2 : RECEIPT_INPUT_KEYS_V1)) {
+  const inputKeys = waived
+    ? [...RECEIPT_INPUT_KEYS_V3, ...(warningBearing ? ['metadataWarnings'] : [])]
+    : warningBearing
+      ? RECEIPT_INPUT_KEYS_V2
+      : RECEIPT_INPUT_KEYS_V1;
+  if (!hasExactlyKeys(input, inputKeys)) {
     throw deliveryError('receipt-input-keys');
   }
   const receipt = {
-    schema: warningBearing ? RECEIPT_SCHEMA_V2 : RECEIPT_SCHEMA_V1,
+    schema: waived ? RECEIPT_SCHEMA_V3 : warningBearing ? RECEIPT_SCHEMA_V2 : RECEIPT_SCHEMA_V1,
     intentId: input.intentId,
     issueNumber: input.issueNumber,
     prNumber: input.prNumber,
@@ -403,6 +440,13 @@ export function buildDeliveryReceipt(input = {}) {
     sessionId: input.sessionId,
     verifiedAt: input.verifiedAt,
     result: 'delivered',
+    ...(waived
+      ? {
+          attributionDisposition: input.attributionDisposition,
+          exceptionRecordId: input.exceptionRecordId,
+          exceptionRecord: structuredClone(input.exceptionRecord),
+        }
+      : {}),
     ...(warningBearing
       ? {
           metadataWarnings: Array.isArray(input.metadataWarnings)
@@ -442,14 +486,25 @@ export function renderDeliveryIntentComment(intent) {
 
 export function renderDeliveryReceiptComment(receipt) {
   validateReceipt(receipt);
-  const warningMarkdown =
-    receipt.schema === RECEIPT_SCHEMA_V2
-      ? `\nMetadata warnings: ${receipt.metadataWarnings.map((warning) => `\`${warning}\``).join(', ')}.`
+  const warningMarkdown = Object.hasOwn(receipt, 'metadataWarnings')
+    ? `\nMetadata warnings: ${receipt.metadataWarnings.map((warning) => `\`${warning}\``).join(', ')}.`
+    : '';
+  const waiverMarkdown =
+    receipt.schema === RECEIPT_SCHEMA_V3
+      ? `\nAttribution waived by exception \`${receipt.exceptionRecord.recordId}\` from ` +
+        `\`${receipt.exceptionRecord.authority.sourceReference}\` recorded by ` +
+        `\`${receipt.exceptionRecord.authority.actor}\`. Intent: \`${receipt.intentId}\`. ` +
+        `Mappings: ${receipt.exceptionRecord.proposal.mappings
+          .map(
+            ({ oid, messageHeadline, issueNumber }) =>
+              `\`${oid}\` (${JSON.stringify(messageHeadline)}) → \`#${issueNumber}\``
+          )
+          .join(', ')}.`
       : '';
   return renderComment(
     RECEIPT_MARKER,
     receipt,
-    `Delivery verified for PR #${receipt.prNumber} as \`${receipt.mergeCommitSha}\` on \`${receipt.verifiedTrunkRef}\`.${warningMarkdown}`
+    `Delivery verified for PR #${receipt.prNumber} as \`${receipt.mergeCommitSha}\` on \`${receipt.verifiedTrunkRef}\`.${waiverMarkdown}${warningMarkdown}`
   );
 }
 
@@ -530,7 +585,7 @@ function validateParsedRecord(parsed) {
   if ([INTENT_SCHEMA, INTENT_SCHEMA_V2].includes(parsed.record?.schema)) {
     return validateIntent(parsed.record);
   }
-  if ([RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2].includes(parsed.record?.schema)) {
+  if ([RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2, RECEIPT_SCHEMA_V3].includes(parsed.record?.schema)) {
     return validateReceipt(parsed.record);
   }
   throw deliveryError('project-record');
@@ -621,6 +676,22 @@ function validateReceipts(receipts, intentsById) {
     ) {
       throw deliveryError('receipt-correlation');
     }
+    if (intent.schema === INTENT_SCHEMA_V2) {
+      if (
+        receipt.schema !== RECEIPT_SCHEMA_V3 ||
+        receipt.exceptionRecordId !== intent.exceptionRecordId ||
+        receipt.exceptionRecord.proposal.operationId !== intent.operationId ||
+        receipt.exceptionRecord.proposal.sourceDigest !== intent.sourceDigest ||
+        receipt.exceptionRecord.proposalDigest !== intent.proposalDigest ||
+        canonicalRecordJson(receipt.exceptionRecord.proposal.mappings) !==
+          canonicalRecordJson(intent.mappings) ||
+        canonicalRecordJson(receipt.exceptionRecord.proposal.attributionTokens) !==
+          canonicalRecordJson(intent.attributionTokens)
+      )
+        throw deliveryError('receipt-waiver-correlation');
+    } else if (receipt.schema === RECEIPT_SCHEMA_V3) {
+      throw deliveryError('receipt-waiver-correlation');
+    }
     const existing = byIntentId.get(receipt.intentId);
     if (existing !== undefined) {
       if (canonicalRecordJson(existing.record) === canonicalRecordJson(receipt)) {
@@ -659,7 +730,7 @@ export function projectDeliveryRecords(records) {
     [INTENT_SCHEMA, INTENT_SCHEMA_V2].includes(record.schema)
   );
   const receipts = copies.filter(({ record }) =>
-    [RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2].includes(record.schema)
+    [RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2, RECEIPT_SCHEMA_V3].includes(record.schema)
   );
   const graph = validateIntentGraph(intents);
   const receiptsByIntentId = validateReceipts(receipts, graph.byId);

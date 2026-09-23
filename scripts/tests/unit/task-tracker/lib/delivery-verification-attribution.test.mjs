@@ -6,6 +6,8 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { buildDeliveryIntent } from '../../../../task-tracker/lib/delivery-records.mjs';
+import { buildDeliveryAttributionProposal } from '../../../../task-tracker/lib/delivery-attribution-exception-record.mjs';
+import { canonicalSourceInventory } from '../../../../task-tracker/lib/delivery-attribution-exception.mjs';
 import {
   DeliveryPreflightError,
   validateDeliveryPreflight,
@@ -210,6 +212,123 @@ function liveInput(commitMessage = COMMIT_MESSAGE) {
     testReceiptSha: HEAD,
   };
 }
+
+function waivedCase({
+  mergeMessage = 'Merged source without trailer',
+  sourceHeadline = 'legacy source',
+} = {}) {
+  const commits = [{ oid: HEAD, messageHeadline: sourceHeadline }];
+  const sourceDigest = canonicalSourceInventory(commits, HEAD).sourceDigest;
+  const mappings = [{ oid: HEAD, messageHeadline: 'legacy source', issueNumber: 1392 }];
+  const built = buildDeliveryAttributionProposal({
+    exceptionId: '01M2H000000000000000000003',
+    operationId: '01M2H000000000000000000002',
+    repository: 'kburson/ai-task-manager',
+    issueNumber: 1392,
+    prNumber: 1391,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    headSha: HEAD,
+    sourceDigest,
+    mappings,
+    attributionTokens: ['#1392'],
+    expiresAt: '2026-09-24T00:00:00.000Z',
+  });
+  const record = {
+    schema: 'aitm.delivery-attribution-exception/v1',
+    kind: 'grant',
+    recordId: '01M2H000000000000000000003',
+    predecessorId: null,
+    proposal: built.proposal,
+    proposalDigest: built.proposalDigest,
+    authority: {
+      sourceReference: 'codex-session/v1:turn-10',
+      statement: 'Authorize this mapping',
+      actor: 'kpburson',
+      level: 'host-verified-user-message',
+    },
+    createdAt: '2026-09-23T00:00:00.000Z',
+  };
+  const waivedIntent = buildDeliveryIntent({
+    ...externalIntentInput(),
+    intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+    supersedesIntentId: null,
+    provider: 'codex',
+    clientCreatedAt: '2026-08-23T06:00:00.000Z',
+    commitTitle: COMMIT_TITLE,
+    commitMessage: COMMIT_MESSAGE,
+    attributionTokens: ['#1392'],
+    attributionDisposition: 'waived',
+    exceptionRecordId: record.recordId,
+    operationId: built.proposal.operationId,
+    sourceDigest,
+    proposalDigest: built.proposalDigest,
+    mappings,
+  });
+  const input = liveInput(mergeMessage);
+  input.inspectMergeCommit = async () => ({
+    parents: ['c'.repeat(40)],
+    commitTitle: COMMIT_TITLE,
+    commitMessage: mergeMessage,
+  });
+  input.waivedEvidence = {
+    sourceInventory: { commits, attributableCommits: commits, verifiedMergeShas: [] },
+    exceptionRecord: record,
+  };
+  return { input, waivedIntent, record };
+}
+
+test('waived merge without attribution trailer produces a labeled v3 receipt input', async () => {
+  const { input, waivedIntent, record } = waivedCase();
+  const verified = await verifyDeliveredPullRequest({ ...input, intent: waivedIntent });
+  assert.equal(verified.receiptInput.attributionDisposition, 'waived');
+  assert.equal(verified.receiptInput.exceptionRecordId, record.recordId);
+  assert.deepEqual(verified.receiptInput.exceptionRecord, record);
+  assert.deepEqual(verified.receiptInput.metadataWarnings, ['missing-merge-attribution-trailer']);
+});
+
+test('waived merge refuses conflicting trailer, changed inventory, or changed exception record', async () => {
+  const { input, waivedIntent } = waivedCase();
+  for (const changed of [
+    {
+      ...input,
+      inspectMergeCommit: async () => ({
+        parents: ['c'.repeat(40)],
+        commitTitle: COMMIT_TITLE,
+        commitMessage: 'Attribution: [#999]',
+      }),
+    },
+    {
+      ...input,
+      inspectMergeCommit: async () => ({
+        parents: ['c'.repeat(40)],
+        commitTitle: COMMIT_TITLE,
+        commitMessage: 'Merged [#999] without trailer',
+      }),
+    },
+    {
+      ...input,
+      waivedEvidence: {
+        ...input.waivedEvidence,
+        sourceInventory: {
+          ...input.waivedEvidence.sourceInventory,
+          commits: [{ oid: HEAD, messageHeadline: 'changed source' }],
+        },
+      },
+    },
+    {
+      ...input,
+      waivedEvidence: {
+        ...input.waivedEvidence,
+        exceptionRecord: {
+          ...input.waivedEvidence.exceptionRecord,
+          recordId: '01M2H000000000000000000004',
+        },
+      },
+    },
+  ])
+    await assert.rejects(() => verifyDeliveredPullRequest({ ...changed, intent: waivedIntent }));
+});
 
 function defaultMergeRecoveryInput({
   commitTitle = DEFAULT_MERGE_TITLE,

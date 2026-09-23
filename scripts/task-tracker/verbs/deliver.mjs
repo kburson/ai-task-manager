@@ -531,13 +531,52 @@ async function verifyAndFinalize({
   verified,
   metadataWarnings = [],
 }) {
+  const waived = liveIntent?.record.schema === 'aitm.delivery-intent/v2';
+  let verifiedPullRequest = pullRequest;
+  let waivedEvidence;
+  if (waived) {
+    verifiedPullRequest = await requiredDependency(
+      deps,
+      'fetchPullRequest'
+    )({
+      repository,
+      prNumber: liveIntent.record.prNumber,
+    });
+    if (!pullRequestMerged(verifiedPullRequest)) throw deliverError('post-merge-pr');
+    const freshComments = await readProjection({ deps, issueNumber, context });
+    if (
+      freshComments.projection.liveIntent?.record.intentId !== liveIntent.record.intentId ||
+      authorizedIntentBytes(freshComments.projection.liveIntent.record) !==
+        authorizedIntentBytes(liveIntent.record)
+    )
+      throw deliverError('post-merge-intent');
+    const exceptionRecord = await resolveOpenAttributionException({
+      comments: freshComments.comments,
+      now: requiredDependency(deps, 'now')(),
+      deps,
+    });
+    if (exceptionRecord === null) throw deliverError('post-merge-exception');
+    const sourceInventory = await classifiedOpenInventory(
+      verifiedPullRequest,
+      deps,
+      liveIntent.record.expectedHeadSha
+    );
+    waivedEvidence = {
+      exceptionRecord,
+      sourceInventory: {
+        commits: sourceInventory.commits,
+        attributableCommits: sourceInventory.attributableCommits,
+        verifiedMergeShas: sourceInventory.verifiedMergeShas,
+      },
+    };
+  }
   const verification =
     verified ??
     (await verifyDeliveredPullRequest({
       acceptedSha,
       intent: liveIntent.record,
       intentCreatedAt: liveIntent.createdAt,
-      pullRequest,
+      pullRequest: verifiedPullRequest,
       recovery,
       localHeadSha,
       testReceiptSha,
@@ -546,6 +585,7 @@ async function verifyAndFinalize({
       isAncestor: requiredDependency(deps, 'isAncestor'),
       inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
       attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      ...(waived ? { waivedEvidence } : {}),
     }));
   const combinedWarnings = combinedMetadataWarnings(
     metadataWarnings,
@@ -1087,7 +1127,21 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     expectedHeadSha: authority.acceptedSha,
   });
   const preflight = mergedPullRequest
-    ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
+    ? validateMergedDeliveryPreflight({
+        ...preflightInput,
+        checks,
+        // A pending v2 intent already fixes the authorized token set. The merged
+        // preflight still checks lifecycle, head, CI, and configuration; the
+        // live source inventory is independently re-read and proved below before
+        // any receipt is emitted.
+        ...(live?.record.schema === 'aitm.delivery-intent/v2'
+          ? {
+              commitSubjects: live.record.attributionTokens.map(
+                (token) => `[${token}] Authorized pending waiver`
+              ),
+            }
+          : {}),
+      })
     : validateDeliveryPreflight({ ...preflightInput, checks });
   const revalidateBeforeProviderAction = async (intent) => {
     if (preflight.exceptionDisposition === undefined) return;
@@ -1177,7 +1231,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   if (mergedPullRequest) {
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
-    if (liveIntent !== null) {
+    if (liveIntent !== null && liveIntent.record.schema !== 'aitm.delivery-intent/v2') {
       const expected = buildIntentFromPreflight({
         preflight,
         cfg,
