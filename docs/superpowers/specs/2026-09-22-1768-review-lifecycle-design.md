@@ -1,6 +1,6 @@
 ---
 issue: 1768
-version: 3
+version: 4
 status: draft-for-review
 ---
 
@@ -66,6 +66,14 @@ version. A review round identifies the exact committed artifact path, version,
 and Git commit. A terminal acceptance identifies the final reviewed version and
 commit. Review comments cannot silently authorize a later edit.
 
+The Git commit and blob identify authoritative bytes; `version` is a readable
+ordinal, never a substitute for the commit. AITM checks monotonicity against the
+previous committed artifact at review entry and before Refine or Plan approval.
+Its governed artifact writer checks before committing. A duplicate, skipped, or
+regressed version refuses review or promotion. Repair uses a new correctly
+versioned commit plus an anomaly record; it does not relabel an old acceptance
+or silently rewrite published history.
+
 The spec frontmatter records its issue number and the promoted brainstorming
 session's start, stop, and engaged seconds. The local timing record also carries
 its owning session ID and idle duration. The issue timing log receives a single
@@ -103,8 +111,10 @@ pauses are excluded from engaged time. AITM uses its existing activity-event
 clock with an explicit pause/resume command and the same idle threshold used by
 task timing; it stores each counted interval and the clock-policy version in
 the idea record. If activity signals are unavailable, the interval is marked
-unknown rather than inferred from wall time. The resulting spec receives its normal
-Superpowers self-review. No issue number is consumed during this phase.
+unknown rather than inferred from wall time. The resulting spec receives its
+normal Superpowers self-review. The idea record stores the reviewed draft's
+digest; promotion refuses a changed draft until its self-review is repeated.
+No issue number is consumed during this phase.
 
 The idea record includes an operation ID, owner session ID, created/updated
 timestamps, start and stop timestamps, counters, draft path, and a state of
@@ -122,8 +132,9 @@ brainstorm record owned by the calling session. It validates input before any
 external effect, then performs a recoverable sequence:
 
 1. Create one governed Backlog stub through the sanctioned issue creator. Put
-   the operation ID in the creation payload so a lost response can be reconciled
-   by exact ID lookup; durably associate the returned issue number with it.
+   the operation ID in a protected `Story Origin` body marker
+   (`<!-- aitm-idea-operation id="<uuid>" -->`), preserved by the issue-body
+   mutator, and durably associate the returned issue number with it.
 2. Stamp the issue and brainstorm fields into the spec frontmatter, rename the
    file with the issue number, and commit version 1.
 3. Add the exact committed spec path and commit to the issue's Story Origin or
@@ -131,9 +142,11 @@ external effect, then performs a recoverable sequence:
    measured discovery interval to the issue timing log exactly once.
 4. Mark the local idea record promoted and bind the issue for subsequent work.
 
-If a creation response is lost, retry first searches for that operation ID. A
-single exact match resumes; zero or multiple matches refuse another create
-until reconciled. The existing title-only `/task new "title"` path stays
+If a creation response is lost, retry scans the repository's issues created
+since the operation began through the paginated GitHub API, matching that exact
+marker rather than relying on search indexing. A single exact match resumes;
+zero or multiple matches refuse another create until reconciled. The existing
+title-only `/task new "title"` path stays
 supported and is outside the new spec gate until a design spec is attached and
 the issue explicitly enrolled. An enrolled title-only issue must acquire a
 versioned, issue-linked spec before entering Refine. Unenrolled legacy or
@@ -154,27 +167,40 @@ failure handling, and likely solo-versus-epic shape. The author records each
 finding's disposition and commits each artifact revision with the next version.
 Acceptance is bound to exact bytes.
 
-After SAR, AITM evaluates risk using a repository-versioned rubric (`v1`):
-security/privacy or irreversible data/migration impact scores 3 each;
+After SAR, the SAR reviewer emits a structured yes/no/unknown value and cited
+evidence for every rubric signal. AITM validates that all signals are present,
+applies the repository-versioned rubric (`v1`), and records the score and
+evidence. Security/privacy or irreversible data/migration impact scores 3 each;
 non-backward-compatible external interfaces score 3; other externally consumed
 interfaces, multiple subsystems/providers, and repeated material SAR findings
 score 1 each. A severe SAR finding still open, or an assumption that prevents
-acceptance, blocks approval until resolved. Unknown signal values also block
-selection rather than defaulting to low risk. Scores 0-1 select SAR, 2 selects
-SPR, and 3 or more selects SPR then XPR. The receipt records rubric version,
-signal values, score, and selected path. File length may affect review cost but
-never decides the level alone.
+acceptance, blocks approval until resolved. The SAR reviewer must resolve a
+signal whose evidence is unclear in another round. If any value remains
+unknown, AITM records the unresolved signal and reason, pauses Full-Auto work
+on that issue, and refuses review selection; it never defaults to low risk.
+Scores 0-1 select SAR, 2 selects SPR, and 3 or more selects SPR then XPR. A
+single high-impact signal deliberately selects XPR; SPR-only is reserved for
+the accumulation of two lower-impact signals. The receipt records rubric
+version, signal values, score, and selected path. File length may affect review
+cost but never decides the level alone.
+
 With `ai-peer-review` healthy at review preflight, low risk ends at SAR,
 moderate risk adds SPR, and high risk adds SPR then XPR. When it is not
 installed or cannot be used at preflight, the available path is SAR. The risk
 score, capability ceiling, selected path, and actual accepted reviews are
 recorded separately; an unavailable SPR/XPR is never reported as passed.
 
+AITM checks the selected provider again immediately before each hosted launch.
+If it was healthy at preflight but fails then, the selected hosted path remains
+required: AITM records the failure, preserves the SAR result, and blocks
+promotion pending governed recovery. It does not recast that run as SAR-only.
+
 An enrolled issue's Refine-to-Ready-for-Planning move requires a terminal
-accepted result for the selected path, a current spec reference, and the existing AITM refinement
-gates. Refine updates the issue's user story, scope, ACs, labels, priority,
-size, and estimate from the reviewed design. The issue is classified as solo
-or epic here; the design does not assume an epic during Backlog capture.
+accepted result for the selected path, a current spec reference, and the
+existing AITM refinement gates. Refine updates the issue's user story, scope,
+ACs, labels, priority, size, and estimate from the reviewed design. The issue
+is classified as solo or epic here; the design does not assume an epic during
+Backlog capture.
 
 ## Plan review and epic hydration
 
@@ -187,18 +213,34 @@ The plan's acceptance and normal AITM Plan approval are distinct records.
 For an epic, the ratified master plan drives governed child creation and
 hydration. Each new child moves from Backlog through Refine to Ready for
 Planning with standalone scope, acceptance criteria, verifiers, dependencies,
-priority, size, estimate, and normal parent link. Existing WBS `Source-plan`,
+priority, size, estimate, and normal parent link. If refinement of one child
+changes another child's boundary, revise the affected children and complete
+their normal Refine gates before proceeding. Existing WBS `Source-plan`,
 `Source-plan-commit`, and `Source-plan-section` fields remain populated for the
-current coverage guard; no additional child plan pointer is introduced. An aggregate hydration SAR
-compares the complete child inventory to the exact ratified master plan. It
-checks coverage, duplicates, child boundaries, dependency order, story and AC
-meaning, and R4P readiness. Findings cause corrections and further rounds. An
-accepted hydration receipt on the parent and all children in R4P are required
-before the epic moves Plan to Develop. The receipt records the plan version and
-child inventory and a digest of each reviewed child body at that moment; it
-does not create a continuing per-child plan lock. Before epic Plan exit, AITM
-rechecks the inventory and body digests. A changed child body or inventory
-requires another aggregate SAR; unrelated issue metadata does not.
+current coverage guard; no additional child plan pointer is introduced.
+
+Only after the complete child inventory is in R4P does the aggregate hydration
+SAR compare it to the exact ratified master plan. It checks coverage,
+duplicates, child boundaries, dependency order, story and AC meaning, and R4P
+readiness. Findings cause corrections and further rounds. The accepted
+hydration receipt on the parent records the plan commit, the complete child
+inventory, and a digest of each child's semantic issue content at the moment
+of acceptance. Semantic content includes scope, story, ACs, verifiers, and
+dependencies; the `Source-plan*` fields are provenance bookkeeping and are
+excluded from this digest. The receipt does not create a continuing per-child
+plan lock.
+
+Before epic Plan exit, AITM rechecks the inventory and semantic digests. Any
+changed child semantic content or inventory requires a full aggregate SAR of
+the current inventory after affected children regain R4P. A changed master
+plan requires plan re-review, reconciliation of child source fields and mapping,
+then another aggregate SAR against the newly accepted plan, even if the child
+semantic digests are unchanged. SAR does not auto-repeat without bound: the
+plan-and-hydration cycle has a shared budget of ten rounds, including rounds
+that cause a new plan version. Exhaustion leaves the issue in Plan for an
+explicit planning decision; it does not silently start a fresh budget. An
+accepted receipt and all children in R4P are required before the epic moves
+Plan to Develop.
 
 The epic then pulls one dependency-ready child at a time from R4P into Plan.
 The child performs a JIT Deep-Dive against current repository evidence and its
@@ -206,7 +248,7 @@ own hydrated issue content. It may consult the parent-linked master plan when
 useful. A focused SAR checks whether the Deep-Dive's approach, AC verifiers,
 dependencies, and estimate make sense now. One clean review round is enough;
 findings prompt revision and another round. The Deep-Dive receipt identifies
-the exact issue number, reviewed Deep-Dive section digest, issue revision, and
+the exact issue number, reviewed Deep-Dive section digest, and
 digest of the issue scope, AC, verifier, and dependency fields plus estimate. A
 change to any of those reviewed inputs before child Plan approval requires
 another SAR; unrelated issue metadata does not. Child-specific discoveries may
@@ -276,3 +318,7 @@ behavior.
    reviews that actually completed.
 9. Existing issue and review history remains readable, and later code, PR,
    Test, Review, and close behavior is unchanged.
+10. The governed review runner allows one initial peer-review attempt and one
+    recovery, then blocks further attempts without specific authorization.
+11. Epic children retain the existing WBS source-plan fields required by
+    current guards, without acquiring any additional plan provenance fields.
