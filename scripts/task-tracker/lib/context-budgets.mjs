@@ -8,6 +8,14 @@ export const GUIDANCE_CONTEXT_BUDGETS = Object.freeze({
   fullLifecycle: Object.freeze({ absolute: 7000, working: 5600 }),
 });
 
+// #1774 final consumer decision supersedes the historical 5,600 working
+// maximum. Preserve prior evidence and aim below 6,000; clearer safety text
+// may use up to 6,500, still under the original 7,000 absolute ceiling.
+export const FINAL_GUIDANCE_CONTEXT_BUDGETS = Object.freeze({
+  ...GUIDANCE_CONTEXT_BUDGETS,
+  fullLifecycle: Object.freeze({ absolute: 7000, target: 6000, working: 6500 }),
+});
+
 export const HISTORICAL_CONTEXT_BUDGETS = Object.freeze({
   idle: 1500,
   invoked: 8000,

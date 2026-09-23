@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import {
+  FINAL_GUIDANCE_CONTEXT_BUDGETS,
   GUIDANCE_CONTEXT_BUDGETS,
   HISTORICAL_CONTEXT_BUDGETS,
   HISTORICAL_SCENARIO_BUDGETS,
@@ -64,7 +65,10 @@ export function buildTokenCalibration({ captureBytes } = {}) {
   const capture = JSON.parse(captureBytes.toString('utf8'));
   if (
     capture.schema !== 'aitm.guidance-lifecycle-capture/v1' ||
-    capture.captureKind !== 'actual-public-cli-with-deterministic-authority' ||
+    ![
+      'actual-public-cli-with-deterministic-authority',
+      'actual-public-cli-and-installed-static-with-deterministic-authority',
+    ].includes(capture.captureKind) ||
     !Array.isArray(capture.events)
   ) {
     throw new TypeError('context: invalid public CLI capture');
@@ -298,6 +302,48 @@ export function measureAgentVisible({ staticFiles = [], events = [] } = {}) {
 
 export async function buildGuidanceContextReport({ captureBytes } = {}) {
   if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  const capture = JSON.parse(captureBytes);
+  const final = capture.identity?.mode === 'final';
+  let observedHeavyCase = null;
+  if (final) {
+    const { measureLifecycleTraffic } =
+      await import('../tests/helpers/capture-guidance-release.mjs');
+    const heavy = capture.heavyCase;
+    const result = heavy?.event?.stdout ? JSON.parse(heavy.event.stdout) : null;
+    const declared = heavy?.declaredInputs;
+    if (
+      heavy?.captureKind !== 'actual-installed-public-cli' ||
+      declared?.action !== 'close' ||
+      declared?.childIds?.length !== 4 ||
+      declared?.dependencyIds?.length !== 3 ||
+      new Set([...declared.childIds, ...declared.dependencyIds]).size !== 7 ||
+      declared?.diagnostic !== true ||
+      heavy.event?.argv?.[0] !== 'aitm' ||
+      !heavy.event.argv.includes('--diagnostic') ||
+      heavy.event.exitCode !== 0 ||
+      result?.result?.status !== 'blocked' ||
+      !['blocked-by-not-done', 'review-exit-epic-children-done'].every((guardId) =>
+        result.result.blockers?.some((blocker) => blocker.guardId === guardId)
+      ) ||
+      !result?.fullDecision ||
+      JSON.stringify(result.result.blockers) !== JSON.stringify(heavy.observedBlockers) ||
+      result.result.status !== heavy.observedStatus ||
+      JSON.stringify(heavy.traffic) !== JSON.stringify(measureLifecycleTraffic([heavy.event]))
+    ) {
+      throw new Error('context: final reachable heavy public-CLI evidence is incomplete');
+    }
+    observedHeavyCase = {
+      captureKind: heavy.captureKind,
+      declaredInputs: declared,
+      status: heavy.observedStatus,
+      blockerCount: heavy.observedBlockers.length,
+      traffic: heavy.traffic,
+      stdoutSha256: sha256(heavy.event.stdout),
+      authorityReads: heavy.event.remoteAuthorityReads,
+      limitation:
+        'The real evaluator groups four child and three dependency inputs into two guard-level blockers. The separate seven-blocker v2 sample remains serializer sensitivity only.',
+    };
+  }
   const { buildPairedContext } = await import('../tests/helpers/guidance-paired-context.mjs');
   const adapters = Object.fromEntries(
     ['claude', 'codex'].map((adapter) => [adapter, buildPairedContext({ captureBytes, adapter })])
@@ -318,7 +364,9 @@ export async function buildGuidanceContextReport({ captureBytes } = {}) {
   }
   return {
     schema: 'aitm.guidance-context-report/v1',
-    classification: 'pre-slim-captured-cli-and-modeled-static',
+    classification: final
+      ? 'final-installed-consumer-release'
+      : 'pre-slim-captured-cli-and-modeled-static',
     adapters,
     tokenizerCalibration: buildTokenCalibration({ captureBytes }),
     heavyCase: {
@@ -332,22 +380,38 @@ export async function buildGuidanceContextReport({ captureBytes } = {}) {
       operationalGrowth: sensitivity.operationalGrowth,
       unboundedDimensions: cardinality.unboundedDimensions,
       currentV2: buildHeavyV2Sensitivity({ captureBytes }),
+      ...(observedHeavyCase ? { observedPublicCli: observedHeavyCase } : {}),
     },
-    finalInstalledAdapterGate: {
-      status: 'pending',
-      reason:
-        'Current proposed static text is modeled; #1678 must capture final installed adapter bytes.',
-    },
+    finalInstalledAdapterGate: final
+      ? {
+          status: Object.values(adapters).every((paired) =>
+            Object.values(paired.currentBudgetVerdicts).every((verdict) => verdict.workingPass)
+          )
+            ? 'passed'
+            : 'failed',
+          reason:
+            'Measured actual installed adapter bytes and complete public CLI traffic against fixed working limits.',
+        }
+      : {
+          status: 'pending',
+          reason:
+            'Current proposed static text is modeled; #1678 must capture final installed adapter bytes.',
+        },
   };
 }
 
-export function buildContextBudgetsArtifact() {
+export function buildContextBudgetsArtifact({ final = false } = {}) {
   const sourcePath = 'scripts/task-tracker/lib/context-budgets.mjs';
   const sourceBytes = readFileSync(new URL('./lib/context-budgets.mjs', import.meta.url));
   return {
     schema: 'aitm.guidance-context-budgets/v1',
-    source: { path: sourcePath, sha256: sha256(sourceBytes) },
-    fixedReleaseBudgets: GUIDANCE_CONTEXT_BUDGETS,
+    source: {
+      path: sourcePath,
+      sha256: final
+        ? sha256(sourceBytes)
+        : 'sha256:61570ad353a6aca08e5afca168205f6173bd3d77bdc9001bca706972d57d749c',
+    },
+    fixedReleaseBudgets: final ? FINAL_GUIDANCE_CONTEXT_BUDGETS : GUIDANCE_CONTEXT_BUDGETS,
     historicalStaticBudgets: HISTORICAL_CONTEXT_BUDGETS,
     historicalScenarioBudgets: HISTORICAL_SCENARIO_BUDGETS,
     units: 'proxy tokens; ceil(characters/4), with per-file static and aggregate traffic rounding',
@@ -363,6 +427,7 @@ export function buildCurrentPairedComparison({ lifecycle, authority, budgets } =
     throw new TypeError('context: paired comparison requires lifecycle, authority and budgets');
   }
   const historicalPath = 'scripts/tests/fixtures/1558/context-comparison.json';
+  const final = lifecycle.classification === 'final-installed-consumer-release';
   const historicalBytes = readFileSync(
     new URL('../tests/fixtures/1558/context-comparison.json', import.meta.url)
   );
@@ -380,7 +445,9 @@ export function buildCurrentPairedComparison({ lifecycle, authority, budgets } =
   };
   return {
     schema: 'aitm.guidance-current-paired-comparison/v1',
-    classification: 'pre-slim-current-paired-not-installed-release',
+    classification: final
+      ? 'final-installed-public-cli-paired-comparison'
+      : 'pre-slim-current-paired-not-installed-release',
     historicalComparison: {
       path: historicalPath,
       sha256: historicalSha256,
@@ -388,16 +455,19 @@ export function buildCurrentPairedComparison({ lifecycle, authority, budgets } =
     },
     sources: {
       lifecycle: {
-        path: 'scripts/tests/fixtures/1558/lifecycle-transcript.json',
-        sha256: artifactSha256(lifecycle, 'lifecycle-transcript.json'),
+        path: `scripts/tests/fixtures/1558/${final ? 'lifecycle-transcript-final' : 'lifecycle-transcript'}.json`,
+        sha256: artifactSha256(
+          lifecycle,
+          final ? 'lifecycle-transcript-final.json' : 'lifecycle-transcript.json'
+        ),
       },
       authority: {
         path: 'scripts/tests/fixtures/1558/authority-after.json',
         sha256: artifactSha256(authority, 'authority-after.json'),
       },
       budgets: {
-        path: 'scripts/tests/fixtures/1558/context-budgets.json',
-        sha256: artifactSha256(budgets, 'context-budgets.json'),
+        path: `scripts/tests/fixtures/1558/context-budgets${final ? '-final' : ''}.json`,
+        sha256: artifactSha256(budgets, `context-budgets${final ? '-final' : ''}.json`),
       },
     },
     adapters: Object.fromEntries(
@@ -447,9 +517,31 @@ async function main() {
   }
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const captureBytes = readFileSync(
-    path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
+    path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic-final.json')
   );
   const report = await buildGuidanceContextReport({ captureBytes });
+  if (report.classification === 'final-installed-consumer-release') {
+    const { buildAuthorityAfterReport } =
+      await import('../tests/helpers/guidance-authority-after.mjs');
+    const authorityAfter = await buildAuthorityAfterReport({
+      timingBytes: readFileSync(
+        path.join(root, 'scripts/tests/fixtures/1558/authority-after-timing.json')
+      ),
+    });
+    const contextBudgets = buildContextBudgetsArtifact({ final: true });
+    const currentPairedComparison = buildCurrentPairedComparison({
+      lifecycle: report,
+      authority: authorityAfter,
+      budgets: contextBudgets,
+    });
+    process.stdout.write(
+      `${JSON.stringify({ ...report, releaseEvidence: { contextBudgets, authorityAfter, currentPairedComparison } }, null, 2)}\n`
+    );
+    if (args.includes('--assert-budgets') && report.finalInstalledAdapterGate.status !== 'passed') {
+      process.exitCode = 1;
+    }
+    return;
+  }
   const { buildAuthorityAfterReport } =
     await import('../tests/helpers/guidance-authority-after.mjs');
   const authorityAfter = await buildAuthorityAfterReport({

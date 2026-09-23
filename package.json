@@ -51,7 +51,7 @@
     "lint:doc-anchors": "node scripts/maintenance/lint-doc-anchors.mjs",
     "lint:action-refusals": "node scripts/maintenance/lint-action-refusals.mjs",
     "lint:guidance-release": "node scripts/maintenance/generate-guidance-release.mjs --check",
-    "lint:guidance-release-consumer": "npm run lint:guidance-release && node scripts/maintenance/generate-guidance-release.mjs --assert-consumer-release",
+    "lint:guidance-release-consumer": "npm run lint:guidance-release && node scripts/maintenance/generate-guidance-release.mjs --assert-consumer-release && node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budgets && node --test scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
     "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release",
     "quality": "npm run format:check && npm run lint && npm test"
   },

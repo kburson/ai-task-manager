@@ -369,6 +369,11 @@ test('package-boundary: production parser and guidance release guard are declare
   assert.match(pkg.scripts['lint:guidance-release'], /--check/);
   assert.doesNotMatch(pkg.scripts['lint:guidance-release'], /--assert-consumer-release/);
   assert.match(pkg.scripts['lint:guidance-release-consumer'], /--assert-consumer-release/);
+  assert.match(
+    pkg.scripts['lint:guidance-release-consumer'],
+    /measure-guidance-context\.mjs --all --assert-budgets/
+  );
+  assert.match(pkg.scripts['lint:guidance-release-consumer'], /guidance-release\.test\.mjs/);
 });
 
 test('package-boundary: tag and explicit release CI retain the B2 consumer gate', () => {

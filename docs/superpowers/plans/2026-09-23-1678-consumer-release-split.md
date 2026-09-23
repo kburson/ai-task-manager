@@ -27,6 +27,10 @@
 - Preserve the seven-field operational result, typed values, fail-closed admission, authority revalidation, B1+B2 joint release, and independent #1561 full-contract check. No child may claim consumer release until Task 3 passes VC17.
 - Keep the existing one-active-child sequencing inside #1678, then reconcile and close #1678 before closing #1558. Each child gets exact-head Test, Review, approval, owned merge-back, and governed Close.
 
+## Final certification budget adjustment
+
+The user authorized a clearer final protocol with a 6,000 proxy-token target and a 6,500 working allowance when extra wording improves quality. The 7,000 absolute ceiling remains. Historical 5,600 working-limit evidence stays frozen; the final consumer gate records and applies this explicit adjustment. Do not omit required instructions or CLI traffic to meet either number.
+
 ## Implementation Tasks
 
 ### Task 1: Unify consumer context budgets and establish release regression gates

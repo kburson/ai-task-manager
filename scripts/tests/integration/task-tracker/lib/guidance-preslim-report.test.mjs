@@ -52,21 +52,32 @@ test('generates current paired artifacts while preserving the frozen comparison'
   assert.equal(paired.adapters.codex.currentProxyTokens, 5079);
 });
 
-test('public meter succeeds for pre-slim accounting and fails the final installed gate', () => {
+test('public meter certifies final installed bytes and the paired report', async () => {
   const base = ['scripts/task-tracker/measure-guidance-context.mjs', '--all', '--json'];
   const normal = spawnSync(process.execPath, base, { cwd: ROOT, encoding: 'utf8' });
   assert.equal(normal.status, 0, normal.stderr);
   const report = JSON.parse(normal.stdout);
-  assert.equal(report.preSlimEvidence.authorityAfter.schema, 'aitm.guidance-authority-after/v1');
+  assert.equal(report.releaseEvidence.authorityAfter.schema, 'aitm.guidance-authority-after/v1');
   assert.equal(
-    report.preSlimEvidence.currentPairedComparison.classification,
-    'pre-slim-current-paired-not-installed-release'
+    report.releaseEvidence.currentPairedComparison.classification,
+    'final-installed-public-cli-paired-comparison'
   );
+  const finalCaptureBytes = read('actual-explain-traffic-final.json');
+  const finalLifecycle = await buildGuidanceContextReport({ captureBytes: finalCaptureBytes });
+  assert.equal(
+    read('lifecycle-transcript-final.json').toString(),
+    `${JSON.stringify(finalLifecycle, null, 2)}\n`
+  );
+  const finalPaired = buildCurrentPairedComparison({
+    lifecycle: finalLifecycle,
+    authority: report.releaseEvidence.authorityAfter,
+    budgets: report.releaseEvidence.contextBudgets,
+  });
+  assert.deepEqual(JSON.parse(read('context-comparison-final-paired.json')), finalPaired);
   const assertion = spawnSync(process.execPath, [...base, '--assert-budgets'], {
     cwd: ROOT,
     encoding: 'utf8',
   });
-  assert.equal(assertion.status, 1);
-  assert.equal(JSON.parse(assertion.stdout).preSlimEvidence.finalAssertion.status, 'failed');
-  assert.match(JSON.parse(assertion.stdout).preSlimEvidence.finalAssertion.reason, /installed/);
+  assert.equal(assertion.status, 0, assertion.stderr);
+  assert.equal(JSON.parse(assertion.stdout).finalInstalledAdapterGate.status, 'passed');
 });

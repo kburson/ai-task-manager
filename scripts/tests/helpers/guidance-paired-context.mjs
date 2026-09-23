@@ -9,7 +9,10 @@ import {
   measureAgentVisible,
   validatePairedWorkload,
 } from '../../task-tracker/measure-guidance-context.mjs';
-import { GUIDANCE_CONTEXT_BUDGETS } from '../../task-tracker/lib/context-budgets.mjs';
+import {
+  FINAL_GUIDANCE_CONTEXT_BUDGETS,
+  GUIDANCE_CONTEXT_BUDGETS,
+} from '../../task-tracker/lib/context-budgets.mjs';
 import { validateLifecycleTranscript } from '../../maintenance/capture-guidance-lifecycle.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
@@ -125,6 +128,8 @@ export function buildPairedContext({
   if (capture.schema !== 'aitm.guidance-lifecycle-capture/v1' || !Array.isArray(capture.events)) {
     throw new Error('paired context: invalid captured lifecycle');
   }
+  const final = capture.identity?.mode === 'final';
+  if (final && budgets === GUIDANCE_CONTEXT_BUDGETS) budgets = FINAL_GUIDANCE_CONTEXT_BUDGETS;
   const baselineBytes = read(`${FIXTURES}/legacy-baseline.json`);
   const baseline = JSON.parse(baselineBytes);
   const adapterBaseline = baseline.adapters.find(({ id }) => id === adapter);
@@ -160,12 +165,50 @@ export function buildPairedContext({
     if (!manifest.some(({ id }) => id === name)) throw new Error(`paired context: missing ${name}`);
   }
   validateLifecycleTranscript(capture);
-  if (
+  if (final) {
+    const manifest = JSON.parse(read(`${FIXTURES}/final-capture-manifest.json`));
+    if (
+      capture.captureKind !==
+        'actual-public-cli-and-installed-static-with-deterministic-authority' ||
+      manifest.captureSha256 !== digest(captureBytes) ||
+      manifest.scenarioManifestSha256 !== capture.identity?.scenarioManifestSha256 ||
+      manifest.capturePath !== `${FIXTURES}/actual-explain-traffic-final.json` ||
+      JSON.stringify(manifest.eventNames) !==
+        JSON.stringify(capture.events.map(({ name }) => name)) ||
+      JSON.stringify(manifest.trafficCategories) !==
+        JSON.stringify(capture.measurement.traffic.categories) ||
+      JSON.stringify(manifest.heavyCase) !==
+        JSON.stringify({
+          declaredInputs: capture.heavyCase?.declaredInputs,
+          observedStatus: capture.heavyCase?.observedStatus,
+          stdoutSha256: digest(capture.heavyCase?.event?.stdout ?? ''),
+          traffic: capture.heavyCase?.traffic,
+        }) ||
+      JSON.stringify(manifest.installedStatic) !==
+        JSON.stringify(capture.measurement.installedStatic) ||
+      JSON.stringify(manifest.productionPackage) !==
+        JSON.stringify(capture.identity?.productionPackage) ||
+      capture.identity?.productionPackage?.productionOnly !== true ||
+      capture.identity?.sourceCommit !== undefined ||
+      manifest.sourceInputsSha256 !== capture.identity?.sourceInputsSha256 ||
+      capture.identity?.sourceInputsSha256 !==
+        digest(
+          JSON.stringify({
+            implementationFiles: capture.identity?.implementationFiles,
+            productionPackage: capture.identity?.productionPackage,
+          })
+        ) ||
+      !Array.isArray(capture.identity?.implementationFiles) ||
+      capture.identity.implementationFiles.some(
+        ({ path: sourcePath, sha256 }) => digest(read(sourcePath)) !== sha256
+      )
+    )
+      throw new Error('paired context: final capture identity drift');
+  } else if (
     digest(captureBytes) !== PINNED_CAPTURE_SHA256 ||
     capture.identity?.scenarioManifestSha256 !== PINNED_SCENARIO_MANIFEST_SHA256
-  ) {
+  )
     throw new Error('paired context: capture identity drift');
-  }
   if (capture.identity?.transcriptSha256 !== digest(JSON.stringify(capture.events))) {
     throw new Error('paired context: transcript digest drift');
   }
@@ -211,7 +254,12 @@ export function buildPairedContext({
   const legacyEvents = visible.map((event) =>
     modelLegacyEvent(event, transcript.entries, loadedText)
   );
-  const proposedFiles = capture.measurement.modeledProposedStatic[adapter].files;
+  const proposedFiles = final
+    ? capture.measurement.installedStatic?.[adapter]?.files
+    : capture.measurement.modeledProposedStatic?.[adapter]?.files;
+  if (!Array.isArray(proposedFiles) || proposedFiles.length !== 4) {
+    throw new Error('paired context: incomplete static identity');
+  }
   const current = measureAgentVisible({
     staticFiles: proposedFiles.map(({ sourcePath, sha256 }) => {
       const bytes = read(sourcePath);
@@ -229,7 +277,9 @@ export function buildPairedContext({
   if (
     current.trafficCharacters !== capture.measurement.traffic.characters ||
     current.staticFiles.reduce((sum, file) => sum + file.proxyTokens, 0) !==
-      capture.measurement.modeledProposedStatic[adapter].totals.proxyTokens
+      (final ? capture.measurement.installedStatic : capture.measurement.modeledProposedStatic)[
+        adapter
+      ].totals.proxyTokens
   ) {
     throw new Error('paired context: current capture accounting drift');
   }
@@ -257,9 +307,10 @@ export function buildPairedContext({
       frozenTranscriptPath: adapterBaseline.transcriptPath,
       frozenTranscriptSha256: digest(transcriptBytes),
       historicalSourceCommit: baseline.source.commit,
-      currentCapturePath: `${FIXTURES}/actual-explain-traffic-recertification.json`,
+      currentCapturePath: `${FIXTURES}/actual-explain-traffic-${final ? 'final' : 'recertification'}.json`,
       currentCaptureSha256: digest(captureBytes),
-      currentSourceCommit: capture.identity.sourceCommit,
+      currentSourceCommit: capture.identity.sourceCommit ?? null,
+      ...(final ? { currentSourceInputsSha256: capture.identity.sourceInputsSha256 } : {}),
     },
     streams: {
       legacy: legacyEvents.map(({ name, raw }) => ({
@@ -281,11 +332,16 @@ export function buildPairedContext({
       ...legacy,
     },
     current: {
-      captureKind: 'captured-public-cli-traffic-plus-modeled-proposed-static',
-      limitation: 'Proposed static files are not final installed adapter bytes.',
+      captureKind: final
+        ? 'actual-public-cli-traffic-plus-installed-static'
+        : 'captured-public-cli-traffic-plus-modeled-proposed-static',
+      limitation: final
+        ? capture.limitation
+        : 'Proposed static files are not final installed adapter bytes.',
       repeated: { agentInstructionCharacters: 0 },
       compaction: { expandedRequiredEntries: true },
       ...current,
+      fixedBudgets: budgets,
     },
     currentBudgetVerdicts,
     deltaProxyTokens: current.proxyTokens - legacy.proxyTokens,

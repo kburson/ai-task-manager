@@ -2,7 +2,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-budgets.mjs';
+import {
+  FINAL_GUIDANCE_CONTEXT_BUDGETS,
+  GUIDANCE_CONTEXT_BUDGETS,
+} from '../../../../task-tracker/lib/context-budgets.mjs';
 
 test('keeps all fixed guidance ceilings in one immutable authority', () => {
   assert.deepEqual(GUIDANCE_CONTEXT_BUDGETS, {
@@ -16,4 +19,9 @@ test('keeps all fixed guidance ceilings in one immutable authority', () => {
     assert.ok(Object.isFrozen(values));
     assert.ok(values.working <= values.absolute * 0.8);
   }
+  assert.deepEqual(FINAL_GUIDANCE_CONTEXT_BUDGETS.fullLifecycle, {
+    absolute: 7000,
+    target: 6000,
+    working: 6500,
+  });
 });

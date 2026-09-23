@@ -1,0 +1,234 @@
+{
+  "schema": "aitm.guidance-final-capture-manifest/v1",
+  "capturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
+  "captureSha256": "sha256:30b6dceaa316ebd57877719540ec431043c6725ffcdd125a891c77c72a9dfbdf",
+  "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
+  "sourceInputsSha256": "sha256:da4346db4d4d91953f734da1feb15edbfb0e526314cef194b7cbda6a94b8459d",
+  "productionPackage": {
+    "name": "@kburson/ai-task-manager",
+    "version": "0.1.0",
+    "productionOnly": true,
+    "files": [
+      {
+        "path": "bin/aitm.mjs",
+        "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+      },
+      {
+        "path": "skill/SKILL.md",
+        "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+      },
+      {
+        "path": "skill/shared/router.md",
+        "sha256": "sha256:2a09860784a87eeed7f41b028655c18e061d8b5564e3d648b1f29899c1f6b8a0"
+      },
+      {
+        "path": "skill/adapters/claude/SKILL.md",
+        "sha256": "sha256:c6b7a7251adff06bf7729f7f75a00670b9af806c056d0d026aad7894c1ba8038"
+      },
+      {
+        "path": "skill/adapters/codex/SKILL.md",
+        "sha256": "sha256:b436b3bc168f3ed8f4dd9b1f2891879f45fcb474847bf5c3350cdee221925a89"
+      },
+      {
+        "path": "templates/pickup-directive.md",
+        "sha256": "sha256:79ebbff818aee872e1fcd0b56458efd4f75a70d09d8ef5ca32861811364b3e23"
+      }
+    ],
+    "filesSha256": "sha256:74e4a43f4b3276096cba7b3ee2ce49c76cf692f7d5a6a2f12c73267f11fa5990"
+  },
+  "implementationFiles": [
+    {
+      "path": "bin/aitm.mjs",
+      "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/explain.mjs",
+      "sha256": "sha256:55edc368da121ca142b117a0cf7dd4c11473ddb716694188c12a02e1f103895d"
+    },
+    {
+      "path": "scripts/tests/helpers/capture-guidance-release.mjs",
+      "sha256": "sha256:1d2d355dea5c88ba32ab8882153c033691cd096cc33fc88d67dfc442e2078906"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/close.mjs",
+      "sha256": "sha256:6f7ab80461d7f7405f1926ea1dfd41d9fe6647e4660281d4d5e1c4fce591858f"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
+      "sha256": "sha256:11046fc6e737dc8859506153b7cd296df4d20707561c1bec9a0c8c46efa56c17"
+    },
+    {
+      "path": "instructions/aitm-guidance.yml",
+      "sha256": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf"
+    }
+  ],
+  "eventNames": [
+    "ready-first-load",
+    "matching-receipt",
+    "compaction-reset",
+    "blocked-migration-freeze",
+    "diagnostic",
+    "clear-freeze",
+    "refusal-remediation",
+    "agent-change",
+    "source-only-change",
+    "approve-plan",
+    "lifecycle-resume",
+    "lifecycle-promote",
+    "enter-develop",
+    "lifecycle-test",
+    "enter-test",
+    "lifecycle-review",
+    "enter-review",
+    "lifecycle-deliver",
+    "external-authority",
+    "external-approval",
+    "external-merge",
+    "lifecycle-close",
+    "enter-done",
+    "post-close-state"
+  ],
+  "trafficCategories": {
+    "query": {
+      "characters": 7836,
+      "bytes": 7836,
+      "proxyUnits": 1959
+    },
+    "diagnostic": {
+      "characters": 2554,
+      "bytes": 2554,
+      "proxyUnits": 638.5
+    },
+    "external": {
+      "characters": 187,
+      "bytes": 187,
+      "proxyUnits": 46.75
+    }
+  },
+  "heavyCase": {
+    "declaredInputs": {
+      "action": "close",
+      "childIds": [
+        2201,
+        2202,
+        2203,
+        2204
+      ],
+      "dependencyIds": [
+        3100,
+        3101,
+        3102
+      ],
+      "diagnostic": true
+    },
+    "observedStatus": "blocked",
+    "stdoutSha256": "sha256:ba5d3e5fb58bec53583c41cb55d0737344f4833c1db94fc5945ebc1de417fa59",
+    "traffic": {
+      "characters": 3950,
+      "bytes": 3950,
+      "proxyUnits": 987.5,
+      "proxyTokens": 988,
+      "categories": {
+        "query": {
+          "characters": 3950,
+          "bytes": 3950,
+          "proxyUnits": 987.5
+        },
+        "diagnostic": {
+          "characters": 0,
+          "bytes": 0,
+          "proxyUnits": 0
+        },
+        "external": {
+          "characters": 0,
+          "bytes": 0,
+          "proxyUnits": 0
+        }
+      }
+    }
+  },
+  "installedStatic": {
+    "claude": {
+      "files": [
+        {
+          "sourcePath": "skill/SKILL.md",
+          "packagePath": "skill/SKILL.md",
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "sourcePath": "skill/shared/router.md",
+          "packagePath": "skill/shared/router.md",
+          "characters": 4788,
+          "bytes": 4792,
+          "proxyTokens": 1197,
+          "sha256": "sha256:2a09860784a87eeed7f41b028655c18e061d8b5564e3d648b1f29899c1f6b8a0"
+        },
+        {
+          "sourcePath": "skill/adapters/claude/SKILL.md",
+          "packagePath": "skill/adapters/claude/SKILL.md",
+          "characters": 2723,
+          "bytes": 2723,
+          "proxyTokens": 681,
+          "sha256": "sha256:c6b7a7251adff06bf7729f7f75a00670b9af806c056d0d026aad7894c1ba8038"
+        },
+        {
+          "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+          "packagePath": "templates/pickup-directive.md",
+          "characters": 2587,
+          "bytes": 2595,
+          "proxyTokens": 647,
+          "sha256": "sha256:79ebbff818aee872e1fcd0b56458efd4f75a70d09d8ef5ca32861811364b3e23"
+        }
+      ],
+      "totals": {
+        "characters": 11044,
+        "bytes": 11056,
+        "proxyTokens": 2762
+      }
+    },
+    "codex": {
+      "files": [
+        {
+          "sourcePath": "skill/SKILL.md",
+          "packagePath": "skill/SKILL.md",
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "sourcePath": "skill/shared/router.md",
+          "packagePath": "skill/shared/router.md",
+          "characters": 4788,
+          "bytes": 4792,
+          "proxyTokens": 1197,
+          "sha256": "sha256:2a09860784a87eeed7f41b028655c18e061d8b5564e3d648b1f29899c1f6b8a0"
+        },
+        {
+          "sourcePath": "skill/adapters/codex/SKILL.md",
+          "packagePath": "skill/adapters/codex/SKILL.md",
+          "characters": 2672,
+          "bytes": 2672,
+          "proxyTokens": 668,
+          "sha256": "sha256:b436b3bc168f3ed8f4dd9b1f2891879f45fcb474847bf5c3350cdee221925a89"
+        },
+        {
+          "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+          "packagePath": "templates/pickup-directive.md",
+          "characters": 2587,
+          "bytes": 2595,
+          "proxyTokens": 647,
+          "sha256": "sha256:79ebbff818aee872e1fcd0b56458efd4f75a70d09d8ef5ca32861811364b3e23"
+        }
+      ],
+      "totals": {
+        "characters": 10993,
+        "bytes": 11005,
+        "proxyTokens": 2749
+      }
+    }
+  }
+}

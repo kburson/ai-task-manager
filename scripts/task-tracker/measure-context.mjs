@@ -30,7 +30,7 @@ import path from 'node:path';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { RUNTIME_REL } from './paths.mjs';
 import {
-  GUIDANCE_CONTEXT_BUDGETS,
+  FINAL_GUIDANCE_CONTEXT_BUDGETS,
   HISTORICAL_CONTEXT_BUDGETS as BUDGETS,
   HISTORICAL_SCENARIO_BUDGETS as SCENARIO_BUDGETS,
 } from './lib/context-budgets.mjs';
@@ -145,7 +145,7 @@ function measure({
   scenario = null,
   issue = null,
   extraRules = [],
-  budgets = GUIDANCE_CONTEXT_BUDGETS,
+  budgets = FINAL_GUIDANCE_CONTEXT_BUDGETS,
 }) {
   const shim = [tokens(SHIM)];
   if (mode === 'idle') return fmt('idle', shim, BUDGETS.idle);
