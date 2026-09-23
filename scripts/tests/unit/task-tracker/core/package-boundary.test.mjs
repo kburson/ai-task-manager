@@ -238,6 +238,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const deliverySourceInventoryAllowance = 1;
   // #1758 ships one exact delivery attribution authorization record module.
   const deliveryAttributionRecordAllowance = 1;
+  // #1759 ships one operator-facing delivery attribution exception command.
+  const deliveryAttributionCommandAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -248,7 +250,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     storyQualityRuleAllowance +
     planTransitionAuthorityAllowance +
     deliverySourceInventoryAllowance +
-    deliveryAttributionRecordAllowance;
+    deliveryAttributionRecordAllowance +
+    deliveryAttributionCommandAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
