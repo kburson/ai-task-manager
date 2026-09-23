@@ -51,7 +51,7 @@
       {
         "role": "recertification-capture",
         "path": "scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json",
-        "sha256": "sha256:5c0325f081d098f7e2824728f9058e402f3c7df5f249eb44acdb1511b0076353"
+        "sha256": "sha256:6a0d4c71801a6568c558336283a7a77ac2e147ea5c349453764ce85ed6bae99b"
       },
       {
         "role": "historical-capture",
@@ -70,7 +70,7 @@
       }
     ],
     "decisionSourceCommit": "4b6ce5bc3ddb5353b6ea47906fe3dc9e1fbf3ada",
-    "captureSourceCommit": "4b6ce5bc3ddb5353b6ea47906fe3dc9e1fbf3ada",
+    "captureSourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
     "captureImplementationFiles": [
       {
         "path": "bin/aitm.mjs",
@@ -86,7 +86,7 @@
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/close.mjs",
-        "sha256": "sha256:9f6569b92ec0a752c12733b35a602a796215ecde4a4b29399903266c2893a6aa"
+        "sha256": "sha256:6f7ab80461d7f7405f1926ea1dfd41d9fe6647e4660281d4d5e1c4fce591858f"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
@@ -181,7 +181,7 @@
     ],
     "remoteAuthorityReads": 92,
     "dynamicProxyTokens": 3627,
-    "transcriptSha256": "sha256:5e55bc02769bde8f52936fac3552de6ce637d82f2d856a6a455cc135991afe68",
+    "transcriptSha256": "sha256:2026f41cd4fb32244d767d62d7a5ee2a616c8fd4467e3ae9dcdd6844f912d5d5",
     "replay": {
       "eventsCompared": 24,
       "fixtureSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"

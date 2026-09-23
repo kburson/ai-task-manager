@@ -3,10 +3,10 @@
   "captureKind": "actual-public-cli-with-deterministic-authority",
   "authority": "deterministic-fixture",
   "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",
-  "capturedAt": "2026-09-23T08:16:35.692Z",
+  "capturedAt": "2026-09-23T08:43:17.304Z",
   "identity": {
     "mode": "recertification",
-    "sourceCommit": "4b6ce5bc3ddb5353b6ea47906fe3dc9e1fbf3ada",
+    "sourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
     "implementationFiles": [
       {
         "path": "bin/aitm.mjs",
@@ -22,7 +22,7 @@
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/close.mjs",
-        "sha256": "sha256:9f6569b92ec0a752c12733b35a602a796215ecde4a4b29399903266c2893a6aa"
+        "sha256": "sha256:6f7ab80461d7f7405f1926ea1dfd41d9fe6647e4660281d4d5e1c4fce591858f"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
@@ -38,7 +38,7 @@
     "initialBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
     "configSha256": "sha256:bcdfe53b1460cce12f4780b851896ed129ea01b867ef5cbdfcac6754477e4d63",
     "fakeGhSha256": "sha256:d213bc0267d795a466eec552804de1c1d37816bf6452653e7a9850f991587984",
-    "transcriptSha256": "sha256:5e55bc02769bde8f52936fac3552de6ce637d82f2d856a6a455cc135991afe68"
+    "transcriptSha256": "sha256:2026f41cd4fb32244d767d62d7a5ee2a616c8fd4467e3ae9dcdd6844f912d5d5"
   },
   "events": [
     {
@@ -289,7 +289,7 @@
         "--json"
       ],
       "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"plan\",\"head\":\"364d314448d6f3578ea76a573ed9dd4e4b755232\",\"digest\":\"sha256:d538205e780b9324b268324fd99ef62064f1198aef09ad155affdd714469861c\",\"startedAt\":\"2026-09-23T08:16:28.313Z\",\"completedAt\":\"2026-09-23T08:16:28.314Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-23T08:16:28.313Z\",\"digest\":\"sha256:611faba5dd8057bc6933e9fa41aab309fbc775c5d2c7ced09b7b2b8227ded373\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-23T08:16:28.313Z\",\"digest\":\"sha256:154c01dfe54ba4f4daa1a7d06338016e98fe8761ff428af8cc19a15f213ec0ed\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:ff1bbaf26d81b282caabf646ec58786c9d89fa7fa113fb164a71707a03ca95eb\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:26d880b0da2334a2fa70bc07db75fb0f0635bd35976b60e891c519bef4f6b418\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:df5745cbc62dc87108ca6b9adbde7039ed65383526d5d78e67e977cd9acc4526\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:ecd9a55032527ab623a3d383bbce79ca4f334170dc34a2515762e393aee2d6d7\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:01aa7df76fdabbd381e87998abd070f0f382cd91f224dda4d74ae363692b2685\"}]},\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"plan\",\"head\":\"364d314448d6f3578ea76a573ed9dd4e4b755232\",\"digest\":\"sha256:eefe3768a848bc09bf32210c9eca3e6b67a68bd43033888c151c30d34907a074\",\"startedAt\":\"2026-09-23T08:43:08.919Z\",\"completedAt\":\"2026-09-23T08:43:08.920Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-23T08:43:08.919Z\",\"digest\":\"sha256:a13fa9ce701a0c47d6f626a432740f73728b9a7509f1827fb02157ced165d89e\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-23T08:43:08.920Z\",\"digest\":\"sha256:165857c82bb5ba563ed35ed2b39317a998f9d43086008ca4c467b30ad776aa6a\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-23T08:43:08.920Z\",\"digest\":\"sha256:5db9f62ba0c10a9bef2afd22f269f9b281e829543687af45b1938ace8c883b08\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-23T08:43:08.920Z\",\"digest\":\"sha256:86b9bfc08de21def5fae536d8567652219ac040f7ea236ffd8a50f316fccfa02\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-23T08:43:08.920Z\",\"digest\":\"sha256:7afbdaf485e367fe2340583a9edfa0243db67eeafc7552e4d5044d8b77334ec0\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-23T08:43:08.920Z\",\"digest\":\"sha256:6a599daee841b2fafc09762ecd88f20bca7414ab536292151f1cc68b6b7ad6c8\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-23T08:43:08.920Z\",\"digest\":\"sha256:9e8c931d98fe9a520ad150a5f9ff35415e2c620c57f88bc881db734b637e2837\"}]},\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
       "stderr": "",
       "exitCode": 0,
       "remoteAuthorityReads": 4,
@@ -999,6 +999,10 @@
       "remoteAuthorityReads": 12,
       "remoteAuthorityCalls": [
         {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 5
+        },
+        {
           "args": [
             "issue",
             "view",
@@ -1008,10 +1012,6 @@
             "--json",
             "number,state,body,assignees"
           ],
-          "revision": 5
-        },
-        {
-          "args": ["api", "graphql", "--input", "-"],
           "revision": 5
         },
         {
