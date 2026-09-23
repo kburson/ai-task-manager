@@ -5,6 +5,33 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { HEAD, NEXT_HEAD, deliver, makeHarness } from './deliver-test-harness.mjs';
+import { classifySourceCommitSubjects } from '../../../../task-tracker/verbs/deliver.mjs';
+
+test('classification retains SHA records and verifies only unattributed merges', async () => {
+  const source = [
+    { oid: '1'.repeat(40), messageHeadline: '[#1755] ordinary' },
+    { oid: '2'.repeat(40), messageHeadline: 'Merge plain branch' },
+    { oid: '3'.repeat(40), messageHeadline: 'Merge #1755 branch' },
+    { oid: HEAD, messageHeadline: '[#1755] tip' },
+  ];
+  const result = await classifySourceCommitSubjects(
+    {
+      sourceCommitSubjects: source.map((item) => item.messageHeadline),
+      sourceCommits: source,
+      sourceCommitsComplete: true,
+      sourceCommitsHeadSha: HEAD,
+      headRefOid: HEAD,
+    },
+    async () => ({ parents: ['4'.repeat(40), '5'.repeat(40)], commitTitle: 'Merge plain branch' })
+  );
+
+  assert.deepEqual(result.verifiedMergeShas, ['2'.repeat(40)]);
+  assert.deepEqual(result.attributableCommits, [source[0], source[2], source[3]]);
+  assert.deepEqual(
+    result.attributableSubjects,
+    source.filter((_, index) => index !== 1).map((item) => item.messageHeadline)
+  );
+});
 
 test('open-PR preflight omits a locally verified two-parent ancestry merge', async () => {
   const sourceCommit = '1'.repeat(40);

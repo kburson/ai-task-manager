@@ -205,26 +205,49 @@ function matchesInspectedCommitTitle(observed, inspected) {
   return prefix.length >= 64 && inspected.length > prefix.length && inspected.startsWith(prefix);
 }
 
-async function classifySourceCommitSubjects(pullRequest, inspectSourceCommit) {
+export async function classifySourceCommitSubjects(pullRequest, inspectSourceCommit) {
   const strictSubjects = pullRequest?.sourceCommitSubjects;
   if (!Array.isArray(strictSubjects)) {
-    return { attributableSubjects: strictSubjects, verifiedMergeTitles: [] };
+    return {
+      attributableSubjects: strictSubjects,
+      attributableCommits: null,
+      verifiedMergeTitles: [],
+      verifiedMergeShas: [],
+    };
   }
   if (pullRequest?.sourceCommitsComplete !== true) {
-    return { attributableSubjects: null, verifiedMergeTitles: [] };
+    return {
+      attributableSubjects: null,
+      attributableCommits: null,
+      verifiedMergeTitles: [],
+      verifiedMergeShas: [],
+    };
   }
   if (!isStructurallyInspectableSourceCommits(pullRequest)) {
-    return { attributableSubjects: null, verifiedMergeTitles: [] };
+    return {
+      attributableSubjects: null,
+      attributableCommits: null,
+      verifiedMergeTitles: [],
+      verifiedMergeShas: [],
+    };
   }
   if (!strictSubjects.some(isUnattributedMergeCandidate)) {
-    return { attributableSubjects: strictSubjects, verifiedMergeTitles: [] };
+    return {
+      attributableSubjects: strictSubjects,
+      attributableCommits: pullRequest.sourceCommits,
+      verifiedMergeTitles: [],
+      verifiedMergeShas: [],
+    };
   }
 
   const attributableSubjects = [];
+  const attributableCommits = [];
   const verifiedMergeTitles = [];
+  const verifiedMergeShas = [];
   for (const commit of pullRequest.sourceCommits) {
     if (!isUnattributedMergeCandidate(commit.messageHeadline)) {
       attributableSubjects.push(commit.messageHeadline);
+      attributableCommits.push(commit);
       continue;
     }
     let inspection = null;
@@ -242,11 +265,13 @@ async function classifySourceCommitSubjects(pullRequest, inspectSourceCommit) {
       new Set(parents).size === parents.length;
     if (verifiedMerge) {
       verifiedMergeTitles.push(inspection.commitTitle);
+      verifiedMergeShas.push(commit.oid);
     } else {
       attributableSubjects.push(commit.messageHeadline);
+      attributableCommits.push(commit);
     }
   }
-  return { attributableSubjects, verifiedMergeTitles };
+  return { attributableSubjects, attributableCommits, verifiedMergeTitles, verifiedMergeShas };
 }
 
 export async function mergedSourceCommitSubjects(pullRequest, inspectSourceCommit) {
@@ -1421,6 +1446,22 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     };
   };
 
+  const inspectLocalSourceCommit = async ({ commitSha, headSha }) => {
+    const { stdout } = await run('git', ['cat-file', 'commit', commitSha]);
+    const raw = String(stdout || '');
+    const separator = raw.indexOf('\n\n');
+    if (separator < 0) throw deliverError('commit-object');
+    const message = raw.slice(separator + 2);
+    let reachable = false;
+    try {
+      await run('git', ['merge-base', '--is-ancestor', commitSha, headSha]);
+      reachable = true;
+    } catch (error) {
+      if (error?.code !== 1) throw error;
+    }
+    return { oid: commitSha, message, reachable };
+  };
+
   return {
     async resolvePullRequestReviewGate() {
       return resolveGate('pullRequestReview', {
@@ -1755,6 +1796,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     async inspectSourceCommit({ commitSha }) {
       return inspectCommitObject(commitSha);
     },
+    inspectLocalSourceCommit,
     async attributingCommits(issueNumber, options) {
       return defaultAttributingCommits(issueNumber, { cwd: ctx.projectDir, ...options });
     },
