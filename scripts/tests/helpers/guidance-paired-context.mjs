@@ -113,7 +113,11 @@ function modelLegacyEvent(event, frozenEntries, loadedText) {
   return { name: event.name, raw: parts.map(({ text }) => text).join(''), parts };
 }
 
-export function buildPairedContext({ captureBytes, adapter } = {}) {
+export function buildPairedContext({
+  captureBytes,
+  adapter,
+  budgets = GUIDANCE_CONTEXT_BUDGETS,
+} = {}) {
   if (!Buffer.isBuffer(captureBytes) || !['claude', 'codex'].includes(adapter)) {
     throw new TypeError('paired context: capture bytes and adapter are required');
   }
@@ -236,11 +240,11 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
   const currentBudgetVerdicts = {
     routerPlusPickup: verdict(
       current.staticFiles.reduce((sum, file) => sum + file.proxyTokens, 0),
-      GUIDANCE_CONTEXT_BUDGETS.routerPlusPickup
+      budgets.routerPlusPickup
     ),
-    clean: verdict(responseTokens('ready-first-load'), GUIDANCE_CONTEXT_BUDGETS.clean),
-    blocked: verdict(responseTokens('blocked-migration-freeze'), GUIDANCE_CONTEXT_BUDGETS.blocked),
-    fullLifecycle: verdict(current.proxyTokens, GUIDANCE_CONTEXT_BUDGETS.fullLifecycle),
+    clean: verdict(responseTokens('ready-first-load'), budgets.clean),
+    blocked: verdict(responseTokens('blocked-migration-freeze'), budgets.blocked),
+    fullLifecycle: verdict(current.proxyTokens, budgets.fullLifecycle),
   };
   return {
     schema: 'aitm.guidance-paired-context/v1',

@@ -15,7 +15,7 @@ enforceDirectGuidance(import.meta.url, 'measure-context');
 //   --scenario parallel-orchestration     invoked + pickup + parallel + bind + state-walk
 //                                         (orchestrator fanning out to sub-agents)
 //
-//   --all                Runs idle + invoked + every named scenario, for the selected adapter.
+//   --all                Runs historical and fixed release scenarios for the selected adapter.
 //                        Non-zero exit if any scenario breaches its budget.
 //
 // Token estimate: chars / 4 (industry-standard rough approximation for English).
@@ -30,6 +30,7 @@ import path from 'node:path';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { RUNTIME_REL } from './paths.mjs';
 import {
+  GUIDANCE_CONTEXT_BUDGETS,
   HISTORICAL_CONTEXT_BUDGETS as BUDGETS,
   HISTORICAL_SCENARIO_BUDGETS as SCENARIO_BUDGETS,
 } from './lib/context-budgets.mjs';
@@ -57,6 +58,10 @@ const SCENARIOS = {
 };
 
 const SCENARIO_NAMES = Object.keys(SCENARIOS);
+const RELEASE_SCENARIOS = Object.freeze({
+  'invoked+pickup': 'routerPlusPickup',
+  'bind+review+close': 'fullLifecycle',
+});
 
 function resolvePickup() {
   for (const rel of PICKUP_CANDIDATES) {
@@ -91,6 +96,32 @@ function fmt(label, files, budget) {
   return { label, total, budget, headroom, status, files, text: lines.join('\n') };
 }
 
+function fmtRelease(label, files, { absolute, working }) {
+  if (![absolute, working].every((value) => Number.isFinite(value) && value > 0)) {
+    throw new Error(`invalid release budget for ${label}`);
+  }
+  const total = sum(files);
+  const status = total <= working && total <= absolute ? 'OK' : 'OVER';
+  const headroom = working - total;
+  return {
+    label,
+    total,
+    budget: working,
+    absolute,
+    working,
+    headroom,
+    status,
+    files,
+    text: [
+      `${label}: ${total} tokens (working ${working}, absolute ${absolute}, headroom ${headroom}) [${status}]`,
+      ...files.map(
+        (file) =>
+          `  ${file.tokens.toString().padStart(6)}  ${file.rel}${file.missing ? '  (MISSING)' : ''}`
+      ),
+    ].join('\n'),
+  };
+}
+
 function buildInvoked(adapter) {
   return [tokens(SHIM), tokens(ADAPTERS[adapter]), tokens(ROUTER)];
 }
@@ -106,7 +137,14 @@ function buildScenarioFiles(adapter, scenario) {
   ];
 }
 
-function measure({ mode, adapter = 'claude', scenario = null, issue = null, extraRules = [] }) {
+function measure({
+  mode,
+  adapter = 'claude',
+  scenario = null,
+  issue = null,
+  extraRules = [],
+  budgets = GUIDANCE_CONTEXT_BUDGETS,
+}) {
   const shim = [tokens(SHIM)];
   if (mode === 'idle') return fmt('idle', shim, BUDGETS.idle);
   if (mode === 'invoked') {
@@ -137,6 +175,15 @@ function measure({ mode, adapter = 'claude', scenario = null, issue = null, extr
     }
     return fmt(`scenario:${scenario} (${adapter})`, files, budget);
   }
+  if (mode === 'release-static') {
+    const category = RELEASE_SCENARIOS[scenario];
+    if (!category) throw new Error(`unknown release-static scenario: ${scenario || '(none)'}`);
+    const files =
+      scenario === 'invoked+pickup'
+        ? [...buildInvoked(adapter), tokens(resolvePickup())]
+        : buildScenarioFiles(adapter, 'bind+review+close');
+    return fmtRelease(`release-static:${scenario} (${adapter})`, files, budgets[category]);
+  }
   throw new Error(`unknown mode: ${mode}`);
 }
 
@@ -161,6 +208,9 @@ function parseArgs(argv) {
       }
     } else if (a === '--scenario') {
       args.mode = 'scenario';
+      args.scenario = argv[++i];
+    } else if (a === '--release-static') {
+      args.mode = 'release-static';
       args.scenario = argv[++i];
     } else if (a === '--adapter') {
       args.adapter = argv[++i];
@@ -187,7 +237,8 @@ Modes:
   --invoked                    shim + adapter + router
   --active [N]                 invoked + pickup + bind/state-walk (legacy)
   --scenario <name>            invoked + pickup + scenario rules (see --list-scenarios)
-  --all                        idle + invoked + every named scenario for the selected adapter
+  --release-static <name>      fixed invoked+pickup or bind+review+close instruction subset
+  --all                        historical and fixed release scenarios for the selected adapter
 
 Options:
   --adapter <name>             claude | codex (default: claude)
@@ -208,6 +259,9 @@ function listScenarios() {
     for (const ad of Object.keys(SCENARIO_BUDGETS)) {
       lines.push(`    budget (${ad}): ${SCENARIO_BUDGETS[ad][name]}`);
     }
+  }
+  for (const [name, category] of Object.entries(RELEASE_SCENARIOS)) {
+    lines.push(`  release-static:${name} (fixed ${category} budget)`);
   }
   return lines.join('\n');
 }
@@ -231,12 +285,16 @@ function main() {
 
   let results;
   if (args.mode === 'all') {
-    // idle, invoked, then every named scenario.
+    // Historical scenarios remain separately labeled; fixed release subsets
+    // use the same limits as the captured lifecycle report.
     results = [
       measure({ mode: 'idle', adapter: args.adapter }),
       measure({ mode: 'invoked', adapter: args.adapter }),
       ...SCENARIO_NAMES.map((name) =>
         measure({ mode: 'scenario', adapter: args.adapter, scenario: name })
+      ),
+      ...Object.keys(RELEASE_SCENARIOS).map((name) =>
+        measure({ mode: 'release-static', adapter: args.adapter, scenario: name })
       ),
     ];
   } else {
@@ -260,7 +318,7 @@ function main() {
   process.exit(over ? 1 : 0);
 }
 
-export { measure, BUDGETS, SCENARIO_BUDGETS, SCENARIOS, SCENARIO_NAMES };
+export { measure, BUDGETS, SCENARIO_BUDGETS, SCENARIOS, SCENARIO_NAMES, RELEASE_SCENARIOS };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();

@@ -141,7 +141,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis: 'Measure context-word usage for a session/issue.',
     audience: 'Operator/diagnostics. Also invoked internally by timing hooks.',
     usage:
-      'aitm measure-context [--idle|--invoked|--active [N]|--scenario <name>|--all] [--adapter claude|codex] [--rule <file>] [--list-scenarios] [--json]',
+      'aitm measure-context [--idle|--invoked|--active [N]|--scenario <name>|--release-static <name>|--all] [--adapter claude|codex] [--rule <file>] [--list-scenarios] [--json]',
   },
   'heal-backlog': {
     group: 'Maintenance',
@@ -575,7 +575,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     ],
     examples: [
       'npx aitm measure-context --all --adapter codex',
-      'npx aitm measure-context --scenario review --json',
+      'npx aitm measure-context --release-static invoked+pickup --adapter claude --json',
     ],
     relatedCommands: ['value-report', 'help'],
   }),

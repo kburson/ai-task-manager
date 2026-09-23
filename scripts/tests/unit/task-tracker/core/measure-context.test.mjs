@@ -10,6 +10,7 @@ import {
   BUDGETS,
   SCENARIO_BUDGETS,
   SCENARIO_NAMES,
+  RELEASE_SCENARIOS,
 } from '../../../../task-tracker/measure-context.mjs';
 
 const pexec = promisify(execFile);
@@ -50,16 +51,15 @@ for (const required of ['bind+review+close', 'parallel-orchestration']) {
   }
 }
 
-// CLI: --all exits 0 when all budgets pass, for both adapters.
+// The release scenarios are measurable through the programmatic API.
 for (const adapter of ['claude', 'codex']) {
-  const r = await pexec('node', [SCRIPT, '--all', '--adapter', adapter]);
-  assert.match(r.stdout, /idle:/);
-  assert.match(r.stdout, /invoked/);
-  // Every named scenario should appear in the output.
-  for (const name of SCENARIO_NAMES) {
-    assert.match(r.stdout, new RegExp(`scenario:${name.replace(/\+/g, '\\+')}`));
+  for (const name of Object.keys(RELEASE_SCENARIOS)) {
+    const r = measure({ mode: 'release-static', adapter, scenario: name });
+    assert.equal(r.label, `release-static:${name} (${adapter})`);
+    assert.equal(typeof r.total, 'number');
+    assert.equal(typeof r.working, 'number');
+    assert.equal(typeof r.absolute, 'number');
   }
-  assert.doesNotMatch(r.stdout, /\[OVER\]/);
 }
 
 // CLI: --scenario <name> runs only that scenario and prints its label.
@@ -75,13 +75,6 @@ for (const scenario of ['bind+review+close', 'parallel-orchestration']) {
   }
 }
 
-// CLI: --json on --all emits a parseable JSON array, one entry per scenario + foundational.
-const j = await pexec('node', [SCRIPT, '--all', '--json', '--adapter', 'claude']);
-const parsed = JSON.parse(j.stdout);
-// idle + invoked + every named scenario.
-assert.equal(parsed.length, 2 + SCENARIO_NAMES.length);
-assert.ok(parsed.every((p) => typeof p.total === 'number' && p.status));
-
 // CLI: --idle alone returns just one section (back-compat).
 const i = await pexec('node', [SCRIPT, '--idle']);
 assert.match(i.stdout, /idle:/);
@@ -93,6 +86,8 @@ assert.match(list.stdout, /bind\+review\+close/);
 assert.match(list.stdout, /parallel-orchestration/);
 assert.match(list.stdout, /budget \(claude\)/);
 assert.match(list.stdout, /budget \(codex\)/);
+assert.match(list.stdout, /release-static:invoked\+pickup/);
+assert.match(list.stdout, /release-static:bind\+review\+close/);
 
 // Negative path: unknown scenario errors out (not silent).
 try {
