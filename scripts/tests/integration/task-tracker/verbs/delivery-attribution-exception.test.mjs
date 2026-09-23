@@ -123,6 +123,20 @@ async function firstAndFilled(h) {
   return { first, request, filled };
 }
 
+async function recordAuthorizedGrant(h) {
+  const { request, filled } = await firstAndFilled(h);
+  request.authorizationSource = {
+    schema: 'aitm.authorization-source/v1',
+    adapter: 'codex-session/v1',
+    sessionId,
+    messageId: 'msg_grant',
+    statementHash: hashAuthorizationStatement(filled.statement),
+  };
+  h.writeMessage('msg_grant', 'user', [filled.statement]);
+  await runDeliveryAttributionException({ ...base, action: 'record', runtime: h.runtime, request });
+  return request;
+}
+
 test('prepare has a read-only first pass and a digest-bound filled pass without writes', async () => {
   const h = harness();
   try {
@@ -328,21 +342,7 @@ test('show stays read-only on an unsupported host', async () => {
 test('edited grant blocks show and exact retry readback', async () => {
   const h = harness();
   try {
-    const { request, filled } = await firstAndFilled(h);
-    request.authorizationSource = {
-      schema: 'aitm.authorization-source/v1',
-      adapter: 'codex-session/v1',
-      sessionId,
-      messageId: 'msg_grant',
-      statementHash: hashAuthorizationStatement(filled.statement),
-    };
-    h.writeMessage('msg_grant', 'user', [filled.statement]);
-    await runDeliveryAttributionException({
-      ...base,
-      action: 'record',
-      runtime: h.runtime,
-      request,
-    });
+    const request = await recordAuthorizedGrant(h);
     h.comments[0].updatedAt = '2026-09-23T12:00:01.000Z';
     await assert.rejects(
       runDeliveryAttributionException({ ...base, action: 'show', runtime: h.runtime }),
@@ -510,21 +510,7 @@ test('runtime writes to the parsed issue when the input file name is numeric', a
 test('GraphQL second-precision comment timestamps survive grant readback', async () => {
   const h = harness();
   try {
-    const { request, filled } = await firstAndFilled(h);
-    request.authorizationSource = {
-      schema: 'aitm.authorization-source/v1',
-      adapter: 'codex-session/v1',
-      sessionId,
-      messageId: 'msg_grant',
-      statementHash: hashAuthorizationStatement(filled.statement),
-    };
-    h.writeMessage('msg_grant', 'user', [filled.statement]);
-    await runDeliveryAttributionException({
-      ...base,
-      action: 'record',
-      runtime: h.runtime,
-      request,
-    });
+    await recordAuthorizedGrant(h);
     const serverComment = {
       id: 'IC_server',
       body: h.comments[0].body,
