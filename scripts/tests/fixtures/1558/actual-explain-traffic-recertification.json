@@ -3,10 +3,10 @@
   "captureKind": "actual-public-cli-with-deterministic-authority",
   "authority": "deterministic-fixture",
   "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",
-  "capturedAt": "2026-09-23T07:12:29.182Z",
+  "capturedAt": "2026-09-23T08:16:35.692Z",
   "identity": {
     "mode": "recertification",
-    "sourceCommit": "48f74428a10b7a1b7296ee6a768708a6a6c11450",
+    "sourceCommit": "4b6ce5bc3ddb5353b6ea47906fe3dc9e1fbf3ada",
     "implementationFiles": [
       {
         "path": "bin/aitm.mjs",
@@ -18,7 +18,7 @@
       },
       {
         "path": "scripts/maintenance/capture-guidance-lifecycle.mjs",
-        "sha256": "sha256:fbc556d8bd904f6d6794c7f0949772205ce9d749ab4745cee1f020f4619d9deb"
+        "sha256": "sha256:218017063bd49a308f5dbd66e7236c1e7b26de89709a1ecc6b7e23cc74da4024"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/close.mjs",
@@ -34,11 +34,11 @@
       }
     ],
     "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
-    "initialFixtureSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-    "initialBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+    "initialFixtureSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+    "initialBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
     "configSha256": "sha256:bcdfe53b1460cce12f4780b851896ed129ea01b867ef5cbdfcac6754477e4d63",
     "fakeGhSha256": "sha256:d213bc0267d795a466eec552804de1c1d37816bf6452653e7a9850f991587984",
-    "transcriptSha256": "sha256:0d496c41493a1c573fafed3f66d7a0e981c5b9f6c0cf22d30a042f1467467e7b"
+    "transcriptSha256": "sha256:5e55bc02769bde8f52936fac3552de6ce637d82f2d856a6a455cc135991afe68"
   },
   "events": [
     {
@@ -46,8 +46,8 @@
       "name": "ready-first-load",
       "stateRevision": 0,
       "state": "plan",
-      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "snapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+      "authorityBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -103,8 +103,8 @@
       "name": "matching-receipt",
       "stateRevision": 0,
       "state": "plan",
-      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "snapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+      "authorityBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -162,8 +162,8 @@
       "name": "compaction-reset",
       "stateRevision": 0,
       "state": "plan",
-      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "snapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+      "authorityBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -219,8 +219,8 @@
       "name": "blocked-migration-freeze",
       "stateRevision": 0,
       "state": "plan",
-      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "snapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+      "authorityBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -276,8 +276,8 @@
       "name": "diagnostic",
       "stateRevision": 0,
       "state": "plan",
-      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "snapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+      "authorityBodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -289,7 +289,7 @@
         "--json"
       ],
       "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"plan\",\"head\":\"85f8ac54120135887b066612b012a014d506d3ee\",\"digest\":\"sha256:d76f7c72a1a72072df68e062f0ea51fae947893052460be578b157beb8b0d7f8\",\"startedAt\":\"2026-09-23T07:12:21.195Z\",\"completedAt\":\"2026-09-23T07:12:21.196Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:80668500a135b169d65c76aed61c3bfe20d5a5027d2ded7cc589b8fa2360ca73\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:b36a0e61b7d50054e3ae329b73f6ad857094181806b5098471dc7fe954617d8b\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:d586fc8e8a3b10c59ab7d9a3cbc78a6c588bd12b6873ab94c5a76384777c6c8c\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:437b0610b9fa1b8a9b5bf9f88db1f3cbc085216ecd861ad9f0b57435e8a59032\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:7b128352793c57c5f4faf5cd7bfc08bf9f158e0ddde429e7a1d0b142b08c1891\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:2a46d7227a80f207cd93e0c801eab10de7007302672487a6ba5b355e85c4158a\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:58790f1c2c4a035e0629fec513a76166acc56d4c1f69152c32a0582f5c3d7b59\"}]},\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"plan\",\"head\":\"364d314448d6f3578ea76a573ed9dd4e4b755232\",\"digest\":\"sha256:d538205e780b9324b268324fd99ef62064f1198aef09ad155affdd714469861c\",\"startedAt\":\"2026-09-23T08:16:28.313Z\",\"completedAt\":\"2026-09-23T08:16:28.314Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-23T08:16:28.313Z\",\"digest\":\"sha256:611faba5dd8057bc6933e9fa41aab309fbc775c5d2c7ced09b7b2b8227ded373\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-23T08:16:28.313Z\",\"digest\":\"sha256:154c01dfe54ba4f4daa1a7d06338016e98fe8761ff428af8cc19a15f213ec0ed\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:ff1bbaf26d81b282caabf646ec58786c9d89fa7fa113fb164a71707a03ca95eb\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:26d880b0da2334a2fa70bc07db75fb0f0635bd35976b60e891c519bef4f6b418\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:df5745cbc62dc87108ca6b9adbde7039ed65383526d5d78e67e977cd9acc4526\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:ecd9a55032527ab623a3d383bbce79ca4f334170dc34a2515762e393aee2d6d7\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-23T08:16:28.314Z\",\"digest\":\"sha256:01aa7df76fdabbd381e87998abd070f0f382cd91f224dda4d74ae363692b2685\"}]},\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
       "stderr": "",
       "exitCode": 0,
       "remoteAuthorityReads": 4,
@@ -337,14 +337,14 @@
       "from": {
         "revision": 0,
         "state": "plan",
-        "sha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
-        "bodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94"
+        "sha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364",
+        "bodySha256": "sha256:49e8d16993d59111ebe9d7b50fe810ec00b86267e409196cd3344649d471bda6"
       },
       "to": {
         "revision": 1,
         "state": "plan",
-        "sha256": "sha256:af81d9b24c265263395088af90f9a4650a98de113b3bc3e17298b3e250c63841",
-        "bodySha256": "sha256:1389b7a92ad679286f4617097fdd9bff05ac03de35c4cafe742a984272fada42"
+        "sha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075",
+        "bodySha256": "sha256:852edd45307398b8eade84124ad6b250d42e38c6a55b447faa96c75750a314a7"
       },
       "evidenceAdded": ["freeze-cleared"],
       "agentVisible": false
@@ -354,8 +354,8 @@
       "name": "refusal-remediation",
       "stateRevision": 1,
       "state": "plan",
-      "snapshotSha256": "sha256:af81d9b24c265263395088af90f9a4650a98de113b3bc3e17298b3e250c63841",
-      "authorityBodySha256": "sha256:1389b7a92ad679286f4617097fdd9bff05ac03de35c4cafe742a984272fada42",
+      "snapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075",
+      "authorityBodySha256": "sha256:852edd45307398b8eade84124ad6b250d42e38c6a55b447faa96c75750a314a7",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -414,14 +414,14 @@
       "from": {
         "revision": 1,
         "state": "plan",
-        "sha256": "sha256:af81d9b24c265263395088af90f9a4650a98de113b3bc3e17298b3e250c63841",
-        "bodySha256": "sha256:1389b7a92ad679286f4617097fdd9bff05ac03de35c4cafe742a984272fada42"
+        "sha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075",
+        "bodySha256": "sha256:852edd45307398b8eade84124ad6b250d42e38c6a55b447faa96c75750a314a7"
       },
       "to": {
         "revision": 2,
         "state": "plan",
-        "sha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
-        "bodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1"
+        "sha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d",
+        "bodySha256": "sha256:0de904c75da8fe778f878d301ed9ad4038886217c3c5bd9e48bd32750a0dfeec"
       },
       "evidenceAdded": ["plan-approval"],
       "agentVisible": false
@@ -431,8 +431,8 @@
       "name": "agent-change",
       "stateRevision": 2,
       "state": "plan",
-      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
-      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "snapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d",
+      "authorityBodySha256": "sha256:0de904c75da8fe778f878d301ed9ad4038886217c3c5bd9e48bd32750a0dfeec",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -490,8 +490,8 @@
       "name": "source-only-change",
       "stateRevision": 2,
       "state": "plan",
-      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
-      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "snapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d",
+      "authorityBodySha256": "sha256:0de904c75da8fe778f878d301ed9ad4038886217c3c5bd9e48bd32750a0dfeec",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -549,8 +549,8 @@
       "name": "lifecycle-resume",
       "stateRevision": 2,
       "state": "plan",
-      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
-      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "snapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d",
+      "authorityBodySha256": "sha256:0de904c75da8fe778f878d301ed9ad4038886217c3c5bd9e48bd32750a0dfeec",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -606,8 +606,8 @@
       "name": "lifecycle-promote",
       "stateRevision": 2,
       "state": "plan",
-      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
-      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "snapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d",
+      "authorityBodySha256": "sha256:0de904c75da8fe778f878d301ed9ad4038886217c3c5bd9e48bd32750a0dfeec",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -698,14 +698,14 @@
       "from": {
         "revision": 2,
         "state": "plan",
-        "sha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
-        "bodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1"
+        "sha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d",
+        "bodySha256": "sha256:0de904c75da8fe778f878d301ed9ad4038886217c3c5bd9e48bd32750a0dfeec"
       },
       "to": {
         "revision": 3,
         "state": "develop",
-        "sha256": "sha256:0192234c21dec7d27ba2bab03f9159666c7535aca31917b785388119541ee4fe",
-        "bodySha256": "sha256:ae1cba21b184378d23728027fad69456e8a2d13ff3b8c956d785fce07826eb26"
+        "sha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7",
+        "bodySha256": "sha256:275ddb224ccb05f8d99cbd38dba377f7f19c94989712aa1418cf5de7149c19af"
       },
       "evidenceAdded": ["plan-transition", "verification-passed"],
       "agentVisible": false
@@ -715,8 +715,8 @@
       "name": "lifecycle-test",
       "stateRevision": 3,
       "state": "develop",
-      "snapshotSha256": "sha256:0192234c21dec7d27ba2bab03f9159666c7535aca31917b785388119541ee4fe",
-      "authorityBodySha256": "sha256:ae1cba21b184378d23728027fad69456e8a2d13ff3b8c956d785fce07826eb26",
+      "snapshotSha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7",
+      "authorityBodySha256": "sha256:275ddb224ccb05f8d99cbd38dba377f7f19c94989712aa1418cf5de7149c19af",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -833,14 +833,14 @@
       "from": {
         "revision": 3,
         "state": "develop",
-        "sha256": "sha256:0192234c21dec7d27ba2bab03f9159666c7535aca31917b785388119541ee4fe",
-        "bodySha256": "sha256:ae1cba21b184378d23728027fad69456e8a2d13ff3b8c956d785fce07826eb26"
+        "sha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7",
+        "bodySha256": "sha256:275ddb224ccb05f8d99cbd38dba377f7f19c94989712aa1418cf5de7149c19af"
       },
       "to": {
         "revision": 4,
         "state": "test",
-        "sha256": "sha256:4364d8810e4cfa3ddb5796b58476496ea8d0d1374dbc05bc71ad694fe823f055",
-        "bodySha256": "sha256:48a40d6624a742242c78d74328d53f27bbc27b63d242a8a21eacc69a30b055d8"
+        "sha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763",
+        "bodySha256": "sha256:31f93243cc05228e8a02a00a866555877c86b8d33ff5c2f4d6625bef2e0916c4"
       },
       "evidenceAdded": ["test-receipt"],
       "agentVisible": false
@@ -850,8 +850,8 @@
       "name": "lifecycle-review",
       "stateRevision": 4,
       "state": "test",
-      "snapshotSha256": "sha256:4364d8810e4cfa3ddb5796b58476496ea8d0d1374dbc05bc71ad694fe823f055",
-      "authorityBodySha256": "sha256:48a40d6624a742242c78d74328d53f27bbc27b63d242a8a21eacc69a30b055d8",
+      "snapshotSha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763",
+      "authorityBodySha256": "sha256:31f93243cc05228e8a02a00a866555877c86b8d33ff5c2f4d6625bef2e0916c4",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -964,14 +964,14 @@
       "from": {
         "revision": 4,
         "state": "test",
-        "sha256": "sha256:4364d8810e4cfa3ddb5796b58476496ea8d0d1374dbc05bc71ad694fe823f055",
-        "bodySha256": "sha256:48a40d6624a742242c78d74328d53f27bbc27b63d242a8a21eacc69a30b055d8"
+        "sha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763",
+        "bodySha256": "sha256:31f93243cc05228e8a02a00a866555877c86b8d33ff5c2f4d6625bef2e0916c4"
       },
       "to": {
         "revision": 5,
         "state": "review",
-        "sha256": "sha256:830337aca6583c2c056fc5d2656ce33c94ba1d8e8eb1a6176c878f39c296a041",
-        "bodySha256": "sha256:3aaff5bd51c42fe1da5da0b5db63e7ccf2d20b1590ce8b1e9ba5d8f2007af726"
+        "sha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154",
+        "bodySha256": "sha256:949fa0017799a69c3113fe6541c1079ce2f570e22a35478f20cd821dada58eeb"
       },
       "evidenceAdded": ["review-transition"],
       "agentVisible": false
@@ -981,8 +981,8 @@
       "name": "lifecycle-deliver",
       "stateRevision": 5,
       "state": "review",
-      "snapshotSha256": "sha256:830337aca6583c2c056fc5d2656ce33c94ba1d8e8eb1a6176c878f39c296a041",
-      "authorityBodySha256": "sha256:3aaff5bd51c42fe1da5da0b5db63e7ccf2d20b1590ce8b1e9ba5d8f2007af726",
+      "snapshotSha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154",
+      "authorityBodySha256": "sha256:949fa0017799a69c3113fe6541c1079ce2f570e22a35478f20cd821dada58eeb",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -1015,6 +1015,10 @@
           "revision": 5
         },
         {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 5
+        },
+        {
           "args": [
             "issue",
             "view",
@@ -1024,10 +1028,6 @@
             "--json",
             "number,state,body,assignees"
           ],
-          "revision": 5
-        },
-        {
-          "args": ["api", "graphql", "--input", "-"],
           "revision": 5
         },
         {
@@ -1129,14 +1129,14 @@
       "from": {
         "revision": 5,
         "state": "review",
-        "sha256": "sha256:830337aca6583c2c056fc5d2656ce33c94ba1d8e8eb1a6176c878f39c296a041",
-        "bodySha256": "sha256:3aaff5bd51c42fe1da5da0b5db63e7ccf2d20b1590ce8b1e9ba5d8f2007af726"
+        "sha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154",
+        "bodySha256": "sha256:949fa0017799a69c3113fe6541c1079ce2f570e22a35478f20cd821dada58eeb"
       },
       "to": {
         "revision": 6,
         "state": "review",
-        "sha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
-        "bodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9"
+        "sha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3",
+        "bodySha256": "sha256:8b6c7a3c9833419e94e57ff36c4fa362d3a13fa297d93c613ce62a8db80d2df3"
       },
       "evidenceAdded": ["review-approval", "merge-evidence"],
       "agentVisible": false
@@ -1146,8 +1146,8 @@
       "name": "external-approval",
       "stateRevision": 6,
       "state": "review",
-      "snapshotSha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
-      "authorityBodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9",
+      "snapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3",
+      "authorityBodySha256": "sha256:8b6c7a3c9833419e94e57ff36c4fa362d3a13fa297d93c613ce62a8db80d2df3",
       "argv": ["gh", "pr", "view", "2101", "--json", "reviewDecision"],
       "stdin": "",
       "stdout": "{\"reviewDecision\":\"APPROVED\"}\n",
@@ -1166,8 +1166,8 @@
       "name": "external-merge",
       "stateRevision": 6,
       "state": "review",
-      "snapshotSha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
-      "authorityBodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9",
+      "snapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3",
+      "authorityBodySha256": "sha256:8b6c7a3c9833419e94e57ff36c4fa362d3a13fa297d93c613ce62a8db80d2df3",
       "argv": ["gh", "pr", "view", "2101", "--json", "mergedAt"],
       "stdin": "",
       "stdout": "{\"mergedAt\":\"2026-09-22T00:00:00Z\"}\n",
@@ -1186,8 +1186,8 @@
       "name": "lifecycle-close",
       "stateRevision": 6,
       "state": "review",
-      "snapshotSha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
-      "authorityBodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9",
+      "snapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3",
+      "authorityBodySha256": "sha256:8b6c7a3c9833419e94e57ff36c4fa362d3a13fa297d93c613ce62a8db80d2df3",
       "argv": [
         "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
         "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
@@ -1366,14 +1366,14 @@
       "from": {
         "revision": 6,
         "state": "review",
-        "sha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
-        "bodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9"
+        "sha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3",
+        "bodySha256": "sha256:8b6c7a3c9833419e94e57ff36c4fa362d3a13fa297d93c613ce62a8db80d2df3"
       },
       "to": {
         "revision": 7,
         "state": "done",
-        "sha256": "sha256:d9bb721ce41f5ac4589a759e3f6e333f50dc673f632af1296af5aa8ad172877a",
-        "bodySha256": "sha256:94d6b3f558387b7b6b9d0802265d6b26b16895a8aa7d1baf4a2c4d961698b621"
+        "sha256": "sha256:13b6b91ff414d07223eaacaf3498a1ff8c1ac2d842473a3449c2a4556c17bf01",
+        "bodySha256": "sha256:f1f8f358c3daa75654ed681465c36aa1a86439ff7a4c1ac474b55f2672a17a8c"
       },
       "evidenceAdded": ["close-transition"],
       "agentVisible": false
@@ -1383,8 +1383,8 @@
       "name": "post-close-state",
       "stateRevision": 7,
       "state": "done",
-      "snapshotSha256": "sha256:d9bb721ce41f5ac4589a759e3f6e333f50dc673f632af1296af5aa8ad172877a",
-      "authorityBodySha256": "sha256:94d6b3f558387b7b6b9d0802265d6b26b16895a8aa7d1baf4a2c4d961698b621",
+      "snapshotSha256": "sha256:13b6b91ff414d07223eaacaf3498a1ff8c1ac2d842473a3449c2a4556c17bf01",
+      "authorityBodySha256": "sha256:f1f8f358c3daa75654ed681465c36aa1a86439ff7a4c1ac474b55f2672a17a8c",
       "argv": ["gh", "issue", "view", "2100", "--json", "state"],
       "stdin": "",
       "stdout": "{\"state\":\"CLOSED\"}\n",
