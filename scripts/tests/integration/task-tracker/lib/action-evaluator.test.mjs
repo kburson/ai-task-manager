@@ -652,7 +652,7 @@ test('missing or shallow remote-tip history is attribution-unavailable', async (
     if (args[0] === 'ls-remote') return `${tip}\trefs/heads/trunk\n`;
     if (args[0] === 'rev-parse') return 'false\n';
     if (args[0] === 'cat-file') return '';
-    if (args[0] === 'rev-list') return `?${'c'.repeat(40)}\n`;
+    if (args[0] === 'rev-list') throw new Error('missing object');
     throw new Error('unexpected git command');
   };
   const missing = await readExactTrunkTip({

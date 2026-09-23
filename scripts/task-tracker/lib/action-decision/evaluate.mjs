@@ -45,13 +45,8 @@ async function verifyLocalGraph({ sha, cwd, execGit }) {
   const shallow = (await output(['rev-parse', '--is-shallow-repository']))?.trim();
   if (shallow !== 'false') return unavailableTrunkAuthority('shallow-or-unknown');
   await output(['cat-file', '-e', `${sha}^{commit}`]);
-  const graph = await output(['rev-list', '--objects', '--missing=print', sha]);
-  if (!graph || !graph.split('\n').some((line) => line.startsWith(sha))) {
-    return unavailableTrunkAuthority('object-graph-invalid');
-  }
-  if (graph.split('\n').some((line) => line.startsWith('?'))) {
-    return unavailableTrunkAuthority('object-graph-incomplete');
-  }
+  // Let Git fail on a missing object without buffering the entire object list.
+  await output(['rev-list', '--objects', '--missing=error', '--quiet', sha]);
   return null;
 }
 
