@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Map every migrating lifecycle obligation to enforcement or retained protocol, complete the validated catalog and human guide, and replace the provisional static feasibility assumption with an obligation-complete measurement.
+**Goal:** Map every migrating lifecycle obligation to enforcement or retained protocol and complete the validated catalog and human guide.
 
-**Architecture:** A machine-checked rule map links source clauses to existing enforcement, catalog entries, and shipped human documentation. The catalog stays read-only guidance. An exact-byte proposed static fixture and the #1675 actual CLI capture feed the one #1660 feasibility decision before any installed skill prose changes.
+**Architecture:** A machine-checked rule map links source clauses to existing enforcement, catalog entries, and shipped human documentation. The catalog stays read-only guidance. #1767 owns the corrected post-catalog feasibility recheck after #1765 repairs the actual CLI capture.
 
 **Tech Stack:** Node.js ESM, `node:test`, YAML through the existing guidance parser/validator, GitHub issue #1676.
 
@@ -15,9 +15,9 @@
 - Keep the action vocabulary and catalog schema closed; add no shell-command operation or YAML authority.
 - Preserve the frozen Task 1a baseline and earlier candidate reports as historical inputs.
 - Retain installed router, pickup, and adapter prose in this child.
-- Use the actual #1675 public-CLI capture for the intermediate recheck; label remaining modeled static text as proposed.
+- Retain #1676's committed NO-GO measurement and comparison as historical, fail-closed evidence. They are not proof of a coherent lifecycle or authority to migrate installed skills.
 - Fixed absolute proxy ceilings are 5,000 / 300 / 500 / 7,000 and working maxima are 4,000 / 240 / 400 / 5,600.
-- A NO-GO or a revised estimate of at least 24 hours stops execution for decomposition or revision.
+- A revised estimate of at least 24 hours stops execution for decomposition or revision. A current feasibility GO is #1767's closure and downstream entry gate.
 
 ---
 
@@ -51,18 +51,12 @@
 - [ ] Write the guide sections and align the workflow and guard guides with the existing read-only decision boundary. Add the scoped Epic A pointer without changing historical #1559, #1560, or #1561 decisions.
 - [ ] Run the coverage unit test and published validation, inspect every catalog documentation anchor, then commit the documentation and any catalog reference corrections with #1676 attribution.
 
-### Task 3: Revalidate obligation-complete static feasibility
+### Task 3: Verify and deliver the bounded catalog work
 
-**Files:**
+**Files:** The catalog, rule map, documentation, and focused tests named in Tasks 1 and 2. Preserve the already committed `feasibility-recheck-1676.json` and `context-comparison-1676.json` as historical NO-GO artifacts.
 
-- Create: `scripts/tests/fixtures/1558/obligation-complete-static/` files for router, pickup, and both adapters
-- Modify: `scripts/maintenance/measure-guidance-candidate.mjs`, `scripts/tests/fixtures/1558/context-comparison.json`, `scripts/tests/fixtures/1558/feasibility-decision.json`
-- Test: `scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs`, `scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs`
+**Interfaces:** #1676 hands a complete, validated obligation map and catalog to #1767. The historical measurement is a fail-closed diagnostic, not the post-correction GO assertion. #1767 retains ownership of proposed static text and the corrected CLI recheck; #1677 remains blocked until #1767 is Done.
 
-**Interfaces:** The recheck reads exact proposed static files, hashes the completed rule map and actual #1675 CLI capture, keeps baseline identities unchanged, and publishes one deterministic decision with separate current-versus-proposed labels. It does not replace installed skills or claim final release proof.
-
-- [ ] Add RED measurement tests that reject a missing map/static file, a static byte or digest change, an absent actual capture, and any attempt to substitute the earlier provisional static assumption. Require both adapters and all four fixed working maxima.
-- [ ] Run the focused measurement tests to RED. Then derive concise router/pickup/adapter proposals that retain every map row's protocol obligation and use the existing closed `aitm explain` route for dynamic guidance.
-- [ ] Update the measurement builder to bind map, proposed static bytes, and actual CLI capture identities; retain old candidate reports as historical records. Write the new comparison and sole feasibility decision from the same deterministic inputs.
-- [ ] Run `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json`. If it returns NO-GO, revise proposed text or catalog within fixed budgets, rerun exact measurement, and stop if the accepted constraints still cannot be met.
-- [ ] Run VC15, fast and slow tests, lint, formatting, release validation, and `git diff --check` on final bytes. Commit with #1676 attribution only after fresh outputs pass.
+- [ ] Inspect every source obligation against the map, including bind discussion and deferred pickup; repair omitted rows and prove row-deletion failures in the focused coverage test.
+- [ ] Run VC15 and published validation on final catalog and documentation bytes. Keep installed router, pickup, and adapter prose intact.
+- [ ] Run the declared fast and slow suites, lint, formatting, and `git diff --check`; commit any corrections with #1676 attribution. Deliver #1676 only after its catalog and documentation criteria have actual evidence.
