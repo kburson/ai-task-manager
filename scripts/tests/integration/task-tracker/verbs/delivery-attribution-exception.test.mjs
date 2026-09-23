@@ -1,10 +1,10 @@
 // @story #1755
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { hashAuthorizationStatement } from '../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
 import { PREFLIGHT_MODE } from '../../../../task-tracker/task-tracker.mjs';
 import {
@@ -42,7 +42,7 @@ const scope = {
 };
 
 function harness({ provider = 'codex', transcript = true } = {}) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-delivery-exception-'));
+  const dir = mkdtempProjectIsolated('aitm-delivery-exception-');
   const transcriptPath = path.join(dir, 'session.jsonl');
   let live = structuredClone(scope);
   let writes = 0;
