@@ -51,7 +51,7 @@
       {
         "role": "recertification-capture",
         "path": "scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json",
-        "sha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4"
+        "sha256": "sha256:c672c9a1794faf5dd9e800f0471274868ab32e6638308b5216757dd99be37589"
       },
       {
         "role": "historical-capture",
@@ -66,11 +66,11 @@
       {
         "role": "context-comparison",
         "path": "scripts/tests/fixtures/1558/context-comparison.json",
-        "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894"
+        "sha256": "sha256:0ac2969a3609b16c594a81db48c40618f3a8227e096362f8ebe3c55391b70746"
       }
     ],
     "decisionSourceCommit": "9af055c460973aa435aef7b0346305017a1136cc",
-    "captureSourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
+    "captureSourceCommit": "8c22d88d221b4f4777f30b97e96db17734913a5d",
     "captureImplementationFiles": [
       {
         "path": "bin/aitm.mjs",

@@ -15,7 +15,7 @@
       "oracle": {
         "sourcePath": "scripts/tests/helpers/guidance-characterization.mjs",
         "sourceCommit": "3579a72100642e42e3268e3dcf7de63aa691a3ac",
-        "sha256": "sha256:e54fa1229cb919a4dafc7395dfeda2461f3500e7b849f3fcd441bc2ac19e7538"
+        "sha256": "sha256:e04362dec31528a7b28ae8a9972d530ce77e06e23d18c6e7468ead718a60d588"
       },
       "plan": {
         "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",

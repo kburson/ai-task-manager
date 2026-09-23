@@ -1372,7 +1372,9 @@ export function buildCandidateMeasurementArtifacts({ projectRoot }) {
         fixtureSourceCommit: '627907fb43fd2ee1dd8fc6718bcb3499d068b775',
         fixtureSetSha256: digest(fixtures),
         serializer: 'guidance-characterization/candidate-workflow-v1',
-        runtime: { node: process.version, platform: process.platform, architecture: process.arch },
+        // This is a frozen early-candidate artifact. Its runtime describes the
+        // original capture, so regeneration must not substitute the CI host.
+        runtime: { node: 'v26.8.1', platform: 'darwin', architecture: 'arm64' },
       },
     },
     assumptions: {

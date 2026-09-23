@@ -6,7 +6,7 @@
   "capturedAt": "2026-09-23T08:43:17.304Z",
   "identity": {
     "mode": "recertification",
-    "sourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
+    "sourceCommit": "8c22d88d221b4f4777f30b97e96db17734913a5d",
     "implementationFiles": [
       {
         "path": "bin/aitm.mjs",
