@@ -1,6 +1,8 @@
 // @story #1769
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import { GUIDANCE_CONTEXT_BUDGETS } from './lib/context-budgets.mjs';
 
@@ -197,4 +199,49 @@ export function measureAgentVisible({ staticFiles = [], events = [] } = {}) {
     uncountedAgentVisibleBytes: 0,
     fixedBudgets: GUIDANCE_CONTEXT_BUDGETS,
   };
+}
+
+export async function buildGuidanceContextReport({ captureBytes } = {}) {
+  if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  const { buildPairedContext } = await import('../tests/helpers/guidance-paired-context.mjs');
+  const adapters = Object.fromEntries(
+    ['claude', 'codex'].map((adapter) => [adapter, buildPairedContext({ captureBytes, adapter })])
+  );
+  return {
+    schema: 'aitm.guidance-context-report/v1',
+    classification: 'pre-slim-captured-cli-and-modeled-static',
+    adapters,
+    tokenizerCalibration: buildTokenCalibration({ captureBytes }),
+    finalInstalledAdapterGate: {
+      status: 'pending',
+      reason:
+        'Current proposed static text is modeled; #1678 must capture final installed adapter bytes.',
+    },
+  };
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (
+    !args.includes('--all') ||
+    args.some((arg) => !['--all', '--json', '--assert-budgets'].includes(arg))
+  ) {
+    process.stderr.write('Usage: measure-guidance-context.mjs --all [--json] [--assert-budgets]\n');
+    process.exitCode = 2;
+    return;
+  }
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const captureBytes = readFileSync(
+    path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
+  );
+  const report = await buildGuidanceContextReport({ captureBytes });
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  if (args.includes('--assert-budgets')) process.exitCode = 1;
+}
+
+if (process.argv[1] && import.meta.url === `file://${path.resolve(process.argv[1])}`) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack ?? error}\n`);
+    process.exitCode = 1;
+  });
 }

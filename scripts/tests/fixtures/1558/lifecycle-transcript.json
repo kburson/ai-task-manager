@@ -1,0 +1,1103 @@
+{
+  "schema": "aitm.guidance-context-report/v1",
+  "classification": "pre-slim-captured-cli-and-modeled-static",
+  "adapters": {
+    "claude": {
+      "schema": "aitm.guidance-paired-context/v1",
+      "adapter": "claude",
+      "eventManifest": [
+        {
+          "id": "ready-first-load",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "matching-receipt",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "compaction-reset",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "blocked-migration-freeze",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "diagnostic",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "clear-freeze",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "refusal-remediation",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+        },
+        {
+          "id": "approve-plan",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "agent-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "source-only-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-resume",
+          "kind": "query",
+          "action": "resume",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-promote",
+          "kind": "query",
+          "action": "promote",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "enter-develop",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-test",
+          "kind": "query",
+          "action": "test",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7"
+        },
+        {
+          "id": "enter-test",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-review",
+          "kind": "query",
+          "action": "review",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763"
+        },
+        {
+          "id": "enter-review",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-deliver",
+          "kind": "query",
+          "action": "deliver",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154"
+        },
+        {
+          "id": "external-authority",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "external-approval",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "external-merge",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "lifecycle-close",
+          "kind": "query",
+          "action": "close",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "enter-done",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "post-close-state",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:13b6b91ff414d07223eaacaf3498a1ff8c1ac2d842473a3449c2a4556c17bf01"
+        }
+      ],
+      "scenarioDigest": "sha256:2917737528e93ac5da1078bb6d469d76befc252a321f9f2075b2c958e87edec3",
+      "authorityFixtureDigest": "sha256:f05ea813ac29bdae195715466fd869149c7e777633ea38553b8f6bc95f6b155b",
+      "entries": [
+        {
+          "scenarioId": "ready-first-load",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "matching-receipt",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "compaction-reset",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "blocked-migration-freeze",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "diagnostic",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "clear-freeze",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "refusal-remediation",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "approve-plan",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "agent-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "source-only-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-resume",
+          "action": "resume",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-promote",
+          "action": "promote",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-develop",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-test",
+          "action": "test",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-test",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-review",
+          "action": "review",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-review",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-deliver",
+          "action": "deliver",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "external-authority",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "external-approval",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "external-merge",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "lifecycle-close",
+          "action": "close",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-done",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "post-close-state",
+          "action": "external",
+          "outcome": "external"
+        }
+      ],
+      "identities": {
+        "frozenBaselineSha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
+        "frozenTranscriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
+        "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+        "currentCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+        "currentSourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d"
+      },
+      "legacy": {
+        "captureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+        "limitation": "Cost projection only; old CLI decisions were not replayed on modern authority.",
+        "staticFiles": [
+          {
+            "path": ".claude/skills/task/SKILL.md",
+            "characters": 2282,
+            "bytes": 2292,
+            "proxyTokens": 571
+          },
+          {
+            "path": "skill/adapters/claude/SKILL.md",
+            "characters": 5399,
+            "bytes": 5427,
+            "proxyTokens": 1350
+          },
+          {
+            "path": "skill/shared/SKILL.md",
+            "characters": 848,
+            "bytes": 848,
+            "proxyTokens": 212
+          },
+          {
+            "path": "skill/shared/router.md",
+            "characters": 8598,
+            "bytes": 8622,
+            "proxyTokens": 2150
+          },
+          {
+            "path": ".ai-task-manager/templates/pickup-directive.md",
+            "characters": 5599,
+            "bytes": 5647,
+            "proxyTokens": 1400
+          },
+          {
+            "path": "skill/shared/rules/bind.md",
+            "characters": 5466,
+            "bytes": 5499,
+            "proxyTokens": 1367
+          },
+          {
+            "path": "skill/shared/rules/state-walk.md",
+            "characters": 7189,
+            "bytes": 7235,
+            "proxyTokens": 1798
+          },
+          {
+            "path": "skill/shared/rules/functional-dod.md",
+            "characters": 7777,
+            "bytes": 7815,
+            "proxyTokens": 1945
+          },
+          {
+            "path": "skill/shared/rules/review.md",
+            "characters": 8767,
+            "bytes": 8802,
+            "proxyTokens": 2192
+          },
+          {
+            "path": "skill/shared/rules/deliver.md",
+            "characters": 5202,
+            "bytes": 5202,
+            "proxyTokens": 1301
+          },
+          {
+            "path": "skill/shared/rules/close.md",
+            "characters": 10433,
+            "bytes": 10469,
+            "proxyTokens": 2609
+          },
+          {
+            "path": "skill/shared/rules/full-auto.md",
+            "characters": 2986,
+            "bytes": 2990,
+            "proxyTokens": 747
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 522,
+            "bytes": 522
+          },
+          "operational-stdout": {
+            "characters": 417,
+            "bytes": 417
+          },
+          "operational-stderr": {
+            "characters": 84,
+            "bytes": 84
+          },
+          "repeat-metadata": {
+            "characters": 141092,
+            "bytes": 141696
+          },
+          "explicit-diagnostics": {
+            "characters": 5466,
+            "bytes": 5499
+          }
+        },
+        "staticCharacters": 70546,
+        "trafficCharacters": 147581,
+        "characters": 218127,
+        "bytes": 219066,
+        "proxyTokens": 54538,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "current": {
+        "captureKind": "captured-public-cli-traffic-plus-modeled-proposed-static",
+        "limitation": "Proposed static files are not final installed adapter bytes.",
+        "repeated": {
+          "agentInstructionCharacters": 0
+        },
+        "compaction": {
+          "expandedRequiredEntries": true
+        },
+        "staticFiles": [
+          {
+            "path": "skill/SKILL.md",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+            "characters": 2479,
+            "bytes": 2479,
+            "proxyTokens": 620
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+            "characters": 1525,
+            "bytes": 1525,
+            "proxyTokens": 382
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+            "characters": 835,
+            "bytes": 835,
+            "proxyTokens": 209
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 2194,
+            "bytes": 2194
+          },
+          "operational-stdout": {
+            "characters": 7210,
+            "bytes": 7210
+          },
+          "operational-stderr": {
+            "characters": 0,
+            "bytes": 0
+          },
+          "receipt-input": {
+            "characters": 840,
+            "bytes": 840
+          },
+          "receipt-output": {
+            "characters": 1761,
+            "bytes": 1761
+          },
+          "explicit-diagnostics": {
+            "characters": 2502,
+            "bytes": 2502
+          }
+        },
+        "staticCharacters": 5785,
+        "trafficCharacters": 14507,
+        "characters": 20292,
+        "bytes": 20292,
+        "proxyTokens": 5075,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "deltaProxyTokens": -49463,
+      "guaranteedReductionFromLegacyStaticAlone": true
+    },
+    "codex": {
+      "schema": "aitm.guidance-paired-context/v1",
+      "adapter": "codex",
+      "eventManifest": [
+        {
+          "id": "ready-first-load",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "matching-receipt",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "compaction-reset",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "blocked-migration-freeze",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "diagnostic",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "clear-freeze",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "refusal-remediation",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+        },
+        {
+          "id": "approve-plan",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "agent-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "source-only-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-resume",
+          "kind": "query",
+          "action": "resume",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-promote",
+          "kind": "query",
+          "action": "promote",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "enter-develop",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-test",
+          "kind": "query",
+          "action": "test",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7"
+        },
+        {
+          "id": "enter-test",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-review",
+          "kind": "query",
+          "action": "review",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763"
+        },
+        {
+          "id": "enter-review",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-deliver",
+          "kind": "query",
+          "action": "deliver",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154"
+        },
+        {
+          "id": "external-authority",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "external-approval",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "external-merge",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "lifecycle-close",
+          "kind": "query",
+          "action": "close",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "enter-done",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "post-close-state",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:13b6b91ff414d07223eaacaf3498a1ff8c1ac2d842473a3449c2a4556c17bf01"
+        }
+      ],
+      "scenarioDigest": "sha256:2917737528e93ac5da1078bb6d469d76befc252a321f9f2075b2c958e87edec3",
+      "authorityFixtureDigest": "sha256:f05ea813ac29bdae195715466fd869149c7e777633ea38553b8f6bc95f6b155b",
+      "entries": [
+        {
+          "scenarioId": "ready-first-load",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "matching-receipt",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "compaction-reset",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "blocked-migration-freeze",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "diagnostic",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "clear-freeze",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "refusal-remediation",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "approve-plan",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "agent-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "source-only-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-resume",
+          "action": "resume",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-promote",
+          "action": "promote",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-develop",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-test",
+          "action": "test",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-test",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-review",
+          "action": "review",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-review",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-deliver",
+          "action": "deliver",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "external-authority",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "external-approval",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "external-merge",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "lifecycle-close",
+          "action": "close",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-done",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "post-close-state",
+          "action": "external",
+          "outcome": "external"
+        }
+      ],
+      "identities": {
+        "frozenBaselineSha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
+        "frozenTranscriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
+        "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+        "currentCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+        "currentSourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d"
+      },
+      "legacy": {
+        "captureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+        "limitation": "Cost projection only; old CLI decisions were not replayed on modern authority.",
+        "staticFiles": [
+          {
+            "path": ".agents/skills/task/SKILL.md",
+            "characters": 2342,
+            "bytes": 2352,
+            "proxyTokens": 586
+          },
+          {
+            "path": "skill/adapters/codex/SKILL.md",
+            "characters": 4996,
+            "bytes": 5024,
+            "proxyTokens": 1249
+          },
+          {
+            "path": "skill/shared/SKILL.md",
+            "characters": 848,
+            "bytes": 848,
+            "proxyTokens": 212
+          },
+          {
+            "path": "skill/shared/router.md",
+            "characters": 8598,
+            "bytes": 8622,
+            "proxyTokens": 2150
+          },
+          {
+            "path": ".ai-task-manager/templates/pickup-directive.md",
+            "characters": 5599,
+            "bytes": 5647,
+            "proxyTokens": 1400
+          },
+          {
+            "path": "skill/shared/rules/bind.md",
+            "characters": 5466,
+            "bytes": 5499,
+            "proxyTokens": 1367
+          },
+          {
+            "path": "skill/shared/rules/state-walk.md",
+            "characters": 7189,
+            "bytes": 7235,
+            "proxyTokens": 1798
+          },
+          {
+            "path": "skill/shared/rules/functional-dod.md",
+            "characters": 7777,
+            "bytes": 7815,
+            "proxyTokens": 1945
+          },
+          {
+            "path": "skill/shared/rules/review.md",
+            "characters": 8767,
+            "bytes": 8802,
+            "proxyTokens": 2192
+          },
+          {
+            "path": "skill/shared/rules/deliver.md",
+            "characters": 5202,
+            "bytes": 5202,
+            "proxyTokens": 1301
+          },
+          {
+            "path": "skill/shared/rules/close.md",
+            "characters": 10433,
+            "bytes": 10469,
+            "proxyTokens": 2609
+          },
+          {
+            "path": "skill/shared/rules/full-auto.md",
+            "characters": 2986,
+            "bytes": 2990,
+            "proxyTokens": 747
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 522,
+            "bytes": 522
+          },
+          "operational-stdout": {
+            "characters": 417,
+            "bytes": 417
+          },
+          "operational-stderr": {
+            "characters": 84,
+            "bytes": 84
+          },
+          "repeat-metadata": {
+            "characters": 140406,
+            "bytes": 141010
+          },
+          "explicit-diagnostics": {
+            "characters": 5466,
+            "bytes": 5499
+          }
+        },
+        "staticCharacters": 70203,
+        "trafficCharacters": 146895,
+        "characters": 217098,
+        "bytes": 218037,
+        "proxyTokens": 54280,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "current": {
+        "captureKind": "captured-public-cli-traffic-plus-modeled-proposed-static",
+        "limitation": "Proposed static files are not final installed adapter bytes.",
+        "repeated": {
+          "agentInstructionCharacters": 0
+        },
+        "compaction": {
+          "expandedRequiredEntries": true
+        },
+        "staticFiles": [
+          {
+            "path": "skill/SKILL.md",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+            "characters": 2479,
+            "bytes": 2479,
+            "proxyTokens": 620
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+            "characters": 1525,
+            "bytes": 1525,
+            "proxyTokens": 382
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+            "characters": 851,
+            "bytes": 851,
+            "proxyTokens": 213
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 2194,
+            "bytes": 2194
+          },
+          "operational-stdout": {
+            "characters": 7210,
+            "bytes": 7210
+          },
+          "operational-stderr": {
+            "characters": 0,
+            "bytes": 0
+          },
+          "receipt-input": {
+            "characters": 840,
+            "bytes": 840
+          },
+          "receipt-output": {
+            "characters": 1761,
+            "bytes": 1761
+          },
+          "explicit-diagnostics": {
+            "characters": 2502,
+            "bytes": 2502
+          }
+        },
+        "staticCharacters": 5801,
+        "trafficCharacters": 14507,
+        "characters": 20308,
+        "bytes": 20308,
+        "proxyTokens": 5079,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "deltaProxyTokens": -49201,
+      "guaranteedReductionFromLegacyStaticAlone": true
+    }
+  },
+  "tokenizerCalibration": {
+    "schema": "aitm.guidance-tokenizer-calibration/v1",
+    "source": {
+      "captureKind": "actual-public-cli-with-deterministic-authority",
+      "sha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+      "sourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
+      "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
+    },
+    "calibration": {
+      "tokenizer": {
+        "package": "js-tiktoken",
+        "version": "1.0.21",
+        "encoding": "o200k_base",
+        "scope": "illustrative OpenAI BPE calibration, not universal provider billing"
+      },
+      "streams": [
+        {
+          "id": "clean",
+          "characters": 684,
+          "bytes": 684,
+          "actualTokens": 205,
+          "proxyTokens": 171,
+          "ratio": 1.1988304093567252
+        },
+        {
+          "id": "blocked",
+          "characters": 823,
+          "bytes": 823,
+          "actualTokens": 235,
+          "proxyTokens": 206,
+          "ratio": 1.1407766990291262
+        },
+        {
+          "id": "repeated",
+          "characters": 589,
+          "bytes": 589,
+          "actualTokens": 209,
+          "proxyTokens": 148,
+          "ratio": 1.412162162162162
+        },
+        {
+          "id": "diagnostic",
+          "characters": 2703,
+          "bytes": 2703,
+          "actualTokens": 962,
+          "proxyTokens": 676,
+          "ratio": 1.4230769230769231
+        },
+        {
+          "id": "full-lifecycle",
+          "characters": 14507,
+          "bytes": 14507,
+          "actualTokens": 4806,
+          "proxyTokens": 3627,
+          "ratio": 1.3250620347394542
+        }
+      ]
+    }
+  },
+  "finalInstalledAdapterGate": {
+    "status": "pending",
+    "reason": "Current proposed static text is modeled; #1678 must capture final installed adapter bytes."
+  }
+}

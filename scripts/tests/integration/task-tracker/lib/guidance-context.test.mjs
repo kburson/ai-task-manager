@@ -6,14 +6,69 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  buildGuidanceContextReport,
   buildTokenCalibration,
   calibrateTokens,
   measureAgentVisible,
   validatePairedWorkload,
 } from '../../../../task-tracker/measure-guidance-context.mjs';
+import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../../..');
 const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+
+test('projects the same complete ordered lifecycle for both adapters without replacing frozen evidence', () => {
+  const captureBytes = readFileSync(
+    path.join(ROOT, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
+  );
+  const capture = JSON.parse(captureBytes);
+  for (const adapter of ['claude', 'codex']) {
+    const report = buildPairedContext({ captureBytes, adapter });
+    assert.equal(report.eventManifest.length, capture.events.length);
+    assert.deepEqual(
+      report.eventManifest.map(({ id }) => id),
+      capture.events.map(({ name }) => name)
+    );
+    assert.equal(report.current.trafficCharacters, capture.measurement.traffic.characters);
+    assert.ok(report.legacy.categories['command-input'].bytes > 0);
+    assert.ok(report.legacy.categories['operational-stdout'].bytes > 0);
+    assert.ok(report.legacy.categories['explicit-diagnostics'].bytes > 0);
+    assert.ok(report.legacy.categories['repeat-metadata'].bytes > 0);
+    assert.equal(report.current.uncountedAgentVisibleBytes, 0);
+    assert.equal(report.legacy.uncountedAgentVisibleBytes, 0);
+    assert.equal(report.guaranteedReductionFromLegacyStaticAlone, true);
+    assert.match(report.legacy.captureKind, /^modeled-/);
+    assert.match(report.current.captureKind, /modeled-proposed-static/);
+  }
+  const altered = structuredClone(capture);
+  altered.events = altered.events.filter(({ name }) => name !== 'compaction-reset');
+  assert.throws(
+    () =>
+      buildPairedContext({ captureBytes: Buffer.from(JSON.stringify(altered)), adapter: 'claude' }),
+    /missing compaction-reset/
+  );
+  altered.events = structuredClone(capture.events);
+  altered.events[0].name = altered.events[1].name;
+  assert.throws(
+    () =>
+      buildPairedContext({ captureBytes: Buffer.from(JSON.stringify(altered)), adapter: 'claude' }),
+    /duplicate event ID/
+  );
+});
+
+test('committed paired lifecycle report regenerates from exact captured and frozen bytes', async () => {
+  const captureBytes = readFileSync(
+    path.join(ROOT, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
+  );
+  const report = await buildGuidanceContextReport({ captureBytes });
+  const saved = readFileSync(
+    path.join(ROOT, 'scripts/tests/fixtures/1558/lifecycle-transcript.json')
+  );
+  assert.equal(saved.toString(), `${JSON.stringify(report, null, 2)}\n`);
+  assert.equal(report.finalInstalledAdapterGate.status, 'pending');
+  assert.equal(report.adapters.claude.identities.currentCaptureSha256, digest(captureBytes));
+  assert.equal(report.adapters.codex.identities.currentCaptureSha256, digest(captureBytes));
+});
 
 test('accounts for every raw event byte with disjoint categories and scoped rounding', () => {
   const report = measureAgentVisible({
