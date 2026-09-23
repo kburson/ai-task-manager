@@ -150,6 +150,27 @@ export const VERB_REFERENCE = {
       '/task workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json',
     ],
   },
+  'delivery-attribution-exception': {
+    topic: 'evidence',
+    summary:
+      'Prepare, record, inspect, revise, or revoke one scoped delivery attribution exception.',
+    usage:
+      '/task delivery-attribution-exception <prepare|record|show|revise|revoke> #N [--input-file <request.json>] [--json]',
+    flags: [
+      {
+        flag: '--input-file <path>',
+        desc: 'filled request for second preparation or required mutation',
+      },
+      { flag: '--json', desc: 'emit machine-readable result' },
+    ],
+    exitCodes: [{ code: 6, meaning: 'authorization, scope, chain, or readback blocked' }],
+    examples: [
+      '/task delivery-attribution-exception prepare #1759',
+      '/task delivery-attribution-exception prepare #1759 --input-file .scratch/gh/1759-delivery-exception.json',
+      '/task delivery-attribution-exception record #1759 --input-file .scratch/gh/1759-delivery-exception.json',
+      '/task delivery-attribution-exception show #1759',
+    ],
+  },
   'workflow-preflight': {
     topic: 'evidence',
     summary:

@@ -215,6 +215,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/workflow-exception.mjs',
     },
     {
+      verb: 'delivery-attribution-exception',
+      dispatch: 'verbs/delivery-attribution-exception.mjs',
+    },
+    {
       verb: 'workflow-preflight',
       dispatch: 'verbs/workflow-preflight.mjs',
     },

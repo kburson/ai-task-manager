@@ -593,6 +593,12 @@ if (_isMain)
           await verbWorkflowException(ctx);
           break;
         }
+        case 'delivery-attribution-exception': {
+          const { verbDeliveryAttributionException } =
+            await import('./verbs/delivery-attribution-exception.mjs');
+          await verbDeliveryAttributionException(ctx);
+          break;
+        }
         case 'workflow-preflight': {
           const { verbWorkflowPreflight } = await import('./verbs/workflow-preflight.mjs');
           await verbWorkflowPreflight(ctx);
