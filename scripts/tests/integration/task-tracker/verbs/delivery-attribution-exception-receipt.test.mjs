@@ -58,9 +58,15 @@ async function fixture(t) {
       attributableCommits: structuredClone(h.data.prSourceCommits),
       verifiedMergeShas: [],
     }),
-    listComments: async () => h.data.comments.map(({ id, body }) => ({ id, body })),
+    listComments: async () =>
+      h.data.comments.map(({ id, body, createdAt, updatedAt }) => ({
+        id,
+        body,
+        createdAt,
+        updatedAt,
+      })),
     appendComment: async (body) => {
-      const item = { id: `IC_${h.data.comments.length + 1}`, body, createdAt: NOW };
+      const item = { id: `IC_${h.data.comments.length + 1}`, body, createdAt: NOW, updatedAt: NOW };
       h.data.comments.push(item);
       return item;
     },
@@ -175,6 +181,7 @@ test('post-merge revoked exception refuses a waived receipt', async (t) => {
     id: 'IC_revoke',
     body: renderDeliveryAttributionExceptionComment(revoked),
     createdAt: '2026-08-22T14:00:03.000Z',
+    updatedAt: '2026-08-22T14:00:03.000Z',
   });
   await assert.rejects(deliver(h), /delivery-attribution-exception-record:inactive/);
   assert.equal(

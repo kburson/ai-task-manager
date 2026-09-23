@@ -31,6 +31,7 @@ import {
   validateAuthorizationSource,
 } from '../lib/workflow-policy/authority-resolver.mjs';
 import { classifySourceCommitSubjects, createDefaultDeliverDeps } from './deliver.mjs';
+import { upperBoundWaivedDeliveryCommentBytes } from '../lib/delivery-records.mjs';
 
 const pexec = promisify(execFile);
 const ACTIONS = new Set(['prepare', 'record', 'show', 'revise', 'revoke']);
@@ -196,6 +197,7 @@ function validateAgainstLive(request, scope, now) {
   p.attributionTokens = result.attributionTokens;
   const built = buildDeliveryAttributionProposal(p);
   upperBoundDeliveryAttributionCommentBytes(p);
+  upperBoundWaivedDeliveryCommentBytes(p);
   return {
     ...live,
     proposalDigest: built.proposalDigest,
@@ -229,7 +231,7 @@ function relevantComments(comments) {
 function parseHistory(comments) {
   return relevantComments(comments).map((item) => ({
     ...item,
-    record: parseDeliveryAttributionExceptionComment(item.body),
+    record: parseDeliveryAttributionExceptionComment(item),
   }));
 }
 

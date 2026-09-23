@@ -317,7 +317,9 @@ function validateLineageResult(lineage) {
 export function parsedDeliveryRecords(comments, context) {
   if (!Array.isArray(comments)) throw deliverError('comments');
   return comments
-    .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
+    .map(({ id, body, createdAt }) =>
+      parseDeliveryCommentForPullRequest({ id, body, createdAt }, context)
+    )
     .filter((record) => record !== null);
 }
 
@@ -342,7 +344,7 @@ async function resolveOpenAttributionException({ comments, now, deps }) {
     'sourceDigest',
   ];
   for (const comment of candidates) {
-    const record = parseDeliveryAttributionExceptionComment(comment.body);
+    const record = parseDeliveryAttributionExceptionComment(comment);
     if (scopeKeys.some((key) => record.proposal[key] !== active.proposal[key])) {
       throw deliverError('attribution-exception-chain-scope');
     }
@@ -463,11 +465,14 @@ async function readProjection({ deps, issueNumber, context }) {
 function exactReadback(comments, intent, body) {
   return comments.some((comment) => {
     if (comment?.body !== body) return false;
-    const parsed = parseDeliveryComment(comment, {
-      repository: intent.repository,
-      issueNumber: intent.issueNumber,
-      prNumber: intent.prNumber,
-    });
+    const parsed = parseDeliveryComment(
+      { id: comment.id, body: comment.body, createdAt: comment.createdAt },
+      {
+        repository: intent.repository,
+        issueNumber: intent.issueNumber,
+        prNumber: intent.prNumber,
+      }
+    );
     return parsed?.record?.intentId === intent.intentId;
   });
 }
@@ -475,11 +480,14 @@ function exactReadback(comments, intent, body) {
 function exactReceiptReadback(comments, receipt, body) {
   return comments.some((comment) => {
     if (comment?.body !== body) return false;
-    const parsed = parseDeliveryComment(comment, {
-      repository: receipt.repository,
-      issueNumber: receipt.record.issueNumber,
-      prNumber: receipt.record.prNumber,
-    });
+    const parsed = parseDeliveryComment(
+      { id: comment.id, body: comment.body, createdAt: comment.createdAt },
+      {
+        repository: receipt.repository,
+        issueNumber: receipt.record.issueNumber,
+        prNumber: receipt.record.prNumber,
+      }
+    );
     return parsed?.record?.intentId === receipt.record.intentId;
   });
 }
@@ -1937,10 +1945,13 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       ]);
       return (Array.isArray(pages) ? pages.flat() : []).map((comment) => {
         const createdAt = normalizeGitHubInstant(comment.created_at);
+        const updatedAt = normalizeGitHubInstant(comment.updated_at);
         if (createdAt === null) throw deliverError('comment-created-at');
+        if (updatedAt === null) throw deliverError('comment-updated-at');
         return {
           id: String(comment.id),
           createdAt,
+          updatedAt,
           body: comment.body,
         };
       });

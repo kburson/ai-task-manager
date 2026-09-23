@@ -3,7 +3,10 @@ import { createHash } from 'node:crypto';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { createRecordId } from './github-records/record-envelope.mjs';
 import { MAX_DELIVERY_COMMIT_MESSAGE_BYTES } from './delivery-attribution.mjs';
-import { renderDeliveryAttributionExceptionComment } from './delivery-attribution-exception-record.mjs';
+import {
+  buildDeliveryAttributionProposal,
+  renderDeliveryAttributionExceptionComment,
+} from './delivery-attribution-exception-record.mjs';
 
 const INTENT_SCHEMA = 'aitm.delivery-intent/v1';
 const INTENT_SCHEMA_V2 = 'aitm.delivery-intent/v2';
@@ -506,6 +509,81 @@ export function renderDeliveryReceiptComment(receipt) {
     receipt,
     `Delivery verified for PR #${receipt.prNumber} as \`${receipt.mergeCommitSha}\` on \`${receipt.verifiedTrunkRef}\`.${waiverMarkdown}${warningMarkdown}`
   );
+}
+
+// Bound the complete downstream comments before a user authorizes an exception.
+// Quotes maximize JSON escaping for fields that are not known at preparation.
+export function upperBoundWaivedDeliveryCommentBytes(proposal) {
+  const { proposalDigest } = buildDeliveryAttributionProposal(proposal);
+  const recordId = '7'.repeat(26);
+  const exceptionRecord = {
+    schema: 'aitm.delivery-attribution-exception/v1',
+    kind: 'revision',
+    recordId,
+    predecessorId: recordId,
+    proposal,
+    proposalDigest,
+    authority: {
+      sourceReference: '"'.repeat(2048),
+      statement: '"'.repeat(4096),
+      actor: '"'.repeat(128),
+      level: 'host-verified-user-message',
+    },
+    createdAt: '2000-01-01T00:00:00.000Z',
+  };
+  const commitTitlePrefix = `[#${proposal.issueNumber}] `;
+  const commitTitle = commitTitlePrefix + '"'.repeat(MAX_TITLE_BYTES - commitTitlePrefix.length);
+  const messagePrefix = `PR #${proposal.prNumber} ${proposal.headSha} ${proposal.attributionTokens
+    .map((token) => `[${token}]`)
+    .join(' ')} `;
+  const commitMessage =
+    messagePrefix + '"'.repeat(MAX_DELIVERY_COMMIT_MESSAGE_BYTES - messagePrefix.length);
+  const intent = buildDeliveryIntent({
+    intentId: recordId,
+    supersedesIntentId: '6'.repeat(26),
+    issueNumber: proposal.issueNumber,
+    repository: proposal.repository,
+    prNumber: proposal.prNumber,
+    baseRef: proposal.baseRef,
+    headRef: proposal.headRef,
+    expectedHeadSha: proposal.headSha,
+    mergeMethod: 'squash',
+    attributionTokens: proposal.attributionTokens,
+    commitTitle,
+    commitMessage,
+    provider: '"'.repeat(MAX_FIELD_BYTES),
+    sessionId: '"'.repeat(MAX_FIELD_BYTES),
+    clientCreatedAt: '9999-12-31T23:59:59.999Z',
+    attributionDisposition: 'waived',
+    exceptionRecordId: recordId,
+    operationId: proposal.operationId,
+    sourceDigest: proposal.sourceDigest,
+    proposalDigest,
+    mappings: proposal.mappings,
+  });
+  const receipt = buildDeliveryReceipt({
+    intentId: recordId,
+    issueNumber: proposal.issueNumber,
+    prNumber: proposal.prNumber,
+    expectedHeadSha: proposal.headSha,
+    mergeCommitSha: 'f'.repeat(40),
+    baseRef: proposal.baseRef,
+    mergeMethod: 'squash',
+    verifiedTrunkRef: `origin/${proposal.baseRef}`,
+    provider: '"'.repeat(MAX_FIELD_BYTES),
+    sessionId: '"'.repeat(MAX_FIELD_BYTES),
+    verifiedAt: '9999-12-31T23:59:59.999Z',
+    attributionDisposition: 'waived',
+    exceptionRecordId: recordId,
+    exceptionRecord,
+    metadataWarnings: ['missing-merge-attribution-trailer'],
+  });
+  const bytes = Math.max(
+    Buffer.byteLength(renderDeliveryIntentComment(intent), 'utf8'),
+    Buffer.byteLength(renderDeliveryReceiptComment(receipt), 'utf8')
+  );
+  if (bytes > 60 * 1024) throw deliveryError('comment-upper-bound');
+  return bytes;
 }
 
 function validateContext(context) {

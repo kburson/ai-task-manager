@@ -201,6 +201,72 @@ test('one live chain resolves; forks, duplicate IDs, expiry and revocation refus
   );
 });
 
+test('server-edited grant or revocation cannot participate in exception resolution', () => {
+  const grant = record();
+  const revocation = record({
+    kind: 'revocation',
+    recordId: ID2,
+    predecessorId: ID1,
+    createdAt: '2026-09-23T01:00:00.000Z',
+    proposal: buildDeliveryAttributionProposal({ ...BASE, exceptionId: ID2 }).proposal,
+    proposalDigest: buildDeliveryAttributionProposal({ ...BASE, exceptionId: ID2 }).proposalDigest,
+    authority: { ...AUTHORITY, sourceReference: 'codex-session/v1:turn-11' },
+  });
+  const comments = [grant, revocation].map((item, index) => ({
+    id: `IC_${index + 1}`,
+    body: renderDeliveryAttributionExceptionComment(item),
+    createdAt: item.createdAt,
+    updatedAt: item.createdAt,
+  }));
+  assert.throws(
+    () =>
+      resolveActiveDeliveryAttributionException(
+        [{ ...comments[0], updatedAt: '2026-09-23T00:00:01.000Z' }],
+        BASE,
+        '2026-09-23T12:00:00.000Z'
+      ),
+    /edited-comment/
+  );
+  assert.throws(
+    () =>
+      resolveActiveDeliveryAttributionException(
+        [comments[0], { ...comments[1], updatedAt: '2026-09-23T01:00:01.000Z' }],
+        BASE,
+        '2026-09-23T12:00:00.000Z'
+      ),
+    /edited-comment/
+  );
+  for (const mutate of [
+    (item) => {
+      item.authority.actor = 'other-actor';
+    },
+    (item) => {
+      item.recordId = ID3;
+    },
+    (item) => {
+      item.createdAt = '2026-09-23T00:00:01.000Z';
+    },
+  ]) {
+    const changed = structuredClone(grant);
+    mutate(changed);
+    assert.throws(
+      () =>
+        resolveActiveDeliveryAttributionException(
+          [
+            {
+              ...comments[0],
+              body: renderDeliveryAttributionExceptionComment(changed),
+              updatedAt: '2026-09-23T00:00:02.000Z',
+            },
+          ],
+          BASE,
+          '2026-09-23T12:00:00.000Z'
+        ),
+      /edited-comment/
+    );
+  }
+});
+
 test('escaped rendered comment bound includes future authority fields', () => {
   const proposal = buildDeliveryAttributionProposal(BASE).proposal;
   assert.ok(upperBoundDeliveryAttributionCommentBytes(proposal) > 0);

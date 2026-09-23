@@ -61,8 +61,8 @@ function harness({ provider = 'codex', transcript = true } = {}) {
       const item = {
         id: `IC_${writes}`,
         body,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: '2026-09-23T12:00:00.000Z',
+        updatedAt: '2026-09-23T12:00:00.000Z',
       };
       comments.push(item);
       return item;
@@ -136,6 +136,33 @@ test('prepare has a read-only first pass and a digest-bound filled pass without 
     assert.equal(filled.status, 'prepared');
     assert.match(filled.proposalDigest, /^sha256:[0-9a-f]{64}$/);
     assert.match(filled.statement, new RegExp(filled.proposalDigest));
+    assert.equal(h.writes, 0);
+  } finally {
+    h.cleanup();
+  }
+});
+
+test('filled prepare refuses a mapping whose complete receipt would exceed the comment limit', async () => {
+  const h = harness();
+  try {
+    const headline = '-'.repeat(16000);
+    h.setScope({
+      ...scope,
+      sourceCommits: [{ oid: shaA, messageHeadline: headline }, scope.sourceCommits[1]],
+      attributableCommits: [{ oid: shaA, messageHeadline: headline }, scope.sourceCommits[1]],
+    });
+    const first = await runDeliveryAttributionException({
+      ...base,
+      action: 'prepare',
+      runtime: h.runtime,
+      ids,
+    });
+    const request = structuredClone(first.template);
+    request.proposal.mappings = [{ oid: shaA, messageHeadline: headline, issueNumber: 1759 }];
+    await assert.rejects(
+      runDeliveryAttributionException({ ...base, action: 'prepare', runtime: h.runtime, request }),
+      /comment-upper-bound/
+    );
     assert.equal(h.writes, 0);
   } finally {
     h.cleanup();
@@ -298,6 +325,39 @@ test('show stays read-only on an unsupported host', async () => {
   }
 });
 
+test('edited grant blocks show and exact retry readback', async () => {
+  const h = harness();
+  try {
+    const { request, filled } = await firstAndFilled(h);
+    request.authorizationSource = {
+      schema: 'aitm.authorization-source/v1',
+      adapter: 'codex-session/v1',
+      sessionId,
+      messageId: 'msg_grant',
+      statementHash: hashAuthorizationStatement(filled.statement),
+    };
+    h.writeMessage('msg_grant', 'user', [filled.statement]);
+    await runDeliveryAttributionException({
+      ...base,
+      action: 'record',
+      runtime: h.runtime,
+      request,
+    });
+    h.comments[0].updatedAt = '2026-09-23T12:00:01.000Z';
+    await assert.rejects(
+      runDeliveryAttributionException({ ...base, action: 'show', runtime: h.runtime }),
+      /edited-comment/
+    );
+    await assert.rejects(
+      runDeliveryAttributionException({ ...base, action: 'record', runtime: h.runtime, request }),
+      /edited-comment/
+    );
+    assert.equal(h.writes, 1);
+  } finally {
+    h.cleanup();
+  }
+});
+
 test('argument parser requires one explicit positive issue', () => {
   assert.deepEqual(parseDeliveryAttributionExceptionArgs(['prepare', '#1759', '--json']), {
     action: 'prepare',
@@ -416,6 +476,8 @@ test('revise and revoke require fresh user messages and append linked records', 
     h.comments.splice(2, 0, {
       id: 'IC_fork',
       body: renderDeliveryAttributionExceptionComment(fork),
+      createdAt: '2026-09-23T12:00:00.000Z',
+      updatedAt: '2026-09-23T12:00:00.000Z',
     });
     assert.equal(
       (await runDeliveryAttributionException({ ...base, action: 'show', runtime: h.runtime }))
@@ -493,6 +555,8 @@ test('revoke readback refuses a competing valid revision appended at the same pr
       h.comments.push({
         id: 'IC_competing',
         body: renderDeliveryAttributionExceptionComment(competing),
+        createdAt: '2026-09-23T12:00:00.000Z',
+        updatedAt: '2026-09-23T12:00:00.000Z',
       });
       return stored;
     };
@@ -567,6 +631,8 @@ test('an exact retry refuses a competing recorded chain instead of claiming acti
     h.comments.push({
       id: 'IC_competing',
       body: renderDeliveryAttributionExceptionComment(competing),
+      createdAt: '2026-09-23T12:00:00.000Z',
+      updatedAt: '2026-09-23T12:00:00.000Z',
     });
     await assert.rejects(
       runDeliveryAttributionException({ ...base, action: 'record', runtime: h.runtime, request }),

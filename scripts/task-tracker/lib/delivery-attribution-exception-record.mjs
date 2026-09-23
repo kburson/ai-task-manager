@@ -201,6 +201,16 @@ function scopeMatches(proposal, scope) {
 }
 
 export function parseDeliveryAttributionExceptionComment(comment, context) {
+  if (comment !== null && typeof comment === 'object' && !Array.isArray(comment)) {
+    if (
+      !(typeof comment.id === 'string' && comment.id.length > 0) ||
+      !instant(comment.createdAt) ||
+      !instant(comment.updatedAt) ||
+      comment.createdAt !== comment.updatedAt
+    )
+      fail('edited-comment');
+    comment = comment.body;
+  }
   if (typeof comment !== 'string' || !comment.startsWith(COMMENT_PREFIX)) fail('comment');
   const start = comment.lastIndexOf(MARKER_PREFIX);
   if (start < 0 || !comment.endsWith(MARKER_SUFFIX)) fail('marker');
@@ -251,7 +261,7 @@ export function resolveActiveDeliveryAttributionException(comments, scope, now) 
     if (!body.startsWith(COMMENT_PREFIX) && !body.includes('aitm-delivery-attribution-exception/'))
       continue;
     if (!body.includes('aitm-delivery-attribution-exception/v1')) fail('unsupported-schema');
-    records.push(parseDeliveryAttributionExceptionComment(body, scope));
+    records.push(parseDeliveryAttributionExceptionComment(comment, scope));
   }
   if (records.length === 0) fail('missing-record');
   const byId = new Map();

@@ -60,9 +60,15 @@ function fixture(t) {
     host: { provider: 'codex', sessionId, transcriptPath },
     resolveTranscriptPath: () => transcriptPath,
     fetchScope: scope,
-    listComments: async () => h.data.comments.map(({ id, body }) => ({ id, body })),
+    listComments: async () =>
+      h.data.comments.map(({ id, body, createdAt, updatedAt }) => ({
+        id,
+        body,
+        createdAt,
+        updatedAt,
+      })),
     appendComment: async (body) => {
-      const item = { id: `IC_${h.data.comments.length + 1}`, body, createdAt: NOW };
+      const item = { id: `IC_${h.data.comments.length + 1}`, body, createdAt: NOW, updatedAt: NOW };
       h.data.comments.push(item);
       return item;
     },
@@ -134,6 +140,14 @@ test('Codex-authorized scoped waiver emits v2 intent after late source revalidat
   assert.equal(result.intent.sourceDigest, canonicalSourceInventory(source, HEAD).sourceDigest);
   assert.deepEqual(result.intent.attributionTokens, ['#939']);
   assert.equal(f.h.calls.fetchPullRequest, 2);
+});
+
+test('delivery refuses a server-edited grant before writing an intent', async (t) => {
+  const f = fixture(t);
+  await grant(f);
+  f.h.data.comments[0].updatedAt = '2026-08-22T14:00:01.000Z';
+  await assert.rejects(deliver(f.h), /delivery-attribution-exception-record:edited-comment/);
+  assert.equal(f.h.calls.createIssueComment, 0);
 });
 
 test('waived open PR uses mixed GitHub subjects when the trunk range appears fully attributed', async (t) => {
@@ -234,6 +248,7 @@ test('malformed exception record blocks delivery before intent', async (t) => {
   f.h.data.comments.push({
     id: 'IC_bad',
     createdAt: NOW,
+    updatedAt: NOW,
     body: '### Delivery attribution exception\n\nbroken',
   });
   await assert.rejects(deliver(f.h), /delivery-attribution-exception-record/);
