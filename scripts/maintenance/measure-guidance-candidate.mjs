@@ -383,8 +383,8 @@ export function validateFeasibilityDecision(decision, { projectRoot } = {}) {
   return decision;
 }
 
-const RECERT_STATIC = ['router', 'pickup', 'claude', 'codex'];
-const RECERT_ACTIONS = [
+const RECHECK_STATIC = ['router', 'pickup', 'claude', 'codex'];
+const RECHECK_ACTIONS = [
   ['lifecycle-resume', 'resume'],
   ['lifecycle-promote', 'promote'],
   ['lifecycle-test', 'test'],
@@ -443,7 +443,7 @@ function committedCurrentHead(projectRoot, relativePath) {
   return commit;
 }
 
-function validateRecertCapture(projectRoot, capture) {
+function validateRecheckCapture(projectRoot, capture) {
   if (capture.schema !== 'aitm.guidance-lifecycle-capture/v1') fail('capture-schema');
   if (capture.identity?.mode !== 'recertification') fail('capture-mode');
   if (
@@ -467,7 +467,7 @@ function validateRecertCapture(projectRoot, capture) {
     fail('capture-transcript-digest');
   const traffic = measureLifecycleTraffic(capture.events);
   if (!isDeepStrictEqual(traffic, capture.measurement.traffic)) fail('capture-traffic');
-  const actionResults = RECERT_ACTIONS.map(([name, actionId]) => {
+  const actionResults = RECHECK_ACTIONS.map(([name, actionId]) => {
     const event = capture.events.find((candidate) => candidate.name === name);
     if (!event || event.kind !== 'query' || event.exitCode !== 0) fail(`capture-action:${name}`);
     let parsed;
@@ -500,7 +500,7 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
   const map = readJson(projectRoot, mapPath);
   if (map.schema !== 'aitm.rule-guidance-map/v1' || map.rows?.length !== 41) fail('obligation-map');
   const currentCapture = capture ?? readJson(projectRoot, capturePath);
-  const verifiedCapture = validateRecertCapture(projectRoot, currentCapture);
+  const verifiedCapture = validateRecheckCapture(projectRoot, currentCapture);
   const historical = readJson(projectRoot, historicalPath);
   const historicalDecision = readJson(projectRoot, historicalDecisionPath);
   if (
@@ -510,7 +510,7 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
     fail('historical-negative-controls');
 
   const staticFiles = Object.fromEntries(
-    RECERT_STATIC.map((name) => {
+    RECHECK_STATIC.map((name) => {
       const relativePath = `${FIXTURE_ROOT}/obligation-complete-static/${name}.md`;
       const text = readBytes(projectRoot, relativePath).toString('utf8');
       return [name, { text, record: fileRecord(projectRoot, 'proposed-static', relativePath) }];
@@ -587,7 +587,7 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
     ),
     fileRecord(projectRoot, 'obligation-map', mapPath),
     shim.record,
-    ...RECERT_STATIC.map((name) => staticFiles[name].record),
+    ...RECHECK_STATIC.map((name) => staticFiles[name].record),
     ...(capture ? [] : [fileRecord(projectRoot, 'recertification-capture', capturePath)]),
     fileRecord(projectRoot, 'historical-capture', historicalPath),
     fileRecord(projectRoot, 'historical-recheck', historicalDecisionPath),
