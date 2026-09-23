@@ -7,8 +7,8 @@ import { getProjectDir } from '../paths.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import {
   classifyDecomposition,
+  linkedDecompositionPlanPath,
   linkedPlanReference,
-  linkedPlanPath,
   parseDecompositionWaiver,
   resolvePlanPath,
   selectDecompositionPlanSection,
@@ -72,13 +72,19 @@ async function evaluateIssueDecompositionSnapshot({
     fieldDefs: loadFields(),
     issueNumber: Number(issueNumber),
   });
-  const resolved = resolvePlanPath({ projectDir, body, overridePath: planOverride });
+  const isEpic = parseIssueKind(body) === 'epic';
+  const decompositionPath = isEpic ? linkedDecompositionPlanPath(body) : null;
+  const resolved = resolvePlanPath({
+    projectDir,
+    body,
+    overridePath: planOverride || decompositionPath,
+  });
   const { planText, planDiagnostic } = planTextFromResolved(resolved, readFile);
   const linkedReference = planOverride == null ? linkedPlanReference(body) : null;
   const { planText: effectivePlanText, ...planSelection } = selectDecompositionPlanSection({
     body,
     planText,
-    activePlanKey: parseIssueKind(body) === 'epic' ? null : linkedReference?.key || null,
+    activePlanKey: isEpic ? null : linkedReference?.key || null,
   });
   const classification = classifyDecomposition({
     size: values.size ?? null,
@@ -151,7 +157,7 @@ export const decompositionPlanExitGuard = {
       try {
         const runtime = ctx.deps?.decomposition || {};
         const projectDir = runtime.projectDir || ctx.projectDir || getProjectDir();
-        const acceptedPlanPath = linkedPlanPath(ctx.body || '');
+        const acceptedPlanPath = linkedDecompositionPlanPath(ctx.body || '');
         if (!acceptedPlanPath || !result.planDiagnostic?.path) {
           throw new Error(result.planDiagnostic?.diagnostic || 'accepted plan path unavailable');
         }

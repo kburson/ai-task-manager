@@ -190,6 +190,11 @@ export function linkedPlanPath(body = '') {
   return linkedPlanReference(body)?.path || null;
 }
 
+export function linkedDecompositionPlanPath(body = '') {
+  const value = visibleMetadataFieldValue(body, 'Plan Metadata', 'Decomposition-plan');
+  return value?.replace(/\s+@\s+[0-9a-f]{7,40}\s*$/i, '').trim() || linkedPlanPath(body);
+}
+
 export function visibleMetadataFieldValue(body, heading, key) {
   const value = metadataFieldValue(visibleStructuralLines(body).join('\n'), heading, key);
   return value != null && isSubstantiveMetadataValue(value) ? value.trim() : null;
