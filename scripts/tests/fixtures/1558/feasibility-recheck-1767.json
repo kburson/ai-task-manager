@@ -51,7 +51,7 @@
       {
         "role": "recertification-capture",
         "path": "scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json",
-        "sha256": "sha256:6a0d4c71801a6568c558336283a7a77ac2e147ea5c349453764ce85ed6bae99b"
+        "sha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4"
       },
       {
         "role": "historical-capture",
