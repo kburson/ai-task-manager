@@ -83,6 +83,20 @@ the Pickup Directive reports `CODE_COMPLETE` for the orchestrator to review.
 The Review rule describes the review command's terminal behavior when that
 command is invoked; it does not transfer the child agent's role boundary.
 
+## Review and close human boundaries
+
+After a successful Review transition emits `PROMPT_REQUIRED: review-approval`,
+present a structured human decision. Approval records the review marker;
+rejection requires the reason and returns work to Develop; dismissal or no
+choice pauses the timer and leaves the issue in Review. A Full-Auto policy may
+bypass the approval-marker gate, with the bypass recorded by AITM.
+
+Close is a separate human-only step. Run the sanctioned close command only
+after an explicit human instruction to close that issue. Passing tests,
+checked boxes, a review approval marker, or delivery alone do not constitute
+that instruction. Keep this agent-facing rule until the later migration proves
+an equivalent retained protocol; catalog prose cannot grant close authority.
+
 ## Locate and adopt a project catalog
 
 Run `npx aitm guidance source --json` from the project to see the selected

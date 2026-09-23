@@ -151,17 +151,23 @@ entries:
         - execution_revalidates: true
     human:
       summary: Review exact-head task evidence.
-      explanation: Review reuses current verification evidence and refuses missing or stale conditions before approval.
+      explanation: >-
+        Review reuses current verification evidence and refuses missing or stale conditions. When a
+        successful transition requests human approval, present the structured choice. Rejection needs
+        a reason and returns work to Develop; dismissal or no choice pauses the timer in Review.
       triggered_when:
         - When the Test receipt and item evidence are current.
       execution:
         - Reuse the exact-head receipt and review the issue; return to Develop if evidence is stale.
+        - On an approval prompt, surface the choice; record approval, reasoned rejection, or a pause for dismissal.
       examples:
         - command: npx aitm review 1676
           purpose: Inspect or execute the action.review workflow through AITM.
       documentation:
         - path: docs/guides/workflow.md
           anchor: kanban-board-states
+        - path: docs/guides/ask-the-script.md
+          anchor: review-and-close-human-boundaries
   - id: action.deliver
     revision: 1
     binds:
@@ -213,17 +219,22 @@ entries:
         - execution_revalidates: true
     human:
       summary: Close a reviewed and incorporated issue.
-      explanation: Closure revalidates approval, complete evidence, commit inclusion, and housekeeping before Done.
+      explanation: >-
+        Closure revalidates approval, complete evidence, commit inclusion, and housekeeping before Done.
+        It is a separate human-only step requiring an explicit instruction to close this issue; passing
+        checks or an approval marker alone does not authorize it.
       triggered_when:
-        - After reviewed work is delivered and housekeeping is complete.
+        - After reviewed work is delivered, housekeeping is complete, and the human explicitly asks to close.
       execution:
-        - Recheck human approval, receipt, checked items, and a clean workspace before closing.
+        - Confirm the explicit close instruction, then recheck approval, receipt, checked items, and a clean workspace.
       examples:
         - command: npx aitm close 1676
           purpose: Inspect or execute the action.close workflow through AITM.
       documentation:
         - path: docs/guides/guard-architecture.md
           anchor: the-exitentry-slot-model
+        - path: docs/guides/ask-the-script.md
+          anchor: review-and-close-human-boundaries
   - id: action.refine
     revision: 1
     binds:

@@ -3,7 +3,7 @@
   "package": "@kburson/ai-task-manager",
   "packageVersion": "0.1.0",
   "catalogPath": "instructions/aitm-guidance.yml",
-  "catalogFileDigest": "sha256:2cdb3f9c1bc7e5bfbd97b618fb95ca4d52492ebd43211fef18d099bb0c31d780",
+  "catalogFileDigest": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf",
   "parser": {
     "name": "js-yaml",
     "version": "5.4.2"

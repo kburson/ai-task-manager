@@ -222,6 +222,45 @@
       }
     },
     {
+      "id": "review.prompt",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "## Review-approval prompt",
+      "retainedProtocolRule": "skill/shared/rules/review.md",
+      "protocolAnchor": "surface a structured human decision",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
+      "id": "review.reject",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "**Reject** → ask follow-up",
+      "retainedProtocolRule": "skill/shared/rules/review.md",
+      "protocolAnchor": "ask follow-up for the rejection reason",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
+      "id": "review.dismiss",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "**Dismiss / no choice**",
+      "retainedProtocolRule": "skill/shared/rules/review.md",
+      "protocolAnchor": "review-prompt-dismissed",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
       "id": "delivery.envelope",
       "sourcePath": "skill/shared/rules/deliver.md",
       "sourceAnchor": "exit `20` with exactly one",
@@ -274,6 +313,19 @@
       "documentation": {
         "path": "docs/guides/guard-architecture.md",
         "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "close.human-instruction",
+      "sourcePath": "skill/shared/rules/close.md",
+      "sourceAnchor": "## Human-only step",
+      "retainedProtocolRule": "skill/shared/rules/close.md",
+      "protocolAnchor": "only after explicit human instruction",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
       }
     },
     {
