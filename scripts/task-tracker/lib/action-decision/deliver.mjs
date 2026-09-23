@@ -243,11 +243,20 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
       projection = projectDeliveryRecords(
         value.comments
           .map((comment) =>
-            parseDeliveryCommentForPullRequest(comment, {
-              repository: input.config.repo,
-              issueNumber: issue,
-              prNumber: selected.number,
-            })
+            // Match execution's strict record input while retaining updatedAt
+            // for other comment authority checks on the read-only path.
+            parseDeliveryCommentForPullRequest(
+              {
+                id: comment.id,
+                body: comment.body,
+                createdAt: comment.createdAt,
+              },
+              {
+                repository: input.config.repo,
+                issueNumber: issue,
+                prNumber: selected.number,
+              }
+            )
           )
           .filter(Boolean)
       );
