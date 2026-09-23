@@ -507,6 +507,68 @@ test('runtime writes to the parsed issue when the input file name is numeric', a
   assert.equal(calls[0].args[1], 'repos/kburson/ai-task-manager/issues/1759/comments');
 });
 
+test('GraphQL second-precision comment timestamps survive grant readback', async () => {
+  const h = harness();
+  try {
+    const { request, filled } = await firstAndFilled(h);
+    request.authorizationSource = {
+      schema: 'aitm.authorization-source/v1',
+      adapter: 'codex-session/v1',
+      sessionId,
+      messageId: 'msg_grant',
+      statementHash: hashAuthorizationStatement(filled.statement),
+    };
+    h.writeMessage('msg_grant', 'user', [filled.statement]);
+    await runDeliveryAttributionException({
+      ...base,
+      action: 'record',
+      runtime: h.runtime,
+      request,
+    });
+    const serverComment = {
+      id: 'IC_server',
+      body: h.comments[0].body,
+      createdAt: '2026-09-23T12:00:00Z',
+      updatedAt: '2026-09-23T12:00:00Z',
+    };
+    const runtime = createDeliveryAttributionExceptionRuntime(
+      { cfg: { repo: repository, trunkRef: 'origin/trunk' }, projectDir: process.cwd() },
+      {
+        issueNumber: 1759,
+        graphql: async () => ({
+          data: {
+            repository: {
+              issue: {
+                number: 1759,
+                comments: {
+                  nodes: [serverComment],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+              },
+            },
+          },
+        }),
+      }
+    );
+    assert.equal(
+      (await runDeliveryAttributionException({ ...base, action: 'show', runtime })).status,
+      'active'
+    );
+    const [comment] = await runtime.listComments();
+    assert.equal(comment.createdAt, '2026-09-23T12:00:00.000Z');
+    assert.equal(comment.updatedAt, '2026-09-23T12:00:00.000Z');
+    serverComment.updatedAt = '2026-09-23T12:00:01Z';
+    await assert.rejects(
+      runDeliveryAttributionException({ ...base, action: 'show', runtime }),
+      /edited-comment/
+    );
+    serverComment.updatedAt = 'invalid';
+    await assert.rejects(runtime.listComments(), /comments-unavailable/);
+  } finally {
+    h.cleanup();
+  }
+});
+
 test('revoke readback refuses a competing valid revision appended at the same predecessor', async () => {
   const h = harness();
   try {

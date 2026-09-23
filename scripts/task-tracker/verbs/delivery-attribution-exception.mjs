@@ -9,6 +9,7 @@ import { gql } from '../../gh/lib/github-projects.mjs';
 import { detectProvider, getProvider } from '../../providers/index.mjs';
 import { aiAppName, currentSessionId, jsonlPath } from '../word-counter.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
+import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
 import { parseBranchName } from '../lib/branch-name.mjs';
 import { resolveCurrentIssueWorktreeBranch } from '../lib/issue-worktree-location.mjs';
 import {
@@ -497,7 +498,14 @@ export async function runDeliveryAttributionException({
   };
 }
 
-export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec, issueNumber } = {}) {
+export function createDeliveryAttributionExceptionRuntime(
+  ctx,
+  {
+    run = pexec,
+    issueNumber,
+    graphql = async ({ query, variables }) => ({ data: await gql(query, variables) }),
+  } = {}
+) {
   if (!Number.isSafeInteger(issueNumber) || issueNumber < 1) fail('issue-target');
   const detected = detectProvider({ env: process.env });
   const selected = getProvider(aiAppName());
@@ -523,7 +531,6 @@ export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec, is
     return stdout;
   };
   const json = async (name, args) => JSON.parse(await command(name, args));
-  const graphql = async ({ query, variables }) => ({ data: await gql(query, variables) });
   const deliver = createDefaultDeliverDeps(ctx);
   return {
     host,
@@ -607,8 +614,11 @@ export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec, is
         for (const item of target.comments.nodes) {
           if (typeof item?.id !== 'string' || typeof item?.body !== 'string' || seen.has(item.id))
             fail('comments-unavailable');
+          const createdAt = normalizeGitHubInstant(item.createdAt);
+          const updatedAt = normalizeGitHubInstant(item.updatedAt);
+          if (createdAt === null || updatedAt === null) fail('comments-unavailable');
           seen.add(item.id);
-          comments.push(item);
+          comments.push({ id: item.id, body: item.body, createdAt, updatedAt });
         }
         if (!target.comments.pageInfo.hasNextPage) return comments;
         const next = target.comments.pageInfo.endCursor;
