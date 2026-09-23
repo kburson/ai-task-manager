@@ -1184,7 +1184,7 @@ So that claimed reduction cannot hide command traffic, required investigation, o
 - **Beneficiary:** release reviewer
 - **Capability:** obtain an equivalent complete before/after context comparison and separately measured authority cost
 - **Need:** a claimed context reduction could hide command traffic, required investigation, or additional reads
-- **Value or failure prevented:** the release decision accounts for the whole lifecycle and its authority cost
+- **Value or failure prevented:** the release decision accounts for the whole lifecycle and authority cost within the fixed budgets
 
 #### Execution Detail
 
