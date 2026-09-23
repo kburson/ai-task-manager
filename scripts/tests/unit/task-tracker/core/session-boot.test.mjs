@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #190
+// @story #1773
 // Asserts that .ai-task-manager/templates/session-boot.md (and its template source) exists,
 // lists each required Tier-1 file by exact path, and contains a recovery-protocol
 // section. Source-of-truth file is templates/session-boot.md (installed copy is
@@ -67,5 +68,43 @@ test('every Tier-1 file referenced by session-boot.md actually exists on disk', 
   for (const p of REQUIRED_TIER1_PATHS) {
     const abs = path.join(repoRoot, p);
     assert.ok(existsSync(abs), `boot index references missing file: ${p}`);
+  }
+});
+
+test('boot recovery invalidates guidance receipts after context reset', () => {
+  const body = readFileSync(TEMPLATE, 'utf8');
+  assert.match(body, /receipt/i);
+  assert.match(body, /compact/i);
+  assert.match(body, /[Cc]lear/);
+  assert.match(body, /fresh worker|restart/i);
+  assert.match(body, /sentinel/i);
+  assert.match(body, /discard|invalidate|expired/i);
+});
+
+test('all frozen guidance obligations retain a protocol anchor or enforcement path', () => {
+  const map = JSON.parse(
+    readFileSync(path.join(repoRoot, 'scripts/tests/fixtures/1558/rule-guidance-map.json'), 'utf8')
+  );
+  assert.equal(map.rows.length, 41);
+  for (const row of map.rows) {
+    assert.ok(row.enforcementPath || row.retainedProtocolRule, `${row.id}: no destination`);
+    if (row.enforcementPath) {
+      assert.ok(
+        existsSync(path.join(repoRoot, row.enforcementPath)),
+        `${row.id}: enforcement missing`
+      );
+    }
+    if (row.retainedProtocolRule) {
+      const destination = path.join(repoRoot, row.retainedProtocolRule);
+      assert.ok(existsSync(destination), `${row.id}: protocol missing`);
+      assert.ok(
+        readFileSync(destination, 'utf8').includes(row.protocolAnchor),
+        `${row.id}: protocol anchor missing`
+      );
+    }
+    assert.ok(
+      existsSync(path.join(repoRoot, row.documentation.path)),
+      `${row.id}: documentation missing`
+    );
   }
 });

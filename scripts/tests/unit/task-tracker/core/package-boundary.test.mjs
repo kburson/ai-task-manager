@@ -284,6 +284,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #1769 shares one fixed-budget module with the installed static meter.
   // Its tokenizer-backed calibration CLI is development-only and excluded.
   const guidanceContextBudgetAllowance = 1;
+  // #1773 ships five detailed human references outside routine model context.
+  const adapterReferenceAllowance = 5;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -314,7 +316,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     guidanceEntrypointAllowance +
     guidanceCacheAllowance +
     guidanceExplanationAllowance +
-    guidanceContextBudgetAllowance;
+    guidanceContextBudgetAllowance +
+    adapterReferenceAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
