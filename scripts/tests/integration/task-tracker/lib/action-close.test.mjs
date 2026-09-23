@@ -306,7 +306,11 @@ test('production close collector and terminal authority guard refuse changed del
 test('production close observes workflow policy when a guard requires enrichment', async () => {
   const { result } = await productionCloseFixture({ policyGuard: true });
   assert.equal(result.status, 'ready', JSON.stringify(result));
-  assert.ok(result.bundle.observations.some(({ resource }) => resource === 'workflow-policy'));
+  const policyObservation = result.bundle.observations.find(
+    ({ resource }) => resource === 'workflow-policy'
+  );
+  assert.ok(policyObservation);
+  assert.match(policyObservation.identity, /^evidence:1669:\d+$/);
 });
 
 test('production close cannot select ordinary completion for a CLOSED GitHub issue in Review', async () => {

@@ -744,7 +744,7 @@ export async function evaluateCloseReadiness({
         value = await production.readGuardAuthority({ delivery });
       else if (
         request.resource === 'workflow-policy' &&
-        request.identity === `workflow-policy:${issue}`
+        request.identity === `evidence:${issue}:5`
       ) {
         const runtime =
           deps.workflowPolicyRuntime ??
@@ -787,7 +787,7 @@ export async function evaluateCloseReadiness({
         (async ({ requirementIds }) => {
           const observation = await attempt.observe({
             resource: 'workflow-policy',
-            identity: `workflow-policy:${issue}`,
+            identity: `evidence:${issue}:5`,
             scope,
           });
           if (observation.status !== 'observed')
