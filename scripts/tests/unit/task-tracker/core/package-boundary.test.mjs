@@ -281,6 +281,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #1675 ships the receipt protocol and public read-only explanation verb.
   // The measured production surface grows from 832 to 834 entries.
   const guidanceExplanationAllowance = 2;
+  // #1769 shares one fixed-budget module with the installed static meter.
+  // Its tokenizer-backed calibration CLI is development-only and excluded.
+  const guidanceContextBudgetAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -310,12 +313,19 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     guidanceSourceTrustAllowance +
     guidanceEntrypointAllowance +
     guidanceCacheAllowance +
-    guidanceExplanationAllowance;
+    guidanceExplanationAllowance +
+    guidanceContextBudgetAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
       `the package surface grew — confirm intentional and raise the ceiling, or prune.`
   );
+});
+
+test('package-boundary: development-only context calibration is not shipped', () => {
+  const files = new Set(packedFiles());
+  assert.equal(files.has('scripts/task-tracker/measure-guidance-context.mjs'), false);
+  assert.equal(files.has('scripts/task-tracker/lib/context-budgets.mjs'), true);
 });
 
 test('package-boundary: runtime entry points are still shipped', () => {

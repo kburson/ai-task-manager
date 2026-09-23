@@ -65,6 +65,7 @@
     "skill/",
     "hooks/",
     "scripts/",
+    "!scripts/task-tracker/measure-guidance-context.mjs",
     "!scripts/tests/**",
     "!scripts/maintenance/**",
     "!**/*.test.mjs",
