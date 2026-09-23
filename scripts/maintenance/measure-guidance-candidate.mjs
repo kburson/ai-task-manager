@@ -424,7 +424,10 @@ function verifyCaptureSource(projectRoot, capture) {
 }
 
 function committedCurrentHead(projectRoot, relativePath) {
-  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: projectRoot, encoding: 'utf8' });
+  const head = spawnSync('git', ['log', '-1', '--format=%H', '--', relativePath], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  });
   if (head.status !== 0 || !/^[0-9a-f]{40}$/.test(head.stdout.trim()))
     fail('decision-source-commit');
   const commit = head.stdout.trim();
