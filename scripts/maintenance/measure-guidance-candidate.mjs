@@ -550,6 +550,7 @@ function committedCurrentHead(projectRoot, relativePath) {
 function replayComparableEvent(event) {
   const comparable = structuredClone(event);
   if (comparable.argv?.[1]?.endsWith('/bin/aitm.mjs')) {
+    comparable.argv[0] = '<node>';
     comparable.argv[1] = '<project>/bin/aitm.mjs';
   }
   if (comparable.remoteAuthorityCalls) {
