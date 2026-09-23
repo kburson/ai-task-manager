@@ -423,11 +423,43 @@ function verifyCaptureSource(projectRoot, capture) {
   }
 }
 
+function committedCurrentHead(projectRoot, relativePath) {
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: projectRoot, encoding: 'utf8' });
+  if (head.status !== 0 || !/^[0-9a-f]{40}$/.test(head.stdout.trim()))
+    fail('decision-source-commit');
+  const commit = head.stdout.trim();
+  const original = spawnSync('git', ['show', `${commit}:${relativePath}`], {
+    cwd: projectRoot,
+    encoding: null,
+  });
+  if (
+    original.status !== 0 ||
+    sha256(original.stdout) !== sha256(readBytes(projectRoot, relativePath))
+  )
+    fail('decision-committed-source');
+  return commit;
+}
+
 function validateRecertCapture(projectRoot, capture) {
   if (capture.schema !== 'aitm.guidance-lifecycle-capture/v1') fail('capture-schema');
   if (capture.identity?.mode !== 'recertification') fail('capture-mode');
+  if (
+    capture.captureKind !== 'actual-public-cli-with-deterministic-authority' ||
+    capture.authority !== 'deterministic-fixture'
+  )
+    fail('capture-authority');
   verifyCaptureSource(projectRoot, capture);
   validateLifecycleTranscript(capture);
+  const first = capture.events[0];
+  if (
+    capture.identity.initialFixtureSha256 !== first.snapshotSha256 ||
+    capture.identity.initialBodySha256 !== first.authorityBodySha256
+  )
+    fail('capture-initial-fixture');
+  for (const key of ['scenarioManifestSha256', 'configSha256', 'fakeGhSha256']) {
+    if (!/^sha256:[0-9a-f]{64}$/.test(capture.identity[key] ?? ''))
+      fail(`capture-fixture-identity:${key}`);
+  }
   if (capture.identity.transcriptSha256 !== sha256(JSON.stringify(capture.events)))
     fail('capture-transcript-digest');
   const traffic = measureLifecycleTraffic(capture.events);
@@ -545,6 +577,11 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
     adapters: adapterMeasurements,
   });
   const records = [
+    fileRecord(
+      projectRoot,
+      'recertification-decision-runner',
+      'scripts/maintenance/measure-guidance-candidate.mjs'
+    ),
     fileRecord(projectRoot, 'obligation-map', mapPath),
     shim.record,
     ...RECERT_STATIC.map((name) => staticFiles[name].record),
@@ -553,11 +590,27 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
     fileRecord(projectRoot, 'historical-recheck', historicalDecisionPath),
     fileRecord(projectRoot, 'context-comparison', `${FIXTURE_ROOT}/context-comparison.json`),
   ];
+  const decisionSourceCommit = committedCurrentHead(
+    projectRoot,
+    'scripts/maintenance/measure-guidance-candidate.mjs'
+  );
   return {
     schema: 'aitm.guidance-feasibility-recertification/v1',
     owner: { issue: 1767, parentIssue: 1558, foundationIssue: 1660 },
     releaseProof: 'proposed-static-and-deterministic-authority-only',
-    inputs: { records, captureSourceCommit: currentCapture.identity.sourceCommit },
+    inputs: {
+      records,
+      decisionSourceCommit,
+      captureSourceCommit: currentCapture.identity.sourceCommit,
+      captureImplementationFiles: currentCapture.identity.implementationFiles,
+      fixture: {
+        scenarioManifestSha256: currentCapture.identity.scenarioManifestSha256,
+        initialFixtureSha256: currentCapture.identity.initialFixtureSha256,
+        initialBodySha256: currentCapture.identity.initialBodySha256,
+        configSha256: currentCapture.identity.configSha256,
+        fakeGhSha256: currentCapture.identity.fakeGhSha256,
+      },
+    },
     obligations: {
       total: map.rows.length,
       retainedProtocol: retained.length,

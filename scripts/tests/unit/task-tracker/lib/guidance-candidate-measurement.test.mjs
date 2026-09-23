@@ -331,3 +331,29 @@ test('current recertification binds every obligation and the complete public CLI
     assert.ok(decision.adapters[adapter].measurements.fullLifecycle <= 5600);
   }
 });
+
+test('recertification refuses a relabeled or altered lifecycle capture', async () => {
+  const { buildCurrentRecertificationDecision } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const committed = JSON.parse(
+    readFileSync(path.join(fixtureRoot, 'actual-explain-traffic-recertification.json'), 'utf8')
+  );
+  const modeDrift = structuredClone(committed);
+  modeDrift.identity.mode = 'historical';
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: modeDrift }),
+    /guidance-feasibility:capture-mode/
+  );
+  const transcriptDrift = structuredClone(committed);
+  transcriptDrift.events.find(({ name }) => name === 'lifecycle-close').typed.status = 'blocked';
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: transcriptDrift }),
+    /guidance-feasibility:capture-transcript-digest/
+  );
+  const sourceDrift = structuredClone(committed);
+  sourceDrift.identity.implementationFiles[0].sha256 = `sha256:${'0'.repeat(64)}`;
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
+    /guidance-feasibility:capture-current-source/
+  );
+});
