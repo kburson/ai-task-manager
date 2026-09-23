@@ -1,0 +1,314 @@
+{
+  "schema": "aitm.guidance-feasibility-recertification/v1",
+  "owner": {
+    "issue": 1767,
+    "parentIssue": 1558,
+    "foundationIssue": 1660
+  },
+  "releaseProof": "proposed-static-and-deterministic-authority-only",
+  "inputs": {
+    "records": [
+      {
+        "role": "recertification-decision-runner",
+        "path": "scripts/maintenance/measure-guidance-candidate.mjs",
+        "sha256": "sha256:302dfedbe64addcc68b9e74ce39d3c29cb41e066887f0be78011bf654877c311"
+      },
+      {
+        "role": "obligation-map",
+        "path": "scripts/tests/fixtures/1558/rule-guidance-map.json",
+        "sha256": "sha256:fc103b05488244900ec6866f01eb4474b01c171da4eb153ca8118561c515ff10"
+      },
+      {
+        "role": "proposed-static-shim",
+        "path": "skill/SKILL.md",
+        "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+      },
+      {
+        "role": "proposed-static",
+        "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+        "sha256": "sha256:790003b58280cde7840a3b33d3d95e3ab6e0f340d00ff69010c24674631803fe"
+      },
+      {
+        "role": "proposed-static",
+        "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+        "sha256": "sha256:f3a9eb46e4cc07cc6677508200d174ad85547c1ed90a701b0d0a8d475c7c7a82"
+      },
+      {
+        "role": "proposed-static",
+        "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+        "sha256": "sha256:e8519797ee2e0e4d3acd02f045f43a27e8e0e4ea5f018f59168b48b3c9a68b52"
+      },
+      {
+        "role": "proposed-static",
+        "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+        "sha256": "sha256:1c4eba8bc05a68870ff3f2dffdbd61194cc88e3e8a7e20e99271a76c740ea38e"
+      },
+      {
+        "role": "recertification-capture",
+        "path": "scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json",
+        "sha256": "sha256:6304baccb43511e850162be5cf138cdafea0d6adc92f4183d25e797773497755"
+      },
+      {
+        "role": "historical-capture",
+        "path": "scripts/tests/fixtures/1558/actual-explain-traffic-corrected.json",
+        "sha256": "sha256:69f00fb248de606e0e0867de1613a1de4a0703f62d9ef85d75913c10b6375117"
+      },
+      {
+        "role": "historical-recheck",
+        "path": "scripts/tests/fixtures/1558/feasibility-recheck-1676.json",
+        "sha256": "sha256:9674046fe660f8b3858821cf26773ef52665e5f34284f8d06704089f6a181c2d"
+      },
+      {
+        "role": "context-comparison",
+        "path": "scripts/tests/fixtures/1558/context-comparison.json",
+        "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894"
+      }
+    ],
+    "decisionSourceCommit": "44b5a9ddc7a357f3575d3a58d5f610e28d62cd9d",
+    "captureSourceCommit": "48f74428a10b7a1b7296ee6a768708a6a6c11450",
+    "captureImplementationFiles": [
+      {
+        "path": "bin/aitm.mjs",
+        "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+      },
+      {
+        "path": "scripts/task-tracker/verbs/explain.mjs",
+        "sha256": "sha256:55edc368da121ca142b117a0cf7dd4c11473ddb716694188c12a02e1f103895d"
+      },
+      {
+        "path": "scripts/maintenance/capture-guidance-lifecycle.mjs",
+        "sha256": "sha256:fbc556d8bd904f6d6794c7f0949772205ce9d749ab4745cee1f020f4619d9deb"
+      },
+      {
+        "path": "scripts/task-tracker/lib/action-decision/close.mjs",
+        "sha256": "sha256:9f6569b92ec0a752c12733b35a602a796215ecde4a4b29399903266c2893a6aa"
+      },
+      {
+        "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
+        "sha256": "sha256:a2d9d1a1964c2c1927ff83c13f650a111414516d98a2edbc297aadd8bcbc03bc"
+      },
+      {
+        "path": "instructions/aitm-guidance.yml",
+        "sha256": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf"
+      }
+    ],
+    "fixture": {
+      "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
+      "initialFixtureSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+      "initialBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "configSha256": "sha256:bcdfe53b1460cce12f4780b851896ed129ea01b867ef5cbdfcac6754477e4d63",
+      "fakeGhSha256": "sha256:d213bc0267d795a466eec552804de1c1d37816bf6452653e7a9850f991587984"
+    }
+  },
+  "obligations": {
+    "total": 41,
+    "retainedProtocol": 24,
+    "enforcement": 17,
+    "relocations": [
+      {
+        "id": "binding.discussion",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "binding.workspace",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "binding.deferred-pickup",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "binding.session-recovery",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "review.prompt",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "review.reject",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "review.dismiss",
+        "proposedStatic": ["router", "pickup"]
+      },
+      {
+        "id": "close.human-instruction",
+        "proposedStatic": ["router", "pickup"]
+      }
+    ],
+    "uncovered": []
+  },
+  "capture": {
+    "events": 17,
+    "actionResults": [
+      {
+        "name": "lifecycle-resume",
+        "actionId": "resume",
+        "status": "ready"
+      },
+      {
+        "name": "lifecycle-promote",
+        "actionId": "promote",
+        "status": "ready"
+      },
+      {
+        "name": "lifecycle-test",
+        "actionId": "test",
+        "status": "ready"
+      },
+      {
+        "name": "lifecycle-review",
+        "actionId": "review",
+        "status": "ready"
+      },
+      {
+        "name": "lifecycle-deliver",
+        "actionId": "deliver",
+        "status": "ready"
+      },
+      {
+        "name": "lifecycle-close",
+        "actionId": "close",
+        "status": "ready"
+      }
+    ],
+    "remoteAuthorityReads": 92,
+    "dynamicProxyTokens": 3627,
+    "transcriptSha256": "sha256:0d496c41493a1c573fafed3f66d7a0e981c5b9f6c0cf22d30a042f1467467e7b"
+  },
+  "historicalNegativeControl": {
+    "verdict": "NO-GO",
+    "dynamicProxyTokens": 5649
+  },
+  "fixedBudgets": {
+    "routerPlusPickup": {
+      "absolute": 5000,
+      "working": 4000
+    },
+    "clean": {
+      "absolute": 300,
+      "working": 240
+    },
+    "blocked": {
+      "absolute": 500,
+      "working": 400
+    },
+    "fullLifecycle": {
+      "absolute": 7000,
+      "working": 5600
+    }
+  },
+  "adapters": {
+    "claude": {
+      "measurements": {
+        "routerPlusPickup": 1448,
+        "clean": 124,
+        "blocked": 159,
+        "fullLifecycle": 5075
+      },
+      "workingLimits": {
+        "routerPlusPickup": 4000,
+        "clean": 240,
+        "blocked": 400,
+        "fullLifecycle": 5600
+      },
+      "absoluteLimits": {
+        "routerPlusPickup": 5000,
+        "clean": 300,
+        "blocked": 500,
+        "fullLifecycle": 7000
+      },
+      "remainingWorkingMargins": {
+        "routerPlusPickup": 2552,
+        "clean": 116,
+        "blocked": 241,
+        "fullLifecycle": 525
+      },
+      "remainingAbsoluteMargins": {
+        "routerPlusPickup": 3552,
+        "clean": 176,
+        "blocked": 341,
+        "fullLifecycle": 1925
+      },
+      "totalContext": {
+        "legacy": 18169,
+        "candidate": 5075,
+        "delta": -13094
+      },
+      "verdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true,
+        "reduction": true
+      },
+      "absoluteVerdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true
+      },
+      "status": "pass"
+    },
+    "codex": {
+      "measurements": {
+        "routerPlusPickup": 1452,
+        "clean": 124,
+        "blocked": 159,
+        "fullLifecycle": 5079
+      },
+      "workingLimits": {
+        "routerPlusPickup": 4000,
+        "clean": 240,
+        "blocked": 400,
+        "fullLifecycle": 5600
+      },
+      "absoluteLimits": {
+        "routerPlusPickup": 5000,
+        "clean": 300,
+        "blocked": 500,
+        "fullLifecycle": 7000
+      },
+      "remainingWorkingMargins": {
+        "routerPlusPickup": 2548,
+        "clean": 116,
+        "blocked": 241,
+        "fullLifecycle": 521
+      },
+      "remainingAbsoluteMargins": {
+        "routerPlusPickup": 3548,
+        "clean": 176,
+        "blocked": 341,
+        "fullLifecycle": 1921
+      },
+      "totalContext": {
+        "legacy": 18083,
+        "candidate": 5079,
+        "delta": -13004
+      },
+      "verdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true,
+        "reduction": true
+      },
+      "absoluteVerdicts": {
+        "routerPlusPickup": true,
+        "clean": true,
+        "blocked": true,
+        "fullLifecycle": true
+      },
+      "status": "pass"
+    }
+  },
+  "checks": {
+    "completeness": "pass",
+    "fidelity": "pass",
+    "budgets": "pass",
+    "reduction": "pass"
+  },
+  "verdict": "GO"
+}

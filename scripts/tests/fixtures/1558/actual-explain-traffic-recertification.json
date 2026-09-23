@@ -1,0 +1,1531 @@
+{
+  "schema": "aitm.guidance-lifecycle-capture/v1",
+  "captureKind": "actual-public-cli-with-deterministic-authority",
+  "authority": "deterministic-fixture",
+  "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",
+  "capturedAt": "2026-09-23T07:12:29.182Z",
+  "identity": {
+    "mode": "recertification",
+    "sourceCommit": "48f74428a10b7a1b7296ee6a768708a6a6c11450",
+    "implementationFiles": [
+      {
+        "path": "bin/aitm.mjs",
+        "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+      },
+      {
+        "path": "scripts/task-tracker/verbs/explain.mjs",
+        "sha256": "sha256:55edc368da121ca142b117a0cf7dd4c11473ddb716694188c12a02e1f103895d"
+      },
+      {
+        "path": "scripts/maintenance/capture-guidance-lifecycle.mjs",
+        "sha256": "sha256:fbc556d8bd904f6d6794c7f0949772205ce9d749ab4745cee1f020f4619d9deb"
+      },
+      {
+        "path": "scripts/task-tracker/lib/action-decision/close.mjs",
+        "sha256": "sha256:9f6569b92ec0a752c12733b35a602a796215ecde4a4b29399903266c2893a6aa"
+      },
+      {
+        "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
+        "sha256": "sha256:a2d9d1a1964c2c1927ff83c13f650a111414516d98a2edbc297aadd8bcbc03bc"
+      },
+      {
+        "path": "instructions/aitm-guidance.yml",
+        "sha256": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf"
+      }
+    ],
+    "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
+    "initialFixtureSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+    "initialBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+    "configSha256": "sha256:bcdfe53b1460cce12f4780b851896ed129ea01b867ef5cbdfcac6754477e4d63",
+    "fakeGhSha256": "sha256:d213bc0267d795a466eec552804de1c1d37816bf6452653e7a9850f991587984",
+    "transcriptSha256": "sha256:0d496c41493a1c573fafed3f66d7a0e981c5b9f6c0cf22d30a042f1467467e7b"
+  },
+  "events": [
+    {
+      "kind": "query",
+      "name": "ready-first-load",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "matching-receipt",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"not-modified\"}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "compaction-reset",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "blocked-migration-freeze",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "diagnostic",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+      "authorityBodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--diagnostic",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"plan\",\"head\":\"85f8ac54120135887b066612b012a014d506d3ee\",\"digest\":\"sha256:d76f7c72a1a72072df68e062f0ea51fae947893052460be578b157beb8b0d7f8\",\"startedAt\":\"2026-09-23T07:12:21.195Z\",\"completedAt\":\"2026-09-23T07:12:21.196Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:80668500a135b169d65c76aed61c3bfe20d5a5027d2ded7cc589b8fa2360ca73\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:b36a0e61b7d50054e3ae329b73f6ad857094181806b5098471dc7fe954617d8b\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:d586fc8e8a3b10c59ab7d9a3cbc78a6c588bd12b6873ab94c5a76384777c6c8c\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:437b0610b9fa1b8a9b5bf9f88db1f3cbc085216ecd861ad9f0b57435e8a59032\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:7b128352793c57c5f4faf5cd7bfc08bf9f158e0ddde429e7a1d0b142b08c1891\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:2a46d7227a80f207cd93e0c801eab10de7007302672487a6ba5b355e85c4158a\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-23T07:12:21.195Z\",\"digest\":\"sha256:58790f1c2c4a035e0629fec513a76166acc56d4c1f69152c32a0582f5c3d7b59\"}]},\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 0
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "clear-freeze",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 0,
+        "state": "plan",
+        "sha256": "sha256:dbbaf93e8bb35d0a8fb12105e3cc9797b3cf909226c62f9466d6bbbc0641ba22",
+        "bodySha256": "sha256:c8c738cc2c47128d15e7a045b5ac576d3b929a4d0a8ee3b7a584ff0643ee4a94"
+      },
+      "to": {
+        "revision": 1,
+        "state": "plan",
+        "sha256": "sha256:af81d9b24c265263395088af90f9a4650a98de113b3bc3e17298b3e250c63841",
+        "bodySha256": "sha256:1389b7a92ad679286f4617097fdd9bff05ac03de35c4cafe742a984272fada42"
+      },
+      "evidenceAdded": ["freeze-cleared"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "refusal-remediation",
+      "stateRevision": 1,
+      "state": "plan",
+      "snapshotSha256": "sha256:af81d9b24c265263395088af90f9a4650a98de113b3bc3e17298b3e250c63841",
+      "authorityBodySha256": "sha256:1389b7a92ad679286f4617097fdd9bff05ac03de35c4cafe742a984272fada42",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 1
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 1
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 1
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 1
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "approve-plan",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 1,
+        "state": "plan",
+        "sha256": "sha256:af81d9b24c265263395088af90f9a4650a98de113b3bc3e17298b3e250c63841",
+        "bodySha256": "sha256:1389b7a92ad679286f4617097fdd9bff05ac03de35c4cafe742a984272fada42"
+      },
+      "to": {
+        "revision": 2,
+        "state": "plan",
+        "sha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
+        "bodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1"
+      },
+      "evidenceAdded": ["plan-approval"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "agent-change",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
+      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:1c263fa0054e8b46d61e2761777a0b66daeb985eafe09caa0af64fb67b21a1ee\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:1c263fa0054e8b46d61e2761777a0b66daeb985eafe09caa0af64fb67b21a1ee\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:1c263fa0054e8b46d61e2761777a0b66daeb985eafe09caa0af64fb67b21a1ee"
+      }
+    },
+    {
+      "kind": "query",
+      "name": "source-only-change",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
+      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"not-modified\"}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-resume",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
+      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "resume",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"resume\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.resume\",\"digest\":\"sha256:7661dea7fa21dcf707ab0595b049494d829a71804b5af01a5fd5b9fa41e50e1d\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"resume\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"resume\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "resume",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-promote",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
+      "authorityBodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "promote",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 10,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "blockedBy,blocking"
+          ],
+          "revision": 2
+        },
+        {
+          "args": ["api", "repos/example/project/issues/2100/comments", "--paginate"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "user", "--jq", ".login"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 2
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "promote",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-develop",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 2,
+        "state": "plan",
+        "sha256": "sha256:eeffa047d1b46fc351ed52520f746f6ff060660b141f89ecd0b99762a35ab24f",
+        "bodySha256": "sha256:729ec77374e49359145defa68ce0843d4d7db5fc6656a8796cf53934776590c1"
+      },
+      "to": {
+        "revision": 3,
+        "state": "develop",
+        "sha256": "sha256:0192234c21dec7d27ba2bab03f9159666c7535aca31917b785388119541ee4fe",
+        "bodySha256": "sha256:ae1cba21b184378d23728027fad69456e8a2d13ff3b8c956d785fce07826eb26"
+      },
+      "evidenceAdded": ["plan-transition", "verification-passed"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-test",
+      "stateRevision": 3,
+      "state": "develop",
+      "snapshotSha256": "sha256:0192234c21dec7d27ba2bab03f9159666c7535aca31917b785388119541ee4fe",
+      "authorityBodySha256": "sha256:ae1cba21b184378d23728027fad69456e8a2d13ff3b8c956d785fce07826eb26",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "test",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"test\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}},{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.test\",\"digest\":\"sha256:14de80e480a4d7e3fb15e4cfd63489eb0544e6223300a047d958fe50a9a4935f\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"test\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"test\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 9,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 3
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 3
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 3
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "blockedBy,blocking"
+          ],
+          "revision": 3
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "comments",
+            "--jq",
+            ".comments"
+          ],
+          "revision": 3
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "comments",
+            "--jq",
+            ".comments"
+          ],
+          "revision": 3
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 3
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 3
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 3
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "test",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-test",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 3,
+        "state": "develop",
+        "sha256": "sha256:0192234c21dec7d27ba2bab03f9159666c7535aca31917b785388119541ee4fe",
+        "bodySha256": "sha256:ae1cba21b184378d23728027fad69456e8a2d13ff3b8c956d785fce07826eb26"
+      },
+      "to": {
+        "revision": 4,
+        "state": "test",
+        "sha256": "sha256:4364d8810e4cfa3ddb5796b58476496ea8d0d1374dbc05bc71ad694fe823f055",
+        "bodySha256": "sha256:48a40d6624a742242c78d74328d53f27bbc27b63d242a8a21eacc69a30b055d8"
+      },
+      "evidenceAdded": ["test-receipt"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-review",
+      "stateRevision": 4,
+      "state": "test",
+      "snapshotSha256": "sha256:4364d8810e4cfa3ddb5796b58476496ea8d0d1374dbc05bc71ad694fe823f055",
+      "authorityBodySha256": "sha256:48a40d6624a742242c78d74328d53f27bbc27b63d242a8a21eacc69a30b055d8",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "review",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"review\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.review\",\"digest\":\"sha256:640b0fc35317634c36002c66c981390db7bf7818d665dc61a3aed7b7684cdb40\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"review\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"review\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 8,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 4
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 4
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 4
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 4
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 4
+        },
+        {
+          "args": ["issue", "view", "2100", "-R", "example/project", "--json", "comments"],
+          "revision": 4
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "blockedBy,blocking"
+          ],
+          "revision": 4
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 4
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "review",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-review",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 4,
+        "state": "test",
+        "sha256": "sha256:4364d8810e4cfa3ddb5796b58476496ea8d0d1374dbc05bc71ad694fe823f055",
+        "bodySha256": "sha256:48a40d6624a742242c78d74328d53f27bbc27b63d242a8a21eacc69a30b055d8"
+      },
+      "to": {
+        "revision": 5,
+        "state": "review",
+        "sha256": "sha256:830337aca6583c2c056fc5d2656ce33c94ba1d8e8eb1a6176c878f39c296a041",
+        "bodySha256": "sha256:3aaff5bd51c42fe1da5da0b5db63e7ccf2d20b1590ce8b1e9ba5d8f2007af726"
+      },
+      "evidenceAdded": ["review-transition"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-deliver",
+      "stateRevision": 5,
+      "state": "review",
+      "snapshotSha256": "sha256:830337aca6583c2c056fc5d2656ce33c94ba1d8e8eb1a6176c878f39c296a041",
+      "authorityBodySha256": "sha256:3aaff5bd51c42fe1da5da0b5db63e7ccf2d20b1590ce8b1e9ba5d8f2007af726",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "deliver",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"deliver\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.deliver\",\"digest\":\"sha256:376fe05bee0f8340fa5506186f59e564feb6142d635370f18b28849bef5a9125\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"deliver\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"deliver\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 12,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "number,state,body,assignees"
+          ],
+          "revision": 5
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 5
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "number,state,body,assignees"
+          ],
+          "revision": 5
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 5
+        },
+        {
+          "args": [
+            "api",
+            "graphql",
+            "-f",
+            "query=\n    query($owner: String!, $repo: String!, $issue: Int!) {\n      repository(owner: $owner, name: $repo) {\n        issue(number: $issue) { parent { number } }\n      }\n    }",
+            "-f",
+            "owner=example",
+            "-f",
+            "repo=project",
+            "-F",
+            "issue=2100"
+          ],
+          "revision": 5
+        },
+        {
+          "args": [
+            "pr",
+            "list",
+            "-R",
+            "example/project",
+            "--head",
+            "feature/child/2100",
+            "--state",
+            "all",
+            "--json",
+            "number"
+          ],
+          "revision": 5
+        },
+        {
+          "args": [
+            "pr",
+            "view",
+            "2101",
+            "-R",
+            "example/project",
+            "--json",
+            "number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit"
+          ],
+          "revision": 5
+        },
+        {
+          "args": [
+            "api",
+            "graphql",
+            "-f",
+            "query=query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid commits(first:100,after:$cursor){totalCount nodes{commit{oid messageHeadline message parents(first:100){totalCount nodes{oid} pageInfo{hasNextPage}} tree{oid}}} pageInfo{hasNextPage endCursor}}}}}",
+            "-f",
+            "owner=example",
+            "-f",
+            "repo=project",
+            "-F",
+            "pr=2101"
+          ],
+          "revision": 5
+        },
+        {
+          "args": ["api", "repos/example/project"],
+          "revision": 5
+        },
+        {
+          "args": [
+            "pr",
+            "checks",
+            "2101",
+            "-R",
+            "example/project",
+            "--required",
+            "--json",
+            "name,state"
+          ],
+          "revision": 5
+        },
+        {
+          "args": ["pr", "view", "2101", "-R", "example/project", "--json", "headRefOid"],
+          "revision": 5
+        },
+        {
+          "args": ["api", "--paginate", "--slurp", "repos/example/project/issues/2100/comments"],
+          "revision": 5
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "deliver",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "external-authority",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 5,
+        "state": "review",
+        "sha256": "sha256:830337aca6583c2c056fc5d2656ce33c94ba1d8e8eb1a6176c878f39c296a041",
+        "bodySha256": "sha256:3aaff5bd51c42fe1da5da0b5db63e7ccf2d20b1590ce8b1e9ba5d8f2007af726"
+      },
+      "to": {
+        "revision": 6,
+        "state": "review",
+        "sha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
+        "bodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9"
+      },
+      "evidenceAdded": ["review-approval", "merge-evidence"],
+      "agentVisible": false
+    },
+    {
+      "kind": "external",
+      "name": "external-approval",
+      "stateRevision": 6,
+      "state": "review",
+      "snapshotSha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
+      "authorityBodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9",
+      "argv": ["gh", "pr", "view", "2101", "--json", "reviewDecision"],
+      "stdin": "",
+      "stdout": "{\"reviewDecision\":\"APPROVED\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1,
+      "remoteAuthorityCalls": [
+        {
+          "args": ["pr", "view", "2101", "--json", "reviewDecision"],
+          "revision": 6
+        }
+      ]
+    },
+    {
+      "kind": "external",
+      "name": "external-merge",
+      "stateRevision": 6,
+      "state": "review",
+      "snapshotSha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
+      "authorityBodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9",
+      "argv": ["gh", "pr", "view", "2101", "--json", "mergedAt"],
+      "stdin": "",
+      "stdout": "{\"mergedAt\":\"2026-09-22T00:00:00Z\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1,
+      "remoteAuthorityCalls": [
+        {
+          "args": ["pr", "view", "2101", "--json", "mergedAt"],
+          "revision": 6
+        }
+      ]
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-close",
+      "stateRevision": 6,
+      "state": "review",
+      "snapshotSha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
+      "authorityBodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1767-feasibility-recheck/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "close",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"close\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}},{\"code\":\"legacy-guard-warning\",\"args\":{\"guardId\":\"review-exit-close-gates\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.close\",\"digest\":\"sha256:a62f668fc999787492462b9207f0fcf60744339e3a5886d46ac63dadadfc71c7\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"close\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"close\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 14,
+      "remoteAuthorityCalls": [
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "body",
+            "--jq",
+            ".body"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "number,body,state,stateReason,updatedAt"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "number,body,state,stateReason,updatedAt"
+          ],
+          "revision": 6
+        },
+        {
+          "args": ["api", "graphql", "--input", "-"],
+          "revision": 6
+        },
+        {
+          "args": [
+            "api",
+            "graphql",
+            "-f",
+            "query=query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){number body parent{number body}}}}",
+            "-f",
+            "owner=example",
+            "-f",
+            "name=project",
+            "-F",
+            "number=2100"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "api",
+            "--paginate",
+            "--slurp",
+            "repos/example/project/issues/2100/sub_issues?per_page=100"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "pr",
+            "list",
+            "-R",
+            "example/project",
+            "--head",
+            "feature/child/2100",
+            "--state",
+            "all",
+            "--json",
+            "number,state,mergedAt,mergeCommit,headRefName,headRefOid,baseRefName"
+          ],
+          "revision": 6
+        },
+        {
+          "args": ["api", "--paginate", "--slurp", "repos/example/project/issues/2100/comments"],
+          "revision": 6
+        },
+        {
+          "args": [
+            "pr",
+            "view",
+            "2101",
+            "-R",
+            "example/project",
+            "--json",
+            "number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "api",
+            "graphql",
+            "-f",
+            "query=query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){headRefOid commits(first:100,after:$cursor){totalCount nodes{commit{oid messageHeadline message parents(first:100){totalCount nodes{oid} pageInfo{hasNextPage}} tree{oid}}} pageInfo{hasNextPage endCursor}}}}}",
+            "-f",
+            "owner=example",
+            "-f",
+            "repo=project",
+            "-F",
+            "pr=2101"
+          ],
+          "revision": 6
+        },
+        {
+          "args": ["api", "repos/example/project/git/ref/heads/feature/child/2100"],
+          "revision": 6
+        },
+        {
+          "args": [
+            "api",
+            "--paginate",
+            "--slurp",
+            "repos/example/project/issues/2100/sub_issues?per_page=100"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "api",
+            "--paginate",
+            "--slurp",
+            "repos/example/project/issues/2100/comments?per_page=100"
+          ],
+          "revision": 6
+        },
+        {
+          "args": [
+            "issue",
+            "view",
+            "2100",
+            "-R",
+            "example/project",
+            "--json",
+            "blockedBy,blocking"
+          ],
+          "revision": 6
+        }
+      ],
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "close",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-done",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 6,
+        "state": "review",
+        "sha256": "sha256:439c0a3e49dda924ddda603b4c9f7737750287a25d1321576c3a3df8f47c31ba",
+        "bodySha256": "sha256:b036c6d8e9a64c0069fa435481eefdc566671f5ed4b87f1e2698fe3a55be13c9"
+      },
+      "to": {
+        "revision": 7,
+        "state": "done",
+        "sha256": "sha256:d9bb721ce41f5ac4589a759e3f6e333f50dc673f632af1296af5aa8ad172877a",
+        "bodySha256": "sha256:94d6b3f558387b7b6b9d0802265d6b26b16895a8aa7d1baf4a2c4d961698b621"
+      },
+      "evidenceAdded": ["close-transition"],
+      "agentVisible": false
+    },
+    {
+      "kind": "external",
+      "name": "post-close-state",
+      "stateRevision": 7,
+      "state": "done",
+      "snapshotSha256": "sha256:d9bb721ce41f5ac4589a759e3f6e333f50dc673f632af1296af5aa8ad172877a",
+      "authorityBodySha256": "sha256:94d6b3f558387b7b6b9d0802265d6b26b16895a8aa7d1baf4a2c4d961698b621",
+      "argv": ["gh", "issue", "view", "2100", "--json", "state"],
+      "stdin": "",
+      "stdout": "{\"state\":\"CLOSED\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1,
+      "remoteAuthorityCalls": [
+        {
+          "args": ["issue", "view", "2100", "--json", "state"],
+          "revision": 7
+        }
+      ]
+    }
+  ],
+  "measurement": {
+    "proxyRule": "ceil(concatenated agent-visible UTF-16 characters / 4)",
+    "traffic": {
+      "characters": 14507,
+      "bytes": 14507,
+      "proxyUnits": 3626.75,
+      "proxyTokens": 3627,
+      "categories": {
+        "query": {
+          "characters": 11617,
+          "bytes": 11617,
+          "proxyUnits": 2904.25
+        },
+        "diagnostic": {
+          "characters": 2703,
+          "bytes": 2703,
+          "proxyUnits": 675.75
+        },
+        "external": {
+          "characters": 187,
+          "bytes": 187,
+          "proxyUnits": 46.75
+        }
+      }
+    },
+    "currentFullStaticSource": "scripts/tests/fixtures/1558/context-comparison.json",
+    "currentFullStaticProxyTokens": {
+      "claude": 17642,
+      "codex": 17556
+    },
+    "modeledProposedStatic": {
+      "claude": {
+        "files": [
+          {
+            "sourcePath": "skill/SKILL.md",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+            "characters": 2479,
+            "bytes": 2479,
+            "proxyTokens": 620,
+            "sha256": "sha256:790003b58280cde7840a3b33d3d95e3ab6e0f340d00ff69010c24674631803fe"
+          },
+          {
+            "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+            "characters": 1525,
+            "bytes": 1525,
+            "proxyTokens": 382,
+            "sha256": "sha256:f3a9eb46e4cc07cc6677508200d174ad85547c1ed90a701b0d0a8d475c7c7a82"
+          },
+          {
+            "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+            "characters": 835,
+            "bytes": 835,
+            "proxyTokens": 209,
+            "sha256": "sha256:e8519797ee2e0e4d3acd02f045f43a27e8e0e4ea5f018f59168b48b3c9a68b52"
+          }
+        ],
+        "totals": {
+          "characters": 5785,
+          "bytes": 5785,
+          "proxyTokens": 1448
+        }
+      },
+      "codex": {
+        "files": [
+          {
+            "sourcePath": "skill/SKILL.md",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+            "characters": 2479,
+            "bytes": 2479,
+            "proxyTokens": 620,
+            "sha256": "sha256:790003b58280cde7840a3b33d3d95e3ab6e0f340d00ff69010c24674631803fe"
+          },
+          {
+            "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+            "characters": 1525,
+            "bytes": 1525,
+            "proxyTokens": 382,
+            "sha256": "sha256:f3a9eb46e4cc07cc6677508200d174ad85547c1ed90a701b0d0a8d475c7c7a82"
+          },
+          {
+            "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+            "characters": 851,
+            "bytes": 851,
+            "proxyTokens": 213,
+            "sha256": "sha256:1c4eba8bc05a68870ff3f2dffdbd61194cc88e3e8a7e20e99271a76c740ea38e"
+          }
+        ],
+        "totals": {
+          "characters": 5801,
+          "bytes": 5801,
+          "proxyTokens": 1452
+        }
+      }
+    },
+    "modeledProposedTotals": {
+      "claude": 5075,
+      "codex": 5079
+    },
+    "budgets": {
+      "routerPlusPickupWorking": 4000,
+      "fullLifecycleWorking": 5600,
+      "cleanResponseWorking": 240,
+      "blockedResponseWorking": 400
+    },
+    "verdicts": {
+      "routerPlusPickup": {
+        "claude": true,
+        "codex": true
+      },
+      "fullLifecycle": {
+        "claude": true,
+        "codex": true
+      },
+      "cleanResponse": true,
+      "blockedResponse": true
+    }
+  }
+}
