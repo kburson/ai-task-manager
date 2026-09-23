@@ -32,6 +32,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const bin = path.join(root, 'bin/aitm.mjs');
 const issue = 2100;
 const fixedGitEnv = {
+  GIT_AUTHOR_NAME: 'kendrick burson',
+  GIT_AUTHOR_EMAIL: 'kpburson@pm.me',
+  GIT_COMMITTER_NAME: 'kendrick burson',
+  GIT_COMMITTER_EMAIL: 'kpburson@pm.me',
   GIT_AUTHOR_DATE: '2026-09-22T00:00:00Z',
   GIT_COMMITTER_DATE: '2026-09-22T00:00:00Z',
 };
