@@ -41,8 +41,6 @@
 - [ ] Commit the gate and tests, then complete exact-head governed Test before merge-back.
 
 Run: `node --test scripts/tests/unit/task-tracker/core/measure-context.test.mjs scripts/tests/unit/task-tracker/lib/context-budgets.test.mjs scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs`
-Run: `node scripts/task-tracker/measure-context.mjs --all --adapter codex`
-Run: `node scripts/task-tracker/measure-context.mjs --all --adapter claude`
 
 #### Story Intent
 
