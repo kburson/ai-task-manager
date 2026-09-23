@@ -236,6 +236,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const planTransitionAuthorityAllowance = 1;
   // #1756 ships the SHA-preserving delivery source inventory module.
   const deliverySourceInventoryAllowance = 1;
+  // #1758 ships one exact delivery attribution authorization record module.
+  const deliveryAttributionRecordAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -245,7 +247,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     storyQualityGuideAllowance +
     storyQualityRuleAllowance +
     planTransitionAuthorityAllowance +
-    deliverySourceInventoryAllowance;
+    deliverySourceInventoryAllowance +
+    deliveryAttributionRecordAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
