@@ -1283,6 +1283,13 @@ Run: `npm run test:unit`
 
 Run: `npm run test:integration`
 
+#### Story Intent
+
+- **Beneficiary:** AITM release operator certifying guidance for both supported adapters
+- **Capability:** Load a compact boundary and receipt protocol while retrieving lifecycle guidance on demand
+- **Need:** The permanently loaded instructions and full lifecycle traffic exceed or approach the fixed context budgets before the final consumer release is certified
+- **Value or failure prevented:** A complete governed lifecycle stays within the fixed budgets without losing hard safety checks or required operational values
+
 ## NO-GO containment and execution entry
 
 WBS 8 owns both the decision and its gate. The ordinary command records honest accounting; the distinct foundation command requires GO:
