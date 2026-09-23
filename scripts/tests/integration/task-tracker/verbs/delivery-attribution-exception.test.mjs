@@ -8,10 +8,12 @@ import test from 'node:test';
 import { hashAuthorizationStatement } from '../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
 import { PREFLIGHT_MODE } from '../../../../task-tracker/task-tracker.mjs';
 import {
+  buildDeliveryAttributionProposal,
   parseDeliveryAttributionExceptionComment,
   renderDeliveryAttributionExceptionComment,
 } from '../../../../task-tracker/lib/delivery-attribution-exception-record.mjs';
 import {
+  createDeliveryAttributionExceptionRuntime,
   parseDeliveryAttributionExceptionArgs,
   runDeliveryAttributionException,
   verifyDeliveryAttributionRecordAuthority,
@@ -374,6 +376,14 @@ test('revise and revoke require fresh user messages and append linked records', 
       request: revocation,
     });
     assert.equal(third.status, 'revoked');
+    const retry = await runDeliveryAttributionException({
+      ...base,
+      action: 'revoke',
+      runtime: h.runtime,
+      request: revocation,
+    });
+    assert.equal(retry.status, 'already-recorded');
+    assert.equal(h.writes, 3);
     assert.equal(
       parseDeliveryAttributionExceptionComment(h.comments[2].body).predecessorId,
       second.recordId
@@ -393,6 +403,89 @@ test('revise and revoke require fresh user messages and append linked records', 
       (await runDeliveryAttributionException({ ...base, action: 'show', runtime: h.runtime }))
         .status,
       'blocked'
+    );
+  } finally {
+    h.cleanup();
+  }
+});
+
+test('runtime writes to the parsed issue when the input file name is numeric', async () => {
+  const calls = [];
+  const ctx = {
+    cfg: { repo: repository, trunkRef: 'origin/trunk' },
+    projectDir: process.cwd(),
+    rest: ['record', '--input-file', '1760', '#1759'],
+  };
+  const runtime = createDeliveryAttributionExceptionRuntime(ctx, {
+    issueNumber: 1759,
+    run: async (name, args) => {
+      calls.push({ name, args });
+      return { stdout: JSON.stringify({ node_id: 'IC_test' }) };
+    },
+  });
+  await runtime.appendComment('exact body');
+  assert.equal(calls[0].args[1], 'repos/kburson/ai-task-manager/issues/1759/comments');
+});
+
+test('revoke readback refuses a competing valid revision appended at the same predecessor', async () => {
+  const h = harness();
+  try {
+    const { request, filled } = await firstAndFilled(h);
+    request.authorizationSource = {
+      schema: 'aitm.authorization-source/v1',
+      adapter: 'codex-session/v1',
+      sessionId,
+      messageId: 'msg_grant',
+      statementHash: hashAuthorizationStatement(filled.statement),
+    };
+    h.writeMessage('msg_grant', 'user', [filled.statement]);
+    await runDeliveryAttributionException({
+      ...base,
+      action: 'record',
+      runtime: h.runtime,
+      request,
+    });
+    const revocation = structuredClone(request);
+    revocation.action = 'revoke';
+    revocation.proposal.exceptionId = '01M2H000000000000000000003';
+    const prepared = await runDeliveryAttributionException({
+      ...base,
+      action: 'prepare',
+      runtime: h.runtime,
+      request: revocation,
+    });
+    revocation.authorizationSource = {
+      ...request.authorizationSource,
+      messageId: 'msg_revoke',
+      statementHash: hashAuthorizationStatement(prepared.statement),
+    };
+    h.writeMessage('msg_revoke', 'user', [prepared.statement]);
+    const original = h.runtime.appendComment;
+    h.runtime.appendComment = async (body) => {
+      const stored = await original(body);
+      const competing = parseDeliveryAttributionExceptionComment(body);
+      competing.kind = 'revision';
+      competing.recordId = '01M2H000000000000000000099';
+      competing.proposal.exceptionId = '01M2H000000000000000000098';
+      competing.proposalDigest = buildDeliveryAttributionProposal(
+        competing.proposal
+      ).proposalDigest;
+      competing.authority.sourceReference = `codex://sessions/${sessionId}/messages/msg_competing`;
+      competing.authority.statement = 'A different verified user statement';
+      h.comments.push({
+        id: 'IC_competing',
+        body: renderDeliveryAttributionExceptionComment(competing),
+      });
+      return stored;
+    };
+    await assert.rejects(
+      runDeliveryAttributionException({
+        ...base,
+        action: 'revoke',
+        runtime: h.runtime,
+        request: revocation,
+      }),
+      /delivery-attribution-exception-record:chain/
     );
   } finally {
     h.cleanup();

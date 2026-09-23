@@ -249,6 +249,23 @@ function activeHead(history, proposal, now) {
   return resolveActiveDeliveryAttributionException(history, scope, now);
 }
 
+function exactTerminalRevocation(history, proposal, now, recordId) {
+  let inactive = false;
+  try {
+    activeHead(history, proposal, now);
+  } catch (error) {
+    if (error?.message !== 'delivery-attribution-exception-record:inactive') throw error;
+    inactive = true;
+  }
+  if (
+    !inactive ||
+    history.at(-1)?.record?.kind !== 'revocation' ||
+    history.at(-1).record.recordId !== recordId
+  )
+    fail('revoke-not-terminal');
+  return history.at(-1).record;
+}
+
 function sourceFromAuthority(record) {
   const match = AUTH_REF.exec(record?.authority?.sourceReference || '');
   if (!match) fail('authorization-source-mismatch');
@@ -392,8 +409,12 @@ export async function runDeliveryAttributionException({
   const history = parseHistory(await runtime.listComments());
   const prior = matchingRecord(history, parsed, prepared.proposalDigest, authority.reference);
   if (prior) {
-    const head = activeHead(history, parsed.proposal, now);
-    if (head.recordId !== prior.record.recordId) fail('superseded-record');
+    if (action === 'revoke') {
+      exactTerminalRevocation(history, parsed.proposal, now, prior.record.recordId);
+    } else {
+      const head = activeHead(history, parsed.proposal, now);
+      if (head.recordId !== prior.record.recordId) fail('superseded-record');
+    }
     await verifyDeliveryAttributionRecordAuthority(prior.record, runtime);
     return { status: 'already-recorded', recordId: prior.record.recordId };
   }
@@ -461,12 +482,7 @@ export async function runDeliveryAttributionException({
   );
   if (matches.length !== 1) fail('append-readback');
   if (action === 'revoke') {
-    try {
-      activeHead(after, parsed.proposal, now);
-      fail('revoke-not-terminal');
-    } catch (error) {
-      if (error.message === 'delivery-attribution-exception:revoke-not-terminal') throw error;
-    }
+    exactTerminalRevocation(after, parsed.proposal, now, record.recordId);
   } else {
     const head = activeHead(after, parsed.proposal, now);
     if (head.recordId !== record.recordId) fail('append-chain');
@@ -479,7 +495,8 @@ export async function runDeliveryAttributionException({
   };
 }
 
-export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec } = {}) {
+export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec, issueNumber } = {}) {
+  if (!Number.isSafeInteger(issueNumber) || issueNumber < 1) fail('issue-target');
   const detected = detectProvider({ env: process.env });
   const selected = getProvider(aiAppName());
   const sessionId = currentSessionId();
@@ -509,7 +526,8 @@ export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec } =
   return {
     host,
     resolveTranscriptPath: (sid) => jsonlPath(sid),
-    async fetchScope(issueNumber) {
+    async fetchScope(targetIssue) {
+      if (targetIssue !== issueNumber) fail('issue-target');
       const issue = await json('gh', [
         'issue',
         'view',
@@ -568,9 +586,6 @@ export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec } =
     },
     async listComments() {
       const [owner, name] = ctx.cfg.repo.split('/');
-      const issueNumber = Number(
-        ctx.rest.find((arg) => /^#?[1-9][0-9]*$/.test(arg))?.replace(/^#/, '')
-      );
       const comments = [];
       const seen = new Set();
       let cursor = null;
@@ -601,9 +616,6 @@ export function createDeliveryAttributionExceptionRuntime(ctx, { run = pexec } =
       }
     },
     async appendComment(body) {
-      const issueNumber = Number(
-        ctx.rest.find((arg) => /^#?[1-9][0-9]*$/.test(arg))?.replace(/^#/, '')
-      );
       const response = await json('gh', [
         'api',
         `repos/${ctx.cfg.repo}/issues/${issueNumber}/comments`,
@@ -635,7 +647,7 @@ export async function verbDeliveryAttributionException(ctx) {
       issueNumber: parsed.issueNumber,
       repository: ctx.cfg.repo,
       request,
-      runtime: createDeliveryAttributionExceptionRuntime(ctx),
+      runtime: createDeliveryAttributionExceptionRuntime(ctx, { issueNumber: parsed.issueNumber }),
     });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (['blocked', 'missing'].includes(result.status) && parsed.action !== 'show')
