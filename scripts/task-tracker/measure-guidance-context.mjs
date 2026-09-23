@@ -1,4 +1,7 @@
 // @story #1769
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { getEncoding } from 'js-tiktoken';
 import { GUIDANCE_CONTEXT_BUDGETS } from './lib/context-budgets.mjs';
 
 const CATEGORIES = new Set([
@@ -10,6 +13,131 @@ const CATEGORIES = new Set([
   'explicit-diagnostics',
   'repeat-metadata',
 ]);
+
+function sha256(bytes) {
+  return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+export function calibrateTokens(streams = []) {
+  if (!Array.isArray(streams)) throw new TypeError('context: calibration streams must be an array');
+  const lock = JSON.parse(
+    readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8')
+  );
+  const version = lock.packages?.['node_modules/js-tiktoken']?.version;
+  if (version !== '1.0.21') throw new Error('context: tokenizer lock version drift');
+  const encoding = getEncoding('o200k_base');
+  return {
+    tokenizer: {
+      package: 'js-tiktoken',
+      version,
+      encoding: 'o200k_base',
+      scope: 'illustrative OpenAI BPE calibration, not universal provider billing',
+    },
+    streams: streams.map(({ id, text }) => {
+      if (typeof id !== 'string' || !id || typeof text !== 'string') {
+        throw new TypeError('context: invalid calibration stream');
+      }
+      const actualTokens = encoding.encode(text).length;
+      const proxyTokens = Math.ceil(text.length / 4);
+      return {
+        id,
+        characters: text.length,
+        bytes: Buffer.byteLength(text),
+        actualTokens,
+        proxyTokens,
+        ratio: proxyTokens ? actualTokens / proxyTokens : null,
+      };
+    }),
+  };
+}
+
+export function buildTokenCalibration({ captureBytes } = {}) {
+  if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  const capture = JSON.parse(captureBytes.toString('utf8'));
+  if (
+    capture.schema !== 'aitm.guidance-lifecycle-capture/v1' ||
+    capture.captureKind !== 'actual-public-cli-with-deterministic-authority' ||
+    !Array.isArray(capture.events)
+  ) {
+    throw new TypeError('context: invalid public CLI capture');
+  }
+  const eventText = (event) => {
+    if (
+      !Array.isArray(event.argv) ||
+      typeof event.stdout !== 'string' ||
+      typeof event.stderr !== 'string'
+    ) {
+      throw new TypeError(`context: invalid captured stream ${event.name}`);
+    }
+    return `${event.argv.join(' ')}\n${event.stdin ?? ''}${event.stdout}${event.stderr}`;
+  };
+  const required = [
+    ['clean', 'ready-first-load'],
+    ['blocked', 'blocked-migration-freeze'],
+    ['repeated', 'matching-receipt'],
+    ['diagnostic', 'diagnostic'],
+  ];
+  const streams = required.map(([id, name]) => {
+    const matches = capture.events.filter((event) => event.name === name && event.kind === 'query');
+    if (matches.length !== 1)
+      throw new Error(`context: required event ${name} is missing or duplicated`);
+    return { id, text: eventText(matches[0]) };
+  });
+  const visible = capture.events.filter((event) => event.kind !== 'transition');
+  streams.push({ id: 'full-lifecycle', text: visible.map(eventText).join('') });
+  return {
+    schema: 'aitm.guidance-tokenizer-calibration/v1',
+    source: {
+      captureKind: capture.captureKind,
+      sha256: sha256(captureBytes),
+      sourceCommit: capture.identity?.sourceCommit ?? null,
+      scenarioManifestSha256: capture.identity?.scenarioManifestSha256 ?? null,
+    },
+    calibration: calibrateTokens(streams),
+  };
+}
+
+export function validatePairedWorkload({
+  baseline,
+  candidate,
+  scenarioBytes,
+  authorityBytes,
+} = {}) {
+  if (!baseline || !candidate) throw new TypeError('context: two workloads are required');
+  if (
+    !Buffer.isBuffer(scenarioBytes) ||
+    !baseline.scenarioDigest ||
+    baseline.scenarioDigest !== sha256(scenarioBytes) ||
+    baseline.scenarioDigest !== candidate.scenarioDigest
+  ) {
+    throw new Error('context: scenario digest mismatch');
+  }
+  if (
+    !Buffer.isBuffer(authorityBytes) ||
+    !baseline.authorityFixtureDigest ||
+    baseline.authorityFixtureDigest !== sha256(authorityBytes) ||
+    baseline.authorityFixtureDigest !== candidate.authorityFixtureDigest
+  ) {
+    throw new Error('context: authority fixture digest mismatch');
+  }
+  if (!Array.isArray(baseline.entries) || !Array.isArray(candidate.entries)) {
+    throw new TypeError('context: ordered scenario entries are required');
+  }
+  const scenarioKeys = (entries) =>
+    entries.map(({ scenarioId, action, outcome }) => [scenarioId, action, outcome]);
+  if (
+    baseline.entries.length === 0 ||
+    JSON.stringify(scenarioKeys(baseline.entries)) !==
+      JSON.stringify(scenarioKeys(candidate.entries))
+  ) {
+    throw new Error('context: scenario order or outcome mismatch');
+  }
+  return {
+    scenarioDigest: baseline.scenarioDigest,
+    authorityFixtureDigest: baseline.authorityFixtureDigest,
+    scenarioCount: baseline.entries.length,
+  };
+}
 
 function measure(text) {
   return { characters: text.length, bytes: Buffer.byteLength(text, 'utf8') };
