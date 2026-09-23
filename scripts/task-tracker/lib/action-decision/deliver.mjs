@@ -52,11 +52,18 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
     const projection = projectDeliveryRecords(
       comments
         .map((comment) =>
-          parseDeliveryCommentForPullRequest(comment, {
-            repository: preflightInput.config.repo,
-            issueNumber: issue,
-            prNumber: selected.number,
-          })
+          parseDeliveryCommentForPullRequest(
+            {
+              id: comment.id,
+              body: comment.body,
+              createdAt: comment.createdAt,
+            },
+            {
+              repository: preflightInput.config.repo,
+              issueNumber: issue,
+              prNumber: selected.number,
+            }
+          )
         )
         .filter(Boolean)
     );

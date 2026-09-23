@@ -1366,16 +1366,29 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       prNumber: selectedPullRequest.number,
       expectedHeadSha: authority.acceptedSha,
     });
-    const freshCommitSubjects = mergedPullRequest
-      ? await mergedSourceCommitSubjects(
-          freshAcceptedAuthority.pullRequest,
-          deps.inspectSourceCommit
-        )
-      : await openSourceCommitSubjects(
-          await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
-          freshAcceptedAuthority.pullRequest,
-          deps.inspectSourceCommit
-        );
+    const freshProjection = await readProjection({ deps, issueNumber, context });
+    const freshException = preflight.exceptionDisposition
+      ? await resolveOpenAttributionException({
+          comments: freshProjection.comments,
+          now: now(),
+          deps,
+        })
+      : null;
+    const freshInventory = freshException
+      ? await classifiedOpenInventory(freshAcceptedAuthority.pullRequest, deps, freshLocalHeadSha)
+      : null;
+    const freshCommitSubjects = freshInventory
+      ? freshInventory.attributableSubjects
+      : mergedPullRequest
+        ? await mergedSourceCommitSubjects(
+            freshAcceptedAuthority.pullRequest,
+            deps.inspectSourceCommit
+          )
+        : await openSourceCommitSubjects(
+            await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+            freshAcceptedAuthority.pullRequest,
+            deps.inspectSourceCommit
+          );
     const freshInput = {
       ...preflightInput,
       issue: {
@@ -1399,6 +1412,9 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         mergedPullRequest && live?.record.schema === 'aitm.delivery-intent/v2'
           ? live.record.attributionTokens.map((token) => `[${token}] Authorized pending waiver`)
           : freshCommitSubjects,
+      ...(preflight.exceptionDisposition
+        ? { sourceInventory: freshInventory, attributionException: freshException }
+        : {}),
       checks: freshChecks,
     };
     const freshPreflight = mergedPullRequest
@@ -1416,7 +1432,6 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     ) {
       throw new TypeError('delivery-preflight:authority-drift');
     }
-    const freshProjection = await readProjection({ deps, issueNumber, context });
     const projectionMatches = expectedLiveIntent
       ? freshProjection.projection.liveIntent !== null &&
         canonicalRecordJson(freshProjection.projection.liveIntent) ===
@@ -1647,9 +1662,8 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     context,
     intent,
   });
-  await assertFreshDeliveryAuthority({ expectedLiveIntent: readbackIntent });
-
   await revalidateBeforeProviderAction(readbackIntent.record);
+  await assertFreshDeliveryAuthority({ expectedLiveIntent: readbackIntent });
 
   return {
     status: 'action-required',

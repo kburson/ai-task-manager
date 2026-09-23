@@ -139,7 +139,8 @@ test('Codex-authorized scoped waiver emits v2 intent after late source revalidat
   assert.equal(result.intent.operationId, ids.operationId);
   assert.equal(result.intent.sourceDigest, canonicalSourceInventory(source, HEAD).sourceDigest);
   assert.deepEqual(result.intent.attributionTokens, ['#939']);
-  assert.equal(f.h.calls.fetchPullRequest, 2);
+  // Initial admission, both intent-write boundaries, and final provider action.
+  assert.equal(f.h.calls.fetchPullRequest, 4);
 });
 
 test('delivery refuses a server-edited grant before writing an intent', async (t) => {
@@ -196,7 +197,8 @@ test('unchanged pending waived intent resumes the same operation without a new c
   assert.equal(second.intent.intentId, first.intent.intentId);
   assert.equal(second.intent.operationId, ids.operationId);
   assert.equal(f.h.calls.createIssueComment, 1);
-  assert.equal(f.h.calls.fetchPullRequest, 4);
+  // The resumed operation refreshes authority at its own effect boundary.
+  assert.equal(f.h.calls.fetchPullRequest, 7);
 });
 
 for (const [name, mutate] of [

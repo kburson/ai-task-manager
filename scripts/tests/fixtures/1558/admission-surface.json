@@ -218,6 +218,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "delivery-attribution-exception",
+      "canonical": "delivery-attribution-exception",
+      "route": "verbs/delivery-attribution-exception.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "demote",
       "canonical": "demote",
       "route": "verbs/demote.mjs",
