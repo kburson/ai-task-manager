@@ -9,12 +9,23 @@ import {
   measureAgentVisible,
   validatePairedWorkload,
 } from '../../task-tracker/measure-guidance-context.mjs';
+import { GUIDANCE_CONTEXT_BUDGETS } from '../../task-tracker/lib/context-budgets.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const FIXTURES = 'scripts/tests/fixtures/1558';
 const digest = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 const read = (relative) => readFileSync(path.join(ROOT, relative));
-const json = (relative) => JSON.parse(read(relative));
+
+function verdict(value, { absolute, working }) {
+  return {
+    proxyTokens: value,
+    absolute,
+    working,
+    absolutePass: value <= absolute,
+    workingPass: value <= working,
+    workingHeadroomPercent: Number((((working - value) / working) * 100).toFixed(2)),
+  };
+}
 
 function actionOf(event) {
   const index = event.argv?.indexOf('--action');
@@ -197,6 +208,19 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
   ) {
     throw new Error('paired context: current capture accounting drift');
   }
+  const responseTokens = (name) => {
+    const event = capture.events.find((entry) => entry.name === name);
+    return Math.ceil((event.stdout.length + event.stderr.length) / 4);
+  };
+  const currentBudgetVerdicts = {
+    routerPlusPickup: verdict(
+      current.staticFiles.reduce((sum, file) => sum + file.proxyTokens, 0),
+      GUIDANCE_CONTEXT_BUDGETS.routerPlusPickup
+    ),
+    clean: verdict(responseTokens('ready-first-load'), GUIDANCE_CONTEXT_BUDGETS.clean),
+    blocked: verdict(responseTokens('blocked-migration-freeze'), GUIDANCE_CONTEXT_BUDGETS.blocked),
+    fullLifecycle: verdict(current.proxyTokens, GUIDANCE_CONTEXT_BUDGETS.fullLifecycle),
+  };
   return {
     schema: 'aitm.guidance-paired-context/v1',
     adapter,
@@ -238,6 +262,7 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
       compaction: { expandedRequiredEntries: true },
       ...current,
     },
+    currentBudgetVerdicts,
     deltaProxyTokens: current.proxyTokens - legacy.proxyTokens,
     guaranteedReductionFromLegacyStaticAlone:
       current.proxyTokens < legacy.staticFiles.reduce((sum, file) => sum + file.proxyTokens, 0),

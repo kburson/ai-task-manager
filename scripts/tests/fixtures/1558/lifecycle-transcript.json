@@ -729,6 +729,40 @@
           }
         }
       },
+      "currentBudgetVerdicts": {
+        "routerPlusPickup": {
+          "proxyTokens": 1448,
+          "absolute": 5000,
+          "working": 4000,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 63.8
+        },
+        "clean": {
+          "proxyTokens": 124,
+          "absolute": 300,
+          "working": 240,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 48.33
+        },
+        "blocked": {
+          "proxyTokens": 159,
+          "absolute": 500,
+          "working": 400,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 60.25
+        },
+        "fullLifecycle": {
+          "proxyTokens": 5075,
+          "absolute": 7000,
+          "working": 5600,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 9.38
+        }
+      },
       "deltaProxyTokens": -49463,
       "guaranteedReductionFromLegacyStaticAlone": true
     },
@@ -1457,6 +1491,40 @@
             "absolute": 7000,
             "working": 5600
           }
+        }
+      },
+      "currentBudgetVerdicts": {
+        "routerPlusPickup": {
+          "proxyTokens": 1452,
+          "absolute": 5000,
+          "working": 4000,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 63.7
+        },
+        "clean": {
+          "proxyTokens": 124,
+          "absolute": 300,
+          "working": 240,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 48.33
+        },
+        "blocked": {
+          "proxyTokens": 159,
+          "absolute": 500,
+          "working": 400,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 60.25
+        },
+        "fullLifecycle": {
+          "proxyTokens": 5079,
+          "absolute": 7000,
+          "working": 5600,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 9.3
         }
       },
       "deltaProxyTokens": -49201,

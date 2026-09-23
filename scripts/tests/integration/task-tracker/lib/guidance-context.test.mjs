@@ -13,9 +13,19 @@ import {
   validatePairedWorkload,
 } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
+import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-budgets.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../../..');
 const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+
+test('pins all eight immutable #1558 context limits', () => {
+  assert.deepEqual(GUIDANCE_CONTEXT_BUDGETS, {
+    routerPlusPickup: { absolute: 5000, working: 4000 },
+    clean: { absolute: 300, working: 240 },
+    blocked: { absolute: 500, working: 400 },
+    fullLifecycle: { absolute: 7000, working: 5600 },
+  });
+});
 
 test('projects the same complete ordered lifecycle for both adapters without replacing frozen evidence', () => {
   const captureBytes = readFileSync(
@@ -46,6 +56,9 @@ test('projects the same complete ordered lifecycle for both adapters without rep
     assert.equal(report.current.uncountedAgentVisibleBytes, 0);
     assert.equal(report.legacy.uncountedAgentVisibleBytes, 0);
     assert.equal(report.guaranteedReductionFromLegacyStaticAlone, true);
+    assert.equal(report.currentBudgetVerdicts.fullLifecycle.workingPass, true);
+    assert.equal(report.currentBudgetVerdicts.clean.workingPass, true);
+    assert.equal(report.currentBudgetVerdicts.blocked.workingPass, true);
     assert.match(report.legacy.captureKind, /^modeled-/);
     assert.match(report.current.captureKind, /modeled-proposed-static/);
   }
