@@ -68,7 +68,7 @@ Run: `node scripts/task-tracker/measure-context.mjs --all --adapter claude`
 
 #### Story Intent
 
-- **Beneficiary:** operator using Codex or Claude during governed AITM delivery
+- **Beneficiary:** delivery operator using Codex or Claude during governed AITM work
 - **Capability:** load the safety boundary once and fetch detailed lifecycle guidance when a decision arises
 - **Need:** repeated state-walk prose occupies context on every pickup even when its details are unused
 - **Value or failure prevented:** both adapters retain the same safeguards while leaving room for the complete lifecycle traffic
