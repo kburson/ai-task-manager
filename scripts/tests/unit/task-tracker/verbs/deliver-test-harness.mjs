@@ -257,6 +257,7 @@ export function makeHarness(options = {}) {
       data.comments.push({
         id: `comment-${data.comments.length + 1}`,
         createdAt: kind === 'receipt' ? RECEIPT_SERVER_NOW : SERVER_NOW,
+        updatedAt: kind === 'receipt' ? RECEIPT_SERVER_NOW : SERVER_NOW,
         body,
       });
       if (

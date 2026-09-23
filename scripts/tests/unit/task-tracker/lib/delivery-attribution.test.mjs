@@ -4,6 +4,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
+  buildCommitTextFromTokens,
   buildDeliveryCommitText,
   MAX_DELIVERY_COMMIT_MESSAGE_BYTES,
 } from '../../../../task-tracker/lib/delivery-attribution.mjs';
@@ -58,6 +59,39 @@ test('deduplicates tokens across subjects and sorts the durable token set', () =
   assert.deepEqual(result.attributionTokens, ['#10', '#2', '#3']);
   assert.equal(result.commitTitle, '[#2] Governed PR delivery');
   assert.match(result.commitMessage, /Attribution: \[#2\] \[#10\] \[#3\]$/);
+});
+
+test('the shared token builder preserves ordinary bytes and refuses invalid direct inputs', () => {
+  const source = input();
+  const ordinary = buildDeliveryCommitText(source);
+  assert.deepEqual(
+    buildCommitTextFromTokens(
+      { issueNumber: source.issueNumber, prNumber: source.prNumber, expectedHeadSha },
+      ordinary.attributionTokens
+    ),
+    ordinary
+  );
+  assert.throws(
+    () =>
+      buildCommitTextFromTokens({ issueNumber: 939, prNumber: 1400, expectedHeadSha }, ['#1274']),
+    /missing-top-level-token/
+  );
+  assert.throws(
+    () =>
+      buildCommitTextFromTokens({ issueNumber: 939, prNumber: 1400, expectedHeadSha }, [
+        '#939',
+        '#939',
+      ]),
+    /attribution-tokens/
+  );
+  assert.throws(
+    () =>
+      buildCommitTextFromTokens(
+        { issueNumber: 939, prNumber: 1400, expectedHeadSha, commitSubjects: [] },
+        ['#939']
+      ),
+    /input-keys/
+  );
 });
 
 test('rejects malformed input, missing source subjects, and missing top-level attribution', () => {

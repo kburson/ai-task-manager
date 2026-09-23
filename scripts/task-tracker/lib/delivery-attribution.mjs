@@ -70,6 +70,10 @@ function tokensFromSubject(subject) {
   return subjectTokens;
 }
 
+export function parseDeliverySubjectTokens(subject) {
+  return tokensFromSubject(subject);
+}
+
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
@@ -92,8 +96,24 @@ function validateInput(input) {
   }
 }
 
-function buildCommitTextFromTokens(input, attributionTokens) {
+export function buildCommitTextFromTokens(input, attributionTokens) {
+  if (!hasExactlyKeys(input, ['issueNumber', 'prNumber', 'expectedHeadSha'])) {
+    throw attributionError('input-keys');
+  }
+  assertPositiveInteger(input.issueNumber, 'issue-number');
+  assertPositiveInteger(input.prNumber, 'pr-number');
+  if (typeof input.expectedHeadSha !== 'string' || !SHA_RE.test(input.expectedHeadSha)) {
+    throw attributionError('expected-head-sha');
+  }
+  if (
+    !Array.isArray(attributionTokens) ||
+    attributionTokens.length === 0 ||
+    attributionTokens.some((token) => typeof token !== 'string' || !TOKEN_CONTENT_RE.test(token)) ||
+    new Set(attributionTokens).size !== attributionTokens.length
+  )
+    throw attributionError('attribution-tokens');
   const topLevelToken = `#${input.issueNumber}`;
+  if (!attributionTokens.includes(topLevelToken)) throw attributionError('missing-top-level-token');
   const messageTokens = [
     topLevelToken,
     ...attributionTokens.filter((token) => token !== topLevelToken),
@@ -109,13 +129,13 @@ function buildCommitTextFromTokens(input, attributionTokens) {
     throw attributionError('commit-message-too-large');
   }
 
-  return {
+  return deepFreeze({
     attributionTokens,
     commitTitle,
     commitMessage,
     commitTitleSha256: sha256(commitTitle),
     commitMessageSha256: sha256(commitMessage),
-  };
+  });
 }
 
 export function buildDeliveryCommitText(input = {}) {
@@ -127,7 +147,14 @@ export function buildDeliveryCommitText(input = {}) {
   const topLevelToken = `#${input.issueNumber}`;
   if (!tokenSet.has(topLevelToken)) throw attributionError('missing-top-level-token');
   const attributionTokens = [...tokenSet].sort();
-  return deepFreeze(buildCommitTextFromTokens(input, attributionTokens));
+  return buildCommitTextFromTokens(
+    {
+      issueNumber: input.issueNumber,
+      prNumber: input.prNumber,
+      expectedHeadSha: input.expectedHeadSha,
+    },
+    attributionTokens
+  );
 }
 
 export function buildExternalRecoveryCommitText(input = {}) {
@@ -141,7 +168,14 @@ export function buildExternalRecoveryCommitText(input = {}) {
     });
     if (!whollyUnattributed) throw canonicalError;
     return deepFreeze({
-      ...buildCommitTextFromTokens(input, [`#${input.issueNumber}`]),
+      ...buildCommitTextFromTokens(
+        {
+          issueNumber: input.issueNumber,
+          prNumber: input.prNumber,
+          expectedHeadSha: input.expectedHeadSha,
+        },
+        [`#${input.issueNumber}`]
+      ),
       metadataWarnings: ['missing-source-attribution'],
     });
   }

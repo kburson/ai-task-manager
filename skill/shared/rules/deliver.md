@@ -9,6 +9,17 @@ Use this rule only for `/task deliver #N`. Delivery stays in Review and is a
 re-entrant transaction: AITM authorizes exact bytes, the host performs at most
 one declared external action, and AITM independently verifies the live result.
 
+Ordinary open-PR delivery requires canonical `[#N]` source attribution. A
+scoped delivery attribution exception is available only when the live,
+complete open-PR inventory contains otherwise unattributed source commits.
+It is a separate command and authority path; `workflow-preflight` does not
+report it. Follow the [operator guide](../../../docs/guides/workflow.md#scoped-delivery-attribution-exception)
+for its two-pass preparation and exact Codex user statement. Preparation
+grants no authority. `record`, `revise`, and `revoke` require a fresh,
+transcript-verified user message on a supported Codex host; an unsupported
+host refuses with `authorization-host-unsupported`. `show` is read-only.
+If the live inventory is fully attributed, use ordinary delivery.
+
 ## Host contract
 
 For an enrolled v2 issue, delivery enters through the common protected-marker selector and installed pinned runtime. The designated authority host and complete resident-entry capability inventory must validate before intent or provider action. Legacy issues without the marker keep the v1 delivery path.
@@ -78,6 +89,11 @@ For an enrolled v2 issue, delivery enters through the common protected-marker se
    and `origin/trunk`. Never retry the external mutation before that rerun.
 8. Run `npx aitm close #N` only after the rerun reports a live-verified delivery receipt.
    A pending intent or provider success response is not a receipt.
+
+For an authorized scoped exception, a pending v2 intent binds one operation
+and exact source inventory. A retry can reuse it only while that scope and
+operation remain unchanged. The final v3 receipt visibly labels attribution
+`waived` and cites the exception; do not describe it as an ordinary pass.
 
 After the required reconciliation, a normal non-20 result with no action line
 governs the next workflow step. Never manufacture an action from human-readable

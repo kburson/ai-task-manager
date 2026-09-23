@@ -534,6 +534,16 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints matching human or aitm.workflow-exception-result/v1 JSON output.'],
     [exit(6, 'one or more explicit issue operations were blocked or indeterminate')]
   ),
+  'delivery-attribution-exception': contract(
+    [
+      'One explicit issue is required. Prepare requires a supported Codex session; record, revise, and revoke require a filled request and transcript-verified user message. Unsupported hosts receive authorization-host-unsupported.',
+    ],
+    [
+      'Prepare and show are read-only; preparation grants no authority. Mutations append an immutable, scoped record only after live inventory and exact authority checks, then require exact readback.',
+    ],
+    ['Prints the template, canonical authorization statement, or recorded chain status.'],
+    [exit(6, 'authorization, scope, record chain, or readback was blocked')]
+  ),
   'workflow-preflight': contract(
     ['One explicit issue and one explicit supported target state are required.'],
     [
@@ -720,6 +730,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'issue-body': Object.freeze(['comment', 'evidence-markers']),
   comment: Object.freeze(['issue-body', 'commit-trace']),
   'workflow-exception': Object.freeze(['comment', 'evidence', 'status']),
+  'delivery-attribution-exception': Object.freeze(['deliver', 'workflow-exception', 'status']),
   'workflow-preflight': Object.freeze(['workflow-exception', 'status', 'evidence']),
   'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
@@ -861,6 +872,10 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   'workflow-exception': Object.freeze([
     positional('<record|show|revise|revoke>', 'Exception lifecycle operation.'),
     positional('#N [#M ...]', 'One or more explicit issue numbers.'),
+  ]),
+  'delivery-attribution-exception': Object.freeze([
+    positional('<prepare|record|show|revise|revoke>', 'Delivery attribution exception operation.'),
+    positional('#N', 'One explicit issue number.'),
   ]),
   'workflow-preflight': Object.freeze([positional('#N', 'One explicit issue number.')]),
   'adopt-github-records': Object.freeze([

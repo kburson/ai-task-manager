@@ -1,11 +1,13 @@
-// @story #939
+// @story #939 #1755
 // cspell:ignore NDEKTSV RRFFQ
 import { createHash } from 'node:crypto';
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import { canonicalRecordJson } from '../../../../task-tracker/lib/github-records/canonical-json.mjs';
+import { buildDeliveryAttributionProposal } from '../../../../task-tracker/lib/delivery-attribution-exception-record.mjs';
 import {
+  authorizedIntentBytes,
   buildDeliveryIntent,
   buildDeliveryReceipt,
   MAX_DELIVERY_REPOSITORY_BYTES,
@@ -15,6 +17,58 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
+
+const waivedFields = {
+  attributionDisposition: 'waived',
+  exceptionRecordId: '01M2H000000000000000000003',
+  operationId: '01M2H000000000000000000002',
+  sourceDigest: `sha256:${'a'.repeat(64)}`,
+  proposalDigest: `sha256:${'b'.repeat(64)}`,
+  mappings: [{ oid: '1'.repeat(40), messageHeadline: 'legacy commit', issueNumber: 939 }],
+};
+
+test('waived v2 intent has exact scope and cannot project as an ordinary v1 intent', () => {
+  const ordinary = buildDeliveryIntent(intentInput());
+  const waived = buildDeliveryIntent(intentInput(waivedFields));
+  assert.equal(waived.schema, 'aitm.delivery-intent/v2');
+  assert.deepEqual(waived.mappings, waivedFields.mappings);
+  assert.notEqual(authorizedIntentBytes(ordinary), authorizedIntentBytes(waived));
+  assert.equal(
+    authorizedIntentBytes(waived),
+    authorizedIntentBytes(buildDeliveryIntent(intentInput(waivedFields)))
+  );
+  for (const change of [
+    { operationId: '01M2H000000000000000000004' },
+    { sourceDigest: `sha256:${'c'.repeat(64)}` },
+    { proposalDigest: `sha256:${'d'.repeat(64)}` },
+    { exceptionRecordId: '01M2H000000000000000000005' },
+    { mappings: [{ ...waivedFields.mappings[0], issueNumber: 940 }] },
+  ]) {
+    const altered = buildDeliveryIntent(intentInput({ ...waivedFields, ...change }));
+    assert.notEqual(authorizedIntentBytes(waived), authorizedIntentBytes(altered));
+  }
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ ...waivedFields, extra: true })),
+    /intent-input-keys/
+  );
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ ...waivedFields, provider: 'external' })),
+    /waived-provider/
+  );
+});
+
+test('a second intent ID cannot consume the same waiver operation', () => {
+  const first = parsedIntent(waivedFields, { id: 'IC_waiver_first' });
+  const second = parsedIntent(
+    {
+      ...waivedFields,
+      intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+      supersedesIntentId: first.record.intentId,
+    },
+    { id: 'IC_waiver_second', createdAt: '2026-08-22T00:02:00.000Z' }
+  );
+  assert.throws(() => projectDeliveryRecords([first, second]), /delivery-records:operation-reuse/);
+});
 
 const repository = 'kburson/ai-task-manager';
 const issueNumber = 939;
@@ -60,6 +114,78 @@ function receiptInput(overrides = {}) {
     ...overrides,
   };
 }
+
+function exceptionRecord() {
+  const built = buildDeliveryAttributionProposal({
+    exceptionId: '01M2H000000000000000000003',
+    operationId: waivedFields.operationId,
+    repository,
+    issueNumber,
+    prNumber,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    headSha: expectedHeadSha,
+    sourceDigest: waivedFields.sourceDigest,
+    mappings: waivedFields.mappings,
+    attributionTokens: ['#939'],
+    expiresAt: '2026-08-23T00:00:00.000Z',
+  });
+  return {
+    schema: 'aitm.delivery-attribution-exception/v1',
+    kind: 'grant',
+    recordId: waivedFields.exceptionRecordId,
+    predecessorId: null,
+    proposal: built.proposal,
+    proposalDigest: built.proposalDigest,
+    authority: {
+      sourceReference: 'codex-session/v1:turn-10',
+      statement: 'Authorize exact mapping',
+      actor: 'kpburson',
+      level: 'host-verified-user-message',
+    },
+    createdAt: '2026-08-22T00:00:00.000Z',
+  };
+}
+
+test('waived v3 receipt selection is explicit and preserves immutable provenance', () => {
+  const record = exceptionRecord();
+  const base = receiptInput({
+    attributionDisposition: 'waived',
+    exceptionRecordId: record.recordId,
+    exceptionRecord: record,
+  });
+  const receipt = buildDeliveryReceipt(base);
+  assert.equal(receipt.schema, 'aitm.delivery-receipt/v3');
+  assert.equal(receipt.exceptionRecord.authority.actor, 'kpburson');
+  assertDeepFrozen(receipt);
+  const body = renderDeliveryReceiptComment(receipt);
+  assert.match(body, /waived/i);
+  assert.match(body, /codex-session\/v1:turn-10/);
+  assert.match(body, /kpburson/);
+  assert.match(body, /legacy commit/);
+  assert.match(body, /01ARZ3NDEKTSV4RRFFQ69G5FAV/);
+  const parsed = parseDeliveryComment(
+    { id: 'IC_v3', body, createdAt: '2026-08-22T00:06:00.000Z' },
+    context
+  );
+  assert.deepEqual(parsed.record, receipt);
+  const warned = buildDeliveryReceipt({
+    ...base,
+    metadataWarnings: ['missing-merge-attribution-trailer'],
+  });
+  assert.equal(warned.schema, 'aitm.delivery-receipt/v3');
+  assert.deepEqual(warned.metadataWarnings, ['missing-merge-attribution-trailer']);
+  for (const bad of [
+    { ...base, attributionDisposition: 'accepted' },
+    { ...base, exceptionRecord: { ...record, recordId: waivedFields.operationId } },
+    { ...base, extra: true },
+    { ...base, metadataWarnings: ['missing-source-attribution'] },
+    { ...base, metadataWarnings: ['unknown-warning'] },
+    { ...base, metadataWarnings: [] },
+  ])
+    assert.throws(() => buildDeliveryReceipt(bad));
+  assert.throws(() => buildDeliveryReceipt({ ...base, exceptionRecord: undefined }));
+});
 
 function parsedIntent(overrides = {}, comment = {}) {
   const intent = buildDeliveryIntent(intentInput(overrides));

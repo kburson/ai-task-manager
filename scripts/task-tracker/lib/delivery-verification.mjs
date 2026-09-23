@@ -6,6 +6,15 @@ import { verifyDelivery } from './evidence-v2/delivery.mjs';
 
 import { validateProviderAction } from './delivery-provider-action.mjs';
 import { buildDeliveryIntent } from './delivery-records.mjs';
+import {
+  canonicalSourceInventory,
+  evaluateDeliveryAttributionException,
+} from './delivery-attribution-exception.mjs';
+import {
+  buildDeliveryAttributionProposal,
+  renderDeliveryAttributionExceptionComment,
+} from './delivery-attribution-exception-record.mjs';
+import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { ISSUE_ID_GLOBAL_RE, ISSUE_PREFIX_RE } from './commit-attribution-format.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -29,6 +38,7 @@ const VERIFICATION_INPUT_KEYS = [
 const EXTERNAL_VERIFICATION_INPUT_KEYS = VERIFICATION_INPUT_KEYS.filter(
   (key) => !['intent', 'intentCreatedAt', 'recovery'].includes(key)
 ).concat('intentInput');
+const WAIVED_VERIFICATION_INPUT_KEYS = [...VERIFICATION_INPUT_KEYS, 'waivedEvidence'];
 const EXTERNAL_INTENT_INPUT_KEYS = [
   'attributionTokens',
   'baseRef',
@@ -450,6 +460,24 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   ];
   const expectedLine = `Attribution: ${messageTokens.map((token) => `[${token}]`).join(' ')}`;
   const lines = inspection.commitMessage.split('\n');
+  if (options.waived === true) {
+    const allowed = new Set(intent.attributionTokens);
+    const observed = [
+      ...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE),
+    ].map((match) => `#${match[1]}`);
+    const claims = lines.filter((line) => line.trimStart().startsWith('Attribution:'));
+    if (
+      observed.some((token) => !allowed.has(token)) ||
+      (claims.length > 0 && (claims.length !== 1 || lines.at(-1) !== expectedLine))
+    ) {
+      throw verificationError('attribution', undefined, {
+        predicate: 'merge-message-attribution-conflict',
+        recoveryAction:
+          'use a governed non-delivery disposition or create a new corrective delivery; immutable conflicting bytes cannot be warning-recovered',
+      });
+    }
+    return claims.length === 1 ? [] : ['missing-merge-attribution-trailer'];
+  }
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
   if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return [];
   if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) {
@@ -490,6 +518,53 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   });
 }
 
+function verifyWaivedEvidence(intent, evidence) {
+  if (!hasExactKeys(evidence, ['sourceInventory', 'exceptionRecord'])) {
+    throw verificationError('waived-evidence');
+  }
+  const { sourceInventory, exceptionRecord } = evidence;
+  if (!hasExactKeys(sourceInventory, ['commits', 'attributableCommits', 'verifiedMergeShas'])) {
+    throw verificationError('waived-inventory');
+  }
+  try {
+    renderDeliveryAttributionExceptionComment(exceptionRecord);
+    const proposal = exceptionRecord.proposal;
+    const inventory = canonicalSourceInventory(sourceInventory.commits, intent.expectedHeadSha);
+    const evaluated = evaluateDeliveryAttributionException({
+      issueNumber: intent.issueNumber,
+      prNumber: intent.prNumber,
+      expectedHeadSha: intent.expectedHeadSha,
+      ...sourceInventory,
+      mappings: proposal.mappings,
+    });
+    if (
+      exceptionRecord.kind === 'revocation' ||
+      exceptionRecord.recordId !== intent.exceptionRecordId ||
+      exceptionRecord.proposalDigest !== intent.proposalDigest ||
+      buildDeliveryAttributionProposal(proposal).proposalDigest !== intent.proposalDigest ||
+      proposal.operationId !== intent.operationId ||
+      proposal.repository !== intent.repository ||
+      proposal.issueNumber !== intent.issueNumber ||
+      proposal.prNumber !== intent.prNumber ||
+      proposal.baseRef !== intent.baseRef ||
+      proposal.headRef !== intent.headRef ||
+      proposal.headSha !== intent.expectedHeadSha ||
+      proposal.sourceDigest !== intent.sourceDigest ||
+      inventory.sourceDigest !== intent.sourceDigest ||
+      canonicalRecordJson(proposal.mappings) !== canonicalRecordJson(intent.mappings) ||
+      canonicalRecordJson(proposal.attributionTokens) !==
+        canonicalRecordJson(intent.attributionTokens) ||
+      canonicalRecordJson(evaluated.attributionTokens) !==
+        canonicalRecordJson(intent.attributionTokens)
+    )
+      throw verificationError('waived-authority');
+    return exceptionRecord;
+  } catch (error) {
+    if (error instanceof DeliveryVerificationError) throw error;
+    throw verificationError('waived-authority', error);
+  }
+}
+
 function assertVerificationFunctions(input) {
   if (
     typeof input.fetchOriginTrunk !== 'function' ||
@@ -502,6 +577,8 @@ function assertVerificationFunctions(input) {
 }
 
 async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
+  const waived = intent.schema === 'aitm.delivery-intent/v2';
+  const exceptionRecord = waived ? verifyWaivedEvidence(intent, input.waivedEvidence) : null;
   assertAuthorityShas(input, intent, recovery);
   const { pullRequest } = input;
   const merged = assertMergedPullRequest(pullRequest, intent);
@@ -588,7 +665,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
   if (
     requireAuthorizedBytes &&
     (inspection.commitTitle !== intent.commitTitle ||
-      inspection.commitMessage !== intent.commitMessage)
+      (!waived && inspection.commitMessage !== intent.commitMessage))
   ) {
     throw verificationError('merge-commit-bytes');
   }
@@ -607,6 +684,7 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
     {
       provenMultiSourceSquash,
       provenMerge: observedMergeMethod === 'merge',
+      waived,
     }
   );
 
@@ -628,6 +706,13 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
       provider: verifiedIntent.provider,
       sessionId: verifiedIntent.sessionId,
       verifiedAt: merged.mergedAt,
+      ...(waived
+        ? {
+            attributionDisposition: 'waived',
+            exceptionRecordId: exceptionRecord.recordId,
+            exceptionRecord: structuredClone(exceptionRecord),
+          }
+        : {}),
       ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
     },
     recovery,
@@ -636,7 +721,11 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
 }
 
 export async function verifyDeliveredPullRequest(input = {}) {
-  if (!hasExactKeys(input, VERIFICATION_INPUT_KEYS)) throw verificationError('input-keys');
+  const keys =
+    input.intent?.schema === 'aitm.delivery-intent/v2'
+      ? WAIVED_VERIFICATION_INPUT_KEYS
+      : VERIFICATION_INPUT_KEYS;
+  if (!hasExactKeys(input, keys)) throw verificationError('input-keys');
   assertVerificationFunctions(input);
   if (typeof input.recovery !== 'boolean') throw verificationError('input');
   return verifyLiveDelivery(input, input.intent, {

@@ -551,6 +551,7 @@ test('#1389 default comment adapter canonicalizes live GitHub second-precision t
           {
             id: 42,
             created_at: '2026-08-23T03:12:38Z',
+            updated_at: '2026-08-23T03:12:38Z',
             body: 'ordinary issue comment',
           },
         ],
@@ -572,6 +573,7 @@ test('#1389 default comment adapter canonicalizes live GitHub second-precision t
     {
       id: '42',
       createdAt: '2026-08-23T03:12:38.000Z',
+      updatedAt: '2026-08-23T03:12:38.000Z',
       body: 'ordinary issue comment',
     },
   ]);

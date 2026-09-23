@@ -234,6 +234,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const storyQualityRuleAllowance = 1;
   // #1720 ships the typed Plan-to-Develop transition-authority record.
   const planTransitionAuthorityAllowance = 1;
+  // #1756 ships the SHA-preserving delivery source inventory module.
+  const deliverySourceInventoryAllowance = 1;
+  // #1758 ships one exact delivery attribution authorization record module.
+  const deliveryAttributionRecordAllowance = 1;
+  // #1759 ships one operator-facing delivery attribution exception command.
+  const deliveryAttributionCommandAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -242,7 +248,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     storyBindingAllowance +
     storyQualityGuideAllowance +
     storyQualityRuleAllowance +
-    planTransitionAuthorityAllowance;
+    planTransitionAuthorityAllowance +
+    deliverySourceInventoryAllowance +
+    deliveryAttributionRecordAllowance +
+    deliveryAttributionCommandAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

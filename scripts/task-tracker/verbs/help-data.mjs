@@ -150,6 +150,33 @@ export const VERB_REFERENCE = {
       '/task workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json',
     ],
   },
+  'delivery-attribution-exception': {
+    topic: 'evidence',
+    summary: 'Prepare, record, show, revise, or revoke one open-PR delivery attribution exception.',
+    usage:
+      '/task delivery-attribution-exception <prepare|record|show|revise|revoke> #N [--input-file <request.json>] [--json]',
+    flags: [
+      {
+        flag: '--input-file <path>',
+        desc: 'filled request for second preparation or mutation; first prepare and show need no file',
+      },
+      { flag: '--json', desc: 'emit machine-readable result' },
+    ],
+    exitCodes: [
+      {
+        code: 6,
+        meaning: 'authorization-host-unsupported, authorization, scope, chain, or readback blocked',
+      },
+    ],
+    examples: [
+      '/task delivery-attribution-exception prepare #1759',
+      '/task delivery-attribution-exception prepare #1759 --input-file .scratch/gh/1759-delivery-exception.json',
+      '/task delivery-attribution-exception record #1759 --input-file .scratch/gh/1759-delivery-exception.json',
+      '/task delivery-attribution-exception show #1759',
+      '/task delivery-attribution-exception revise #1759 --input-file .scratch/gh/1759-delivery-revision.json',
+      '/task delivery-attribution-exception revoke #1759 --input-file .scratch/gh/1759-delivery-revocation.json',
+    ],
+  },
   'workflow-preflight': {
     topic: 'evidence',
     summary:
