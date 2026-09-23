@@ -29,28 +29,13 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { RUNTIME_REL } from './paths.mjs';
+import {
+  HISTORICAL_CONTEXT_BUDGETS as BUDGETS,
+  HISTORICAL_SCENARIO_BUDGETS as SCENARIO_BUDGETS,
+} from './lib/context-budgets.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dir, '..', '..');
-
-// Foundational budgets (Epic #114 — unchanged).
-const BUDGETS = { idle: 1500, invoked: 8000, active: 12000 };
-
-// Per-adapter, per-scenario budgets (#202).
-// Derived from measured values plus a ~20% headroom buffer, rounded to a clean 500-token
-// step. Headroom matches the policy adopted in #204 ("≥20% headroom under budget").
-const SCENARIO_BUDGETS = {
-  claude: {
-    bind: 12000, // alias for legacy --active
-    'bind+review+close': 13500, // measured 10774 + ~25% headroom (2726 tokens / 20.2%)
-    'parallel-orchestration': 14000, // measured 10889 + ~29% headroom (3111 tokens / 22.2%)
-  },
-  codex: {
-    bind: 12000,
-    'bind+review+close': 17000, // measured 13286 after #454 + ~21% headroom (3714 tokens / 21.8%)
-    'parallel-orchestration': 17500, // measured 13805 after #454 + ~21% headroom (3695 tokens / 21.1%)
-  },
-};
 
 const SHIM = 'skill/SKILL.md';
 const ADAPTERS = {
