@@ -1,0 +1,53 @@
+{
+  "schema": "aitm.guidance-current-paired-comparison/v1",
+  "classification": "pre-slim-current-paired-not-installed-release",
+  "historicalComparison": {
+    "path": "scripts/tests/fixtures/1558/context-comparison.json",
+    "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894",
+    "disposition": "immutable-early-candidate-characterization"
+  },
+  "sources": {
+    "lifecycle": {
+      "path": "scripts/tests/fixtures/1558/lifecycle-transcript.json",
+      "sha256": "sha256:5177ac13a2d3e4d85eb439e72e6dd30d87ec99a9690ebf83e6c1110e88b21d20"
+    },
+    "authority": {
+      "path": "scripts/tests/fixtures/1558/authority-after.json",
+      "sha256": "sha256:1023eedc15f9b8a249ae0e883911cb8f36fc78a8454bdf4430c5d10971e596d1"
+    },
+    "budgets": {
+      "path": "scripts/tests/fixtures/1558/context-budgets.json",
+      "sha256": "sha256:d11871e5cc551a17d9b3cd1c5fb6ecea7beaa91ab635868cfd92dceea9a94afa"
+    }
+  },
+  "adapters": {
+    "claude": {
+      "currentCaptureKind": "captured-public-cli-traffic-plus-modeled-proposed-static",
+      "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+      "currentProxyTokens": 5075,
+      "modeledLegacyProxyTokens": 54538,
+      "conservativeReductionFromLegacyStaticAlone": true,
+      "fullLifecycleWorkingPass": true,
+      "sourceCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4"
+    },
+    "codex": {
+      "currentCaptureKind": "captured-public-cli-traffic-plus-modeled-proposed-static",
+      "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+      "currentProxyTokens": 5079,
+      "modeledLegacyProxyTokens": 54280,
+      "conservativeReductionFromLegacyStaticAlone": true,
+      "fullLifecycleWorkingPass": true,
+      "sourceCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4"
+    }
+  },
+  "authority": {
+    "method": "separate-explanation-evaluator-and-direct-executor-collector-attempts",
+    "explainPhysicalReads": 34,
+    "executorPhysicalReads": 34,
+    "timingClassifications": ["local-cache", "local-stub", "controlled-read-only"]
+  },
+  "finalInstalledAdapterGate": {
+    "status": "pending",
+    "reason": "Current proposed static text is modeled; #1678 must capture final installed adapter bytes."
+  }
+}

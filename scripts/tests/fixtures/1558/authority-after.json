@@ -1,0 +1,348 @@
+{
+  "schema": "aitm.guidance-authority-after/v1",
+  "classification": "fixed-stub-collection-and-controlled-live-timing",
+  "sources": {
+    "actionBaselinePath": "scripts/tests/fixtures/1558/action-authority-cost.json",
+    "actionBaselineSha256": "sha256:eeb8d6500d0f6dbfc2f7cd44fd4e65d23cb557554730870ae1d5ca7f2304eb89",
+    "timingPath": "scripts/tests/fixtures/1558/authority-after-timing.json",
+    "timingSha256": "sha256:8eccb266210c20716db60cb7aaaf01e6fc68c36e716860aeff6f90bf71fb2b1d"
+  },
+  "deterministic": {
+    "method": "separate-explanation-evaluator-and-direct-executor-collector-attempts",
+    "limitation": "Fixed observation-port fixture at the shared read seam; not public-CLI transport.",
+    "actions": [
+      {
+        "id": "bind",
+        "explain": {
+          "physicalReads": 7,
+          "requestKeys": [
+            "local-config:local-config:1670",
+            "session-state:session-state:1670",
+            "worktree:worktree:1670",
+            "occupancy:occupancy:1670",
+            "migration-journal:migration-journal:1670",
+            "project-board:issue:1670:2",
+            "issue-body:issue:1670:1"
+          ],
+          "perResource": {
+            "local-config": 1,
+            "session-state": 1,
+            "worktree": 1,
+            "occupancy": 1,
+            "migration-journal": 1,
+            "project-board": 1,
+            "issue-body": 1
+          },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 7,
+          "requestKeys": [
+            "local-config:local-config:1670",
+            "session-state:session-state:1670",
+            "worktree:worktree:1670",
+            "occupancy:occupancy:1670",
+            "migration-journal:migration-journal:1670",
+            "project-board:issue:1670:2",
+            "issue-body:issue:1670:1"
+          ],
+          "perResource": {
+            "local-config": 1,
+            "session-state": 1,
+            "worktree": 1,
+            "occupancy": 1,
+            "migration-journal": 1,
+            "project-board": 1,
+            "issue-body": 1
+          },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 9
+      },
+      {
+        "id": "resume",
+        "explain": {
+          "physicalReads": 7,
+          "requestKeys": [
+            "local-config:local-config:1670",
+            "session-state:session-state:1670",
+            "worktree:worktree:1670",
+            "occupancy:occupancy:1670",
+            "migration-journal:migration-journal:1670",
+            "project-board:issue:1670:2",
+            "issue-body:issue:1670:1"
+          ],
+          "perResource": {
+            "local-config": 1,
+            "session-state": 1,
+            "worktree": 1,
+            "occupancy": 1,
+            "migration-journal": 1,
+            "project-board": 1,
+            "issue-body": 1
+          },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 7,
+          "requestKeys": [
+            "local-config:local-config:1670",
+            "session-state:session-state:1670",
+            "worktree:worktree:1670",
+            "occupancy:occupancy:1670",
+            "migration-journal:migration-journal:1670",
+            "project-board:issue:1670:2",
+            "issue-body:issue:1670:1"
+          ],
+          "perResource": {
+            "local-config": 1,
+            "session-state": 1,
+            "worktree": 1,
+            "occupancy": 1,
+            "migration-journal": 1,
+            "project-board": 1,
+            "issue-body": 1
+          },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 9
+      },
+      {
+        "id": "promote",
+        "explain": {
+          "physicalReads": 3,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "migration-journal:migration-journal:1670"
+          ],
+          "perResource": { "issue-body": 1, "project-board": 1, "migration-journal": 1 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 3,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "migration-journal:migration-journal:1670"
+          ],
+          "perResource": { "issue-body": 1, "project-board": 1, "migration-journal": 1 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 4
+      },
+      {
+        "id": "test",
+        "explain": {
+          "physicalReads": 4,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "worktree:worktree:1670",
+            "session-state:session-state:1670"
+          ],
+          "perResource": { "issue-body": 1, "project-board": 1, "worktree": 1, "session-state": 1 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 4,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "worktree:worktree:1670",
+            "session-state:session-state:1670"
+          ],
+          "perResource": { "issue-body": 1, "project-board": 1, "worktree": 1, "session-state": 1 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 5
+      },
+      {
+        "id": "review",
+        "explain": {
+          "physicalReads": 5,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "worktree:worktree:1670",
+            "session-state:session-state:1670",
+            "delivery:evidence:1670:1"
+          ],
+          "perResource": {
+            "issue-body": 1,
+            "project-board": 1,
+            "worktree": 1,
+            "session-state": 1,
+            "delivery": 1
+          },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 5,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "worktree:worktree:1670",
+            "session-state:session-state:1670",
+            "delivery:evidence:1670:1"
+          ],
+          "perResource": {
+            "issue-body": 1,
+            "project-board": 1,
+            "worktree": 1,
+            "session-state": 1,
+            "delivery": 1
+          },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 7
+      },
+      {
+        "id": "deliver",
+        "explain": {
+          "physicalReads": 2,
+          "requestKeys": ["issue-body:issue:1670", "delivery:evidence:1670:1"],
+          "perResource": { "issue-body": 1, "delivery": 1 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 2,
+          "requestKeys": ["issue-body:issue:1670", "delivery:evidence:1670:1"],
+          "perResource": { "issue-body": 1, "delivery": 1 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 3
+      },
+      {
+        "id": "close",
+        "explain": {
+          "physicalReads": 6,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "worktree:worktree:1670",
+            "delivery:evidence:1670:1",
+            "delivery:evidence:1670:2",
+            "delivery:evidence:1670:3"
+          ],
+          "perResource": { "issue-body": 1, "project-board": 1, "worktree": 1, "delivery": 3 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "executor": {
+          "physicalReads": 6,
+          "requestKeys": [
+            "issue-body:issue:1670:1",
+            "project-board:issue:1670:2",
+            "worktree:worktree:1670",
+            "delivery:evidence:1670:1",
+            "delivery:evidence:1670:2",
+            "delivery:evidence:1670:3"
+          ],
+          "perResource": { "issue-body": 1, "project-board": 1, "worktree": 1, "delivery": 3 },
+          "retryCount": 0,
+          "additionalPageCount": 0,
+          "transportScope": "fixed-observation-port-no-transport-pagination"
+        },
+        "pairedEqual": true,
+        "ciRequestCeiling": 8
+      }
+    ],
+    "totals": { "explainPhysicalReads": 34, "executorPhysicalReads": 34 },
+    "separateInvocations": { "collectionCount": 2, "crossInvocationReuse": false },
+    "sameInvocationDiagnostic": { "extraPhysicalReads": 0 },
+    "namedRefresh": {
+      "resource": "issue-body",
+      "physicalReadsBefore": 1,
+      "physicalReadsAfter": 2,
+      "reason": "explicit-refresh-request"
+    },
+    "workflowPolicy": {
+      "readyBaselinePhysicalReads": 0,
+      "waivableFailurePhysicalReads": 1,
+      "requirementIds": ["approval.plan"],
+      "unrelatedRequirementReads": 0
+    },
+    "postSuccessAnnotation": {
+      "ordinarySuccess": { "lookups": 0, "writes": 0 },
+      "divergedExisting": { "lookups": 1, "writes": 0 },
+      "divergedAbsent": { "lookups": 1, "writes": 1 },
+      "phase": "after-durable-success"
+    }
+  },
+  "timing": {
+    "localCache": {
+      "kind": "local-cache",
+      "method": "100 same-attempt observation memo hits after one fixture read",
+      "samplesMs": [0.504, 0.556, 0.926, 0.405, 0.556],
+      "mutations": 0,
+      "sampleCount": 5,
+      "medianMs": 0.556,
+      "p95Ms": 0.926,
+      "ciCeilingMs": 2,
+      "ceilingBasis": "recorded-p95-with-at-least-20-percent-headroom"
+    },
+    "localStub": {
+      "kind": "local-stub",
+      "method": "measureFixedActionAuthorityReads with deterministic observation-port fixture",
+      "samplesMs": [11.126, 1.976, 2.448, 1.909, 1.806],
+      "mutations": 0,
+      "sampleCount": 5,
+      "medianMs": 1.976,
+      "p95Ms": 11.126,
+      "ciCeilingMs": 14,
+      "ceilingBasis": "recorded-p95-with-at-least-20-percent-headroom"
+    },
+    "controlledLive": {
+      "kind": "controlled-read-only",
+      "command": [
+        "gh",
+        "issue",
+        "view",
+        "1770",
+        "-R",
+        "kburson/ai-task-manager",
+        "--json",
+        "number,state"
+      ],
+      "samplesMs": [490.461, 411.245, 459.63, 435.456, 722.6],
+      "mutations": 0,
+      "sampleCount": 5,
+      "medianMs": 459.63,
+      "p95Ms": 722.6,
+      "ciCeilingMs": 904,
+      "ceilingBasis": "recorded-p95-with-at-least-20-percent-headroom"
+    }
+  }
+}

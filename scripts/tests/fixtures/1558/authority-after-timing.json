@@ -1,0 +1,36 @@
+{
+  "schema": "aitm.guidance-authority-timing-input/v1",
+  "observedAt": "2026-09-23T12:40:13.846Z",
+  "localStub": {
+    "kind": "local-stub",
+    "method": "measureFixedActionAuthorityReads with deterministic observation-port fixture",
+    "samplesMs": [11.126, 1.976, 2.448, 1.909, 1.806],
+    "mutations": 0
+  },
+  "localCache": {
+    "kind": "local-cache",
+    "method": "100 same-attempt observation memo hits after one fixture read",
+    "samplesMs": [0.504, 0.556, 0.926, 0.405, 0.556],
+    "mutations": 0
+  },
+  "controlledLive": {
+    "kind": "controlled-read-only",
+    "command": [
+      "gh",
+      "issue",
+      "view",
+      "1770",
+      "-R",
+      "kburson/ai-task-manager",
+      "--json",
+      "number,state"
+    ],
+    "samplesMs": [490.461, 411.245, 459.63, 435.456, 722.6],
+    "mutations": 0
+  },
+  "runtime": {
+    "node": "v26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  }
+}

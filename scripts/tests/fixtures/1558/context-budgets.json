@@ -1,0 +1,19 @@
+{
+  "schema": "aitm.guidance-context-budgets/v1",
+  "source": {
+    "path": "scripts/task-tracker/lib/context-budgets.mjs",
+    "sha256": "sha256:61570ad353a6aca08e5afca168205f6173bd3d77bdc9001bca706972d57d749c"
+  },
+  "fixedReleaseBudgets": {
+    "routerPlusPickup": { "absolute": 5000, "working": 4000 },
+    "clean": { "absolute": 300, "working": 240 },
+    "blocked": { "absolute": 500, "working": 400 },
+    "fullLifecycle": { "absolute": 7000, "working": 5600 }
+  },
+  "historicalStaticBudgets": { "idle": 1500, "invoked": 8000, "active": 12000 },
+  "historicalScenarioBudgets": {
+    "claude": { "bind": 12000, "bind+review+close": 13500, "parallel-orchestration": 14000 },
+    "codex": { "bind": 12000, "bind+review+close": 17000, "parallel-orchestration": 17500 }
+  },
+  "units": "proxy tokens; ceil(characters/4), with per-file static and aggregate traffic rounding"
+}

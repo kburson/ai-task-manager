@@ -4,7 +4,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
-import { GUIDANCE_CONTEXT_BUDGETS } from './lib/context-budgets.mjs';
+import {
+  GUIDANCE_CONTEXT_BUDGETS,
+  HISTORICAL_CONTEXT_BUDGETS,
+  HISTORICAL_SCENARIO_BUDGETS,
+} from './lib/context-budgets.mjs';
 import { validateActionDecision } from './lib/action-decision/contract.mjs';
 import { presentActionDecision } from './lib/action-decision/presentation.mjs';
 
@@ -337,6 +341,100 @@ export async function buildGuidanceContextReport({ captureBytes } = {}) {
   };
 }
 
+export function buildContextBudgetsArtifact() {
+  const sourcePath = 'scripts/task-tracker/lib/context-budgets.mjs';
+  const sourceBytes = readFileSync(new URL('./lib/context-budgets.mjs', import.meta.url));
+  return {
+    schema: 'aitm.guidance-context-budgets/v1',
+    source: { path: sourcePath, sha256: sha256(sourceBytes) },
+    fixedReleaseBudgets: GUIDANCE_CONTEXT_BUDGETS,
+    historicalStaticBudgets: HISTORICAL_CONTEXT_BUDGETS,
+    historicalScenarioBudgets: HISTORICAL_SCENARIO_BUDGETS,
+    units: 'proxy tokens; ceil(characters/4), with per-file static and aggregate traffic rounding',
+  };
+}
+
+export function buildCurrentPairedComparison({ lifecycle, authority, budgets } = {}) {
+  if (
+    lifecycle?.schema !== 'aitm.guidance-context-report/v1' ||
+    authority?.schema !== 'aitm.guidance-authority-after/v1' ||
+    budgets?.schema !== 'aitm.guidance-context-budgets/v1'
+  ) {
+    throw new TypeError('context: paired comparison requires lifecycle, authority and budgets');
+  }
+  const historicalPath = 'scripts/tests/fixtures/1558/context-comparison.json';
+  const historicalBytes = readFileSync(
+    new URL('../tests/fixtures/1558/context-comparison.json', import.meta.url)
+  );
+  const historicalSha256 =
+    'sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894';
+  if (sha256(historicalBytes) !== historicalSha256) {
+    throw new Error('context: historical comparison bytes changed');
+  }
+  const artifactSha256 = (value, filename) => {
+    const bytes = readFileSync(new URL(`../tests/fixtures/1558/${filename}`, import.meta.url));
+    if (JSON.stringify(JSON.parse(bytes)) !== JSON.stringify(value)) {
+      throw new Error(`context: stale paired input ${filename}`);
+    }
+    return sha256(bytes);
+  };
+  return {
+    schema: 'aitm.guidance-current-paired-comparison/v1',
+    classification: 'pre-slim-current-paired-not-installed-release',
+    historicalComparison: {
+      path: historicalPath,
+      sha256: historicalSha256,
+      disposition: 'immutable-early-candidate-characterization',
+    },
+    sources: {
+      lifecycle: {
+        path: 'scripts/tests/fixtures/1558/lifecycle-transcript.json',
+        sha256: artifactSha256(lifecycle, 'lifecycle-transcript.json'),
+      },
+      authority: {
+        path: 'scripts/tests/fixtures/1558/authority-after.json',
+        sha256: artifactSha256(authority, 'authority-after.json'),
+      },
+      budgets: {
+        path: 'scripts/tests/fixtures/1558/context-budgets.json',
+        sha256: artifactSha256(budgets, 'context-budgets.json'),
+      },
+    },
+    adapters: Object.fromEntries(
+      ['claude', 'codex'].map((adapter) => {
+        const paired = lifecycle.adapters[adapter];
+        if (!paired || paired.current.uncountedAgentVisibleBytes !== 0) {
+          throw new Error(`context: incomplete ${adapter} paired accounting`);
+        }
+        return [
+          adapter,
+          {
+            currentCaptureKind: paired.current.captureKind,
+            legacyCaptureKind: paired.legacy.captureKind,
+            currentProxyTokens: paired.current.proxyTokens,
+            modeledLegacyProxyTokens: paired.legacy.proxyTokens,
+            conservativeReductionFromLegacyStaticAlone:
+              paired.guaranteedReductionFromLegacyStaticAlone,
+            fullLifecycleWorkingPass: paired.currentBudgetVerdicts.fullLifecycle.workingPass,
+            sourceCaptureSha256: paired.identities.currentCaptureSha256,
+          },
+        ];
+      })
+    ),
+    authority: {
+      method: authority.deterministic.method,
+      explainPhysicalReads: authority.deterministic.totals.explainPhysicalReads,
+      executorPhysicalReads: authority.deterministic.totals.executorPhysicalReads,
+      timingClassifications: [
+        authority.timing.localCache.kind,
+        authority.timing.localStub.kind,
+        authority.timing.controlledLive.kind,
+      ],
+    },
+    finalInstalledAdapterGate: lifecycle.finalInstalledAdapterGate,
+  };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   if (
@@ -352,8 +450,30 @@ async function main() {
     path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
   );
   const report = await buildGuidanceContextReport({ captureBytes });
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (args.includes('--assert-budgets')) process.exitCode = 1;
+  const { buildAuthorityAfterReport } =
+    await import('../tests/helpers/guidance-authority-after.mjs');
+  const authorityAfter = await buildAuthorityAfterReport({
+    timingBytes: readFileSync(
+      path.join(root, 'scripts/tests/fixtures/1558/authority-after-timing.json')
+    ),
+  });
+  const contextBudgets = buildContextBudgetsArtifact();
+  const currentPairedComparison = buildCurrentPairedComparison({
+    lifecycle: report,
+    authority: authorityAfter,
+    budgets: contextBudgets,
+  });
+  const finalAssertion = {
+    status: report.finalInstalledAdapterGate.status === 'passed' ? 'passed' : 'failed',
+    reason:
+      report.finalInstalledAdapterGate.status === 'passed'
+        ? 'Final installed adapter evidence is present.'
+        : 'Final installed adapter bytes and public CLI traffic remain pending #1678.',
+  };
+  process.stdout.write(
+    `${JSON.stringify({ ...report, preSlimEvidence: { contextBudgets, authorityAfter, currentPairedComparison, finalAssertion } }, null, 2)}\n`
+  );
+  if (args.includes('--assert-budgets') && finalAssertion.status !== 'passed') process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === `file://${path.resolve(process.argv[1])}`) {
