@@ -899,16 +899,24 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   };
   const initial = await readProjection({ deps, issueNumber, context });
   const live = initial.projection.liveIntent;
-  const activeAttributionException = mergedPullRequest
-    ? null
-    : await resolveOpenAttributionException({ comments: initial.comments, now: now(), deps });
-  const commitSubjects = mergedPullRequest
-    ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
-    : await openSourceCommitSubjects(
-        await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
-        selectedPullRequest,
-        deps.inspectSourceCommit
-      );
+  const activeAttributionException =
+    mergedPullRequest || authority.headRelation !== 'current'
+      ? null
+      : await resolveOpenAttributionException({ comments: initial.comments, now: now(), deps });
+  const sourceInventory =
+    activeAttributionException === null
+      ? null
+      : await classifiedOpenInventory(selectedPullRequest, deps, localHeadSha);
+  const commitSubjects =
+    sourceInventory !== null
+      ? sourceInventory.attributableSubjects
+      : mergedPullRequest
+        ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
+        : await openSourceCommitSubjects(
+            await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+            selectedPullRequest,
+            deps.inspectSourceCommit
+          );
   const preflightInput = {
     issue: { ...issue, agentReviewPassed, reviewAuthority, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
@@ -921,12 +929,8 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     config: deliveryConfig,
     commitSubjects,
   };
-  if (activeAttributionException !== null && !mergedPullRequest) {
-    preflightInput.sourceInventory = await classifiedOpenInventory(
-      selectedPullRequest,
-      deps,
-      localHeadSha
-    );
+  if (sourceInventory !== null) {
+    preflightInput.sourceInventory = sourceInventory;
     preflightInput.attributionException = activeAttributionException;
   }
   if (authority.headRelation === 'advanced') {

@@ -136,6 +136,27 @@ test('Codex-authorized scoped waiver emits v2 intent after late source revalidat
   assert.equal(f.h.calls.fetchPullRequest, 2);
 });
 
+test('waived open PR uses mixed GitHub subjects when the trunk range appears fully attributed', async (t) => {
+  const f = fixture(t);
+  await grant(f);
+  f.h.data.commitSubjects = ['[#939] misleading local range'];
+  const result = await deliver(f.h);
+  assert.equal(result.status, 'action-required');
+  assert.equal(result.intent.schema, 'aitm.delivery-intent/v2');
+  assert.equal(result.intent.sourceDigest, canonicalSourceInventory(source, HEAD).sourceDigest);
+});
+
+test('waived open PR does not require an available origin trunk range', async (t) => {
+  const f = fixture(t);
+  await grant(f);
+  f.h.deps.listCommitSubjects = async () => {
+    throw new Error('origin/trunk unavailable');
+  };
+  const result = await deliver(f.h);
+  assert.equal(result.status, 'action-required');
+  assert.equal(result.intent.schema, 'aitm.delivery-intent/v2');
+});
+
 test('late changed source order refuses action after the pending intent', async (t) => {
   const f = fixture(t);
   await grant(f);
