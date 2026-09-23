@@ -32,14 +32,25 @@
 - `scripts/tests/fixtures/1558/lifecycle-transcript.json`, `context-budgets.json`, `tokenizer-calibration.json`, `authority-after.json`: generated current evidence; `context-comparison.json` gets a distinct paired section, retaining old characterization unchanged.
 - `package.json` and `package-lock.json`: development-only tokenizer pin.
 
-## Task 1: Establish Paired Input Authority
+### Task 1: Capture paired lifecycle and calibrate context
+
+#### Story Intent
+
+- **Beneficiary:** release reviewer
+- **Capability:** inspect equivalent complete lifecycle context evidence for both adapters
+- **Need:** the frozen Markdown baseline and current public CLI must represent the same work without hidden traffic
+- **Value or failure prevented:** context reduction claims retain all commands, receipts, diagnostics, and real-token calibration
+
+#### Execution Detail
+
+##### Establish Paired Input Authority
 
 - [ ] Add integration tests that read frozen legacy files and #1767 capture by exact path and digest, require the same scenario and authority transition identifiers for both adapter workflows, and reject a missing compaction/repeat/diagnostic event.
 - [ ] Run `node --test scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs` and observe the expected red assertion.
 - [ ] Add a distinct paired transcript construction path that copies the 24-event order, labels fixture transitions and external approval/merge separately, and keeps all original command/stdout/stderr bytes. Reuse historical Markdown text snapshots without recapturing or modifying the WBS Task 1 baseline artifact.
 - [ ] Run the focused test green and commit the transcript runner and its first generated fixture.
 
-## Task 2: Shared Budgets and Complete Accounting
+##### Shared Budgets and Complete Accounting
 
 - [ ] Add tests for eight exact fixed values, separate per-file static rounding, one aggregate traffic rounding, byte/character reconciliation, zero uncounted agent-visible bytes, and rejection of incomplete or double-counted categories.
 - [ ] Run the focused test red.
@@ -47,24 +58,39 @@
 - [ ] Implement report categories for static instructions, operational input, operational stdout/stderr, receipt input/output, explicit diagnostics, and repeat/compaction metadata. Record exact source commits, raw stream paths and digests, totals, delta, actual-vs-modeled label, and working/absolute verdicts for Claude and Codex.
 - [ ] Run focused tests and both existing static meters; commit the accounting implementation.
 
-## Task 3: Calibrate Tokens and Heavy Inputs
+##### Calibrate Tokens and Heavy Inputs
 
 - [ ] Add tests requiring package/version/encoding, exact input bytes, tokenizer tokens, proxy tokens and ratio for clean, blocked, repeated, diagnostic and full-lifecycle streams; assert the report does not claim universal provider equivalence.
 - [ ] Run the focused test red; pin the selected tokenizer in development dependencies and lockfile.
 - [ ] Generate calibration from raw committed streams. Add a reachable heavy case with declared child/dependency/refusal counts, preserve typed operational args, and record unbounded dimensions without inventing a universal cap.
 - [ ] Run focused tests, verify generated artifact from formatted source bytes, and commit.
 
-## Task 4: Authority and Timing Accounting
+Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs`
+
+### Task 2: Measure authority costs and publish the pre-slim report
+
+#### Story Intent
+
+- **Beneficiary:** release reviewer
+- **Capability:** compare Explain and executor authority reads and inspect a reproducible pre-slim report
+- **Need:** cheaper text can conceal extra remote reads or policy collection
+- **Value or failure prevented:** release remains gated until exact request invariants and full context costs are measured
+
+#### Execution Detail
+
+##### Authority and Timing Accounting
 
 - [ ] Add tests comparing Explain and executor read-only collection on unchanged inputs: physical reads match, in-attempt duplicates are zero except named refresh, baseline passes do not load workflow policy, waivable failures enrich only their scope, and same-invocation diagnostics add no reads.
 - [ ] Run the focused test red; extend the existing observation-port ledger fixture and generate `authority-after.json` with per-resource read counts, retry/page counts, separate explain-then-execute collection, and post-success annotation lookup plus at most one absent-record write.
 - [ ] Keep deterministic request ceilings exact. Record local-cache and stub timings separately from controlled live median/p95 samples; set reviewed CI timing ceilings with at least 20% headroom.
 - [ ] Run focused tests and commit the authority report.
 
-## Task 5: Pre-Slim Report and Gate
+##### Pre-Slim Report and Gate
 
 - [ ] Generate `context-budgets.json`, `lifecycle-transcript.json`, `tokenizer-calibration.json`, `authority-after.json`, and the distinct current paired section of `context-comparison.json` from formatted inputs, then re-read and compare each to regeneration.
 - [ ] Run `node scripts/task-tracker/measure-guidance-context.mjs --all --json`; require successful honest accounting, including legacy command traffic and current actual CLI traffic.
 - [ ] Run `node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budgets --json`; require nonzero while installed adapter static text remains above the final fixed gate, with explicit modeled/pre-slim classification.
 - [ ] Run `node --test scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs`, `npm test`, `npm run test:slow`, `npm run lint`, and `npm run format:check`; commit the current evidence.
 - [ ] Re-read the #1677 issue ACs, stamp each declared verifier, and submit the exact committed head to AITM Test. #1678 owns final installed-adapter release proof.
+
+Run: `node scripts/task-tracker/measure-guidance-context.mjs --all --json`
