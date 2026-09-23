@@ -7,6 +7,7 @@ import test from 'node:test';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { hashAuthorizationStatement } from '../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
 import { PREFLIGHT_MODE } from '../../../../task-tracker/task-tracker.mjs';
+import { verbHelp } from '../../../../task-tracker/verbs/help.mjs';
 import {
   buildDeliveryAttributionProposal,
   parseDeliveryAttributionExceptionComment,
@@ -306,6 +307,23 @@ test('argument parser requires one explicit positive issue', () => {
   });
   assert.throws(() => parseDeliveryAttributionExceptionArgs(['show', '#0']), /usage/);
   assert.equal(PREFLIGHT_MODE['delivery-attribution-exception'], undefined);
+});
+
+test('command help exposes the complete two-pass and revision workflow', () => {
+  const lines = [];
+  const original = console.log;
+  console.log = (...args) => lines.push(args.join(' '));
+  try {
+    verbHelp('delivery-attribution-exception');
+  } finally {
+    console.log = original;
+  }
+  const help = lines.join('\n');
+  for (const action of ['prepare', 'record', 'show', 'revise', 'revoke']) {
+    assert.match(help, new RegExp(`delivery-attribution-exception ${action} #1759`));
+  }
+  assert.match(help, /authorization-host-unsupported/);
+  assert.match(help, /preparation grants no authority/i);
 });
 
 test('revise and revoke require fresh user messages and append linked records', async () => {

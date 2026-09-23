@@ -53,6 +53,80 @@ provenance, CI, safe delivery, and external protection remain mandatory. Review
 waivers do not grant completion approval. An active managed-provider denial
 wins over Full-Auto and retry requests.
 
+### Scoped delivery attribution exception
+
+Ordinary open-PR delivery requires canonical `[#N]` attribution in its source
+commit subjects. First inspect the complete, current PR source inventory. If
+every attributable commit has canonical attribution, run ordinary delivery
+without an exception. An open PR with mixed legacy subjects may instead use a
+separate, one-PR, one-head, one-inventory, one-operation exception. It cannot
+repair a wrong `[#N]` token, waive other delivery gates, or apply to historical
+recovery. `workflow-preflight` reports catalogued workflow policy only; it does
+not report this delivery exception. Use `delivery-attribution-exception show`
+and delivery preflight to inspect its state.
+
+From a supported Codex session with a resolvable user-message transcript, use
+the two read-only preparation passes (replace `57` with the target issue):
+
+```bash
+npx aitm delivery-attribution-exception prepare 57
+npx aitm delivery-attribution-exception prepare 57 --input-file .scratch/gh/57-delivery-exception.json
+```
+
+The first pass reads the live issue, open PR, and complete ordered source
+inventory. Its output includes the raw inventory digest, exact SHA and subject
+mapping candidates, and a request template with generated exception and
+operation IDs. Save the `template` object as the request file, fill each
+candidate mapping with an explicit positive issue number, and set a canonical
+future `expiresAt`. Keep the generated IDs and live scope intact. The first
+pass prints no authorizing proposal digest. The second pass recomputes live
+scope, inventory, mappings, and expiry, then prints the canonical proposal
+digest and the exact authorization statement. **Preparation grants no
+authority.** If scope changes, prepare a fresh request.
+
+The user must send that exact statement as a new Codex user message. Place its
+`aitm.authorization-source/v1` Codex session ID, message ID, and
+loader-derived statement hash in the request's `authorizationSource`. The
+source object has exactly `schema`, `adapter` (`codex-session/v1`), `sessionId`,
+`messageId`, and `statementHash` fields. The hash is SHA-256 of the transcript
+loader's user statement: it discards injection-flagged blocks, trims remaining
+`input_text` blocks, then joins them with two newlines. A request file, agent
+statement, or GitHub comment alone grants nothing. A supported host validates
+the actual user message before recording:
+
+```bash
+npx aitm delivery-attribution-exception record 57 --input-file .scratch/gh/57-delivery-exception.json
+npx aitm delivery-attribution-exception show 57 --json
+npx aitm deliver 57
+```
+
+`record` rereads the live issue and full PR inventory, checks the exact
+statement and proposal digest, and appends an immutable GitHub record with
+readback. `show` is read-only, including on other hosts. On a host without a
+resolvable Codex transcript, `prepare`, `record`, `revise`, and `revoke` refuse
+with `authorization-host-unsupported`.
+
+To change an active grant, create a new request with `action: "revise"`, fresh
+exception ID, updated exact proposal, and a fresh Codex user message for the
+new second-pass `prepare`. To end it, use `action: "revoke"`, a fresh exception
+ID, unchanged mappings, and another freshly prepared, authorized statement:
+
+```bash
+npx aitm delivery-attribution-exception prepare 57 --input-file .scratch/gh/57-delivery-revision.json
+npx aitm delivery-attribution-exception revise 57 --input-file .scratch/gh/57-delivery-revision.json
+npx aitm delivery-attribution-exception prepare 57 --input-file .scratch/gh/57-delivery-revocation.json
+npx aitm delivery-attribution-exception revoke 57 --input-file .scratch/gh/57-delivery-revocation.json
+```
+
+Each revision or revocation appends history; old records remain visible. A
+revoked, expired, edited, ambiguous, or stale chain blocks exceptional
+delivery. If `deliver` emits a provider action, perform only its exact declared
+action and rerun `deliver` after success, failure, or ambiguity before doing
+anything else. The exceptional v2 intent is reusable only for its unchanged
+operation and inventory. A verified exceptional merge produces a v3 receipt
+that visibly reports `attributionDisposition: "waived"` with its immutable
+exception reference. The receipt, not provider output, permits `close`.
+
 Full workflow rules for projects using `ai-task-manager`. These rules define how Claude Code, Codex, and human operators should manage issues, move Kanban states, and handle cleanup.
 
 ---

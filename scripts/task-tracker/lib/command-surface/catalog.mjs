@@ -536,10 +536,10 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'delivery-attribution-exception': contract(
     [
-      'One explicit issue is required. Prepare requires a supported Codex session; record, revise, and revoke require a filled request and transcript-verified user message.',
+      'One explicit issue is required. Prepare requires a supported Codex session; record, revise, and revoke require a filled request and transcript-verified user message. Unsupported hosts receive authorization-host-unsupported.',
     ],
     [
-      'Prepare and show are read-only. Mutations append an immutable, scoped record only after live inventory and exact authority checks, then require exact readback.',
+      'Prepare and show are read-only; preparation grants no authority. Mutations append an immutable, scoped record only after live inventory and exact authority checks, then require exact readback.',
     ],
     ['Prints the template, canonical authorization statement, or recorded chain status.'],
     [exit(6, 'authorization, scope, record chain, or readback was blocked')]
