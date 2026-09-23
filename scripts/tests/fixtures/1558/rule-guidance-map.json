@@ -78,6 +78,54 @@
       }
     },
     {
+      "id": "binding.discussion",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "## `{discuss}` brainstorming trigger (#405, #486)",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "before** any deep-dive or refine",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "binding.workspace",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "**Workspace check.**",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "create a worktree first",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "binding.deferred-pickup",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "PICKUP DIRECTIVE DEFERRED",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "do NOT load or",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "binding.session-recovery",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "## Session recovery",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "re-run `/task #N` to re-register",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
       "id": "pickup.deep-dive",
       "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
       "sourceAnchor": "Deep Dive before any code.",

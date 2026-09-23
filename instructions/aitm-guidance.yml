@@ -512,12 +512,16 @@ entries:
       explanation: >-
         Start the issue timer before work, pause it for blocking questions, and honor current project
         preferences, role, and recorded worktree. Track follow-up work before starting it and reconcile
-        board drift before another lifecycle action.
+        board drift before another lifecycle action. Parallel work on the main workspace requires an
+        isolated worktree. A resumed session with no active task requires an explicit new bind. A
+        discussion-requested bind requires a user dialog before deep dive or refinement; resolve its
+        marker through the sanctioned discussion route.
       triggered_when:
         - Before issue work or a blocking question.
       execution:
         - Bind to the exact issue and role; pause and resume through AITM as the work state changes.
         - Create follow-up issues through the sanctioned issue writer and reconcile board drift before continuing.
+        - On a discussion-requested bind, pause for the dialog and finalize the recorded scope before implementation.
       examples:
         - command: npx aitm start 1676 --role agent
           purpose: Keep issue work bound and timed.
@@ -564,7 +568,8 @@ entries:
       explanation: >-
         Deep dive precedes source edits; each demonstrable acceptance criterion and functional DoD item gets
         its own verification evidence. Bootstrap failures stop source edits; epic boxes wait for child Review.
-        Child agents report CODE_COMPLETE for orchestrator Review and close.
+        Child agents report CODE_COMPLETE for orchestrator Review and close. A deferred pickup banner on a
+        Backlog or Refine issue means follow the named state-walk verb without loading Plan-stage pickup.
       triggered_when:
         - When an issue reaches Plan or later and pickup instructions apply.
       execution:

@@ -63,6 +63,15 @@ question. Track new follow-up work with an issue before starting it. Use the
 sanctioned issue writer; direct `gh issue create` or close and direct
 `move-state.mjs` calls bypass lifecycle records. If the board and recorded
 state disagree, reconcile before another lifecycle verb.
+For parallel work on the main workspace, create an isolated worktree before
+binding. After a resumed session loses its active task, bind again so the
+timer ledger records the work.
+
+If bind reports a discussion request, pause for an open-ended user dialog
+before deep dive or refinement. Finalize the agreed scope and acceptance
+criteria through the discussion marker route before implementation. If bind
+instead reports deferred pickup for a Backlog or Refine issue, follow the
+named state-walk verb; Plan-stage pickup instructions do not apply yet.
 
 For Plan-or-later pickup, a failed bootstrap stops source edits. Complete the
 deep dive before code, then verify each demonstrable AC and functional DoD item
