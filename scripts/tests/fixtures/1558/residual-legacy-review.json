@@ -133,7 +133,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:74aa5d8e9035bc8c020146c4bf2ab57e4d64e8fe6d4713d7d82a61c5336a7ba3"
+        "sitesSha256": "sha256:d31132d3bdadf1a56bbdea58b1589054ce886712b607e1a567cb690f8ba7e711"
       },
       "rationale": "Decomposition warnings and refusals require the reviewed WBS and cannot be waived by generic prose."
     },
