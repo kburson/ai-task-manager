@@ -97,7 +97,14 @@ export function evaluateDeliveryAttributionException({
   }
   const merges = new Set();
   for (const oid of verifiedMergeShas) {
-    if (!SHA_RE.test(oid) || !bySha.has(oid) || attributable.has(oid) || merges.has(oid)) {
+    if (
+      !SHA_RE.test(oid) ||
+      !bySha.has(oid) ||
+      bySha.get(oid).messageHeadline.includes('[') ||
+      bySha.get(oid).messageHeadline.includes('#') ||
+      attributable.has(oid) ||
+      merges.has(oid)
+    ) {
       throw inventoryError('verified-merge');
     }
     merges.add(oid);

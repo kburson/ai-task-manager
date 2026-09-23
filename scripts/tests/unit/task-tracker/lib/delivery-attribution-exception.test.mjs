@@ -178,9 +178,19 @@ test('only verified merge SHAs are excluded from exceptional mappings', () => {
       verifiedMergeShas: [A],
     })
   );
+  assert.throws(() =>
+    evaluateDeliveryAttributionException({
+      ...base,
+      attributableCommits: [commits[1]],
+      verifiedMergeShas: [A],
+      mappings: [],
+    })
+  );
+  const cleanMerge = { oid: A, messageHeadline: 'Merge remote changes' };
   assert.equal(
     evaluateDeliveryAttributionException({
       ...base,
+      commits: [cleanMerge, commits[1]],
       attributableCommits: [commits[1]],
       verifiedMergeShas: [A],
       mappings: [],
