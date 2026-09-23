@@ -101,7 +101,8 @@ function fmtRelease(label, files, { absolute, working }) {
     throw new Error(`invalid release budget for ${label}`);
   }
   const total = sum(files);
-  const status = total <= working && total <= absolute ? 'OK' : 'OVER';
+  const missingFiles = files.filter((file) => file.missing).map((file) => file.rel);
+  const status = missingFiles.length === 0 && total <= working && total <= absolute ? 'OK' : 'OVER';
   const headroom = working - total;
   return {
     label,
@@ -111,6 +112,7 @@ function fmtRelease(label, files, { absolute, working }) {
     working,
     headroom,
     status,
+    missingFiles,
     files,
     text: [
       `${label}: ${total} tokens (working ${working}, absolute ${absolute}, headroom ${headroom}) [${status}]`,
@@ -318,7 +320,15 @@ function main() {
   process.exit(over ? 1 : 0);
 }
 
-export { measure, BUDGETS, SCENARIO_BUDGETS, SCENARIOS, SCENARIO_NAMES, RELEASE_SCENARIOS };
+export {
+  measure,
+  fmtRelease as formatReleaseMeasurement,
+  BUDGETS,
+  SCENARIO_BUDGETS,
+  SCENARIOS,
+  SCENARIO_NAMES,
+  RELEASE_SCENARIOS,
+};
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();

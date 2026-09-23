@@ -7,7 +7,7 @@ import { test } from 'node:test';
 
 import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-budgets.mjs';
 import { buildGuidanceContextReport } from '../../../../task-tracker/measure-guidance-context.mjs';
-import { measure } from '../../../../task-tracker/measure-context.mjs';
+import { formatReleaseMeasurement, measure } from '../../../../task-tracker/measure-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
 
 const MEASURE_SCRIPT = path.resolve('scripts/task-tracker/measure-context.mjs');
@@ -83,6 +83,17 @@ test('pre-slim public CLI capture cannot certify the final installed adapter rel
   const report = await buildGuidanceContextReport({ captureBytes });
   assert.equal(report.finalInstalledAdapterGate.status, 'pending');
   assert.match(report.finalInstalledAdapterGate.reason, /final installed adapter bytes/i);
+});
+
+test('fixed release measurement refuses a missing required instruction file', () => {
+  const report = formatReleaseMeasurement(
+    'release-static:invoked+pickup (codex)',
+    [{ rel: 'skill/shared/router.md', tokens: 0, missing: true }],
+    { absolute: 5000, working: 4000 }
+  );
+  assert.equal(report.status, 'OVER');
+  assert.deepEqual(report.missingFiles, ['skill/shared/router.md']);
+  assert.match(report.text, /MISSING/);
 });
 
 for (const adapter of ['claude', 'codex']) {
