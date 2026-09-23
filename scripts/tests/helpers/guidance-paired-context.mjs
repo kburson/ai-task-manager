@@ -164,6 +164,17 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
     authorityBytes,
   });
   const visible = capture.events.filter((event) => event.kind !== 'transition');
+  const currentEvents = visible.map((event) => {
+    const parts = capturedParts(event);
+    return {
+      name: event.name,
+      raw: `${commandText(event)}${event.stdout}${event.stderr}`,
+      parts,
+    };
+  });
+  const legacyEvents = visible.map((event) =>
+    modelLegacyEvent(event, transcript.entries, loadedText)
+  );
   const proposedFiles = capture.measurement.modeledProposedStatic[adapter].files;
   const current = measureAgentVisible({
     staticFiles: proposedFiles.map(({ sourcePath, sha256 }) => {
@@ -173,18 +184,11 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
       }
       return { path: sourcePath, text: bytes.toString('utf8') };
     }),
-    events: visible.map((event) => {
-      const parts = capturedParts(event);
-      return {
-        name: event.name,
-        raw: `${commandText(event)}${event.stdout}${event.stderr}`,
-        parts,
-      };
-    }),
+    events: currentEvents,
   });
   const legacy = measureAgentVisible({
     staticFiles: loadedText,
-    events: visible.map((event) => modelLegacyEvent(event, transcript.entries, loadedText)),
+    events: legacyEvents,
   });
   if (
     current.trafficCharacters !== capture.measurement.traffic.characters ||
@@ -199,11 +203,28 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
     eventManifest: manifest,
     ...shared,
     identities: {
+      frozenBaselinePath: `${FIXTURES}/legacy-baseline.json`,
       frozenBaselineSha256: digest(baselineBytes),
+      frozenTranscriptPath: adapterBaseline.transcriptPath,
       frozenTranscriptSha256: digest(transcriptBytes),
       historicalSourceCommit: baseline.source.commit,
+      currentCapturePath: `${FIXTURES}/actual-explain-traffic-recertification.json`,
       currentCaptureSha256: digest(captureBytes),
       currentSourceCommit: capture.identity.sourceCommit,
+    },
+    streams: {
+      legacy: legacyEvents.map(({ name, raw }) => ({
+        event: name,
+        sha256: digest(Buffer.from(raw)),
+        characters: raw.length,
+        bytes: Buffer.byteLength(raw),
+      })),
+      current: currentEvents.map(({ name, raw }) => ({
+        event: name,
+        sha256: digest(Buffer.from(raw)),
+        characters: raw.length,
+        bytes: Buffer.byteLength(raw),
+      })),
     },
     legacy: {
       captureKind: 'modeled-24-event-projection-from-frozen-14-case-cli-samples',

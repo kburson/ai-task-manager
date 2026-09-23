@@ -370,33 +370,27 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 138,
+          "line": 144,
           "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 142,
+          "line": 148,
           "fingerprint": "sha256:0273e77a3125381a1f885e3cdd8c5274e55d2ba108a85204e6aa79fa20786f97",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 149,
+          "line": 155,
           "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 176,
+          "line": 182,
           "fingerprint": "sha256:7e0969e6ba1a1ece545cfee2babb2e5e0d87eee5d6328d9ca9c65fc5ae81d5e0",
           "kind": "warning"
-        },
-        {
-          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 185,
-          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
-          "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
@@ -406,13 +400,19 @@
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 195,
+          "line": 197,
+          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+          "line": 201,
           "fingerprint": "sha256:3280f6bb967992f1fba1fd865b02bf753d40e56af8908665b91a1b60f5357856",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 201,
+          "line": 207,
           "fingerprint": "sha256:4be05a4834cac55badf5de0a5d0a1bd85049961c33db02e89adfb6a747245f05",
           "kind": "warning"
         }

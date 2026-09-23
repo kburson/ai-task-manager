@@ -552,3 +552,4 @@ unsubmitted
 enoent
 reparses
 sharedindex
+tiktoken

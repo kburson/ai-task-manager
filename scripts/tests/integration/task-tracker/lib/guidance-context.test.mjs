@@ -30,6 +30,15 @@ test('projects the same complete ordered lifecycle for both adapters without rep
       capture.events.map(({ name }) => name)
     );
     assert.equal(report.current.trafficCharacters, capture.measurement.traffic.characters);
+    assert.equal(
+      report.streams.current.reduce((sum, event) => sum + event.bytes, 0),
+      report.current.trafficCharacters
+    );
+    assert.equal(
+      report.streams.legacy.reduce((sum, event) => sum + event.bytes, 0),
+      Object.values(report.legacy.categories).reduce((sum, category) => sum + category.bytes, 0)
+    );
+    assert.ok(report.streams.current.every(({ sha256 }) => /^sha256:[a-f0-9]{64}$/.test(sha256)));
     assert.ok(report.legacy.categories['command-input'].bytes > 0);
     assert.ok(report.legacy.categories['operational-stdout'].bytes > 0);
     assert.ok(report.legacy.categories['explicit-diagnostics'].bytes > 0);
@@ -66,10 +75,22 @@ test('committed paired lifecycle report regenerates from exact captured and froz
   );
   assert.equal(saved.toString(), `${JSON.stringify(report, null, 2)}\n`);
   assert.equal(report.finalInstalledAdapterGate.status, 'pending');
+  assert.equal(report.heavyCase.captureKind, 'candidate-model-not-actual-cli');
+  assert.deepEqual(report.heavyCase.inputs, {
+    action: 'close',
+    attempts: 2,
+    blockersPerAttempt: 7,
+    observationsPerAttempt: 8,
+  });
+  assert.ok(report.heavyCase.measurement.bytes > 0);
+  assert.ok(report.heavyCase.unboundedDimensions.includes('dependency-count'));
+  assert.equal(report.heavyCase.evidenceOnlyGrowth.routine.charactersDelta, 0);
+  assert.ok(report.heavyCase.operationalGrowth.blocked.charactersDelta > 0);
   assert.equal(report.adapters.claude.identities.currentCaptureSha256, digest(captureBytes));
   assert.equal(report.adapters.codex.identities.currentCaptureSha256, digest(captureBytes));
 });
 
+// cspell:disable
 test('accounts for every raw event byte with disjoint categories and scoped rounding', () => {
   const report = measureAgentVisible({
     staticFiles: [
@@ -97,6 +118,7 @@ test('accounts for every raw event byte with disjoint categories and scoped roun
   assert.equal(report.proxyTokens, 4 + Math.ceil(report.trafficCharacters / 4));
   assert.equal(report.bytes, Buffer.byteLength('abcdefghijcmdknownreply\nwarning\n'));
 });
+// cspell:enable
 
 test('calibrates named lifecycle boundaries from the preserved public CLI capture', () => {
   const capturePath = path.join(

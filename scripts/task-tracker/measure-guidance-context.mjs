@@ -207,11 +207,36 @@ export async function buildGuidanceContextReport({ captureBytes } = {}) {
   const adapters = Object.fromEntries(
     ['claude', 'codex'].map((adapter) => [adapter, buildPairedContext({ captureBytes, adapter })])
   );
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const fixturePath = (name) => path.join(root, `scripts/tests/fixtures/1558/${name}`);
+  const sensitivityBytes = readFileSync(fixturePath('serialization-sensitivity.json'));
+  const cardinalityBytes = readFileSync(fixturePath('action-cardinality.json'));
+  const sensitivity = JSON.parse(sensitivityBytes);
+  const cardinality = JSON.parse(cardinalityBytes);
+  if (
+    sensitivity.captureKind !== 'candidate-model-not-actual-cli' ||
+    JSON.stringify(sensitivity.heavyCase.inputs) !==
+      JSON.stringify(cardinality.finiteHeavyInputs) ||
+    !Array.isArray(cardinality.unboundedDimensions)
+  ) {
+    throw new Error('context: historical heavy-case inputs or classification drift');
+  }
   return {
     schema: 'aitm.guidance-context-report/v1',
     classification: 'pre-slim-captured-cli-and-modeled-static',
     adapters,
     tokenizerCalibration: buildTokenCalibration({ captureBytes }),
+    heavyCase: {
+      captureKind: sensitivity.captureKind,
+      scope: 'historical candidate serializer sensitivity; separate from captured lifecycle',
+      sensitivitySha256: sha256(sensitivityBytes),
+      cardinalitySha256: sha256(cardinalityBytes),
+      inputs: sensitivity.heavyCase.inputs,
+      measurement: sensitivity.heavyCase.measurement,
+      evidenceOnlyGrowth: sensitivity.evidenceOnlyGrowth,
+      operationalGrowth: sensitivity.operationalGrowth,
+      unboundedDimensions: cardinality.unboundedDimensions,
+    },
     finalInstalledAdapterGate: {
       status: 'pending',
       reason:
