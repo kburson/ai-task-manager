@@ -80,6 +80,16 @@ function printable(value, maxBytes) {
   );
 }
 
+function rawSubject(value) {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.isWellFormed() &&
+    !value.includes('\n') &&
+    !value.includes('\r')
+  );
+}
+
 function sha256(bytes) {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 }
@@ -108,7 +118,7 @@ function validateProposal(proposal) {
     if (
       !exact(mapping, ['oid', 'messageHeadline', 'issueNumber']) ||
       !SHA_RE.test(mapping.oid) ||
-      !printable(mapping.messageHeadline, 1024) ||
+      !rawSubject(mapping.messageHeadline) ||
       !positive(mapping.issueNumber) ||
       seen.has(mapping.oid)
     )
@@ -238,7 +248,8 @@ export function resolveActiveDeliveryAttributionException(comments, scope, now) 
   for (const comment of comments) {
     const body = typeof comment === 'string' ? comment : comment?.body;
     if (typeof body !== 'string') fail('comment');
-    if (!body.includes('aitm-delivery-attribution-exception/')) continue;
+    if (!body.startsWith(COMMENT_PREFIX) && !body.includes('aitm-delivery-attribution-exception/'))
+      continue;
     if (!body.includes('aitm-delivery-attribution-exception/v1')) fail('unsupported-schema');
     records.push(parseDeliveryAttributionExceptionComment(body, scope));
   }

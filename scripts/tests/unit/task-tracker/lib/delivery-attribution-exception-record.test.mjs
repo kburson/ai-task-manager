@@ -188,6 +188,17 @@ test('one live chain resolves; forks, duplicate IDs, expiry and revocation refus
       '2026-09-23T12:00:00.000Z'
     )
   );
+  const editedRevocation = renderDeliveryAttributionExceptionComment(revoked).replace(
+    /<!-- aitm-delivery-attribution-exception\/v1 [A-Za-z0-9_-]+ -->/,
+    '<!-- removed -->'
+  );
+  assert.throws(() =>
+    resolveActiveDeliveryAttributionException(
+      [...comments, editedRevocation],
+      BASE,
+      '2026-09-23T12:00:00.000Z'
+    )
+  );
 });
 
 test('escaped rendered comment bound includes future authority fields', () => {
@@ -203,5 +214,20 @@ test('escaped rendered comment bound includes future authority fields', () => {
   };
   assert.throws(() =>
     upperBoundDeliveryAttributionCommentBytes(buildDeliveryAttributionProposal(large).proposal)
+  );
+});
+
+test('raw first-line mapping subjects retain tabs and edge spaces', () => {
+  const mappings = [
+    { oid: A, messageHeadline: ' leading subject ', issueNumber: 1755 },
+    { oid: B, messageHeadline: 'tab\tsubject', issueNumber: 1755 },
+  ];
+  const built = buildDeliveryAttributionProposal({ ...BASE, mappings });
+  assert.deepEqual(built.proposal.mappings, mappings);
+  assert.throws(() =>
+    buildDeliveryAttributionProposal({
+      ...BASE,
+      mappings: [{ oid: A, messageHeadline: 'line\nbreak', issueNumber: 1755 }],
+    })
   );
 });
