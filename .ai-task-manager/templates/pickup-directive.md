@@ -21,10 +21,10 @@ Read on first issue pickup. The current issue body, live AITM result, and `refer
 ## Required steps before writing any code
 
 1. **Post-Compact/Clear Recovery.** After Compact, Clear, fresh worker start, or changed guidance sentinel, read `.ai-task-manager/templates/session-boot.md`; discard stale guidance receipts and emit a fresh `aitm-boot-recovered:<session-id>:<timestamp>` sentinel. A compacted summary is not rule authority.
-2. Bind the exact issue with `npx aitm start <issue> --role agent`; confirm issue/worktree/branch and active timer. Ask `npx aitm explain #N --json` when choosing the next lifecycle action.
+2. Bind the exact issue with `npx aitm start <this-issue-#> --role agent`; confirm issue/worktree/branch and active timer. Ask `npx aitm explain #N --json` when choosing the next lifecycle action.
 3. Read Scope and source plan, perform the deep dive, post it, mirror it, and stamp its completion. Re-evaluate the estimate before source edits.
 4. Implement in the owned worktree, run each cited verifier, commit with `[#N]`, and report `CODE_COMPLETE` with timing and unchecked items. Do not advance Review or Close as an agent.
 
 ## Status reporting
 
-Use `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW` (orchestrator only), or `BLOCKED`. The full report contract and examples live in `references/status-reporting.md`.
+Use `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW` (orchestrator only), or `BLOCKED`. Do not report `DONE` or `DONE_WITH_CONCERNS`. All checkboxes checked means ready for human review, not permission to close; Full-Auto follows current AITM gates. Details: `references/status-reporting.md`.

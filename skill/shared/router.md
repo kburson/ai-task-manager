@@ -20,8 +20,6 @@ First read: emit `aitm-skill-loaded:router:1.1.0`. Resolve `rules/` beside this 
 7. **Post-Compact/Clear: follow the boot index before any verb.** Re-read `.ai-task-manager/templates/session-boot.md` and current Tier-1 files, invalidate prior guidance receipts and sentinels, then query the current decision. A summary or disk ledger is not authority.
 8. **Track before you start — no untracked work.** No issue, no work. Bind a governed issue before editing or testing follow-up scope.
 9. **`--role` flag at bind.** Agent picking up a sub-issue uses `--role agent`; an epic orchestrator uses `--role orchestrator`; direct solo pickup may use the default.
-10. Follow `.ai-task-manager/templates/pickup-directive.md`: deep dive before code, per-AC evidence, Checkpoint Pause, and epic Rank rules (`child-cannot-lead-epic`).
-11. Workflow exceptions require current explicit GitHub records; a waiver never means a passed guard. See `rules/state-walk.md` and `rules/full-auto.md`.
 
 For manual plan review, consult `rules/full-auto.md`; for manual code review, consult `rules/full-auto.md`; for manual task review, consult `rules/full-auto.md` before interpreting the user phrase.
 
@@ -29,7 +27,7 @@ At a lifecycle decision, ask `npx aitm explain #N --json` after bind/resume, unc
 
 ## CLI invocation
 
-Run `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is canonical. The post-bind metadata fetch, reopen, and pickup details live in `rules/bind.md`. A typed `ready`, `blocked`, or `indeterminate` result controls the next action; never infer readiness from prose.
+Run `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is canonical. Post-bind fetch and reopen live in `rules/bind.md`. Typed `ready`, `blocked`, or `indeterminate` controls the next action; never infer readiness from prose.
 
 ## Verb → rule-file routing
 

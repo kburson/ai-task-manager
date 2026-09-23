@@ -182,7 +182,10 @@ const ALLOWLIST = new Map(
       3,
       'historical timing descriptor fixture',
     ],
-    'skill/shared/rules/state-walk.md': [1, 'documented raw-boundary compatibility exception'],
+    'skill/shared/references/state-walk-detail.md': [
+      1,
+      'historical raw-boundary compatibility detail retained outside routine context',
+    ],
   })
 );
 

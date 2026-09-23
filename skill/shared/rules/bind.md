@@ -3,6 +3,7 @@
 # Bind — compatibility pointer
 
 Emit `aitm-skill-loaded:rules/bind:1.0.0` on first load. `npx aitm start #N --role agent|orchestrator` and its typed result own binding, timer, board read-back, and receipt. Detailed human reference: `../references/bind-detail.md`; current command help and Explain govern.
+Governed creation shapes include epic, stub, sub-issue, solo, and defect; use `rules/create-issue.md`.
 
 - **Timer must not already be running on a different issue.** Pause before switching. Verify the requested issue, active binding, worktree, branch, and command argument agree.
 - **Workspace check.** For parallel scope in MAIN, create a worktree first. **Drift check.** Reconcile recorded and live state through the sanctioned verb before continuing.

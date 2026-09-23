@@ -25,5 +25,7 @@ Ordinary reads, edits, tests, and Git commands do not need an Explain query. Rep
 - Use `.ai-task-manager/` state; legacy `.claude/` state is fallback only. The Claude status line reads `.ai-task-manager/task-tracker-state.json` with that legacy fallback.
 - Read `.ai-task-manager/templates/pickup-directive.md` on pickup. ACs cite root Verification Commands with `aitm-verified vc-list="vc:N"`; Review reuses exact-head Test receipts. The Rank rules (`child-cannot-lead-epic`), Checkpoint Pause, and deep-dive procedure live in the pickup directive and its JIT rationale.
 - An optional `user-story.md` input may supply the story; see `rules/user-story-quality.md`. User Story input is optional before Plan approval.
+- Governed creation shapes include epic, stub, sub-issue, solo, and defect; see `rules/create-issue.md`.
+- Advance one board state with `npx aitm promote`; never use a raw state move.
 - Route Plan, Refine, Review, Close, Full-Auto, issue creation, and preferences through the shared router and its JIT rule pointers. `manual plan review`, `manual code review`, and `manual task review` select `rules/full-auto.md`.
 - For `github.merge-pull-request`, use only the sanctioned GitHub MCP `merge_pull_request` integration accepting the exact expected head SHA and the other bytes in `rules/deliver.md`. Missing capability is a refusal; never substitute a shell merge.
