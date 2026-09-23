@@ -1,5 +1,6 @@
 // @story #1767
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -38,4 +39,23 @@ test('recertification captures a separate contiguous public CLI authority histor
     assert.equal(event?.typed.status, 'ready', `${name} must have complete authority`);
     assert.ok(event.remoteAuthorityReads > 0, `${name} must read authority`);
   }
+});
+
+test('recertification fixture starts from the same authority bytes on replay', () => {
+  const first = JSON.parse(
+    readFileSync(
+      new URL(
+        '../../../../tests/fixtures/1558/actual-explain-traffic-recertification.json',
+        import.meta.url
+      ),
+      'utf8'
+    )
+  );
+  const second = captureGuidanceLifecycle({ mode: 'recertification' });
+  assert.equal(second.identity.initialFixtureSha256, first.identity.initialFixtureSha256);
+  assert.equal(second.identity.initialBodySha256, first.identity.initialBodySha256);
+  assert.deepEqual(
+    second.events.filter(({ kind }) => kind === 'transition'),
+    first.events.filter(({ kind }) => kind === 'transition')
+  );
 });

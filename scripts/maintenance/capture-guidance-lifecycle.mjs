@@ -465,6 +465,16 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
   const events = [];
   const writeSnapshot = () => writeFileSync(snapshotPath, `${JSON.stringify(snapshot)}\n`);
   try {
+    if (mode === 'recertification') {
+      // The shared scratch prototype has a wall-clock commit; replace that
+      // parent so fixture and evidence hashes survive a fresh process.
+      const tree = git(['rev-parse', 'HEAD^{tree}'], fixtureDir);
+      const stableRoot = git(
+        ['commit-tree', tree, '-m', 'deterministic capture prototype'],
+        fixtureDir
+      );
+      git(['reset', '--hard', stableRoot], fixtureDir);
+    }
     mkdirSync(path.join(fixtureDir, SHARED_DIR), { recursive: true });
     mkdirSync(path.dirname(statePath(fixtureDir)), { recursive: true });
     mkdirSync(path.join(fixtureDir, 'fake-bin'), { recursive: true });

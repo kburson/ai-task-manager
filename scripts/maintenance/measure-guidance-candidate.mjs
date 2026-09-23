@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import { validateCandidateMeasurementArtifacts } from '../tests/helpers/guidance-characterization.mjs';
 import {
+  captureGuidanceLifecycle,
   measureLifecycleTraffic,
   validateLifecycleTranscript,
 } from './capture-guidance-lifecycle.mjs';
@@ -384,6 +385,73 @@ export function validateFeasibilityDecision(decision, { projectRoot } = {}) {
 }
 
 const RECHECK_STATIC = ['router', 'pickup', 'claude', 'codex'];
+const FIXED_GUIDANCE_BUDGETS = Object.freeze({
+  routerPlusPickup: { absolute: 5000, working: 4000 },
+  clean: { absolute: 300, working: 240 },
+  blocked: { absolute: 500, working: 400 },
+  fullLifecycle: { absolute: 7000, working: 5600 },
+});
+const VERIFIED_MAP_SHA256 =
+  'sha256:fc103b05488244900ec6866f01eb4474b01c171da4eb153ca8118561c515ff10';
+const RELOCATED_PROTOCOL_FILES = Object.freeze({
+  'binding.discussion': ['router'],
+  'binding.workspace': ['router'],
+  'binding.deferred-pickup': ['router'],
+  'binding.session-recovery': ['router'],
+  'review.prompt': ['pickup'],
+  'review.reject': ['pickup'],
+  'review.dismiss': ['pickup'],
+  'close.human-instruction': ['router'],
+});
+
+export function assertFixedGuidanceBudgets(budgets) {
+  if (!isDeepStrictEqual(budgets, FIXED_GUIDANCE_BUDGETS)) fail('fixed-budgets');
+  return budgets;
+}
+
+export function validateObligationCoverage({ projectRoot, map, coverage }) {
+  if (coverage?.schema !== 'aitm.guidance-obligation-coverage/v1') fail('obligation-coverage');
+  if (!Array.isArray(map?.rows) || !Array.isArray(coverage.entries)) fail('obligation-coverage');
+  const retained = map.rows.filter((row) => row.retainedProtocolRule);
+  const byId = new Map(coverage.entries.map((entry) => [entry.id, entry]));
+  if (byId.size !== retained.length || coverage.entries.length !== retained.length)
+    fail('obligation-coverage-count');
+  const uncovered = [];
+  const relocations = [];
+  for (const row of map.rows) {
+    if (!readBytes(projectRoot, row.sourcePath).includes(row.sourceAnchor))
+      fail(`obligation-source:${row.id}`);
+    if (row.enforcementPath) {
+      readBytes(projectRoot, row.enforcementPath);
+      continue;
+    }
+    if (!readBytes(projectRoot, row.retainedProtocolRule).includes(row.protocolAnchor))
+      fail(`obligation-protocol:${row.id}`);
+    const entry = byId.get(row.id);
+    if (
+      !entry ||
+      entry.sourceAnchor !== row.sourceAnchor ||
+      entry.protocolAnchor !== row.protocolAnchor
+    )
+      fail(`obligation-anchor:${row.id}`);
+    const expectedFiles = row.proposedStatic ?? RELOCATED_PROTOCOL_FILES[row.id];
+    if (!expectedFiles || !isDeepStrictEqual(entry.requiredFiles, expectedFiles))
+      fail(`obligation-file:${row.id}`);
+    if (!row.proposedStatic) relocations.push({ id: row.id, proposedStatic: expectedFiles });
+    if (!isDeepStrictEqual(Object.keys(entry.evidence ?? {}).sort(), [...expectedFiles].sort()))
+      fail(`obligation-file:${row.id}`);
+    for (const name of expectedFiles) {
+      const snippet = entry.evidence[name];
+      if (typeof snippet !== 'string' || snippet.length < 20) fail(`obligation-content:${row.id}`);
+      const staticText = readBytes(
+        projectRoot,
+        `${FIXTURE_ROOT}/obligation-complete-static/${name}.md`
+      ).toString('utf8');
+      if (!staticText.includes(`${snippet} [${row.id}]`)) fail(`obligation-content:${row.id}`);
+    }
+  }
+  return { retained: retained.length, relocations, uncovered };
+}
 const RECHECK_ACTIONS = [
   ['lifecycle-resume', 'resume'],
   ['lifecycle-promote', 'promote'],
@@ -443,6 +511,66 @@ function committedCurrentHead(projectRoot, relativePath) {
   return commit;
 }
 
+function replayComparableEvent(event) {
+  const comparable = structuredClone(event);
+  if (comparable.argv?.[1]?.endsWith('/bin/aitm.mjs')) {
+    comparable.argv[1] = '<project>/bin/aitm.mjs';
+  }
+  if (comparable.remoteAuthorityCalls) {
+    comparable.remoteAuthorityCalls = comparable.remoteAuthorityCalls
+      .map((call) => JSON.stringify(stable(call)))
+      .sort();
+  }
+  if (comparable.name === 'diagnostic') {
+    const diagnostic = JSON.parse(comparable.stdout);
+    const snapshot = diagnostic.fullDecision?.snapshot;
+    if (!snapshot || !Array.isArray(snapshot.observations)) fail('capture-replay-diagnostic');
+    delete snapshot.digest;
+    delete snapshot.startedAt;
+    delete snapshot.completedAt;
+    for (const observation of snapshot.observations) {
+      delete observation.observedAt;
+      delete observation.digest;
+    }
+    comparable.stdout = { parsed: diagnostic, characters: comparable.stdout.length };
+  }
+  return comparable;
+}
+
+function verifyCaptureReplay(capture) {
+  const replay = captureGuidanceLifecycle({ mode: 'recertification' });
+  for (const key of [
+    'scenarioManifestSha256',
+    'initialFixtureSha256',
+    'initialBodySha256',
+    'configSha256',
+    'fakeGhSha256',
+  ]) {
+    if (capture.identity[key] !== replay.identity[key]) fail(`capture-replay-identity:${key}`);
+  }
+  if (!isDeepStrictEqual(capture.identity.implementationFiles, replay.identity.implementationFiles))
+    fail('capture-replay-source');
+  if (
+    !isDeepStrictEqual(
+      capture.events.map(replayComparableEvent),
+      replay.events.map(replayComparableEvent)
+    )
+  )
+    fail('capture-replay-events');
+  if (
+    !isDeepStrictEqual(
+      capture.measurement.modeledProposedStatic,
+      replay.measurement.modeledProposedStatic
+    ) ||
+    !isDeepStrictEqual(capture.measurement.budgets, replay.measurement.budgets)
+  )
+    fail('capture-replay-measurement');
+  return {
+    eventsCompared: capture.events.length,
+    fixtureSha256: replay.identity.initialFixtureSha256,
+  };
+}
+
 function validateRecheckCapture(projectRoot, capture) {
   if (capture.schema !== 'aitm.guidance-lifecycle-capture/v1') fail('capture-schema');
   if (capture.identity?.mode !== 'recertification') fail('capture-mode');
@@ -488,7 +616,8 @@ function validateRecheckCapture(projectRoot, capture) {
     .filter(({ kind }) => kind !== 'transition')
     .reduce((total, event) => total + (event.remoteAuthorityReads ?? 0), 0);
   if (remoteAuthorityReads <= 0) fail('capture-remote-authority');
-  return { traffic, actionResults, remoteAuthorityReads };
+  const replay = verifyCaptureReplay(capture);
+  return { traffic, actionResults, remoteAuthorityReads, replay };
 }
 
 export function buildCurrentRecertificationDecision({ projectRoot, capture } = {}) {
@@ -499,6 +628,8 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
   const historicalDecisionPath = `${FIXTURE_ROOT}/feasibility-recheck-1676.json`;
   const map = readJson(projectRoot, mapPath);
   if (map.schema !== 'aitm.rule-guidance-map/v1' || map.rows?.length !== 41) fail('obligation-map');
+  if (fileRecord(projectRoot, 'obligation-map', mapPath).sha256 !== VERIFIED_MAP_SHA256)
+    fail('obligation-map-drift');
   const currentCapture = capture ?? readJson(projectRoot, capturePath);
   const verifiedCapture = validateRecheckCapture(projectRoot, currentCapture);
   const historical = readJson(projectRoot, historicalPath);
@@ -523,26 +654,11 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
   const retained = map.rows.filter((row) => row.retainedProtocolRule);
   const enforcement = map.rows.filter((row) => row.enforcementPath);
   if (retained.length !== 24 || enforcement.length !== 17) fail('obligation-partition');
-  const uncovered = [];
-  const relocations = [];
-  for (const row of map.rows) {
-    if (!readBytes(projectRoot, row.sourcePath).includes(row.sourceAnchor))
-      fail(`obligation-source:${row.id}`);
-    if (row.enforcementPath) {
-      readBytes(projectRoot, row.enforcementPath);
-      continue;
-    }
-    if (!readBytes(projectRoot, row.retainedProtocolRule).includes(row.protocolAnchor))
-      fail(`obligation-protocol:${row.id}`);
-    const requiredFiles = row.proposedStatic ?? ['router', 'pickup'];
-    if (!row.proposedStatic) relocations.push({ id: row.id, proposedStatic: requiredFiles });
-    const covered = row.proposedStatic
-      ? requiredFiles.every((name) => staticFiles[name]?.text.includes(`[${row.id}]`))
-      : requiredFiles.some((name) => staticFiles[name]?.text.includes(`[${row.id}]`));
-    if (!covered) uncovered.push(row.id);
-  }
+  const coveragePath = `${FIXTURE_ROOT}/obligation-complete-static/coverage.json`;
+  const coverage = readJson(projectRoot, coveragePath);
+  const { uncovered, relocations } = validateObligationCoverage({ projectRoot, map, coverage });
   const comparison = readJson(projectRoot, `${FIXTURE_ROOT}/context-comparison.json`);
-  const budgets = comparison.fixedBudgets;
+  const budgets = assertFixedGuidanceBudgets(comparison.fixedBudgets);
   const adapterMeasurements = Object.fromEntries(
     ADAPTERS.map((adapter) => {
       const names = ['router', 'pickup', adapter];
@@ -586,6 +702,7 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
       'scripts/maintenance/measure-guidance-candidate.mjs'
     ),
     fileRecord(projectRoot, 'obligation-map', mapPath),
+    fileRecord(projectRoot, 'obligation-coverage', coveragePath),
     shim.record,
     ...RECHECK_STATIC.map((name) => staticFiles[name].record),
     ...(capture ? [] : [fileRecord(projectRoot, 'recertification-capture', capturePath)]),
@@ -627,6 +744,7 @@ export function buildCurrentRecertificationDecision({ projectRoot, capture } = {
       remoteAuthorityReads: verifiedCapture.remoteAuthorityReads,
       dynamicProxyTokens: verifiedCapture.traffic.proxyTokens,
       transcriptSha256: currentCapture.identity.transcriptSha256,
+      replay: verifiedCapture.replay,
     },
     historicalNegativeControl: {
       verdict: historicalDecision.verdict,

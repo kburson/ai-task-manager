@@ -1,6 +1,7 @@
 // @story #1659
 // @story #1767
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -355,5 +356,53 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
     /guidance-feasibility:capture-current-source/
+  );
+  const selfConsistentDrift = structuredClone(committed);
+  const first = selfConsistentDrift.events.find(({ name }) => name === 'ready-first-load');
+  first.stdout = first.stdout.replace('"query":"bind"', '"query":"noop"');
+  selfConsistentDrift.identity.transcriptSha256 = `sha256:${createHash('sha256')
+    .update(JSON.stringify(selfConsistentDrift.events))
+    .digest('hex')}`;
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: selfConsistentDrift }),
+    /capture-replay/
+  );
+});
+
+test('current release gate refuses budget relaxation', async () => {
+  const { assertFixedGuidanceBudgets } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const fixed = {
+    routerPlusPickup: { absolute: 5000, working: 4000 },
+    clean: { absolute: 300, working: 240 },
+    blocked: { absolute: 500, working: 400 },
+    fullLifecycle: { absolute: 7000, working: 5600 },
+  };
+  assert.deepEqual(assertFixedGuidanceBudgets(fixed), fixed);
+  const relaxed = structuredClone(fixed);
+  relaxed.fullLifecycle.working = 6500;
+  assert.throws(() => assertFixedGuidanceBudgets(relaxed), /fixed-budgets/);
+});
+
+test('retained obligation coverage binds each reviewed sentence to its required file', async () => {
+  const { validateObligationCoverage } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const map = JSON.parse(readFileSync(path.join(fixtureRoot, 'rule-guidance-map.json')));
+  const coverage = JSON.parse(
+    readFileSync(path.join(fixtureRoot, 'obligation-complete-static/coverage.json'))
+  );
+  assert.equal(validateObligationCoverage({ projectRoot, map, coverage }).uncovered.length, 0);
+  const weakened = structuredClone(coverage);
+  weakened.entries.find(({ id }) => id === 'close.human-instruction').evidence.router =
+    'Close whenever convenient.';
+  assert.throws(
+    () => validateObligationCoverage({ projectRoot, map, coverage: weakened }),
+    /obligation-content/
+  );
+  const relocated = structuredClone(coverage);
+  relocated.entries.find(({ id }) => id === 'review.prompt').requiredFiles = ['router'];
+  assert.throws(
+    () => validateObligationCoverage({ projectRoot, map, coverage: relocated }),
+    /obligation-file/
   );
 });
