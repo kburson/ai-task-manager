@@ -5,8 +5,10 @@ import { test } from 'node:test';
 
 import {
   canonicalSourceInventory,
+  evaluateDeliveryAttributionException,
   verifyLocalSourceInventory,
 } from '../../../../task-tracker/lib/delivery-attribution-exception.mjs';
+import { buildDeliveryCommitText } from '../../../../task-tracker/lib/delivery-attribution.mjs';
 
 const A = 'a'.repeat(40);
 const B = 'b'.repeat(40);
@@ -92,5 +94,97 @@ test('an empty physical first line cannot authorize a source commit', async () =
         localHeadSha: HEAD,
       }),
     })
+  );
+});
+
+test('exact SHA mappings yield deterministic bounded commit text without relaxing ordinary attribution', () => {
+  const commits = [
+    { oid: A, messageHeadline: 'same subject' },
+    { oid: B, messageHeadline: 'same subject' },
+    { oid: HEAD, messageHeadline: '[#1755] tip [#1757] child' },
+  ];
+  const input = {
+    issueNumber: 1755,
+    prNumber: 1800,
+    expectedHeadSha: HEAD,
+    commits,
+    attributableCommits: commits,
+    verifiedMergeShas: [],
+    mappings: [
+      { oid: A, messageHeadline: 'same subject', issueNumber: 1755 },
+      { oid: B, messageHeadline: 'same subject', issueNumber: 1756 },
+    ],
+  };
+  assert.throws(() =>
+    buildDeliveryCommitText({
+      issueNumber: 1755,
+      prNumber: 1800,
+      expectedHeadSha: HEAD,
+      commitSubjects: commits.map(({ messageHeadline }) => messageHeadline),
+    })
+  );
+  const first = evaluateDeliveryAttributionException(input);
+  assert.deepEqual(first, evaluateDeliveryAttributionException(input));
+  assert.deepEqual(first.attributionTokens, ['#1755', '#1756', '#1757']);
+  assert.equal(first.attributionDisposition, 'waived');
+  assert.match(first.commitTitleSha256, /^[0-9a-f]{64}$/);
+  assert.match(first.commitMessageSha256, /^[0-9a-f]{64}$/);
+  for (const mappings of [
+    [input.mappings[0]],
+    [...input.mappings, input.mappings[0]],
+    [
+      ...input.mappings,
+      { oid: HEAD, messageHeadline: commits[2].messageHeadline, issueNumber: 1755 },
+    ],
+    [{ ...input.mappings[0], messageHeadline: 'wrong' }, input.mappings[1]],
+    [{ ...input.mappings[0], issueNumber: 0 }, input.mappings[1]],
+    [{ ...input.mappings[0], issueNumber: '#1755' }, input.mappings[1]],
+  ])
+    assert.throws(() => evaluateDeliveryAttributionException({ ...input, mappings }));
+  assert.throws(() => evaluateDeliveryAttributionException({ ...input, issueNumber: 1758 }));
+  assert.throws(() =>
+    evaluateDeliveryAttributionException({
+      ...input,
+      commits: [commits[0], commits[1], { ...commits[2], messageHeadline: '[#0] invalid' }],
+      attributableCommits: [
+        commits[0],
+        commits[1],
+        { ...commits[2], messageHeadline: '[#0] invalid' },
+      ],
+    })
+  );
+});
+
+test('only verified merge SHAs are excluded from exceptional mappings', () => {
+  const commits = [
+    { oid: A, messageHeadline: 'Merge #12 from branch' },
+    { oid: HEAD, messageHeadline: '[#1755] tip' },
+  ];
+  const base = {
+    issueNumber: 1755,
+    prNumber: 1800,
+    expectedHeadSha: HEAD,
+    commits,
+    attributableCommits: commits,
+    verifiedMergeShas: [],
+    mappings: [{ oid: A, messageHeadline: commits[0].messageHeadline, issueNumber: 1755 }],
+  };
+  assert.equal(evaluateDeliveryAttributionException(base).attributionDisposition, 'waived');
+  assert.throws(() => evaluateDeliveryAttributionException({ ...base, mappings: [] }));
+  assert.throws(() =>
+    evaluateDeliveryAttributionException({
+      ...base,
+      attributableCommits: [commits[1]],
+      verifiedMergeShas: [A],
+    })
+  );
+  assert.equal(
+    evaluateDeliveryAttributionException({
+      ...base,
+      attributableCommits: [commits[1]],
+      verifiedMergeShas: [A],
+      mappings: [],
+    }).attributionDisposition,
+    'waived'
   );
 });

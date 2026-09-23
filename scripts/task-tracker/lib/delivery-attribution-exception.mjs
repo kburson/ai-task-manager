@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+import { buildCommitTextFromTokens, parseDeliverySubjectTokens } from './delivery-attribution.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 const COMMIT_KEYS = ['messageHeadline', 'oid'];
@@ -65,4 +66,83 @@ export async function verifyLocalSourceInventory({ commits, headSha, inspectLoca
     }
   }
   return true;
+}
+
+export function evaluateDeliveryAttributionException({
+  issueNumber,
+  prNumber,
+  expectedHeadSha,
+  commits,
+  attributableCommits,
+  verifiedMergeShas,
+  mappings,
+} = {}) {
+  const inventory = canonicalSourceInventory(commits, expectedHeadSha);
+  if (
+    !Array.isArray(attributableCommits) ||
+    !Array.isArray(verifiedMergeShas) ||
+    !Array.isArray(mappings)
+  )
+    throw inventoryError('classification-shape');
+  const bySha = new Map(inventory.commits.map((commit) => [commit.oid, commit]));
+  const attributable = new Set();
+  for (const commit of attributableCommits) {
+    if (
+      !validCommit(commit) ||
+      bySha.get(commit.oid)?.messageHeadline !== commit.messageHeadline ||
+      attributable.has(commit.oid)
+    )
+      throw inventoryError('attributable-commit');
+    attributable.add(commit.oid);
+  }
+  const merges = new Set();
+  for (const oid of verifiedMergeShas) {
+    if (!SHA_RE.test(oid) || !bySha.has(oid) || attributable.has(oid) || merges.has(oid)) {
+      throw inventoryError('verified-merge');
+    }
+    merges.add(oid);
+  }
+  if (attributable.size + merges.size !== inventory.commits.length) {
+    throw inventoryError('incomplete-classification');
+  }
+  const rejected = new Set();
+  const tokenSet = new Set();
+  for (const commit of attributableCommits) {
+    try {
+      for (const token of parseDeliverySubjectTokens(commit.messageHeadline)) tokenSet.add(token);
+    } catch (error) {
+      if (
+        commit.messageHeadline.includes('[#') ||
+        error?.message !== 'delivery-attribution:source-subject'
+      )
+        throw error;
+      rejected.add(commit.oid);
+    }
+  }
+  const mapped = new Set();
+  for (const mapping of mappings) {
+    if (
+      mapping === null ||
+      typeof mapping !== 'object' ||
+      Array.isArray(mapping) ||
+      Object.keys(mapping).sort().join(',') !== 'issueNumber,messageHeadline,oid' ||
+      !SHA_RE.test(mapping.oid) ||
+      mapping.messageHeadline !== bySha.get(mapping.oid)?.messageHeadline ||
+      !Number.isSafeInteger(mapping.issueNumber) ||
+      mapping.issueNumber <= 0 ||
+      !rejected.has(mapping.oid) ||
+      mapped.has(mapping.oid)
+    ) {
+      throw inventoryError('mapping');
+    }
+    mapped.add(mapping.oid);
+    tokenSet.add(`#${mapping.issueNumber}`);
+  }
+  if (mapped.size !== rejected.size) throw inventoryError('mapping-set');
+  const attributionTokens = [...tokenSet].sort();
+  const text = buildCommitTextFromTokens(
+    { issueNumber, prNumber, expectedHeadSha },
+    attributionTokens
+  );
+  return Object.freeze({ attributionDisposition: 'waived', ...text });
 }
