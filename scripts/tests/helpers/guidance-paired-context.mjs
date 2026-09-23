@@ -10,9 +10,14 @@ import {
   validatePairedWorkload,
 } from '../../task-tracker/measure-guidance-context.mjs';
 import { GUIDANCE_CONTEXT_BUDGETS } from '../../task-tracker/lib/context-budgets.mjs';
+import { validateLifecycleTranscript } from '../../maintenance/capture-guidance-lifecycle.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const FIXTURES = 'scripts/tests/fixtures/1558';
+const PINNED_CAPTURE_SHA256 =
+  'sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4';
+const PINNED_SCENARIO_MANIFEST_SHA256 =
+  'sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818';
 const digest = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 const read = (relative) => readFileSync(path.join(ROOT, relative));
 
@@ -50,12 +55,18 @@ function capturedParts(event) {
   const input = commandText(event);
   const receipt = event.argv.includes('--known');
   const diagnostic = event.argv.includes('--diagnostic');
+  const guidance = event.kind === 'query' ? JSON.parse(event.stdout).guidance : null;
+  const suppressed =
+    receipt &&
+    Array.isArray(guidance) &&
+    guidance.length > 0 &&
+    guidance.every(({ status }) => status === 'not-modified');
   return [
     { category: receipt ? 'receipt-input' : 'command-input', text: input },
     {
       category: diagnostic
         ? 'explicit-diagnostics'
-        : receipt
+        : suppressed
           ? 'receipt-output'
           : 'operational-stdout',
       text: event.stdout,
@@ -143,6 +154,16 @@ export function buildPairedContext({ captureBytes, adapter } = {}) {
     'external-merge',
   ]) {
     if (!manifest.some(({ id }) => id === name)) throw new Error(`paired context: missing ${name}`);
+  }
+  validateLifecycleTranscript(capture);
+  if (
+    digest(captureBytes) !== PINNED_CAPTURE_SHA256 ||
+    capture.identity?.scenarioManifestSha256 !== PINNED_SCENARIO_MANIFEST_SHA256
+  ) {
+    throw new Error('paired context: capture identity drift');
+  }
+  if (capture.identity?.transcriptSha256 !== digest(JSON.stringify(capture.events))) {
+    throw new Error('paired context: transcript digest drift');
   }
   const repeated = capture.events.find(({ name }) => name === 'matching-receipt');
   const compacted = capture.events.find(({ name }) => name === 'compaction-reset');

@@ -2175,7 +2175,8 @@
         "node:url",
         "node:path",
         "../lib/self-doc.mjs",
-        "./paths.mjs"
+        "./paths.mjs",
+        "./lib/context-budgets.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",

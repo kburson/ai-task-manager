@@ -103,15 +103,22 @@ export function buildTokenCalibration({ captureBytes } = {}) {
 
 export function buildHeavyV2Sensitivity({
   captureBytes,
+  childIds = ['2201', '2202', '2203', '2204'],
   dependencyIds = ['3100', '3101', '3102'],
 } = {}) {
   if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
   if (
+    !Array.isArray(childIds) ||
+    childIds.length !== 4 ||
+    new Set(childIds).size !== 4 ||
+    childIds.some((id) => typeof id !== 'string' || id.length === 0) ||
     !Array.isArray(dependencyIds) ||
     dependencyIds.length !== 3 ||
     dependencyIds.some((id) => typeof id !== 'string' || id.length === 0)
   ) {
-    throw new TypeError('context: heavy case requires three dependency identifiers');
+    throw new TypeError(
+      'context: heavy case requires four distinct child and three dependency identifiers'
+    );
   }
   const capture = JSON.parse(captureBytes);
   const diagnostic = capture.events?.find((event) => event.name === 'diagnostic');
@@ -124,10 +131,10 @@ export function buildHeavyV2Sensitivity({
   decision.guidanceIds = ['action.close'];
   decision.snapshot.state = 'review';
   decision.blockers = [
-    ...Array.from({ length: 4 }, () => ({
+    ...childIds.map((childId) => ({
       guardId: 'authority-collection',
-      code: 'review-preflight-refused',
-      args: { category: 'epic-child' },
+      code: 'delivery-preflight-refused',
+      args: { category: `epic-child:${childId}` },
       noAutomaticRemediation: { reason: 'state-investigation-required' },
     })),
     ...dependencyIds.map((dependencyId) => ({

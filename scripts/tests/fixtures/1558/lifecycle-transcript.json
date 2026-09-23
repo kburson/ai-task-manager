@@ -684,8 +684,8 @@
             "bytes": 2194
           },
           "operational-stdout": {
-            "characters": 7210,
-            "bytes": 7210
+            "characters": 8046,
+            "bytes": 8046
           },
           "operational-stderr": {
             "characters": 0,
@@ -696,8 +696,8 @@
             "bytes": 840
           },
           "receipt-output": {
-            "characters": 1761,
-            "bytes": 1761
+            "characters": 925,
+            "bytes": 925
           },
           "explicit-diagnostics": {
             "characters": 2502,
@@ -1448,8 +1448,8 @@
             "bytes": 2194
           },
           "operational-stdout": {
-            "characters": 7210,
-            "bytes": 7210
+            "characters": 8046,
+            "bytes": 8046
           },
           "operational-stderr": {
             "characters": 0,
@@ -1460,8 +1460,8 @@
             "bytes": 840
           },
           "receipt-output": {
-            "characters": 1761,
-            "bytes": 1761
+            "characters": 925,
+            "bytes": 925
           },
           "explicit-diagnostics": {
             "characters": 2502,
@@ -1661,16 +1661,16 @@
       "serializedBlockerCount": 7,
       "typedOperationalArgs": [
         {
-          "category": "epic-child"
+          "category": "epic-child:2201"
         },
         {
-          "category": "epic-child"
+          "category": "epic-child:2202"
         },
         {
-          "category": "epic-child"
+          "category": "epic-child:2203"
         },
         {
-          "category": "epic-child"
+          "category": "epic-child:2204"
         },
         {
           "category": "dependency:3100"
@@ -1683,16 +1683,16 @@
         }
       ],
       "routine": {
-        "characters": 1325,
-        "bytes": 1325,
-        "proxyTokens": 332,
-        "sha256": "sha256:32e79f7e690078a52c093b199de9c04ea2919fbf744bcb67145acc817ec2a884"
+        "characters": 1353,
+        "bytes": 1353,
+        "proxyTokens": 339,
+        "sha256": "sha256:393bf75b5f6027e589aa0b8cd6723a6a07d5c9017ec32e70e138d55ac37ebf1a"
       },
       "diagnostic": {
-        "characters": 2898,
-        "bytes": 2898,
-        "proxyTokens": 725,
-        "sha256": "sha256:11c566d86d8f17eb04209768da0a791bef94ed16ae5d4b1cf0ef2950044cd041"
+        "characters": 2926,
+        "bytes": 2926,
+        "proxyTokens": 732,
+        "sha256": "sha256:49f4e3dca467278db5988c89be2d93603633bad3a301f7b08693c80b93144e92"
       },
       "tokenizer": {
         "tokenizer": {
@@ -1704,19 +1704,19 @@
         "streams": [
           {
             "id": "heavy-routine",
-            "characters": 1325,
-            "bytes": 1325,
-            "actualTokens": 293,
-            "proxyTokens": 332,
-            "ratio": 0.8825301204819277
+            "characters": 1353,
+            "bytes": 1353,
+            "actualTokens": 305,
+            "proxyTokens": 339,
+            "ratio": 0.8997050147492626
           },
           {
             "id": "heavy-diagnostic",
-            "characters": 2898,
-            "bytes": 2898,
-            "actualTokens": 950,
-            "proxyTokens": 725,
-            "ratio": 1.3103448275862069
+            "characters": 2926,
+            "bytes": 2926,
+            "actualTokens": 962,
+            "proxyTokens": 732,
+            "ratio": 1.314207650273224
           }
         ]
       }

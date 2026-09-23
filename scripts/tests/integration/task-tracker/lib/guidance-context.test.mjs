@@ -77,6 +77,61 @@ test('projects the same complete ordered lifecycle for both adapters without rep
       buildPairedContext({ captureBytes: Buffer.from(JSON.stringify(altered)), adapter: 'claude' }),
     /duplicate event ID/
   );
+  const reordered = structuredClone(capture);
+  const resume = reordered.events.findIndex(({ name }) => name === 'lifecycle-resume');
+  const promote = reordered.events.findIndex(({ name }) => name === 'lifecycle-promote');
+  [reordered.events[resume], reordered.events[promote]] = [
+    reordered.events[promote],
+    reordered.events[resume],
+  ];
+  assert.throws(
+    () =>
+      buildPairedContext({
+        captureBytes: Buffer.from(JSON.stringify(reordered)),
+        adapter: 'claude',
+      }),
+    /capture identity|query-order|transcript digest/
+  );
+  const substituted = structuredClone(capture);
+  substituted.identity.transcriptSha256 = digest(Buffer.from('forged transcript'));
+  assert.throws(
+    () =>
+      buildPairedContext({
+        captureBytes: Buffer.from(JSON.stringify(substituted)),
+        adapter: 'codex',
+      }),
+    /capture identity|transcript digest/
+  );
+  substituted.identity.transcriptSha256 = capture.identity.transcriptSha256;
+  substituted.identity.scenarioManifestSha256 = digest(Buffer.from('forged manifest'));
+  assert.throws(
+    () =>
+      buildPairedContext({
+        captureBytes: Buffer.from(JSON.stringify(substituted)),
+        adapter: 'codex',
+      }),
+    /capture identity/
+  );
+});
+
+test('classifies expanded known responses as operational output', () => {
+  const captureBytes = readFileSync(
+    path.join(ROOT, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
+  );
+  const capture = JSON.parse(captureBytes);
+  const report = buildPairedContext({ captureBytes, adapter: 'claude' });
+  const known = capture.events.filter((event) => event.argv?.includes('--known'));
+  const suppressed = known.filter((event) =>
+    JSON.parse(event.stdout).guidance.every(({ status }) => status === 'not-modified')
+  );
+  assert.equal(
+    report.current.categories['receipt-output'].characters,
+    suppressed.reduce((sum, event) => sum + event.stdout.length, 0)
+  );
+  assert.ok(
+    report.current.categories['operational-stdout'].characters >=
+      known.find(({ name }) => name === 'agent-change').stdout.length
+  );
 });
 
 test('committed paired lifecycle report regenerates from exact captured and frozen bytes', async () => {
@@ -127,6 +182,23 @@ test('v2 heavy presentation retains typed operational dependency values', () => 
   assert.equal(extended.typedOperationalArgs[4].category, `dependency:${extendedId}`);
   assert.ok(extended.routine.characters > original.routine.characters);
   assert.equal(extended.serializedBlockerCount, original.serializedBlockerCount);
+  assert.deepEqual(
+    original.typedOperationalArgs.slice(0, 4).map(({ category }) => category),
+    ['epic-child:2201', 'epic-child:2202', 'epic-child:2203', 'epic-child:2204']
+  );
+  const extendedChild = buildHeavyV2Sensitivity({
+    captureBytes,
+    childIds: ['a-much-longer-child-identifier', '2202', '2203', '2204'],
+  });
+  assert.equal(
+    extendedChild.typedOperationalArgs[0].category,
+    'epic-child:a-much-longer-child-identifier'
+  );
+  assert.ok(extendedChild.routine.characters > original.routine.characters);
+  assert.throws(
+    () => buildHeavyV2Sensitivity({ captureBytes, childIds: ['2201', '2201', '2203', '2204'] }),
+    /four distinct child/
+  );
 });
 
 // cspell:disable
