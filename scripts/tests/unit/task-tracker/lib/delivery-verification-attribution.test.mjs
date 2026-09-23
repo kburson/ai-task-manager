@@ -287,6 +287,15 @@ test('waived merge without attribution trailer produces a labeled v3 receipt inp
   assert.deepEqual(verified.receiptInput.metadataWarnings, ['missing-merge-attribution-trailer']);
 });
 
+test('waived merge with only the exact terminal trailer carries no warning', async () => {
+  const { input, waivedIntent } = waivedCase({
+    mergeMessage: 'Merged authorized source\nAttribution: [#1392]',
+  });
+  const verified = await verifyDeliveredPullRequest({ ...input, intent: waivedIntent });
+  assert.equal(verified.receiptInput.attributionDisposition, 'waived');
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
+});
+
 test('waived merge refuses conflicting trailer, changed inventory, or changed exception record', async () => {
   const { input, waivedIntent } = waivedCase();
   for (const changed of [
@@ -329,6 +338,30 @@ test('waived merge refuses conflicting trailer, changed inventory, or changed ex
   ])
     await assert.rejects(() => verifyDeliveredPullRequest({ ...changed, intent: waivedIntent }));
 });
+
+for (const [name, mergeMessage] of [
+  [
+    'unauthorized body token before an exact terminal trailer',
+    'Unauthorized [#999]\nAttribution: [#1392]',
+  ],
+  [
+    'whitespace-prefixed conflicting trailer before an exact terminal trailer',
+    '  Attribution: [#999]\nAttribution: [#1392]',
+  ],
+  [
+    'whitespace-prefixed duplicate claim with authorized tokens',
+    '  Attribution: [#1392]\nAttribution: [#1392]',
+  ],
+]) {
+  test(`waived merge refuses ${name}`, async () => {
+    const { input, waivedIntent } = waivedCase({ mergeMessage });
+    await assert.rejects(
+      () => verifyDeliveredPullRequest({ ...input, intent: waivedIntent }),
+      (error) =>
+        error.category === 'attribution' && error.predicate === 'merge-message-attribution-conflict'
+    );
+  });
+}
 
 function defaultMergeRecoveryInput({
   commitTitle = DEFAULT_MERGE_TITLE,

@@ -460,6 +460,24 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   ];
   const expectedLine = `Attribution: ${messageTokens.map((token) => `[${token}]`).join(' ')}`;
   const lines = inspection.commitMessage.split('\n');
+  if (options.waived === true) {
+    const allowed = new Set(intent.attributionTokens);
+    const observed = [
+      ...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE),
+    ].map((match) => `#${match[1]}`);
+    const claims = lines.filter((line) => line.trimStart().startsWith('Attribution:'));
+    if (
+      observed.some((token) => !allowed.has(token)) ||
+      (claims.length > 0 && (claims.length !== 1 || lines.at(-1) !== expectedLine))
+    ) {
+      throw verificationError('attribution', undefined, {
+        predicate: 'merge-message-attribution-conflict',
+        recoveryAction:
+          'use a governed non-delivery disposition or create a new corrective delivery; immutable conflicting bytes cannot be warning-recovered',
+      });
+    }
+    return claims.length === 1 ? [] : ['missing-merge-attribution-trailer'];
+  }
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
   if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return [];
   if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) {
@@ -477,18 +495,6 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   const claimsCanonicalAttribution = lines.some((line) =>
     line.trimStart().startsWith('Attribution:')
   );
-  if (!claimsCanonicalAttribution && options.waived === true) {
-    const allowed = new Set(intent.attributionTokens);
-    const observed = [
-      ...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE),
-    ].map((match) => `#${match[1]}`);
-    if (observed.some((token) => !allowed.has(token))) {
-      throw verificationError('attribution', undefined, {
-        predicate: 'merge-message-attribution-conflict',
-      });
-    }
-    return ['missing-merge-attribution-trailer'];
-  }
   if (
     !claimsCanonicalAttribution &&
     options.provenMultiSourceSquash === true &&
