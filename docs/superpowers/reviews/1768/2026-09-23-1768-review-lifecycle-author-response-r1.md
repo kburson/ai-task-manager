@@ -1,7 +1,7 @@
 # Manual peer review: author response, round 1
 
 - Issue: #1768
-- Reviewer source: `docs/peer-reviews/spec/2026-09-23-2026-09-22-1768-review-lifecycle-design-review-80c813f0f96ca4e89434a7012676243b/review-80c813f0f96ca4e89434a7012676243b-reviewer-response-1.md`
+- Reviewer source: `docs/superpowers/reviews/1768/2026-09-23-1768-review-lifecycle-reviewer-response-r1.md`
 - Reviewed spec: `docs/superpowers/specs/2026-09-22-1768-review-lifecycle-design.md`, version 3 at `59e63f591045c839b35a155e6d33f322b8fd1e03`
 - Revised spec: same path, version 4 at `c01a0620eceb22b1652b320da22886dac28fb9b1`
 - Review method: manual file exchange; this is not an `ai-peer-review` protocol submission or acceptance
