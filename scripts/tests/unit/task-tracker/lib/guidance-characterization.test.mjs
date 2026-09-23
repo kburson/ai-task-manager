@@ -303,10 +303,12 @@ test('missing, stale, shortened or relabeled inputs cannot become a decision', a
   );
 });
 
-test('committed decision and both command modes reproduce the accepted generation', async () => {
-  const { buildFeasibilityDecision, runMeasurementCommand } = await measurementTool();
-  const expected = buildFeasibilityDecision({ projectRoot });
-  assert.deepEqual(json('feasibility-decision.json'), expected);
+test('historical foundation stays immutable while command modes report the current recertification', async () => {
+  const { buildFeasibilityDecision, buildCurrentRecertificationDecision, runMeasurementCommand } =
+    await measurementTool();
+  assert.deepEqual(json('feasibility-decision.json'), buildFeasibilityDecision({ projectRoot }));
+  const expected = buildCurrentRecertificationDecision({ projectRoot });
+  assert.deepEqual(json('feasibility-recheck-1767.json'), expected);
 
   for (const args of [
     ['--all', '--json'],

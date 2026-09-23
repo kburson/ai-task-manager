@@ -28,6 +28,8 @@
 ## Files and Responsibilities
 
 - Extend `scripts/maintenance/capture-guidance-lifecycle.mjs` with an opt-in authority-complete fixture mode and a new artifact output path; do not change the default capture shape or its artifact.
+- Repair the discovered production `aitm explain --action deliver` read path in `scripts/task-tracker/verbs/explain.mjs`: route it through the existing read-only delivery evaluator with an explicit read-port allowlist. Its current generic observation adapter cannot read `delivery`, so this action is indeterminate regardless of actual authority. This is required to measure a real delivery decision in this child, not a new sibling defect.
+- Repair the discovered Close read path in `scripts/task-tracker/lib/action-decision/close.mjs`: use the existing read-only external PR source-history reader, and use the registered Review exit guard as producer so a genuine missing receipt yields a valid blocked explanation instead of an envelope validation exception.
 - Add `scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs` for contiguous authority, public subprocess output, refusal/remediation, diagnostic, external boundaries, exact traffic, and historical preservation.
 - Extend `scripts/maintenance/measure-guidance-candidate.mjs` so `--all --assert-feasible --json` validates and reports the current recertification instead of accepting the old candidate model as current.
 - Extend `scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs` with stale/missing/map-incomplete/capture-subset/traffic-duplication failures and the fixed-budget verdict.
@@ -37,6 +39,7 @@
 
 1. Write tests that reject the #1765 capture as a GO input because the Plan/Develop/Review/Close fixture authority is incomplete, while proving its original artifact and default runner still validate as historical evidence.
 2. Add an opt-in fixture mode that supplies the board, body markers, local session/binding, dependency, verification, review, and delivery evidence consumed by each action evaluator. Reuse the production public `aitm explain` subprocess. Only the fixture input changes between queries; record every revision and body digest.
+   2a. Test the public Deliver path red before wiring the existing delivery evaluator. Use only its read methods, and verify it never invokes a mutation method. Keep the public CLI transcript as the acceptance path.
 3. Test the exact ordered schedule: first load, matching receipt, post-compaction reload, one representative blocked refusal, explicit diagnostic, remediation, changed instruction, each lifecycle decision, external approval and merge reads, and Done verification. Require one connected authority history and account for all agent-visible traffic once.
 4. Commit runner and tests, generate the new artifact from that exact source commit, then verify its source and fixture read-back. A failing budget is a recorded NO-GO, not a test failure for transcript integrity.
 

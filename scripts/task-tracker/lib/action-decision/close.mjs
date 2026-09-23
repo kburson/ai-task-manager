@@ -1,4 +1,5 @@
 // @story #1669
+// @story #1767
 // Advisory close collection: all I/O is confined to command-local observations.
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
@@ -219,9 +220,6 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
       lifecycleEvidence,
       ctx: {
         resolveCloseParentIssue: async () => graph.get(issue).parent,
-        fetchClosePullRequestEvidence: async () => {
-          throw new TypeError('close-readiness:external-pr-source-proof-unavailable');
-        },
         loadWorkflowBoundary: deps.loadWorkflowBoundary,
         workflowPolicyRuntime: deps.workflowPolicyRuntime,
       },
@@ -540,7 +538,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
           error?.name === 'CloseDeliveryReceiptError' &&
           !['input', 'malformed'].includes(error.category)
         )
-          blockers.push(legacy('verb:close'));
+          blockers.push(legacy('review-exit-close-gates'));
         else fail('delivery');
       }
     }

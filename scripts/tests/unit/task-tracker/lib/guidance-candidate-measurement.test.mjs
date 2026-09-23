@@ -1,4 +1,5 @@
 // @story #1659
+// @story #1767
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -305,5 +306,28 @@ test('committed candidate transcripts and reports exactly match regeneration', a
     const artifactPath = path.join(fixtureRoot, relativePath);
     assert.equal(existsSync(artifactPath), true, `missing generated artifact: ${relativePath}`);
     assert.deepEqual(JSON.parse(readFileSync(artifactPath, 'utf8')), value);
+  }
+});
+
+test('current recertification binds every obligation and the complete public CLI lifecycle', async () => {
+  const { buildCurrentRecertificationDecision } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const decision = buildCurrentRecertificationDecision({ projectRoot });
+  assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
+  assert.equal(decision.owner.issue, 1767);
+  assert.equal(decision.owner.foundationIssue, 1660);
+  assert.equal(decision.verdict, 'GO');
+  assert.equal(decision.obligations.total, 41);
+  assert.equal(decision.obligations.retainedProtocol, 24);
+  assert.equal(decision.obligations.enforcement, 17);
+  assert.equal(decision.obligations.uncovered.length, 0);
+  assert.equal(decision.capture.events, 17);
+  assert.equal(
+    decision.capture.actionResults.every(({ status }) => status === 'ready'),
+    true
+  );
+  for (const adapter of ['claude', 'codex']) {
+    assert.equal(decision.adapters[adapter].status, 'pass');
+    assert.ok(decision.adapters[adapter].measurements.fullLifecycle <= 5600);
   }
 });

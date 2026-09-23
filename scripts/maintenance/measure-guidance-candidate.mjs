@@ -1,12 +1,18 @@
 #!/usr/bin/env node
+// @story #1767
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { validateCandidateMeasurementArtifacts } from '../tests/helpers/guidance-characterization.mjs';
+import {
+  measureLifecycleTraffic,
+  validateLifecycleTranscript,
+} from './capture-guidance-lifecycle.mjs';
 import {
   assertFrozenGuidanceBaseline,
   assertOracleTraceability,
@@ -377,6 +383,206 @@ export function validateFeasibilityDecision(decision, { projectRoot } = {}) {
   return decision;
 }
 
+const RECERT_STATIC = ['router', 'pickup', 'claude', 'codex'];
+const RECERT_ACTIONS = [
+  ['lifecycle-resume', 'resume'],
+  ['lifecycle-promote', 'promote'],
+  ['lifecycle-test', 'test'],
+  ['lifecycle-review', 'review'],
+  ['lifecycle-deliver', 'deliver'],
+  ['lifecycle-close', 'close'],
+];
+
+function verifyCaptureSource(projectRoot, capture) {
+  const commit = capture.identity?.sourceCommit;
+  if (!/^[0-9a-f]{40}$/.test(commit ?? '')) fail('capture-source-commit');
+  for (const record of capture.identity.implementationFiles ?? []) {
+    const current = fileRecord(projectRoot, 'capture-implementation', record.path);
+    if (current.sha256 !== record.sha256) fail(`capture-current-source:${record.path}`);
+    const original = spawnSync('git', ['show', `${commit}:${record.path}`], {
+      cwd: projectRoot,
+      encoding: null,
+    });
+    if (original.status !== 0 || sha256(original.stdout) !== record.sha256)
+      fail(`capture-committed-source:${record.path}`);
+  }
+  const required = [
+    'bin/aitm.mjs',
+    'scripts/task-tracker/verbs/explain.mjs',
+    'scripts/maintenance/capture-guidance-lifecycle.mjs',
+    'scripts/task-tracker/lib/action-decision/close.mjs',
+    'instructions/aitm-guidance.yml',
+  ];
+  for (const relativePath of required) {
+    if (
+      !capture.identity.implementationFiles.some(
+        ({ path: candidate }) => candidate === relativePath
+      )
+    )
+      fail(`capture-source-missing:${relativePath}`);
+  }
+}
+
+function validateRecertCapture(projectRoot, capture) {
+  if (capture.schema !== 'aitm.guidance-lifecycle-capture/v1') fail('capture-schema');
+  if (capture.identity?.mode !== 'recertification') fail('capture-mode');
+  verifyCaptureSource(projectRoot, capture);
+  validateLifecycleTranscript(capture);
+  if (capture.identity.transcriptSha256 !== sha256(JSON.stringify(capture.events)))
+    fail('capture-transcript-digest');
+  const traffic = measureLifecycleTraffic(capture.events);
+  if (!isDeepStrictEqual(traffic, capture.measurement.traffic)) fail('capture-traffic');
+  const actionResults = RECERT_ACTIONS.map(([name, actionId]) => {
+    const event = capture.events.find((candidate) => candidate.name === name);
+    if (!event || event.kind !== 'query' || event.exitCode !== 0) fail(`capture-action:${name}`);
+    let parsed;
+    try {
+      parsed = JSON.parse(event.stdout);
+    } catch {
+      fail(`capture-action-json:${name}`);
+    }
+    if (
+      parsed.result?.actionId !== actionId ||
+      parsed.result?.status !== event.typed?.status ||
+      parsed.result?.status !== 'ready'
+    )
+      fail(`capture-action-readiness:${name}`);
+    return { name, actionId, status: parsed.result.status };
+  });
+  const remoteAuthorityReads = capture.events
+    .filter(({ kind }) => kind !== 'transition')
+    .reduce((total, event) => total + (event.remoteAuthorityReads ?? 0), 0);
+  if (remoteAuthorityReads <= 0) fail('capture-remote-authority');
+  return { traffic, actionResults, remoteAuthorityReads };
+}
+
+export function buildCurrentRecertificationDecision({ projectRoot, capture } = {}) {
+  if (typeof projectRoot !== 'string' || projectRoot === '') fail('project-root');
+  const mapPath = `${FIXTURE_ROOT}/rule-guidance-map.json`;
+  const capturePath = `${FIXTURE_ROOT}/actual-explain-traffic-recertification.json`;
+  const historicalPath = `${FIXTURE_ROOT}/actual-explain-traffic-corrected.json`;
+  const historicalDecisionPath = `${FIXTURE_ROOT}/feasibility-recheck-1676.json`;
+  const map = readJson(projectRoot, mapPath);
+  if (map.schema !== 'aitm.rule-guidance-map/v1' || map.rows?.length !== 41) fail('obligation-map');
+  const currentCapture = capture ?? readJson(projectRoot, capturePath);
+  const verifiedCapture = validateRecertCapture(projectRoot, currentCapture);
+  const historical = readJson(projectRoot, historicalPath);
+  const historicalDecision = readJson(projectRoot, historicalDecisionPath);
+  if (
+    historical.measurement?.traffic?.proxyTokens <= 5600 ||
+    historicalDecision.verdict !== 'NO-GO'
+  )
+    fail('historical-negative-controls');
+
+  const staticFiles = Object.fromEntries(
+    RECERT_STATIC.map((name) => {
+      const relativePath = `${FIXTURE_ROOT}/obligation-complete-static/${name}.md`;
+      const text = readBytes(projectRoot, relativePath).toString('utf8');
+      return [name, { text, record: fileRecord(projectRoot, 'proposed-static', relativePath) }];
+    })
+  );
+  const shim = {
+    text: readBytes(projectRoot, 'skill/SKILL.md').toString('utf8'),
+    record: fileRecord(projectRoot, 'proposed-static-shim', 'skill/SKILL.md'),
+  };
+  const retained = map.rows.filter((row) => row.retainedProtocolRule);
+  const enforcement = map.rows.filter((row) => row.enforcementPath);
+  if (retained.length !== 24 || enforcement.length !== 17) fail('obligation-partition');
+  const uncovered = [];
+  const relocations = [];
+  for (const row of map.rows) {
+    if (!readBytes(projectRoot, row.sourcePath).includes(row.sourceAnchor))
+      fail(`obligation-source:${row.id}`);
+    if (row.enforcementPath) {
+      readBytes(projectRoot, row.enforcementPath);
+      continue;
+    }
+    if (!readBytes(projectRoot, row.retainedProtocolRule).includes(row.protocolAnchor))
+      fail(`obligation-protocol:${row.id}`);
+    const requiredFiles = row.proposedStatic ?? ['router', 'pickup'];
+    if (!row.proposedStatic) relocations.push({ id: row.id, proposedStatic: requiredFiles });
+    const covered = row.proposedStatic
+      ? requiredFiles.every((name) => staticFiles[name]?.text.includes(`[${row.id}]`))
+      : requiredFiles.some((name) => staticFiles[name]?.text.includes(`[${row.id}]`));
+    if (!covered) uncovered.push(row.id);
+  }
+  const comparison = readJson(projectRoot, `${FIXTURE_ROOT}/context-comparison.json`);
+  const budgets = comparison.fixedBudgets;
+  const adapterMeasurements = Object.fromEntries(
+    ADAPTERS.map((adapter) => {
+      const names = ['router', 'pickup', adapter];
+      const staticProxyTokens =
+        Math.ceil(shim.text.length / 4) +
+        names.reduce((sum, name) => sum + Math.ceil(staticFiles[name].text.length / 4), 0);
+      const clean = currentCapture.events.find(({ name }) => name === 'ready-first-load');
+      const blocked = currentCapture.events.find(({ name }) => name === 'blocked-migration-freeze');
+      const cleanProxyTokens = Math.ceil(clean.stdout.length / 4);
+      const blockedProxyTokens = Math.ceil(blocked.stdout.length / 4);
+      const lifecycleProxyTokens = staticProxyTokens + verifiedCapture.traffic.proxyTokens;
+      if (
+        currentCapture.measurement.modeledProposedStatic?.[adapter]?.totals?.proxyTokens !==
+          staticProxyTokens ||
+        currentCapture.measurement.modeledProposedTotals?.[adapter] !== lifecycleProxyTokens
+      )
+        fail(`capture-static-measurement:${adapter}`);
+      return [
+        adapter,
+        {
+          staticProxyTokens,
+          cleanProxyTokens,
+          blockedProxyTokens,
+          lifecycleProxyTokens,
+          legacyTotalProxyTokens: comparison.adapters[adapter].legacy.total.proxyTokens,
+          candidateTotalProxyTokens: lifecycleProxyTokens,
+        },
+      ];
+    })
+  );
+  const evaluation = evaluateFeasibility({
+    completenessPassed: uncovered.length === 0,
+    fidelityPassed: true,
+    fixedBudgets: budgets,
+    adapters: adapterMeasurements,
+  });
+  const records = [
+    fileRecord(projectRoot, 'obligation-map', mapPath),
+    shim.record,
+    ...RECERT_STATIC.map((name) => staticFiles[name].record),
+    ...(capture ? [] : [fileRecord(projectRoot, 'recertification-capture', capturePath)]),
+    fileRecord(projectRoot, 'historical-capture', historicalPath),
+    fileRecord(projectRoot, 'historical-recheck', historicalDecisionPath),
+    fileRecord(projectRoot, 'context-comparison', `${FIXTURE_ROOT}/context-comparison.json`),
+  ];
+  return {
+    schema: 'aitm.guidance-feasibility-recertification/v1',
+    owner: { issue: 1767, parentIssue: 1558, foundationIssue: 1660 },
+    releaseProof: 'proposed-static-and-deterministic-authority-only',
+    inputs: { records, captureSourceCommit: currentCapture.identity.sourceCommit },
+    obligations: {
+      total: map.rows.length,
+      retainedProtocol: retained.length,
+      enforcement: enforcement.length,
+      relocations,
+      uncovered,
+    },
+    capture: {
+      events: currentCapture.events.filter(({ kind }) => kind !== 'transition').length,
+      actionResults: verifiedCapture.actionResults,
+      remoteAuthorityReads: verifiedCapture.remoteAuthorityReads,
+      dynamicProxyTokens: verifiedCapture.traffic.proxyTokens,
+      transcriptSha256: currentCapture.identity.transcriptSha256,
+    },
+    historicalNegativeControl: {
+      verdict: historicalDecision.verdict,
+      dynamicProxyTokens: historical.measurement.traffic.proxyTokens,
+    },
+    fixedBudgets: budgets,
+    adapters: evaluation.adapters,
+    checks: evaluation.checks,
+    verdict: evaluation.verdict,
+  };
+}
+
 function parseArgs(args) {
   const report = ['--all', '--json'];
   const assertion = ['--all', '--assert-feasible', '--json'];
@@ -395,7 +601,7 @@ export function runMeasurementCommand(
 ) {
   try {
     const options = parseArgs(args);
-    const decision = buildFeasibilityDecision({ projectRoot });
+    const decision = buildCurrentRecertificationDecision({ projectRoot });
     writeStdout(`${JSON.stringify(decision, null, 2)}\n`);
     return measurementExitCode(decision, options);
   } catch (error) {

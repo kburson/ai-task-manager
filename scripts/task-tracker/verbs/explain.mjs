@@ -1,4 +1,5 @@
 // @story #1675
+// @story #1767
 // Fresh, read-only operational explanations. This module receives no mutation port.
 import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'explain', { surface: 'direct-verb' });
@@ -18,6 +19,56 @@ import { evaluateSessionReadiness } from '../lib/action-decision/session.mjs';
 import { evaluateTestReadiness } from '../lib/action-decision/test.mjs';
 import { evaluateReviewReadiness } from '../lib/action-decision/review.mjs';
 import { evaluateCloseReadiness } from '../lib/action-decision/close.mjs';
+import { evaluateDeliveryReadiness } from '../lib/action-decision/deliver.mjs';
+import { createDefaultDeliverDeps } from './deliver.mjs';
+
+const DELIVERY_READ_PORT_NAMES = Object.freeze([
+  'fetchIssue',
+  'resolveLineage',
+  'getCurrentBranch',
+  'getLocalHeadSha',
+  'resolveTestReceiptSha',
+  'resolveAcceptedReviewSha',
+  'resolveAgentReviewPassed',
+  'listPullRequests',
+  'fetchPullRequest',
+  'fetchRequiredChecks',
+  'fetchRepositoryMergeMethods',
+  'listCommitSubjects',
+  'listDirtyPaths',
+  'listIssueComments',
+  'resolvePullRequestReviewGate',
+  'resolveManualCodeReviewer',
+  'fetchManualCodeReviewEvidence',
+  'resolveReviewAuthorization',
+  'getAuthenticatedLogin',
+  'inspectSourceCommit',
+  'fetchRemoteTrunkHeadSha',
+  'resolveLocalTrunkHeadSha',
+  'isAncestor',
+  'inspectMergeCommit',
+  'attributingCommits',
+]);
+
+/** Keep mutation-capable delivery dependencies outside the Explain boundary. */
+export function deliveryExplainReadPorts({ cfg, projectRoot, factory = createDefaultDeliverDeps }) {
+  const candidate = factory({
+    cfg,
+    projectDir: projectRoot,
+    getIssueBoardState: async (issueNumber) =>
+      (await fetchAssignmentSnapshot({ issueNumber, cfg })).state,
+  });
+  return Object.freeze({
+    ...Object.fromEntries(
+      DELIVERY_READ_PORT_NAMES.map((name) => {
+        if (typeof candidate[name] !== 'function')
+          throw new TypeError(`explain:delivery-port:${name}`);
+        return [name, candidate[name]];
+      })
+    ),
+    providerActionAvailable: candidate.providerActionAvailable,
+  });
+}
 
 const ALIASES = Object.freeze({ next: 'promote', review: 'review', close: 'close' });
 const VALUE_FLAGS = new Set(['--action', '--known', '--known-source']);
@@ -190,10 +241,26 @@ function failedAttempt({ repository, issue, actionId }) {
 }
 
 /** Production evaluation entry. It exposes read ports only and never builds the mutation context. */
-export async function evaluateExplanation({ issue, actionId, projectRoot = getProjectDir() } = {}) {
+export async function evaluateExplanation({
+  issue,
+  actionId,
+  projectRoot = getProjectDir(),
+  deliveryDeps,
+} = {}) {
   const cfg = loadConfig();
   const repository = cfg.repo;
   if (typeof repository !== 'string' || !repository.includes('/')) fail('repository');
+  if (actionId === 'deliver') {
+    const state = loadState(statePath(projectRoot));
+    const decision = await evaluateDeliveryReadiness({
+      issue,
+      cfg,
+      projectDir: projectRoot,
+      state,
+      deps: deliveryDeps ?? deliveryExplainReadPorts({ cfg, projectRoot }),
+    });
+    return { decision, diagnosticMessages: [] };
+  }
   let body;
   let head;
   let sessionState;
