@@ -21,7 +21,7 @@ Ordinary reads, edits, tests, and Git commands do not need an Explain query. Rep
 
 ## Codex bridge
 
-- Treat `/task ...` as a natural-language request. Run `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is canonical command help. Use the scoped installed scripts first; the local `scripts/` fallback requires explicit source-checkout seeding.
+- Treat `/task ...` as a natural-language request. Run `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is canonical command help. Executables live under `node_modules/@kburson/ai-task-manager/scripts/`; the local `scripts/` fallback requires explicit source-checkout seeding.
 - Use `.agents/skills/task/SKILL.md` and `.ai-task-manager/` project state; legacy `.claude/` state is fallback only. Project-local `.codex/hooks.json` requires a trusted project. Respect sandbox and credential approval errors through the sanctioned workflow.
 - Read `.ai-task-manager/templates/pickup-directive.md` on pickup. ACs cite root Verification Commands with `aitm-verified vc-list="vc:N"`; Review reuses exact-head Test receipts. The Rank rules, Checkpoint Pause, and deep-dive procedure live in the pickup directive and its JIT rationale.
 - An optional `user-story.md` input may supply the story; see `rules/user-story-quality.md`. User Story input is optional before Plan approval.

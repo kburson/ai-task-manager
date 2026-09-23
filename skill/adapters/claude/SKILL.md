@@ -21,7 +21,7 @@ Ordinary reads, edits, tests, and Git commands do not need an Explain query. Rep
 
 ## Claude bridge
 
-- `/task ...` uses `.claude/commands/task.md`. Run support commands through `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is canonical command help. The source-checkout `scripts/` fallback requires explicit dogfood seeding with `scripts/dev-env/setup-local-worktree.sh`.
+- `/task ...` uses `.claude/commands/task.md`. Run support commands through `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is canonical command help. Hook entrypoints live under `node_modules/@kburson/ai-task-manager/scripts/`; the source-checkout `scripts/` fallback requires explicit dogfood seeding with `scripts/dev-env/setup-local-worktree.sh`.
 - Use `.ai-task-manager/` state; legacy `.claude/` state is fallback only. The Claude status line reads `.ai-task-manager/task-tracker-state.json` with that legacy fallback.
 - Read `.ai-task-manager/templates/pickup-directive.md` on pickup. ACs cite root Verification Commands with `aitm-verified vc-list="vc:N"`; Review reuses exact-head Test receipts. The Rank rules (`child-cannot-lead-epic`), Checkpoint Pause, and deep-dive procedure live in the pickup directive and its JIT rationale.
 - An optional `user-story.md` input may supply the story; see `rules/user-story-quality.md`. User Story input is optional before Plan approval.
