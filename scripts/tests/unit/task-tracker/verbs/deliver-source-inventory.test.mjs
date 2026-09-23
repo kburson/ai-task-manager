@@ -33,6 +33,28 @@ test('classification retains SHA records and verifies only unattributed merges',
   );
 });
 
+test('failed merge inspection leaves its source SHA attributable', async () => {
+  const source = [
+    { oid: '2'.repeat(40), messageHeadline: 'Merge plain branch' },
+    { oid: HEAD, messageHeadline: '[#1755] tip' },
+  ];
+  const result = await classifySourceCommitSubjects(
+    {
+      sourceCommitSubjects: source.map((item) => item.messageHeadline),
+      sourceCommits: source,
+      sourceCommitsComplete: true,
+      sourceCommitsHeadSha: HEAD,
+      headRefOid: HEAD,
+    },
+    async () => {
+      throw new Error('local object unavailable');
+    }
+  );
+
+  assert.deepEqual(result.attributableCommits, source);
+  assert.deepEqual(result.verifiedMergeShas, []);
+});
+
 test('open-PR preflight omits a locally verified two-parent ancestry merge', async () => {
   const sourceCommit = '1'.repeat(40);
   const sourceMerge = '2'.repeat(40);

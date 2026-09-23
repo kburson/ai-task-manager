@@ -70,3 +70,25 @@ test('local proof compares the physical first line and reachability for every SH
     );
   }
 });
+
+test('an empty physical first line is retained as an empty subject', async () => {
+  const commits = [
+    { oid: A, messageHeadline: '' },
+    { oid: HEAD, messageHeadline: '[#1755] tip' },
+  ];
+  const inventory = canonicalSourceInventory(commits, HEAD);
+
+  assert.equal(inventory.commits[0].messageHeadline, '');
+  assert.equal(
+    await verifyLocalSourceInventory({
+      commits: inventory.commits,
+      headSha: HEAD,
+      inspectLocalCommit: async ({ commitSha }) => ({
+        oid: commitSha,
+        message: commitSha === A ? '\nbody after empty first line' : '[#1755] tip\nbody',
+        reachable: true,
+      }),
+    }),
+    true
+  );
+});
