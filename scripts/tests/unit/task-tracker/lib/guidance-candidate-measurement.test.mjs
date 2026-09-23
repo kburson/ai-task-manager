@@ -294,7 +294,11 @@ test('artifact validation rejects incomplete, shortened, relabeled or latency-gu
 
 test('committed candidate transcripts and reports exactly match regeneration', async () => {
   const { buildCandidateMeasurementArtifacts } = await measurement();
-  const artifacts = buildCandidateMeasurementArtifacts({ projectRoot });
+  const { withFrozenCandidateRuntime } =
+    await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  const artifacts = withFrozenCandidateRuntime(() =>
+    buildCandidateMeasurementArtifacts({ projectRoot })
+  );
   const expected = new Map([
     ['action-cardinality.json', artifacts.actionCardinality],
     ['serialization-sensitivity.json', artifacts.serializationSensitivity],

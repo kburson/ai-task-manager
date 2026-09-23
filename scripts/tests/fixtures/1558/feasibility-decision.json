@@ -2,7 +2,7 @@
   "schema": "aitm.guidance-feasibility-decision/v1",
   "owner": { "issue": 1660, "wbsRank": 8, "authority": "sole-foundation-gate" },
   "inputs": {
-    "acceptedGenerationSha256": "sha256:15712f087636f3863412824df947743b3c9fe758ab8dce295e777fd046671348",
+    "acceptedGenerationSha256": "sha256:c7a0260f45f4918c917c3554169922f15cddea9d2eb7fc17c12bb314d8c9ea83",
     "identities": {
       "legacySourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
       "oracleSourceCommit": "3579a72100642e42e3268e3dcf7de63aa691a3ac",
@@ -116,7 +116,7 @@
       {
         "role": "candidate-oracle-source",
         "path": "scripts/tests/helpers/guidance-characterization.mjs",
-        "sha256": "sha256:e04362dec31528a7b28ae8a9972d530ce77e06e23d18c6e7468ead718a60d588"
+        "sha256": "sha256:e54fa1229cb919a4dafc7395dfeda2461f3500e7b849f3fcd441bc2ac19e7538"
       },
       {
         "role": "candidate-proposed-static-source",
@@ -321,7 +321,7 @@
         "role": "measurement-report",
         "id": "context-comparison",
         "path": "scripts/tests/fixtures/1558/context-comparison.json",
-        "sha256": "sha256:0ac2969a3609b16c594a81db48c40618f3a8227e096362f8ebe3c55391b70746"
+        "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894"
       },
       {
         "role": "measurement-report",
@@ -484,6 +484,6 @@
   "verdict": "GO",
   "foundation": {
     "canAssert": true,
-    "acceptedInputGenerationSha256": "sha256:15712f087636f3863412824df947743b3c9fe758ab8dce295e777fd046671348"
+    "acceptedInputGenerationSha256": "sha256:c7a0260f45f4918c917c3554169922f15cddea9d2eb7fc17c12bb314d8c9ea83"
   }
 }
