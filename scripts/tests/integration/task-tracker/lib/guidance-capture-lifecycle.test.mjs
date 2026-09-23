@@ -38,7 +38,7 @@ test('the corrected public CLI capture has one contiguous authority history', ()
   }
   assert.deepEqual(
     result.events.filter(({ kind }) => kind === 'transition').map(({ to }) => to.state),
-    ['plan', 'plan', 'develop', 'test', 'review', 'review']
+    ['plan', 'plan', 'develop', 'test', 'review', 'review', 'done']
   );
   assert.deepEqual(
     result.events.filter(({ kind }) => kind !== 'transition').map(({ name }) => name),
@@ -59,6 +59,7 @@ test('the corrected public CLI capture has one contiguous authority history', ()
       'external-approval',
       'external-merge',
       'lifecycle-close',
+      'post-close-state',
     ]
   );
   assert.deepEqual(result.measurement.traffic, measureLifecycleTraffic(result.events));
@@ -74,6 +75,8 @@ test('the corrected public CLI capture has one contiguous authority history', ()
   assert.equal(byName('source-only-change').typed.guidanceStatuses[0], 'not-modified');
   assert.match(byName('external-approval').stdout, /APPROVED/);
   assert.match(byName('external-merge').stdout, /mergedAt/);
+  assert.equal(byName('post-close-state').state, 'done');
+  assert.equal(JSON.parse(byName('post-close-state').stdout).state, 'CLOSED');
 });
 
 test('required query and external boundaries cannot disappear from the total', () => {
@@ -119,8 +122,12 @@ test('the committed corrected artifact is bound to its runner and preserves the 
   });
   assert.equal(committed.status, 0);
   assert.equal(runner.sha256, sha256(committed.stdout));
-  assert.deepEqual(artifact.events, capture().events);
-  assert.deepEqual(artifact.measurement, capture().measurement);
+  assert.equal(artifact.identity.transcriptSha256, sha256(JSON.stringify(artifact.events)));
+  assert.deepEqual(
+    artifact.events.map(({ kind, name, stateRevision }) => [kind, name, stateRevision ?? null]),
+    capture().events.map(({ kind, name, stateRevision }) => [kind, name, stateRevision ?? null])
+  );
+  assert.deepEqual(artifact.measurement.traffic, measureLifecycleTraffic(artifact.events));
   const historicalPath = 'scripts/tests/fixtures/1558/actual-explain-traffic.json';
   const historicalAtSource = spawnSync(
     'git',

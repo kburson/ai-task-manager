@@ -45,6 +45,7 @@ const requiredNames = Object.freeze([
   'external-approval',
   'external-merge',
   'lifecycle-close',
+  'post-close-state',
 ]);
 const expectedStates = Object.freeze({
   'lifecycle-resume': 'plan',
@@ -53,6 +54,7 @@ const expectedStates = Object.freeze({
   'lifecycle-review': 'test',
   'lifecycle-deliver': 'review',
   'lifecycle-close': 'review',
+  'post-close-state': 'done',
 });
 
 const sha256 = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -158,7 +160,7 @@ export function validateLifecycleTranscript(capture) {
     if (expectedStates[event.name] && event.state !== expectedStates[event.name])
       throw new Error(`lifecycle:action-state:${event.name}`);
   }
-  if (transitionStates.join(',') !== 'plan,plan,develop,test,review,review')
+  if (transitionStates.join(',') !== 'plan,plan,develop,test,review,review,done')
     throw new Error('lifecycle:state-sequence');
   const actual = measureLifecycleTraffic(capture.events);
   if (JSON.stringify(capture.measurement?.traffic) !== JSON.stringify(actual))
@@ -189,7 +191,7 @@ const snapshot = JSON.parse(readFileSync(process.env.CAPTURE_SNAPSHOT_PATH, 'utf
 const body = ${issueBody.toString()}(snapshot);
 appendFileSync(process.env.CAPTURE_AUTHORITY_LOG, JSON.stringify({ args, revision: snapshot.revision }) + '\\n');
 if (args[0] === 'issue' && args[1] === 'view') {
-  process.stdout.write(args.includes('--jq') ? body : JSON.stringify({ number: ${issue}, body, state: 'OPEN', stateReason: null, labels: [] }));
+  process.stdout.write(args.includes('--jq') ? body : JSON.stringify({ number: ${issue}, body, state: snapshot.state === 'done' ? 'CLOSED' : 'OPEN', stateReason: null, labels: [] }));
   process.exit(0);
 }
 if (args[0] === 'pr' && args[1] === 'view') {
@@ -374,6 +376,8 @@ export function captureGuidanceLifecycle() {
     run('external', 'external-approval', ['gh', 'pr', 'view', '2101', '--json', 'reviewDecision']);
     run('external', 'external-merge', ['gh', 'pr', 'view', '2101', '--json', 'mergedAt']);
     query('lifecycle-close', 'close');
+    transition('enter-done', 'done', ['close-transition']);
+    run('external', 'post-close-state', ['gh', 'issue', 'view', String(issue), '--json', 'state']);
     const traffic = measureLifecycleTraffic(events);
     const proposedStatic = Object.fromEntries(
       ['claude', 'codex'].map((adapter) => [adapter, measureProposedStatic(adapter)])
@@ -416,6 +420,8 @@ export function captureGuidanceLifecycle() {
         ],
         scenarioManifestSha256: sha256(JSON.stringify(requiredNames)),
         initialFixtureSha256: events[0].snapshotSha256,
+        initialBodySha256: events[0].authorityBodySha256,
+        configSha256: sha256(`${JSON.stringify(config, null, 2)}\n`),
         fakeGhSha256: sha256(fakeGh),
         transcriptSha256: sha256(JSON.stringify(events)),
       },
