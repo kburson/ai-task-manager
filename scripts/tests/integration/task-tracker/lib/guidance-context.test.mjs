@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import {
   buildGuidanceContextReport,
+  buildHeavyV2Sensitivity,
   buildTokenCalibration,
   calibrateTokens,
   measureAgentVisible,
@@ -99,8 +100,33 @@ test('committed paired lifecycle report regenerates from exact captured and froz
   assert.ok(report.heavyCase.unboundedDimensions.includes('dependency-count'));
   assert.equal(report.heavyCase.evidenceOnlyGrowth.routine.charactersDelta, 0);
   assert.ok(report.heavyCase.operationalGrowth.blocked.charactersDelta > 0);
+  assert.deepEqual(report.heavyCase.currentV2.inputs, {
+    action: 'close',
+    childCount: 4,
+    dependencyCount: 3,
+    refusalCount: 7,
+  });
+  assert.equal(report.heavyCase.currentV2.validatedStatus, 'blocked');
+  assert.equal(report.heavyCase.currentV2.serializedBlockerCount, 7);
+  assert.ok(report.heavyCase.currentV2.routine.bytes > 0);
+  assert.ok(report.heavyCase.currentV2.diagnostic.bytes > report.heavyCase.currentV2.routine.bytes);
   assert.equal(report.adapters.claude.identities.currentCaptureSha256, digest(captureBytes));
   assert.equal(report.adapters.codex.identities.currentCaptureSha256, digest(captureBytes));
+});
+
+test('v2 heavy presentation retains typed operational dependency values', () => {
+  const captureBytes = readFileSync(
+    path.join(ROOT, 'scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json')
+  );
+  const original = buildHeavyV2Sensitivity({ captureBytes });
+  const extendedId = 'dependency-with-a-long-operational-identifier';
+  const extended = buildHeavyV2Sensitivity({
+    captureBytes,
+    dependencyIds: [extendedId, '3101', '3102'],
+  });
+  assert.equal(extended.typedOperationalArgs[4].category, `dependency:${extendedId}`);
+  assert.ok(extended.routine.characters > original.routine.characters);
+  assert.equal(extended.serializedBlockerCount, original.serializedBlockerCount);
 });
 
 // cspell:disable

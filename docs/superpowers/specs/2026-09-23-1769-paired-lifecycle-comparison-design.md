@@ -29,6 +29,14 @@ agent-visible events and shows captured and modeled totals separately. The
 historical 14-case baseline remains a characterization and a negative control
 for any attempted direct 14-versus-24 comparison.
 
+The heavy-input appendix uses a captured v2 decision as a seed, then constructs
+a schema-valid four-child, three-dependency, seven-refusal presentation. It
+checks that typed dependency identifiers survive serialization and calibrates
+routine and diagnostic text with the pinned tokenizer. This is a protocol
+sensitivity sample; the combination is not represented as an observed guard
+outcome or a universal maximum. The older candidate-model heavy case remains
+identified separately for historical comparison.
+
 ## Release boundary
 
 This comparison answers the context-cost question with explicit provenance.

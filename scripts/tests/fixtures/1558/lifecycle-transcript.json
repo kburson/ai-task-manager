@@ -1646,7 +1646,81 @@
       "dependency-count",
       "pagination",
       "retry-history"
-    ]
+    ],
+    "currentV2": {
+      "captureKind": "protocol-valid-synthetic-v2-presentation",
+      "scope": "Serializer sensitivity; this combination is not asserted as an observed evaluator result.",
+      "seedCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+      "inputs": {
+        "action": "close",
+        "childCount": 4,
+        "dependencyCount": 3,
+        "refusalCount": 7
+      },
+      "validatedStatus": "blocked",
+      "serializedBlockerCount": 7,
+      "typedOperationalArgs": [
+        {
+          "category": "epic-child"
+        },
+        {
+          "category": "epic-child"
+        },
+        {
+          "category": "epic-child"
+        },
+        {
+          "category": "epic-child"
+        },
+        {
+          "category": "dependency:3100"
+        },
+        {
+          "category": "dependency:3101"
+        },
+        {
+          "category": "dependency:3102"
+        }
+      ],
+      "routine": {
+        "characters": 1325,
+        "bytes": 1325,
+        "proxyTokens": 332,
+        "sha256": "sha256:32e79f7e690078a52c093b199de9c04ea2919fbf744bcb67145acc817ec2a884"
+      },
+      "diagnostic": {
+        "characters": 2898,
+        "bytes": 2898,
+        "proxyTokens": 725,
+        "sha256": "sha256:11c566d86d8f17eb04209768da0a791bef94ed16ae5d4b1cf0ef2950044cd041"
+      },
+      "tokenizer": {
+        "tokenizer": {
+          "package": "js-tiktoken",
+          "version": "1.0.21",
+          "encoding": "o200k_base",
+          "scope": "illustrative OpenAI BPE calibration, not universal provider billing"
+        },
+        "streams": [
+          {
+            "id": "heavy-routine",
+            "characters": 1325,
+            "bytes": 1325,
+            "actualTokens": 293,
+            "proxyTokens": 332,
+            "ratio": 0.8825301204819277
+          },
+          {
+            "id": "heavy-diagnostic",
+            "characters": 2898,
+            "bytes": 2898,
+            "actualTokens": 950,
+            "proxyTokens": 725,
+            "ratio": 1.3103448275862069
+          }
+        ]
+      }
+    }
   },
   "finalInstalledAdapterGate": {
     "status": "pending",

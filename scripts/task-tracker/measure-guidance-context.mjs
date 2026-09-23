@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import { GUIDANCE_CONTEXT_BUDGETS } from './lib/context-budgets.mjs';
+import { validateActionDecision } from './lib/action-decision/contract.mjs';
+import { presentActionDecision } from './lib/action-decision/presentation.mjs';
 
 const CATEGORIES = new Set([
   'command-input',
@@ -96,6 +98,88 @@ export function buildTokenCalibration({ captureBytes } = {}) {
       scenarioManifestSha256: capture.identity?.scenarioManifestSha256 ?? null,
     },
     calibration: calibrateTokens(streams),
+  };
+}
+
+export function buildHeavyV2Sensitivity({
+  captureBytes,
+  dependencyIds = ['3100', '3101', '3102'],
+} = {}) {
+  if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  if (
+    !Array.isArray(dependencyIds) ||
+    dependencyIds.length !== 3 ||
+    dependencyIds.some((id) => typeof id !== 'string' || id.length === 0)
+  ) {
+    throw new TypeError('context: heavy case requires three dependency identifiers');
+  }
+  const capture = JSON.parse(captureBytes);
+  const diagnostic = capture.events?.find((event) => event.name === 'diagnostic');
+  if (!diagnostic) throw new Error('context: diagnostic seed is missing');
+  const decision = structuredClone(JSON.parse(diagnostic.stdout).fullDecision);
+  if (decision?.schema !== 'aitm.action-decision/v2') {
+    throw new Error('context: heavy case requires a captured v2 decision');
+  }
+  decision.actionId = 'close';
+  decision.guidanceIds = ['action.close'];
+  decision.snapshot.state = 'review';
+  decision.blockers = [
+    ...Array.from({ length: 4 }, () => ({
+      guardId: 'authority-collection',
+      code: 'review-preflight-refused',
+      args: { category: 'epic-child' },
+      noAutomaticRemediation: { reason: 'state-investigation-required' },
+    })),
+    ...dependencyIds.map((dependencyId) => ({
+      guardId: 'authority-collection',
+      code: 'delivery-preflight-refused',
+      args: { category: `dependency:${dependencyId}` },
+      noAutomaticRemediation: { reason: 'state-investigation-required' },
+    })),
+  ];
+  const snapshot = decision.snapshot;
+  snapshot.digest = sha256(
+    JSON.stringify({
+      state: snapshot.state,
+      head: snapshot.head,
+      startedAt: snapshot.startedAt,
+      completedAt: snapshot.completedAt,
+      observations: snapshot.observations,
+      normalizationInputs: [],
+    })
+  );
+  validateActionDecision(decision);
+  const presentation = presentActionDecision({
+    decision,
+    admissionWarnings: [],
+    suppressSourceWarning: false,
+  });
+  if (presentation.status !== 'blocked' || presentation.blockers.length !== 7) {
+    throw new Error('context: heavy v2 presentation collapsed operational blockers');
+  }
+  const routine = `${JSON.stringify(presentation)}\n`;
+  const full = `${JSON.stringify(decision)}\n`;
+  const counts = (value) => ({
+    characters: value.length,
+    bytes: Buffer.byteLength(value),
+    proxyTokens: Math.ceil(value.length / 4),
+    sha256: sha256(value),
+  });
+  return {
+    captureKind: 'protocol-valid-synthetic-v2-presentation',
+    scope:
+      'Serializer sensitivity; this combination is not asserted as an observed evaluator result.',
+    seedCaptureSha256: sha256(captureBytes),
+    inputs: { action: 'close', childCount: 4, dependencyCount: 3, refusalCount: 7 },
+    validatedStatus: presentation.status,
+    serializedBlockerCount: presentation.blockers.length,
+    typedOperationalArgs: presentation.blockers.map(({ args }) => args),
+    routine: counts(routine),
+    diagnostic: counts(full),
+    tokenizer: calibrateTokens([
+      { id: 'heavy-routine', text: routine },
+      { id: 'heavy-diagnostic', text: full },
+    ]),
   };
 }
 
@@ -236,6 +320,7 @@ export async function buildGuidanceContextReport({ captureBytes } = {}) {
       evidenceOnlyGrowth: sensitivity.evidenceOnlyGrowth,
       operationalGrowth: sensitivity.operationalGrowth,
       unboundedDimensions: cardinality.unboundedDimensions,
+      currentV2: buildHeavyV2Sensitivity({ captureBytes }),
     },
     finalInstalledAdapterGate: {
       status: 'pending',
