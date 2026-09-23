@@ -122,7 +122,7 @@ async function firstAndFilled(h) {
   return { first, request, filled };
 }
 
-test('prepare has an unauthorizing first pass and a digest-bound filled pass without writes', async () => {
+test('prepare has a read-only first pass and a digest-bound filled pass without writes', async () => {
   const h = harness();
   try {
     const { first, filled } = await firstAndFilled(h);

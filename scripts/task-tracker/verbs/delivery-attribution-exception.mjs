@@ -128,10 +128,10 @@ function scopeProposal(scope, ids, now) {
   const { commits, sourceDigest } = canonicalSourceInventory(scope.sourceCommits, scope.headSha);
   if (!Array.isArray(scope.attributableCommits) || !Array.isArray(scope.verifiedMergeShas))
     fail('classification');
-  const candidateOids = new Set(scope.attributableCommits.map((commit) => commit.oid));
+  const candidateCommitIds = new Set(scope.attributableCommits.map((commit) => commit.oid));
   const mappingCandidates = [];
   for (const commit of commits) {
-    if (!candidateOids.has(commit.oid)) continue;
+    if (!candidateCommitIds.has(commit.oid)) continue;
     try {
       parseDeliverySubjectTokens(commit.messageHeadline);
     } catch (error) {
