@@ -20,6 +20,7 @@ function validCommit(value) {
     keys.every((key, index) => key === COMMIT_KEYS[index]) &&
     SHA_RE.test(value.oid) &&
     typeof value.messageHeadline === 'string' &&
+    value.messageHeadline.length > 0 &&
     value.messageHeadline.isWellFormed() &&
     !value.messageHeadline.includes('\n') &&
     !value.messageHeadline.includes('\r')
@@ -55,6 +56,7 @@ export async function verifyLocalSourceInventory({ commits, headSha, inspectLoca
     }
     if (
       local?.oid !== commit.oid ||
+      local.localHeadSha !== headSha ||
       typeof local.message !== 'string' ||
       local.message.split(/\r?\n/, 1)[0] !== commit.messageHeadline ||
       local.reachable !== true

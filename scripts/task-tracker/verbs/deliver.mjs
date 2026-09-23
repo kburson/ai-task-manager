@@ -1447,6 +1447,9 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   };
 
   const inspectLocalSourceCommit = async ({ commitSha, headSha }) => {
+    const { stdout: localHead } = await run('git', ['rev-parse', 'HEAD']);
+    const localHeadSha = String(localHead || '').trim();
+    if (localHeadSha !== headSha) throw deliverError('source-head-mismatch');
     const { stdout } = await run('git', ['cat-file', 'commit', commitSha]);
     const raw = String(stdout || '');
     const separator = raw.indexOf('\n\n');
@@ -1454,12 +1457,12 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     const message = raw.slice(separator + 2);
     let reachable = false;
     try {
-      await run('git', ['merge-base', '--is-ancestor', commitSha, headSha]);
+      await run('git', ['merge-base', '--is-ancestor', commitSha, 'HEAD']);
       reachable = true;
     } catch (error) {
       if (error?.code !== 1) throw error;
     }
-    return { oid: commitSha, message, reachable };
+    return { oid: commitSha, message, reachable, localHeadSha };
   };
 
   return {

@@ -41,6 +41,7 @@ test('local proof compares the physical first line and reachability for every SH
       oid: commitSha,
       message: commitSha === A ? 'first subject\r\nbody' : '[#1755] tip\nbody',
       reachable: true,
+      localHeadSha: HEAD,
     };
   };
 
@@ -55,40 +56,41 @@ test('local proof compares the physical first line and reachability for every SH
 
   for (const invalid of [
     null,
-    { oid: A, message: '\nfirst subject', reachable: true },
-    { oid: A, message: ' first subject\nbody', reachable: true },
-    { oid: A, message: 'first subject\nbody', reachable: false },
-    { oid: B, message: 'first subject\nbody', reachable: true },
+    { oid: A, message: '\nfirst subject', reachable: true, localHeadSha: HEAD },
+    { oid: A, message: ' first subject\nbody', reachable: true, localHeadSha: HEAD },
+    { oid: A, message: 'first subject\nbody', reachable: false, localHeadSha: HEAD },
+    { oid: B, message: 'first subject\nbody', reachable: true, localHeadSha: HEAD },
+    { oid: A, message: 'first subject\nbody', reachable: true, localHeadSha: B },
   ]) {
     await assert.rejects(() =>
       verifyLocalSourceInventory({
         commits,
         headSha: HEAD,
         inspectLocalCommit: async ({ commitSha }) =>
-          commitSha === A ? invalid : { oid: HEAD, message: '[#1755] tip', reachable: true },
+          commitSha === A
+            ? invalid
+            : { oid: HEAD, message: '[#1755] tip', reachable: true, localHeadSha: HEAD },
       })
     );
   }
 });
 
-test('an empty physical first line is retained as an empty subject', async () => {
+test('an empty physical first line cannot authorize a source commit', async () => {
   const commits = [
     { oid: A, messageHeadline: '' },
     { oid: HEAD, messageHeadline: '[#1755] tip' },
   ];
-  const inventory = canonicalSourceInventory(commits, HEAD);
-
-  assert.equal(inventory.commits[0].messageHeadline, '');
-  assert.equal(
-    await verifyLocalSourceInventory({
-      commits: inventory.commits,
+  assert.throws(() => canonicalSourceInventory(commits, HEAD));
+  await assert.rejects(() =>
+    verifyLocalSourceInventory({
+      commits,
       headSha: HEAD,
       inspectLocalCommit: async ({ commitSha }) => ({
         oid: commitSha,
         message: commitSha === A ? '\nbody after empty first line' : '[#1755] tip\nbody',
         reachable: true,
+        localHeadSha: HEAD,
       }),
-    }),
-    true
+    })
   );
 });
