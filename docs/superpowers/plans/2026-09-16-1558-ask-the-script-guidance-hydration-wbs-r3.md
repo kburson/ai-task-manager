@@ -1179,6 +1179,13 @@ As a release reviewer,
 I want to have an equivalent complete before/after context comparison and separately measured authority cost,
 So that claimed reduction cannot hide command traffic, required investigation, or additional reads.
 
+#### Story Intent
+
+- **Beneficiary:** release reviewer
+- **Capability:** obtain an equivalent complete before/after context comparison and separately measured authority cost
+- **Need:** a claimed context reduction could hide command traffic, required investigation, or additional reads
+- **Value or failure prevented:** the release decision accounts for the whole lifecycle and its authority cost
+
 **Scope/files:** Create `scripts/task-tracker/measure-guidance-context.mjs`, `scripts/task-tracker/lib/context-budgets.mjs`, and `scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs`. Extend Task 1's preserved runner and fixtures; add `scripts/tests/fixtures/1558/{lifecycle-transcript,context-budgets,tokenizer-calibration,authority-after}.json` and update the distinct `context-comparison.json` with actual CLI capture identities. Pin an appropriate real tokenizer development dependency/lock version; no runtime dependency is needed for calibration. Make existing `measure-context.mjs` and the new tool import the same scoped constants.
 
 **Interfaces:** `--all --json` records complete honest reports; `--all --assert-budgets --json` is the final context/reduction gate used in Task 17. Deterministic authority/effect injection is test-harness only, never a production bypass flag. Reuse Task 1a’s isolated transport mechanism, reconcile every behavioral-flag disposition and test-only relocation affecting measured paths, and fail on an unclassified inherited control; do not limit this rule to newly added code. Preserve the baseline's source/fixture/runner identities and file bytes; current adapter changes cannot inflate or recapture the historical baseline as if unchanged.
