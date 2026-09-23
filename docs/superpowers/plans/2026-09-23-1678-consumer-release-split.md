@@ -12,8 +12,8 @@
 
 ## Story Intent
 
-- **Beneficiary:** AITM release operator certifying guidance for both supported adapters
-- **Capability:** Release a compact protocol whose guidance is fetched at lifecycle decision boundaries
+- **Beneficiary:** release operator certifying AITM guidance for both supported adapters
+- **Capability:** release a compact protocol whose guidance is fetched at lifecycle decision boundaries
 - **Need:** Permanently loaded instructions and complete CLI traffic strain the fixed context budgets
 - **Value or failure prevented:** The full governed lifecycle fits the budgets while retaining safety checks and complete operational values
 
@@ -46,10 +46,10 @@ Run: `node scripts/task-tracker/measure-context.mjs --all --adapter claude`
 
 #### Story Intent
 
-- **Beneficiary:** AITM release operator measuring guidance cost
-- **Capability:** See a fixed, shared budget verdict for static loads and complete lifecycle traffic
-- **Need:** Independent ceilings and modeled final text could let one green measurement hide a release breach
-- **Value or failure prevented:** An over-budget or incomplete consumer release is refused before adapter prose is changed
+- **Beneficiary:** release operator measuring AITM guidance cost
+- **Capability:** see a fixed, shared budget verdict for static loads and complete lifecycle traffic
+- **Need:** independent ceilings and modeled final text could let one green measurement hide a release breach
+- **Value or failure prevented:** an over-budget or incomplete consumer release is refused before adapter prose is changed
 
 ### Task 2: Slim both installed adapter protocols and preserve the obligation map
 
@@ -68,10 +68,10 @@ Run: `node scripts/task-tracker/measure-context.mjs --all --adapter claude`
 
 #### Story Intent
 
-- **Beneficiary:** AITM operator using Codex or Claude during governed delivery
-- **Capability:** Load the safety boundary once and fetch detailed lifecycle guidance when a decision arises
-- **Need:** Repeated state-walk prose occupies context on every pickup even when its details are unused
-- **Value or failure prevented:** Both adapters retain the same safeguards while leaving room for the complete lifecycle traffic
+- **Beneficiary:** operator using Codex or Claude during governed AITM delivery
+- **Capability:** load the safety boundary once and fetch detailed lifecycle guidance when a decision arises
+- **Need:** repeated state-walk prose occupies context on every pickup even when its details are unused
+- **Value or failure prevented:** both adapters retain the same safeguards while leaving room for the complete lifecycle traffic
 
 ### Task 3: Capture actual consumer traffic and certify the packaged release
 
@@ -97,7 +97,7 @@ Run: `npm run format:check`
 
 #### Story Intent
 
-- **Beneficiary:** AITM release operator shipping guidance to installed consumers
-- **Capability:** Certify actual adapter text and complete public CLI traffic with package and cache integrity
-- **Need:** Pre-slim and modeled reports cannot prove the shipped consumer stays within the fixed budgets
-- **Value or failure prevented:** The release is blocked unless both adapters and the production package meet the full contract
+- **Beneficiary:** release operator shipping AITM guidance to installed consumers
+- **Capability:** certify actual adapter text and complete public CLI traffic with package and cache integrity
+- **Need:** pre-slim and modeled reports cannot prove the shipped consumer stays within the fixed budgets
+- **Value or failure prevented:** the release is blocked unless both adapters and the production package meet the full contract
