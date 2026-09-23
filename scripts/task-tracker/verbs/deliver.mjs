@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { loadState } from '../state.mjs';
-import { currentSessionId, aiAppName } from '../word-counter.mjs';
+import { currentSessionId, aiAppName, jsonlPath } from '../word-counter.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
@@ -29,6 +29,7 @@ import {
 import { loadSession } from '../lib/session-store.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import {
+  authorizedIntentBytes,
   buildDeliveryIntent,
   buildDeliveryReceipt,
   parseDeliveryComment,
@@ -37,6 +38,15 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../lib/delivery-records.mjs';
+import {
+  canonicalSourceInventory,
+  verifyLocalSourceInventory,
+} from '../lib/delivery-attribution-exception.mjs';
+import {
+  parseDeliveryAttributionExceptionComment,
+  resolveActiveDeliveryAttributionException,
+} from '../lib/delivery-attribution-exception-record.mjs';
+import { verifyDeliveryAttributionRecordAuthority } from './delivery-attribution-exception.mjs';
 import {
   resolveLiveDeliveryReviewAuthority,
   validateDeliveryPreflight,
@@ -82,16 +92,6 @@ import {
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
 const MAX_PULL_REQUEST_SOURCE_COMMITS = 10_000;
-const AUTHORIZED_INTENT_KEYS = Object.freeze([
-  'attributionTokens',
-  'baseRef',
-  'commitMessage',
-  'commitMessageSha256',
-  'commitTitle',
-  'commitTitleSha256',
-  'headRef',
-  'mergeMethod',
-]);
 
 function deliverError(category, cause) {
   return new TypeError(`deliver:${category}`, cause === undefined ? undefined : { cause });
@@ -321,10 +321,53 @@ export function parsedDeliveryRecords(comments, context) {
     .filter((record) => record !== null);
 }
 
-function authorizedIntentBytes(intent) {
-  return canonicalRecordJson(
-    Object.fromEntries(AUTHORIZED_INTENT_KEYS.map((key) => [key, intent[key]]))
+async function resolveOpenAttributionException({ comments, now, deps }) {
+  const candidates = comments.filter(
+    ({ body }) =>
+      typeof body === 'string' &&
+      (body.startsWith('### Delivery attribution exception') ||
+        body.includes('aitm-delivery-attribution-exception/'))
   );
+  if (candidates.length === 0) return null;
+  const active = resolveActiveDeliveryAttributionException(comments, undefined, now);
+  const runtime = { resolveTranscriptPath: requiredDependency(deps, 'resolveTranscriptPath') };
+  const scopeKeys = [
+    'operationId',
+    'repository',
+    'issueNumber',
+    'prNumber',
+    'baseRef',
+    'headRef',
+    'headSha',
+    'sourceDigest',
+  ];
+  for (const comment of candidates) {
+    const record = parseDeliveryAttributionExceptionComment(comment.body);
+    if (scopeKeys.some((key) => record.proposal[key] !== active.proposal[key])) {
+      throw deliverError('attribution-exception-chain-scope');
+    }
+    await verifyDeliveryAttributionRecordAuthority(record, runtime);
+  }
+  return active;
+}
+
+async function classifiedOpenInventory(pullRequest, deps, localHeadSha) {
+  const classified = await classifySourceCommitSubjects(
+    pullRequest,
+    requiredDependency(deps, 'inspectSourceCommit')
+  );
+  const inventory = canonicalSourceInventory(pullRequest.sourceCommits, localHeadSha);
+  await verifyLocalSourceInventory({
+    commits: inventory.commits,
+    headSha: localHeadSha,
+    inspectLocalCommit: requiredDependency(deps, 'inspectLocalSourceCommit'),
+  });
+  return {
+    commits: inventory.commits,
+    attributableSubjects: classified.attributableSubjects,
+    attributableCommits: classified.attributableCommits,
+    verifiedMergeShas: classified.verifiedMergeShas,
+  };
 }
 
 function matchingReconstruction(comments, expected) {
@@ -376,6 +419,7 @@ function buildIntentFromPreflight({
     provider,
     sessionId,
     clientCreatedAt,
+    ...(preflight.exceptionDisposition ?? {}),
   });
 }
 
@@ -855,6 +899,9 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   };
   const initial = await readProjection({ deps, issueNumber, context });
   const live = initial.projection.liveIntent;
+  const activeAttributionException = mergedPullRequest
+    ? null
+    : await resolveOpenAttributionException({ comments: initial.comments, now: now(), deps });
   const commitSubjects = mergedPullRequest
     ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
     : await openSourceCommitSubjects(
@@ -874,6 +921,14 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     config: deliveryConfig,
     commitSubjects,
   };
+  if (activeAttributionException !== null && !mergedPullRequest) {
+    preflightInput.sourceInventory = await classifiedOpenInventory(
+      selectedPullRequest,
+      deps,
+      localHeadSha
+    );
+    preflightInput.attributionException = activeAttributionException;
+  }
   if (authority.headRelation === 'advanced') {
     if (reconcile !== null && (live === null || live.record.provider === 'external')) {
       const historical = validateHistoricalReconstructionPreflight(preflightInput);
@@ -1030,6 +1085,61 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   const preflight = mergedPullRequest
     ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
     : validateDeliveryPreflight({ ...preflightInput, checks });
+  const revalidateBeforeProviderAction = async (intent) => {
+    if (preflight.exceptionDisposition === undefined) return;
+    try {
+      const freshPr = await fetchPullRequest({
+        repository: cfg.repo,
+        prNumber: selectedPullRequest.number,
+      });
+      const freshHead = await getLocalHeadSha();
+      const freshComments = await readProjection({ deps, issueNumber, context });
+      const freshException = await resolveOpenAttributionException({
+        comments: freshComments.comments,
+        now: now(),
+        deps,
+      });
+      if (
+        freshException === null ||
+        freshComments.projection.liveIntent?.record.intentId !== intent.intentId ||
+        freshPr.state !== 'OPEN'
+      )
+        throw deliverError('late-attribution');
+      const freshInventory = await classifiedOpenInventory(freshPr, deps, freshHead);
+      const freshChecks = await fetchRequiredChecks({
+        repository: cfg.repo,
+        prNumber: selectedPullRequest.number,
+        expectedHeadSha: authority.acceptedSha,
+      });
+      const freshPreflight = validateDeliveryPreflight({
+        ...preflightInput,
+        pullRequests: pullRequests.map((pr) => (pr.number === freshPr.number ? freshPr : pr)),
+        localHeadSha: freshHead,
+        dirtyPaths: await listDirtyPaths({ issueNumber }),
+        checks: freshChecks,
+        commitSubjects: freshInventory.attributableSubjects,
+        sourceInventory: freshInventory,
+        attributionException: freshException,
+      });
+      const expected = buildIntentFromPreflight({
+        preflight: freshPreflight,
+        cfg,
+        intentId: intent.intentId,
+        supersedesIntentId: intent.supersedesIntentId,
+        provider: intent.provider,
+        sessionId: intent.sessionId,
+        clientCreatedAt: intent.clientCreatedAt,
+      });
+      if (
+        authorizedIntentBytes(expected) !== authorizedIntentBytes(intent) ||
+        authorizedIntentBytes(freshComments.projection.liveIntent.record) !==
+          authorizedIntentBytes(intent)
+      )
+        throw deliverError('late-attribution');
+    } catch (error) {
+      throw deliverError('late-attribution', error);
+    }
+  };
   const decision = await checkManualCodeReview({
     deps,
     cfg,
@@ -1206,6 +1316,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     if (authorizedIntentBytes(expected) !== authorizedIntentBytes(live.record)) {
       throw deliverError('intent-divergence');
     }
+    await revalidateBeforeProviderAction(live.record);
     return {
       status: 'action-required',
       mode: 'current-head',
@@ -1230,6 +1341,8 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     context,
     intent,
   });
+
+  await revalidateBeforeProviderAction(readbackIntent.record);
 
   return {
     status: 'action-required',
@@ -1466,6 +1579,9 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   };
 
   return {
+    resolveTranscriptPath(sessionId) {
+      return jsonlPath(sessionId);
+    },
     async resolvePullRequestReviewGate() {
       return resolveGate('pullRequestReview', {
         session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),

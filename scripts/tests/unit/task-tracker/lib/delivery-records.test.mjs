@@ -1,4 +1,4 @@
-// @story #939
+// @story #939 #1755
 // cspell:ignore NDEKTSV RRFFQ
 import { createHash } from 'node:crypto';
 import { strict as assert } from 'node:assert';
@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { canonicalRecordJson } from '../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import {
+  authorizedIntentBytes,
   buildDeliveryIntent,
   buildDeliveryReceipt,
   MAX_DELIVERY_REPOSITORY_BYTES,
@@ -15,6 +16,58 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
+
+const waivedFields = {
+  attributionDisposition: 'waived',
+  exceptionRecordId: '01M2H000000000000000000003',
+  operationId: '01M2H000000000000000000002',
+  sourceDigest: `sha256:${'a'.repeat(64)}`,
+  proposalDigest: `sha256:${'b'.repeat(64)}`,
+  mappings: [{ oid: '1'.repeat(40), messageHeadline: 'legacy commit', issueNumber: 939 }],
+};
+
+test('waived v2 intent has exact scope and cannot project as an ordinary v1 intent', () => {
+  const ordinary = buildDeliveryIntent(intentInput());
+  const waived = buildDeliveryIntent(intentInput(waivedFields));
+  assert.equal(waived.schema, 'aitm.delivery-intent/v2');
+  assert.deepEqual(waived.mappings, waivedFields.mappings);
+  assert.notEqual(authorizedIntentBytes(ordinary), authorizedIntentBytes(waived));
+  assert.equal(
+    authorizedIntentBytes(waived),
+    authorizedIntentBytes(buildDeliveryIntent(intentInput(waivedFields)))
+  );
+  for (const change of [
+    { operationId: '01M2H000000000000000000004' },
+    { sourceDigest: `sha256:${'c'.repeat(64)}` },
+    { proposalDigest: `sha256:${'d'.repeat(64)}` },
+    { exceptionRecordId: '01M2H000000000000000000005' },
+    { mappings: [{ ...waivedFields.mappings[0], issueNumber: 940 }] },
+  ]) {
+    const altered = buildDeliveryIntent(intentInput({ ...waivedFields, ...change }));
+    assert.notEqual(authorizedIntentBytes(waived), authorizedIntentBytes(altered));
+  }
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ ...waivedFields, extra: true })),
+    /intent-input-keys/
+  );
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ ...waivedFields, provider: 'external' })),
+    /waived-provider/
+  );
+});
+
+test('a second intent ID cannot consume the same waiver operation', () => {
+  const first = parsedIntent(waivedFields, { id: 'IC_waiver_first' });
+  const second = parsedIntent(
+    {
+      ...waivedFields,
+      intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+      supersedesIntentId: first.record.intentId,
+    },
+    { id: 'IC_waiver_second', createdAt: '2026-08-22T00:02:00.000Z' }
+  );
+  assert.throws(() => projectDeliveryRecords([first, second]), /delivery-records:operation-reuse/);
+});
 
 const repository = 'kburson/ai-task-manager';
 const issueNumber = 939;

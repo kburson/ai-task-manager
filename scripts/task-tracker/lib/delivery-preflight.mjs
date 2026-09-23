@@ -3,6 +3,11 @@ import {
   buildExternalRecoveryCommitText,
 } from './delivery-attribution.mjs';
 import {
+  canonicalSourceInventory,
+  evaluateDeliveryAttributionException,
+} from './delivery-attribution-exception.mjs';
+import { buildDeliveryAttributionProposal } from './delivery-attribution-exception-record.mjs';
+import {
   DeliveryAuthorityError,
   isValidDeliveryReviewAuthority,
   resolveAcceptedDeliveryAuthority,
@@ -28,6 +33,7 @@ const INPUT_KEYS = [
   'pullRequests',
   'testReceiptSha',
 ];
+const EXCEPTION_INPUT_KEYS = [...INPUT_KEYS, 'sourceInventory', 'attributionException'];
 const HISTORICAL_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks').concat('intent');
 const HISTORICAL_RECONSTRUCTION_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks');
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -320,7 +326,8 @@ function validateConfiguration(config) {
 }
 
 function validatePreflight(input, { merged = false } = {}) {
-  if (!hasExactKeys(input, INPUT_KEYS)) fail('input');
+  const exceptionalInput = !merged && hasExactKeys(input, EXCEPTION_INPUT_KEYS);
+  if (!hasExactKeys(input, INPUT_KEYS) && !exceptionalInput) fail('input');
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
@@ -362,6 +369,7 @@ function validatePreflight(input, { merged = false } = {}) {
   const resolved = validateConfiguration(input.config);
 
   let builtCommitText;
+  let exceptionDisposition = null;
   try {
     const builder = merged ? buildExternalRecoveryCommitText : buildDeliveryCommitText;
     builtCommitText = builder({
@@ -370,8 +378,63 @@ function validatePreflight(input, { merged = false } = {}) {
       expectedHeadSha: input.localHeadSha,
       commitSubjects: input.commitSubjects,
     });
+    if (exceptionalInput) fail('attribution-exception-unneeded');
   } catch (error) {
-    fail('attribution', error, sourceAttributionDiagnostic(input.commitSubjects));
+    if (
+      !exceptionalInput ||
+      error instanceof DeliveryPreflightError ||
+      error?.message !== 'delivery-attribution:source-subject'
+    ) {
+      if (error instanceof DeliveryPreflightError) throw error;
+      fail('attribution', error, sourceAttributionDiagnostic(input.commitSubjects));
+    }
+    try {
+      const inventory = canonicalSourceInventory(input.sourceInventory.commits, input.localHeadSha);
+      const record = input.attributionException;
+      const proposal = record.proposal;
+      const scope = {
+        repository: input.config.repo,
+        issueNumber: input.issue.number,
+        prNumber: pr.number,
+        baseRef: pr.baseRefName,
+        headRef: pr.headRefName,
+        headSha: input.localHeadSha,
+        sourceDigest: inventory.sourceDigest,
+      };
+      if (
+        record.kind === 'revocation' ||
+        Object.entries(scope).some(([key, value]) => proposal[key] !== value) ||
+        record.proposalDigest !== buildDeliveryAttributionProposal(proposal).proposalDigest
+      )
+        fail('attribution-exception-scope');
+      const evaluated = evaluateDeliveryAttributionException({
+        issueNumber: input.issue.number,
+        prNumber: pr.number,
+        expectedHeadSha: input.localHeadSha,
+        commits: inventory.commits,
+        attributableCommits: input.sourceInventory.attributableCommits,
+        verifiedMergeShas: input.sourceInventory.verifiedMergeShas,
+        mappings: proposal.mappings,
+      });
+      if (
+        inventory.sourceDigest !== proposal.sourceDigest ||
+        evaluated.attributionTokens.join('\0') !== proposal.attributionTokens.join('\0')
+      )
+        fail('attribution-exception-mapping');
+      const { attributionDisposition, ...text } = evaluated;
+      builtCommitText = text;
+      exceptionDisposition = {
+        attributionDisposition,
+        exceptionRecordId: record.recordId,
+        operationId: proposal.operationId,
+        sourceDigest: proposal.sourceDigest,
+        proposalDigest: record.proposalDigest,
+        mappings: structuredClone(proposal.mappings),
+      };
+    } catch (exceptionError) {
+      if (exceptionError instanceof DeliveryPreflightError) throw exceptionError;
+      fail('attribution-exception', exceptionError);
+    }
   }
   const { metadataWarnings = [], ...commitText } = builtCommitText;
 
@@ -382,6 +445,7 @@ function validatePreflight(input, { merged = false } = {}) {
     expectedHeadSha: input.localHeadSha,
     mergeMethod: resolved.mergeMethod,
     commitText,
+    ...(exceptionDisposition === null ? {} : { exceptionDisposition }),
     ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
   });
 }
