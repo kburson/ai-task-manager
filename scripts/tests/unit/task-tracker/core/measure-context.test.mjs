@@ -66,9 +66,8 @@ for (const adapter of ['claude', 'codex']) {
 for (const scenario of ['bind+review+close', 'parallel-orchestration']) {
   for (const adapter of ['claude', 'codex']) {
     const r = await pexec('node', [SCRIPT, '--scenario', scenario, '--adapter', adapter]);
-    assert.match(
-      r.stdout,
-      new RegExp(`scenario:${scenario.replace(/\+/g, '\\+')}`),
+    assert.ok(
+      r.stdout.includes(`scenario:${scenario}`),
       `--scenario ${scenario}/${adapter} missing label in stdout`
     );
     assert.doesNotMatch(r.stdout, /\[OVER\]/);

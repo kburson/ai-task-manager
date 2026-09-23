@@ -12,11 +12,25 @@ function isShippedDocument(relativePath) {
   );
 }
 
+function stripInlineTags(value) {
+  let text = '';
+  for (let index = 0; index < value.length; index++) {
+    if (value[index] === '<') {
+      const end = value.indexOf('>', index + 1);
+      if (end !== -1 && !value.slice(index + 1, end).includes('<')) {
+        index = end;
+        continue;
+      }
+    }
+    text += value[index];
+  }
+  return text;
+}
+
 function headingSlug(heading) {
-  return heading
+  return stripInlineTags(heading)
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/<[^>]+>/g, '')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}_ -]/gu, '')
     .trim()
