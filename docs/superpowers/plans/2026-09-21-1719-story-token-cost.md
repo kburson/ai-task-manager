@@ -14,9 +14,9 @@
 
 **Source integrity:** SHA-256 `1a47930a8c54c29d64b6b06abca9f1291d3d6f9362e6d7289b58ef18e9b990a9`; published through [PR #1727](https://github.com/kburson/ai-task-manager/pull/1727); reference recorded in [issue #1719](https://github.com/kburson/ai-task-manager/issues/1719).
 
-**Plan status:** Proposed, undergoing its separately authorized XPR; implementation approval remains pending. The user authorized creation and commitment of this plan. Neither the spec merge nor this plan authorizes production implementation, historical backfill, live billing credentials, or provider account access. Do not start implementation as part of reviewing this artifact. Issue #1719 remains the design-and-plan deliverable; hydrate implementation issues through the governed workflow only after plan approval.
+**Plan status (original, 2026-09-21):** Proposed, undergoing its separately authorized XPR; implementation approval was pending. The user had authorized creation and commitment of this plan, but the plan itself did not authorize implementation or backlog hydration. Issue #1719 was then the design-and-plan deliverable.
 
-**Story Intent amendment:** The historical status above records the original plan review. The implementation epic and its 16 children were subsequently authorized and hydrated. This amendment adds stakeholder intent and canonical task headings for current Plan approval; it does not change the technical steps or authorize live provider access.
+**Current status (2026-09-24):** The plan was accepted in PR #1730. On 2026-09-21, the user separately authorized repurposing #1719 as the implementation epic and hydrating its sixteen children, #1733 through #1748, ahead of this amended artifact's Plan approval. That authorization superseded the original backlog-hydration sequence, not the per-child Plan and delivery gates. This review seeks approval of the amended Story Intent and canonical task headings; it does not itself authorize production implementation, historical backfill, live billing credentials, or provider account access. The user's subsequent delivery instruction authorizes governed implementation only after each child's required gates. Live access and backfill still require separate scope approval. The technical implementation steps are unchanged.
 
 ## Story Intent
 
@@ -39,7 +39,7 @@
 - Keep the envelope's scalar `predecessor` and `supersedes`. The many-to-many span replacement set belongs in the reconciliation payload.
 - Read timing suffixes and isolate cost records before enabling any writer. Missing or corrupt economic evidence must never weaken or poison governance validation.
 - Replay the complete frozen envelope, authority identity, marker, prose, and body. An equal payload hash alone is not successful delivery.
-- All new executable files carry the implementation issue's `@story` tag. Examples use #1719 until implementation issues exist; do not invent issue numbers. Before executing any implementation task, substitute its approved implementation issue in every executable story tag and commit subject; fixture issue numbers may remain 1719.
+- All new executable files carry the child implementation issue's `@story` tag. The implementation issues now exist: before executing any task, substitute that task's child issue in every executable `@story` tag and every `[#N]` commit subject. Do not invent issue numbers or commit a `[#1719]` subject from a child's worktree. Example commands below retain the original #1719 placeholder; fixture issue numbers may remain 1719. Each child uses `Source-plan-section` set to its exact `### Task N: <title>` heading; the #1719 implementation backlog records the Task 1–16 to #1733–#1748 mapping.
 - Use repository-owned worktree setup and self-link verification before execution. Keep scratch inputs in `.scratch/`, disposable runtime caches in `.tmp/aitm/`, durable cost journals in the clone-shared Git metadata directory defined below, and tests within the canonical `scripts/tests/` tree.
 
 ---
@@ -130,7 +130,7 @@ The spec reporting section calls for GitHub evidence while its security tests fo
 - **Beneficiary:** delivery engineer
 - **Capability:** validate closed cost evidence shapes and build safe representative fixtures
 - **Need:** malformed, unsupported, or secret-bearing observations could enter accounting records
-- **Value or failure prevented:** downstream accounting accepts only well-formed evidence without exposing sensitive content
+- **Value or failure prevented:** delivery engineers can trust cost records without leaking prompt or credential content into public issue evidence
 
 #### Implementation Steps
 
@@ -212,7 +212,7 @@ if (/<!--\s*aitm-record/i.test(body)) throw new TypeError('cost:generic-marker')
 - **Beneficiary:** delivery analyst
 - **Capability:** retain timing and cost metadata across every supported timing-row rewrite
 - **Need:** competing suffix parsers can drop evidence or misread timing cells
-- **Value or failure prevented:** stage timing and cost attribution survive healing, migration, and rollup unchanged
+- **Value or failure prevented:** delivery analysts do not silently lose or corrupt stage timing and cost attribution during healing, migration, or rollup
 
 #### Implementation Steps
 
@@ -390,7 +390,7 @@ assert.throws(() =>
 - **Beneficiary:** delivery operator
 - **Capability:** recover and replay the exact frozen cost publication after an interrupted write
 - **Need:** retries may otherwise change identities, duplicate records, or lose economic evidence
-- **Value or failure prevented:** publication remains auditable and idempotent across failures
+- **Value or failure prevented:** delivery operators do not double-count or lose a cost publication after an interrupted write
 
 #### Implementation Steps
 
@@ -616,7 +616,7 @@ assertConserved(
 #### Story Intent
 
 - **Beneficiary:** delivery engineering leader
-- **Capability:** inspect story cost and independent coverage across stages and delivery boundaries
+- **Capability:** use read-only, offline-by-default reports with an independent inventory of stage and delivery-boundary coverage
 - **Need:** missing records or ambiguous attribution must not appear as zero or complete totals
 - **Value or failure prevented:** reports support decisions while exposing every material evidence gap
 
@@ -892,10 +892,42 @@ Cost record corruption fixtures must also explicitly exercise the existing gover
 
 The three nonblocking suggestions from the accepted spec XPR are explicit here: frozen retry identity includes the entire envelope/body (Task 7); timing and transport compatibility precede writers (Tasks 2–3 before Task 8); cost record types have a closed, disjoint allowlist (Tasks 1–2).
 
-Author checks before submitting the revised plan for XPR:
+Original submission checks (completed before this Story Intent amendment):
 
 - [x] Check each coverage row and all thirteen failure cases against the ratified spec.
 - [x] Check exact file paths, exported signatures, payload field names, status vocabularies and dependency order.
 - [x] Check snippets for undefined contracts, incomplete examples and accidental unsafe payload keys.
 - [x] Validate Markdown, formatting, spelling, example syntax and source hash. Commit the plan with its required spelling vocabulary; no runtime implementation is included.
 - [x] Hand off the plan for the separately requested XPR. Review acceptance does not imply implementation approval or live-access approval.
+
+Story Intent amendment check:
+
+- [x] Verify the root `## Story Intent` at heading level 2 and all sixteen task `#### Story Intent` blocks at heading level 4; `extractPlanTasks` returns sixteen tasks with empty `storyIntentViolations`, and all seventeen rendered stories pass `evaluateStoryProse` in approval mode.
+
+Run from the repository root:
+
+```bash
+node --input-type=module -e '
+import { readFileSync } from "node:fs";
+import { extractPlanTasks } from "./scripts/task-tracker/lib/decomposition-policy.mjs";
+import { parseStoryIntent, renderStoryFromIntent, evaluateStoryProse } from "./scripts/task-tracker/lib/user-story-quality.mjs";
+import { CANONICAL_USER_STORY_TEMPLATE } from "./scripts/task-tracker/lib/user-story-author.mjs";
+const source = readFileSync("docs/superpowers/plans/2026-09-21-1719-story-token-cost.md", "utf8");
+const lines = source.split("\n");
+const start = lines.findIndex((line) => /^## Story Intent\s*$/.test(line));
+let end = start + 1;
+while (end < lines.length && !/^#{1,2}\s+/.test(lines[end])) end++;
+const root = parseStoryIntent(source, { headingLevel: 2, startLine: start + 1, endLine: end });
+const tasks = extractPlanTasks(source);
+const intents = [root.intent, ...tasks.map((task) => task.storyIntent)];
+const valid = start >= 0 && root.ok && tasks.length === 16 &&
+  tasks.every((task) => task.storyIntent && task.storyIntentViolations.length === 0) &&
+  intents.every((intent) => evaluateStoryProse(renderStoryFromIntent(intent), {
+    mode: "approval", canonicalTemplate: CANONICAL_USER_STORY_TEMPLATE
+  }).ok);
+if (!valid) process.exitCode = 1;
+console.log(`root=${root.ok} tasks=${tasks.length} stories=${intents.length} approval=${valid}`);
+'
+```
+
+Result (2026-09-24): `root=true tasks=16 stories=17 approval=true`.
