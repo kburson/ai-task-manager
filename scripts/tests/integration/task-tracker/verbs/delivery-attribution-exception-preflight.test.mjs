@@ -143,6 +143,26 @@ test('Codex-authorized scoped waiver emits v2 intent after late source revalidat
   assert.equal(f.h.calls.fetchPullRequest, 4);
 });
 
+test('a prior PR waiver does not change ordinary delivery for a later PR', async (t) => {
+  const f = fixture(t);
+  await grant(f);
+  f.h.data.prNumber = 1401;
+  f.h.data.commitSubjects = ['[#939] Corrective delivery'];
+  f.h.data.prCommitSubjects = ['[#939] Corrective delivery'];
+  f.h.data.prSourceCommits = [{ oid: HEAD, messageHeadline: '[#939] Corrective delivery' }];
+  f.h.deps.inspectLocalSourceCommit = async ({ commitSha, headSha }) => ({
+    oid: commitSha,
+    localHeadSha: headSha,
+    message: '[#939] Corrective delivery\n',
+    reachable: true,
+  });
+
+  const result = await deliver(f.h);
+  assert.equal(result.status, 'action-required');
+  assert.equal(result.intent.prNumber, 1401);
+  assert.equal(result.intent.schema, 'aitm.delivery-intent/v1');
+});
+
 test('delivery refuses a server-edited grant before writing an intent', async (t) => {
   const f = fixture(t);
   await grant(f);

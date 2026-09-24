@@ -1051,10 +1051,16 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   };
   const initial = await readProjection({ deps, issueNumber, context });
   const live = initial.projection.liveIntent;
-  const activeAttributionException =
+  const recordedAttributionException =
     mergedPullRequest || authority.headRelation !== 'current'
       ? null
       : await resolveOpenAttributionException({ comments: initial.comments, now: now(), deps });
+  // A grant authorizes one PR. Keep verifying the historical record, but do
+  // not route a later, normally attributed PR through that prior waiver.
+  const activeAttributionException =
+    recordedAttributionException?.proposal.prNumber === selectedPullRequest.number
+      ? recordedAttributionException
+      : null;
   const sourceInventory =
     activeAttributionException === null
       ? null
