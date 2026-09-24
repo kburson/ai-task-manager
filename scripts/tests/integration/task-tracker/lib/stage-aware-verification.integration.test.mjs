@@ -293,6 +293,7 @@ test('project provider drives Test plans, deduplicates targeted commands, and re
   assert.deepEqual(receipt.provider, {
     id: 'project',
     requiredClassifications: ['xcode-build', 'simulator-ready', 'xcode-tests'],
+    setup: { name: 'npm-ci', args: [] },
   });
   assert.deepEqual(
     receipt.commands.map(({ classification, providerId, kind }) => ({
