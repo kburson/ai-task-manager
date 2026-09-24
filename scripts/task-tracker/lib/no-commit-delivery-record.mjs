@@ -118,9 +118,18 @@ export function renderNoCommitDeliveryComment(record) {
 }
 
 export function parseNoCommitDeliveryComment(comment) {
-  if (!isObject(comment) || !hasExactlyKeys(comment, ['body', 'createdAt', 'id'])) fail('comment');
+  if (
+    !isObject(comment) ||
+    (!hasExactlyKeys(comment, ['body', 'createdAt', 'id']) &&
+      !hasExactlyKeys(comment, ['body', 'createdAt', 'id', 'updatedAt']))
+  ) {
+    fail('comment');
+  }
   bounded(comment.id, 'comment-id');
   if (!canonicalInstant(comment.createdAt)) fail('comment-created-at');
+  if (Object.hasOwn(comment, 'updatedAt') && !canonicalInstant(comment.updatedAt)) {
+    fail('comment-updated-at');
+  }
   if (typeof comment.body !== 'string') fail('comment-body');
   if (!comment.body.includes(`<!-- ${MARKER} `)) return null;
   const match = comment.body.match(new RegExp(`^<!-- ${MARKER} ([^\\r\\n]+) -->`));
