@@ -7,10 +7,11 @@ import { createProjectVerificationProvider } from './verification-providers/proj
 
 const PROVIDER_KEYS = new Set(['id', 'develop', 'test']);
 const DEVELOP_KEYS = new Set(['iterationSteps', 'finalSteps']);
-const TEST_KEYS = new Set(['setup', 'steps']);
+const TEST_KEYS = new Set(['setup', 'steps', 'npmCiArgs']);
 const STEP_KEYS = new Set(['classification', 'kind', 'command', 'label']);
 const STEP_KINDS = new Set(['format', 'lint', 'build', 'test', 'environment']);
 const CLASSIFICATION_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const ALLOWED_NPM_CI_ARGS = new Set(['--legacy-peer-deps']);
 
 function fail(message) {
   throw new TypeError(`verification-provider-invalid: ${message}`);
@@ -41,11 +42,31 @@ function freezePlan(plan) {
     providerId: plan.providerId,
     stage: plan.stage,
     setup: plan.setup ?? null,
+    setupArgs: Object.freeze([...(plan.setupArgs || [])]),
     steps,
     derivedSteps,
     requiredClassifications: Object.freeze([...(plan.requiredClassifications || [])]),
     ...(plan.selection ? { selection: Object.freeze({ ...plan.selection }) } : {}),
   });
+}
+
+function normalizeNpmCiArgs(value) {
+  if (value === undefined) return Object.freeze([]);
+  if (!Array.isArray(value)) fail('test.npmCiArgs must be an array');
+  const seen = new Set();
+  return Object.freeze(
+    value.map((entry) => {
+      if (typeof entry !== 'string' || entry.trim() !== entry || entry === '') {
+        fail('test.npmCiArgs entries must be non-empty trimmed strings');
+      }
+      if (seen.has(entry)) fail(`duplicate test.npmCiArgs entry: ${entry}`);
+      seen.add(entry);
+      if (!ALLOWED_NPM_CI_ARGS.has(entry)) {
+        fail(`test.npmCiArgs contains unsupported arg: ${entry}`);
+      }
+      return entry;
+    })
+  );
 }
 
 function normalizeConfiguredSteps(
@@ -185,6 +206,7 @@ export function resolveVerificationProvider({
       requireNonEmpty: true,
     }),
     setup: config.test.setup,
+    npmCiArgs: normalizeNpmCiArgs(config.test.npmCiArgs),
   });
 
   return wrapProvider(createProjectVerificationProvider({ config: normalized, appendTargeted }));

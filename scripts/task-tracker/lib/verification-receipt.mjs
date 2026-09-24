@@ -250,6 +250,14 @@ export function createVerificationReceipt({
       requiredClassifications: [
         ...new Set((provider?.requiredClassifications || []).map((value) => String(value))),
       ],
+      ...(provider?.setup
+        ? {
+            setup: {
+              name: String(provider.setup.name || ''),
+              args: Object.freeze([...(provider.setup.args || []).map((value) => String(value))]),
+            },
+          }
+        : {}),
     };
   }
   return receipt;
@@ -299,7 +307,9 @@ function malformedReceipt(receipt) {
       !provider ||
       typeof provider !== 'object' ||
       Array.isArray(provider) ||
-      Object.keys(provider).some((key) => !['id', 'requiredClassifications'].includes(key)) ||
+      Object.keys(provider).some(
+        (key) => !['id', 'requiredClassifications', 'setup'].includes(key)
+      ) ||
       !['node', 'project'].includes(provider.id) ||
       !Array.isArray(provider.requiredClassifications) ||
       provider.requiredClassifications.length === 0 ||
@@ -309,6 +319,19 @@ function malformedReceipt(receipt) {
       new Set(provider.requiredClassifications).size !== provider.requiredClassifications.length
     ) {
       return true;
+    }
+    if (provider.setup !== undefined) {
+      if (
+        !provider.setup ||
+        typeof provider.setup !== 'object' ||
+        Array.isArray(provider.setup) ||
+        Object.keys(provider.setup).some((key) => !['name', 'args'].includes(key)) ||
+        provider.setup.name !== 'npm-ci' ||
+        !Array.isArray(provider.setup.args) ||
+        provider.setup.args.some((arg) => typeof arg !== 'string' || arg.length === 0)
+      ) {
+        return true;
+      }
     }
   }
   const environment = receipt.environment;
