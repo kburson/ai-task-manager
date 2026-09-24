@@ -197,6 +197,14 @@ export async function verifyCloseDeliveryReceipt({
     },
     recovery: gateInput.headRelation === 'advanced',
     testReceiptSha,
+    ...(intent.schema === 'aitm.delivery-intent/v2'
+      ? {
+          waivedEvidence: {
+            sourceInventory: gateInput.sourceInventory,
+            exceptionRecord: receipt.exceptionRecord,
+          },
+        }
+      : {}),
   });
   if (
     canonicalRecordJson(buildDeliveryReceipt(verified.receiptInput)) !==
