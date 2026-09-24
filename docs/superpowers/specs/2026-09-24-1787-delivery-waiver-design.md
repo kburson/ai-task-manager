@@ -47,8 +47,10 @@ The design has four coupled pieces:
 
 1. Give every delivery verifier refusal a stable `delivery.*` requirement ID
    and make verifier errors carry that ID.
-2. Open the delivery requirement family only as `waivable-with-disclosure`, a
-   stricter catalog capability than ordinary waivable requirements.
+2. Add only the new PR-verifier waiver requirement IDs as
+   `waivable-with-disclosure`, a stricter per-requirement catalog capability
+   than ordinary waivable requirements. Do not open an existing family as
+   waivable.
 3. Evaluate a current workflow-exception at delivery verification time against
    the exact repository, issue, pull request, accepted head SHA, trunk/base ref,
    and named invariant.
@@ -124,25 +126,46 @@ delivery decision, two consumers with different evidence.
 
 ## Requirement Model
 
-The catalog should distinguish plain waivable requirements from delivery
+The catalog should distinguish plain waivable requirements from PR-verifier
 requirements that are `waivableWithDisclosure`. Existing planning and review
-waivers remain ordinary `waivable: true`. Existing non-delivery hard requirements
-remain non-waivable.
+waivers remain ordinary `waivable: true`. Existing hard requirements remain
+non-waivable, including the current `delivery-invariant` family:
+
+- `delivery.tests`;
+- `delivery.verification-evidence`;
+- `delivery.ownership`;
+- `delivery.dependencies`;
+- `delivery.issue-binding`;
+- `delivery.state-contiguity`;
+- `delivery.commit-provenance`;
+- `delivery.ci`;
+- `delivery.safe-delivery`;
+- `delivery.external-protection`.
+
+The new PR-verifier IDs must live in a separate family, for example
+`delivery-pr-verifier`, and must be individually marked
+`waivableWithDisclosure: true`. A future family-level capability change must not
+be able to turn the existing hard `delivery-invariant` family into a waiver
+surface by accident.
 
 Each delivery verifier predicate maps to exactly one stable requirement ID. A
 starter mapping should include:
 
 | Verifier category | Requirement ID | Notes |
 | --- | --- | --- |
-| `authority-sha`, `authority-sha-mismatch` | `delivery.accepted-head` | accepted PR/Test/Review/head agreement |
-| `pull-request-not-merged`, `merge-commit-sha`, `merged-at` | `delivery.pr-merged` | merged PR evidence exists and is well formed |
-| `pr-number`, `base-ref`, `expected-head-sha` | `delivery.pr-scope` | PR identity, target ref, and accepted head scope |
-| `fetch-origin-trunk`, `trunk-reachability` | `delivery.trunk-reachability` | merge commit is reachable from refreshed trunk |
-| `merge-method-observation`, `merge-method-evidence`, `merge-method-unknown`, `merge-method`, `merge-method-unattributable` | `delivery.merge-method` | topology and declared-method agreement |
-| `merge-before-intent`, `intent-created-at`, `input`, `input-keys` | `delivery.intent-integrity` | authorized intent shape and temporal order |
-| `merge-commit-bytes`, `attribution` | `delivery.commit-attribution` | final merge bytes and attribution proof |
-| `branch-disposition` | `delivery.branch-disposition` | post-delivery branch deletion/readback |
-| `waived-evidence`, `waived-inventory`, `waived-authority` | `delivery.waiver-authority` | waiver record self-checks; this ID is never itself waivable |
+| `authority-sha`, `authority-sha-mismatch` | `delivery.verification.accepted-head` | accepted PR/Test/Review/head agreement |
+| `pull-request-not-merged`, `merge-commit-sha`, `merged-at` | `delivery.verification.pr-merged` | merged PR evidence exists and is well formed |
+| `pr-number`, `base-ref`, `expected-head-sha` | `delivery.verification.pr-scope` | PR identity, target ref, and accepted head scope |
+| `fetch-origin-trunk`, `trunk-reachability` | `delivery.verification.trunk-reachability` | merge commit is reachable from refreshed trunk |
+| `merge-method-observation`, `merge-method-evidence`, `merge-method-unknown`, `merge-method`, `merge-method-unattributable` | `delivery.verification.merge-method` | topology and declared-method agreement |
+| `merge-before-intent`, `intent-created-at`, `input`, `input-keys` | `delivery.verification.intent-integrity` | authorized intent shape and temporal order |
+| `merge-commit-bytes`, `attribution` | `delivery.verification.commit-attribution` | final merge bytes and attribution proof |
+| `branch-disposition` | `delivery.verification.branch-disposition` | post-delivery branch deletion/readback |
+| `waived-evidence`, `waived-inventory`, `waived-authority` | `delivery.verification.attribution-waiver-authority` | #1755 attribution-waiver self-checks; this ID is never itself waivable |
+
+The `delivery.verification.*` prefix is deliberate. These IDs are the new
+waivable-with-disclosure verifier-predicate family, not the existing flat
+hard-gate IDs that close and action-decision already use.
 
 Do not add #1783's no-PR condition to this table. Its likely requirement ID is
 `delivery.local-trunk-close-authorization`, but it belongs to close/delivery
@@ -156,15 +179,21 @@ category without a catalog ID. A coverage test should fail when a new
 `verificationError(...)` category lacks a requirement mapping, and a second test
 should fail when a `delivery.*` catalog ID has no delivery consumer.
 
-`delivery.waiver-authority` is a guardrail ID, not an escape hatch. A malformed,
-expired, revoked, wrong-scope, ambiguous, or stale waiver must always refuse.
+`delivery.verification.attribution-waiver-authority` is a guardrail ID, not an
+escape hatch. #1787 may add a separate non-waivable guardrail ID for generic
+delivery-waiver self-checks if implementation needs to distinguish failure
+messages by waiver kind. A malformed, expired, revoked, wrong-scope, ambiguous,
+replayed, or stale waiver must always refuse.
 
 ## Waiver Authority
 
-Delivery waivers reuse `aitm.workflow-exception/v1` records and the existing
-GitHub-native comment chain. The shared delivery-exception authority contract is
-used by both #1787 and #1783. A valid delivery exception has all ordinary
-workflow-exception protections plus delivery-specific scope:
+Delivery waivers require `aitm.workflow-exception/v2` records and the existing
+GitHub-native comment chain. Version 1 remains readable for existing
+non-delivery workflow exceptions, but it must not be used for delivery waivers:
+its payload key set is closed and its `scopeIdentity` is derived only from the
+issue body. The shared delivery-exception authority contract is used by both
+#1787 and #1783. A valid delivery exception has all ordinary workflow-exception
+protections plus delivery-specific scope:
 
 - repository and issue number;
 - exception kind, such as `delivery.invariant-waiver` or
@@ -173,10 +202,38 @@ workflow-exception protections plus delivery-specific scope:
 - accepted head SHA;
 - target/base ref and resolved trunk ref identity;
 - one named delivery requirement ID or local-trunk authorization ID;
-- a single-use operation ID or bounded expiry;
+- a single-use operation ID, with bounded expiry as an additional lifetime
+  limit rather than a substitute for replay defense;
 - substantive non-placeholder human reason;
-- host-verified user-message authority where the platform supports it;
+- host-verified Codex user-message authority;
 - recording actor separated from authorizing principal.
+
+The v2 payload should retain the v1 envelope shape and add a `deliveryScope`
+object plus `scopeKind: "delivery"` or an equivalent schema-discriminating
+field. Its canonical delivery scope preimage is:
+
+```json
+{
+  "schema": "aitm.delivery-exception-scope/v1",
+  "repository": "owner/name",
+  "issue": 1787,
+  "exceptionKind": "delivery.invariant-waiver",
+  "pullRequest": 1785,
+  "acceptedHeadSha": "<40-hex>",
+  "baseRef": "trunk",
+  "resolvedTrunkSha": "<40-hex>",
+  "requirementId": "delivery.verification.merge-method",
+  "operationId": "sha256:<digest>"
+}
+```
+
+`waiverScopeDigest` is the SHA-256 digest of this canonical preimage. It
+supplements the existing body-derived `scopeIdentity`; it does not replace or
+weaken it. The evaluator must require both the ordinary issue-body
+`scopeIdentity` and the delivery-specific `waiverScopeDigest` to match current
+facts. Existing v1 readers in `exception-store.mjs` and `snapshot.mjs` remain
+backward-compatible by accepting v1 records for their current non-delivery use
+cases and v2 records only when their schema discriminator is recognized.
 
 The operator may not authorize a wildcard such as all delivery invariants, all
 future deliveries, all heads for an issue, or all PRs in a repository. A record
@@ -187,11 +244,16 @@ implementation path is one record per named invariant.
 The evaluator should expose delivery waivers through a typed result:
 
 ```text
-passed  - ordinary verifier evidence satisfied the invariant
-waived  - current workflow-exception authorizes this exact invariant and scope
-blocked - known failure with no valid waiver
+satisfied     - ordinary verifier evidence satisfied the invariant
+waived        - current workflow-exception authorizes this exact invariant and scope
+missing       - known failure with no valid waiver
 indeterminate - authority or evidence cannot be read safely
 ```
+
+These names align with the existing policy evaluator vocabulary where possible:
+`satisfied`, `waived`, and `missing` map directly to `POLICY_OUTCOMES`;
+`indeterminate` is delivery-specific and represents unsafe or unreadable
+authority/evidence rather than an ordinary missing waiver.
 
 Consumers must not infer a waiver from prose, labels, Full-Auto mode, local
 files, branch names, or a caller-supplied `--reason`. A `--reason` may help
@@ -201,6 +263,26 @@ For #1783, the resolver must additionally prove that the authorization statement
 names the local-trunk lane rather than a PR delivery waiver. A user approving a
 merge-method waiver must not accidentally authorize a no-PR close, and a user
 approving a one-issue local-trunk close must not waive PR verifier predicates.
+
+For #1787, host authority is intentionally Codex-only. Current
+`aitm.workflow-exception/v1` authority validation accepts only
+`codex-session-transcript` with `host-verified-user-message`, and the authority
+resolver only loads `codex-session/v1`. This design does not extend the origin
+enum, reference grammar, or adapter set. Delivery waiver preparation from an
+unsupported host must fail closed and tell the operator to capture the approval
+in a supported Codex session. A future issue may add Claude, GitHub, or other
+host adapters, but #1787 does not lower the verification level to do so.
+
+Single-use is new work. The delivery resolver must record consumption before
+writing a terminal delivery receipt, in the same durable record family or an
+adjacent append-only consumption ledger keyed by `waiverRecordId`,
+`waiverRevision`, `operationId`, repository, issue, and accepted head SHA. The
+burn point is after all non-waived delivery evidence has been revalidated and
+immediately before the waived receipt is written. If receipt writing fails after
+the burn, retry may resume only when the existing burn record matches the same
+pending delivery transaction and no terminal receipt exists. A second completed
+delivery attempt using the same waiver must refuse as replayed even when every
+scope field still matches.
 
 ## Verification Flow
 
@@ -212,10 +294,19 @@ evidence before considering a waiver. When a predicate fails:
 2. load the current workflow-exception decision for the issue;
 3. validate delivery scope against the live PR, intent, accepted SHA, base ref,
    trunk/ref target, operation, expiry, revocation, and reason;
-4. if no exact waiver exists, throw the same delivery refusal with the
+4. if authority or evidence cannot be read safely, refuse with a distinct
+   indeterminate result and include the requirement ID;
+5. if no exact waiver exists, throw the same delivery refusal with the
    requirement ID included;
-5. if an exact waiver exists, continue only far enough to build a truthful
-   waived receipt. Do not mark the predicate as satisfied.
+6. if an exact waiver exists, burn the single-use operation and continue only
+   far enough to build a truthful waived receipt. Do not mark the predicate as
+   satisfied.
+
+`indeterminate` is fail-closed. It is not an ordinary `missing` waiver and must
+be distinguishable in operator output, record projection, and close explanation,
+so an operator can tell "authority unreadable" from "no waiver was recorded."
+`deliver` and `close` must refuse on `indeterminate` and must not write a
+delivery receipt.
 
 Waiver handling should be local to delivery invariants. Existing review,
 approval, CI, ownership, dependency, state, clean-tree, and provider-action gates
@@ -224,8 +315,8 @@ contract. A delivery waiver cannot authorize a missing Test receipt, missing
 human approval, absent PR, wrong issue binding, or unmerged content unless the
 named delivery invariant is exactly the one being waived.
 
-For the #1784/#1785 reproduction, `delivery.merge-method` is the named invariant.
-The verifier must still prove:
+For the #1784/#1785 reproduction, `delivery.verification.merge-method` is the
+named invariant. The verifier must still prove:
 
 - the merged PR is the intended PR;
 - the PR head is the accepted Test and Review SHA;
@@ -329,34 +420,45 @@ resolver. It should be eligible only when all of the following are true:
 - no ordinary PR delivery receipt exists for the issue;
 - the authorization record names `delivery.local-trunk-close-authorization`;
 - the authorization binds the exact repository, issue, accepted SHA, trunk/ref
-  target, operation ID or expiry, and human reason;
+  target, single-use operation ID, bounded expiry, and human reason;
 - project-wide `fullAutoMerge` settings are not mutated or consulted as the
   authority for this one-off close;
 - Full-Auto and agent-authored messages cannot satisfy the authorization.
 
-This is not a waiver of `delivery.merge-method`, `delivery.pr-scope`, or any PR
-verifier predicate. It is a different exceptional delivery authority for one
-already-delivered local-trunk outcome. The implementation plan may split #1783
-into its own issue if project sequencing prefers, but #1787's design should
-define the shared authority contract so #1783 does not grow a second backdoor.
+This is not a waiver of `delivery.verification.merge-method`,
+`delivery.verification.pr-scope`, or any PR verifier predicate. It is a
+different exceptional delivery authority for one already-delivered local-trunk
+outcome. The implementation plan may split #1783 into its own issue if project
+sequencing prefers, but #1787's design should define the shared authority
+contract so #1783 does not grow a second backdoor.
 
 ## Tests
 
 Focused tests should cover:
 
-- catalog validation accepts delivery IDs only through the
-  `waivable-with-disclosure` path and still refuses `delivery.waiver-authority`;
+- catalog validation accepts only the new `delivery.verification.*` PR-verifier
+  IDs through the `waivable-with-disclosure` path, keeps the ten existing hard
+  `delivery-invariant` IDs non-waivable, and still refuses waiver-authority
+  guardrail IDs;
 - every `verificationError(...)` category maps to a stable requirement ID;
-- every delivery requirement ID has a consumer mapping;
+- every delivery requirement ID has a consumer mapping by extending
+  `CONSUMER_DECLARATIONS` rather than building a duplicate coverage mechanism;
 - no waiver present preserves the current refusal category and exit behavior;
 - malformed, expired, revoked, ambiguous, wrong-issue, wrong-repository,
   wrong-PR, wrong-head, wrong-base, wrong-invariant, empty-reason, wildcard, and
   stale-scope records refuse;
+- unsupported non-Codex authority refuses rather than degrading to a weaker
+  verification level;
 - Full-Auto and agent-authored text cannot authorize a delivery waiver;
 - the #1784/#1785 shape reaches a waived receipt only for
-  `delivery.merge-method` and only after the other delivery evidence passes;
+  `delivery.verification.merge-method` and only after the other delivery
+  evidence passes;
 - the same waiver cannot close a different issue, PR, head, repo, ref, or
   operation;
+- replaying the same correctly scoped waiver after one completed waived delivery
+  refuses as a consumed operation;
+- indeterminate authority or evidence refuses with a distinguishable result and
+  writes no delivery receipt;
 - a waived receipt renders as waived in deliver output, close output, issue
   audit, and parsed record projection;
 - ordinary delivery, #1755 attribution waiver, historical reconstruction, and
@@ -390,12 +492,16 @@ refusal and record rendering before changing catalog semantics.
 
 Likely touch points:
 
-- `scripts/task-tracker/lib/workflow-policy/catalog.mjs` for the catalog
-  capability and delivery requirement IDs;
+- `scripts/task-tracker/lib/workflow-policy/catalog.mjs` for per-requirement
+  `waivableWithDisclosure`, the separate `delivery-pr-verifier` family, and the
+  delivery requirement IDs;
 - `scripts/task-tracker/lib/workflow-policy/evaluator.mjs` and
-  `exception-record.mjs` for delivery-specific waiver validation;
+  `exception-record.mjs` for `aitm.workflow-exception/v2`, delivery-specific
+  waiver validation, Codex-only authority refusal, and v1/v2 readback;
 - a new narrow delivery-exception authority resolver shared by PR verifier
   waiver and local-trunk close authorization consumers;
+- a durable consumption record or ledger for single-use delivery waiver
+  operation IDs and retry-safe burn semantics;
 - `scripts/task-tracker/lib/delivery-verification.mjs` for category-to-ID
   mapping and waived-result propagation;
 - `scripts/task-tracker/lib/delivery-records.mjs` for intent v3, receipt v4,
