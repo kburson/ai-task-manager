@@ -1,0 +1,619 @@
+# Packaged guidance catalog. Read-only explanations; execution remains guarded by AITM.
+schema: aitm.guidance-catalog/v1
+catalog_version: 1
+provenance:
+  based_on_package: '@kburson/ai-task-manager@0.1.0'
+  based_on_catalog_digest: sha256:39e418bfad869c9a58b973bcf4ff9307a3057bcef7dfc7992df5a05761189ba1
+entries:
+  - id: action.bind
+    revision: 1
+    binds:
+      action_ids:
+        - bind
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: bind
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: bind
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Bind an issue work session.
+      explanation: Inspect live bind readiness and let the sanctioned bind command revalidate before opening a timer.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+      triggered_when:
+        - Before opening an issue work session.
+      execution:
+        - >-
+          Check issue, branch, worktree, assignment, and current board state; then use the sanctioned start
+          route.
+      examples:
+        - command: npx aitm start 1676 --role agent
+          purpose: Inspect or execute the action.bind workflow through AITM.
+  - id: action.resume
+    revision: 1
+    binds:
+      action_ids:
+        - resume
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: resume
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: resume
+        - never: reuse_stale_decision
+        - execution_revalidates: true
+    human:
+      summary: Resume a paused work session.
+      explanation: >-
+        Recheck current binding and issue authority before resuming a timer; an earlier explanation cannot
+        authorize resume.
+      triggered_when:
+        - When returning to a paused issue session.
+      execution:
+        - Refresh binding and authority before restarting its timer; discard an earlier readiness explanation.
+      examples:
+        - command: npx aitm start 1676 --role agent
+          purpose: Inspect or execute the action.resume workflow through AITM.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: shared-decision-boundary
+  - id: action.promote
+    revision: 1
+    binds:
+      action_ids:
+        - promote
+      guard_ids:
+        - plan-exit-plan-approved
+        - plan-exit-deep-dive
+        - plan-exit-plan-metadata
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: promote
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: promote
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Advance one legal lifecycle state.
+      explanation: >-
+        Promotion refreshes the issue, board, and registered exit and entry guards before one contiguous state
+        transition.
+      documentation:
+        - path: docs/guides/guard-architecture.md
+          anchor: the-exitentry-slot-model
+      triggered_when:
+        - Before moving an issue forward one state.
+      execution:
+        - Read current readiness, satisfy the returned blockers, and promote exactly one legal step.
+      examples:
+        - command: npx aitm promote 1676
+          purpose: Inspect or execute the action.promote workflow through AITM.
+  - id: action.test
+    revision: 1
+    binds:
+      action_ids:
+        - test
+      guard_ids:
+        - develop-exit-code-complete
+        - develop-exit-receipt
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: test
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: test
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Verify implementation in the Test lane.
+      explanation: >-
+        The sanctioned Test action checks committed implementation and exact verification receipts before
+        moving the issue.
+      triggered_when:
+        - After implementation and its declared verification are ready.
+      execution:
+        - >-
+          Run the sanctioned Test route against committed work and preserve the exact-head verification
+          receipt.
+      examples:
+        - command: npx aitm test 1676
+          purpose: Inspect or execute the action.test workflow through AITM.
+      documentation:
+        - path: docs/guides/guard-architecture.md
+          anchor: the-exitentry-slot-model
+  - id: action.review
+    revision: 1
+    binds:
+      action_ids:
+        - review
+      guard_ids:
+        - test-exit-dod-verified
+        - test-exit-pre-close-completeness
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: review
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: review
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Review exact-head task evidence.
+      explanation: >-
+        Review reuses current verification evidence and refuses missing or stale conditions. When a
+        successful transition requests human approval, present the structured choice. Rejection needs
+        a reason and returns work to Develop; dismissal or no choice pauses the timer in Review.
+      triggered_when:
+        - When the Test receipt and item evidence are current.
+      execution:
+        - Reuse the exact-head receipt and review the issue; return to Develop if evidence is stale.
+        - On an approval prompt, surface the choice; record approval, reasoned rejection, or a pause for dismissal.
+      examples:
+        - command: npx aitm review 1676
+          purpose: Inspect or execute the action.review workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+        - path: docs/guides/ask-the-script.md
+          anchor: review-and-close-human-boundaries
+  - id: action.deliver
+    revision: 1
+    binds:
+      action_ids:
+        - deliver
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: deliver
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: deliver
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Deliver an approved change.
+      explanation: >-
+        The delivery boundary rechecks the exact accepted head and provider-action authority before
+        integration.
+      triggered_when:
+        - After Review approval and exact-head delivery readiness.
+      execution:
+        - >-
+          Follow the single provider-action envelope, reconcile afterward, and require a live-verified
+          receipt.
+      examples:
+        - command: npx aitm deliver 1676
+          purpose: Inspect or execute the action.deliver workflow through AITM.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: shared-decision-boundary
+  - id: action.close
+    revision: 1
+    binds:
+      action_ids:
+        - close
+      guard_ids:
+        - review-exit-review-approved
+        - review-exit-close-gates
+      remediation_ids: []
+    agent:
+      instruction:
+        - query: close
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: close
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Close a reviewed and incorporated issue.
+      explanation: >-
+        Closure revalidates approval, complete evidence, commit inclusion, and housekeeping before Done.
+        It is a separate human-only step requiring an explicit instruction to close this issue; passing
+        checks or an approval marker alone does not authorize it.
+      triggered_when:
+        - After reviewed work is delivered, housekeeping is complete, and the human explicitly asks to close.
+      execution:
+        - Confirm the explicit close instruction, then recheck approval, receipt, checked items, and a clean workspace.
+      examples:
+        - command: npx aitm close 1676
+          purpose: Inspect or execute the action.close workflow through AITM.
+      documentation:
+        - path: docs/guides/guard-architecture.md
+          anchor: the-exitentry-slot-model
+        - path: docs/guides/ask-the-script.md
+          anchor: review-and-close-human-boundaries
+  - id: action.refine
+    revision: 1
+    binds:
+      action_ids:
+        - refine
+      guard_ids:
+        - refine-exit-current-snapshot
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - never: execute_free_text
+        - execution_revalidates: true
+    human:
+      summary: Shape backlog work for planning.
+      explanation: This action has no ready evaluator in v1; use the sanctioned refinement workflow and its own guards.
+      triggered_when:
+        - When shaping a Backlog issue.
+      execution:
+        - >-
+          Use the refinement route with required estimate, size, priority, rank, and reason; this action is
+          not explain-ready in v1.
+      examples:
+        - command: npx aitm refine 1676 --size L --estimate 20 --priority p2 --rank 24 --reason "Scope ready"
+          purpose: Inspect or execute the action.refine workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+  - id: action.demote
+    revision: 1
+    binds:
+      action_ids:
+        - demote
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - never: execute_free_text
+        - execution_revalidates: true
+    human:
+      summary: Return Test or Review work to Develop.
+      explanation: This action has no ready evaluator in v1 and requires a documented code-rework reason.
+      triggered_when:
+        - When Test or Review finds code rework.
+      execution:
+        - Give a rework reason and use the sanctioned demotion route so stale evidence is invalidated.
+      examples:
+        - command: npx aitm demote 1676 --rework "Verification failed"
+          purpose: Inspect or execute the action.demote workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+  - id: action.shelve
+    revision: 1
+    binds:
+      action_ids:
+        - shelve
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - never: execute_free_text
+        - execution_revalidates: true
+    human:
+      summary: Shelve work through its guarded route.
+      explanation: This action has no ready evaluator in v1; follow its sanctioned reason and state rules.
+      triggered_when:
+        - When guarded work must be shelved.
+      execution:
+        - Use the sanctioned shelve route with its required reason and state checks.
+      examples:
+        - command: npx aitm shelve 1676 --reason "Dependency pending"
+          purpose: Inspect or execute the action.shelve workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+  - id: action.park
+    revision: 1
+    binds:
+      action_ids:
+        - park
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - never: execute_free_text
+        - execution_revalidates: true
+    human:
+      summary: Park a plan or refinement item.
+      explanation: This action has no ready evaluator in v1 and returns work to Backlog only through its guarded route.
+      triggered_when:
+        - When a refinement or plan premise is no longer valid.
+      execution:
+        - Record a reason and use the guarded park route to return to Backlog.
+      examples:
+        - command: npx aitm park 1676 --reason "Premise changed"
+          purpose: Inspect or execute the action.park workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+  - id: action.cancel-plan
+    revision: 1
+    binds:
+      action_ids:
+        - cancel-plan
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - never: execute_free_text
+        - execution_revalidates: true
+    human:
+      summary: Cancel the current planning attempt.
+      explanation: This action has no ready evaluator in v1 and requires a reason before returning to Ready for Planning.
+      triggered_when:
+        - When the current Plan attempt must end.
+      execution:
+        - Record why the plan is canceled and return through the guarded route.
+      examples:
+        - command: npx aitm cancel-plan 1676 --reason "Plan superseded"
+          purpose: Inspect or execute the action.cancel-plan workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+  - id: transition.plan-to-develop
+    revision: 1
+    binds:
+      action_ids:
+        - promote
+      guard_ids:
+        - plan-exit-plan-approved
+        - plan-exit-deep-dive
+        - plan-exit-plan-metadata
+      remediation_ids:
+        - record-plan-approval
+    agent:
+      instruction:
+        - query: promote
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: promote
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Start implementation only after Plan readiness.
+      explanation: The plan, Story Intent, deep dive, estimate, and ownership are rechecked at the actual transition.
+      triggered_when:
+        - At the Plan to Develop boundary.
+      execution:
+        - >-
+          Confirm Story Intent, deep dive, estimate, ownership, and the approval marker before promotion;
+          waivers remain labeled waived.
+      examples:
+        - command: npx aitm plan-approve 1676
+          purpose: Inspect or execute the transition.plan-to-develop workflow through AITM.
+      documentation:
+        - path: docs/guides/guard-architecture.md
+          anchor: the-exitentry-slot-model
+  - id: transition.review-approval
+    revision: 1
+    binds:
+      action_ids:
+        - deliver
+      guard_ids:
+        - review-exit-review-approved
+      remediation_ids:
+        - request-review-approval
+    agent:
+      instruction:
+        - query: deliver
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - execute: deliver
+        - never: reuse_stale_decision
+        - execution_revalidates: true
+    human:
+      summary: Obtain current-head review approval.
+      explanation: >-
+        An eligible reviewer must approve the exact head when manual review is required; an earlier
+        explanation grants nothing.
+      triggered_when:
+        - At the Review approval boundary.
+      execution:
+        - >-
+          Require an eligible reviewer or the applicable current workflow policy; an explanation cannot grant
+          approval.
+      examples:
+        - command: npx aitm approve 1676
+          purpose: Inspect or execute the transition.review-approval workflow through AITM.
+      documentation:
+        - path: docs/guides/guard-architecture.md
+          anchor: the-exitentry-slot-model
+  - id: navigation.unknown
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - recommendation: null
+        - never: execute_free_text
+        - never: invoke_internal_mutator
+    human:
+      summary: The requested action is not registered.
+      explanation: >-
+        No executable recommendation is available because the action is outside the closed lifecycle
+        vocabulary.
+      triggered_when:
+        - When the requested action is outside the closed vocabulary.
+      execution:
+        - Stop and select a registered action; never execute a free-text suggestion.
+      examples:
+        - command: npx aitm guidance validate --published --refresh --json
+          purpose: Inspect or execute the navigation.unknown workflow through AITM.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: shared-decision-boundary
+  - id: navigation.unresolved
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - navigation: unresolved
+        - recommendation: null
+        - never: bypass_guard
+    human:
+      summary: Current lifecycle navigation is unresolved.
+      explanation: Conflicting or unavailable state authority prevents selection of an executable lifecycle action.
+      triggered_when:
+        - When board, issue, or binding authority disagrees.
+      execution:
+        - Investigate the conflicting state and reconcile it before choosing another action.
+      examples:
+        - command: npx aitm board
+          purpose: Inspect or execute the navigation.unresolved workflow through AITM.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: shared-decision-boundary
+  - id: state.done
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - terminal_state: done
+        - recommendation: null
+        - never: execute_free_text
+    human:
+      summary: The issue is already terminal.
+      explanation: >-
+        Done is a terminal state, so the explanation reports current authority without recommending another
+        lifecycle action.
+      triggered_when:
+        - When the issue is already Done.
+      execution:
+        - Treat Done as terminal and inspect its recorded delivery and timing evidence.
+      examples:
+        - command: npx aitm board
+          purpose: Inspect or execute the state.done workflow through AITM.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states
+  - id: protocol.session
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - never: reuse_stale_decision
+        - execution_revalidates: true
+    human:
+      summary: Keep issue work bound and timed.
+      explanation: >-
+        Start the issue timer before work, pause it for blocking questions, and honor current project
+        preferences, role, and recorded worktree. Track follow-up work before starting it and reconcile
+        board drift before another lifecycle action. Parallel work on the main workspace requires an
+        isolated worktree. A resumed session with no active task requires an explicit new bind. A
+        discussion-requested bind requires a user dialog before deep dive or refinement; resolve its
+        marker through the sanctioned discussion route.
+      triggered_when:
+        - Before issue work or a blocking question.
+      execution:
+        - Bind to the exact issue and role; pause and resume through AITM as the work state changes.
+        - Create follow-up issues through the sanctioned issue writer and reconcile board drift before continuing.
+        - On a discussion-requested bind, pause for the dialog and finalize the recorded scope before implementation.
+      examples:
+        - command: npx aitm start 1676 --role agent
+          purpose: Keep issue work bound and timed.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: session-and-pickup-protocol
+  - id: protocol.receipts
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: reuse_stale_decision
+        - execution_revalidates: true
+    human:
+      summary: Refresh context receipts after a reset.
+      explanation: >-
+        A compacted summary, cleared session, or new worker cannot attest that prior instructions remain in
+        active context.
+      triggered_when:
+        - After compaction, clear, fresh worker start, or invalidated sentinel.
+      execution:
+        - Reload the boot index and required instructions, then obtain fresh guidance receipts.
+      examples:
+        - command: npx aitm guidance source
+          purpose: Refresh context receipts after a reset.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: shared-decision-boundary
+  - id: protocol.pickup
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Complete pickup and evidence checkpoints.
+      explanation: >-
+        Deep dive precedes source edits; each demonstrable acceptance criterion and functional DoD item gets
+        its own verification evidence. Bootstrap failures stop source edits; epic boxes wait for child Review.
+        Child agents report CODE_COMPLETE for orchestrator Review and close. A deferred pickup banner on a
+        Backlog or Refine issue means follow the named state-walk verb without loading Plan-stage pickup.
+      triggered_when:
+        - When an issue reaches Plan or later and pickup instructions apply.
+      execution:
+        - Post the deep dive, stamp its completion, run declared verifiers, and cite exact evidence per item.
+        - Re-read user input before state moves, stop on a mistake, and use the sanctioned issue-body route.
+      examples:
+        - command: npx aitm ensureChecked "Deep dive complete"
+          purpose: Complete pickup and evidence checkpoints.
+      documentation:
+        - path: docs/guides/ask-the-script.md
+          anchor: session-and-pickup-protocol
+  - id: protocol.commit-trail
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids: []
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Attribute commits to the bound issue.
+      explanation: >-
+        Successful commits while an issue is bound produce a deduplicated issue commit trail; preserve its
+        branch and worktree provenance.
+      triggered_when:
+        - When committing issue work.
+      execution:
+        - Commit with the bound issue attribution and inspect the resulting issue trail.
+      examples:
+        - command: git log --oneline -1
+          purpose: Attribute commits to the bound issue.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states

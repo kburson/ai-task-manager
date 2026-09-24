@@ -1,0 +1,528 @@
+{
+  "schema": "aitm.guidance-actual-cli-capture/v2",
+  "captureKind": "actual-public-cli-subprocess",
+  "capturedAt": "2026-09-22T21:19:33.201Z",
+  "identity": {
+    "sourceCommit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+    "implementationFiles": [
+      {
+        "path": "bin/aitm.mjs",
+        "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+      },
+      {
+        "path": "scripts/task-tracker/verbs/explain.mjs",
+        "sha256": "sha256:50bd19d46abf55085b42ada8f8a73d3c384cec8049408153a513757cefb59224"
+      },
+      {
+        "path": "scripts/task-tracker/lib/action-decision/evaluate.mjs",
+        "sha256": "sha256:c1561f628088f9678aa084c359b1fc8a289e79125d509960c53ac2e8a353c61e"
+      },
+      {
+        "path": "instructions/aitm-guidance.yml",
+        "sha256": "sha256:76c999b20066a25ebea5ce555f2b55c239a1d9b6b6a3d25122b63cf98fdf50fb"
+      },
+      {
+        "path": "scripts/maintenance/capture-guidance-explain.mjs",
+        "sha256": "sha256:e426a6c35f7ac0ba5c555a7443a6b634f198b25318a4a468c94197dc843040ca"
+      }
+    ],
+    "fixture": {
+      "bodySha256": "sha256:40a2d339893c63de1fbf526d80ee3e7e58a7a9ba038ffdd8be7c44282bd617aa",
+      "configSha256": "sha256:18de30189ff258f8bb8011da8c017d5b10c72e683104a0bbbec18ea3df7b6d13",
+      "fakeGhSha256": "sha256:f5dcdfbe6f175cee409f3f4e6dc222469d8bf3bcf4a2e1f2c74fb04ec0e25afb",
+      "baselineGuidanceSha256": "sha256:76c999b20066a25ebea5ce555f2b55c239a1d9b6b6a3d25122b63cf98fdf50fb"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "ready-first-load",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 124
+    },
+    {
+      "name": "matching-receipt",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"not-modified\"}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 78
+    },
+    {
+      "name": "compaction-reset",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 124
+    },
+    {
+      "name": "blocked-migration-freeze",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 159
+    },
+    {
+      "name": "diagnostic",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--diagnostic",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"snapshot\":{\"state\":\"plan\",\"head\":\"14baeb6dd2c378db65224ae9f80dd2bbadb30fb5\",\"digest\":\"sha256:918e177e3ed2138eb9348ba4af7230384329223572922bbb0e5ea37be8055754\",\"startedAt\":\"2026-09-22T21:19:28.362Z\",\"completedAt\":\"2026-09-22T21:19:28.363Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-22T21:19:28.362Z\",\"digest\":\"sha256:46da0fb00d47d940091ea9ad294228392e843b0c8607cf2b2b9f105cb9a83b05\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:c24b8bb6ad4abde67d84e4dae8cc40baa21db75e8e1b143c9d8a8fe0e4264463\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:b56eac3db39968950cfa3c489a7198b6e8e53a2b5f1cd3d68bdf72049eeebd3e\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:d052e2dbd0dcae58670a9e1f4b924d191a199f691358794537b49207f46cafe4\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:9eef927db958e592c294398f2b009d8e41b63fff6850ec4bd53a3105d271bb13\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:e31c8e49dfec234882faf76cfe02e291df0430b0e1eb31001f105ac47317a9d5\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-22T21:19:28.363Z\",\"digest\":\"sha256:65c38284e3cee41d85929753340de0e4ef9f8f670aeaf0dc5776df173563ac14\"}]},\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 556
+    },
+    {
+      "name": "lifecycle-resume",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "resume",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"resume\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.resume\",\"digest\":\"sha256:7661dea7fa21dcf707ab0595b049494d829a71804b5af01a5fd5b9fa41e50e1d\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"resume\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"resume\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "resume",
+        "guidanceIds": ["action.resume"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 128
+    },
+    {
+      "name": "lifecycle-promote",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "promote",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-planned-estimate\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-deep-dive\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-plan-metadata\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-vc-presence\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-ownership\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-epic-children-r4p-or-beyond\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\",\"args\":{\"source\":\"workflow-policy\",\"reason\":\"unavailable\",\"subject\":{\"issue\":2100}},\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-planned-estimate\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-deep-dive\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-plan-metadata\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-vc-presence\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-ownership\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-epic-children-r4p-or-beyond\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 9,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "promote",
+        "guidanceIds": ["action.promote"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 901
+    },
+    {
+      "name": "lifecycle-test",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "test",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"test\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"session-bind-mismatch\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"authority-collection\",\"code\":\"test-verification-commands-missing\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-epic-children-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-epic-children-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.test\",\"digest\":\"sha256:14de80e480a4d7e3fb15e4cfd63489eb0544e6223300a047d958fe50a9a4935f\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"test\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"test\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 8,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "test",
+        "guidanceIds": ["action.test"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 642
+    },
+    {
+      "name": "lifecycle-review",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "review",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"review\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"review\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.review\",\"digest\":\"sha256:640b0fc35317634c36002c66c981390db7bf7818d665dc61a3aed7b7684cdb40\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"review\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"review\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 6,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "review",
+        "guidanceIds": ["action.review"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 228
+    },
+    {
+      "name": "lifecycle-deliver",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "deliver",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"deliver\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"deliver\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.deliver\",\"digest\":\"sha256:376fe05bee0f8340fa5506186f59e564feb6142d635370f18b28849bef5a9125\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"deliver\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"deliver\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "deliver",
+        "guidanceIds": ["action.deliver"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 229
+    },
+    {
+      "name": "lifecycle-close",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "close",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"close\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"issue-body\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"args\":{\"reason\":\"unavailable\",\"source\":\"project-board\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"args\":{\"reason\":\"unavailable\",\"source\":\"worktree\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.close\",\"digest\":\"sha256:a62f668fc999787492462b9207f0fcf60744339e3a5886d46ac63dadadfc71c7\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"close\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"close\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 2,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "close",
+        "guidanceIds": ["action.close"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      },
+      "proxyTokens": 519
+    },
+    {
+      "name": "agent-change",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:d7c7ca50f3789723e62717b7c41af0e096e39a121f5c05aa2d4db9ebec10bf83"
+      },
+      "proxyTokens": 209
+    },
+    {
+      "name": "source-only-change",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1675-guidance-explain/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"not-modified\"}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceIds": ["action.bind"],
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:fb3a9ba1153a366b2b9ef8d642f2deedecf412ae41e17904db76f90830781bb9"
+      },
+      "proxyTokens": 154
+    }
+  ],
+  "measurement": {
+    "proxyRule": "ceil(concatenated UTF-16 characters / 4)",
+    "actualTraffic": {
+      "characters": 18897,
+      "bytes": 18897,
+      "proxyTokens": 4725
+    },
+    "lifecycleTraffic": {
+      "characters": 12382,
+      "bytes": 12382,
+      "proxyTokens": 3096
+    },
+    "currentFullStaticSource": "scripts/tests/fixtures/1558/context-comparison.json",
+    "currentFullStaticProxyTokens": {
+      "claude": 17642,
+      "codex": 17556
+    },
+    "modeledProposedStatic": {
+      "claude": {
+        "files": [
+          {
+            "id": "shim",
+            "sourcePath": "skill/SKILL.md",
+            "sourceSection": "complete-file",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "id": "router-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 router",
+            "characters": 1435,
+            "bytes": 1435,
+            "proxyTokens": 359,
+            "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+          },
+          {
+            "id": "pickup-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 pickup",
+            "characters": 564,
+            "bytes": 564,
+            "proxyTokens": 141,
+            "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+          },
+          {
+            "id": "adapter-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 adapter.claude",
+            "characters": 410,
+            "bytes": 410,
+            "proxyTokens": 103,
+            "sha256": "sha256:99beb2a4d5ce6acaa002b8af6fcf943b35afeed02a2ec963539581a258818faa"
+          }
+        ],
+        "totals": {
+          "characters": 3355,
+          "bytes": 3355,
+          "proxyTokens": 840
+        }
+      },
+      "codex": {
+        "files": [
+          {
+            "id": "shim",
+            "sourcePath": "skill/SKILL.md",
+            "sourceSection": "complete-file",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "id": "router-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 router",
+            "characters": 1435,
+            "bytes": 1435,
+            "proxyTokens": 359,
+            "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+          },
+          {
+            "id": "pickup-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 pickup",
+            "characters": 564,
+            "bytes": 564,
+            "proxyTokens": 141,
+            "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+          },
+          {
+            "id": "adapter-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 adapter.codex",
+            "characters": 383,
+            "bytes": 383,
+            "proxyTokens": 96,
+            "sha256": "sha256:ef20067ef6bb8bcd2bbcfa4a2bc6c2e5712ac410d4e920c67f84ee6f55e78674"
+          }
+        ],
+        "totals": {
+          "characters": 3328,
+          "bytes": 3328,
+          "proxyTokens": 833
+        }
+      }
+    },
+    "modeledFullLifecycleTotals": {
+      "claude": 3936,
+      "codex": 3929
+    },
+    "lifecycleScenarioNames": [
+      "ready-first-load",
+      "lifecycle-resume",
+      "lifecycle-promote",
+      "lifecycle-test",
+      "lifecycle-review",
+      "lifecycle-deliver",
+      "lifecycle-close"
+    ],
+    "budgets": {
+      "routerPlusPickupWorking": 4000,
+      "fullLifecycleWorking": 5600,
+      "cleanResponseWorking": 240,
+      "blockedResponseWorking": 400
+    },
+    "verdicts": {
+      "routerPlusPickup": {
+        "claude": true,
+        "codex": true
+      },
+      "fullLifecycle": {
+        "claude": true,
+        "codex": true
+      },
+      "cleanResponse": true,
+      "blockedResponse": true,
+      "improvesCurrentFull": {
+        "claude": true,
+        "codex": true
+      }
+    }
+  }
+}

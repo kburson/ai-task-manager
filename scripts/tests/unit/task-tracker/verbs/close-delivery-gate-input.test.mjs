@@ -10,6 +10,8 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
+import { buildDeliveryAttributionProposal } from '../../../../task-tracker/lib/delivery-attribution-exception-record.mjs';
+import { canonicalSourceInventory } from '../../../../task-tracker/lib/delivery-attribution-exception.mjs';
 
 const HEAD = 'a'.repeat(40);
 const HISTORICAL_HEAD = 'b'.repeat(40);
@@ -156,6 +158,103 @@ test('#1470 close loads source proof for an external recovery receipt', async ()
   });
 
   assert.deepEqual(result.pullRequest.sourceCommitEvidence, evidence);
+});
+
+test('#1558 close reloads complete merged source evidence for a waived receipt', async () => {
+  const commits = [{ oid: HEAD, messageHeadline: 'legacy source' }];
+  const sourceDigest = canonicalSourceInventory(commits, HEAD).sourceDigest;
+  const mappings = [{ oid: HEAD, messageHeadline: 'legacy source', issueNumber: 1397 }];
+  const built = buildDeliveryAttributionProposal({
+    exceptionId: '01M2H000000000000000000003',
+    operationId: '01M2H000000000000000000002',
+    repository: 'kburson/ai-task-manager',
+    issueNumber: 1397,
+    prNumber: 1400,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    headSha: HEAD,
+    sourceDigest,
+    mappings,
+    attributionTokens: ['#1397'],
+    expiresAt: '2026-09-25T00:00:00.000Z',
+  });
+  const intent = buildDeliveryIntent({
+    intentId: INTENT_ID,
+    supersedesIntentId: null,
+    issueNumber: 1397,
+    repository: 'kburson/ai-task-manager',
+    prNumber: 1400,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    expectedHeadSha: HEAD,
+    mergeMethod: 'squash',
+    attributionTokens: ['#1397'],
+    commitTitle: '[#1397] Governed PR delivery',
+    commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#1397]`,
+    provider: 'codex',
+    sessionId: 'session-1',
+    clientCreatedAt: '2026-08-23T00:00:00.000Z',
+    attributionDisposition: 'waived',
+    exceptionRecordId: '01M2H000000000000000000003',
+    operationId: built.proposal.operationId,
+    sourceDigest,
+    proposalDigest: built.proposalDigest,
+    mappings,
+  });
+  const receipt = buildDeliveryReceipt({
+    intentId: INTENT_ID,
+    issueNumber: 1397,
+    prNumber: 1400,
+    expectedHeadSha: HEAD,
+    mergeCommitSha: MERGE,
+    baseRef: 'trunk',
+    mergeMethod: 'squash',
+    verifiedTrunkRef: 'origin/trunk',
+    provider: 'codex',
+    sessionId: 'session-1',
+    verifiedAt: '2026-08-23T00:02:00.000Z',
+    attributionDisposition: 'waived',
+    exceptionRecordId: intent.exceptionRecordId,
+    exceptionRecord: {
+      schema: 'aitm.delivery-attribution-exception/v1',
+      kind: 'grant',
+      recordId: intent.exceptionRecordId,
+      predecessorId: null,
+      proposal: built.proposal,
+      proposalDigest: built.proposalDigest,
+      authority: {
+        sourceReference: 'codex-session/v1:turn-10',
+        statement: 'Authorize this mapping',
+        actor: 'kpburson',
+        level: 'host-verified-user-message',
+      },
+      createdAt: '2026-09-23T00:00:00.000Z',
+    },
+  });
+  const { result } = await load([pullRequest(1400, HEAD)], {
+    comments: [
+      { id: 1, body: renderDeliveryIntentComment(intent), created_at: '2026-08-23T00:00:01Z' },
+      { id: 2, body: renderDeliveryReceiptComment(receipt), created_at: '2026-08-23T00:02:01Z' },
+    ],
+    ctx: {
+      fetchClosePullRequestEvidence: async () => ({
+        ...pullRequest(1400, HEAD),
+        sourceCommits: commits,
+        sourceCommitSubjects: commits.map((commit) => commit.messageHeadline),
+        sourceCommitsComplete: true,
+        sourceCommitsHeadSha: HEAD,
+      }),
+      inspectCloseSourceCommit: async () => ({
+        parents: ['d'.repeat(40)],
+        commitTitle: 'legacy source',
+      }),
+    },
+  });
+  assert.deepEqual(result.sourceInventory, {
+    commits,
+    attributableCommits: commits,
+    verifiedMergeShas: [],
+  });
 });
 
 test('#1470 close inspects the merge tree needed by squash proof', async () => {

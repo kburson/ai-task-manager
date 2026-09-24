@@ -130,7 +130,11 @@ import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapte
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
-import { createDefaultDeliverDeps, parsedDeliveryRecords } from './deliver.mjs';
+import {
+  classifySourceCommitSubjects,
+  createDefaultDeliverDeps,
+  parsedDeliveryRecords,
+} from './deliver.mjs';
 import {
   hasAcceptedApprovalEvidence,
   hasAcceptedReviewEvidence,
@@ -772,6 +776,7 @@ export async function loadCloseDeliveryGateInput({
   let selectedPullRequest = authority?.pullRequest ?? null;
   let records = null;
   let noCommitRecords = null;
+  let sourceInventory = null;
   const noCommitKind = isNoCommitKind(body);
   if (parentIssueNumber === null && (pullRequests.length > 0 || noCommitKind)) {
     await listIssueComments();
@@ -783,10 +788,10 @@ export async function loadCloseDeliveryGateInput({
         .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
         .filter(Boolean)
     );
-    if (records.liveIntent?.record?.provider === 'external') {
-      const fetchEvidence =
-        ctx.fetchClosePullRequestEvidence ??
-        createDefaultDeliverDeps({ cfg, projectDir }).fetchPullRequest;
+    const waivedIntent = records.liveIntent?.record?.schema === 'aitm.delivery-intent/v2';
+    if (records.liveIntent?.record?.provider === 'external' || waivedIntent) {
+      const deliverDeps = createDefaultDeliverDeps({ cfg, projectDir });
+      const fetchEvidence = ctx.fetchClosePullRequestEvidence ?? deliverDeps.fetchPullRequest;
       const evidenced = await fetchEvidence({ prNumber: selectedPullRequest.number });
       if (
         evidenced?.number !== selectedPullRequest.number ||
@@ -804,6 +809,17 @@ export async function loadCloseDeliveryGateInput({
         sourceCommitsComplete: evidenced.sourceCommitsComplete,
         sourceCommitsHeadSha: evidenced.sourceCommitsHeadSha,
       };
+      if (waivedIntent) {
+        const classified = await classifySourceCommitSubjects(
+          selectedPullRequest,
+          ctx.inspectCloseSourceCommit ?? deliverDeps.inspectSourceCommit
+        );
+        sourceInventory = {
+          commits: selectedPullRequest.sourceCommits,
+          attributableCommits: classified.attributableCommits,
+          verifiedMergeShas: classified.verifiedMergeShas,
+        };
+      }
     }
   }
   if (parentIssueNumber === null && noCommitKind && pullRequests.length === 0) {
@@ -825,6 +841,7 @@ export async function loadCloseDeliveryGateInput({
     pullRequests,
     records,
     noCommitRecords,
+    sourceInventory,
   };
 }
 

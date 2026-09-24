@@ -107,6 +107,7 @@ export function makeHarness(options = {}) {
     sourceCommitsComplete: options.sourceCommitsComplete ?? true,
     sourceCommitsHeadSha: options.sourceCommitsHeadSha ?? options.prHead ?? options.head ?? HEAD,
     prState: options.prState ?? 'OPEN',
+    prNumber: options.prNumber ?? 1400,
     prHead: options.prHead ?? null,
     mergeCommitSha: options.mergeCommitSha === undefined ? MERGE_HEAD : options.mergeCommitSha,
     mergedAt: options.mergedAt ?? MERGED_AT,
@@ -173,13 +174,13 @@ export function makeHarness(options = {}) {
     async listPullRequests({ headRef }) {
       calls.listPullRequests += 1;
       assert.equal(headRef, 'codex/939-full-auto-merge');
-      return [{ number: 1400 }];
+      return [{ number: data.prNumber }];
     },
     async fetchPullRequest({ prNumber }) {
       calls.fetchPullRequest += 1;
-      assert.equal(prNumber, 1400);
+      assert.equal(prNumber, data.prNumber);
       const pullRequest = {
-        number: 1400,
+        number: data.prNumber,
         state: data.prState,
         merged: data.prState === 'MERGED',
         isDraft: false,
@@ -210,7 +211,7 @@ export function makeHarness(options = {}) {
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
       calls.fetchRequiredChecks += 1;
       if (data.manualCodeReview) calls.events.push('checks:read');
-      assert.equal(prNumber, 1400);
+      assert.equal(prNumber, data.prNumber);
       assert.equal(expectedHeadSha, data.head);
       return structuredClone(data.checks);
     },
@@ -222,7 +223,7 @@ export function makeHarness(options = {}) {
     },
     async fetchManualCodeReviewEvidence() {
       return {
-        number: 1400,
+        number: data.prNumber,
         author: { login: 'aitm-author', isBot: false },
         reviewRequests: structuredClone(data.reviewRequests),
         reviews: structuredClone(data.reviews),
@@ -231,7 +232,7 @@ export function makeHarness(options = {}) {
     async requestPullRequestReview({ prNumber, reviewerLogin }) {
       calls.requestPullRequestReview += 1;
       calls.events.push('review:request');
-      assert.equal(prNumber, 1400);
+      assert.equal(prNumber, data.prNumber);
       assert.equal(reviewerLogin, data.reviewerLogin);
       data.reviewRequests.push({ login: reviewerLogin, isBot: false });
     },

@@ -1,0 +1,55 @@
+{
+  "schema": "aitm.captured-source-archive/v1",
+  "entries": [
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "bin/aitm.mjs",
+      "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+    },
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "scripts/task-tracker/verbs/explain.mjs",
+      "sha256": "sha256:50bd19d46abf55085b42ada8f8a73d3c384cec8049408153a513757cefb59224"
+    },
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "scripts/task-tracker/lib/action-decision/evaluate.mjs",
+      "sha256": "sha256:c1561f628088f9678aa084c359b1fc8a289e79125d509960c53ac2e8a353c61e"
+    },
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "instructions/aitm-guidance.yml",
+      "sha256": "sha256:76c999b20066a25ebea5ce555f2b55c239a1d9b6b6a3d25122b63cf98fdf50fb"
+    },
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "scripts/maintenance/capture-guidance-explain.mjs",
+      "sha256": "sha256:e426a6c35f7ac0ba5c555a7443a6b634f198b25318a4a468c94197dc843040ca"
+    },
+    {
+      "commit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
+      "filePath": "bin/aitm.mjs",
+      "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+    },
+    {
+      "commit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
+      "filePath": "scripts/task-tracker/verbs/explain.mjs",
+      "sha256": "sha256:50bd19d46abf55085b42ada8f8a73d3c384cec8049408153a513757cefb59224"
+    },
+    {
+      "commit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
+      "filePath": "scripts/maintenance/capture-guidance-lifecycle.mjs",
+      "sha256": "sha256:75ee82f0e401d8ccccc5f4f1ba51af392a516f3aca9432eff907b0432373fb73"
+    },
+    {
+      "commit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
+      "filePath": "instructions/aitm-guidance.yml",
+      "sha256": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf"
+    },
+    {
+      "commit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
+      "filePath": "scripts/tests/fixtures/1558/actual-explain-traffic.json",
+      "sha256": "sha256:01352ddc23f480fbfee6ce2fde40922ee25993ce2c846d964378ef6ea71d2702"
+    }
+  ]
+}

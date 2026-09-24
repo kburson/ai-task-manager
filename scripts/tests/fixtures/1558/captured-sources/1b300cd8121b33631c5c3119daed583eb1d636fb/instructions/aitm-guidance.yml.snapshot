@@ -1,0 +1,255 @@
+# Packaged genesis catalog. Its baseline digest identifies the empty v1 catalog.
+# Richer human rule coverage is owned by #1675.
+schema: aitm.guidance-catalog/v1
+catalog_version: 1
+provenance:
+  based_on_package: '@kburson/ai-task-manager@0.1.0'
+  based_on_catalog_digest: sha256:39e418bfad869c9a58b973bcf4ff9307a3057bcef7dfc7992df5a05761189ba1
+entries:
+  - id: action.bind
+    revision: 1
+    binds: { action_ids: [bind], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [
+          { query: bind },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: bind },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Bind an issue work session.
+      explanation: Inspect live bind readiness and let the sanctioned bind command revalidate before opening a timer.
+      documentation: [{ path: docs/guides/workflow.md, anchor: kanban-board-states }]
+  - id: action.resume
+    revision: 1
+    binds: { action_ids: [resume], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [
+          { query: resume },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: resume },
+          { never: reuse_stale_decision },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Resume a paused work session.
+      explanation: Recheck current binding and issue authority before resuming a timer; an earlier explanation cannot authorize resume.
+  - id: action.promote
+    revision: 1
+    binds:
+      {
+        action_ids: [promote],
+        guard_ids: [plan-exit-plan-approved, plan-exit-deep-dive, plan-exit-plan-metadata],
+        remediation_ids: [],
+      }
+    agent:
+      instruction:
+        [
+          { query: promote },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: promote },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Advance one legal lifecycle state.
+      explanation: Promotion refreshes the issue, board, and registered exit and entry guards before one contiguous state transition.
+      documentation: [{ path: docs/guides/guard-architecture.md, anchor: the-exitentry-slot-model }]
+  - id: action.test
+    revision: 1
+    binds:
+      {
+        action_ids: [test],
+        guard_ids: [develop-exit-code-complete, develop-exit-receipt],
+        remediation_ids: [],
+      }
+    agent:
+      instruction:
+        [
+          { query: test },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: test },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Verify implementation in the Test lane.
+      explanation: The sanctioned Test action checks committed implementation and exact verification receipts before moving the issue.
+  - id: action.review
+    revision: 1
+    binds:
+      {
+        action_ids: [review],
+        guard_ids: [test-exit-dod-verified, test-exit-pre-close-completeness],
+        remediation_ids: [],
+      }
+    agent:
+      instruction:
+        [
+          { query: review },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: review },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Review exact-head task evidence.
+      explanation: Review reuses current verification evidence and refuses missing or stale conditions before approval.
+  - id: action.deliver
+    revision: 1
+    binds: { action_ids: [deliver], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [
+          { query: deliver },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: deliver },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Deliver an approved change.
+      explanation: The delivery boundary rechecks the exact accepted head and provider-action authority before integration.
+  - id: action.close
+    revision: 1
+    binds:
+      {
+        action_ids: [close],
+        guard_ids: [review-exit-review-approved, review-exit-close-gates],
+        remediation_ids: [],
+      }
+    agent:
+      instruction:
+        [
+          { query: close },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: close },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Close a reviewed and incorporated issue.
+      explanation: Closure revalidates approval, complete evidence, commit inclusion, and housekeeping before Done.
+  - id: action.refine
+    revision: 1
+    binds: { action_ids: [refine], guard_ids: [refine-exit-current-snapshot], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ never: bypass_guard }, { never: execute_free_text }, { execution_revalidates: true }]
+    human:
+      summary: Shape backlog work for planning.
+      explanation: This action has no ready evaluator in v1; use the sanctioned refinement workflow and its own guards.
+  - id: action.demote
+    revision: 1
+    binds: { action_ids: [demote], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ never: bypass_guard }, { never: execute_free_text }, { execution_revalidates: true }]
+    human:
+      summary: Return Test or Review work to Develop.
+      explanation: This action has no ready evaluator in v1 and requires a documented code-rework reason.
+  - id: action.shelve
+    revision: 1
+    binds: { action_ids: [shelve], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ never: bypass_guard }, { never: execute_free_text }, { execution_revalidates: true }]
+    human:
+      summary: Shelve work through its guarded route.
+      explanation: This action has no ready evaluator in v1; follow its sanctioned reason and state rules.
+  - id: action.park
+    revision: 1
+    binds: { action_ids: [park], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ never: bypass_guard }, { never: execute_free_text }, { execution_revalidates: true }]
+    human:
+      summary: Park a plan or refinement item.
+      explanation: This action has no ready evaluator in v1 and returns work to Backlog only through its guarded route.
+  - id: action.cancel-plan
+    revision: 1
+    binds: { action_ids: [cancel-plan], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ never: bypass_guard }, { never: execute_free_text }, { execution_revalidates: true }]
+    human:
+      summary: Cancel the current planning attempt.
+      explanation: This action has no ready evaluator in v1 and requires a reason before returning to Ready for Planning.
+  - id: transition.plan-to-develop
+    revision: 1
+    binds:
+      {
+        action_ids: [promote],
+        guard_ids: [plan-exit-plan-approved, plan-exit-deep-dive, plan-exit-plan-metadata],
+        remediation_ids: [record-plan-approval],
+      }
+    agent:
+      instruction:
+        [
+          { query: promote },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: promote },
+          { never: bypass_guard },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Start implementation only after Plan readiness.
+      explanation: The plan, Story Intent, deep dive, estimate, and ownership are rechecked at the actual transition.
+  - id: transition.review-approval
+    revision: 1
+    binds:
+      {
+        action_ids: [deliver],
+        guard_ids: [review-exit-review-approved],
+        remediation_ids: [request-review-approval],
+      }
+    agent:
+      instruction:
+        [
+          { query: deliver },
+          { require_status: ready },
+          { if_blocked: use_returned_remediation_ids },
+          { execute: deliver },
+          { never: reuse_stale_decision },
+          { execution_revalidates: true },
+        ]
+    human:
+      summary: Obtain current-head review approval.
+      explanation: An eligible reviewer must approve the exact head when manual review is required; an earlier explanation grants nothing.
+  - id: navigation.unknown
+    revision: 1
+    binds: { action_ids: [], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ recommendation: null }, { never: execute_free_text }, { never: invoke_internal_mutator }]
+    human:
+      summary: The requested action is not registered.
+      explanation: No executable recommendation is available because the action is outside the closed lifecycle vocabulary.
+  - id: navigation.unresolved
+    revision: 1
+    binds: { action_ids: [], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction: [{ navigation: unresolved }, { recommendation: null }, { never: bypass_guard }]
+    human:
+      summary: Current lifecycle navigation is unresolved.
+      explanation: Conflicting or unavailable state authority prevents selection of an executable lifecycle action.
+  - id: state.done
+    revision: 1
+    binds: { action_ids: [], guard_ids: [], remediation_ids: [] }
+    agent:
+      instruction:
+        [{ terminal_state: done }, { recommendation: null }, { never: execute_free_text }]
+    human:
+      summary: The issue is already terminal.
+      explanation: Done is a terminal state, so the explanation reports current authority without recommending another lifecycle action.
