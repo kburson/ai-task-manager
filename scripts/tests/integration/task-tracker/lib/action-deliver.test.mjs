@@ -422,6 +422,14 @@ test('issue-resident no-commit delivery is explainable without a merge provider'
     preflightInput: input,
     providerActionAvailable: false,
     issueBody: input.issue.body,
+    comments: [
+      {
+        id: '1001',
+        createdAt: '2026-09-21T22:01:00.000Z',
+        updatedAt: '2026-09-21T22:01:00.000Z',
+        body: 'Research deliverable posted.',
+      },
+    ],
   });
   const result = await item.decision();
   assert.equal(result.status, 'ready', JSON.stringify(result));

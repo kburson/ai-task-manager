@@ -131,6 +131,24 @@ test('no-commit comment projection rejects malformed, duplicate, and conflicting
   );
 });
 
+test('no-commit parser accepts GitHub update timestamps but rejects unrelated fields', () => {
+  const comment = {
+    id: 'comment-1',
+    createdAt: '2026-08-30T16:20:01.000Z',
+    updatedAt: '2026-08-30T16:20:02.000Z',
+    body: renderNoCommitDeliveryComment(record()),
+  };
+  assert.equal(parseNoCommitDeliveryComment(comment)?.record.recordId, record().recordId);
+  assert.throws(
+    () => parseNoCommitDeliveryComment({ ...comment, updatedAt: 'invalid' }),
+    /no-commit-delivery-record:comment-updated-at/
+  );
+  assert.throws(
+    () => parseNoCommitDeliveryComment({ ...comment, unexpected: true }),
+    /no-commit-delivery-record:comment/
+  );
+});
+
 test('no-commit close rejects wrong issue, kind, deliverable URL, or accepted SHA', () => {
   const cases = [
     [record({ issueNumber: 1408 }), /issue-mismatch/],

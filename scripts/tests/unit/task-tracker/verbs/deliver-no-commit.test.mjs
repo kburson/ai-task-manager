@@ -81,6 +81,7 @@ function makeHarness(overrides = {}) {
       comments.push({
         id: `comment-${comments.length + 1}`,
         createdAt: '2026-08-30T16:20:01.000Z',
+        updatedAt: '2026-08-30T16:20:01.000Z',
         body,
       });
     },
