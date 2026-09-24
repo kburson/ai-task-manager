@@ -16,6 +16,15 @@
 
 **Plan status:** Proposed, undergoing its separately authorized XPR; implementation approval remains pending. The user authorized creation and commitment of this plan. Neither the spec merge nor this plan authorizes production implementation, historical backfill, live billing credentials, or provider account access. Do not start implementation as part of reviewing this artifact. Issue #1719 remains the design-and-plan deliverable; hydrate implementation issues through the governed workflow only after plan approval.
 
+**Story Intent amendment:** The historical status above records the original plan review. The implementation epic and its 16 children were subsequently authorized and hydrated. This amendment adds stakeholder intent and canonical task headings for current Plan approval; it does not change the technical steps or authorize live provider access.
+
+## Story Intent
+
+- **Beneficiary:** delivery engineering leader
+- **Capability:** see evidence-backed agent and metered automation cost for a story through delivery and Done
+- **Need:** timing records do not establish provider usage, billed amounts, or complete story attribution
+- **Value or failure prevented:** delivery decisions use attributable cost without treating missing evidence or fixed subscriptions as story spend
+
 ## Global Constraints
 
 - “The existing Timing Log remains the lifecycle authority.”
@@ -114,7 +123,16 @@ An atomic frozen-event file is the commit point for both observations and cursor
 
 The spec reporting section calls for GitHub evidence while its security tests forbid network calls on the default report path. Resolve those requirements by reading a verified local snapshot by default and using explicit GitHub-only refresh; do not reinterpret default reporting as implicit network access. Report defaults are deliberately offline: `npx aitm cost 1719 [--json]` reads the last verified GitHub evidence snapshot, reports its `asOf` time and freshness limitations, and performs no network call. A fresh checkout first runs `npx aitm cost 1719 --refresh`; this explicitly reads GitHub timing, policy, session/run, delivery, and cost evidence, writes only the local cache, and then renders. No report option calls provider billing APIs or writes GitHub. Missing cache yields unavailable coverage, not zero. A whole-story summary is never complete for an active story with an unproven Done cutoff; a covered subwindow may be complete. Completeness is always qualified to the fetched authority snapshot, not a claim about unseen later edits.
 
-## Task 1: Closed schemas and safe fixture vocabulary
+### Task 1: Closed schemas and safe fixture vocabulary
+
+#### Story Intent
+
+- **Beneficiary:** delivery engineer
+- **Capability:** validate closed cost evidence shapes and build safe representative fixtures
+- **Need:** malformed, unsupported, or secret-bearing observations could enter accounting records
+- **Value or failure prevented:** downstream accounting accepts only well-formed evidence without exposing sensitive content
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/schema.mjs`, `diagnostics.mjs`, `scripts/tests/helpers/cost/fixtures.mjs`, `scripts/tests/fixtures/cost/README.md`, and `scripts/tests/unit/task-tracker/lib/cost/schema.test.mjs`.
 
@@ -145,7 +163,16 @@ const isQuantity = (value) => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.t
 - [ ] Re-run the schema test and `node --test scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs`; expect both to pass.
 - [ ] Commit the Task 1 files with `git commit -m '[#1719] Define cost payload and evidence contracts'` after explicitly staging only those files.
 
-## Task 2: Isolated cost envelopes and validated raw comment transport
+### Task 2: Isolated cost envelopes and validated raw comment transport
+
+#### Story Intent
+
+- **Beneficiary:** delivery operator
+- **Capability:** read and append immutable cost records independently of governance records
+- **Need:** corrupt economic evidence must not poison lifecycle gates or be mistaken for valid cost
+- **Value or failure prevented:** issue workflow remains usable while cost coverage stays explicitly incomplete
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/record-codec.mjs`, `comment-store.mjs`, `scripts/task-tracker/lib/github-records/comment-transport.mjs`, `scripts/tests/unit/task-tracker/lib/cost/record-codec.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/read-isolation.test.mjs`. Modify `scripts/task-tracker/lib/github-records/record-envelope.mjs` and `github-comment-store.mjs` only to share unchanged validation/transport primitives.
 
@@ -178,7 +205,16 @@ if (/<!--\s*aitm-record/i.test(body)) throw new TypeError('cost:generic-marker')
 - [ ] Implement append plus exact read-back through raw transport. Require complete body/envelope identity and matching repository/issue/provenance. A same-payload different-record-ID response is a conflict. Do not allow update/delete for immutable envelopes.
 - [ ] Run both new tests and `node --test scripts/tests/unit/task-tracker/lib/github-records/github-comment-store.test.mjs scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs`; expect pass. Commit as `[#1719] Isolate cost records from governance reads`.
 
-## Task 3: One timing suffix grammar and compatible rewrites
+### Task 3: One timing suffix grammar and compatible rewrites
+
+#### Story Intent
+
+- **Beneficiary:** delivery analyst
+- **Capability:** retain timing and cost metadata across every supported timing-row rewrite
+- **Need:** competing suffix parsers can drop evidence or misread timing cells
+- **Value or failure prevented:** stage timing and cost attribution survive healing, migration, and rollup unchanged
+
+#### Implementation Steps
 
 **Files:** Modify `scripts/task-tracker/lib/timing-row-reader.mjs`, `timing-rows.mjs`, `heal-timing-sweep.mjs`, `heal-timing-log.mjs`, `timing-slug-rename.mjs`, `agent-review/validators/timing-log-sequence.mjs`, `scripts/task-tracker/timing-rollup.mjs`, `scripts/task-tracker/gh-timing-comment.mjs`, and `backfill-timing-logs.mjs`. Extend `scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs`, `timing-rows.test.mjs`, `timing-slug-rename.test.mjs`, `heal-timing-sweep.test.mjs`, `heal-timing-log.test.mjs`, and `scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs`.
 
@@ -206,7 +242,16 @@ assert.ok(replaceTimingRowCells(row, { 7: ' revised ' }).endsWith(suffix));
 - [ ] Run `node --test scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs scripts/tests/unit/task-tracker/lib/timing-rows.test.mjs scripts/tests/unit/task-tracker/lib/timing-slug-rename.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-sweep.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs`.
 - [ ] Run the existing timing-reader structure and legacy-row tests. Commit as `[#1719] Preserve composed timing cost markers across readers`.
 
-## Task 4: Prospective capture policy and adapter registry
+### Task 4: Prospective capture policy and adapter registry
+
+#### Story Intent
+
+- **Beneficiary:** repository operator
+- **Capability:** enable prospective cost capture only under a validated policy and known adapter contracts
+- **Need:** shared-issue consumers and local configuration may not support cost records yet
+- **Value or failure prevented:** disabled behavior stays compatible and unsupported capture cannot silently start
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/policy.mjs`, `adapter-registry.mjs`, `adapters/fixture.mjs`, `scripts/tests/unit/task-tracker/lib/cost/policy.test.mjs`, and `adapter-registry.test.mjs`. Modify `scripts/task-tracker/config.mjs` and add `config/cost-rate-cards/README.md`.
 
@@ -257,7 +302,16 @@ assert.equal(result.policy, null);
 - [ ] Add policy-publication-failure and policy-change tests: future timing markers retain intended policy IDs even if remote publication failed. Frozen old events keep their original policy.
 - [ ] Re-run both tests and the existing config tests. Commit as `[#1719] Add opt-in cost policy and source capabilities`.
 
-## Task 5: Epochs, deltas, and measured spans
+### Task 5: Epochs, deltas, and measured spans
+
+#### Story Intent
+
+- **Beneficiary:** delivery analyst
+- **Capability:** derive measured usage spans from ordered provider observations within valid epochs
+- **Need:** resets, gaps, and cumulative counters can otherwise create false usage deltas
+- **Value or failure prevented:** story consumption remains measured where possible and explicitly unavailable elsewhere
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/observations.mjs`, `spans.mjs`, and `scripts/tests/unit/task-tracker/lib/cost/observations.test.mjs`, `spans.test.mjs`.
 
@@ -280,7 +334,16 @@ assert.deepEqual(delta.quantities, [{ category: 'input_tokens', value: '30' }]);
 - [ ] Add opening-baseline lateness, compaction without counter reset, new session baseline, reset tail/prefix gaps, pre-story consumption, and after-Done exclusion. Preserve asynchronous run occurrences independently of parent timer pause.
 - [ ] Re-run both tests. Commit as `[#1719] Derive source epochs and evidence-bounded cost spans`.
 
-## Task 6: Exact valuation and economic overlap
+### Task 6: Exact valuation and economic overlap
+
+#### Story Intent
+
+- **Beneficiary:** finance analyst
+- **Capability:** value accepted usage with exact rates while separating overlapping economic evidence
+- **Need:** floating-point money and inclusive provider charges can inflate or distort totals
+- **Value or failure prevented:** each currency total has reproducible pricing and no duplicate contribution
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/decimal.mjs`, `rate-cards.mjs`, `economic-identity.mjs`, and `scripts/tests/unit/task-tracker/lib/cost/valuation.test.mjs`, `economic-identity.test.mjs`. Create `scripts/tests/fixtures/cost/rate-cards.json` with synthetic prices clearly labeled as fixtures.
 
@@ -320,7 +383,16 @@ assert.throws(() =>
 - [ ] Implement and test the `includes` DAG: reject cycles, missing components, unclear coverage and contradictory parents. An inclusive actual request charge suppresses its token/tool components only within the actual view. A component is counted at most once.
 - [ ] Re-run tests; verify USD 1 plus EUR 1 yields two currency entries. Commit as `[#1719] Value measured usage without economic double counting`.
 
-## Task 7: Durable freeze, source serialization, and exact replay
+### Task 7: Durable freeze, source serialization, and exact replay
+
+#### Story Intent
+
+- **Beneficiary:** delivery operator
+- **Capability:** recover and replay the exact frozen cost publication after an interrupted write
+- **Need:** retries may otherwise change identities, duplicate records, or lose economic evidence
+- **Value or failure prevented:** publication remains auditable and idempotent across failures
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/outbox.mjs`, `journal-files.mjs`, `source-locks.mjs`, `scripts/tests/unit/task-tracker/lib/cost/outbox.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/outbox-recovery.test.mjs`.
 
@@ -346,7 +418,16 @@ if (result.body === frozen.body && result.recordId === frozen.envelope.recordId)
 - [ ] Test two processes in linked worktrees contending on the same source. Verify no forked predecessor, no interleaved atomic commit, and bounded lock failure. Never steal a live lock on elapsed time alone.
 - [ ] Re-run both tests. Commit as `[#1719] Persist exact cost capture transactions and source cursors`.
 
-## Task 8: Capture every prospective timing emission without gating lifecycle
+### Task 8: Capture every prospective timing emission without gating lifecycle
+
+#### Story Intent
+
+- **Beneficiary:** delivery operator
+- **Capability:** associate enabled cost evidence with every prospective timing event
+- **Need:** partial emitter coverage leaves unexplained lifecycle usage while measurement failures must not stop work
+- **Value or failure prevented:** cost coverage is visible without making task transitions depend on metering
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/capture.mjs`, `timing-port.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/capture-transaction.test.mjs`, `disabled-compatibility.test.mjs`. Modify `scripts/task-tracker/runtime.mjs`, `gh-timing-comment.mjs`, `hook-handler.mjs`, `lib/timing-post-outcome.mjs`, `lib/review-approval-timing.mjs`, `lib/move-state/audit-timing.mjs`, `lib/move-state/guard-execution.mjs`, and `verbs/review.mjs`.
 
@@ -392,7 +473,16 @@ assert.equal(result.row, row);
 - [ ] Inject adapter timeout, size overflow, pricing error, outbox disk failure, policy-publication failure, ledger failure and projection failure. Each must leave the lifecycle result unchanged. Even if local persistence fails, create intended marker IDs before the append so the independent inventory exposes missing cost evidence.
 - [ ] Re-run both tests and existing runtime/timing integration tests selected by changed imports; commit as `[#1719] Capture prospective timing costs with nonblocking recovery`.
 
-## Task 9: Local provider observations and directly metered receipts
+### Task 9: Local provider observations and directly metered receipts
+
+#### Story Intent
+
+- **Beneficiary:** delivery analyst
+- **Capability:** ingest attributable local provider observations and directly metered tool or runtime receipts
+- **Need:** token use and separately billed operations arrive through different evidence sources
+- **Value or failure prevented:** costs retain their source and are counted once under the correct component
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/adapters/codex.mjs`, `claude.mjs`, `grok.mjs`, `receipt.mjs`, `transcript-reader.mjs`, and `scripts/tests/unit/task-tracker/lib/cost/provider-adapters.test.mjs`. Add sanitized fixtures under `scripts/tests/fixtures/cost/providers/` named `codex-rollout-v1.jsonl`, `claude-message-v1.jsonl`, `grok-request-v1.json`, and `tool-runtime-v1.json`.
 
@@ -436,7 +526,16 @@ assert.deepEqual(observed.nativeCounters, []);
 - [ ] If an adapter supports estimated consumption, require explicit policy opt-in plus tokenizer/encoding/version provenance, mark `estimated-consumption`, and keep it separate from measured quantities. No tokenizer implementation or dependency is required for initial rollout; unsupported estimation stays unavailable.
 - [ ] Re-run provider tests and existing host word-counter tests to verify no behavior change; commit as `[#1719] Read provider usage and metered receipts from local evidence`.
 
-## Task 10: Durable cutoffs, session/run ownership, and lifecycle boundaries
+### Task 10: Durable cutoffs, session/run ownership, and lifecycle boundaries
+
+#### Story Intent
+
+- **Beneficiary:** delivery engineering leader
+- **Capability:** assign usage to the owning issue and separate delivery from post-trunk activity
+- **Need:** sessions and runs can span issues or continue after trunk integration
+- **Value or failure prevented:** story totals reflect the correct owner and lifecycle boundary without duplicate spend
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/boundaries.mjs`, `ownership.mjs`, `run-registry.mjs`, and `scripts/tests/unit/task-tracker/lib/cost/boundaries.test.mjs`, `ownership.test.mjs`, `scripts/tests/integration/task-tracker/lib/cost/delivery-cutoff.test.mjs`. Modify `scripts/task-tracker/lib/evidence-v2/delivery.mjs`, `record-schema.mjs`, `runtime-adapter.mjs`, `scripts/task-tracker/verbs/deliver.mjs`, and `verbs/close.mjs` at the successful verification/terminal observation boundaries.
 
@@ -466,7 +565,16 @@ assert.equal(boundaries.delivery.verifiedAt, null);
 - [ ] At Done, capture a terminal role plus each source's independent kind/window. Require a source watermark or closed-run proof covering Done, not a timeout. Late in-window evidence can arrive afterward; exclude actual occurrences after Done. No-commit boundaries are `not-applicable`.
 - [ ] Test the post-trunk Done event containing both an interval and a new baseline; neither disappears from the terminal coverage inventory. Re-run evidence-v2 codec, delivery-flow and close-flow tests. Commit as `[#1719] Anchor cost ownership and delivery boundaries in authority`.
 
-## Task 11: Atomic reconciliation revisions and conflict handling
+### Task 11: Atomic reconciliation revisions and conflict handling
+
+#### Story Intent
+
+- **Beneficiary:** billing analyst
+- **Capability:** reconcile cost observations through append-only revisions with explicit conflicts
+- **Need:** later billing evidence may correct an estimate or disagree with earlier attribution
+- **Value or failure prevented:** actual billed views improve without silently rewriting the historical record
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/reconciliation.mjs`, `projection-revisions.mjs`, `scripts/tests/unit/task-tracker/lib/cost/reconciliation.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/reconciliation-recovery.test.mjs`.
 
@@ -503,7 +611,16 @@ assertConserved(
 - [ ] Add late actual-billing and aggregate-residual revisions. A whole-story exclusive bill does not create unsupported stage/cutoff billing. Currency and included-component rules from Task 6 apply to corrected views.
 - [ ] Test missing predecessors after local loss, delayed in-window receipts after Done and rejection of backdated after-Done consumption. Re-run both tests; commit as `[#1719] Reconcile cost evidence with atomic span revisions`.
 
-## Task 12: Independent coverage inventory and read-only story reports
+### Task 12: Independent coverage inventory and read-only story reports
+
+#### Story Intent
+
+- **Beneficiary:** delivery engineering leader
+- **Capability:** inspect story cost and independent coverage across stages and delivery boundaries
+- **Need:** missing records or ambiguous attribution must not appear as zero or complete totals
+- **Value or failure prevented:** reports support decisions while exposing every material evidence gap
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/coverage.mjs`, `aggregation.mjs`, `report.mjs`, `snapshot-cache.mjs`, `scripts/task-tracker/verbs/cost.mjs`, `scripts/tests/unit/task-tracker/lib/cost/coverage.test.mjs`, `report.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/report-command.test.mjs`. Modify `scripts/task-tracker/task-tracker.mjs` and `verbs/help-data.mjs`.
 
@@ -545,7 +662,16 @@ assert.equal(report.wholeStory.coverage.status, 'unavailable');
 - [ ] Test the headline selection: complete actual for the requested boundary/currency wins; otherwise labeled estimated equivalent with its own completeness status and explicit incomplete actual billing. Never render a bare partial total or sum unlike currencies.
 - [ ] In command tests, inject provider and GitHub mutation ports that throw if called. Default reports must make no network call. `--refresh` may call only bounded GitHub read ports. Re-run help-router parity tests and commit as `[#1719] Report story cost with independent evidence coverage`.
 
-## Task 13: Optional human projection and explicit local reconciliation
+### Task 13: Optional human projection and explicit local reconciliation
+
+#### Story Intent
+
+- **Beneficiary:** delivery operator
+- **Capability:** view a readable cost projection and submit explicit local reconciliation evidence
+- **Need:** immutable source records are difficult to inspect and corrections need a governed path
+- **Value or failure prevented:** humans can investigate cost without changing or obscuring original evidence
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/projection.mjs`, `reconcile-command.mjs`, `scripts/task-tracker/verbs/cost-reconcile.mjs`, `scripts/tests/unit/task-tracker/lib/cost/projection.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/reconcile-command.test.mjs`. Modify `scripts/task-tracker/task-tracker.mjs`, `verbs/help-data.mjs`, and `verbs/update.mjs`.
 
@@ -569,7 +695,16 @@ assert.doesNotMatch(body, /<!--\s*aitm-(?:cost-)?record/i);
 - [ ] Route explicit `update` and later timing operations through bounded pending replay. Replays do not reconstruct lost samples. A crash-before-freeze recovery observation uses its actual current time and a reconciliation identity.
 - [ ] Test invalid input/hash/ownership, uncertain publication, retry body identity, projection tampering and disabled mode. Help must state that reporting is read-only and reconciliation writes immutable evidence. Re-run help parity and commit as `[#1719] Rebuild cost projections and reconcile local evidence explicitly`.
 
-## Task 14: Subscription capacity without story allocation
+### Task 14: Subscription capacity without story allocation
+
+#### Story Intent
+
+- **Beneficiary:** subscription manager
+- **Capability:** compare purchased capacity with accepted usage in a separate ledger
+- **Need:** fixed subscriptions are real spend but cannot be assigned to individual story costs
+- **Value or failure prevented:** utilization and remaining capacity are visible without distorting delivery totals
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/subscriptions.mjs`, `subscription-report.mjs`, `scripts/task-tracker/verbs/cost-subscription.mjs`, `scripts/tests/unit/task-tracker/lib/cost/subscriptions.test.mjs`, and `scripts/tests/integration/task-tracker/lib/cost/subscription-command.test.mjs`. Modify the dispatcher/help data and cost reconciliation input validator.
 
@@ -605,7 +740,16 @@ assert.deepEqual(
 - [ ] Register `cost-subscription [--json] [--refresh]` as a read-only cache/GitHub-refresh surface, using the same no-provider-network contract as story reporting. Missing configured issue produces a clear unavailable/configuration result.
 - [ ] Re-run tests, including story-total invariance and duplicate-import checks. Commit as `[#1719] Track separate subscription capacity and utilization`.
 
-## Task 15: Offline administrative reconciliation contracts and live-access gate
+### Task 15: Offline administrative reconciliation contracts and live-access gate
+
+#### Story Intent
+
+- **Beneficiary:** billing administrator
+- **Capability:** normalize offline provider billing evidence under a separately approved live-access boundary
+- **Need:** provider aggregates may inform actual cost while live credentials and account access remain unapproved
+- **Value or failure prevented:** billing reconciliation can be tested without premature external access
+
+#### Implementation Steps
 
 **Files:** Create `scripts/task-tracker/lib/cost/adapters/admin-openai.mjs`, `admin-anthropic.mjs`, `admin-access.mjs`, and `scripts/tests/unit/task-tracker/lib/cost/admin-adapters.test.mjs`. Add `scripts/tests/fixtures/cost/providers/openai-admin-buckets.json`, `anthropic-admin-buckets.json`, and fixture provenance notes.
 
@@ -635,7 +779,16 @@ assert.throws(
 - [ ] Document a hard implementation boundary: actual HTTP transport, credential provisioning and a live smoke test require separate approved scope after plan review. Until that approval, attempts to fetch live admin evidence are refused. Offline evidence imported through Task 13 remains available and testable.
 - [ ] Re-run the adapter tests; commit as `[#1719] Normalize offline admin evidence and gate live access`.
 
-## Task 16: Acceptance matrix, prospective rollout and package verification
+### Task 16: Acceptance matrix, prospective rollout and package verification
+
+#### Story Intent
+
+- **Beneficiary:** release owner
+- **Capability:** verify the complete accounting scenario and every consumer before enabling capture
+- **Need:** compatible readers and failure behavior must be proven across the packaged workflow
+- **Value or failure prevented:** prospective rollout avoids breaking shared issue consumers or overstating cost
+
+#### Implementation Steps
 
 **Files:** Create `scripts/tests/helpers/cost/story-harness.mjs`, `scripts/tests/integration/task-tracker/lib/cost/story-lifecycle.test.mjs`, `acceptance-failures.test.mjs`, `scripts/tests/fixtures/cost/story-lifecycle.json`, `docs/guides/story-cost-accounting.md`; update `docs/guides/workflow.md` with the new command links and `config/cost-rate-cards/README.md` with validation/selection instructions. Extend `scripts/tests/integration/meta/package-test-corpus.test.mjs` only if needed to assert runtime cost modules are packed and fixtures remain excluded.
 
