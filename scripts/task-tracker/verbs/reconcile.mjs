@@ -21,6 +21,8 @@
 // the resulting transition (e.g. manual board fix to a non-adjacent state) and
 // the user has explicitly opted into the gap.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'reconcile', { surface: 'direct-verb' });
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

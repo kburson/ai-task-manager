@@ -1,5 +1,11 @@
 # GitHub Issues & Kanban Workflow
 
+For the read-only action explanation, catalog selection, project override,
+trust states, and recovery commands, see
+[`docs/guides/ask-the-script.md`](ask-the-script.md). Explanations describe
+current readiness; each sanctioned lifecycle command still revalidates its
+own authority at execution.
+
 ## Explicit evidence v2 enrollment
 
 Legacy remains the default. `npx aitm evidence inspect <N> --json` is read-only and returns predicate sources, raw-history references, missing evidence, runtime requirements, and a canonical digest. Enrollment requires a separately supplied operation UUID and that exact digest: `npx aitm evidence enroll <N> --plan-digest <digest> --operation-id <uuid>`. It reinspects under the designated authority and writes the protected v2 projection only after import read-back. Missing historical verification, review, or delivery facts remain unknown and require fresh evidence.

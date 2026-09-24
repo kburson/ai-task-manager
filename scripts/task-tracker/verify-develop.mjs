@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'verify-develop');
 // @story #447 #448 #529 #855 #867 #1089
 // Stage-aware Develop verification. Iteration is fast and affected-only;
 // finalization is clean-tree, exact-SHA, and receipt-producing.

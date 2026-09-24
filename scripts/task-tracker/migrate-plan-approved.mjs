@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'migrate-plan-approved');
 // One-shot migration helper for issues that still carry the legacy
 // `- [ ] Plan approved by human` / `- [x] Plan approved by human` checkbox
 // (the pre-#84 procedural-gate signal).

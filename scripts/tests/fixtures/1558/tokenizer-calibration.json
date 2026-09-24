@@ -1,0 +1,59 @@
+{
+  "schema": "aitm.guidance-tokenizer-calibration/v1",
+  "source": {
+    "captureKind": "actual-public-cli-with-deterministic-authority",
+    "sha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+    "sourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
+    "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
+  },
+  "calibration": {
+    "tokenizer": {
+      "package": "js-tiktoken",
+      "version": "1.0.21",
+      "encoding": "o200k_base",
+      "scope": "illustrative OpenAI BPE calibration, not universal provider billing"
+    },
+    "streams": [
+      {
+        "id": "clean",
+        "characters": 684,
+        "bytes": 684,
+        "actualTokens": 205,
+        "proxyTokens": 171,
+        "ratio": 1.1988304093567252
+      },
+      {
+        "id": "blocked",
+        "characters": 823,
+        "bytes": 823,
+        "actualTokens": 235,
+        "proxyTokens": 206,
+        "ratio": 1.1407766990291262
+      },
+      {
+        "id": "repeated",
+        "characters": 589,
+        "bytes": 589,
+        "actualTokens": 209,
+        "proxyTokens": 148,
+        "ratio": 1.412162162162162
+      },
+      {
+        "id": "diagnostic",
+        "characters": 2703,
+        "bytes": 2703,
+        "actualTokens": 962,
+        "proxyTokens": 676,
+        "ratio": 1.4230769230769231
+      },
+      {
+        "id": "full-lifecycle",
+        "characters": 14507,
+        "bytes": 14507,
+        "actualTokens": 4806,
+        "proxyTokens": 3627,
+        "ratio": 1.3250620347394542
+      }
+    ]
+  }
+}

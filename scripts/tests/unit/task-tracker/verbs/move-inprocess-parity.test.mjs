@@ -66,38 +66,38 @@ test('both promotion paths provide the production intent adapter and Develop tar
     assert.equal(ctx.deps.resolveStoryIntent, resolveStoryIntentSource);
     throw new Error('observed guard boundary');
   };
-  await assert.rejects(
-    () =>
-      runPromote({
-        issueNumber: 1711,
-        cfg: { repo: 'o/r' },
-        deps: {
-          assertBound: () => {},
-          fetchIssueBody: async () => ({
-            body: '<!-- aitm-last-known-state state="plan" ts="2026-09-19T12:00:00Z" -->',
-          }),
-          getLiveState: async () => 'plan',
-          sessionPolicy: {},
-          resolveProjectDir: () => '/repo',
-          runGuards: inspect,
-        },
+  let moveCalls = 0;
+  const result = await runPromote({
+    issueNumber: 1711,
+    cfg: { repo: 'o/r' },
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ({
+        body: '<!-- aitm-last-known-state state="plan" ts="2026-09-19T12:00:00Z" -->',
       }),
-    /observed guard boundary/
-  );
-  await assert.rejects(
-    () =>
-      runGuardExecution({
-        issueArg: '1711',
-        stateArg: 'develop',
-        resolvedFromState: 'plan',
-        plan: { runGuardPipeline: true },
-        cfg: { repo: 'o/r' },
-        boundarySnapshot: { body: { value: 'body' } },
-        sessionPolicy: {},
-        _runGuards: inspect,
-      }),
-    /observed guard boundary/
-  );
+      getLiveState: async () => 'plan',
+      sessionPolicy: {},
+      resolveProjectDir: () => '/repo',
+      runGuards: inspect,
+      runMoveState: async () => {
+        moveCalls += 1;
+        return 0;
+      },
+    },
+  });
+  assert.equal(result.status, 'guard-refused');
+  assert.equal(moveCalls, 0);
+  const move = await runGuardExecution({
+    issueArg: '1711',
+    stateArg: 'develop',
+    resolvedFromState: 'plan',
+    plan: { runGuardPipeline: true },
+    cfg: { repo: 'o/r' },
+    boundarySnapshot: { body: { value: 'body' } },
+    sessionPolicy: {},
+    _runGuards: inspect,
+  });
+  assert.equal(move.exit, 4);
 });
 
 test('every lifecycle command maps to one explicit Cursor trigger and target contract', () => {

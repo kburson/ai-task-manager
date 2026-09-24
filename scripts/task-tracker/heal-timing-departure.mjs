@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-timing-departure');
 // #1107 — repair one missing departure immediately before an unpaired Timing
 // Log reengagement. Dry-run is the default; --apply is the only write path.
 

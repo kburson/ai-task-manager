@@ -101,6 +101,21 @@ test('parallel-agents.md cross-references the worker context contract', () => {
   );
 });
 
+test('both installed adapters retain the five decision rules and receipt reset boundary', () => {
+  const paths = ['skill/adapters/codex/SKILL.md', 'skill/adapters/claude/SKILL.md'];
+  for (const rel of paths) {
+    const body = readFileSync(path.join(repoRoot, rel), 'utf8');
+    assert.match(body, /governed lifecycle mutations/i, rel);
+    assert.match(body, /aitm explain.*--json/i, rel);
+    assert.match(body, /registered actions.*remediation IDs/i, rel);
+    assert.match(body, /mutation.*revalidate/i, rel);
+    assert.match(body, /free text.*data/i, rel);
+    assert.match(body, /receipt/i, rel);
+    assert.match(body, /compact.*clear|clear.*compact/is, rel);
+    assert.match(body, /fresh worker/i, rel);
+  }
+});
+
 test('parallel-agents.md has a dedicated worker-context-contract section', () => {
   const body = readFileSync(PARALLEL_AGENTS, 'utf8');
   assert.match(

@@ -459,6 +459,22 @@ test('closed not-Done issue resumes its delivered-close transaction', async () =
   );
 });
 
+test('open Review partial retry rechecks lifecycle authority before a pending board effect', async () => {
+  const body = upsertDeliveredCloseTransaction(closeBody({ finalReview: ' ' }), {
+    ...transaction(TERMINAL_CLOSE_STEPS.slice(0, 3)),
+    issueNumber: 925,
+  });
+  const run = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body,
+    gateReviewToDone: false,
+  });
+  assert.equal(run.exitCode, 1);
+  assert.equal(run.calls.movesToDone.length, 0);
+  assert.equal(run.calls.issueCloses, 0);
+});
+
 test('pending Delivered disposition is adopted without overwriting it', async () => {
   const body = upsertDeliveredCloseTransaction(closeBody(), {
     ...transaction(TERMINAL_CLOSE_STEPS.slice(0, 4)),

@@ -9,12 +9,23 @@ const PROMOTE_DELEGATES = Object.freeze({
   review: 'close',
 });
 
+const ALL_STATES = frozen(stateIds());
+
 const ACTION_POLICIES = Object.freeze({
+  bind: Object.freeze({
+    allowedStates: ALL_STATES,
+  }),
+  resume: Object.freeze({
+    allowedStates: ALL_STATES,
+  }),
   test: Object.freeze({
     allowedStates: frozen(['develop', 'test', 'review']),
   }),
   review: Object.freeze({
     allowedStates: frozen(['test', 'review']),
+  }),
+  deliver: Object.freeze({
+    allowedStates: frozen(['review']),
   }),
   close: Object.freeze({
     allowedStates: frozen(['review']),
@@ -48,6 +59,53 @@ const ACTION_POLICIES = Object.freeze({
     requires: 'reason',
   }),
 });
+
+const objectSchema = (properties = {}) =>
+  Object.freeze({
+    type: 'object',
+    additionalProperties: false,
+    properties: Object.freeze({ ...properties }),
+  });
+
+const descriptor = (id, values) =>
+  Object.freeze({
+    id,
+    argumentSchema: objectSchema(),
+    humanRequired: false,
+    providerAction: false,
+    destructive: false,
+    fullAutoAllowed: true,
+    guidanceId: `action.${id}`,
+    evaluator: `evaluate-${id}`,
+    executor: id,
+    explainReady: true,
+    ...values,
+  });
+
+const ACTION_DESCRIPTORS = Object.freeze([
+  descriptor('bind'),
+  descriptor('resume'),
+  descriptor('promote'),
+  descriptor('test'),
+  descriptor('review', { providerAction: true }),
+  descriptor('deliver', { providerAction: true }),
+  descriptor('close', { destructive: true }),
+  descriptor('refine', { evaluator: null, explainReady: false }),
+  descriptor('demote', { evaluator: null, explainReady: false }),
+  descriptor('shelve', { evaluator: null, explainReady: false }),
+  descriptor('park', { evaluator: null, explainReady: false }),
+  descriptor('cancel-plan', { evaluator: null, explainReady: false }),
+]);
+
+const ACTION_DESCRIPTOR_BY_ID = new Map(ACTION_DESCRIPTORS.map((entry) => [entry.id, entry]));
+
+export function listLifecycleActions() {
+  return [...ACTION_DESCRIPTORS];
+}
+
+export function actionDescriptorFor(actionId) {
+  return ACTION_DESCRIPTOR_BY_ID.get(actionId) ?? null;
+}
 
 function resultBase(action, currentState, policy) {
   const result = {

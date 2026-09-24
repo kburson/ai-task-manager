@@ -1,0 +1,576 @@
+// @story #1769
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { getEncoding } from 'js-tiktoken';
+import {
+  FINAL_GUIDANCE_CONTEXT_BUDGETS,
+  GUIDANCE_CONTEXT_BUDGETS,
+  HISTORICAL_CONTEXT_BUDGETS,
+  HISTORICAL_SCENARIO_BUDGETS,
+} from './lib/context-budgets.mjs';
+import { validateActionDecision } from './lib/action-decision/contract.mjs';
+import { presentActionDecision } from './lib/action-decision/presentation.mjs';
+
+const CATEGORIES = new Set([
+  'command-input',
+  'receipt-input',
+  'operational-stdout',
+  'operational-stderr',
+  'receipt-output',
+  'explicit-diagnostics',
+  'repeat-metadata',
+]);
+
+function sha256(bytes) {
+  return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+export function calibrateTokens(streams = []) {
+  if (!Array.isArray(streams)) throw new TypeError('context: calibration streams must be an array');
+  const lock = JSON.parse(
+    readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8')
+  );
+  const version = lock.packages?.['node_modules/js-tiktoken']?.version;
+  if (version !== '1.0.21') throw new Error('context: tokenizer lock version drift');
+  const encoding = getEncoding('o200k_base');
+  return {
+    tokenizer: {
+      package: 'js-tiktoken',
+      version,
+      encoding: 'o200k_base',
+      scope: 'illustrative OpenAI BPE calibration, not universal provider billing',
+    },
+    streams: streams.map(({ id, text }) => {
+      if (typeof id !== 'string' || !id || typeof text !== 'string') {
+        throw new TypeError('context: invalid calibration stream');
+      }
+      const actualTokens = encoding.encode(text).length;
+      const proxyTokens = Math.ceil(text.length / 4);
+      return {
+        id,
+        characters: text.length,
+        bytes: Buffer.byteLength(text),
+        actualTokens,
+        proxyTokens,
+        ratio: proxyTokens ? actualTokens / proxyTokens : null,
+      };
+    }),
+  };
+}
+
+export function buildTokenCalibration({ captureBytes } = {}) {
+  if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  const capture = JSON.parse(captureBytes.toString('utf8'));
+  if (
+    capture.schema !== 'aitm.guidance-lifecycle-capture/v1' ||
+    ![
+      'actual-public-cli-with-deterministic-authority',
+      'actual-public-cli-and-installed-static-with-deterministic-authority',
+    ].includes(capture.captureKind) ||
+    !Array.isArray(capture.events)
+  ) {
+    throw new TypeError('context: invalid public CLI capture');
+  }
+  const eventText = (event) => {
+    if (
+      !Array.isArray(event.argv) ||
+      typeof event.stdout !== 'string' ||
+      typeof event.stderr !== 'string'
+    ) {
+      throw new TypeError(`context: invalid captured stream ${event.name}`);
+    }
+    return `${event.argv.join(' ')}\n${event.stdin ?? ''}${event.stdout}${event.stderr}`;
+  };
+  const required = [
+    ['clean', 'ready-first-load'],
+    ['blocked', 'blocked-migration-freeze'],
+    ['repeated', 'matching-receipt'],
+    ['diagnostic', 'diagnostic'],
+  ];
+  const streams = required.map(([id, name]) => {
+    const matches = capture.events.filter((event) => event.name === name && event.kind === 'query');
+    if (matches.length !== 1)
+      throw new Error(`context: required event ${name} is missing or duplicated`);
+    return { id, text: eventText(matches[0]) };
+  });
+  const visible = capture.events.filter((event) => event.kind !== 'transition');
+  streams.push({ id: 'full-lifecycle', text: visible.map(eventText).join('') });
+  return {
+    schema: 'aitm.guidance-tokenizer-calibration/v1',
+    source: {
+      captureKind: capture.captureKind,
+      sha256: sha256(captureBytes),
+      sourceCommit: capture.identity?.sourceCommit ?? null,
+      scenarioManifestSha256: capture.identity?.scenarioManifestSha256 ?? null,
+    },
+    calibration: calibrateTokens(streams),
+  };
+}
+
+export function buildHeavyV2Sensitivity({
+  captureBytes,
+  childIds = ['2201', '2202', '2203', '2204'],
+  dependencyIds = ['3100', '3101', '3102'],
+} = {}) {
+  if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  if (
+    !Array.isArray(childIds) ||
+    childIds.length !== 4 ||
+    new Set(childIds).size !== 4 ||
+    childIds.some((id) => typeof id !== 'string' || id.length === 0) ||
+    !Array.isArray(dependencyIds) ||
+    dependencyIds.length !== 3 ||
+    dependencyIds.some((id) => typeof id !== 'string' || id.length === 0)
+  ) {
+    throw new TypeError(
+      'context: heavy case requires four distinct child and three dependency identifiers'
+    );
+  }
+  const capture = JSON.parse(captureBytes);
+  const diagnostic = capture.events?.find((event) => event.name === 'diagnostic');
+  if (!diagnostic) throw new Error('context: diagnostic seed is missing');
+  const decision = structuredClone(JSON.parse(diagnostic.stdout).fullDecision);
+  if (decision?.schema !== 'aitm.action-decision/v2') {
+    throw new Error('context: heavy case requires a captured v2 decision');
+  }
+  decision.actionId = 'close';
+  decision.guidanceIds = ['action.close'];
+  decision.snapshot.state = 'review';
+  decision.blockers = [
+    ...childIds.map((childId) => ({
+      guardId: 'authority-collection',
+      code: 'delivery-preflight-refused',
+      args: { category: `epic-child:${childId}` },
+      noAutomaticRemediation: { reason: 'state-investigation-required' },
+    })),
+    ...dependencyIds.map((dependencyId) => ({
+      guardId: 'authority-collection',
+      code: 'delivery-preflight-refused',
+      args: { category: `dependency:${dependencyId}` },
+      noAutomaticRemediation: { reason: 'state-investigation-required' },
+    })),
+  ];
+  const snapshot = decision.snapshot;
+  snapshot.digest = sha256(
+    JSON.stringify({
+      state: snapshot.state,
+      head: snapshot.head,
+      startedAt: snapshot.startedAt,
+      completedAt: snapshot.completedAt,
+      observations: snapshot.observations,
+      normalizationInputs: [],
+    })
+  );
+  validateActionDecision(decision);
+  const presentation = presentActionDecision({
+    decision,
+    admissionWarnings: [],
+    suppressSourceWarning: false,
+  });
+  if (presentation.status !== 'blocked' || presentation.blockers.length !== 7) {
+    throw new Error('context: heavy v2 presentation collapsed operational blockers');
+  }
+  const routine = `${JSON.stringify(presentation)}\n`;
+  const full = `${JSON.stringify(decision)}\n`;
+  const counts = (value) => ({
+    characters: value.length,
+    bytes: Buffer.byteLength(value),
+    proxyTokens: Math.ceil(value.length / 4),
+    sha256: sha256(value),
+  });
+  return {
+    captureKind: 'protocol-valid-synthetic-v2-presentation',
+    scope:
+      'Serializer sensitivity; this combination is not asserted as an observed evaluator result.',
+    seedCaptureSha256: sha256(captureBytes),
+    inputs: { action: 'close', childCount: 4, dependencyCount: 3, refusalCount: 7 },
+    validatedStatus: presentation.status,
+    serializedBlockerCount: presentation.blockers.length,
+    typedOperationalArgs: presentation.blockers.map(({ args }) => args),
+    routine: counts(routine),
+    diagnostic: counts(full),
+    tokenizer: calibrateTokens([
+      { id: 'heavy-routine', text: routine },
+      { id: 'heavy-diagnostic', text: full },
+    ]),
+  };
+}
+
+export function validatePairedWorkload({
+  baseline,
+  candidate,
+  scenarioBytes,
+  authorityBytes,
+} = {}) {
+  if (!baseline || !candidate) throw new TypeError('context: two workloads are required');
+  if (
+    !Buffer.isBuffer(scenarioBytes) ||
+    !baseline.scenarioDigest ||
+    baseline.scenarioDigest !== sha256(scenarioBytes) ||
+    baseline.scenarioDigest !== candidate.scenarioDigest
+  ) {
+    throw new Error('context: scenario digest mismatch');
+  }
+  if (
+    !Buffer.isBuffer(authorityBytes) ||
+    !baseline.authorityFixtureDigest ||
+    baseline.authorityFixtureDigest !== sha256(authorityBytes) ||
+    baseline.authorityFixtureDigest !== candidate.authorityFixtureDigest
+  ) {
+    throw new Error('context: authority fixture digest mismatch');
+  }
+  if (!Array.isArray(baseline.entries) || !Array.isArray(candidate.entries)) {
+    throw new TypeError('context: ordered scenario entries are required');
+  }
+  const scenarioKeys = (entries) =>
+    entries.map(({ scenarioId, action, outcome }) => [scenarioId, action, outcome]);
+  if (
+    baseline.entries.length === 0 ||
+    JSON.stringify(scenarioKeys(baseline.entries)) !==
+      JSON.stringify(scenarioKeys(candidate.entries))
+  ) {
+    throw new Error('context: scenario order or outcome mismatch');
+  }
+  return {
+    scenarioDigest: baseline.scenarioDigest,
+    authorityFixtureDigest: baseline.authorityFixtureDigest,
+    scenarioCount: baseline.entries.length,
+  };
+}
+
+function measure(text) {
+  return { characters: text.length, bytes: Buffer.byteLength(text, 'utf8') };
+}
+
+export function measureAgentVisible({ staticFiles = [], events = [] } = {}) {
+  if (!Array.isArray(staticFiles) || !Array.isArray(events)) {
+    throw new TypeError('context: staticFiles and events must be arrays');
+  }
+  const seen = new Set();
+  const measuredFiles = staticFiles.map(({ path, text }) => {
+    if (typeof path !== 'string' || !path || seen.has(path) || typeof text !== 'string') {
+      throw new TypeError('context: invalid or duplicate static file');
+    }
+    seen.add(path);
+    const counts = measure(text);
+    return { path, ...counts, proxyTokens: Math.ceil(counts.characters / 4) };
+  });
+  const categoryText = new Map();
+  let trafficCharacters = 0;
+  let trafficBytes = 0;
+  for (const event of events) {
+    if (!event || typeof event.name !== 'string' || typeof event.raw !== 'string') {
+      throw new TypeError('context: invalid event');
+    }
+    if (!Array.isArray(event.parts))
+      throw new TypeError(`context: missing parts for ${event.name}`);
+    let accounted = '';
+    for (const part of event.parts) {
+      if (!CATEGORIES.has(part?.category) || typeof part.text !== 'string') {
+        throw new TypeError(`context: invalid category for ${event.name}`);
+      }
+      accounted += part.text;
+      categoryText.set(part.category, (categoryText.get(part.category) || '') + part.text);
+    }
+    if (accounted !== event.raw)
+      throw new Error(`context: unreconciled raw traffic for ${event.name}`);
+    const counts = measure(event.raw);
+    trafficCharacters += counts.characters;
+    trafficBytes += counts.bytes;
+  }
+  const categories = Object.fromEntries(
+    [...categoryText].map(([category, text]) => [category, measure(text)])
+  );
+  const staticCharacters = measuredFiles.reduce((sum, file) => sum + file.characters, 0);
+  const staticBytes = measuredFiles.reduce((sum, file) => sum + file.bytes, 0);
+  return {
+    staticFiles: measuredFiles,
+    categories,
+    staticCharacters,
+    trafficCharacters,
+    characters: staticCharacters + trafficCharacters,
+    bytes: staticBytes + trafficBytes,
+    proxyTokens:
+      measuredFiles.reduce((sum, file) => sum + file.proxyTokens, 0) +
+      Math.ceil(trafficCharacters / 4),
+    uncountedAgentVisibleBytes: 0,
+    fixedBudgets: GUIDANCE_CONTEXT_BUDGETS,
+  };
+}
+
+export async function buildGuidanceContextReport({ captureBytes } = {}) {
+  if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
+  const capture = JSON.parse(captureBytes);
+  const final = capture.identity?.mode === 'final';
+  let observedHeavyCase = null;
+  if (final) {
+    const { measureLifecycleTraffic } =
+      await import('../tests/helpers/capture-guidance-release.mjs');
+    const heavy = capture.heavyCase;
+    const result = heavy?.event?.stdout ? JSON.parse(heavy.event.stdout) : null;
+    const declared = heavy?.declaredInputs;
+    if (
+      heavy?.captureKind !== 'actual-installed-public-cli' ||
+      declared?.action !== 'close' ||
+      declared?.childIds?.length !== 4 ||
+      declared?.dependencyIds?.length !== 3 ||
+      new Set([...declared.childIds, ...declared.dependencyIds]).size !== 7 ||
+      declared?.diagnostic !== true ||
+      heavy.event?.argv?.[0] !== 'aitm' ||
+      !heavy.event.argv.includes('--diagnostic') ||
+      heavy.event.exitCode !== 0 ||
+      result?.result?.status !== 'blocked' ||
+      !['blocked-by-not-done', 'review-exit-epic-children-done'].every((guardId) =>
+        result.result.blockers?.some((blocker) => blocker.guardId === guardId)
+      ) ||
+      !result?.fullDecision ||
+      JSON.stringify(result.result.blockers) !== JSON.stringify(heavy.observedBlockers) ||
+      result.result.status !== heavy.observedStatus ||
+      JSON.stringify(heavy.traffic) !== JSON.stringify(measureLifecycleTraffic([heavy.event]))
+    ) {
+      throw new Error('context: final reachable heavy public-CLI evidence is incomplete');
+    }
+    observedHeavyCase = {
+      captureKind: heavy.captureKind,
+      declaredInputs: declared,
+      status: heavy.observedStatus,
+      blockerCount: heavy.observedBlockers.length,
+      traffic: heavy.traffic,
+      stdoutSha256: sha256(heavy.event.stdout),
+      authorityReads: heavy.event.remoteAuthorityReads,
+      limitation:
+        'The real evaluator groups four child and three dependency inputs into two guard-level blockers. The separate seven-blocker v2 sample remains serializer sensitivity only.',
+    };
+  }
+  const { buildPairedContext } = await import('../tests/helpers/guidance-paired-context.mjs');
+  const adapters = Object.fromEntries(
+    ['claude', 'codex'].map((adapter) => [adapter, buildPairedContext({ captureBytes, adapter })])
+  );
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const fixturePath = (name) => path.join(root, `scripts/tests/fixtures/1558/${name}`);
+  const sensitivityBytes = readFileSync(fixturePath('serialization-sensitivity.json'));
+  const cardinalityBytes = readFileSync(fixturePath('action-cardinality.json'));
+  const sensitivity = JSON.parse(sensitivityBytes);
+  const cardinality = JSON.parse(cardinalityBytes);
+  if (
+    sensitivity.captureKind !== 'candidate-model-not-actual-cli' ||
+    JSON.stringify(sensitivity.heavyCase.inputs) !==
+      JSON.stringify(cardinality.finiteHeavyInputs) ||
+    !Array.isArray(cardinality.unboundedDimensions)
+  ) {
+    throw new Error('context: historical heavy-case inputs or classification drift');
+  }
+  return {
+    schema: 'aitm.guidance-context-report/v1',
+    classification: final
+      ? 'final-installed-consumer-release'
+      : 'pre-slim-captured-cli-and-modeled-static',
+    adapters,
+    tokenizerCalibration: buildTokenCalibration({ captureBytes }),
+    heavyCase: {
+      captureKind: sensitivity.captureKind,
+      scope: 'historical candidate serializer sensitivity; separate from captured lifecycle',
+      sensitivitySha256: sha256(sensitivityBytes),
+      cardinalitySha256: sha256(cardinalityBytes),
+      inputs: sensitivity.heavyCase.inputs,
+      measurement: sensitivity.heavyCase.measurement,
+      evidenceOnlyGrowth: sensitivity.evidenceOnlyGrowth,
+      operationalGrowth: sensitivity.operationalGrowth,
+      unboundedDimensions: cardinality.unboundedDimensions,
+      currentV2: buildHeavyV2Sensitivity({ captureBytes }),
+      ...(observedHeavyCase ? { observedPublicCli: observedHeavyCase } : {}),
+    },
+    finalInstalledAdapterGate: final
+      ? {
+          status: Object.values(adapters).every((paired) =>
+            Object.values(paired.currentBudgetVerdicts).every((verdict) => verdict.workingPass)
+          )
+            ? 'passed'
+            : 'failed',
+          reason:
+            'Measured actual installed adapter bytes and complete public CLI traffic against fixed working limits.',
+        }
+      : {
+          status: 'pending',
+          reason:
+            'Current proposed static text is modeled; #1678 must capture final installed adapter bytes.',
+        },
+  };
+}
+
+export function buildContextBudgetsArtifact({ final = false } = {}) {
+  const sourcePath = 'scripts/task-tracker/lib/context-budgets.mjs';
+  const sourceBytes = readFileSync(new URL('./lib/context-budgets.mjs', import.meta.url));
+  return {
+    schema: 'aitm.guidance-context-budgets/v1',
+    source: {
+      path: sourcePath,
+      sha256: final
+        ? sha256(sourceBytes)
+        : 'sha256:61570ad353a6aca08e5afca168205f6173bd3d77bdc9001bca706972d57d749c',
+    },
+    fixedReleaseBudgets: final ? FINAL_GUIDANCE_CONTEXT_BUDGETS : GUIDANCE_CONTEXT_BUDGETS,
+    historicalStaticBudgets: HISTORICAL_CONTEXT_BUDGETS,
+    historicalScenarioBudgets: HISTORICAL_SCENARIO_BUDGETS,
+    units: 'proxy tokens; ceil(characters/4), with per-file static and aggregate traffic rounding',
+  };
+}
+
+export function buildCurrentPairedComparison({ lifecycle, authority, budgets } = {}) {
+  if (
+    lifecycle?.schema !== 'aitm.guidance-context-report/v1' ||
+    authority?.schema !== 'aitm.guidance-authority-after/v1' ||
+    budgets?.schema !== 'aitm.guidance-context-budgets/v1'
+  ) {
+    throw new TypeError('context: paired comparison requires lifecycle, authority and budgets');
+  }
+  const historicalPath = 'scripts/tests/fixtures/1558/context-comparison.json';
+  const final = lifecycle.classification === 'final-installed-consumer-release';
+  const historicalBytes = readFileSync(
+    new URL('../tests/fixtures/1558/context-comparison.json', import.meta.url)
+  );
+  const historicalSha256 =
+    'sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894';
+  if (sha256(historicalBytes) !== historicalSha256) {
+    throw new Error('context: historical comparison bytes changed');
+  }
+  const artifactSha256 = (value, filename) => {
+    const bytes = readFileSync(new URL(`../tests/fixtures/1558/${filename}`, import.meta.url));
+    if (JSON.stringify(JSON.parse(bytes)) !== JSON.stringify(value)) {
+      throw new Error(`context: stale paired input ${filename}`);
+    }
+    return sha256(bytes);
+  };
+  return {
+    schema: 'aitm.guidance-current-paired-comparison/v1',
+    classification: final
+      ? 'final-installed-public-cli-paired-comparison'
+      : 'pre-slim-current-paired-not-installed-release',
+    historicalComparison: {
+      path: historicalPath,
+      sha256: historicalSha256,
+      disposition: 'immutable-early-candidate-characterization',
+    },
+    sources: {
+      lifecycle: {
+        path: `scripts/tests/fixtures/1558/${final ? 'lifecycle-transcript-final' : 'lifecycle-transcript'}.json`,
+        sha256: artifactSha256(
+          lifecycle,
+          final ? 'lifecycle-transcript-final.json' : 'lifecycle-transcript.json'
+        ),
+      },
+      authority: {
+        path: 'scripts/tests/fixtures/1558/authority-after.json',
+        sha256: artifactSha256(authority, 'authority-after.json'),
+      },
+      budgets: {
+        path: `scripts/tests/fixtures/1558/context-budgets${final ? '-final' : ''}.json`,
+        sha256: artifactSha256(budgets, `context-budgets${final ? '-final' : ''}.json`),
+      },
+    },
+    adapters: Object.fromEntries(
+      ['claude', 'codex'].map((adapter) => {
+        const paired = lifecycle.adapters[adapter];
+        if (!paired || paired.current.uncountedAgentVisibleBytes !== 0) {
+          throw new Error(`context: incomplete ${adapter} paired accounting`);
+        }
+        return [
+          adapter,
+          {
+            currentCaptureKind: paired.current.captureKind,
+            legacyCaptureKind: paired.legacy.captureKind,
+            currentProxyTokens: paired.current.proxyTokens,
+            modeledLegacyProxyTokens: paired.legacy.proxyTokens,
+            conservativeReductionFromLegacyStaticAlone:
+              paired.guaranteedReductionFromLegacyStaticAlone,
+            fullLifecycleWorkingPass: paired.currentBudgetVerdicts.fullLifecycle.workingPass,
+            sourceCaptureSha256: paired.identities.currentCaptureSha256,
+          },
+        ];
+      })
+    ),
+    authority: {
+      method: authority.deterministic.method,
+      explainPhysicalReads: authority.deterministic.totals.explainPhysicalReads,
+      executorPhysicalReads: authority.deterministic.totals.executorPhysicalReads,
+      timingClassifications: [
+        authority.timing.localCache.kind,
+        authority.timing.localStub.kind,
+        authority.timing.controlledLive.kind,
+      ],
+    },
+    finalInstalledAdapterGate: lifecycle.finalInstalledAdapterGate,
+  };
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (
+    !args.includes('--all') ||
+    args.some((arg) => !['--all', '--json', '--assert-budgets'].includes(arg))
+  ) {
+    process.stderr.write('Usage: measure-guidance-context.mjs --all [--json] [--assert-budgets]\n');
+    process.exitCode = 2;
+    return;
+  }
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const captureBytes = readFileSync(
+    path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic-final.json')
+  );
+  const report = await buildGuidanceContextReport({ captureBytes });
+  if (report.classification === 'final-installed-consumer-release') {
+    const { buildAuthorityAfterReport } =
+      await import('../tests/helpers/guidance-authority-after.mjs');
+    const authorityAfter = await buildAuthorityAfterReport({
+      timingBytes: readFileSync(
+        path.join(root, 'scripts/tests/fixtures/1558/authority-after-timing.json')
+      ),
+    });
+    const contextBudgets = buildContextBudgetsArtifact({ final: true });
+    const currentPairedComparison = buildCurrentPairedComparison({
+      lifecycle: report,
+      authority: authorityAfter,
+      budgets: contextBudgets,
+    });
+    process.stdout.write(
+      `${JSON.stringify({ ...report, releaseEvidence: { contextBudgets, authorityAfter, currentPairedComparison } }, null, 2)}\n`
+    );
+    if (args.includes('--assert-budgets') && report.finalInstalledAdapterGate.status !== 'passed') {
+      process.exitCode = 1;
+    }
+    return;
+  }
+  const { buildAuthorityAfterReport } =
+    await import('../tests/helpers/guidance-authority-after.mjs');
+  const authorityAfter = await buildAuthorityAfterReport({
+    timingBytes: readFileSync(
+      path.join(root, 'scripts/tests/fixtures/1558/authority-after-timing.json')
+    ),
+  });
+  const contextBudgets = buildContextBudgetsArtifact();
+  const currentPairedComparison = buildCurrentPairedComparison({
+    lifecycle: report,
+    authority: authorityAfter,
+    budgets: contextBudgets,
+  });
+  const finalAssertion = {
+    status: report.finalInstalledAdapterGate.status === 'passed' ? 'passed' : 'failed',
+    reason:
+      report.finalInstalledAdapterGate.status === 'passed'
+        ? 'Final installed adapter evidence is present.'
+        : 'Final installed adapter bytes and public CLI traffic remain pending #1678.',
+  };
+  process.stdout.write(
+    `${JSON.stringify({ ...report, preSlimEvidence: { contextBudgets, authorityAfter, currentPairedComparison, finalAssertion } }, null, 2)}\n`
+  );
+  if (args.includes('--assert-budgets') && finalAssertion.status !== 'passed') process.exitCode = 1;
+}
+
+if (process.argv[1] && import.meta.url === `file://${path.resolve(process.argv[1])}`) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack ?? error}\n`);
+    process.exitCode = 1;
+  });
+}

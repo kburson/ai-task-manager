@@ -1,0 +1,301 @@
+{
+  "schema": "aitm.guidance-obligation-complete-comparison/v1",
+  "source": "actual-public-cli-subprocess-plus-proposed-static",
+  "trafficScope": "all-captured-scenarios-not-a-coherent-lifecycle",
+  "staticObligations": "incomplete-proposed-not-installed",
+  "openEvidence": [
+    "rule-map-omits-bind-discussion-and-deferred-pickup-protocol",
+    "proposed-static-still-loads-tier2-lifecycle-rules",
+    "actual-cli-capture-does-not-prove-one-coherent-full-lifecycle"
+  ],
+  "inputs": [
+    {
+      "role": "historical-foundation",
+      "path": "scripts/tests/fixtures/1558/feasibility-decision.json",
+      "sha256": "sha256:c5a403c655573248a42094b74e726d9f0d6a6c22840c535e9c4429b41c4c4a5a"
+    },
+    {
+      "role": "rule-guidance-map",
+      "path": "scripts/tests/fixtures/1558/rule-guidance-map.json",
+      "sha256": "sha256:89e0ba134b224ae252f8f4986ebdd227bd804ca70269d42af41ce51e8bb81509"
+    },
+    {
+      "role": "actual-cli-capture",
+      "path": "scripts/tests/fixtures/1558/actual-explain-traffic.json",
+      "sha256": "sha256:01352ddc23f480fbfee6ce2fde40922ee25993ce2c846d964378ef6ea71d2702"
+    },
+    {
+      "role": "hydrated-catalog",
+      "path": "instructions/aitm-guidance.yml",
+      "sha256": "sha256:ceda155d9d05eb6defe84ed4f55026312d0c63f96433f1ea8f9e48662403d63d"
+    },
+    {
+      "role": "proposed-static",
+      "id": "shim",
+      "path": "skill/SKILL.md",
+      "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+    },
+    {
+      "role": "proposed-static",
+      "id": "router",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+      "sha256": "sha256:e074f6e93924b7eea7690ae2375c26bf13dc58bd9285c30d372b0e06b0616259"
+    },
+    {
+      "role": "proposed-static",
+      "id": "pickup",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+      "sha256": "sha256:f21f3e93b1924dacf7c3652d4f4079df457d0706bbb33eef0c224bad41b69e1e"
+    },
+    {
+      "role": "proposed-static",
+      "id": "claude",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+      "sha256": "sha256:6f0b3e048709884b324fbeb88896e1c8747a222cd4c03400f8d085467ab29653"
+    },
+    {
+      "role": "proposed-static",
+      "id": "codex",
+      "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+      "sha256": "sha256:b97242b233d0ffb229eeecf4a982e49a8dd15a75e3e230747e0f508ebd914a89"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/bind.md",
+      "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/state-walk.md",
+      "sha256": "sha256:2e2aa56635381f382e20cffa768bfb734c25b7f63c9d9b5a9bd2f64d4f87de05"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/review.md",
+      "sha256": "sha256:b72500d5ba0a0a4415b039e075e9d8bb50b59babb14732da2cecb58f4728abb2"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/deliver.md",
+      "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/close.md",
+      "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+    },
+    {
+      "role": "loaded-tier2",
+      "path": "skill/shared/rules/commit-trail.md",
+      "sha256": "sha256:da5238ae68c90b922436cff92bf217fd483a9f74ba5b7c463318262aee3f26cf"
+    }
+  ],
+  "mappedObligations": 33,
+  "retainedProtocolObligations": 16,
+  "fixedBudgets": {
+    "routerPlusPickup": {
+      "absolute": 5000,
+      "working": 4000
+    },
+    "clean": {
+      "absolute": 300,
+      "working": 240
+    },
+    "blocked": {
+      "absolute": 500,
+      "working": 400
+    },
+    "fullLifecycle": {
+      "absolute": 7000,
+      "working": 5600
+    }
+  },
+  "actualResponses": {
+    "clean": 124,
+    "blocked": 159
+  },
+  "actualLifecycleTraffic": {
+    "characters": 18897,
+    "bytes": 18897,
+    "proxyTokens": 4725
+  },
+  "adapters": {
+    "claude": {
+      "currentLoadedFullProxyTokens": 22367,
+      "provisionalEarlierStaticProxyTokens": 840,
+      "proposedStaticProxyTokens": 10887,
+      "proposedFullProxyTokens": 15612,
+      "files": [
+        {
+          "id": "shim",
+          "path": "skill/SKILL.md",
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "id": "router",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+          "characters": 1755,
+          "bytes": 1755,
+          "proxyTokens": 439,
+          "sha256": "sha256:e074f6e93924b7eea7690ae2375c26bf13dc58bd9285c30d372b0e06b0616259"
+        },
+        {
+          "id": "pickup",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+          "characters": 1250,
+          "bytes": 1250,
+          "proxyTokens": 313,
+          "sha256": "sha256:f21f3e93b1924dacf7c3652d4f4079df457d0706bbb33eef0c224bad41b69e1e"
+        },
+        {
+          "id": "claude",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+          "characters": 833,
+          "bytes": 833,
+          "proxyTokens": 209,
+          "sha256": "sha256:6f0b3e048709884b324fbeb88896e1c8747a222cd4c03400f8d085467ab29653"
+        },
+        {
+          "id": "tier2:bind",
+          "path": "skill/shared/rules/bind.md",
+          "characters": 5466,
+          "bytes": 5499,
+          "proxyTokens": 1367,
+          "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+        },
+        {
+          "id": "tier2:state-walk",
+          "path": "skill/shared/rules/state-walk.md",
+          "characters": 7461,
+          "bytes": 7507,
+          "proxyTokens": 1866,
+          "sha256": "sha256:2e2aa56635381f382e20cffa768bfb734c25b7f63c9d9b5a9bd2f64d4f87de05"
+        },
+        {
+          "id": "tier2:review",
+          "path": "skill/shared/rules/review.md",
+          "characters": 8666,
+          "bytes": 8701,
+          "proxyTokens": 2167,
+          "sha256": "sha256:b72500d5ba0a0a4415b039e075e9d8bb50b59babb14732da2cecb58f4728abb2"
+        },
+        {
+          "id": "tier2:deliver",
+          "path": "skill/shared/rules/deliver.md",
+          "characters": 5202,
+          "bytes": 5202,
+          "proxyTokens": 1301,
+          "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+        },
+        {
+          "id": "tier2:close",
+          "path": "skill/shared/rules/close.md",
+          "characters": 10433,
+          "bytes": 10469,
+          "proxyTokens": 2609,
+          "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+        },
+        {
+          "id": "tier2:commit-trail",
+          "path": "skill/shared/rules/commit-trail.md",
+          "characters": 1513,
+          "bytes": 1527,
+          "proxyTokens": 379,
+          "sha256": "sha256:da5238ae68c90b922436cff92bf217fd483a9f74ba5b7c463318262aee3f26cf"
+        }
+      ]
+    },
+    "codex": {
+      "currentLoadedFullProxyTokens": 22281,
+      "provisionalEarlierStaticProxyTokens": 833,
+      "proposedStaticProxyTokens": 10891,
+      "proposedFullProxyTokens": 15616,
+      "files": [
+        {
+          "id": "shim",
+          "path": "skill/SKILL.md",
+          "characters": 946,
+          "bytes": 946,
+          "proxyTokens": 237,
+          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        },
+        {
+          "id": "router",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+          "characters": 1755,
+          "bytes": 1755,
+          "proxyTokens": 439,
+          "sha256": "sha256:e074f6e93924b7eea7690ae2375c26bf13dc58bd9285c30d372b0e06b0616259"
+        },
+        {
+          "id": "pickup",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+          "characters": 1250,
+          "bytes": 1250,
+          "proxyTokens": 313,
+          "sha256": "sha256:f21f3e93b1924dacf7c3652d4f4079df457d0706bbb33eef0c224bad41b69e1e"
+        },
+        {
+          "id": "codex",
+          "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+          "characters": 849,
+          "bytes": 849,
+          "proxyTokens": 213,
+          "sha256": "sha256:b97242b233d0ffb229eeecf4a982e49a8dd15a75e3e230747e0f508ebd914a89"
+        },
+        {
+          "id": "tier2:bind",
+          "path": "skill/shared/rules/bind.md",
+          "characters": 5466,
+          "bytes": 5499,
+          "proxyTokens": 1367,
+          "sha256": "sha256:83ccbb269b45babe78d8208895aef11923b8096b905a05cec9f0b45836662f83"
+        },
+        {
+          "id": "tier2:state-walk",
+          "path": "skill/shared/rules/state-walk.md",
+          "characters": 7461,
+          "bytes": 7507,
+          "proxyTokens": 1866,
+          "sha256": "sha256:2e2aa56635381f382e20cffa768bfb734c25b7f63c9d9b5a9bd2f64d4f87de05"
+        },
+        {
+          "id": "tier2:review",
+          "path": "skill/shared/rules/review.md",
+          "characters": 8666,
+          "bytes": 8701,
+          "proxyTokens": 2167,
+          "sha256": "sha256:b72500d5ba0a0a4415b039e075e9d8bb50b59babb14732da2cecb58f4728abb2"
+        },
+        {
+          "id": "tier2:deliver",
+          "path": "skill/shared/rules/deliver.md",
+          "characters": 5202,
+          "bytes": 5202,
+          "proxyTokens": 1301,
+          "sha256": "sha256:f55cbcae31a8a97a0a54e996e9c7e4d42ac12d73fd13459dcc6b5d445f1f2756"
+        },
+        {
+          "id": "tier2:close",
+          "path": "skill/shared/rules/close.md",
+          "characters": 10433,
+          "bytes": 10469,
+          "proxyTokens": 2609,
+          "sha256": "sha256:7e40945c09f0069b80e8b723cf036f8e62d06672cfc330d8213275d194f7fa85"
+        },
+        {
+          "id": "tier2:commit-trail",
+          "path": "skill/shared/rules/commit-trail.md",
+          "characters": 1513,
+          "bytes": 1527,
+          "proxyTokens": 379,
+          "sha256": "sha256:da5238ae68c90b922436cff92bf217fd483a9f74ba5b7c463318262aee3f26cf"
+        }
+      ]
+    }
+  },
+  "verdict": "NO-GO"
+}

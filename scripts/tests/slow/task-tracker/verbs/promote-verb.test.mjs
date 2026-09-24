@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #68
+// @story #68 #1732
 // Unit tests for scripts/task-tracker/verbs/promote.mjs.
 //
 // All cases drive runPromote with stubbed deps — no network, no spawn.
@@ -53,6 +53,13 @@ function makeDeps({
   return {
     calls,
     deps: {
+      pexec: async (bin, args) => {
+        if (bin === 'git' && args[0] === 'rev-parse') return { stdout: `${'a'.repeat(40)}\n` };
+        if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+          return { stdout: secondFetch && fetchSecondBody !== undefined ? fetchSecondBody : body };
+        }
+        throw new Error(`unexpected command: ${bin} ${args.join(' ')}`);
+      },
       projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => {
@@ -562,6 +569,7 @@ test('promote: review→done delegates to /task close', async () => {
     live: 'review',
     liveAfter: 'done',
   });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 104, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'done');
@@ -579,6 +587,7 @@ test('promote: review→done reports transition-failed when close exits 0 but bo
     spawnCode: 0,
     liveAfter: 'review',
   });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 710, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.match(r.message, /exited 0 but board is "review"/);

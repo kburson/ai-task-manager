@@ -118,9 +118,17 @@ export function createSandbox({
       const dependencies = readdirSync(path.join(toolRoot, 'node_modules'), { withFileTypes: true })
         .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
         .map((entry) => `node_modules/${entry.name}`);
-      const readPaths = ['scripts', 'bin', 'config', 'skill', 'package.json', ...dependencies].map(
-        (name) => `--allow-fs-read=${path.join(toolRoot, name)}`
-      );
+      const readPaths = [
+        'scripts',
+        'bin',
+        'config',
+        'skill',
+        'guidance',
+        'instructions',
+        'docs',
+        'package.json',
+        ...dependencies,
+      ].map((name) => `--allow-fs-read=${path.join(toolRoot, name)}`);
       const args = [
         '--permission',
         ...readPaths,

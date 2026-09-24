@@ -1,3 +1,4 @@
+// @story #1675
 export const ENTRYPOINT_CLASSIFICATIONS = Object.freeze([
   'agent-callable-verb',
   'agent-callable-standalone',
@@ -34,6 +35,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
     ['scripts/task-tracker/cut-child-worktree.mjs', 'cut-child-worktree'],
     ['scripts/task-tracker/cut-epic-branch.mjs', 'cut-epic-branch'],
     ['scripts/task-tracker/heal-backlog.mjs', 'heal-backlog'],
+    ['scripts/task-tracker/guidance.mjs', 'guidance'],
     ['scripts/task-tracker/measure-context.mjs', 'measure-context'],
     ['scripts/task-tracker/merge-back.mjs', 'merge-back'],
     ['scripts/task-tracker/preflight-issue.mjs', 'preflight-issue'],

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-vc-refs');
 // #721 — Detect + heal issues whose Acceptance Criteria still embed a raw
 // command in their `aitm-verified cmd="..."` declaration instead of citing a
 // shared `## Verification Commands` entry (`cmd="vc:<n>"`). Converting keeps a

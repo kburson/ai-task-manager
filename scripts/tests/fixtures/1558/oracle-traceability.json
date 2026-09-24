@@ -1,0 +1,709 @@
+{
+  "schema": "aitm.guidance-oracle-traceability/v1",
+  "clauseIndexSha256": "sha256:c8b4a61f3329b6f33e67f66c0f11bdb4c7b013bf1473e8720368a9d0b15c312a",
+  "baselineGenerationSha256": "sha256:fa73a6eb8fe5fde63eff448cd039f932589392f84f9e15d473a8ff01cd921006",
+  "assertions": {
+    "registered": [
+      "assert.evidence-and-normalization",
+      "assert.presentation-shape",
+      "assert.typed-causes-and-dispositions",
+      "assert.warnings",
+      "assert.human-decisions",
+      "assert.navigation-and-cross-issue",
+      "assert.guidance-and-receipts",
+      "assert.diagnostics",
+      "assert.project-override",
+      "assert.closed-envelope-probe"
+    ],
+    "executed": [
+      "assert.evidence-and-normalization",
+      "assert.presentation-shape",
+      "assert.typed-causes-and-dispositions",
+      "assert.warnings",
+      "assert.human-decisions",
+      "assert.navigation-and-cross-issue",
+      "assert.guidance-and-receipts",
+      "assert.diagnostics",
+      "assert.project-override",
+      "assert.closed-envelope-probe"
+    ]
+  },
+  "fixtures": {
+    "registered": [
+      "fixture.evidence-and-normalization.positive",
+      "fixture.evidence-and-normalization.adversarial",
+      "fixture.presentation-shape.positive",
+      "fixture.presentation-shape.adversarial",
+      "fixture.typed-causes-and-dispositions.positive",
+      "fixture.typed-causes-and-dispositions.adversarial",
+      "fixture.warnings.positive",
+      "fixture.warnings.adversarial",
+      "fixture.human-decisions.positive",
+      "fixture.human-decisions.adversarial",
+      "fixture.navigation-and-cross-issue.positive",
+      "fixture.navigation-and-cross-issue.adversarial",
+      "fixture.guidance-and-receipts.positive",
+      "fixture.guidance-and-receipts.adversarial",
+      "fixture.diagnostics.positive",
+      "fixture.diagnostics.adversarial",
+      "fixture.project-override.positive",
+      "fixture.project-override.adversarial",
+      "fixture.closed-envelope-probe.positive",
+      "fixture.closed-envelope-probe.adversarial"
+    ],
+    "observed": [
+      "fixture.evidence-and-normalization.positive",
+      "fixture.evidence-and-normalization.adversarial",
+      "fixture.presentation-shape.positive",
+      "fixture.presentation-shape.adversarial",
+      "fixture.typed-causes-and-dispositions.positive",
+      "fixture.typed-causes-and-dispositions.adversarial",
+      "fixture.warnings.positive",
+      "fixture.warnings.adversarial",
+      "fixture.human-decisions.positive",
+      "fixture.human-decisions.adversarial",
+      "fixture.navigation-and-cross-issue.positive",
+      "fixture.navigation-and-cross-issue.adversarial",
+      "fixture.guidance-and-receipts.positive",
+      "fixture.guidance-and-receipts.adversarial",
+      "fixture.diagnostics.positive",
+      "fixture.diagnostics.adversarial",
+      "fixture.project-override.positive",
+      "fixture.project-override.adversarial",
+      "fixture.closed-envelope-probe.positive",
+      "fixture.closed-envelope-probe.adversarial"
+    ]
+  },
+  "mappings": [
+    {
+      "clauseId": "clause.evidence.bundle-complete",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.bundle-complete"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.evidence.observation-window",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.observation-window"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.evidence.snapshot-digest",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.snapshot-digest"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.evidence.refresh-provenance",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.refresh-provenance"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.evidence.missing-not-empty",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.missing-not-empty"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.normalization.identity",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["normalization.identity"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.normalization.decision-fields",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["normalization.decision-fields"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.normalization.digest-omissions",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["normalization.digest-omissions"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.evidence.digest-not-authority",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.digest-not-authority"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.evidence.head-body-refresh",
+      "assertionId": "assert.evidence-and-normalization",
+      "positiveFixtureId": "fixture.evidence-and-normalization.positive",
+      "adversarialFixtureId": "fixture.evidence-and-normalization.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["evidence.head-body-refresh"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.issue",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.issue"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.action-id",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.action-id"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.status",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.status"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.blockers",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.blockers"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.normalizations",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.normalizations"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.warnings",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.warnings"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.human-decision",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.human-decision"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.explicit-empty",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.explicit-empty"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.closed-envelope",
+      "assertionId": "assert.closed-envelope-probe",
+      "positiveFixtureId": "fixture.closed-envelope-probe.positive",
+      "adversarialFixtureId": "fixture.closed-envelope-probe.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.closed-envelope"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.no-evidence-duplication",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.no-evidence-duplication"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.operational-values-complete",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.operational-values-complete"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.presentation.no-diagnostic-fallback",
+      "assertionId": "assert.presentation-shape",
+      "positiveFixtureId": "fixture.presentation-shape.positive",
+      "adversarialFixtureId": "fixture.presentation-shape.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["presentation.no-diagnostic-fallback"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.blocked-nonempty",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.blocked-nonempty"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.ready-empty",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.ready-empty"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.complete-known-refusals",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.complete-known-refusals"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.args-required",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.args-required"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.collection-codes",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.collection-codes"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.collection-reasons",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.collection-reasons"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.multi-subject",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.multi-subject"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.reserved-producers",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.reserved-producers"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.producer-code-pair",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.producer-code-pair"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.navigation",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.navigation"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.outer-validator",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.outer-validator"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.one-disposition",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.one-disposition"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.legacy-stable",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.legacy-stable"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.legacy-no-text-execution",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.legacy-no-text-execution"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.causes.invalid-no-fallback",
+      "assertionId": "assert.typed-causes-and-dispositions",
+      "positiveFixtureId": "fixture.typed-causes-and-dispositions.positive",
+      "adversarialFixtureId": "fixture.typed-causes-and-dispositions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["causes.invalid-no-fallback"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.warnings.closed-shape",
+      "assertionId": "assert.warnings",
+      "positiveFixtureId": "fixture.warnings.positive",
+      "adversarialFixtureId": "fixture.warnings.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["warnings.closed-shape"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.warnings.source-diverged",
+      "assertionId": "assert.warnings",
+      "positiveFixtureId": "fixture.warnings.positive",
+      "adversarialFixtureId": "fixture.warnings.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["warnings.source-diverged"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.warnings.legacy-origin",
+      "assertionId": "assert.warnings",
+      "positiveFixtureId": "fixture.warnings.positive",
+      "adversarialFixtureId": "fixture.warnings.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["warnings.legacy-origin"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.warnings.composition-order",
+      "assertionId": "assert.warnings",
+      "positiveFixtureId": "fixture.warnings.positive",
+      "adversarialFixtureId": "fixture.warnings.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["warnings.composition-order"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.warnings.duplicates",
+      "assertionId": "assert.warnings",
+      "positiveFixtureId": "fixture.warnings.positive",
+      "adversarialFixtureId": "fixture.warnings.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["warnings.duplicates"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.warnings.domain-separation",
+      "assertionId": "assert.warnings",
+      "positiveFixtureId": "fixture.warnings.positive",
+      "adversarialFixtureId": "fixture.warnings.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["warnings.domain-separation"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.required-shape",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.required-shape"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.request-shape",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.request-shape"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.plan-approval",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.plan-approval"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.review-approval",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.review-approval"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.investigation",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.investigation"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.complete-policy-requests",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.complete-policy-requests"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.human.blocker-order",
+      "assertionId": "assert.human-decisions",
+      "positiveFixtureId": "fixture.human-decisions.positive",
+      "adversarialFixtureId": "fixture.human-decisions.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["human.blocker-order"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.navigation.cross-issue-mapping",
+      "assertionId": "assert.navigation-and-cross-issue",
+      "positiveFixtureId": "fixture.navigation-and-cross-issue.positive",
+      "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["navigation.cross-issue-mapping"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.navigation.fresh-target-evaluation",
+      "assertionId": "assert.navigation-and-cross-issue",
+      "positiveFixtureId": "fixture.navigation-and-cross-issue.positive",
+      "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["navigation.fresh-target-evaluation"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.navigation.investigation-null-action",
+      "assertionId": "assert.navigation-and-cross-issue",
+      "positiveFixtureId": "fixture.navigation-and-cross-issue.positive",
+      "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["navigation.investigation-null-action"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.navigation.terminal-null-action",
+      "assertionId": "assert.navigation-and-cross-issue",
+      "positiveFixtureId": "fixture.navigation-and-cross-issue.positive",
+      "adversarialFixtureId": "fixture.navigation-and-cross-issue.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["navigation.terminal-null-action"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.expansion-complete",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.expansion-complete"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.receipt-suppresses-text-only",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.receipt-suppresses-text-only"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.changed-digest-expands",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.changed-digest-expands"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.compaction-invalidates",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.compaction-invalidates"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.no-ledger-restore",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.no-ledger-restore"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.receipt-not-authority",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.receipt-not-authority"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.guidance.stale-attestation-behavior",
+      "assertionId": "assert.guidance-and-receipts",
+      "positiveFixtureId": "fixture.guidance-and-receipts.positive",
+      "adversarialFixtureId": "fixture.guidance-and-receipts.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["guidance.stale-attestation-behavior"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.diagnostics.mode-members",
+      "assertionId": "assert.diagnostics",
+      "positiveFixtureId": "fixture.diagnostics.positive",
+      "adversarialFixtureId": "fixture.diagnostics.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["diagnostics.mode-members"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.diagnostics.message-shape",
+      "assertionId": "assert.diagnostics",
+      "positiveFixtureId": "fixture.diagnostics.positive",
+      "adversarialFixtureId": "fixture.diagnostics.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["diagnostics.message-shape"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.diagnostics.same-evaluation",
+      "assertionId": "assert.diagnostics",
+      "positiveFixtureId": "fixture.diagnostics.positive",
+      "adversarialFixtureId": "fixture.diagnostics.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["diagnostics.same-evaluation"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.diagnostics.operational-equivalence",
+      "assertionId": "assert.diagnostics",
+      "positiveFixtureId": "fixture.diagnostics.positive",
+      "adversarialFixtureId": "fixture.diagnostics.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["diagnostics.operational-equivalence"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.diagnostics.no-archive",
+      "assertionId": "assert.diagnostics",
+      "positiveFixtureId": "fixture.diagnostics.positive",
+      "adversarialFixtureId": "fixture.diagnostics.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["diagnostics.no-archive"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.override.chat-warning",
+      "assertionId": "assert.project-override",
+      "positiveFixtureId": "fixture.project-override.positive",
+      "adversarialFixtureId": "fixture.project-override.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["override.chat-warning"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.override.receipt-suppression",
+      "assertionId": "assert.project-override",
+      "positiveFixtureId": "fixture.project-override.positive",
+      "adversarialFixtureId": "fixture.project-override.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["override.receipt-suppression"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.override.annotation-after-success",
+      "assertionId": "assert.project-override",
+      "positiveFixtureId": "fixture.project-override.positive",
+      "adversarialFixtureId": "fixture.project-override.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["override.annotation-after-success"],
+      "executionStatus": "executed"
+    },
+    {
+      "clauseId": "clause.override.invalid-no-annotation",
+      "assertionId": "assert.project-override",
+      "positiveFixtureId": "fixture.project-override.positive",
+      "adversarialFixtureId": "fixture.project-override.adversarial",
+      "expectedOutcome": "accept-positive-reject-adversarial",
+      "fieldChecks": ["override.invalid-no-annotation"],
+      "executionStatus": "executed"
+    }
+  ]
+}

@@ -1,0 +1,776 @@
+{
+  "schema": "aitm.guidance-lifecycle-capture/v1",
+  "captureKind": "actual-public-cli-with-deterministic-authority",
+  "authority": "deterministic-fixture",
+  "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",
+  "capturedAt": "2026-09-23T05:00:39.621Z",
+  "identity": {
+    "sourceCommit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
+    "implementationFiles": [
+      {
+        "path": "bin/aitm.mjs",
+        "sha256": "sha256:03bab095cf887509e49d41faa638b71fec57bead13eb2209d45f79118b6bdc8e"
+      },
+      {
+        "path": "scripts/task-tracker/verbs/explain.mjs",
+        "sha256": "sha256:50bd19d46abf55085b42ada8f8a73d3c384cec8049408153a513757cefb59224"
+      },
+      {
+        "path": "scripts/maintenance/capture-guidance-lifecycle.mjs",
+        "sha256": "sha256:75ee82f0e401d8ccccc5f4f1ba51af392a516f3aca9432eff907b0432373fb73"
+      },
+      {
+        "path": "instructions/aitm-guidance.yml",
+        "sha256": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf"
+      }
+    ],
+    "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
+    "initialFixtureSha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+    "initialBodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f",
+    "configSha256": "sha256:18de30189ff258f8bb8011da8c017d5b10c72e683104a0bbbec18ea3df7b6d13",
+    "fakeGhSha256": "sha256:b7b81f40d922439457a24d1eadde17b8476a676033583e2d4dd1f17896b1b0f5",
+    "transcriptSha256": "sha256:6acb156e896ed4a21f8965250d189cda3890cf2d90d80a3d6b6ef8f8bc267b55"
+  },
+  "events": [
+    {
+      "kind": "query",
+      "name": "ready-first-load",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+      "authorityBodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "matching-receipt",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+      "authorityBodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"not-modified\"}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "compaction-reset",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+      "authorityBodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "blocked-migration-freeze",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+      "authorityBodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "query",
+      "name": "diagnostic",
+      "stateRevision": 0,
+      "state": "plan",
+      "snapshotSha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+      "authorityBodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--diagnostic",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"fullDecision\":{\"schema\":\"aitm.action-decision/v2\",\"issue\":2100,\"actionId\":\"bind\",\"status\":\"blocked\",\"snapshot\":{\"state\":\"plan\",\"head\":\"a0c603822b9c3aa6decccda17786a977c4d2a937\",\"digest\":\"sha256:d77e2ec55a8fedd821357aed013bd6890c43268317b914b11a47f229f9a1c305\",\"startedAt\":\"2026-09-23T05:00:33.726Z\",\"completedAt\":\"2026-09-23T05:00:33.727Z\",\"observations\":[{\"source\":\"local-config\",\"identity\":\"local-config:2100\",\"observedAt\":\"2026-09-23T05:00:33.726Z\",\"digest\":\"sha256:ab0f209101677cc85f0d06771ce65146290e888c68dee565cba6240dae87a4b3\"},{\"source\":\"session-state\",\"identity\":\"session-state:2100\",\"observedAt\":\"2026-09-23T05:00:33.727Z\",\"digest\":\"sha256:c3c98faddcb279cdcde7b5eefc4aa5f0cfffc40035336681871370fc3aac6113\"},{\"source\":\"worktree\",\"identity\":\"worktree:2100\",\"observedAt\":\"2026-09-23T05:00:33.727Z\",\"digest\":\"sha256:c23cc2656d19124345e36c05edc6c2d6017402d0b618b7e97204688cba648378\"},{\"source\":\"occupancy\",\"identity\":\"occupancy:2100\",\"observedAt\":\"2026-09-23T05:00:33.727Z\",\"digest\":\"sha256:77f37b6796c00daf279b1e181349217d9d0efd6f2e262786f049d1dabc013373\"},{\"source\":\"migration-journal\",\"identity\":\"migration-journal:2100\",\"observedAt\":\"2026-09-23T05:00:33.727Z\",\"digest\":\"sha256:f8a59406ac490d1f0369f60cfbeebc022b73d38469ffba8b72c6760e4a72c87c\"},{\"source\":\"project-board\",\"identity\":\"issue:2100:2\",\"observedAt\":\"2026-09-23T05:00:33.727Z\",\"digest\":\"sha256:24d23fa5a6a2c850236155c68d33b225b11c51e46b6ae327ca66224506af6af8\"},{\"source\":\"issue-body\",\"identity\":\"issue:2100:1\",\"observedAt\":\"2026-09-23T05:00:33.727Z\",\"digest\":\"sha256:86324d3e3ee17298bdeaf1102d4323fb2a9ac2c7c7e5f5ef9bafeb20212ffcbd\"}]},\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"migration-freeze\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null,\"guidanceIds\":[\"action.bind\"]},\"diagnosticMessages\":[]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "clear-freeze",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 0,
+        "state": "plan",
+        "sha256": "sha256:3646e5da7e1be162e4548206a71577d974c004ba583cdd168dbcf706f64f8897",
+        "bodySha256": "sha256:891aeb8c3258e2c5e57da07f7050973f8d31103537aad6f7f0161af8b9971a2f"
+      },
+      "to": {
+        "revision": 1,
+        "state": "plan",
+        "sha256": "sha256:00bba61f302d4bb1d541499d74259719d7a9fb9aa754f4199211c1847dd0ac0a",
+        "bodySha256": "sha256:461db569dba88bb06b26561fb0befabd9c915b78f29f8ecc1646bf2a10ccfbd7"
+      },
+      "evidenceAdded": ["freeze-cleared"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "refusal-remediation",
+      "stateRevision": 1,
+      "state": "plan",
+      "snapshotSha256": "sha256:00bba61f302d4bb1d541499d74259719d7a9fb9aa754f4199211c1847dd0ac0a",
+      "authorityBodySha256": "sha256:461db569dba88bb06b26561fb0befabd9c915b78f29f8ecc1646bf2a10ccfbd7",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": null
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "approve-plan",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 1,
+        "state": "plan",
+        "sha256": "sha256:00bba61f302d4bb1d541499d74259719d7a9fb9aa754f4199211c1847dd0ac0a",
+        "bodySha256": "sha256:461db569dba88bb06b26561fb0befabd9c915b78f29f8ecc1646bf2a10ccfbd7"
+      },
+      "to": {
+        "revision": 2,
+        "state": "plan",
+        "sha256": "sha256:c70196624d669feb12a0e8945f34676ba1aa7148c73a53d8fad10fc0d28ec0e8",
+        "bodySha256": "sha256:85dea7dd4c049cf3cd961e11e6eeb82de3b051caac632025c2c7d53f96284bf5"
+      },
+      "evidenceAdded": ["plan-approval"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "agent-change",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:c70196624d669feb12a0e8945f34676ba1aa7148c73a53d8fad10fc0d28ec0e8",
+      "authorityBodySha256": "sha256:85dea7dd4c049cf3cd961e11e6eeb82de3b051caac632025c2c7d53f96284bf5",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:7f7d90a701348ec2c3dc5f5aaf696f2fbdfe87b931eb44104930c619ec81935a",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:1c263fa0054e8b46d61e2761777a0b66daeb985eafe09caa0af64fb67b21a1ee\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"bind\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"bind\"},{\"never\":\"bypass_guard\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:1c263fa0054e8b46d61e2761777a0b66daeb985eafe09caa0af64fb67b21a1ee\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:1c263fa0054e8b46d61e2761777a0b66daeb985eafe09caa0af64fb67b21a1ee"
+      }
+    },
+    {
+      "kind": "query",
+      "name": "source-only-change",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:c70196624d669feb12a0e8945f34676ba1aa7148c73a53d8fad10fc0d28ec0e8",
+      "authorityBodySha256": "sha256:85dea7dd4c049cf3cd961e11e6eeb82de3b051caac632025c2c7d53f96284bf5",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "bind",
+        "--known",
+        "action.bind@sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"bind\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.bind\",\"digest\":\"sha256:90001435bc7feb07e2469e11ba38f57005a40a98e533a21d378323facabb6a70\",\"status\":\"not-modified\"}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "bind",
+        "guidanceStatuses": ["not-modified"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-resume",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:c70196624d669feb12a0e8945f34676ba1aa7148c73a53d8fad10fc0d28ec0e8",
+      "authorityBodySha256": "sha256:85dea7dd4c049cf3cd961e11e6eeb82de3b051caac632025c2c7d53f96284bf5",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "resume",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"resume\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.resume\",\"digest\":\"sha256:7661dea7fa21dcf707ab0595b049494d829a71804b5af01a5fd5b9fa41e50e1d\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"resume\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"resume\"},{\"never\":\"reuse_stale_decision\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 4,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "ready",
+        "actionId": "resume",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-promote",
+      "stateRevision": 2,
+      "state": "plan",
+      "snapshotSha256": "sha256:c70196624d669feb12a0e8945f34676ba1aa7148c73a53d8fad10fc0d28ec0e8",
+      "authorityBodySha256": "sha256:85dea7dd4c049cf3cd961e11e6eeb82de3b051caac632025c2c7d53f96284bf5",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "promote",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-planned-estimate\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-deep-dive\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-plan-metadata\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-vc-presence\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-ownership\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"plan-exit-epic-children-r4p-or-beyond\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\",\"args\":{\"source\":\"workflow-policy\",\"reason\":\"unavailable\",\"subject\":{\"issue\":2100}},\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-planned-estimate\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-deep-dive\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-plan-metadata\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-vc-presence\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-ownership\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-epic-children-r4p-or-beyond\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 9,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "promote",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-develop",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 2,
+        "state": "plan",
+        "sha256": "sha256:c70196624d669feb12a0e8945f34676ba1aa7148c73a53d8fad10fc0d28ec0e8",
+        "bodySha256": "sha256:85dea7dd4c049cf3cd961e11e6eeb82de3b051caac632025c2c7d53f96284bf5"
+      },
+      "to": {
+        "revision": 3,
+        "state": "develop",
+        "sha256": "sha256:aceaf600b5230e9df8bfd0a268577490bbb1bb5611db1ccc7f485709af3d1879",
+        "bodySha256": "sha256:9684d87dfaf3f05821fa415f831c3d4bb35e5434ccd4cfd45daef57986fcec9a"
+      },
+      "evidenceAdded": ["plan-transition"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-test",
+      "stateRevision": 3,
+      "state": "develop",
+      "snapshotSha256": "sha256:aceaf600b5230e9df8bfd0a268577490bbb1bb5611db1ccc7f485709af3d1879",
+      "authorityBodySha256": "sha256:9684d87dfaf3f05821fa415f831c3d4bb35e5434ccd4cfd45daef57986fcec9a",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "test",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"test\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"authority-collection\",\"code\":\"session-bind-mismatch\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"authority-collection\",\"code\":\"test-verification-commands-missing\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"develop-exit-epic-children-done\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}},{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"blocked-by-not-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-code-complete\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-commit-trail-head\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"develop-exit-epic-children-done\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"test\"},\"args\":{\"guardId\":\"contiguity-entry\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.test\",\"digest\":\"sha256:14de80e480a4d7e3fb15e4cfd63489eb0544e6223300a047d958fe50a9a4935f\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"test\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"test\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 8,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "blocked",
+        "actionId": "test",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-test",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 3,
+        "state": "develop",
+        "sha256": "sha256:aceaf600b5230e9df8bfd0a268577490bbb1bb5611db1ccc7f485709af3d1879",
+        "bodySha256": "sha256:9684d87dfaf3f05821fa415f831c3d4bb35e5434ccd4cfd45daef57986fcec9a"
+      },
+      "to": {
+        "revision": 4,
+        "state": "test",
+        "sha256": "sha256:8bc8956c0af415f158bf03bc2a6c5d6a6f49a766f97215e729dc806ee4075db8",
+        "bodySha256": "sha256:7a9d684d1a6e680689c513919077286f97a503a93755f17524c8a3e52b4ab249"
+      },
+      "evidenceAdded": ["test-receipt"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-review",
+      "stateRevision": 4,
+      "state": "test",
+      "snapshotSha256": "sha256:8bc8956c0af415f158bf03bc2a6c5d6a6f49a766f97215e729dc806ee4075db8",
+      "authorityBodySha256": "sha256:7a9d684d1a6e680689c513919077286f97a503a93755f17524c8a3e52b4ab249",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "review",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"review\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"review\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.review\",\"digest\":\"sha256:640b0fc35317634c36002c66c981390db7bf7818d665dc61a3aed7b7684cdb40\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"review\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"review\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 6,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "review",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-review",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 4,
+        "state": "test",
+        "sha256": "sha256:8bc8956c0af415f158bf03bc2a6c5d6a6f49a766f97215e729dc806ee4075db8",
+        "bodySha256": "sha256:7a9d684d1a6e680689c513919077286f97a503a93755f17524c8a3e52b4ab249"
+      },
+      "to": {
+        "revision": 5,
+        "state": "review",
+        "sha256": "sha256:3428b4ef24c8dc3cf9a5c89b2df1c10dce7d76c464cf02c5769d59742b283773",
+        "bodySha256": "sha256:2b647a585416a107e398953c025fcffea73b544e5bdb296489a1510d32b15d53"
+      },
+      "evidenceAdded": ["review-transition"],
+      "agentVisible": false
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-deliver",
+      "stateRevision": 5,
+      "state": "review",
+      "snapshotSha256": "sha256:3428b4ef24c8dc3cf9a5c89b2df1c10dce7d76c464cf02c5769d59742b283773",
+      "authorityBodySha256": "sha256:2b647a585416a107e398953c025fcffea73b544e5bdb296489a1510d32b15d53",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "deliver",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"deliver\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"deliver\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.deliver\",\"digest\":\"sha256:376fe05bee0f8340fa5506186f59e564feb6142d635370f18b28849bef5a9125\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"deliver\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"deliver\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "deliver",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "external-authority",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 5,
+        "state": "review",
+        "sha256": "sha256:3428b4ef24c8dc3cf9a5c89b2df1c10dce7d76c464cf02c5769d59742b283773",
+        "bodySha256": "sha256:2b647a585416a107e398953c025fcffea73b544e5bdb296489a1510d32b15d53"
+      },
+      "to": {
+        "revision": 6,
+        "state": "review",
+        "sha256": "sha256:b761a8d6b0942d75ded507155f8f0c71cc5eef5931383719ebe2c963b8dcb840",
+        "bodySha256": "sha256:f0c86b1bd020cf0e306b0ac150922692b656952da5d77850de4bd20ed16759fe"
+      },
+      "evidenceAdded": ["review-approval", "merge-evidence"],
+      "agentVisible": false
+    },
+    {
+      "kind": "external",
+      "name": "external-approval",
+      "stateRevision": 6,
+      "state": "review",
+      "snapshotSha256": "sha256:b761a8d6b0942d75ded507155f8f0c71cc5eef5931383719ebe2c963b8dcb840",
+      "authorityBodySha256": "sha256:f0c86b1bd020cf0e306b0ac150922692b656952da5d77850de4bd20ed16759fe",
+      "argv": ["gh", "pr", "view", "2101", "--json", "reviewDecision"],
+      "stdin": "",
+      "stdout": "{\"number\":2101,\"reviewDecision\":\"APPROVED\",\"mergedAt\":\"2026-09-22T00:00:00Z\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1
+    },
+    {
+      "kind": "external",
+      "name": "external-merge",
+      "stateRevision": 6,
+      "state": "review",
+      "snapshotSha256": "sha256:b761a8d6b0942d75ded507155f8f0c71cc5eef5931383719ebe2c963b8dcb840",
+      "authorityBodySha256": "sha256:f0c86b1bd020cf0e306b0ac150922692b656952da5d77850de4bd20ed16759fe",
+      "argv": ["gh", "pr", "view", "2101", "--json", "mergedAt"],
+      "stdin": "",
+      "stdout": "{\"number\":2101,\"reviewDecision\":\"APPROVED\",\"mergedAt\":\"2026-09-22T00:00:00Z\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1
+    },
+    {
+      "kind": "query",
+      "name": "lifecycle-close",
+      "stateRevision": 6,
+      "state": "review",
+      "snapshotSha256": "sha256:b761a8d6b0942d75ded507155f8f0c71cc5eef5931383719ebe2c963b8dcb840",
+      "authorityBodySha256": "sha256:f0c86b1bd020cf0e306b0ac150922692b656952da5d77850de4bd20ed16759fe",
+      "argv": [
+        "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+        "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1765-guidance-capture-defect/bin/aitm.mjs",
+        "explain",
+        "2100",
+        "--action",
+        "close",
+        "--json"
+      ],
+      "stdin": "",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"close\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"unavailable\",\"source\":\"issue-body\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"args\":{\"reason\":\"unavailable\",\"source\":\"project-board\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"args\":{\"reason\":\"unavailable\",\"source\":\"worktree\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"args\":{\"reason\":\"unavailable\",\"source\":\"delivery\",\"subject\":{\"issue\":2100}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[{\"code\":\"guidance-source-diverged\",\"args\":{\"source\":\".ai-task-manager/aitm-guidance.yml\",\"digest\":\"sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}}],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"close\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.close\",\"digest\":\"sha256:a62f668fc999787492462b9207f0fcf60744339e3a5886d46ac63dadadfc71c7\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"close\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"close\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}],\"sourceReceipt\":\"aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4\"}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 2,
+      "typed": {
+        "schema": "aitm.action-explanation/v2",
+        "status": "indeterminate",
+        "actionId": "close",
+        "guidanceStatuses": ["expanded"],
+        "sourceReceipt": "aitm-guidance-source:project-owned-diverged:sha256:496106d7a7cfe2013be29e38de66e38d22c0ff67fa218b71187e65be36a2c3e4"
+      }
+    },
+    {
+      "kind": "transition",
+      "name": "enter-done",
+      "source": "fixture-injection",
+      "executedAction": null,
+      "from": {
+        "revision": 6,
+        "state": "review",
+        "sha256": "sha256:b761a8d6b0942d75ded507155f8f0c71cc5eef5931383719ebe2c963b8dcb840",
+        "bodySha256": "sha256:f0c86b1bd020cf0e306b0ac150922692b656952da5d77850de4bd20ed16759fe"
+      },
+      "to": {
+        "revision": 7,
+        "state": "done",
+        "sha256": "sha256:0c7ab688e9ce468f57d77b032eec11ebf658f43a4f9d5d6180e95dde39803da4",
+        "bodySha256": "sha256:322d8b50ff4af7aea9cadcaa1ffeeca845ab506f07720e534149ba3325461840"
+      },
+      "evidenceAdded": ["close-transition"],
+      "agentVisible": false
+    },
+    {
+      "kind": "external",
+      "name": "post-close-state",
+      "stateRevision": 7,
+      "state": "done",
+      "snapshotSha256": "sha256:0c7ab688e9ce468f57d77b032eec11ebf658f43a4f9d5d6180e95dde39803da4",
+      "authorityBodySha256": "sha256:322d8b50ff4af7aea9cadcaa1ffeeca845ab506f07720e534149ba3325461840",
+      "argv": ["gh", "issue", "view", "2100", "--json", "state"],
+      "stdin": "",
+      "stdout": "{\"number\":2100,\"body\":\"## User Story\\nAs a delivery operator\\nI want a complete capture\\nSo that feasibility is truthful\\n\\n## Scope\\nCapture read-only lifecycle guidance.\\n\\n## Acceptance Criteria\\n- [ ] Capture all traffic.\\n\\n## Fixture Evidence (simulation only)\\n- freeze-cleared\\n- plan-approval\\n- plan-transition\\n- test-receipt\\n- review-transition\\n- review-approval\\n- merge-evidence\\n- close-transition\\n\\n<!-- aitm-last-known-state state=\\\"done\\\" ts=\\\"2026-09-22T00:00:00Z\\\" -->\",\"state\":\"CLOSED\",\"stateReason\":null,\"labels\":[]}",
+      "stderr": "",
+      "exitCode": 0,
+      "remoteAuthorityReads": 1
+    }
+  ],
+  "measurement": {
+    "proxyRule": "ceil(concatenated agent-visible UTF-16 characters / 4)",
+    "traffic": {
+      "characters": 22596,
+      "bytes": 22596,
+      "proxyUnits": 5649,
+      "proxyTokens": 5649,
+      "categories": {
+        "query": {
+          "characters": 19090,
+          "bytes": 19090,
+          "proxyUnits": 4772.5
+        },
+        "diagnostic": {
+          "characters": 2707,
+          "bytes": 2707,
+          "proxyUnits": 676.75
+        },
+        "external": {
+          "characters": 799,
+          "bytes": 799,
+          "proxyUnits": 199.75
+        }
+      }
+    },
+    "currentFullStaticSource": "scripts/tests/fixtures/1558/context-comparison.json",
+    "currentFullStaticProxyTokens": {
+      "claude": 17642,
+      "codex": 17556
+    },
+    "modeledProposedStatic": {
+      "claude": {
+        "files": [
+          {
+            "id": "shim",
+            "sourcePath": "skill/SKILL.md",
+            "sourceSection": "complete-file",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "id": "router-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 router",
+            "characters": 1435,
+            "bytes": 1435,
+            "proxyTokens": 359,
+            "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+          },
+          {
+            "id": "pickup-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 pickup",
+            "characters": 564,
+            "bytes": 564,
+            "proxyTokens": 141,
+            "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+          },
+          {
+            "id": "adapter-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 adapter.claude",
+            "characters": 410,
+            "bytes": 410,
+            "proxyTokens": 103,
+            "sha256": "sha256:99beb2a4d5ce6acaa002b8af6fcf943b35afeed02a2ec963539581a258818faa"
+          }
+        ],
+        "totals": {
+          "characters": 3355,
+          "bytes": 3355,
+          "proxyTokens": 840
+        }
+      },
+      "codex": {
+        "files": [
+          {
+            "id": "shim",
+            "sourcePath": "skill/SKILL.md",
+            "sourceSection": "complete-file",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237,
+            "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          },
+          {
+            "id": "router-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 router",
+            "characters": 1435,
+            "bytes": 1435,
+            "proxyTokens": 359,
+            "sha256": "sha256:de3a9df4be21cd8968d6bbf9607c98dab017f0612db1ec17835689e458ed4ae9"
+          },
+          {
+            "id": "pickup-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 pickup",
+            "characters": 564,
+            "bytes": 564,
+            "proxyTokens": 141,
+            "sha256": "sha256:01be04a107b718a5b72e6a419e53d145ccb43eb04f79cbf46f5c1c714f2262a0"
+          },
+          {
+            "id": "adapter-proposal",
+            "sourcePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+            "sourceSection": "Appendix A.1 adapter.codex",
+            "characters": 383,
+            "bytes": 383,
+            "proxyTokens": 96,
+            "sha256": "sha256:ef20067ef6bb8bcd2bbcfa4a2bc6c2e5712ac410d4e920c67f84ee6f55e78674"
+          }
+        ],
+        "totals": {
+          "characters": 3328,
+          "bytes": 3328,
+          "proxyTokens": 833
+        }
+      }
+    },
+    "modeledProposedTotals": {
+      "claude": 6489,
+      "codex": 6482
+    },
+    "budgets": {
+      "routerPlusPickupWorking": 4000,
+      "fullLifecycleWorking": 5600,
+      "cleanResponseWorking": 240,
+      "blockedResponseWorking": 400
+    },
+    "verdicts": {
+      "routerPlusPickup": {
+        "claude": true,
+        "codex": true
+      },
+      "fullLifecycle": {
+        "claude": false,
+        "codex": false
+      },
+      "cleanResponse": true,
+      "blockedResponse": true
+    }
+  }
+}

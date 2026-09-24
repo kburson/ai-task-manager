@@ -1,3 +1,4 @@
+// @story #1675
 // #413 — Self-documenting CLI support for the `aitm` orchestrator.
 //
 // Single source of truth for the help text of every operator-facing support
@@ -140,7 +141,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis: 'Measure context-word usage for a session/issue.',
     audience: 'Operator/diagnostics. Also invoked internally by timing hooks.',
     usage:
-      'aitm measure-context [--idle|--invoked|--active [N]|--scenario <name>|--all] [--adapter claude|codex] [--rule <file>] [--list-scenarios] [--json]',
+      'aitm measure-context [--idle|--invoked|--active [N]|--scenario <name>|--release-static <name>|--all] [--adapter claude|codex] [--rule <file>] [--list-scenarios] [--json]',
   },
   'heal-backlog': {
     group: 'Maintenance',
@@ -574,7 +575,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     ],
     examples: [
       'npx aitm measure-context --all --adapter codex',
-      'npx aitm measure-context --scenario review --json',
+      'npx aitm measure-context --release-static invoked+pickup --adapter claude --json',
     ],
     relatedCommands: ['value-report', 'help'],
   }),
@@ -716,6 +717,24 @@ function directDoc(name, contract) {
 }
 
 const DIRECT_SELF_DOC = Object.freeze({
+  guidance: directDoc('guidance', {
+    group: 'Diagnostics',
+    path: 'scripts/task-tracker/guidance.mjs',
+    classification: 'agent-callable-standalone',
+    synopsis: 'Inspect and validate the selected guidance source without operational effects.',
+    routable: true,
+    usage:
+      'aitm guidance <validate|source|explain> [ID] [--json] [--file <path>|--published] [--refresh]',
+    arguments: [
+      argument('validate', 'Validate the selected or candidate catalog.'),
+      argument('source', 'Report source selection and trust.'),
+      argument('explain ID', 'Show the selected human guidance entry without action evaluation.'),
+    ],
+    preconditions: ['Works even when the selected catalog is invalid.'],
+    effects: ['Reads guidance and source-trust evidence; writes nothing.'],
+    output: ['Prints validation errors or selected source details.'],
+    relatedCommands: ['aitm help', 'aitm doctor'],
+  }),
   aitm: directDoc('aitm', {
     group: 'CLI',
     path: 'bin/aitm.mjs',

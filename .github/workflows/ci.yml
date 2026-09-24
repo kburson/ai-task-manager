@@ -26,17 +26,64 @@ on:
   pull_request:
   push:
     branches: [trunk]
+    tags: ['v*']
   schedule:
     # Nightly slow-lane run at 07:00 UTC (off-hours for the maintainer).
     - cron: '0 7 * * *'
   workflow_dispatch:
+    inputs:
+      release_candidate:
+        description: 'Run the publication-time guidance consumer certification gate'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
+# Capture fixtures were originally created with this Git identity. Pin it for
+# isolated commit-tree replay instead of inheriting a runner's global config.
+env:
+  GIT_AUTHOR_NAME: kendrick burson
+  GIT_AUTHOR_EMAIL: kpburson@pm.me
+  GIT_COMMITTER_NAME: kendrick burson
+  GIT_COMMITTER_EMAIL: kpburson@pm.me
+
 jobs:
+  guidance-release:
+    name: Guidance publication gate
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_candidate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:guidance-release-consumer
+
+  guidance-cache-benchmark:
+    name: Guidance cache runtime budget
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Measure five fresh-process cache cases
+        run: node scripts/maintenance/benchmark-guidance-cache.mjs --samples=7
+      - name: Enforce CI-derived budget with 20 percent headroom
+        if: ${{ hashFiles('scripts/tests/fixtures/1558/cache-budgets.json') != '' }}
+        run: node scripts/maintenance/benchmark-guidance-cache.mjs --samples=7 --check-budget
+
   fast:
     name: Fast lane (format, lint, unit + integration)
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -48,10 +95,10 @@ jobs:
       # The real-git close-gate tests (#733) resolve trunk via a LOCAL
       # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
       # merge ref with no such branch, so those tests fail spuriously (#745).
-      # Materialize it. On push/schedule/dispatch a local `trunk` already exists,
-      # so this step is pull_request-only.
+      # A manual dispatch on a child branch also lacks local `trunk`; materialize
+      # it for both event types. Push/schedule on trunk already have the ref.
       - name: Materialize local trunk ref for real-git tests (#745)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
@@ -74,9 +121,9 @@ jobs:
           NODE
       - run: npm run format:check
       # `npm run lint` includes the fail-closed canonical-layout, package-wide
-      # story-tag, and package-wide line-cap gates. Unit + integration tests
-      # below also prove `npm pack` excludes scripts/tests/** while retaining
-      # runtime assets.
+      # story-tag, package-wide line-cap, and typed action-refusal inventory
+      # gates. Unit + integration tests below also prove `npm pack` excludes
+      # scripts/tests/** while retaining runtime assets.
       - run: npm run lint
       # Memory-seed index parity (#728, folds #744): fail on any MEMORY.md-index
       # ⇄ docs/ai-memory/ durable-set drift. Repo-only / CI-safe — `--mode index`
@@ -161,9 +208,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # Real-git close-gate tests (#733) need a local
-      # `trunk` branch, absent on a pull_request detached checkout (#745).
+      # `trunk` branch, absent on a pull_request detached checkout or a manual
+      # dispatch on a child branch (#745).
       - name: Materialize local trunk ref for real-git tests (#745)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:

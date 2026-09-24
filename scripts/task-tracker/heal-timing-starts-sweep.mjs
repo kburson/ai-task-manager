@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-timing-starts-sweep');
 // #539 — Backlog-wide duplicate-`start` timing-log heal driver. Enumerates
 // project-tethered issues (default: closed/done), audits each issue's ⏱ Timing
 // Log comment for >1 `start` row, and — only under `--all` — heals every

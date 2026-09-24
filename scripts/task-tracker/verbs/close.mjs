@@ -64,7 +64,15 @@ import { resolveAcceptedDeliveryAuthority } from '../lib/delivery-authority.mjs'
 import { resolveLiveDeliveryReviewAuthority } from '../lib/delivery-preflight.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
-import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
+import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+import { projectFunctionalDod } from '../lib/functional-dod-project.mjs';
+import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
+import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../lib/workflow-policy/enforcement.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { resolveDocsOnlyLaneSkipProof } from '../lib/docs-only-lane-skip-proof.mjs';
@@ -1999,6 +2007,88 @@ export async function runReopenedCloseRecovery({
   return { body: mutation.body, transaction: applied.transaction, record: durableRecord };
 }
 
+// The ordinary close path already permits this one configured human-gate
+// bypass. Apply the same narrow policy to projected readiness before a write.
+export function applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed) {
+  if (!reviewGateBypassed || guardResult.status !== 'blocked') return guardResult;
+  const refusals = guardResult.refusals.filter(
+    (refusal) => refusal.id !== 'review-exit-review-approved'
+  );
+  if (refusals.length > 0) return guardResult;
+  return { ...guardResult, status: 'ready', ok: true, refusals: [], humanDecision: null };
+}
+
+export async function verifyFreshCloseProjection({ body, head, evaluatedAt, evaluate }) {
+  if (typeof evaluate !== 'function') {
+    throw new Error('close-authority-drift: fresh guard evaluator unavailable');
+  }
+  const projection = projectFunctionalDod({ body, head, evaluatedAt });
+  if (projection.normalization) {
+    throw new Error('close-authority-drift: new normalization required');
+  }
+  const result = await evaluate({ projection });
+  if (result?.status !== 'ready' || result.ok !== true || (result.refusals?.length ?? 0) > 0) {
+    throw new Error('close-authority-drift: fresh Review-to-Done guards refused');
+  }
+  return result;
+}
+
+function closeDeliveryAuthorityIdentity(gate) {
+  if (!gate?.gateInput || !gate?.authorization || !gate?.receipt) {
+    throw new Error('close-authority-drift: incomplete delivery gate');
+  }
+  const { body: _body, ...gateInput } = gate.gateInput;
+  return canonicalRecordJson({
+    authorization: gate.authorization,
+    gateInput,
+    receipt: gate.receipt,
+    testReceiptSha: gate.testReceiptSha,
+    acceptedReviewSha: gate.acceptedReviewSha,
+    recoveryReviewApprovedSha: gate.recoveryReviewApprovedSha,
+  });
+}
+
+/** Body-normalization bytes may change, but accepted delivery authority may not. */
+export function assertCloseDeliveryAuthorityStable(before, after) {
+  if (closeDeliveryAuthorityIdentity(before) !== closeDeliveryAuthorityIdentity(after)) {
+    throw new Error('close-authority-drift: delivery or review authority changed');
+  }
+}
+
+/** A missing or partial child read is never evidence of an empty epic. */
+export function requireCloseChildrenSnapshot(snapshot) {
+  if (snapshot?.status !== 'ok' || !Array.isArray(snapshot.children)) {
+    throw new Error('close-child-authority-unavailable');
+  }
+  const childStates = snapshot.children.map((child) => {
+    if (
+      !Number.isSafeInteger(child?.number) ||
+      child.number <= 0 ||
+      ![
+        'backlog',
+        'refine',
+        'ready-for-plan',
+        'plan',
+        'develop',
+        'test',
+        'review',
+        'done',
+      ].includes(child.boardState)
+    ) {
+      throw new Error('close-child-authority-unavailable');
+    }
+    return { num: child.number, state: child.boardState };
+  });
+  if (new Set(childStates.map(({ num }) => num)).size !== childStates.length) {
+    throw new Error('close-child-authority-unavailable');
+  }
+  return {
+    childStates,
+    notReady: childStates.filter(({ state }) => state !== 'review' && state !== 'done'),
+    reviewChildren: childStates.filter(({ state }) => state === 'review'),
+  };
+}
+
 export async function verbClose(ctx) {
   const convergenceTailProfile = resolveTailProfile(
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
@@ -2248,9 +2338,14 @@ export async function verbClose(ctx) {
 
   // #939 — resolve the receipt gate lazily after non-terminal convergence
   // inspection, but before any path performs a new terminal mutation.
-  const ensureDeliveryAuthorized = async ({ durableTransaction = null } = {}) => {
+  const ensureDeliveryAuthorized = async ({ durableTransaction = null, refresh = false } = {}) => {
     if (SKIP_NETWORK || !closeIssueNum) return resolvedDeliveryGate;
-    if (resolvedDeliveryGate) return resolvedDeliveryGate;
+    if (resolvedDeliveryGate && !refresh) return resolvedDeliveryGate;
+    const previousGate = resolvedDeliveryGate;
+    if (refresh) {
+      closeLifecycleEvidenceLoaded = false;
+      cachedCloseLifecycleEvidence = null;
+    }
     const deliveryBody = ctx.loadCloseDeliveryBody
       ? await ctx.loadCloseDeliveryBody({
           issueNumber: Number(closeIssueNum),
@@ -2361,8 +2456,7 @@ export async function verbClose(ctx) {
             defaultAttributingCommits(issueNumber, { cwd: projectDir, ...options })),
       },
     });
-    resolvedReviewAuthorization = authorization;
-    resolvedDeliveryGate = {
+    const nextGate = {
       authorization,
       gateInput,
       receipt: freshReceipt,
@@ -2372,6 +2466,9 @@ export async function verbClose(ctx) {
       recoveryReviewApprovedSha,
       deliveryBody,
     };
+    if (previousGate) assertCloseDeliveryAuthorityStable(previousGate, nextGate);
+    resolvedReviewAuthorization = authorization;
+    resolvedDeliveryGate = nextGate;
     return resolvedDeliveryGate;
   };
   const refuseDeliveryGate = async (options) => {
@@ -2458,6 +2555,7 @@ export async function verbClose(ctx) {
   // classified as delivered, dead, or unauthorized before any mutation.
   let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
+  let resumeClosedIssue = false;
   let reopenedCloseRecoveryRecord = null;
   let falseDeliveryCloseRecoveryRecord = null;
   let deliveredCloseSupersessionRecord = null;
@@ -2555,6 +2653,7 @@ export async function verbClose(ctx) {
       // pre-#925 two-signal decision contract.
       decision = decideCloseConvergence(decisionInput);
     } else if (closeSnapshot.issueClosed === true) {
+      resumeClosedIssue = true;
       Object.assign(decisionInput, {
         stateReason: closeSnapshot.stateReason,
       });
@@ -3382,6 +3481,57 @@ export async function verbClose(ctx) {
     }
   }
 
+  const evaluateCloseProjection = async ({ projection }) => {
+    const projectedBody = projection.body;
+    const projectedLifecycleEvidence = await loadCloseLifecycleEvidence(projectedBody);
+    const projectedUnchecked = await resolvePreCloseCheckboxes({
+      body: projectedBody,
+      issueNumber: closeIssueNum,
+      projectDir,
+      scan: uncheckedPreCloseCheckboxes,
+      resolveLaneSkipProof: ctx.resolveDocsOnlyLaneSkipProof,
+      proofDeps: ctx.docsOnlyLaneSkipProofDeps,
+    });
+    const projectedLifecycleGate = assertLifecycleSatisfied({
+      body: projectedBody,
+      required: cfg.lifecycleCheckboxesRequired !== false,
+      lifecycleEvidence: projectedLifecycleEvidence,
+    });
+    if (projectedUnchecked.length > 0 || projectedLifecycleGate.block) {
+      throw new NormalizationRefusalError('normalization-authority-drift');
+    }
+    const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
+    const { guardResult } = await evaluateCompleteGuards({
+      fromState: 'review',
+      toState: 'done',
+      context: {
+        issueNumber: Number(closeIssueNum),
+        repo: cfg.repo,
+        fromState: 'review',
+        toState: 'done',
+        body: projectedBody,
+        lifecycleEvidence: projectedLifecycleEvidence,
+        cfg,
+        projectDir,
+        deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
+      },
+      runGuards,
+      loadPolicy: async ({ requirementIds }) =>
+        (ctx.loadWorkflowBoundary || loadWorkflowBoundary)({
+          repository: cfg.repo,
+          issue: Number(closeIssueNum),
+          body: projectedBody,
+          requirementIds,
+          activity: 'workflow-transition:done',
+          state: 'review',
+          now: nowIso(),
+          runtime:
+            ctx.workflowPolicyRuntime ||
+            createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+        }),
+    });
+    return applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed);
+  };
   if (!SKIP_NETWORK && !terminalResume) {
     try {
       const { stdout } = await pexec(
@@ -3433,43 +3583,29 @@ export async function verbClose(ctx) {
         });
       }
 
-      // #303 / #315 — Derived Functional DoD keys (`acs`, `checkboxes`) are
-      // computed and stamped here, immediately before the close gate, via the
-      // shared `deriveAndStampFunctionalDod` helper (also called from
-      // verbs/review.mjs so review and close have identical derived-key
-      // behavior). `checkboxes` is derived after `acs` inside the helper so the
-      // newly-ticked `acs` box is counted. Atomic single push via mutateIssueBody.
-      try {
-        let derivedHeadSha = 'unknown';
-        try {
-          const { stdout: shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {});
-          derivedHeadSha = String(shaOut || '').trim() || 'unknown';
-        } catch {
-          // best-effort — sha=unknown is acceptable in the evidence marker
-        }
-        const mutated = await deriveAndStampFunctionalDod({
-          issueNumber: closeIssueNum,
-          repo: cfg.repo,
-          sha: derivedHeadSha,
-          ts: nowIso(),
-          deps: { pexec },
-        });
-        // Re-fetch body so the rest of the close gate sees the post-derivation
-        // state. Skipped on no-op.
-        if (mutated?.status === 'ok') {
-          const { stdout: refetched } = await pexec(
-            'gh',
-            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-            { timeout: GH_API_TIMEOUT_MS }
-          );
-          body = String(refetched || body);
-          closeBody = body;
-        }
-      } catch (err) {
-        // Derivation is best-effort. If it fails, the existing
-        // uncheckedPreCloseCheckboxes / lifecycle gate will surface the issue
-        // through the normal blocker path. Log and continue.
-        console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
+      // Derived evidence is an execution normalization, not preflight
+      // authority. Evaluate the complete close gate against the pure projected
+      // body before any proof-introducing write, including every fresh retry.
+      const normalized = force
+        ? { scanBody: body, persisted: false }
+        : await deriveAndRescan({
+            issueNumber: closeIssueNum,
+            repo: cfg.repo,
+            scanBody: body,
+            deps: {
+              pexec,
+              nowIso,
+              refreshAndEvaluate: evaluateCloseProjection,
+              mutateBody: ctx.normalizationMutateBody,
+              readBack: ctx.normalizationReadBack,
+            },
+          });
+      body = normalized.scanBody;
+      closeBody = body;
+      if (normalized.persisted) {
+        console.log(
+          `[task-tracker] Functional DoD normalization persisted for ${closeTarget}; close transition remains pending.`
+        );
       }
 
       closeLifecycleEvidence = await loadCloseLifecycleEvidence(body);
@@ -3537,18 +3673,7 @@ export async function verbClose(ctx) {
         // `origin/trunk` (a remote-tracking ref that is never checked out) so the
         // shared local `trunk` ref is never touched. Injected via the existing
         // `deps.closeGates.resolveTrunkRef` override hook. cfg.trunkRef still wins.
-        const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
-        const guardResult = await runGuards('review', 'done', {
-          issueNumber: Number(closeIssueNum),
-          repo: cfg.repo,
-          fromState: 'review',
-          toState: 'done',
-          body,
-          lifecycleEvidence: closeLifecycleEvidence,
-          cfg,
-          projectDir,
-          deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
-        });
+        const guardResult = await evaluateCloseProjection({ projection: { body } });
 
         const refusals = (guardResult.refusals || []).filter(
           (r) => !(r.id === 'review-exit-review-approved' && reviewGateBypassed)
@@ -3693,7 +3818,46 @@ export async function verbClose(ctx) {
   };
   const needsDeliveredCloseStep = (step) =>
     deliveredCloseTransaction === null || !deliveredCloseTransaction.completedSteps.includes(step);
+  const refreshCloseChildren = async () => {
+    try {
+      if (typeof fetchSubIssueBoardSnapshot !== 'function') {
+        throw new Error('close-child-authority-unavailable');
+      }
+      const children = requireCloseChildrenSnapshot(
+        await fetchSubIssueBoardSnapshot(closeIssueNum)
+      );
+      if (children.notReady.length > 0) {
+        console.error(
+          `[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${children.notReady.length} child issue(s) not in Review:`
+        );
+        children.notReady.forEach(({ num, state }) => console.error(`   #${num}: ${state}`));
+        process.exitCode = 1;
+        return null;
+      }
+      return children;
+    } catch (error) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: child authority could not be refreshed (${error.message}).`
+      );
+      process.exitCode = 1;
+      return null;
+    }
+  };
+  let initialCloseChildren = null;
   if (!SKIP_NETWORK && closeIssueNum) {
+    if (
+      !force &&
+      !falseDeliveryRestart.enabled &&
+      (await refuseDeliveryGate({
+        refresh: true,
+        durableTransaction: resumeDeliveredCloseTransaction,
+      }))
+    )
+      return;
+    if (!force && !falseDeliveryRestart.enabled) {
+      initialCloseChildren = await refreshCloseChildren();
+      if (!initialCloseChildren) return;
+    }
     const acceptedSha = resolvedDeliveryGate?.gateInput?.acceptedSha;
     const existing = readDeliveredCloseTransactions(closeBody);
     const resolved = resolveDeliveredCloseTransaction({
@@ -3717,11 +3881,15 @@ export async function verbClose(ctx) {
     await drainQueueOnce();
 
     if (!SKIP_NETWORK && closeIssueNum) {
-      const subNums = await fetchSubIssues(closeIssueNum);
+      const subNums = initialCloseChildren
+        ? initialCloseChildren.childStates.map(({ num }) => num)
+        : await fetchSubIssues(closeIssueNum);
       if (subNums.length > 0) {
-        const childStates = await Promise.all(
-          subNums.map(async (n) => ({ num: n, state: await getIssueBoardState(n) }))
-        );
+        const childStates = initialCloseChildren
+          ? initialCloseChildren.childStates
+          : await Promise.all(
+              subNums.map(async (n) => ({ num: n, state: await getIssueBoardState(n) }))
+            );
         const notReady = childStates.filter((c) => c.state !== 'review' && c.state !== 'done');
         if (notReady.length > 0 && !force) {
           console.error(
@@ -4045,9 +4213,39 @@ export async function verbClose(ctx) {
   // recovers. The post-close move (#385) then degrades to a benign `done → done`
   // no-op, exactly as on the force path.
   if (!force && !SKIP_NETWORK && closeIssueNum) {
+    if (
+      !falseDeliveryRestart.enabled &&
+      (await refuseDeliveryGate({
+        refresh: true,
+        durableTransaction: resumeDeliveredCloseTransaction ? deliveredCloseTransaction : null,
+      }))
+    )
+      return;
+    if (!falseDeliveryRestart.enabled && !(await refreshCloseChildren())) return;
     if (needsDeliveredCloseStep('board')) {
       const observedBoardState = await getIssueBoardState(closeIssueNum);
       if (observedBoardState === 'done') await markDeliveredCloseStep('board');
+    }
+    if (
+      !falseDeliveryRestart.enabled &&
+      !restartedDeliveredCloseTransaction &&
+      !resumeClosedIssue &&
+      needsDeliveredCloseStep('board')
+    ) {
+      try {
+        await verifyFreshCloseProjection({
+          body: resolvedDeliveryGate.deliveryBody,
+          head:
+            resolvedDeliveryGate.gateInput.observedLocalHeadSha ??
+            resolvedDeliveryGate.gateInput.localHeadSha,
+          evaluatedAt: nowIso(),
+          evaluate: evaluateCloseProjection,
+        });
+      } catch (error) {
+        console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${error.message}.`);
+        process.exitCode = 1;
+        return;
+      }
     }
     if (needsDeliveredCloseStep('board')) {
       const preMove = await runMoveStateDone(s.active, {
@@ -4135,6 +4333,16 @@ export async function verbClose(ctx) {
   // (and the short-circuit above will converge the lagging side). `gh issue
   // close` is idempotent — closing an already-closed issue is a no-op.
   if (needsDeliveredCloseStep('issue') && !SKIP_NETWORK && closeIssueNum) {
+    if (
+      !force &&
+      !falseDeliveryRestart.enabled &&
+      (await refuseDeliveryGate({
+        refresh: true,
+        durableTransaction: resumeDeliveredCloseTransaction ? deliveredCloseTransaction : null,
+      }))
+    )
+      return;
+    if (!force && !falseDeliveryRestart.enabled && !(await refreshCloseChildren())) return;
     const observedIssue = getIssueCloseSnapshot
       ? await getIssueCloseSnapshot(closeIssueNum)
       : { issueClosed: await getIssueClosedState(closeIssueNum), stateReason: null };

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'cut-child-worktree');
 // #905 — cut a child worktree from its epic head, by construction.
 //
 //   node scripts/task-tracker/cut-child-worktree.mjs <issue#> <path>

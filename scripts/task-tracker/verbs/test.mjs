@@ -24,7 +24,10 @@ import { randomBytes } from 'node:crypto';
 
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
-import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
+import {
+  isPolicyShapeVerificationRejection as isPolicyShapeRejection,
+  validateVerificationCommand,
+} from '../lib/verification-allowlist.mjs';
 import { resolveVerificationProvider } from '../lib/verification-provider-registry.mjs';
 import { COMPLETE_TEST_LANES, parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
@@ -70,6 +73,7 @@ import {
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { evaluateTestReadiness, inspectTestDeclarations } from '../lib/action-decision/test.mjs';
 
 // cspell:ignore metachar
 // #973 — `validateVerificationCommand` rejects a command for one of two
@@ -82,11 +86,6 @@ import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 // exclude from the pass/fail gate. A metachar-scan rejection must keep
 // blocking — that is the injection-attempt case story #137's regression test
 // guards (a blocked payload must not let the run report "passed").
-const POLICY_SHAPE_REJECTION_RE = /^bin '[^']+' rejects (?:(?:flag|subcommand) )?'/;
-function isPolicyShapeRejection(reason) {
-  return typeof reason === 'string' && POLICY_SHAPE_REJECTION_RE.test(reason);
-}
-
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
 }
@@ -474,6 +473,30 @@ export async function runVerbTest({
     issueNumber: issueNum,
   });
   const sha = await getHeadSha({ projectDir });
+  if (typeof deps.entryPreflight === 'function') {
+    let readiness;
+    try {
+      readiness = await deps.entryPreflight({
+        issue: Number(issueNum),
+        cfg,
+        projectDir,
+        body,
+        head: sha,
+      });
+    } catch (error) {
+      return {
+        status: 'entry-preflight-refused',
+        sha,
+        readiness: {
+          status: 'indeterminate',
+          blockers: [{ code: 'authority-read-failed', reason: String(error?.message || error) }],
+        },
+      };
+    }
+    if (readiness?.status !== 'ready') {
+      return { status: 'entry-preflight-refused', sha, readiness };
+    }
+  }
   let verificationProvider;
   let developPlan;
   try {
@@ -629,7 +652,7 @@ export async function runVerbTest({
     }
   }
 
-  const vcs = parseVerificationCommands(body);
+  const { commands: vcs, commandAuthority } = inspectTestDeclarations(body, { projectDir });
   if (vcs.length === 0) {
     return {
       status: 'no-vc',
@@ -648,13 +671,12 @@ export async function runVerbTest({
   // still producing the durable red result that operators and the security
   // regression expect. Policy-shape mismatches remain eligible for the normal
   // sandbox path because they are warnings rather than injection vectors.
-  const authorityResults = vcs.map((vc) => {
-    const validation = validateVerificationCommand(vc.command, { projectDir });
-    return validation.ok || isPolicyShapeRejection(validation.reason)
-      ? { command: vc.command, passed: true, exit: 0 }
+  const authorityResults = commandAuthority.map((entry) => {
+    return entry.accepted
+      ? { command: entry.command, passed: true, exit: 0 }
       : {
-          command: vc.command,
-          rejected: validation.reason,
+          command: entry.command,
+          rejected: entry.reason,
           passed: false,
           exit: null,
           stdout: '',
@@ -1482,11 +1504,12 @@ export async function runTestWithEntryInterlock({
   const {
     acquireIssueLock = withIssueLock,
     runVerbTest: executeTest = runVerbTest,
+    entryPreflight = evaluateTestReadiness,
     ...runDeps
   } = deps;
   return acquireIssueLock(
     { issue: issueNumber, verb: 'test', projDir: projectDir, retries: 0 },
-    () => executeTest({ cfg, issueNumber, projectDir, deps: runDeps, now })
+    () => executeTest({ cfg, issueNumber, projectDir, deps: { ...runDeps, entryPreflight }, now })
   );
 }
 
@@ -1533,6 +1556,7 @@ export async function verbTest(ctx) {
         logIssueTime,
         postNewAutomatedTestsComment,
         runDevelopFinalization: defaultRunDevelopFinalization,
+        entryPreflight: evaluateTestReadiness,
         reapStaleTestSandboxes: defaultReapStaleTestSandboxes,
         forceRerun: rest.includes('--force'),
       },
@@ -1547,6 +1571,15 @@ export async function verbTest(ctx) {
       console.error(result.message);
       process.exit(4);
       break;
+    case 'entry-preflight-refused':
+      console.error(
+        `/task test: entry preflight ${result.readiness?.status || 'indeterminate'} for #${issueNumber}.`
+      );
+      for (const blocker of result.readiness?.blockers ?? []) {
+        console.error(`  - ${blocker.code}`);
+      }
+      process.exit(3);
+      break;
     case 'passed': {
       console.log(buildPassedMessage(issueNumber, result.target));
       if (result.newTestsPost?.status === 'posted') {
@@ -1559,7 +1592,7 @@ export async function verbTest(ctx) {
       // verb needs no intervening re-`start`. `pause` remains the sole verb that
       // nulls `active`.
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     }
     case 'reverified': {
       // #444 — already in Test; the sandbox re-ran the current VC set in place
@@ -1572,20 +1605,20 @@ export async function verbTest(ctx) {
         console.error(`  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}`);
       }
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     }
     case 'already-verified':
       console.log(
         `✓ #${issueNumber} already has a valid exact-SHA Test receipt (${result.receipt.receiptId}); standard commands were not rerun.`
       );
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     case 'directory-evidence-accepted':
       console.log(
         `✓ #${issueNumber} already has accepted current-contract exact-SHA Test evidence; body receipts were not consulted.`
       );
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
-      return;
+      return result.status;
     case 'move-failed': {
       // #406 — sandbox passed but the board move was refused. Do NOT print the
       // success banner; surface the move-state child's real refusal reason and

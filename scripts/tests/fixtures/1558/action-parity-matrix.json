@@ -1,0 +1,225 @@
+{
+  "schema": "aitm.action-parity-matrix/v1",
+  "certification": {
+    "scope": "A2-seven-action-conformance",
+    "status": "certified",
+    "evidence": [
+      "action-parity-matrix.json",
+      "action-authority-cost.json",
+      "residual-legacy-review.json"
+    ],
+    "releaseMeaning": "evaluator-parity-only; not package release"
+  },
+  "actions": [
+    {
+      "id": "bind",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "disabled assignee match remains ready only with complete matching board and marker"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "a board and body-marker disagreement blocks bind readiness"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "read-only bind reports skipped required authority as indeterminate"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "production session reads and execution refresh the same changed board authority"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "production session reads and execution refresh the same changed board authority"
+        }
+      }
+    },
+    {
+      "id": "resume",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "no-argument resume is ready for its paused last issue"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "no-argument resume is not ready without a paused session"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "missing repository configuration is indeterminate even with a complete board fixture"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+          "test": "production resume collector and guarded preflight refuse a post-ready migration freeze"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+          "test": "production resume collector and guarded preflight refuse a post-ready migration freeze"
+        }
+      }
+    },
+    {
+      "id": "promote",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "early promotion readiness follows all four canonical forward edges"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "typed plan approval remediation survives complete guard projection"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "unknown and conflicting early state authority never yields a target grant"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "a ready early explanation is not a grant after dependency readiness changes"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+          "test": "a ready early explanation is not a grant after dependency readiness changes"
+        }
+      }
+    },
+    {
+      "id": "test",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+          "test": "direct Test and Develop Promote explain the same ready entry without effects"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+          "test": "Test explanation reports missing Verification Commands without effects"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+          "test": "Test explanation names an unavailable required authority read and makes no effects"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+          "test": "production Test read adapter rechecks live body and board at a fresh boundary"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+          "test": "locked Test execution refuses a freshly blocked entry before any sandbox effect"
+        }
+      }
+    },
+    {
+      "id": "review",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+          "test": "direct Review and Test-state Promote share ready evidence without effects"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+          "test": "Review preserves simultaneous typed preflight refusals without exposing prose"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+          "test": "initial Review authority read failure is typed indeterminate"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+          "test": "Review refuses a preflight computed from a different issue-body revision"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+          "test": "Review execution refuses a stale Test receipt after a ready collector decision"
+        }
+      }
+    },
+    {
+      "id": "deliver",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs",
+          "test": "open-PR delivery explanation shares actual preflight and performs no effects"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs",
+          "test": "stale PR head is blocked by the same exact-head preflight as execution"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs",
+          "test": "an unreadable delivery authority observation is indeterminate"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs",
+          "test": "execution refuses a changed PR head after a prior ready explanation"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-deliver-effect-boundaries.test.mjs",
+          "test": "execution refuses a same-ID ledger edit after intent readback"
+        }
+      }
+    },
+    {
+      "id": "close",
+      "scenarios": {
+        "ready": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+          "test": "production close reaches ready with fresh authority and only read transports"
+        },
+        "blocked": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+          "test": "close cannot convert a missing receipt or child read into readiness"
+        },
+        "indeterminate": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+          "test": "collector preserves all seven fields on read failure and does not execute effects"
+        },
+        "changedAuthority": {
+          "disposition": "typed",
+          "file": "scripts/tests/unit/task-tracker/verbs/close-authority-refresh.test.mjs",
+          "test": "changed PR head or delivery receipt refuses before a terminal close effect"
+        },
+        "postReadyFailure": {
+          "disposition": "typed",
+          "file": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+          "test": "production close collector and terminal authority guard refuse changed delivery after ready"
+        }
+      }
+    }
+  ]
+}

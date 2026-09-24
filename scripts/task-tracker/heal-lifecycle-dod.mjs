@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-lifecycle-dod');
 // #819 — Detect + heal issues whose `### Lifecycle` DoD section still carries
 // the pre-c59461f (#809) single `Passed final human review` checkbox instead
 // of the two-checkbox `Agent Review Passed` / `Final Review Passed` form.

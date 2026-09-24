@@ -1,0 +1,224 @@
+{
+  "schema": "aitm.guidance-obligation-coverage/v1",
+  "entries": [
+    {
+      "id": "session.timer",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Bind every unit of issue work before edits, tests, issue writes, or commits."
+      },
+      "sourceAnchor": "Timer must be active before any work.",
+      "protocolAnchor": "Never touch source files, run tests, edit issue bodies"
+    },
+    {
+      "id": "session.pause",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Pause the timer for a blocking question; resume through AITM afterward."
+      },
+      "sourceAnchor": "Pause on blocking question.",
+      "protocolAnchor": "Before any blocking user prompt"
+    },
+    {
+      "id": "session.preferences",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Read project preferences at bind and honor the recorded worktree and issue identity."
+      },
+      "sourceAnchor": "Honor project preferences.",
+      "protocolAnchor": "## Decision points"
+    },
+    {
+      "id": "session.compaction",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "After compaction, clear, or a new worker, reload the session boot index and discard prior guidance receipts."
+      },
+      "sourceAnchor": "Post-Compact/Clear: follow the boot index before any verb.",
+      "protocolAnchor": "## Recovery protocol (post-Compact / post-Clear)"
+    },
+    {
+      "id": "binding.discussion",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Before deep-dive or refine, apply the `{discuss}` brainstorming trigger."
+      },
+      "sourceAnchor": "## `{discuss}` brainstorming trigger (#405, #486)",
+      "protocolAnchor": "before** any deep-dive or refine"
+    },
+    {
+      "id": "binding.workspace",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Confirm the issue's recorded worktree before binding; create that worktree first when absent."
+      },
+      "sourceAnchor": "**Workspace check.**",
+      "protocolAnchor": "create a worktree first"
+    },
+    {
+      "id": "binding.deferred-pickup",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "If binding defers the pickup directive, do not load or execute it until the governed pickup boundary."
+      },
+      "sourceAnchor": "PICKUP DIRECTIVE DEFERRED",
+      "protocolAnchor": "do NOT load or"
+    },
+    {
+      "id": "binding.session-recovery",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "After session loss, re-run `/task #N` to register the issue and resume from current authority."
+      },
+      "sourceAnchor": "## Session recovery",
+      "protocolAnchor": "re-run `/task #N` to re-register"
+    },
+    {
+      "id": "review.prompt",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "At Review, surface a structured human approval decision."
+      },
+      "sourceAnchor": "## Review-approval prompt",
+      "protocolAnchor": "surface a structured human decision"
+    },
+    {
+      "id": "review.reject",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "If rejected, ask for the rejection reason and return to the governed repair path."
+      },
+      "sourceAnchor": "**Reject** → ask follow-up",
+      "protocolAnchor": "ask follow-up for the rejection reason"
+    },
+    {
+      "id": "review.dismiss",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "If dismissed or unanswered, record the dismissed prompt and wait for a real decision."
+      },
+      "sourceAnchor": "**Dismiss / no choice**",
+      "protocolAnchor": "review-prompt-dismissed"
+    },
+    {
+      "id": "delivery.envelope",
+      "requiredFiles": ["claude", "codex"],
+      "evidence": {
+        "claude": "For delivery, only exit 20 with exactly one `AITM_PROVIDER_ACTION_REQUIRED:` JSON line authorizes one matching provider action.",
+        "codex": "For delivery, only exit 20 with exactly one `AITM_PROVIDER_ACTION_REQUIRED:` JSON line permits one matching provider action."
+      },
+      "sourceAnchor": "exit `20` with exactly one",
+      "protocolAnchor": "This is the only envelope that"
+    },
+    {
+      "id": "delivery.no-shell",
+      "requiredFiles": ["claude", "codex"],
+      "evidence": {
+        "claude": "Validate all fields, repository, PR, expected head, adapter capability, and merge method. Never use a shell merge, `gh pr merge`, or a wrapper fallback.",
+        "codex": "Validate the complete envelope, expected head, adapter capability, and merge method. Never invoke shell merge, `gh pr merge`, or a hidden subprocess."
+      },
+      "sourceAnchor": "Never invoke a shell merge",
+      "protocolAnchor": "Never invoke a shell merge"
+    },
+    {
+      "id": "delivery.reconcile",
+      "requiredFiles": ["claude", "codex"],
+      "evidence": {
+        "claude": "After success, refusal, timeout, or ambiguity, rerun `npx aitm deliver <N>` and require its live-verified receipt before close; never retry the external mutation first.",
+        "codex": "After any outcome, rerun `npx aitm deliver <N>` to independently verify live GitHub and trunk state; do not repeat the provider mutation before reconciliation."
+      },
+      "sourceAnchor": "After success, refusal, timeout, or ambiguity, rerun",
+      "protocolAnchor": "Never retry the external mutation before that rerun"
+    },
+    {
+      "id": "close.human-instruction",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Close only after explicit human instruction and a fresh Close explanation."
+      },
+      "sourceAnchor": "## Human-only step",
+      "protocolAnchor": "only after explicit human instruction"
+    },
+    {
+      "id": "session.track",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Track follow-up work with an issue before starting it."
+      },
+      "sourceAnchor": "Track before you start — no untracked work.",
+      "protocolAnchor": "No issue, no work."
+    },
+    {
+      "id": "session.role",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "Set `--role orchestrator` for an epic and `--role agent` for a child pickup."
+      },
+      "sourceAnchor": "`--role` flag at bind.",
+      "protocolAnchor": "Agent picking up a sub-issue"
+    },
+    {
+      "id": "pickup.bootstrap",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "Bootstrap fail-closed: stop and report the failed step before source edits."
+      },
+      "sourceAnchor": "Bootstrap is fail-closed.",
+      "protocolAnchor": "STOP and report `STATUS: BLOCKED"
+    },
+    {
+      "id": "pickup.epic",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "An epic waits for every child to reach Review before ticking epic AC or DoD boxes."
+      },
+      "sourceAnchor": "Epic boxes wait for sub-issue Review.",
+      "protocolAnchor": "tick no AC/DoD box until every sub-issue reaches Review"
+    },
+    {
+      "id": "pickup.checkpoint",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "Re-read the latest conversation before a state move or active-issue switch."
+      },
+      "sourceAnchor": "Checkpoint Pause — re-read the conversation queue",
+      "protocolAnchor": "Before any `/task` state move"
+    },
+    {
+      "id": "pickup.mistake",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "On a mistake, stop, describe it, and wait for direction."
+      },
+      "sourceAnchor": "On mistakes — STOP, surface what/why",
+      "protocolAnchor": "wait for instruction"
+    },
+    {
+      "id": "pickup.body",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "Use the sanctioned issue-body operation; never hand-roll a GitHub body replacement."
+      },
+      "sourceAnchor": "Never hand-roll an issue body",
+      "protocolAnchor": "edit live bodies only through `mutateIssueBody`"
+    },
+    {
+      "id": "pickup.agent-terminal",
+      "requiredFiles": ["pickup"],
+      "evidence": {
+        "pickup": "A child agent reports `CODE_COMPLETE`; the orchestrator owns Review and close."
+      },
+      "sourceAnchor": "Agents MUST NOT run `/task review` or `/task close`.",
+      "protocolAnchor": "reporting `CODE_COMPLETE`"
+    },
+    {
+      "id": "state.reconcile",
+      "requiredFiles": ["router"],
+      "evidence": {
+        "router": "If board and local state disagree, use sanctioned `reconcile` before any other lifecycle verb."
+      },
+      "sourceAnchor": "Board ↔ local field-DB disagreement.",
+      "protocolAnchor": "Run before any other verb on a drifted issue."
+    }
+  ]
+}

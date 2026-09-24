@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { loadState } from '../state.mjs';
 import { currentSessionId, aiAppName, jsonlPath } from '../word-counter.mjs';
+import { getProvider } from '../../providers/index.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
@@ -53,6 +54,7 @@ import {
   validateHistoricalReconstructionPreflight,
   validateHistoricalRecoveryPreflight,
   validateMergedDeliveryPreflight,
+  validateNoCommitDeliveryPreflight,
 } from '../lib/delivery-preflight.mjs';
 import {
   DeliveryAuthorityError,
@@ -538,6 +540,7 @@ async function verifyAndFinalize({
   acceptedReviewSha,
   verified,
   metadataWarnings = [],
+  beforeReceiptWrite = null,
 }) {
   const waived = liveIntent?.record.schema === 'aitm.delivery-intent/v2';
   let verifiedPullRequest = pullRequest;
@@ -619,6 +622,27 @@ async function verifyAndFinalize({
   }
 
   const receiptBody = renderDeliveryReceiptComment(receipt);
+  if (beforeReceiptWrite) await beforeReceiptWrite();
+  // Verification may have preceded an external intent write. Re-observe trunk
+  // reachability at the receipt boundary so that proof cannot be reused after
+  // the merge commit disappears from the authoritative trunk ref.
+  await requiredDependency(
+    deps,
+    'fetchOriginTrunk'
+  )({ remote: 'origin', branch: liveIntent.record.baseRef });
+  const mergeCommitSha = pullRequest.mergeCommitSha ?? pullRequest.mergeCommit?.oid;
+  if (
+    !SHA_RE.test(mergeCommitSha ?? '') ||
+    (await requiredDependency(
+      deps,
+      'isAncestor'
+    )({
+      ancestor: mergeCommitSha,
+      descendant: `origin/${liveIntent.record.baseRef}`,
+    })) !== true
+  ) {
+    throw deliverError('trunk-reachability-drift');
+  }
   let createError = null;
   try {
     await requiredDependency(
@@ -692,7 +716,7 @@ async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, mer
   return decision;
 }
 
-async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
+async function deliverNoCommit({ deps, issue, issueNumber, cfg, lineage, pullRequests }) {
   const deliverable = parseDeliverablePosted(issue.body);
   if (!deliverable) throw new TypeError('delivery-preflight:no-commit-deliverable');
   if (String(issue.projectState || '').toLowerCase() !== 'review') {
@@ -731,6 +755,14 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
   if (!authorization || authorization.mode === 'missing') {
     throw new TypeError('delivery-preflight:review-authorization');
   }
+  validateNoCommitDeliveryPreflight({
+    issue: { ...issue, reviewAuthorization: authorization },
+    lineage,
+    pullRequests,
+    localHeadSha,
+    testReceiptSha,
+    acceptedReviewSha,
+  });
   const expected = buildNoCommitDeliveryRecord({
     recordId: requiredDependency(deps, 'createIntentId')(),
     repository: cfg.repo,
@@ -772,6 +804,71 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
     };
   }
   const body = renderNoCommitDeliveryComment(expected);
+  const freshIssue = await requiredDependency(
+    deps,
+    'fetchIssue'
+  )({
+    issueNumber,
+    repository: cfg.repo,
+  });
+  const freshPullRequests = await requiredDependency(
+    deps,
+    'listPullRequests'
+  )({
+    repository: cfg.repo,
+    headRef: await requiredDependency(deps, 'getCurrentBranch')(),
+  });
+  const freshLineage = validateLineageResult(
+    await requiredDependency(
+      deps,
+      'resolveLineage'
+    )({
+      issueNumber,
+      repository: cfg.repo,
+      issue: freshIssue,
+    })
+  );
+  const freshLocalHeadSha = await getLocalHeadSha();
+  const freshTestReceiptSha = await resolveTestReceiptSha({ issue: freshIssue, issueNumber });
+  const freshReviewAuthority = await resolveLiveDeliveryReviewAuthority({
+    deps,
+    cfg,
+    issue: freshIssue,
+    issueNumber,
+    testReceiptSha: freshTestReceiptSha,
+  });
+  const freshAuthorization = await requiredDependency(
+    deps,
+    'resolveReviewAuthorization'
+  )({
+    issue: freshIssue,
+    issueNumber,
+    expectedHeadSha: freshReviewAuthority.acceptedSha,
+    acceptedReviewSha: freshReviewAuthority.acceptedSha,
+  });
+  validateNoCommitDeliveryPreflight({
+    issue: { ...freshIssue, reviewAuthorization: freshAuthorization },
+    lineage: freshLineage,
+    pullRequests: freshPullRequests,
+    localHeadSha: freshLocalHeadSha,
+    testReceiptSha: freshTestReceiptSha,
+    acceptedReviewSha: freshReviewAuthority.acceptedSha,
+  });
+  if (
+    freshIssue.body !== issue.body ||
+    freshLocalHeadSha !== localHeadSha ||
+    freshTestReceiptSha !== testReceiptSha ||
+    JSON.stringify(freshReviewAuthority) !== JSON.stringify(reviewAuthority) ||
+    JSON.stringify(freshAuthorization) !== JSON.stringify(authorization) ||
+    JSON.stringify(freshLineage) !== JSON.stringify(lineage) ||
+    freshPullRequests.length !== pullRequests.length
+  ) {
+    throw new TypeError('delivery-preflight:authority-drift');
+  }
+  const freshRecords = await listRecords();
+  if (freshRecords.projection.record !== null) {
+    throw new TypeError('delivery-preflight:delivery-record-drift');
+  }
   let createError = null;
   try {
     await requiredDependency(
@@ -861,7 +958,14 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   // a no-commit kind for Develop/Test, provider delivery must not replace that
   // branch delivery with an issue-comment-only receipt (#1632).
   if (isIssueResidentDeliveryKind(issue.body) && pullRequestRefs.length === 0) {
-    return deliverNoCommit({ deps, issue, issueNumber, cfg });
+    return deliverNoCommit({
+      deps,
+      issue,
+      issueNumber,
+      cfg,
+      lineage,
+      pullRequests: pullRequestRefs,
+    });
   }
 
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
@@ -1206,6 +1310,149 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       throw deliverError('late-attribution', error);
     }
   };
+  // A preflight (or a prior explanation) is not a capability. Re-read the
+  // mutable sources immediately before an external effect and refuse drift.
+  const assertFreshDeliveryAuthority = async ({ expectedLiveIntent = null } = {}) => {
+    const freshIssue = await fetchIssue({ issueNumber, repository: cfg.repo });
+    const freshLineage = validateLineageResult(
+      await resolveLineage({ issueNumber, repository: cfg.repo, issue: freshIssue })
+    );
+    const freshBranch = await getCurrentBranch();
+    const freshLocalHeadSha = await getLocalHeadSha();
+    const freshTestReceiptSha = await resolveTestReceiptSha({ issue: freshIssue, issueNumber });
+    const freshReviewAuthority = await resolveLiveDeliveryReviewAuthority({
+      deps,
+      cfg,
+      issue: freshIssue,
+      issueNumber,
+      testReceiptSha: freshTestReceiptSha,
+    });
+    const freshRefs = await listPullRequests({ repository: cfg.repo, headRef: freshBranch });
+    const freshPullRequests = await Promise.all(
+      freshRefs.map(({ number }) =>
+        fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
+      )
+    );
+    let freshAcceptedAuthority;
+    try {
+      freshAcceptedAuthority = resolveAcceptedDeliveryAuthority({
+        issueNumber,
+        branch: freshBranch,
+        localHeadSha: freshLocalHeadSha,
+        testReceiptSha: freshTestReceiptSha,
+        reviewReceiptSha: freshReviewAuthority.acceptedSha,
+        agentReviewPassed: freshReviewAuthority.outcome === 'passed',
+        reviewAuthority: freshReviewAuthority,
+        pullRequests: freshPullRequests,
+      });
+    } catch (error) {
+      if (!(error instanceof DeliveryAuthorityError)) throw error;
+      throw new TypeError('delivery-preflight:authority-drift', { cause: error });
+    }
+    if (freshAcceptedAuthority.pullRequest.number !== selectedPullRequest.number) {
+      throw new TypeError('delivery-preflight:pull-request-drift');
+    }
+    const freshReviewAuthorization = await requiredDependency(
+      deps,
+      'resolveReviewAuthorization'
+    )({
+      issue: freshIssue,
+      issueNumber,
+      expectedHeadSha: freshReviewAuthority.acceptedSha,
+      acceptedReviewSha: freshReviewAuthority.acceptedSha,
+    });
+    const freshChecks = await fetchRequiredChecks({
+      repository: cfg.repo,
+      prNumber: selectedPullRequest.number,
+      expectedHeadSha: authority.acceptedSha,
+    });
+    const freshProjection = await readProjection({ deps, issueNumber, context });
+    const freshException = preflight.exceptionDisposition
+      ? await resolveOpenAttributionException({
+          comments: freshProjection.comments,
+          now: now(),
+          deps,
+        })
+      : null;
+    const freshInventory = freshException
+      ? await classifiedOpenInventory(freshAcceptedAuthority.pullRequest, deps, freshLocalHeadSha)
+      : null;
+    const freshCommitSubjects = freshInventory
+      ? freshInventory.attributableSubjects
+      : mergedPullRequest
+        ? await mergedSourceCommitSubjects(
+            freshAcceptedAuthority.pullRequest,
+            deps.inspectSourceCommit
+          )
+        : await openSourceCommitSubjects(
+            await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+            freshAcceptedAuthority.pullRequest,
+            deps.inspectSourceCommit
+          );
+    const freshInput = {
+      ...preflightInput,
+      issue: {
+        ...freshIssue,
+        agentReviewPassed: freshReviewAuthority.outcome === 'passed',
+        reviewAuthority: freshReviewAuthority,
+        reviewAuthorization: freshReviewAuthorization,
+      },
+      binding: bindingFromState({ branch: freshBranch, state }),
+      lineage: freshLineage,
+      pullRequests: freshPullRequests,
+      localHeadSha: freshLocalHeadSha,
+      testReceiptSha: freshTestReceiptSha,
+      acceptedReviewSha: freshReviewAuthority.acceptedSha,
+      dirtyPaths: await listDirtyPaths({ issueNumber }),
+      config: {
+        ...deliveryConfig,
+        repositoryMergeMethods: await fetchRepositoryMergeMethods({ repository: cfg.repo }),
+      },
+      commitSubjects:
+        mergedPullRequest && live?.record.schema === 'aitm.delivery-intent/v2'
+          ? live.record.attributionTokens.map((token) => `[${token}] Authorized pending waiver`)
+          : freshCommitSubjects,
+      ...(preflight.exceptionDisposition
+        ? { sourceInventory: freshInventory, attributionException: freshException }
+        : {}),
+      checks: freshChecks,
+    };
+    const freshPreflight = mergedPullRequest
+      ? validateMergedDeliveryPreflight(freshInput)
+      : validateDeliveryPreflight(freshInput);
+    if (
+      freshIssue.body !== issue.body ||
+      JSON.stringify(freshLineage) !== JSON.stringify(lineage) ||
+      freshBranch !== branch ||
+      freshLocalHeadSha !== localHeadSha ||
+      freshTestReceiptSha !== testReceiptSha ||
+      JSON.stringify(freshReviewAuthority) !== JSON.stringify(reviewAuthority) ||
+      JSON.stringify(freshReviewAuthorization) !== JSON.stringify(reviewAuthorization) ||
+      JSON.stringify(freshPreflight) !== JSON.stringify(preflight)
+    ) {
+      throw new TypeError('delivery-preflight:authority-drift');
+    }
+    const projectionMatches = expectedLiveIntent
+      ? freshProjection.projection.liveIntent !== null &&
+        canonicalRecordJson(freshProjection.projection.liveIntent) ===
+          canonicalRecordJson(expectedLiveIntent) &&
+        freshProjection.projection.matchingReceipt === null
+      : JSON.stringify(freshProjection.projection) === JSON.stringify(initial.projection);
+    if (!projectionMatches) {
+      throw new TypeError('delivery-preflight:delivery-record-drift');
+    }
+    const freshManualDecision = await checkManualCodeReview({
+      deps,
+      cfg,
+      prNumber: selectedPullRequest.number,
+      expectedHeadSha: authority.acceptedSha,
+      merged: mergedPullRequest,
+    });
+    if (freshManualDecision.status !== decision.status) {
+      throw new TypeError('delivery-preflight:manual-review-drift');
+    }
+    return freshPreflight;
+  };
   const decision = await checkManualCodeReview({
     deps,
     cfg,
@@ -1217,6 +1464,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     const reviewerLogin = decision.reviewerLogin;
     let reviewRequested = false;
     if (decision.status === 'request-review') {
+      await assertFreshDeliveryAuthority();
       await requiredDependency(
         deps,
         'requestPullRequestReview'
@@ -1237,6 +1485,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     };
   }
   if (mergedPullRequest) {
+    await assertFreshDeliveryAuthority();
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
     if (liveIntent !== null && liveIntent.record.schema !== 'aitm.delivery-intent/v2') {
@@ -1294,6 +1543,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         });
         // Append the divergence BEFORE the intent, so the authorization for the
         // restatement is on the ledger even if verification later refuses.
+        await assertFreshDeliveryAuthority();
         await requiredDependency(
           deps,
           'createIssueComment'
@@ -1323,6 +1573,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         attributingCommits: requiredDependency(deps, 'attributingCommits'),
       });
       const recoveryIntent = verified.intent;
+      await assertFreshDeliveryAuthority();
       liveIntent = await appendIntent({
         deps,
         issueNumber,
@@ -1346,6 +1597,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         acceptedReviewSha,
         verified,
         metadataWarnings: preflight.metadataWarnings ?? [],
+        beforeReceiptWrite: () => assertFreshDeliveryAuthority({ expectedLiveIntent: liveIntent }),
       });
     }
     return verifyAndFinalize({
@@ -1363,6 +1615,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       testReceiptSha,
       acceptedReviewSha,
       metadataWarnings: preflight.metadataWarnings ?? [],
+      beforeReceiptWrite: () => assertFreshDeliveryAuthority(),
     });
   }
   if (initial.projection.matchingReceipt !== null) {
@@ -1383,6 +1636,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       throw deliverError('intent-divergence');
     }
     await revalidateBeforeProviderAction(live.record);
+    await assertFreshDeliveryAuthority();
     return {
       status: 'action-required',
       mode: 'current-head',
@@ -1400,6 +1654,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     sessionId: sessionId(),
     clientCreatedAt: now(),
   });
+  await assertFreshDeliveryAuthority();
   const readbackIntent = await appendIntent({
     deps,
     issueNumber,
@@ -1407,8 +1662,8 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     context,
     intent,
   });
-
   await revalidateBeforeProviderAction(readbackIntent.record);
+  await assertFreshDeliveryAuthority({ expectedLiveIntent: readbackIntent });
 
   return {
     status: 'action-required',
@@ -1446,6 +1701,16 @@ function checkRollup(rollup, expectedHeadSha) {
       };
     }),
   };
+}
+
+export function resolveDeliveryProviderCapability(providerName, cfg) {
+  if (cfg?.fullAutoMerge?.mechanism !== 'provider-action') return false;
+  try {
+    const capability = getProvider(providerName).externalActions?.['github.merge-pull-request'];
+    return capability?.adapterContract === 'skill' && capability?.expectedHeadSha === true;
+  } catch {
+    return null;
+  }
 }
 
 export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
@@ -1648,6 +1913,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     resolveTranscriptPath(sessionId) {
       return jsonlPath(sessionId);
     },
+    providerActionAvailable: resolveDeliveryProviderCapability(aiAppName(), ctx.cfg),
     async resolvePullRequestReviewGate() {
       return resolveGate('pullRequestReview', {
         session: (ctx.loadCurrentSession || (() => loadSession(currentSessionId())))(),
@@ -1968,6 +2234,35 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     },
     async fetchOriginTrunk({ remote, branch }) {
       await run('git', ['fetch', remote, branch]);
+    },
+    async fetchRemoteTrunkHeadSha({ branch }) {
+      if (
+        typeof branch !== 'string' ||
+        !/^[A-Za-z0-9._/-]+$/.test(branch) ||
+        branch.includes('..')
+      ) {
+        throw deliverError('trunk-branch');
+      }
+      const { stdout } = await run('git', ['ls-remote', '--heads', 'origin', branch]);
+      const line = String(stdout || '').trim();
+      const match = line.match(
+        new RegExp(`^([0-9a-f]{40})\\trefs/heads/${branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+      );
+      if (!match) throw deliverError('remote-trunk-head');
+      return match[1];
+    },
+    async resolveLocalTrunkHeadSha({ branch }) {
+      if (
+        typeof branch !== 'string' ||
+        !/^[A-Za-z0-9._/-]+$/.test(branch) ||
+        branch.includes('..')
+      ) {
+        throw deliverError('trunk-branch');
+      }
+      const { stdout } = await run('git', ['rev-parse', `refs/remotes/origin/${branch}`]);
+      const sha = String(stdout || '').trim();
+      if (!SHA_RE.test(sha)) throw deliverError('local-trunk-head');
+      return sha;
     },
     async isAncestor({ ancestor, descendant }) {
       try {

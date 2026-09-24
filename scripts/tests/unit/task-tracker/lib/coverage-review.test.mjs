@@ -143,9 +143,22 @@ function makeCtx(opts = {}) {
       return { status: 'updated' };
     },
     deriveAndStampFunctionalDod: async () => ({}),
+    normalizationReadBack: async () => ({ body: scanBody, head: headSha }),
+    normalizationEvaluate: async () => ({
+      status: 'ready',
+      ok: true,
+      refusals: [],
+      humanDecision: null,
+    }),
     runGuards: async (_f, _to, gctx) => {
       calls.guards.push(gctx);
-      return guardSeq[gi++] || { refusals: [] };
+      const result = guardSeq[gi++] || { refusals: [] };
+      return {
+        ...result,
+        status: result.refusals.length > 0 ? 'blocked' : 'ready',
+        ok: result.refusals.length === 0,
+        humanDecision: null,
+      };
     },
   };
   return { ctx, calls };

@@ -1,0 +1,53 @@
+{
+  "schema": "aitm.guidance-current-paired-comparison/v1",
+  "classification": "final-installed-public-cli-paired-comparison",
+  "historicalComparison": {
+    "path": "scripts/tests/fixtures/1558/context-comparison.json",
+    "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894",
+    "disposition": "immutable-early-candidate-characterization"
+  },
+  "sources": {
+    "lifecycle": {
+      "path": "scripts/tests/fixtures/1558/lifecycle-transcript-final.json",
+      "sha256": "sha256:ed7e54e1ce1fa2ad201fe56e07f20615d079416b36138b1b2122db139e9332a1"
+    },
+    "authority": {
+      "path": "scripts/tests/fixtures/1558/authority-after.json",
+      "sha256": "sha256:1023eedc15f9b8a249ae0e883911cb8f36fc78a8454bdf4430c5d10971e596d1"
+    },
+    "budgets": {
+      "path": "scripts/tests/fixtures/1558/context-budgets-final.json",
+      "sha256": "sha256:91690c18812a3a2c5b0f35c314d67a63969838297e4cf5d47dd6d95c7e4209ba"
+    }
+  },
+  "adapters": {
+    "claude": {
+      "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
+      "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+      "currentProxyTokens": 5407,
+      "modeledLegacyProxyTokens": 54538,
+      "conservativeReductionFromLegacyStaticAlone": true,
+      "fullLifecycleWorkingPass": true,
+      "sourceCaptureSha256": "sha256:30b6dceaa316ebd57877719540ec431043c6725ffcdd125a891c77c72a9dfbdf"
+    },
+    "codex": {
+      "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
+      "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+      "currentProxyTokens": 5394,
+      "modeledLegacyProxyTokens": 54280,
+      "conservativeReductionFromLegacyStaticAlone": true,
+      "fullLifecycleWorkingPass": true,
+      "sourceCaptureSha256": "sha256:30b6dceaa316ebd57877719540ec431043c6725ffcdd125a891c77c72a9dfbdf"
+    }
+  },
+  "authority": {
+    "method": "separate-explanation-evaluator-and-direct-executor-collector-attempts",
+    "explainPhysicalReads": 34,
+    "executorPhysicalReads": 34,
+    "timingClassifications": ["local-cache", "local-stub", "controlled-read-only"]
+  },
+  "finalInstalledAdapterGate": {
+    "status": "passed",
+    "reason": "Measured actual installed adapter bytes and complete public CLI traffic against fixed working limits."
+  }
+}

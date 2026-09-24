@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1675
 // /task skill CLI. Dispatches verbs to per-verb modules under ./verbs/.
 // Shared runtime context lives in ./runtime.mjs.
 
@@ -27,6 +28,20 @@ import {
 } from './lib/evidence-v2/execution-context.mjs';
 import { selectEvidenceProtocol } from './lib/evidence-v2/protocol.mjs';
 import { guardEvidenceMutation } from './lib/evidence-v2/entry-guard.mjs';
+import { admitGuidance } from '../../guidance/admission.mjs';
+import { annotateSuccessfulGuidanceMutation } from '../../guidance/annotation.mjs';
+
+function guidanceAdmissionWarnings(admission) {
+  if (admission?.trust !== 'project-owned-diverged') return [];
+  const digest = admission.validation?.source?.catalogFileDigest;
+  if (!/^sha256:[a-f0-9]{64}$/.test(digest ?? '')) return [];
+  return [
+    {
+      code: 'guidance-source-diverged',
+      args: { source: '.ai-task-manager/aitm-guidance.yml', digest },
+    },
+  ];
+}
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -67,6 +82,95 @@ const INIT_EXEMPT = new Set([
   'status',
   'fleet',
 ]);
+
+const ANNOTATED_LIFECYCLE_VERBS = new Set([
+  'start',
+  'resume',
+  'promote',
+  'next',
+  'test',
+  'review',
+  'deliver',
+  'close',
+  'end',
+  'refine',
+  'demote',
+  'shelve',
+  'park',
+  'cancel-plan',
+  'plan',
+  'plan-approve',
+  'approve',
+  'pause',
+  'stop',
+  'update',
+]);
+
+function isSessionGuidanceVerb(verb) {
+  return (
+    verb === 'start' ||
+    verb === 'resume' ||
+    verb === 'pause' ||
+    verb === 'stop' ||
+    verb === 'update'
+  );
+}
+
+export function annotationMutationSucceeded({
+  verb,
+  durableIssueWriteObserved = false,
+  verbResult,
+}) {
+  if (verb === 'approve') return verbResult === 'approved';
+  if (verb === 'plan-approve') {
+    return new Set([
+      'approved',
+      're-stamped-entry',
+      'repaired-approval',
+      'repaired-story-binding',
+      'repaired-from-evidence',
+      'repaired-from-transition-authority',
+    ]).has(verbResult);
+  }
+  if (verb === 'deliver') return verbResult?.status === 'delivered';
+  if (verb === 'test') return ['passed', 'reverified'].includes(verbResult);
+  if (verb === 'close' || verb === 'end') {
+    if (verbResult?.action === 'already-closed' || verbResult?.status === 'untouched') return false;
+    if (verbResult?.status === 'completed') {
+      return verbResult?.action === 'finalize' || durableIssueWriteObserved;
+    }
+    return true;
+  }
+  if (!isSessionGuidanceVerb(verb) && !/^#\d+$/.test(verb)) return true;
+  return durableIssueWriteObserved;
+}
+
+export function observeGuidanceTimingWrites(ctx, annotationIssue) {
+  const observation = { durableIssueWriteObserved: false };
+  const original = ctx.safePostTiming;
+  ctx.safePostTiming = async (issue, row) => {
+    const outcome = await original(issue, row);
+    const issueNumber = Number(String(issue).replace(/^#/, ''));
+    if (issueNumber === annotationIssue && outcome?.ok === true && !outcome.skipped) {
+      observation.durableIssueWriteObserved = true;
+    }
+    return outcome;
+  };
+  if (ctx.timingRecorder) ctx.timingRecorder.safePostTiming = ctx.safePostTiming;
+  return observation;
+}
+
+export function annotationTargetIssue({ verb, rest, stateBefore }) {
+  const explicit = /^#\d+$/.test(verb)
+    ? verb
+    : ['pause', 'stop', 'update'].includes(verb)
+      ? null
+      : targetFromRest(rest);
+  const selected =
+    explicit || stateBefore?.active || (verb === 'resume' ? stateBefore?.lastActive : null);
+  const number = Number(String(selected ?? '').replace(/^#/, ''));
+  return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
 
 // #208 — shared preflight verbs. `target-required` parses `#N` from rest and
 // enforces bind-match. `target-optional` falls back to active when no `#N` is
@@ -170,13 +274,28 @@ export function resolvePreflightInvocation({ verb, mode, rest, stateBefore }) {
   };
 }
 
+// #1750: expose the dispatcher's exact bind/resume selection to a read-only
+// evaluator. The execution path still owns fresh preflight and every effect.
+export function resolveSessionActionInvocation({ verb, mode, rest, stateBefore }) {
+  const invocation = resolvePreflightInvocation({ verb, mode, rest, stateBefore });
+  if (mode !== 'switch-target')
+    return { ...invocation, actionId: null, issue: null, explicitTarget: false };
+  const explicit = /^#\d+$/.test(String(verb)) ? String(verb) : targetFromRest(rest);
+  return {
+    actionId: verb === 'resume' ? 'resume' : 'bind',
+    issue: invocation.target ? Number(String(invocation.target).replace(/^#/, '')) : null,
+    explicitTarget: Boolean(explicit),
+    ...invocation,
+  };
+}
+
 async function runVerbPreflight(ctx) {
   const mode = PREFLIGHT_MODE[ctx.verb] || (/^#\d+$/.test(ctx.verb) ? 'switch-target' : null);
   if (!mode) return;
   const { preflightVerb } = await import('./lib/verb-preflight.mjs');
   const { loadState } = await import('./state.mjs');
   const stateBefore = loadState(ctx.statePath);
-  const invocation = resolvePreflightInvocation({
+  const invocation = resolveSessionActionInvocation({
     verb: ctx.verb,
     mode,
     rest: ctx.rest,
@@ -300,6 +419,38 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
+    const admission = admitGuidance({ argv: process.argv.slice(2), surface: 'task-hub' });
+    if (!admission.admitted) {
+      process.stderr.write(admission.diagnostic);
+      process.exitCode = 1;
+      return;
+    }
+    // #1675 — explanations are admitted, read-only commands. Intercept them
+    // before worktree relocation/binding, buildContext, lifecycle preflight,
+    // locks, timing, cursors, annotations, and mutation verb dispatch.
+    try {
+      const explanationArgv = process.argv.slice(2);
+      if (!earlyHelpTarget(explanationArgv)) {
+        const { evaluateExplanation, parseExplainInvocation, runExplain } =
+          await import('./verbs/explain.mjs');
+        const request = parseExplainInvocation(explanationArgv);
+        if (request.matched) {
+          await runExplain(request, {
+            evaluate: (input) => evaluateExplanation({ ...input, projectRoot: process.cwd() }),
+            projectRoot: process.cwd(),
+            admissionWarnings: guidanceAdmissionWarnings(admission),
+          });
+          process.exitCode = 0;
+          return;
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof TypeError) || !String(error.message).startsWith('explain:'))
+        throw error;
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 2;
+      return;
+    }
     const executionContext = readEvidenceExecutionContext();
     if (executionContext?.schema === 'aitm.rehearsal-context/v1')
       assertRecordedTransport(executionContext);
@@ -316,6 +467,33 @@ if (_isMain)
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
     const ctx = buildContext(foreignWorktree.argv, { executionContext });
+    const shouldAnnotate =
+      admission.trust === 'project-owned-diverged' &&
+      !ctx.SKIP_NETWORK &&
+      (ANNOTATED_LIFECYCLE_VERBS.has(ctx.verb) || /^#\d+$/.test(ctx.verb)) &&
+      !(
+        ctx.verb === 'review' &&
+        ctx.rest.some((arg) => arg === '--probe' || arg.startsWith('--probe='))
+      );
+    const annotationStateBefore = shouldAnnotate
+      ? (await import('./state.mjs')).loadState(ctx.statePath)
+      : null;
+    const annotationIssue = shouldAnnotate
+      ? annotationTargetIssue({
+          verb: ctx.verb,
+          rest: ctx.rest,
+          stateBefore: annotationStateBefore,
+        })
+      : null;
+    const timingObservation =
+      annotationIssue !== null &&
+      (isSessionGuidanceVerb(ctx.verb) ||
+        /^#\d+$/.test(ctx.verb) ||
+        ctx.verb === 'close' ||
+        ctx.verb === 'end')
+        ? observeGuidanceTimingWrites(ctx, annotationIssue)
+        : null;
+    let annotationVerbResult;
     try {
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
@@ -377,6 +555,8 @@ if (_isMain)
     await guardEvidenceVerb(ctx);
     try {
       switch (ctx.verb) {
+        case 'explain':
+          throw new TypeError('explain:early-route-required');
         case 'status': {
           const { verbStatus } = await import('./verbs/status.mjs');
           await verbStatus(ctx);
@@ -410,7 +590,7 @@ if (_isMain)
         case 'close':
         case 'end': {
           const { verbClose } = await import('./verbs/close.mjs');
-          await verbClose(ctx);
+          annotationVerbResult = await verbClose(ctx);
           break;
         }
         case 'pause': {
@@ -440,7 +620,7 @@ if (_isMain)
         }
         case 'test': {
           const { verbTest } = await import('./verbs/test.mjs');
-          await verbTest(ctx);
+          annotationVerbResult = await verbTest(ctx);
           break;
         }
         case 'review': {
@@ -450,7 +630,7 @@ if (_isMain)
         }
         case 'deliver': {
           const { verbDeliver } = await import('./verbs/deliver.mjs');
-          await verbDeliver(ctx);
+          annotationVerbResult = await verbDeliver(ctx);
           break;
         }
         case 'incident-ledger': {
@@ -626,12 +806,12 @@ if (_isMain)
         }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
-          await verbApprove(ctx.rest, ctx.cfg);
+          annotationVerbResult = await verbApprove(ctx.rest, ctx.cfg);
           break;
         }
         case 'plan-approve': {
           const { verbPlanApprove } = await import('./verbs/plan-approve.mjs');
-          await verbPlanApprove(ctx.rest, ctx.cfg);
+          annotationVerbResult = await verbPlanApprove(ctx.rest, ctx.cfg);
           break;
         }
         case 'user-story':
@@ -748,6 +928,28 @@ if (_isMain)
           }
           console.error(`unknown verb: ${ctx.verb}`);
           process.exit(2);
+      }
+      if (
+        annotationIssue !== null &&
+        !process.exitCode &&
+        annotationMutationSucceeded({
+          verb: ctx.verb,
+          durableIssueWriteObserved: timingObservation?.durableIssueWriteObserved,
+          verbResult: annotationVerbResult,
+        })
+      ) {
+        const outcome = await annotateSuccessfulGuidanceMutation({
+          admission,
+          issue: annotationIssue,
+          repository: ctx.cfg.repo,
+          projectDir: ctx.projectDir,
+          mutationSucceeded: true,
+        });
+        if (outcome.status === 'warning') {
+          process.stderr.write(
+            'guidance-annotation-failed: lifecycle mutation succeeded; issue audit annotation was not verified\n'
+          );
+        }
       }
     } catch (err) {
       console.error(`task-tracker error: ${err.message}`);

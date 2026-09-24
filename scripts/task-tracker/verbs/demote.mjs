@@ -19,6 +19,8 @@
 // disagrees with the recorded lastKnownState, refuse and point at
 // `/task reconcile`.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'demote', { surface: 'direct-verb' });
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

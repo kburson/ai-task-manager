@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Canonical Shelve verb (#1215).
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'shelve', { surface: 'direct-verb' });
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 

@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { findTrailComment } from '../commit-trail-handler.mjs';
 import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
@@ -242,5 +243,12 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
     }
   }
 
-  return { ok: reasons.length === 0, reasons, headSha, derivedTrail, lifecycleEvidence };
+  return {
+    ok: reasons.length === 0,
+    reasons,
+    headSha,
+    bodyDigest: `sha256:${createHash('sha256').update(body).digest('hex')}`,
+    derivedTrail,
+    lifecycleEvidence,
+  };
 }

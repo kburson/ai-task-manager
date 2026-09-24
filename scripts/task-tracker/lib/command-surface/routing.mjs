@@ -1,4 +1,4 @@
-// @story #1012
+// @story #1012 #1675
 // Narrow operational routing identities for `/task` (a.k.a. `aitm`) verbs.
 // The command catalog owns aliases and all public help metadata. This module
 // records only the canonical verb-to-handler relationship needed to build that
@@ -57,6 +57,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
     {
       verb: 'promote',
       dispatch: 'verbs/promote.mjs',
+    },
+    {
+      verb: 'explain',
+      dispatch: 'verbs/explain.mjs',
     },
     {
       verb: 'demote',

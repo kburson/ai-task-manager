@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'backfill-plan-metadata');
 // #488/#892 — One-shot, idempotent metadata back-fill. It bolds legacy flat
 // labels and relocates create-time provenance from `## Plan Metadata` into the
 // adjacent `## Story Origin` section. Existing Story Origin values win when a

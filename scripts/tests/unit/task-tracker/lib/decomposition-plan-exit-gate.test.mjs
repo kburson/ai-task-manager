@@ -354,6 +354,34 @@ test('evaluator preserves whole-plan WBS classification for an epic with source-
   assert.match(admitted.warn, /WBS instantiated \(6\/6\)/);
 });
 
+test('nested epic checks its own decomposition plan while retaining the outer source claim', async () => {
+  const outer = planText(6, 6);
+  const nested = planText(2, 2);
+  const ctx = context({ size: 'XL', estimate: 30, text: outer });
+  mkdirSync(join(ctx.deps.decomposition.projectDir, 'docs'), { recursive: true });
+  writeFileSync(join(ctx.deps.decomposition.projectDir, 'docs', 'nested.md'), nested);
+  ctx.body = [
+    '## Plan Metadata',
+    '- **Source-plan**: docs/plan.md',
+    '- **Source-plan-section**: ### Task 1: Part 1',
+    '- **Decomposition-plan**: docs/nested.md',
+    epicMarker(),
+  ].join('\n');
+  const tasks = classifyDecomposition({ planText: nested }).tasks;
+  ctx.deps.decomposition.fetchWbsChildren = async () =>
+    tasks.map((task, index) =>
+      wbsChild({ number: 1769 + index, task, sourcePlan: 'docs/nested.md' })
+    );
+  ctx.deps.decomposition.readPlanAtCommit = async () => nested;
+
+  const checked = await evaluateIssueDecomposition(ctx);
+  assert.equal(checked.classification.taskCount, 2);
+  assert.equal(checked.planSelection.applied, false);
+  const admitted = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(admitted.ok, true, admitted.reason);
+  assert.match(admitted.warn, /WBS instantiated \(2\/2\)/);
+});
+
 test('Plan exit and decompose-check fail closed for an invalid requested source section', async () => {
   const ctx = sourceChildContext({
     size: 'M',

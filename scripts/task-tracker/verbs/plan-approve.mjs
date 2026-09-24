@@ -8,6 +8,8 @@
 // Idempotent: re-invocation with the marker already present is a no-op.
 // Refuses if the issue is not in `plan` state.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'plan-approve', { surface: 'direct-verb' });
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -792,7 +794,7 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     case 'repaired-from-evidence':
     case 'repaired-from-transition-authority':
       process.stdout.write(`${formatPlanApproveOutcome(issueNumber, result)}\n`);
-      return;
+      return result.status;
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(3);

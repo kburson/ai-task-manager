@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'heal-timing-starts');
 // #535 — heal command: collapse a corrupted ⏱ Timing Log to exactly one
 // `start` row.
 //

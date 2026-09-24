@@ -15,6 +15,8 @@
 // Pure core: `runPromote({ issueNumber, cfg, deps })`. All side-effecting
 // callers are injected so tests stay offline.
 
+import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'promote', { surface: 'direct-verb' });
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,13 +36,16 @@ import { appendAuditMarker } from '../lib/markers.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
+import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
+import { evaluateProjectedReviewGuards } from '../lib/action-decision/review.mjs';
+import { evaluateEarlyPromoteGuards } from '../lib/action-decision/promote.mjs';
 import { resolveStoryIntentSource } from '../lib/story-intent-source.mjs';
+import { isReadyForPlanMigrationActive } from '../lib/ready-for-plan-migration-freeze.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { buildCommandCursorRequest } from '../lib/state-cursor.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
-import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { nowIso } from '../lib/evidence-runner.mjs';
 import {
   isAgentReviewComplete,
@@ -52,7 +57,6 @@ import { currentSessionId } from '../word-counter.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
-  requirementIdsForGuardRefusals,
 } from '../lib/workflow-policy/enforcement.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -279,6 +283,10 @@ export async function runPromote({
   if (!cfg) throw new Error('promote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
   assertBound(issueNumber);
+  // Preflight precedes the issue lock. Recheck at the locked effect boundary.
+  if ((deps.migrationFreezeActive ?? isReadyForPlanMigrationActive)()) {
+    return { status: 'migration-freeze' };
+  }
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
@@ -375,9 +383,8 @@ export async function runPromote({
   // #336 — delegate forward-transition gate enforcement to the guard registry.
   // Every previously-inline gate for backlog→refine, refine→ready-for-plan,
   // ready-for-plan→plan, plan→develop,
-  // and develop→test now lives in `STATES[from].exitGuards`. Side-channel:
-  // `planEntryFieldsBody` stashes the resolved refinement plan on `guardCtx`
-  // so the refine→plan post-success hook can run `applyRefinementEstimate`.
+  // and develop→test now lives in `STATES[from].exitGuards`. The final guard
+  // result carries the refinement plan for the post-success estimate hook.
   //
   // Refusals from guards NOT in `REFUSAL_ID_TO_STATUS` are intentionally
   // ignored at verb level — they fall through to the subprocess `move-state.mjs`
@@ -385,32 +392,14 @@ export async function runPromote({
   // This preserves the historical "verb didn't check X" boundary for guards
   // like `blocked-by-not-done` (test fixtures don't stub a real blocker lookup)
   // and `plan-exit-plan-approved` (fixtures don't stub the marker).
-  // #502 — the test→review exit guard (`testExitPreCloseCompletenessGuard`)
-  // scans `guardCtx.body` for unticked pre-close checkboxes but does NOT itself
-  // derive the two auto-derived Functional DoD keys (`acs`/`checkboxes`). Those
-  // are stamped+ticked by `deriveAndStampFunctionalDod` at close time, so a
-  // story whose every AC + non-self checkbox is genuinely complete would still
-  // be refused here on `acs`/`checkboxes` alone. `verbs/review.mjs` already runs
-  // the derive before its copy of this guard; the `promote` path must do the
-  // same. `deriveAndRescan` runs the derive (logging, never swallowing, any
-  // failure) and ALWAYS re-fetches the live body so the guard reads ground
-  // truth regardless of derive ok/noop/throw.
-  if (recorded === 'test' && target === 'review') {
-    const { scanBody } = await deriveAndRescan({
-      issueNumber,
-      repo: cfg.repo,
-      scanBody: body,
-      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
-    });
-    body = scanBody;
-  }
-
-  const guardCtx = {
+  // #1732 — Test→Review evaluates complete guards against the pure projected
+  // Functional DoD body. Only a ready result may persist derived evidence;
+  // failed write/readback/drift refuses before delegating the transition.
+  const guardContextBase = {
     issueNumber,
     repo: cfg.repo,
     fromState: recorded,
     toState: target,
-    body,
     cfg,
     deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
     projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
@@ -419,27 +408,60 @@ export async function runPromote({
       (deps.loadSession || loadSession)((deps.currentSessionId || currentSessionId)()),
   };
   const runGuardsFn = deps.runGuards || runGuards;
-  let guardResult = await runGuardsFn(recorded, target, guardCtx);
-  const policyRequirementIds = requirementIdsForGuardRefusals(guardResult.refusals);
-  if (policyRequirementIds.length > 0) {
-    const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
-    guardCtx.workflowPolicy = await loadBoundary({
-      repository: cfg.repo,
-      issue: issueNumber,
-      body,
-      requirementIds: policyRequirementIds,
-      activity: `workflow-transition:${target}`,
-      state: recorded,
-      now: nowIso(),
-      runtime:
-        deps.workflowPolicyRuntime || createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+  const evaluateForBody = (guardBody) =>
+    (recorded === 'test' && target === 'review'
+      ? evaluateProjectedReviewGuards
+      : ['backlog', 'refine', 'ready-for-plan', 'plan'].includes(recorded)
+        ? evaluateEarlyPromoteGuards
+        : evaluateCompleteGuards)({
+      fromState: recorded,
+      toState: target,
+      context: { ...guardContextBase, body: guardBody },
+      runGuards: runGuardsFn,
+      loadPolicy: async ({ requirementIds }) => {
+        const loadBoundary = deps.loadWorkflowBoundary || loadWorkflowBoundary;
+        return loadBoundary({
+          repository: cfg.repo,
+          issue: issueNumber,
+          body: guardBody,
+          requirementIds,
+          activity: `workflow-transition:${target}`,
+          state: recorded,
+          now: nowIso(),
+          runtime:
+            deps.workflowPolicyRuntime ||
+            createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+        });
+      },
     });
-    guardResult = await runGuardsFn(recorded, target, guardCtx);
+  let normalizationPersisted = false;
+  if (recorded === 'test' && target === 'review') {
+    const normalized = await deriveAndRescan({
+      issueNumber,
+      repo: cfg.repo,
+      scanBody: body,
+      deps: {
+        pexec: deps.pexec || pexec,
+        nowIso,
+        mutateBody: deps.normalizationMutateBody,
+        refreshAndEvaluate: async ({ projection }) =>
+          (await evaluateForBody(projection.body)).guardResult,
+      },
+    });
+    body = normalized.scanBody;
+    normalizationPersisted = normalized.persisted;
   }
-  const mappedRefusals = (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
+  const { guardResult } = await evaluateForBody(body);
+  // An indeterminate shared result is an authority failure, never a reason to
+  // delegate to the lower mutator. Block it even when its producer has no
+  // historical verb-specific status mapping.
+  const mappedRefusals =
+    guardResult.status === 'indeterminate'
+      ? guardResult.refusals
+      : (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
   const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
   if (verbRefusal) return verbRefusal;
-  const refinementPlan = guardCtx.refinementPlan || null;
+  const refinementPlan = guardResult.derived?.refinementPlan ?? null;
 
   // #267 — Test → Review pre-flight gates (dod-verified marker + #257
   // completeness scan) migrated into `STATES.test.exitGuards` and reached via
@@ -520,6 +542,7 @@ export async function runPromote({
 
       return {
         status: 'promoted-with-warning',
+        normalizationPersisted,
         from: recorded,
         to: target,
         via:
@@ -533,7 +556,7 @@ export async function runPromote({
           transitionResult.kind === 'alias'
             ? `delegate /task ${transitionResult.verb}`
             : `move-state.mjs ${target}`
-        } exited ${transitionResult.exitCode}; board reached "${target}" — soft warning, markers verified.`,
+        } exited ${transitionResult.exitCode}; board reached "${target}" — soft warning, markers verified.${normalizationPersisted ? ' Functional DoD normalization persisted.' : ''}`,
       };
     }
 
@@ -567,6 +590,7 @@ export async function runPromote({
     }
     return {
       status: 'transition-failed',
+      normalizationPersisted,
       transitionResult,
       reconciledTo: drifted ? liveAfter : null,
       message:
@@ -577,7 +601,8 @@ export async function runPromote({
         } exited ${transitionResult.exitCode}; ` +
         (drifted
           ? `board drifted to "${liveAfter}"; marker reconciled.`
-          : `recorded state left at "${recorded}".`),
+          : `recorded state left at "${recorded}".`) +
+        (normalizationPersisted ? ' Functional DoD normalization persisted.' : ''),
     };
   }
 
@@ -598,11 +623,13 @@ export async function runPromote({
     if (liveAfter && liveAfter !== target) {
       return {
         status: 'transition-failed',
+        normalizationPersisted,
         transitionResult,
         reconciledTo: null,
         message:
           `promote: delegate /task ${transitionResult.verb} exited 0 but board is "${liveAfter}", ` +
-          `not "${target}" — refusing to report a false success. Recorded state left at "${recorded}".`,
+          `not "${target}" — refusing to report a false success. Recorded state left at "${recorded}".` +
+          (normalizationPersisted ? ' Functional DoD normalization persisted.' : ''),
       };
     }
   }
@@ -647,7 +674,7 @@ export async function runPromote({
       newTestsPost = await postNewAutomatedTestsComment({
         cfg,
         issueNumber,
-        cwd: guardCtx.projectDir,
+        cwd: guardContextBase.projectDir,
         deps: deps.newAutomatedTestsComment,
       });
     } catch (err) {
@@ -662,6 +689,7 @@ export async function runPromote({
 
   return {
     status: 'promoted',
+    normalizationPersisted,
     from: recorded,
     to: target,
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
@@ -708,6 +736,10 @@ export async function verbPromote(rest, cfg, deps = {}) {
   }
 
   switch (result.status) {
+    case 'migration-freeze': {
+      process.stderr.write('PROMPT_REQUIRED: ready-for-plan-migration-freeze\n');
+      process.exit(14);
+    }
     case 'promoted': {
       process.stdout.write(
         `✓ #${issueNumber} promoted: ${result.from} → ${result.to}` +

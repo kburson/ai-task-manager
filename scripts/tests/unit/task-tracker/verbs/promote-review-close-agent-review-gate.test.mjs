@@ -107,6 +107,7 @@ test('runPromote still delegates review → close when Agent Review genuinely pa
     cfg,
     deps: baseDeps({
       fetchIssueBody: async () => ({ body: passedBody }),
+      runGuards: async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null }),
       spawnVerb: async ({ verb }) => {
         spawned.push(verb);
         return 0;

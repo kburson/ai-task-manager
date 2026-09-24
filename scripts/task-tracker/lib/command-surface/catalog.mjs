@@ -1,4 +1,4 @@
-// @story #1011 #1012
+// @story #1011 #1012 #1675
 // Aggregate normalized command catalog. Help metadata is canonical here;
 // routing identities contribute only the verb-to-dispatch relationship.
 
@@ -73,6 +73,13 @@ function contract(preconditions, effects, output, exitCodes = []) {
 // summaries. A missing entry fails catalog construction instead of silently
 // inheriting a plausible-sounding generic contract.
 export const VERB_CONTRACTS = Object.freeze({
+  explain: contract(
+    ['The issue and selected guidance catalog must be readable; --json is required.'],
+    [
+      'Reads fresh action authority and guidance without entering mutation preflight or accepting effect ports.',
+    ],
+    ['Prints one closed aitm.action-explanation/v2 JSON envelope.']
+  ),
   status: contract(
     ['The local tracker state must be readable; an active task is not required.'],
     ['Reads tracker state and timing counters without mutating the session or issue.'],
@@ -678,6 +685,7 @@ export const VERB_CONTRACTS = Object.freeze({
 });
 
 export const VERB_RELATED_COMMANDS = Object.freeze({
+  explain: Object.freeze(['promote', 'review', 'close', 'guidance']),
   status: Object.freeze(['start', 'fleet', 'words-count']),
   '#N': Object.freeze(['start', 'resume']),
   start: Object.freeze(['#N', 'resume', 'pause']),
@@ -754,6 +762,9 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
 const positional = (name, description) => Object.freeze({ name, description });
 
 export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
+  explain: Object.freeze([
+    positional('<N>', 'Issue number whose current action readiness is explained.'),
+  ]),
   status: Object.freeze([]),
   '#N': Object.freeze([positional('#N', 'Issue number to bind as the active task.')]),
   start: Object.freeze([positional('<N>', 'Issue number to bind and start.')]),

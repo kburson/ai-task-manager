@@ -195,6 +195,7 @@ metachars
 METR
 misattributed
 misconfig
+mislocated
 misordering
 mkdirs
 mkdtemp
@@ -219,6 +220,7 @@ noactive
 noncanonical
 noninteractive
 nonpositive
+nonscalar
 nonstopmode
 nonterminal
 norepo
@@ -421,6 +423,7 @@ uncallable
 uncited
 uncoded
 unconfigured
+undercounts
 undertouched
 undrafted
 ungroomed
@@ -547,3 +550,6 @@ transcriptpath
 unisolated
 unsubmitted
 enoent
+reparses
+sharedindex
+tiktoken

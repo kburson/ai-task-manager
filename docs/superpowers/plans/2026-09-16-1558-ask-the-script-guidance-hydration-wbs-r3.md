@@ -296,6 +296,15 @@ As a feasibility analyst,
 I want to have complete paired costs and sensitivity evidence,
 So that a smaller selected fragment cannot masquerade as a smaller workflow.
 
+#### Story Intent
+
+- **Beneficiary:** feasibility analyst
+- **Capability:** compare complete paired costs and sensitivity evidence across both adapters
+- **Need:** selected fragments can understate end-to-end workflow context by omitting operational traffic or obligations
+- **Value or failure prevented:** a smaller selected fragment cannot masquerade as a smaller workflow
+
+#### Files and delivery boundary
+
 **Estimate and units:** 12 hours; Complete candidate workflow capture and paired cost categories (8 h); cardinality, sensitivity and reachable heavy-case accounting (4 h). Owner: this child.
 
 **Scope/files and boundary:** Extend comparison functions in `guidance-characterization.mjs`; own `guidance-candidate-measurement.test.mjs`, `action-cardinality.json`, `serialization-sensitivity.json`, `context-comparison.json` and ordered `candidate-workflow/` artifacts. No authoritative verdict or production changes.
@@ -323,6 +332,15 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-candidate-measure
 As a maintainer funding runtime extraction,
 I want to have a reproducible feasibility verdict with an enforced GO prerequisite,
 So that an honest negative result cannot release runtime work.
+
+#### Story Intent
+
+- **Beneficiary:** maintainer funding runtime extraction
+- **Capability:** reproduce one feasibility verdict and enforce it as the sole foundation prerequisite
+- **Need:** favorable fragments can hide incomplete or over-budget workflow context and must not authorize downstream runtime work
+- **Value or failure prevented:** only an evidence-complete, semantically faithful, budget-feasible candidate can release runtime extraction while an honest negative result blocks it
+
+#### Files and delivery boundary
 
 **Estimate and units:** 8 hours; Validate all pinned inputs and publish the single decision plus foundation assertion (8 h). Owner: this child.
 
@@ -357,6 +375,15 @@ Run: `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-fea
 As a lifecycle maintainer,
 I want to inspect one versioned action and refusal contract,
 So that core execution, explanation, and future gate producers cannot disagree about authority.
+
+#### Story Intent
+
+- **Beneficiary:** lifecycle maintainer
+- **Capability:** inspect one versioned action and refusal contract
+- **Need:** core execution, explanation, and future gate producers currently lack one shared typed authority surface
+- **Value or failure prevented:** prevent those consumers from disagreeing about lifecycle authority
+
+#### Files and delivery boundary
 
 **Scope/files:** Create `action-decision/contract.mjs`, `remediations.mjs`, and `legacy-refusals.json` under the mapped library directory. Modify `lib/lifecycle-policy/actions.mjs` and `lib/guard-registry.mjs`; inventory the real bootstrap in `lib/state-bootstrap.mjs` and `scripts/task-tracker/states/*.mjs`, updating their contracts where necessary. Preserve `lib/guard-bootstrap.mjs` as a compatibility re-export shim. Create `scripts/maintenance/lint-action-refusals.mjs`, `scripts/tests/helpers/action-decision-fixtures.mjs`, `scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs`, using the already committed Task 1 characterization artifacts. Add the refusal lint to `package.json` and CI. Record the readiness/refusal inventory in `docs/guides/ask-the-script.md`.
 
@@ -439,6 +466,15 @@ Run: `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-fea
 As an agent choosing a lifecycle action,
 I want to have all operationally necessary information without repeated evidence metadata,
 So that routine guidance remains small while explicit investigation can inspect complete evidence.
+
+#### Story Intent
+
+- **Beneficiary:** agent choosing a lifecycle action
+- **Capability:** receive all operationally necessary action information without repeated evidence metadata
+- **Need:** routine guidance currently repeats evidence provenance even though action selection needs only the validated operational projection
+- **Value or failure prevented:** keep routine guidance small while preserving complete evidence for explicit investigation
+
+#### Files and delivery boundary
 
 **Scope/files:** Create `scripts/task-tracker/lib/action-decision/presentation.mjs` and `scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs`; extend Task 2 contract definitions and Task 1 conformance fixtures. Keep catalog lookup and CLI orchestration in Task 14. This module accepts validated values and performs no I/O, evaluation, logging, mutation, or authority collection.
 
@@ -839,6 +875,15 @@ As a guidance maintainer,
 I want to validate a complete catalog with precise independent diagnostics,
 So that malformed or ambiguous YAML never becomes operational instruction.
 
+#### Story Intent
+
+- **Beneficiary:** guidance maintainer
+- **Capability:** validate a complete catalog with precise independent diagnostics
+- **Need:** malformed YAML, ambiguous references, or incomplete entries can otherwise be mistaken for usable guidance
+- **Value or failure prevented:** invalid guidance cannot be silently accepted, partially loaded, or mislocated during repair
+
+#### Files and delivery boundary
+
 **Scope/files:** Create `guidance/{positions,parse,validate,documentation,requirements,fingerprints}.mjs`, `instructions/aitm-guidance.schema.json`, a complete seed `instructions/aitm-guidance.yml`, `scripts/tests/helpers/guidance-fixtures.mjs`, and `scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs`. Modify `package.json`/`package-lock.json` to move exact `js-yaml: "5.4.2"` from `devDependencies` to `dependencies` and explicit `instructions/` allowlist.
 
 **Interfaces:** Produces `validateGuidance` and deterministic normalized entries/digests with source ranges. Completeness comes from core-required guidance IDs/bindings in `requirements.mjs`, not from the candidate catalog declaring itself complete. The seed contains every required lifecycle entry; Task 15 migrates richer human content and proves source-rule coverage.
@@ -880,6 +925,15 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-validator.test.mj
 
 **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12a`.
 
+#### Story Intent
+
+- **Beneficiary:** Maintainer adopting guidance in a project
+- **Capability:** Select and validate an explicitly trusted catalog while retaining offline recovery
+- **Need:** An invalid or tampered project catalog could otherwise be silently replaced by package guidance or reach operational effects
+- **Value or failure prevented:** Operations fail before effects and a partial loader cannot ship without its required cache certification
+
+#### Files and delivery boundary
+
 **User story:**
 
 As a maintainer adopting guidance,
@@ -905,6 +959,15 @@ Plan verifier name: VC26; issue-local ID: `vc:1`.
 Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
 
 ### Task 21: Integrate exhaustive entrypoint admission and success annotation
+
+#### Story Intent
+
+- **Beneficiary:** Operational CLI user and issue maintainer
+- **Capability:** Admit every supported command before effects and record one divergence notice after a successful mutation
+- **Need:** Aliases, direct entrypoints, and startup imports could bypass source trust while repeated edits could duplicate audit comments
+- **Value or failure prevented:** Invalid guidance cannot act through an unclassified route and a diverged source leaves a single visible audit trail
+
+#### Files and delivery boundary
 
 **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12b`.
 
@@ -934,6 +997,15 @@ Plan verifier name: VC12; issue-local ID: `vc:1`.
 Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs`
 
 ### Task 22: Compile and cache valid and invalid guidance results
+
+#### Story Intent
+
+- **Beneficiary:** User of one-shot AITM commands
+- **Capability:** Reuse validated static guidance across separate processes
+- **Need:** B1 reparses and fully validates unchanged YAML on every invocation
+- **Value or failure prevented:** Routine commands avoid repeated parse and validation work without accepting stale guidance or stale authority
+
+#### Files and delivery boundary
 
 **Baseline-plan-section:** `### Task 13: Compile and cache valid and invalid guidance results`. All Task references in the copied body below retain baseline numbering.
 
@@ -977,6 +1049,15 @@ Plan verifier name: VC13; issue-local ID: `vc:1`.
 Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-cache.test.mjs scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs`
 
 ### Task 23: Expose routine explanations, receipts, and explicit diagnostics
+
+#### Story Intent
+
+- **Beneficiary:** Agent choosing the next governed lifecycle action
+- **Capability:** Obtain compact fresh operational guidance and request complete evidence explicitly
+- **Need:** Routine sessions currently repeat guidance or expose more provenance than the next decision requires
+- **Value or failure prevented:** Agents keep authority fresh and auditable without routine context inflation or treating an explanation receipt as execution authority
+
+#### Files and delivery boundary
 
 **Baseline-plan-section:** `### Task 14: Expose routine explanations, receipts, and explicit diagnostics`. All Task references in the copied body below retain baseline numbering.
 
@@ -1035,6 +1116,15 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-explain.te
 
 ### Task 24: Hydrate the guidance catalog and migrate human documentation
 
+#### Story Intent
+
+- **Beneficiary:** Maintainer reviewing lifecycle instructions
+- **Capability:** Inspect concise agent guidance and complete human explanations in one catalog
+- **Need:** Replacing skill prose can otherwise omit operational obligations or hide project customization
+- **Value or failure prevented:** Maintainers can verify the slimmer guidance retains guarded behavior and visible recovery instructions
+
+#### Files and delivery boundary
+
 **Baseline-plan-section:** `### Task 15: Hydrate the guidance catalog and migrate human documentation`. All Task references in the copied body below retain baseline numbering.
 
 **User story:**
@@ -1061,7 +1151,7 @@ assert.equal(validateGuidance(publishedRequest).valid, true);
 - [ ] **Step 2 — Run VC15 to RED.** Include completeness failures from deleting an entry/binding and broken shipped documentation anchors. Map only executable vocabulary from Task 2; no new catalog operation without a schema revision.
 - [ ] **Step 3 — Hydrate content.** Write terse closed agent instruction sequences and descriptive human fields with triggers, execution, examples, and docs. Preserve provenance, exception/waiver distinctions, human/provider boundaries, and the residual legacy manual dispositions. References target shipped guides, not unshipped tests or historical specs.
 - [ ] **Step 4 — Document adoption and failure recovery.** Show `npx aitm guidance source`, explicit human copy of its reported path, and Git tracking; never prescribe an assumed scoped/global path. Explain all trust classes, comment-only divergence, validator profiles, blocked-operation repair, independent source/instruction receipts, compaction limitations, annotation failures, and cache disposal. Add the accepted Epic A pointer without altering #1559/#1560/#1561 decisions in the historical design.
-- [ ] **Step 4a — Revalidate the static feasibility assumption.** Once `rule-guidance-map.json` is complete, derive obligation-complete proposed router/pickup/adapter bytes for both adapters without yet removing installed prose. Rerun `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json` with these exact bytes and Task 14 actual CLI traffic; update the single feasibility decision and comparison with the new map/static/capture digests. Every deleted operational obligation needs enforcement or a retained protocol rule. Failure blocks Task 16 and skill migration; correct within the budgets and remeasure. Keep Task 1a baseline immutable, and retain prior candidate reports as historical inputs rather than overwriting their provenance.
+- [ ] **Step 4a — Establish the corrected recheck handoff.** Finish the obligation map and preserve #1676's committed NO-GO recheck as historical, fail-closed evidence. The post-catalog static and actual-CLI feasibility recheck is transferred to discovered child #1767 after #1765 corrects the #1675 capture. #1767 derives complete proposed router/pickup/adapter bytes, reruns `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json` against the corrected coherent lifecycle, and updates the current decision and comparison with exact map/static/capture digests. This transfer does not treat the prior NO-GO as GO, change a ceiling, remove installed prose, or release Task 16. Keep Task 1a baseline immutable and all prior candidate reports distinct.
 - [ ] **Step 5 — Run VC15 to GREEN and commit.** Keep current operational skill prose intact at this stage. Verify packaged catalog and references plus release fingerprint after the final content edit.
 
 **Acceptance criteria:**
@@ -1077,6 +1167,8 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.tes
 
 Run: `node scripts/task-tracker/guidance.mjs validate --published --refresh --json`
 
+**Discovered-work amendment for Task 24:** #1765 repairs the previously completed Task 14 capture and remains a separate defect child. #1767 owns only the transferred Step 4a recheck. The original 26 WBS entries retain their identities and ranks; these two discovered children are additional tracked work, not replacements for a baseline entry. #1676 closes on its catalog and documentation criteria after the handoff is recorded and its own map is complete. #1767 depends on #1676 and #1765. Task 25 / #1677 retains its dependency on #1676 and additionally depends on #1767, so no downstream migration can rely on the historical NO-GO report. Admit the children sequentially: complete #1676, complete #1765, complete #1767, then resume #1677. The current GO assertion, not issue closure alone, remains the Task 25 entry check.
+
 ### Task 25: Capture paired CLI transcripts, tokenizer calibration, and authority costs
 
 **Baseline-plan-section:** `### Task 16: Capture paired CLI transcripts, tokenizer calibration, and authority costs`. All Task references in the copied body below retain baseline numbering.
@@ -1086,6 +1178,15 @@ Run: `node scripts/task-tracker/guidance.mjs validate --published --refresh --js
 As a release reviewer,
 I want to have an equivalent complete before/after context comparison and separately measured authority cost,
 So that claimed reduction cannot hide command traffic, required investigation, or additional reads.
+
+#### Story Intent
+
+- **Beneficiary:** release reviewer
+- **Capability:** obtain an equivalent complete before/after context comparison and separately measured authority cost
+- **Need:** a claimed context reduction could hide command traffic, required investigation, or additional reads
+- **Value or failure prevented:** the release decision accounts for the whole lifecycle and authority cost within the fixed budgets
+
+#### Execution Detail
 
 **Scope/files:** Create `scripts/task-tracker/measure-guidance-context.mjs`, `scripts/task-tracker/lib/context-budgets.mjs`, and `scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs`. Extend Task 1's preserved runner and fixtures; add `scripts/tests/fixtures/1558/{lifecycle-transcript,context-budgets,tokenizer-calibration,authority-after}.json` and update the distinct `context-comparison.json` with actual CLI capture identities. Pin an appropriate real tokenizer development dependency/lock version; no runtime dependency is needed for calibration. Make existing `measure-context.mjs` and the new tool import the same scoped constants.
 
@@ -1181,6 +1282,13 @@ Run: `node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budg
 Run: `npm run test:unit`
 
 Run: `npm run test:integration`
+
+#### Story Intent
+
+- **Beneficiary:** AITM release operator certifying guidance for both supported adapters
+- **Capability:** Load a compact boundary and receipt protocol while retrieving lifecycle guidance on demand
+- **Need:** The permanently loaded instructions and full lifecycle traffic exceed or approach the fixed context budgets before the final consumer release is certified
+- **Value or failure prevented:** A complete governed lifecycle stays within the fixed budgets without losing hard safety checks or required operational values
 
 ## NO-GO containment and execution entry
 

@@ -14,6 +14,11 @@ import {
   parseVerificationReceipt,
 } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
+import { evaluateProjectedReviewGuards } from '../lib/action-decision/review.mjs';
+import {
+  createGithubWorkflowBoundaryRuntime,
+  loadWorkflowBoundary,
+} from '../lib/workflow-policy/enforcement.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import {
@@ -36,7 +41,6 @@ import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
-import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 import { isAcWaived } from '../lib/issue-kind.mjs';
@@ -861,7 +865,6 @@ export async function verbReview(ctx) {
   // module import below and live behaviour is unchanged; the coverage test injects
   // stubs to drive every branch without a gh/git subprocess.
   const mutateBodyFn = ctx.mutateIssueBody || mutateIssueBody;
-  const deriveDodFn = ctx.deriveAndStampFunctionalDod || deriveAndStampFunctionalDod;
   // #622 — `ctx.runGuards` overrides the test→review guard evaluation for
   // offline tests. The real CLI leaves it undefined and uses the imported
   // registry runner, whose `child-cannot-lead-epic` guard does a live gh
@@ -1446,24 +1449,55 @@ export async function verbReview(ctx) {
     // parity with the close gate (single source of truth across both paths).
     // On any remaining unticked item: refuse, leave the board in Test, emit no
     // `review-approval` prompt.
-    // #315 — Auto-stamp the two derived Functional DoD keys (`acs`,
-    // `checkboxes`) before the parity scan, mirroring close.mjs. Without this
-    // pass, review refuses promotion on stories whose every AC + every
-    // non-self checkbox is complete but whose derived keys haven't been
-    // stamped yet (close.mjs would stamp them). Best-effort: any failure
-    // (network, version conflict) falls through to the scan with the stale
-    // body — the worst case is the pre-#315 behavior.
-    // #502 — delegate the derive + rescan to `deriveAndRescan`, which ALWAYS
-    // re-fetches the live body before the gate (regardless of derive
-    // ok/noop/throw) and LOGS any failure instead of swallowing it. Fixes the
-    // false `test-to-review-incomplete` refusal caused by scanning the stale
-    // pre-derive `rawBody`.
-    const { scanBody } = await deriveAndRescan({
+    // #1732 — evaluate Test→Review readiness on the pure projected body first.
+    // Persist derived Functional DoD proof only after ready, then scan a fresh
+    // verified readback. Any write, authority, or readback failure refuses;
+    // the old stale-body fallback is not an authorization path.
+    const evaluateReviewProjection = async ({ projection }) =>
+      (
+        await evaluateProjectedReviewGuards({
+          context: {
+            issueNumber: Number(issueNum),
+            repo: cfg.repo,
+            body: projection.body,
+            cfg,
+            fromState: 'test',
+            toState: 'review',
+            lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+          },
+          runGuards: runGuardsFn,
+          loadPolicy: async ({ requirementIds }) =>
+            (ctx.loadWorkflowBoundary || loadWorkflowBoundary)({
+              repository: cfg.repo,
+              issue: Number(issueNum),
+              body: projection.body,
+              requirementIds,
+              activity: 'workflow-transition:review',
+              state: 'test',
+              now: nowIso(),
+              runtime:
+                ctx.workflowPolicyRuntime ||
+                createGithubWorkflowBoundaryRuntime({ repository: cfg.repo }),
+            }),
+        })
+      ).guardResult;
+    const { scanBody, persisted: normalizationPersisted } = await deriveAndRescan({
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
-      deps: { pexec, deriveAndStampFunctionalDod: deriveDodFn, nowIso },
+      deps: {
+        pexec,
+        nowIso,
+        mutateBody: mutateBodyFn,
+        readBack: ctx.normalizationReadBack,
+        refreshAndEvaluate: ctx.normalizationEvaluate || evaluateReviewProjection,
+      },
     });
+    if (normalizationPersisted) {
+      console.log(
+        `[task-tracker] Functional DoD normalization persisted for ${target}; Review transition remains pending.`
+      );
+    }
     // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
     // call) now lives in `STATES.test.exitGuards` as the
     // `test-exit-pre-close-completeness` guard. Evaluate the full test→review
@@ -1472,15 +1506,7 @@ export async function verbReview(ctx) {
     // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
     // one indented line per offending checkbox, retry hint, exit 4.
     if (effectiveReviewCommandState === 'test') {
-      const guardResult = await runGuardsFn('test', 'review', {
-        issueNumber: Number(issueNum),
-        repo: cfg.repo,
-        body: scanBody,
-        cfg,
-        fromState: 'test',
-        toState: 'review',
-        lifecycleEvidence: reviewEvidence.lifecycleEvidence,
-      });
+      const guardResult = await evaluateReviewProjection({ projection: { body: scanBody } });
       const completenessRefusal = (guardResult.refusals || []).find(
         (r) => r.id === 'test-exit-pre-close-completeness'
       );

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'create-issue');
 // Atomic issue creation: gh issue create + project tether + sub-issue link +
 // `<this-issue-#>` placeholder substitution. Replaces the multi-step orchestration
 // pattern previously inlined in skill/shared/SKILL.md.

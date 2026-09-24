@@ -1,0 +1,1729 @@
+{
+  "schema": "aitm.guidance-context-report/v1",
+  "classification": "pre-slim-captured-cli-and-modeled-static",
+  "adapters": {
+    "claude": {
+      "schema": "aitm.guidance-paired-context/v1",
+      "adapter": "claude",
+      "eventManifest": [
+        {
+          "id": "ready-first-load",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "matching-receipt",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "compaction-reset",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "blocked-migration-freeze",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "diagnostic",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "clear-freeze",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "refusal-remediation",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+        },
+        {
+          "id": "approve-plan",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "agent-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "source-only-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-resume",
+          "kind": "query",
+          "action": "resume",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-promote",
+          "kind": "query",
+          "action": "promote",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "enter-develop",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-test",
+          "kind": "query",
+          "action": "test",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7"
+        },
+        {
+          "id": "enter-test",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-review",
+          "kind": "query",
+          "action": "review",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763"
+        },
+        {
+          "id": "enter-review",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-deliver",
+          "kind": "query",
+          "action": "deliver",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154"
+        },
+        {
+          "id": "external-authority",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "external-approval",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "external-merge",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "lifecycle-close",
+          "kind": "query",
+          "action": "close",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "enter-done",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "post-close-state",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:13b6b91ff414d07223eaacaf3498a1ff8c1ac2d842473a3449c2a4556c17bf01"
+        }
+      ],
+      "scenarioDigest": "sha256:2917737528e93ac5da1078bb6d469d76befc252a321f9f2075b2c958e87edec3",
+      "authorityFixtureDigest": "sha256:f05ea813ac29bdae195715466fd869149c7e777633ea38553b8f6bc95f6b155b",
+      "entries": [
+        {
+          "scenarioId": "ready-first-load",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "matching-receipt",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "compaction-reset",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "blocked-migration-freeze",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "diagnostic",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "clear-freeze",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "refusal-remediation",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "approve-plan",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "agent-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "source-only-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-resume",
+          "action": "resume",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-promote",
+          "action": "promote",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-develop",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-test",
+          "action": "test",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-test",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-review",
+          "action": "review",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-review",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-deliver",
+          "action": "deliver",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "external-authority",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "external-approval",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "external-merge",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "lifecycle-close",
+          "action": "close",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-done",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "post-close-state",
+          "action": "external",
+          "outcome": "external"
+        }
+      ],
+      "identities": {
+        "frozenBaselinePath": "scripts/tests/fixtures/1558/legacy-baseline.json",
+        "frozenBaselineSha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
+        "frozenTranscriptPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/claude.json",
+        "frozenTranscriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
+        "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+        "currentCapturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json",
+        "currentCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+        "currentSourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d"
+      },
+      "streams": {
+        "legacy": [
+          {
+            "event": "ready-first-load",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "matching-receipt",
+            "sha256": "sha256:2a02f27fc389b607e56e4ff6aafd30949a50deda0c3110df3ed4562c4496b984",
+            "characters": 70592,
+            "bytes": 70894
+          },
+          {
+            "event": "compaction-reset",
+            "sha256": "sha256:2a02f27fc389b607e56e4ff6aafd30949a50deda0c3110df3ed4562c4496b984",
+            "characters": 70592,
+            "bytes": 70894
+          },
+          {
+            "event": "blocked-migration-freeze",
+            "sha256": "sha256:d91be4de74e11847b1309639be391350abe2e8b64935ca4a94bf347590de018f",
+            "characters": 75,
+            "bytes": 75
+          },
+          {
+            "event": "diagnostic",
+            "sha256": "sha256:7ca3d2fec0c7fc18127115585e7e551471a8b1752059af525939ca1bf6b72d40",
+            "characters": 5541,
+            "bytes": 5574
+          },
+          {
+            "event": "refusal-remediation",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "agent-change",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "source-only-change",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "lifecycle-resume",
+            "sha256": "sha256:08c9864c32aa1a6dc29275c52b9c42e7adeb39125b27fab91bd7bf2de62e14ec",
+            "characters": 36,
+            "bytes": 36
+          },
+          {
+            "event": "lifecycle-promote",
+            "sha256": "sha256:e360a7a69e8cfe4172871eb34250795834cbdd5a49317d9924029cc8c357d7dc",
+            "characters": 81,
+            "bytes": 81
+          },
+          {
+            "event": "lifecycle-test",
+            "sha256": "sha256:d32e5c534e186d4d21804d7513ae1bd88e93a9bd5481c864e9f21421a28ef4ff",
+            "characters": 59,
+            "bytes": 59
+          },
+          {
+            "event": "lifecycle-review",
+            "sha256": "sha256:f79ec2981005e113642ee99dd1ea90695f751bfe16f6e80fbc12b1d7602a1a83",
+            "characters": 113,
+            "bytes": 113
+          },
+          {
+            "event": "lifecycle-deliver",
+            "sha256": "sha256:209a002faa703deb652cc38bd8c50d9d0b9cd01cc3631253726957bda7153f5c",
+            "characters": 87,
+            "bytes": 87
+          },
+          {
+            "event": "external-approval",
+            "sha256": "sha256:47bb4f8bb420031f5eed78ad0d4bcf3f59bc8ef61d76f71ba3982895f7ac3dee",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "external-merge",
+            "sha256": "sha256:12dd6284e5e1ff4e904d775982b87a4212dd3024166f7f6890089ba513f6a7c6",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "lifecycle-close",
+            "sha256": "sha256:3322414a6ccf41228e3f8f5e0cb038c0192f081ad45f34b1aec7e4f482d42981",
+            "characters": 34,
+            "bytes": 34
+          },
+          {
+            "event": "post-close-state",
+            "sha256": "sha256:1956835c9fd4a503e7ea92c8df17a28b9b78eeaa9f0e25c213ffa17b6e3aee74",
+            "characters": 51,
+            "bytes": 51
+          }
+        ],
+        "current": [
+          {
+            "event": "ready-first-load",
+            "sha256": "sha256:34af7c2a5aa64750f20f251010cefac4e3af947a0ff3fcfa0053d1f3089aeea0",
+            "characters": 684,
+            "bytes": 684
+          },
+          {
+            "event": "matching-receipt",
+            "sha256": "sha256:6a4be8e1bca321fb2467205a80a4dbf7c5d07c7233987ffe5ff16b4b0d2f33a9",
+            "characters": 589,
+            "bytes": 589
+          },
+          {
+            "event": "compaction-reset",
+            "sha256": "sha256:34af7c2a5aa64750f20f251010cefac4e3af947a0ff3fcfa0053d1f3089aeea0",
+            "characters": 684,
+            "bytes": 684
+          },
+          {
+            "event": "blocked-migration-freeze",
+            "sha256": "sha256:346fe7ba2482e6d881375c614fc79752732a7e48e56c4803227b51e881a41aa0",
+            "characters": 823,
+            "bytes": 823
+          },
+          {
+            "event": "diagnostic",
+            "sha256": "sha256:7c9279acd77792263de963c18211625161e5cb3529ed636248e208af644a8c75",
+            "characters": 2703,
+            "bytes": 2703
+          },
+          {
+            "event": "refusal-remediation",
+            "sha256": "sha256:34af7c2a5aa64750f20f251010cefac4e3af947a0ff3fcfa0053d1f3089aeea0",
+            "characters": 684,
+            "bytes": 684
+          },
+          {
+            "event": "agent-change",
+            "sha256": "sha256:6b3eafa3711083042340d9a5c02360542a85610b14a5c4c2dd81d78fdaed450b",
+            "characters": 1116,
+            "bytes": 1116
+          },
+          {
+            "event": "source-only-change",
+            "sha256": "sha256:6020162dba2d14418898efc9df0c8cfc31c91506793ff538ecf70fef47ab8487",
+            "characters": 896,
+            "bytes": 896
+          },
+          {
+            "event": "lifecycle-resume",
+            "sha256": "sha256:794e82b2fdab1ddc5e9b0f2879afc5a43e6346b4f6e15fdff7166cc8586554c9",
+            "characters": 1009,
+            "bytes": 1009
+          },
+          {
+            "event": "lifecycle-promote",
+            "sha256": "sha256:c7792c14324aec3ddbc03a59ab15e60a645c41eaa77bfab1a22f5486134ed977",
+            "characters": 1006,
+            "bytes": 1006
+          },
+          {
+            "event": "lifecycle-test",
+            "sha256": "sha256:18052017cd0669877cbc09ddae5436a117fc17f90b0f86afa98e2320a7d0aa10",
+            "characters": 1046,
+            "bytes": 1046
+          },
+          {
+            "event": "lifecycle-review",
+            "sha256": "sha256:7dbb46d73a11bf2306f381c662a998f5c1dc74f40368f37badd81a40ac57a27c",
+            "characters": 1001,
+            "bytes": 1001
+          },
+          {
+            "event": "lifecycle-deliver",
+            "sha256": "sha256:4f0a5fb639558b6f4d41cc57afcd6b4e441575ecf34df765b8659b959bcda576",
+            "characters": 1006,
+            "bytes": 1006
+          },
+          {
+            "event": "external-approval",
+            "sha256": "sha256:47bb4f8bb420031f5eed78ad0d4bcf3f59bc8ef61d76f71ba3982895f7ac3dee",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "external-merge",
+            "sha256": "sha256:12dd6284e5e1ff4e904d775982b87a4212dd3024166f7f6890089ba513f6a7c6",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "lifecycle-close",
+            "sha256": "sha256:1c16a97cad0841e08d0eabee40a03bb0b5c4c9d21f70f162c11d7747556c1b55",
+            "characters": 1073,
+            "bytes": 1073
+          },
+          {
+            "event": "post-close-state",
+            "sha256": "sha256:1956835c9fd4a503e7ea92c8df17a28b9b78eeaa9f0e25c213ffa17b6e3aee74",
+            "characters": 51,
+            "bytes": 51
+          }
+        ]
+      },
+      "legacy": {
+        "captureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+        "limitation": "Cost projection only; old CLI decisions were not replayed on modern authority.",
+        "staticFiles": [
+          {
+            "path": ".claude/skills/task/SKILL.md",
+            "characters": 2282,
+            "bytes": 2292,
+            "proxyTokens": 571
+          },
+          {
+            "path": "skill/adapters/claude/SKILL.md",
+            "characters": 5399,
+            "bytes": 5427,
+            "proxyTokens": 1350
+          },
+          {
+            "path": "skill/shared/SKILL.md",
+            "characters": 848,
+            "bytes": 848,
+            "proxyTokens": 212
+          },
+          {
+            "path": "skill/shared/router.md",
+            "characters": 8598,
+            "bytes": 8622,
+            "proxyTokens": 2150
+          },
+          {
+            "path": ".ai-task-manager/templates/pickup-directive.md",
+            "characters": 5599,
+            "bytes": 5647,
+            "proxyTokens": 1400
+          },
+          {
+            "path": "skill/shared/rules/bind.md",
+            "characters": 5466,
+            "bytes": 5499,
+            "proxyTokens": 1367
+          },
+          {
+            "path": "skill/shared/rules/state-walk.md",
+            "characters": 7189,
+            "bytes": 7235,
+            "proxyTokens": 1798
+          },
+          {
+            "path": "skill/shared/rules/functional-dod.md",
+            "characters": 7777,
+            "bytes": 7815,
+            "proxyTokens": 1945
+          },
+          {
+            "path": "skill/shared/rules/review.md",
+            "characters": 8767,
+            "bytes": 8802,
+            "proxyTokens": 2192
+          },
+          {
+            "path": "skill/shared/rules/deliver.md",
+            "characters": 5202,
+            "bytes": 5202,
+            "proxyTokens": 1301
+          },
+          {
+            "path": "skill/shared/rules/close.md",
+            "characters": 10433,
+            "bytes": 10469,
+            "proxyTokens": 2609
+          },
+          {
+            "path": "skill/shared/rules/full-auto.md",
+            "characters": 2986,
+            "bytes": 2990,
+            "proxyTokens": 747
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 522,
+            "bytes": 522
+          },
+          "operational-stdout": {
+            "characters": 417,
+            "bytes": 417
+          },
+          "operational-stderr": {
+            "characters": 84,
+            "bytes": 84
+          },
+          "repeat-metadata": {
+            "characters": 141092,
+            "bytes": 141696
+          },
+          "explicit-diagnostics": {
+            "characters": 5466,
+            "bytes": 5499
+          }
+        },
+        "staticCharacters": 70546,
+        "trafficCharacters": 147581,
+        "characters": 218127,
+        "bytes": 219066,
+        "proxyTokens": 54538,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "current": {
+        "captureKind": "captured-public-cli-traffic-plus-modeled-proposed-static",
+        "limitation": "Proposed static files are not final installed adapter bytes.",
+        "repeated": {
+          "agentInstructionCharacters": 0
+        },
+        "compaction": {
+          "expandedRequiredEntries": true
+        },
+        "staticFiles": [
+          {
+            "path": "skill/SKILL.md",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+            "characters": 2479,
+            "bytes": 2479,
+            "proxyTokens": 620
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+            "characters": 1525,
+            "bytes": 1525,
+            "proxyTokens": 382
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+            "characters": 835,
+            "bytes": 835,
+            "proxyTokens": 209
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 2194,
+            "bytes": 2194
+          },
+          "operational-stdout": {
+            "characters": 8046,
+            "bytes": 8046
+          },
+          "operational-stderr": {
+            "characters": 0,
+            "bytes": 0
+          },
+          "receipt-input": {
+            "characters": 840,
+            "bytes": 840
+          },
+          "receipt-output": {
+            "characters": 925,
+            "bytes": 925
+          },
+          "explicit-diagnostics": {
+            "characters": 2502,
+            "bytes": 2502
+          }
+        },
+        "staticCharacters": 5785,
+        "trafficCharacters": 14507,
+        "characters": 20292,
+        "bytes": 20292,
+        "proxyTokens": 5075,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "currentBudgetVerdicts": {
+        "routerPlusPickup": {
+          "proxyTokens": 1448,
+          "absolute": 5000,
+          "working": 4000,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 63.8
+        },
+        "clean": {
+          "proxyTokens": 124,
+          "absolute": 300,
+          "working": 240,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 48.33
+        },
+        "blocked": {
+          "proxyTokens": 159,
+          "absolute": 500,
+          "working": 400,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 60.25
+        },
+        "fullLifecycle": {
+          "proxyTokens": 5075,
+          "absolute": 7000,
+          "working": 5600,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 9.38
+        }
+      },
+      "deltaProxyTokens": -49463,
+      "guaranteedReductionFromLegacyStaticAlone": true
+    },
+    "codex": {
+      "schema": "aitm.guidance-paired-context/v1",
+      "adapter": "codex",
+      "eventManifest": [
+        {
+          "id": "ready-first-load",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "matching-receipt",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "compaction-reset",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "blocked-migration-freeze",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "diagnostic",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "blocked",
+          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+        },
+        {
+          "id": "clear-freeze",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "refusal-remediation",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+        },
+        {
+          "id": "approve-plan",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "agent-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "source-only-change",
+          "kind": "query",
+          "action": "bind",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-resume",
+          "kind": "query",
+          "action": "resume",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "lifecycle-promote",
+          "kind": "query",
+          "action": "promote",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8edd95e26b30111337cc0da279b1b0dffe440156d371bb331b149d1f4fd7ef0d"
+        },
+        {
+          "id": "enter-develop",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-test",
+          "kind": "query",
+          "action": "test",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:85f75531d94da81b812c95b33c07d1b1544e8c4b9e86cfebdef0a52d01beb2b7"
+        },
+        {
+          "id": "enter-test",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-review",
+          "kind": "query",
+          "action": "review",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:cafc3ede1ae0cc6ce6b2e75fa674ec26cc777e8fc069db7071d13ec96f255763"
+        },
+        {
+          "id": "enter-review",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "lifecycle-deliver",
+          "kind": "query",
+          "action": "deliver",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:da980de1e10a5e41dfb85d096fdc979124c23ea1080553cd9f6f691e85a9b154"
+        },
+        {
+          "id": "external-authority",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "external-approval",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "external-merge",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "lifecycle-close",
+          "kind": "query",
+          "action": "close",
+          "currentStatus": "ready",
+          "authoritySnapshotSha256": "sha256:8fbdcd1f6a88ccaace008117b490b96173fbe2555c03ef56294ccb774d4f33a3"
+        },
+        {
+          "id": "enter-done",
+          "kind": "transition",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": null
+        },
+        {
+          "id": "post-close-state",
+          "kind": "external",
+          "action": null,
+          "currentStatus": null,
+          "authoritySnapshotSha256": "sha256:13b6b91ff414d07223eaacaf3498a1ff8c1ac2d842473a3449c2a4556c17bf01"
+        }
+      ],
+      "scenarioDigest": "sha256:2917737528e93ac5da1078bb6d469d76befc252a321f9f2075b2c958e87edec3",
+      "authorityFixtureDigest": "sha256:f05ea813ac29bdae195715466fd869149c7e777633ea38553b8f6bc95f6b155b",
+      "entries": [
+        {
+          "scenarioId": "ready-first-load",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "matching-receipt",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "compaction-reset",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "blocked-migration-freeze",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "diagnostic",
+          "action": "bind",
+          "outcome": "blocked"
+        },
+        {
+          "scenarioId": "clear-freeze",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "refusal-remediation",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "approve-plan",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "agent-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "source-only-change",
+          "action": "bind",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-resume",
+          "action": "resume",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "lifecycle-promote",
+          "action": "promote",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-develop",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-test",
+          "action": "test",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-test",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-review",
+          "action": "review",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-review",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "lifecycle-deliver",
+          "action": "deliver",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "external-authority",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "external-approval",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "external-merge",
+          "action": "external",
+          "outcome": "external"
+        },
+        {
+          "scenarioId": "lifecycle-close",
+          "action": "close",
+          "outcome": "ready"
+        },
+        {
+          "scenarioId": "enter-done",
+          "action": "transition",
+          "outcome": "transition"
+        },
+        {
+          "scenarioId": "post-close-state",
+          "action": "external",
+          "outcome": "external"
+        }
+      ],
+      "identities": {
+        "frozenBaselinePath": "scripts/tests/fixtures/1558/legacy-baseline.json",
+        "frozenBaselineSha256": "sha256:eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
+        "frozenTranscriptPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/codex.json",
+        "frozenTranscriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
+        "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
+        "currentCapturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-recertification.json",
+        "currentCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+        "currentSourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d"
+      },
+      "streams": {
+        "legacy": [
+          {
+            "event": "ready-first-load",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "matching-receipt",
+            "sha256": "sha256:c9772b81bcb9503e1b9592cfff4c733d542b43d7a69af0d5501bfabccfa913d0",
+            "characters": 70249,
+            "bytes": 70551
+          },
+          {
+            "event": "compaction-reset",
+            "sha256": "sha256:c9772b81bcb9503e1b9592cfff4c733d542b43d7a69af0d5501bfabccfa913d0",
+            "characters": 70249,
+            "bytes": 70551
+          },
+          {
+            "event": "blocked-migration-freeze",
+            "sha256": "sha256:d91be4de74e11847b1309639be391350abe2e8b64935ca4a94bf347590de018f",
+            "characters": 75,
+            "bytes": 75
+          },
+          {
+            "event": "diagnostic",
+            "sha256": "sha256:7ca3d2fec0c7fc18127115585e7e551471a8b1752059af525939ca1bf6b72d40",
+            "characters": 5541,
+            "bytes": 5574
+          },
+          {
+            "event": "refusal-remediation",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "agent-change",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "source-only-change",
+            "sha256": "sha256:e2f38e6042ca09756dc3fe1e4174475a4f0beae9a0415e200b39793a19b788b0",
+            "characters": 46,
+            "bytes": 46
+          },
+          {
+            "event": "lifecycle-resume",
+            "sha256": "sha256:08c9864c32aa1a6dc29275c52b9c42e7adeb39125b27fab91bd7bf2de62e14ec",
+            "characters": 36,
+            "bytes": 36
+          },
+          {
+            "event": "lifecycle-promote",
+            "sha256": "sha256:e360a7a69e8cfe4172871eb34250795834cbdd5a49317d9924029cc8c357d7dc",
+            "characters": 81,
+            "bytes": 81
+          },
+          {
+            "event": "lifecycle-test",
+            "sha256": "sha256:d32e5c534e186d4d21804d7513ae1bd88e93a9bd5481c864e9f21421a28ef4ff",
+            "characters": 59,
+            "bytes": 59
+          },
+          {
+            "event": "lifecycle-review",
+            "sha256": "sha256:f79ec2981005e113642ee99dd1ea90695f751bfe16f6e80fbc12b1d7602a1a83",
+            "characters": 113,
+            "bytes": 113
+          },
+          {
+            "event": "lifecycle-deliver",
+            "sha256": "sha256:209a002faa703deb652cc38bd8c50d9d0b9cd01cc3631253726957bda7153f5c",
+            "characters": 87,
+            "bytes": 87
+          },
+          {
+            "event": "external-approval",
+            "sha256": "sha256:47bb4f8bb420031f5eed78ad0d4bcf3f59bc8ef61d76f71ba3982895f7ac3dee",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "external-merge",
+            "sha256": "sha256:12dd6284e5e1ff4e904d775982b87a4212dd3024166f7f6890089ba513f6a7c6",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "lifecycle-close",
+            "sha256": "sha256:3322414a6ccf41228e3f8f5e0cb038c0192f081ad45f34b1aec7e4f482d42981",
+            "characters": 34,
+            "bytes": 34
+          },
+          {
+            "event": "post-close-state",
+            "sha256": "sha256:1956835c9fd4a503e7ea92c8df17a28b9b78eeaa9f0e25c213ffa17b6e3aee74",
+            "characters": 51,
+            "bytes": 51
+          }
+        ],
+        "current": [
+          {
+            "event": "ready-first-load",
+            "sha256": "sha256:34af7c2a5aa64750f20f251010cefac4e3af947a0ff3fcfa0053d1f3089aeea0",
+            "characters": 684,
+            "bytes": 684
+          },
+          {
+            "event": "matching-receipt",
+            "sha256": "sha256:6a4be8e1bca321fb2467205a80a4dbf7c5d07c7233987ffe5ff16b4b0d2f33a9",
+            "characters": 589,
+            "bytes": 589
+          },
+          {
+            "event": "compaction-reset",
+            "sha256": "sha256:34af7c2a5aa64750f20f251010cefac4e3af947a0ff3fcfa0053d1f3089aeea0",
+            "characters": 684,
+            "bytes": 684
+          },
+          {
+            "event": "blocked-migration-freeze",
+            "sha256": "sha256:346fe7ba2482e6d881375c614fc79752732a7e48e56c4803227b51e881a41aa0",
+            "characters": 823,
+            "bytes": 823
+          },
+          {
+            "event": "diagnostic",
+            "sha256": "sha256:7c9279acd77792263de963c18211625161e5cb3529ed636248e208af644a8c75",
+            "characters": 2703,
+            "bytes": 2703
+          },
+          {
+            "event": "refusal-remediation",
+            "sha256": "sha256:34af7c2a5aa64750f20f251010cefac4e3af947a0ff3fcfa0053d1f3089aeea0",
+            "characters": 684,
+            "bytes": 684
+          },
+          {
+            "event": "agent-change",
+            "sha256": "sha256:6b3eafa3711083042340d9a5c02360542a85610b14a5c4c2dd81d78fdaed450b",
+            "characters": 1116,
+            "bytes": 1116
+          },
+          {
+            "event": "source-only-change",
+            "sha256": "sha256:6020162dba2d14418898efc9df0c8cfc31c91506793ff538ecf70fef47ab8487",
+            "characters": 896,
+            "bytes": 896
+          },
+          {
+            "event": "lifecycle-resume",
+            "sha256": "sha256:794e82b2fdab1ddc5e9b0f2879afc5a43e6346b4f6e15fdff7166cc8586554c9",
+            "characters": 1009,
+            "bytes": 1009
+          },
+          {
+            "event": "lifecycle-promote",
+            "sha256": "sha256:c7792c14324aec3ddbc03a59ab15e60a645c41eaa77bfab1a22f5486134ed977",
+            "characters": 1006,
+            "bytes": 1006
+          },
+          {
+            "event": "lifecycle-test",
+            "sha256": "sha256:18052017cd0669877cbc09ddae5436a117fc17f90b0f86afa98e2320a7d0aa10",
+            "characters": 1046,
+            "bytes": 1046
+          },
+          {
+            "event": "lifecycle-review",
+            "sha256": "sha256:7dbb46d73a11bf2306f381c662a998f5c1dc74f40368f37badd81a40ac57a27c",
+            "characters": 1001,
+            "bytes": 1001
+          },
+          {
+            "event": "lifecycle-deliver",
+            "sha256": "sha256:4f0a5fb639558b6f4d41cc57afcd6b4e441575ecf34df765b8659b959bcda576",
+            "characters": 1006,
+            "bytes": 1006
+          },
+          {
+            "event": "external-approval",
+            "sha256": "sha256:47bb4f8bb420031f5eed78ad0d4bcf3f59bc8ef61d76f71ba3982895f7ac3dee",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "external-merge",
+            "sha256": "sha256:12dd6284e5e1ff4e904d775982b87a4212dd3024166f7f6890089ba513f6a7c6",
+            "characters": 68,
+            "bytes": 68
+          },
+          {
+            "event": "lifecycle-close",
+            "sha256": "sha256:1c16a97cad0841e08d0eabee40a03bb0b5c4c9d21f70f162c11d7747556c1b55",
+            "characters": 1073,
+            "bytes": 1073
+          },
+          {
+            "event": "post-close-state",
+            "sha256": "sha256:1956835c9fd4a503e7ea92c8df17a28b9b78eeaa9f0e25c213ffa17b6e3aee74",
+            "characters": 51,
+            "bytes": 51
+          }
+        ]
+      },
+      "legacy": {
+        "captureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+        "limitation": "Cost projection only; old CLI decisions were not replayed on modern authority.",
+        "staticFiles": [
+          {
+            "path": ".agents/skills/task/SKILL.md",
+            "characters": 2342,
+            "bytes": 2352,
+            "proxyTokens": 586
+          },
+          {
+            "path": "skill/adapters/codex/SKILL.md",
+            "characters": 4996,
+            "bytes": 5024,
+            "proxyTokens": 1249
+          },
+          {
+            "path": "skill/shared/SKILL.md",
+            "characters": 848,
+            "bytes": 848,
+            "proxyTokens": 212
+          },
+          {
+            "path": "skill/shared/router.md",
+            "characters": 8598,
+            "bytes": 8622,
+            "proxyTokens": 2150
+          },
+          {
+            "path": ".ai-task-manager/templates/pickup-directive.md",
+            "characters": 5599,
+            "bytes": 5647,
+            "proxyTokens": 1400
+          },
+          {
+            "path": "skill/shared/rules/bind.md",
+            "characters": 5466,
+            "bytes": 5499,
+            "proxyTokens": 1367
+          },
+          {
+            "path": "skill/shared/rules/state-walk.md",
+            "characters": 7189,
+            "bytes": 7235,
+            "proxyTokens": 1798
+          },
+          {
+            "path": "skill/shared/rules/functional-dod.md",
+            "characters": 7777,
+            "bytes": 7815,
+            "proxyTokens": 1945
+          },
+          {
+            "path": "skill/shared/rules/review.md",
+            "characters": 8767,
+            "bytes": 8802,
+            "proxyTokens": 2192
+          },
+          {
+            "path": "skill/shared/rules/deliver.md",
+            "characters": 5202,
+            "bytes": 5202,
+            "proxyTokens": 1301
+          },
+          {
+            "path": "skill/shared/rules/close.md",
+            "characters": 10433,
+            "bytes": 10469,
+            "proxyTokens": 2609
+          },
+          {
+            "path": "skill/shared/rules/full-auto.md",
+            "characters": 2986,
+            "bytes": 2990,
+            "proxyTokens": 747
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 522,
+            "bytes": 522
+          },
+          "operational-stdout": {
+            "characters": 417,
+            "bytes": 417
+          },
+          "operational-stderr": {
+            "characters": 84,
+            "bytes": 84
+          },
+          "repeat-metadata": {
+            "characters": 140406,
+            "bytes": 141010
+          },
+          "explicit-diagnostics": {
+            "characters": 5466,
+            "bytes": 5499
+          }
+        },
+        "staticCharacters": 70203,
+        "trafficCharacters": 146895,
+        "characters": 217098,
+        "bytes": 218037,
+        "proxyTokens": 54280,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "current": {
+        "captureKind": "captured-public-cli-traffic-plus-modeled-proposed-static",
+        "limitation": "Proposed static files are not final installed adapter bytes.",
+        "repeated": {
+          "agentInstructionCharacters": 0
+        },
+        "compaction": {
+          "expandedRequiredEntries": true
+        },
+        "staticFiles": [
+          {
+            "path": "skill/SKILL.md",
+            "characters": 946,
+            "bytes": 946,
+            "proxyTokens": 237
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+            "characters": 2479,
+            "bytes": 2479,
+            "proxyTokens": 620
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+            "characters": 1525,
+            "bytes": 1525,
+            "proxyTokens": 382
+          },
+          {
+            "path": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+            "characters": 851,
+            "bytes": 851,
+            "proxyTokens": 213
+          }
+        ],
+        "categories": {
+          "command-input": {
+            "characters": 2194,
+            "bytes": 2194
+          },
+          "operational-stdout": {
+            "characters": 8046,
+            "bytes": 8046
+          },
+          "operational-stderr": {
+            "characters": 0,
+            "bytes": 0
+          },
+          "receipt-input": {
+            "characters": 840,
+            "bytes": 840
+          },
+          "receipt-output": {
+            "characters": 925,
+            "bytes": 925
+          },
+          "explicit-diagnostics": {
+            "characters": 2502,
+            "bytes": 2502
+          }
+        },
+        "staticCharacters": 5801,
+        "trafficCharacters": 14507,
+        "characters": 20308,
+        "bytes": 20308,
+        "proxyTokens": 5079,
+        "uncountedAgentVisibleBytes": 0,
+        "fixedBudgets": {
+          "routerPlusPickup": {
+            "absolute": 5000,
+            "working": 4000
+          },
+          "clean": {
+            "absolute": 300,
+            "working": 240
+          },
+          "blocked": {
+            "absolute": 500,
+            "working": 400
+          },
+          "fullLifecycle": {
+            "absolute": 7000,
+            "working": 5600
+          }
+        }
+      },
+      "currentBudgetVerdicts": {
+        "routerPlusPickup": {
+          "proxyTokens": 1452,
+          "absolute": 5000,
+          "working": 4000,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 63.7
+        },
+        "clean": {
+          "proxyTokens": 124,
+          "absolute": 300,
+          "working": 240,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 48.33
+        },
+        "blocked": {
+          "proxyTokens": 159,
+          "absolute": 500,
+          "working": 400,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 60.25
+        },
+        "fullLifecycle": {
+          "proxyTokens": 5079,
+          "absolute": 7000,
+          "working": 5600,
+          "absolutePass": true,
+          "workingPass": true,
+          "workingHeadroomPercent": 9.3
+        }
+      },
+      "deltaProxyTokens": -49201,
+      "guaranteedReductionFromLegacyStaticAlone": true
+    }
+  },
+  "tokenizerCalibration": {
+    "schema": "aitm.guidance-tokenizer-calibration/v1",
+    "source": {
+      "captureKind": "actual-public-cli-with-deterministic-authority",
+      "sha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+      "sourceCommit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
+      "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
+    },
+    "calibration": {
+      "tokenizer": {
+        "package": "js-tiktoken",
+        "version": "1.0.21",
+        "encoding": "o200k_base",
+        "scope": "illustrative OpenAI BPE calibration, not universal provider billing"
+      },
+      "streams": [
+        {
+          "id": "clean",
+          "characters": 684,
+          "bytes": 684,
+          "actualTokens": 205,
+          "proxyTokens": 171,
+          "ratio": 1.1988304093567252
+        },
+        {
+          "id": "blocked",
+          "characters": 823,
+          "bytes": 823,
+          "actualTokens": 235,
+          "proxyTokens": 206,
+          "ratio": 1.1407766990291262
+        },
+        {
+          "id": "repeated",
+          "characters": 589,
+          "bytes": 589,
+          "actualTokens": 209,
+          "proxyTokens": 148,
+          "ratio": 1.412162162162162
+        },
+        {
+          "id": "diagnostic",
+          "characters": 2703,
+          "bytes": 2703,
+          "actualTokens": 962,
+          "proxyTokens": 676,
+          "ratio": 1.4230769230769231
+        },
+        {
+          "id": "full-lifecycle",
+          "characters": 14507,
+          "bytes": 14507,
+          "actualTokens": 4806,
+          "proxyTokens": 3627,
+          "ratio": 1.3250620347394542
+        }
+      ]
+    }
+  },
+  "heavyCase": {
+    "captureKind": "candidate-model-not-actual-cli",
+    "scope": "historical candidate serializer sensitivity; separate from captured lifecycle",
+    "sensitivitySha256": "sha256:2442d054c6d5f94a7f09161ebd6cfd8ffde81d1d88696205e0de50f1cfc92430",
+    "cardinalitySha256": "sha256:a617f8fbdd2e80ca2c303431f84490af07e3fb4da0194d3c4a74254945884191",
+    "inputs": {
+      "action": "close",
+      "attempts": 2,
+      "blockersPerAttempt": 7,
+      "observationsPerAttempt": 8
+    },
+    "measurement": {
+      "characters": 3682,
+      "bytes": 3682,
+      "proxyTokens": 921
+    },
+    "evidenceOnlyGrowth": {
+      "inputObservations": {
+        "first": 1,
+        "expanded": 12
+      },
+      "routine": {
+        "first": {
+          "characters": 680,
+          "bytes": 680,
+          "proxyTokens": 170
+        },
+        "expanded": {
+          "characters": 680,
+          "bytes": 680,
+          "proxyTokens": 170
+        },
+        "charactersDelta": 0
+      }
+    },
+    "operationalGrowth": {
+      "blocked": {
+        "ready": {
+          "characters": 482,
+          "bytes": 482,
+          "proxyTokens": 121
+        },
+        "blocked": {
+          "characters": 680,
+          "bytes": 680,
+          "proxyTokens": 170
+        },
+        "charactersDelta": 198
+      }
+    },
+    "unboundedDimensions": [
+      "body-length",
+      "child-count",
+      "dependency-count",
+      "pagination",
+      "retry-history"
+    ],
+    "currentV2": {
+      "captureKind": "protocol-valid-synthetic-v2-presentation",
+      "scope": "Serializer sensitivity; this combination is not asserted as an observed evaluator result.",
+      "seedCaptureSha256": "sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4",
+      "inputs": {
+        "action": "close",
+        "childCount": 4,
+        "dependencyCount": 3,
+        "refusalCount": 7
+      },
+      "validatedStatus": "blocked",
+      "serializedBlockerCount": 7,
+      "typedOperationalArgs": [
+        {
+          "category": "epic-child:2201"
+        },
+        {
+          "category": "epic-child:2202"
+        },
+        {
+          "category": "epic-child:2203"
+        },
+        {
+          "category": "epic-child:2204"
+        },
+        {
+          "category": "dependency:3100"
+        },
+        {
+          "category": "dependency:3101"
+        },
+        {
+          "category": "dependency:3102"
+        }
+      ],
+      "routine": {
+        "characters": 1353,
+        "bytes": 1353,
+        "proxyTokens": 339,
+        "sha256": "sha256:393bf75b5f6027e589aa0b8cd6723a6a07d5c9017ec32e70e138d55ac37ebf1a"
+      },
+      "diagnostic": {
+        "characters": 2926,
+        "bytes": 2926,
+        "proxyTokens": 732,
+        "sha256": "sha256:49f4e3dca467278db5988c89be2d93603633bad3a301f7b08693c80b93144e92"
+      },
+      "tokenizer": {
+        "tokenizer": {
+          "package": "js-tiktoken",
+          "version": "1.0.21",
+          "encoding": "o200k_base",
+          "scope": "illustrative OpenAI BPE calibration, not universal provider billing"
+        },
+        "streams": [
+          {
+            "id": "heavy-routine",
+            "characters": 1353,
+            "bytes": 1353,
+            "actualTokens": 305,
+            "proxyTokens": 339,
+            "ratio": 0.8997050147492626
+          },
+          {
+            "id": "heavy-diagnostic",
+            "characters": 2926,
+            "bytes": 2926,
+            "actualTokens": 962,
+            "proxyTokens": 732,
+            "ratio": 1.314207650273224
+          }
+        ]
+      }
+    }
+  },
+  "finalInstalledAdapterGate": {
+    "status": "pending",
+    "reason": "Current proposed static text is modeled; #1678 must capture final installed adapter bytes."
+  }
+}

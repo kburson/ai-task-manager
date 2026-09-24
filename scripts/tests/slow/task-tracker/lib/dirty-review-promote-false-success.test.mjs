@@ -193,6 +193,7 @@ test('close: interactive dirty close on review→done exits 5 and still prints P
 
 test('promote: exit-0 close that leaves board at review yields transition-failed, no promoted line (#710)', async () => {
   const { deps, calls } = makePromoteDeps({ live: 'review', liveAfter: 'review', spawnCode: 0 });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 710, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.notEqual(r.status, 'promoted');
@@ -211,6 +212,7 @@ test('promote: exit-0 close that leaves board at review yields transition-failed
 
 test('promote: exit-0 close that moves board to done still reports promoted (#710)', async () => {
   const { deps, calls } = makePromoteDeps({ live: 'review', liveAfter: 'done', spawnCode: 0 });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 711, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'done');

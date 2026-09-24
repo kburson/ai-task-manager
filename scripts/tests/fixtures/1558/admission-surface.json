@@ -1,0 +1,2772 @@
+{
+  "schema": "aitm.guidance-admission-surface/v1",
+  "commands": [
+    {
+      "token": "?",
+      "canonical": "help",
+      "route": "inline",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "#N",
+      "canonical": "#N",
+      "route": "inline",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "ac-stamp",
+      "canonical": "ac-stamp",
+      "route": "verbs/ac-stamp.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "action-ledger",
+      "canonical": "action-ledger",
+      "route": "verbs/action-ledger.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "adopt-github-records",
+      "canonical": "adopt-github-records",
+      "route": "verbs/adopt-github-records.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "ai-task-manager",
+      "canonical": "ai-task-manager",
+      "route": "standalone",
+      "entrypoint": "bin/cli.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "aitm",
+      "canonical": "aitm",
+      "route": "standalone",
+      "entrypoint": "bin/aitm.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "approve",
+      "canonical": "approve",
+      "route": "verbs/approve.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "assign",
+      "canonical": "assign",
+      "route": "verbs/assign.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "auto",
+      "canonical": "auto",
+      "route": "verbs/auto.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "block",
+      "canonical": "block",
+      "route": "verbs/block.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "board",
+      "canonical": "board",
+      "route": "verbs/board.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "brainstorm",
+      "canonical": "discover",
+      "route": "verbs/discover.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "cancel",
+      "canonical": "cancel",
+      "route": "verbs/cancel.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "cancel-plan",
+      "canonical": "cancel-plan",
+      "route": "verbs/cancel-plan.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "capture-actions",
+      "canonical": "capture-actions",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/capture-actions.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "check",
+      "canonical": "ensureChecked",
+      "route": "verbs/check.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "chore-mode",
+      "canonical": "chore-mode",
+      "route": "verbs/chore-mode.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "close",
+      "canonical": "close",
+      "route": "verbs/close.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "comment",
+      "canonical": "comment",
+      "route": "verbs/comment.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "commit-trace",
+      "canonical": "commit-trace",
+      "route": "verbs/commit-trace.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "config",
+      "canonical": "config",
+      "route": "verbs/config.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "create-issue",
+      "canonical": "create-issue",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/create-issue.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "cut-child-worktree",
+      "canonical": "cut-child-worktree",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/cut-child-worktree.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "cut-epic-branch",
+      "canonical": "cut-epic-branch",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/cut-epic-branch.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "decompose-check",
+      "canonical": "decompose-check",
+      "route": "verbs/decompose-check.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "deliver",
+      "canonical": "deliver",
+      "route": "verbs/deliver.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "delivery-attribution-exception",
+      "canonical": "delivery-attribution-exception",
+      "route": "verbs/delivery-attribution-exception.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "demote",
+      "canonical": "demote",
+      "route": "verbs/demote.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "discover",
+      "canonical": "discover",
+      "route": "verbs/discover.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "dispatch-prep",
+      "canonical": "dispatch-prep",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/dispatch-prep.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "doctor",
+      "canonical": "doctor",
+      "route": "standalone",
+      "entrypoint": "scripts/package/doctor.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "dod-stamp",
+      "canonical": "dod-stamp",
+      "route": "verbs/dod-stamp.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "end",
+      "canonical": "close",
+      "route": "verbs/close.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "ensure-wave-parent",
+      "canonical": "ensure-wave-parent",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/ensure-wave-parent.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "ensureChecked",
+      "canonical": "ensureChecked",
+      "route": "verbs/check.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "ensureUnchecked",
+      "canonical": "ensureUnchecked",
+      "route": "verbs/check.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "epic-reconcile",
+      "canonical": "epic-reconcile",
+      "route": "verbs/epic-reconcile.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "evidence",
+      "canonical": "evidence",
+      "route": "verbs/evidence.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "evidence-markers",
+      "canonical": "evidence-markers",
+      "route": "verbs/evidence-markers.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "explain",
+      "canonical": "explain",
+      "route": "verbs/explain.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "fleet",
+      "canonical": "fleet",
+      "route": "verbs/fleet.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "github-project-report",
+      "canonical": "value-report",
+      "route": "standalone",
+      "entrypoint": "scripts/reports/generate-value-report.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "guidance",
+      "canonical": "guidance",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/guidance.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "heal-backlog",
+      "canonical": "heal-backlog",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/heal-backlog.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "help",
+      "canonical": "help",
+      "route": "inline",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "incident-ledger",
+      "canonical": "incident-ledger",
+      "route": "verbs/incident-ledger.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "inflate-estimate",
+      "canonical": "inflate-estimate",
+      "route": "verbs/inflate-estimate.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "issue-body",
+      "canonical": "issue-body",
+      "route": "verbs/issue-body.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "kind",
+      "canonical": "kind",
+      "route": "verbs/kind.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "log",
+      "canonical": "log",
+      "route": "inline",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "log-issue-time",
+      "canonical": "log-issue-time",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/log-issue-time.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "measure-context",
+      "canonical": "measure-context",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/measure-context.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "merge-back",
+      "canonical": "merge-back",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/merge-back.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "migrate",
+      "canonical": "migrate",
+      "route": "inline",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "migrate-dependencies",
+      "canonical": "migrate-dependencies",
+      "route": "verbs/migrate-dependencies.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "mirror-deep-dive",
+      "canonical": "mirror-deep-dive",
+      "route": "verbs/mirror-deep-dive.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "new",
+      "canonical": "new",
+      "route": "verbs/new.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "next",
+      "canonical": "promote",
+      "route": "verbs/promote.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "occupancy",
+      "canonical": "occupancy",
+      "route": "verbs/occupancy.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "park",
+      "canonical": "park",
+      "route": "verbs/park.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "pause",
+      "canonical": "pause",
+      "route": "verbs/pause.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "plan",
+      "canonical": "plan",
+      "route": "verbs/plan.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "plan-approve",
+      "canonical": "plan-approve",
+      "route": "verbs/plan-approve.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "plan-estimate",
+      "canonical": "plan-estimate",
+      "route": "verbs/plan-estimate.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "preflight-issue",
+      "canonical": "preflight-issue",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/preflight-issue.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "project-tether",
+      "canonical": "project-tether",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/project-tether.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "promote",
+      "canonical": "promote",
+      "route": "verbs/promote.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "pull-next",
+      "canonical": "pull-next",
+      "route": "verbs/pull-next.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "reconcile",
+      "canonical": "reconcile",
+      "route": "verbs/reconcile.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "refine",
+      "canonical": "refine",
+      "route": "verbs/refine.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "reject",
+      "canonical": "reject",
+      "route": "verbs/reject.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "reopen",
+      "canonical": "reopen",
+      "route": "verbs/reopen.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "report",
+      "canonical": "report",
+      "route": "verbs/report.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "resume",
+      "canonical": "resume",
+      "route": "verbs/resume.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "review",
+      "canonical": "review",
+      "route": "verbs/review.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "save-draft",
+      "canonical": "save-draft",
+      "route": "verbs/save-draft.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "save-plan",
+      "canonical": "save-plan",
+      "route": "verbs/save-plan.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "set-priority",
+      "canonical": "set-priority",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/set-priority.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "set-rank",
+      "canonical": "set-rank",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/set-rank.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "shelve",
+      "canonical": "shelve",
+      "route": "verbs/shelve.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "split-plan",
+      "canonical": "split-plan",
+      "route": "verbs/split-plan.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "start",
+      "canonical": "start",
+      "route": "verbs/start.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "status",
+      "canonical": "status",
+      "route": "verbs/status.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "stop",
+      "canonical": "stop",
+      "route": "verbs/stop.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "story",
+      "canonical": "user-story",
+      "route": "verbs/user-story.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": true,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "supersede",
+      "canonical": "supersede",
+      "route": "verbs/supersede.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "sync-epic",
+      "canonical": "sync-epic",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/sync-epic.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "test",
+      "canonical": "test",
+      "route": "verbs/test.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "transfer",
+      "canonical": "transfer",
+      "route": "verbs/assign.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "unassign",
+      "canonical": "unassign",
+      "route": "verbs/unassign.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "unblock",
+      "canonical": "unblock",
+      "route": "verbs/unblock.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "update",
+      "canonical": "update",
+      "route": "verbs/update.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "update-event-fields",
+      "canonical": "update-event-fields",
+      "route": "standalone",
+      "entrypoint": "scripts/gh/update-event-fields.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "user-story",
+      "canonical": "user-story",
+      "route": "verbs/user-story.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "value-report",
+      "canonical": "value-report",
+      "route": "standalone",
+      "entrypoint": "scripts/reports/generate-value-report.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "verify-delivery-incident-reconciliation",
+      "canonical": "verify-delivery-incident-reconciliation",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "verify-develop",
+      "canonical": "verify-develop",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/verify-develop.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "words-count",
+      "canonical": "words-count",
+      "route": "inline",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "workflow-exception",
+      "canonical": "workflow-exception",
+      "route": "verbs/workflow-exception.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "workflow-preflight",
+      "canonical": "workflow-preflight",
+      "route": "verbs/workflow-preflight.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    }
+  ],
+  "packageSubcommands": [
+    {
+      "token": "install",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "uninstall",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "init",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "repair",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "statusline",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "configure",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "memory-resync",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "operational",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "version",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "-v",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "--version",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "help",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "--help",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "-h",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "?",
+      "entrypoint": "bin/cli.mjs",
+      "classification": "recovery",
+      "fixtureId": "invalid-tracked-override"
+    }
+  ],
+  "entrypoints": [
+    {
+      "path": "bin/aitm.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "aitm",
+      "staticImports": [
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url",
+        "./aitm-registry.mjs",
+        "../scripts/task-tracker/lib/action-capture.mjs",
+        "../scripts/lib/self-doc.mjs",
+        "../guidance/admission.mjs"
+      ],
+      "firstPotentialEffect": "prepareActionCaptureEnv or child spawn",
+      "gateCall": "admitGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "bin/cli.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "ai-task-manager",
+      "staticImports": [
+        "node:module",
+        "node:url",
+        "node:path",
+        "node:readline",
+        "node:fs",
+        "node:child_process",
+        "node:os",
+        "../scripts/task-tracker/codex-superpowers.mjs",
+        "./lib/stamp-skill-version.mjs",
+        "./lib/provider-selection.mjs",
+        "./lib/template-manifest.mjs",
+        "./lib/memory-seed-install.mjs",
+        "./lib/memory-resync-classify.mjs",
+        "./lib/memory-resync-apply.mjs",
+        "./lib/memory-resync-render.mjs",
+        "../scripts/task-tracker/lib/write-if-changed.mjs",
+        "./lib/claude-bash-allowlist.mjs",
+        "../scripts/task-tracker/config.mjs",
+        "../scripts/task-tracker/lib/config-init/issue-templates.mjs",
+        "../scripts/providers/index.mjs",
+        "../scripts/package/install-content.mjs",
+        "../scripts/package/install-inventory.mjs",
+        "../scripts/package/install-contract.mjs",
+        "../scripts/package/install-manifest-store.mjs",
+        "../scripts/lib/self-doc.mjs",
+        "../scripts/task-tracker/lib/guard-entrypoint.mjs",
+        "../guidance/admission.mjs"
+      ],
+      "firstPotentialEffect": "package command dispatch",
+      "gateCall": "admitGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/benchmarks/compare-test-fixtures.mjs",
+      "classification": "package-lifecycle-cli",
+      "command": null,
+      "staticImports": [
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url",
+        "../task-tracker/lib/scratch-dir.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Invoked by package scripts, release preparation, or repository quality gates.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/dev-env/verify-local-worktree.mjs",
+      "classification": "package-lifecycle-cli",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:child_process",
+        "node:path",
+        "node:url",
+        "../lib/self-doc.mjs",
+        "../task-tracker/paths.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Invoked by package scripts, release preparation, or repository quality gates.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/gh/create-issue.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "create-issue",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:child_process",
+        "node:url",
+        "../task-tracker/lib/scratch-dir.mjs",
+        "node:path",
+        "../task-tracker/config.mjs",
+        "../task-tracker/lib/process-timeouts.mjs",
+        "./lib/issue-body-verifier.mjs",
+        "../task-tracker/lib/stage-entry-markers.mjs",
+        "./lib/parent-status.mjs",
+        "../task-tracker/lib/epic-children-gate.mjs",
+        "../lib/self-doc.mjs",
+        "./lib/kind-prefix.mjs",
+        "./lib/duplicate-child-guard.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/dispatch-prep.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "dispatch-prep",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "../task-tracker/gh-timing-comment.mjs",
+        "../task-tracker/state.mjs",
+        "../task-tracker/paths.mjs",
+        "../lib/self-doc.mjs",
+        "./move-state.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/ensure-wave-parent.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "ensure-wave-parent",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:child_process",
+        "../task-tracker/lib/scratch-dir.mjs",
+        "node:path",
+        "node:crypto",
+        "node:url",
+        "../task-tracker/lib/process-timeouts.mjs",
+        "../task-tracker/config.mjs",
+        "./lib/wave-detect.mjs",
+        "./lib/github-projects.mjs",
+        "./lib/epic-retitle.mjs",
+        "../task-tracker/gh-timing-comment.mjs",
+        "../task-tracker/lib/stage-entry-markers.mjs",
+        "../task-tracker/state.mjs",
+        "../task-tracker/paths.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/init-repair.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:path",
+        "./lib/github-projects.mjs",
+        "../task-tracker/paths.mjs",
+        "../task-tracker/lib/lifecycle-policy/index.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/lib/field-defs-drift.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/gh/log-issue-time.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "log-issue-time",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:url",
+        "../task-tracker/config.mjs",
+        "../task-tracker/issue-field-db.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "./lib/with-retry.mjs",
+        "../task-tracker/project-fields.mjs",
+        "../task-tracker/timing-rollup.mjs",
+        "../task-tracker/gh-timing-comment.mjs",
+        "./lib/github-projects.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/migrate-project.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "../task-tracker/config.mjs",
+        "../task-tracker/paths.mjs",
+        "../task-tracker/issue-field-db.mjs",
+        "../task-tracker/project-fields.mjs",
+        "./lib/github-projects.mjs",
+        "./lib/project-tether.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/move-state.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:child_process",
+        "node:util",
+        "node:path",
+        "node:url",
+        "../task-tracker/config.mjs",
+        "./lib/github-projects.mjs",
+        "./lib/project-tether.mjs",
+        "./lib/dirty-workspace.mjs",
+        "../task-tracker/lib/lifecycle-policy/index.mjs",
+        "../task-tracker/paths.mjs",
+        "../task-tracker/issue-mutator-lock.mjs",
+        "../task-tracker/lib/move-state/policy.mjs",
+        "../task-tracker/lib/move-state/transition-plan.mjs",
+        "../task-tracker/lib/move-state/guard-execution.mjs",
+        "../task-tracker/lib/move-state/move-state-core.mjs",
+        "../task-tracker/lib/move-state/readout.mjs",
+        "../task-tracker/lib/move-state/tail-profiles.mjs",
+        "../task-tracker/lib/human-reviewer-audit.mjs",
+        "../task-tracker/lib/plan-exit-ownership-guard.mjs",
+        "../task-tracker/lib/move-state/transition-commit.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/gh/project-tether.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "project-tether",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "./lib/github-projects.mjs",
+        "./lib/project-tether.mjs",
+        "../lib/self-doc.mjs",
+        "../task-tracker/lib/lifecycle-policy/index.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/scaffold-web-issue.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/lib/stage-entry-markers.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/set-priority.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "set-priority",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "./lib/github-projects.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/set-rank.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "set-rank",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "./lib/project-tether.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/update-event-fields.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "update-event-fields",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:fs",
+        "node:path",
+        "../task-tracker/config.mjs",
+        "../task-tracker/paths.mjs",
+        "../task-tracker/issue-field-db.mjs",
+        "../task-tracker/project-fields.mjs",
+        "../task-tracker/gh-timing-comment.mjs",
+        "./lib/github-projects.mjs",
+        "../task-tracker/lib/move-state/policy.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/verify-open-issue-bodies.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "../task-tracker/config.mjs",
+        "./lib/issue-body-verifier.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/gh/verify-priority-p3.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:fs",
+        "../task-tracker/paths.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/inspect/ai-memory-parity.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:child_process",
+        "node:url",
+        "node:path",
+        "node:os",
+        "../lib/self-doc.mjs",
+        "../../bin/lib/memory-seed-set.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/migrate/assigned-to-ready-for-plan.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "../task-tracker/lib/ready-for-plan-migration.mjs",
+        "../task-tracker/lib/blast-radius-guard.mjs",
+        "../task-tracker/lib/ready-for-plan-migration-freeze.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/migrate/heal-options-co-pilot-bodies.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../gh/lib/github-projects.mjs",
+        "../task-tracker/issue-field-db.mjs",
+        "node:fs",
+        "../task-tracker/lib/scratch-dir.mjs",
+        "node:path",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/migrate/options-co-pilot-status-swap.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../gh/lib/github-projects.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/migrate/rename-on-deck-to-assigned.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "../gh/lib/github-projects.mjs",
+        "../task-tracker/lib/assigned-status-migration.mjs",
+        "../task-tracker/lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/migrate/start-time-field.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../task-tracker/config.mjs",
+        "../task-tracker/gh-timing-comment.mjs",
+        "../gh/lib/github-projects.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/package/doctor.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "doctor",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "../lib/self-doc.mjs",
+        "./install-observer.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/reports/generate-value-report.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "value-report",
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url",
+        "../task-tracker/config.mjs",
+        "../task-tracker/lib/process-timeouts.mjs",
+        "./lib/session-field.mjs",
+        "./lib/board-fields.mjs",
+        "./lib/estimation-records.mjs",
+        "../task-tracker/lib/github-records/github-comment-store.mjs",
+        "../lib/self-doc.mjs",
+        "./lib/attribution-resolver.mjs",
+        "./lib/trunk-signals.mjs",
+        "./lib/daily-activity.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/reports/heal-backlog-attribution.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "../task-tracker/lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:path",
+        "node:url",
+        "../task-tracker/config.mjs",
+        "../task-tracker/lib/process-timeouts.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "../task-tracker/lib/commit-trail.mjs",
+        "./lib/attribution-resolver.mjs",
+        "./lib/trunk-signals.mjs",
+        "../task-tracker/lib/argv-strict.mjs",
+        "../task-tracker/lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/run-tests.mjs",
+      "classification": "package-lifecycle-cli",
+      "command": null,
+      "staticImports": [
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url",
+        "./task-tracker/lib/process-timeouts.mjs",
+        "./run-tests-pool.mjs",
+        "./run-tests-schedule.mjs",
+        "./task-tracker/fleet-registry.mjs",
+        "./run-tests-report.mjs",
+        "./gh/lib/with-retry.mjs",
+        "./run-tests-lanes.mjs",
+        "./run-tests-ceiling.mjs",
+        "./lib/self-doc.mjs",
+        "./run-tests-timing.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Invoked by package scripts, release preparation, or repository quality gates.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/sync-templates.mjs",
+      "classification": "package-lifecycle-cli",
+      "command": null,
+      "staticImports": [
+        "node:url",
+        "node:path",
+        "node:fs",
+        "../bin/lib/template-manifest.mjs",
+        "../bin/lib/stamp-skill-version.mjs",
+        "./lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Invoked by package scripts, release preparation, or repository quality gates.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/activity-guard.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:child_process",
+        "./activity-policy.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/activity-block-reason.mjs",
+        "./lib/bound-state.mjs",
+        "./lib/chore-mode.mjs",
+        "./lib/installed-guard-path.mjs",
+        "./lib/apply-patch-targets.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/agent-guard.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:fs", "node:path", "./fleet-registry.mjs", "./paths.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/assert-file-excludes.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/backfill-disposition.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "./config.mjs",
+        "./lib/close-disposition.mjs",
+        "./lib/superseded-marker.mjs",
+        "./lib/terminal-disposition.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/backfill-plan-metadata.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "./lib/plan-metadata.mjs",
+        "./lib/story-origin.mjs",
+        "./lib/metadata-section.mjs",
+        "./lib/issue-body-mutate.mjs",
+        "./lib/issue-kind.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/backfill-timing-logs.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "node:fs",
+        "node:path",
+        "./lib/timing-rows.mjs",
+        "./gh-timing-comment.mjs",
+        "./config.mjs",
+        "./paths.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/backfill-vc-sections.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "./lib/evidence-markers.mjs",
+        "./lib/verification-commands.mjs",
+        "./lib/vc-emit.mjs",
+        "./lib/issue-body-mutate.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/bash-guard.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:fs", "node:child_process", "node:os", "node:path"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/capture-actions.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "capture-actions",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "../lib/self-doc.mjs",
+        "./lib/action-capture.mjs",
+        "./paths.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/commit-trail-handler.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:child_process",
+        "node:util",
+        "node:path",
+        "./lib/commit-trail.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/chore-mode.mjs",
+        "./lib/commit-attribution-format.mjs",
+        "./paths.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/config-get.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["fs", "./paths.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/config-init.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "./lib/config-init/config-authoring.mjs",
+        "./lib/config-init/issue-templates.mjs",
+        "./lib/config-init/project-workflow-compatibility.mjs",
+        "./lib/config-init/parsers.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/cut-child-worktree.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "cut-child-worktree",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "./lib/graph-node-authority.mjs",
+        "./lib/resolve-epic-lineage.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/cut-epic-branch.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "cut-epic-branch",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "./lib/resolve-epic-lineage.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/ensure-self-link.mjs",
+      "classification": "package-lifecycle-cli",
+      "command": null,
+      "staticImports": [
+        "node:path",
+        "node:url",
+        "./lib/ensure-self-link.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Invoked by package scripts, release preparation, or repository quality gates.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/ensure-worktree-seeded.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:url",
+        "node:path",
+        "./lib/worktree-seed.mjs",
+        "./lib/ensure-self-link.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/epic-base-edit-guard.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:child_process",
+        "node:path",
+        "./paths.mjs",
+        "./fleet-registry.mjs",
+        "./lib/branch-name.mjs",
+        "./lib/graph-node-authority.mjs",
+        "./lib/resolve-epic-lineage.mjs",
+        "./lib/trunk-ref.mjs",
+        "./lib/epic-base-guard.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/guidance.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "guidance",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "../../guidance/source.mjs",
+        "../../guidance/cache.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-backlog.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "heal-backlog",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:path",
+        "node:url",
+        "./config.mjs",
+        "./paths.mjs",
+        "./issue-field-db.mjs",
+        "./project-fields.mjs",
+        "./timing-rollup.mjs",
+        "./migrate-plan-approved.mjs",
+        "./lib/markers.mjs",
+        "./lib/deep-dive.mjs",
+        "./lib/discuss-marker.mjs",
+        "./lib/discuss-label.mjs",
+        "../gh/lib/github-projects.mjs",
+        "./lib/move-state/policy.mjs",
+        "../lib/self-doc.mjs",
+        "./gh-timing-comment.mjs",
+        "./lib/timing-slug-rename.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-entry-markers.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "node:fs",
+        "node:path",
+        "./lib/scratch-dir.mjs",
+        "node:url",
+        "./config.mjs",
+        "./lib/stage-entry-markers.mjs",
+        "./lib/stage-entry-grammar.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-functional-dod.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "node:child_process",
+        "node:util",
+        "./config.mjs",
+        "./lib/lifecycle-dod.mjs",
+        "./lib/functional-dod-evidence.mjs",
+        "./lib/issue-body-mutate.mjs",
+        "../gh/lib/github-projects.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-lifecycle-dod.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "node:child_process",
+        "node:util",
+        "./config.mjs",
+        "./lib/heal-lifecycle-dod.mjs",
+        "./lib/issue-body-mutate.mjs",
+        "../gh/lib/github-projects.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-refine-entry-marker.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "node:fs",
+        "node:path",
+        "./lib/scratch-dir.mjs",
+        "./config.mjs",
+        "./lib/stage-entry-markers.mjs",
+        "./lib/stage-entry-grammar.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs",
+        "node:url"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-timing-departure.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "./gh-timing-comment.mjs",
+        "./config.mjs",
+        "./locks.mjs",
+        "./paths.mjs",
+        "./lib/heal-timing-departure.mjs",
+        "./lib/agent-review/validators/timing-log-sequence.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-timing-interval.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "./gh-timing-comment.mjs",
+        "./config.mjs",
+        "./locks.mjs",
+        "./paths.mjs",
+        "./lib/heal-timing-interval.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-timing-log.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "./gh-timing-comment.mjs",
+        "./locks.mjs",
+        "./paths.mjs",
+        "./config.mjs",
+        "../gh/lib/github-projects.mjs",
+        "./lib/heal-timing-log.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-timing-starts-sweep.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "./config.mjs",
+        "./gh-timing-comment.mjs",
+        "./heal-timing-starts.mjs",
+        "./lib/heal-timing-sweep.mjs",
+        "../gh/lib/github-projects.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-timing-starts.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "./gh-timing-comment.mjs",
+        "./locks.mjs",
+        "./paths.mjs",
+        "./config.mjs",
+        "./lib/heal-timing-starts.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/heal-vc-refs.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "node:child_process",
+        "node:util",
+        "./config.mjs",
+        "./lib/heal-vc-refs.mjs",
+        "./lib/issue-body-mutate.mjs",
+        "../gh/lib/github-projects.mjs",
+        "./lib/argv-strict.mjs",
+        "./lib/blast-radius-guard.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/hook-handler.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:child_process",
+        "node:util",
+        "node:path",
+        "node:url",
+        "./config.mjs",
+        "./state.mjs",
+        "./gh-timing-comment.mjs",
+        "./lib/bind-event.mjs",
+        "./word-counter.mjs",
+        "./active-time.mjs",
+        "./queue.mjs",
+        "./fleet-registry.mjs",
+        "./paths.mjs",
+        "./lib/hook-idempotency.mjs",
+        "./lib/occupancy-lifecycle.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/codex-prompt-timestamp.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:fs", "node:url", "node:path"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/grok-wire.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:child_process", "node:fs", "node:url", "node:path"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/memory-index.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:fs", "node:url", "node:path"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/on-ask.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:path",
+        "../paths.mjs",
+        "../session-state.mjs",
+        "../state.mjs",
+        "../config.mjs",
+        "../gh-timing-comment.mjs",
+        "../queue.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/on-stop.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:fs", "node:path", "../paths.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/on-user-prompt.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["../paths.mjs", "../orphan-finalize.mjs", "node:fs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/hooks/stop-audit-pause-resume.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "../paths.mjs",
+        "../session-state.mjs",
+        "../config.mjs",
+        "../gh-timing-comment.mjs",
+        "node:fs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/entrypoint-guard-lint.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/guard-entrypoint.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": ["node:fs", "node:path", "./project-dir.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/measure-context.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "measure-context",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:url",
+        "node:path",
+        "../lib/self-doc.mjs",
+        "./paths.mjs",
+        "./lib/context-budgets.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/merge-back.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "merge-back",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:path",
+        "./lib/graph-node-authority.mjs",
+        "./lib/resolve-epic-lineage.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/migrate-fields-encoding.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "node:fs",
+        "./lib/scratch-dir.mjs",
+        "node:path",
+        "./issue-field-db.mjs",
+        "./config.mjs",
+        "./lib/process-timeouts.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/migrate-plan-approved.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:util",
+        "node:fs",
+        "./lib/scratch-dir.mjs",
+        "node:path",
+        "node:url",
+        "./lib/markers.mjs",
+        "./lib/process-timeouts.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/orchestrator-lock.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs", "node:path", "./fleet-registry.mjs", "./paths.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/preflight-issue.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "preflight-issue",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:fs",
+        "node:child_process",
+        "node:url",
+        "node:path",
+        "./paths.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/lifecycle-dod.mjs",
+        "./lib/markers.mjs",
+        "./lib/checklist-command-lint.mjs",
+        "./lib/evidence-markers.mjs",
+        "./lib/vc-emit.mjs",
+        "./lib/plan-metadata.mjs",
+        "./lib/story-origin.mjs",
+        "./issue-field-db.mjs",
+        "./lib/marker-grammar.mjs",
+        "./lib/issue-kind.mjs",
+        "./lib/dod-kind-filter.mjs",
+        "../lib/self-doc.mjs",
+        "../gh/lib/issue-body-verifier.mjs",
+        "../gh/lib/kind-prefix.mjs",
+        "./lib/user-story-author.mjs",
+        "./lib/body-invariants.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/source-edit-gate.mjs",
+      "classification": "internal-hook-or-guard",
+      "command": null,
+      "staticImports": [
+        "node:fs",
+        "node:child_process",
+        "node:util",
+        "node:path",
+        "./lib/chore-mode.mjs",
+        "./lib/deep-dive.mjs",
+        "./paths.mjs",
+        "./activity-policy.mjs",
+        "./config.mjs",
+        "./lib/lifecycle-policy/index.mjs",
+        "./lib/ownership-policy.mjs",
+        "./lib/assignment-snapshot.mjs",
+        "./lib/apply-patch-targets.mjs",
+        "./lib/workflow-policy/enforcement.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/sync-epic.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "sync-epic",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "./lib/resolve-epic-lineage.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/tag-story-ids.mjs",
+      "classification": "live-maintenance-or-migration",
+      "command": null,
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "child_process",
+        "fs",
+        "node:path",
+        "node:url",
+        "./lib/discover-test-files.mjs",
+        "./lib/story-tag-header.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/task-tracker.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "node:path",
+        "node:url",
+        "node:child_process",
+        "node:fs",
+        "./runtime.mjs",
+        "./word-counter.mjs",
+        "./lib/process-timeouts.mjs",
+        "./lib/worktree-binding-guard.mjs",
+        "./lib/worktree-relocation-guard.mjs",
+        "./lib/state-cursor.mjs",
+        "./lib/test-cursor-request.mjs",
+        "./lib/evidence-v2/execution-context.mjs",
+        "./lib/evidence-v2/protocol.mjs",
+        "./lib/evidence-v2/entry-guard.mjs",
+        "../../guidance/admission.mjs",
+        "../../guidance/annotation.mjs"
+      ],
+      "firstPotentialEffect": "buildContext",
+      "gateCall": "admitGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/tools/coverage-threshold.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "node:child_process",
+        "node:fs",
+        "node:module",
+        "node:path",
+        "node:url",
+        "../lib/scratch-dir.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/verbs/approve.mjs",
+      "classification": "agent-callable-verb",
+      "command": "approve",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "../../gh/lib/gh-client.mjs",
+        "node:path",
+        "node:url",
+        "../../gh/lib/github-projects.mjs",
+        "../paths.mjs",
+        "../state.mjs",
+        "../lib/markers.mjs",
+        "../lib/lifecycle-dod.mjs",
+        "../lib/process-timeouts.mjs",
+        "../lib/review-notes.mjs",
+        "../lib/derive-drivers.mjs",
+        "../lib/human-reviewer-audit.mjs",
+        "../issue-mutator-lock.mjs",
+        "../lib/issue-body-mutate.mjs",
+        "../lib/stamp-verify.mjs",
+        "../lib/bind-context.mjs",
+        "../lib/agent-review/review-gate.mjs",
+        "../lib/workflow-policy/enforcement.mjs",
+        "../lib/review-approval-timing.mjs",
+        "../lib/github-records/authority-locator.mjs",
+        "../lib/github-records/lifecycle-gate-source.mjs",
+        "../lib/delivery-authority.mjs",
+        "../lib/terminal-review-handoff.mjs",
+        "../lib/workflow-policy/scope-identity.mjs",
+        "../lib/verification-receipt.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/assign.mjs",
+      "classification": "agent-callable-verb",
+      "command": "assign",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:crypto",
+        "node:util",
+        "node:path",
+        "node:url",
+        "../paths.mjs",
+        "../issue-mutator-lock.mjs",
+        "../lib/assignment-snapshot.mjs",
+        "../lib/ownership-policy.mjs",
+        "../lib/process-timeouts.mjs",
+        "../lib/argv-strict.mjs",
+        "../lib/bind-context.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/demote.mjs",
+      "classification": "agent-callable-verb",
+      "command": "demote",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "../../gh/lib/gh-client.mjs",
+        "node:path",
+        "node:url",
+        "../lib/lifecycle-policy/index.mjs",
+        "../gh-timing-comment.mjs",
+        "../../gh/lib/github-projects.mjs",
+        "../lib/state-recording.mjs",
+        "../lib/issue-body-mutate.mjs",
+        "../lib/evidence-invalidation.mjs",
+        "../lib/bind-context.mjs",
+        "../../gh/move-state.mjs",
+        "../lib/state-cursor.mjs",
+        "../lib/github-records/contract-write.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/park.mjs",
+      "classification": "agent-callable-verb",
+      "command": "park",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "./shelve.mjs",
+        "../lib/shelve-transaction.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/plan-approve.mjs",
+      "classification": "agent-callable-verb",
+      "command": "plan-approve",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "../../gh/lib/gh-client.mjs",
+        "node:path",
+        "node:url",
+        "../../gh/lib/github-projects.mjs",
+        "../paths.mjs",
+        "../lib/markers.mjs",
+        "../lib/stage-entry-markers.mjs",
+        "../lib/checklist-command-lint.mjs",
+        "../lib/issue-body-mutate.mjs",
+        "../lib/plan-approval-audit.mjs",
+        "../lib/github-records/contract-write.mjs",
+        "../lib/github-records/issue-directory.mjs",
+        "../lib/story-intent-source.mjs",
+        "../lib/epic-children-gate.mjs",
+        "../lib/epic-orchestration-plan.mjs",
+        "../lib/plan-approved-guard.mjs",
+        "../lib/stage-entry-grammar.mjs",
+        "../lib/governed-plan-policy.mjs",
+        "../lib/plan-approval-evidence-repair.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/promote.mjs",
+      "classification": "agent-callable-verb",
+      "command": "promote",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:path",
+        "node:url",
+        "../../gh/lib/gh-client.mjs",
+        "../lib/lifecycle-policy/index.mjs",
+        "../issue-mutator-lock.mjs",
+        "../paths.mjs",
+        "../gh-timing-comment.mjs",
+        "../../gh/lib/github-projects.mjs",
+        "../lib/apply-refinement-estimate.mjs",
+        "../lib/stamp-start-time.mjs",
+        "../lib/new-automated-tests-comment.mjs",
+        "../lib/process-timeouts.mjs",
+        "../lib/issue-body-mutate.mjs",
+        "../lib/markers.mjs",
+        "../lib/state-recording.mjs",
+        "../lib/stage-entry-markers.mjs",
+        "../lib/guard-registry.mjs",
+        "../lib/action-decision/evaluate.mjs",
+        "../lib/action-decision/review.mjs",
+        "../lib/action-decision/promote.mjs",
+        "../lib/story-intent-source.mjs",
+        "../lib/ready-for-plan-migration-freeze.mjs",
+        "../lib/guard-bootstrap.mjs",
+        "../lib/bind-context.mjs",
+        "../../gh/move-state.mjs",
+        "../lib/state-cursor.mjs",
+        "../lib/review-derive-rescan.mjs",
+        "../lib/evidence-runner.mjs",
+        "../lib/agent-review/review-gate.mjs",
+        "../lib/project-dir.mjs",
+        "../lib/session-store.mjs",
+        "../word-counter.mjs",
+        "../lib/workflow-policy/enforcement.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/reconcile.mjs",
+      "classification": "agent-callable-verb",
+      "command": "reconcile",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "../../gh/lib/gh-client.mjs",
+        "node:path",
+        "node:url",
+        "../lib/scratch-dir.mjs",
+        "../gh-timing-comment.mjs",
+        "../lib/issue-body-mutate.mjs",
+        "../lib/evidence-invalidation.mjs",
+        "../lib/markers.mjs",
+        "../lib/state-recording.mjs",
+        "../../gh/lib/github-projects.mjs",
+        "../session-state.mjs",
+        "../word-counter.mjs",
+        "../lib/stage-entry-markers.mjs",
+        "../lib/lifecycle-policy/index.mjs",
+        "../paths.mjs",
+        "../lib/move-state/sentinel.mjs",
+        "../lib/move-state/policy.mjs",
+        "../lib/move-state/github-mutation.mjs",
+        "../lib/issue-body-push.mjs",
+        "../issue-mutator-lock.mjs",
+        "../../gh/move-state.mjs",
+        "../lib/project-dir.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/refine.mjs",
+      "classification": "agent-callable-verb",
+      "command": "refine",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "../../gh/lib/gh-client.mjs",
+        "node:path",
+        "node:url",
+        "../../gh/lib/project-tether.mjs",
+        "../../gh/lib/github-projects.mjs",
+        "./promote.mjs",
+        "../lib/apply-refinement-estimate.mjs",
+        "../lib/process-timeouts.mjs",
+        "../issue-field-db.mjs",
+        "../project-fields.mjs",
+        "../lib/issue-body-mutate.mjs",
+        "../lib/marker-grammar.mjs",
+        "../gh-timing-comment.mjs",
+        "../lib/bind-context.mjs",
+        "../lib/refine-exit-stub-placeholder-guard.mjs",
+        "../lib/lifecycle-policy/index.mjs",
+        "../lib/estimation/estimate-granularity.mjs",
+        "../lib/refinement-snapshot.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/shelve.mjs",
+      "classification": "agent-callable-verb",
+      "command": "shelve",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "../paths.mjs",
+        "../issue-mutator-lock.mjs",
+        "../lib/argv-strict.mjs",
+        "../lib/bind-context.mjs",
+        "../lib/lifecycle-policy/index.mjs",
+        "../lib/shelve-transaction.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/unassign.mjs",
+      "classification": "agent-callable-verb",
+      "command": "unassign",
+      "staticImports": [
+        "../lib/direct-guidance-admission.mjs",
+        "node:path",
+        "node:url",
+        "node:child_process",
+        "node:crypto",
+        "node:util",
+        "../paths.mjs",
+        "../issue-mutator-lock.mjs",
+        "../lib/assignment-snapshot.mjs",
+        "../lib/ownership-policy.mjs",
+        "../lib/process-timeouts.mjs",
+        "../lib/argv-strict.mjs",
+        "../lib/bind-context.mjs",
+        "./assign.mjs"
+      ],
+      "firstPotentialEffect": "direct verb main",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "verify-delivery-incident-reconciliation",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:url",
+        "../lib/self-doc.mjs",
+        "../gh/lib/github-projects.mjs",
+        "./config.mjs",
+        "./paths.mjs",
+        "./lib/delivery-incident-reconciliation.mjs",
+        "./lib/delivery-incident-records.mjs",
+        "./verbs/incident-ledger.mjs",
+        "./lib/native-dependencies.mjs",
+        "./lib/superseded-marker.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verify-develop.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "verify-develop",
+      "staticImports": [
+        "./lib/direct-guidance-admission.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:url",
+        "../lib/self-doc.mjs",
+        "./config.mjs",
+        "./lib/verification-receipt.mjs",
+        "./lib/test-impact-selector.mjs",
+        "./lib/verification-provider-registry.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verify-epic-114.mjs",
+      "classification": "test-fixture-or-retired-one-shot",
+      "command": null,
+      "staticImports": ["node:fs", "node:path"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Historical one-shot verifier retained in the shipped tree for compatibility evidence.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/verify-epic-trail.mjs",
+      "classification": "test-fixture-or-retired-one-shot",
+      "command": null,
+      "staticImports": [
+        "node:path",
+        "node:child_process",
+        "node:util",
+        "node:url",
+        "./config.mjs",
+        "./state.mjs",
+        "./paths.mjs",
+        "./lib/epic-children-gate.mjs",
+        "./lib/epic-derived-commit-trail.mjs",
+        "./lib/process-timeouts.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Historical one-shot verifier retained in the shipped tree for compatibility evidence.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/verify-sweep-comment.mjs",
+      "classification": "test-fixture-or-retired-one-shot",
+      "command": null,
+      "staticImports": ["node:child_process", "./config.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Historical one-shot verifier retained in the shipped tree for compatibility evidence.",
+      "fixtureId": null
+    }
+  ]
+}

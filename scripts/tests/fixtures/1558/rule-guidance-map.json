@@ -1,0 +1,518 @@
+{
+  "schema": "aitm.rule-guidance-map/v1",
+  "rows": [
+    {
+      "id": "session.timer",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Timer must be active before any work.",
+      "retainedProtocolRule": "skill/shared/router.md",
+      "protocolAnchor": "Never touch source files, run tests, edit issue bodies",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "session.pause",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Pause on blocking question.",
+      "retainedProtocolRule": "skill/shared/router.md",
+      "protocolAnchor": "Before any blocking user prompt",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "session.preferences",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Honor project preferences.",
+      "retainedProtocolRule": "skill/shared/rules/preferences.md",
+      "protocolAnchor": "## Decision points",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "session.compaction",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Post-Compact/Clear: follow the boot index before any verb.",
+      "retainedProtocolRule": ".ai-task-manager/templates/session-boot.md",
+      "protocolAnchor": "## Recovery protocol (post-Compact / post-Clear)",
+      "guidanceId": "protocol.receipts",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "binding.identity",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "Timer must not already be running on a different issue.",
+      "enforcementPath": "scripts/task-tracker/verbs/start.mjs",
+      "guidanceId": "action.bind",
+      "actionId": "bind",
+      "documentation": {
+        "path": "docs/guides/workflow.md",
+        "anchor": "kanban-board-states"
+      }
+    },
+    {
+      "id": "binding.drift",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "Drift check.",
+      "enforcementPath": "scripts/task-tracker/verbs/start.mjs",
+      "guidanceId": "action.bind",
+      "actionId": "bind",
+      "documentation": {
+        "path": "docs/guides/workflow.md",
+        "anchor": "kanban-board-states"
+      }
+    },
+    {
+      "id": "binding.discussion",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "## `{discuss}` brainstorming trigger (#405, #486)",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "before** any deep-dive or refine",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "binding.workspace",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "**Workspace check.**",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "create a worktree first",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "binding.deferred-pickup",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "PICKUP DIRECTIVE DEFERRED",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "do NOT load or",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "binding.session-recovery",
+      "sourcePath": "skill/shared/rules/bind.md",
+      "sourceAnchor": "## Session recovery",
+      "retainedProtocolRule": "skill/shared/rules/bind.md",
+      "protocolAnchor": "re-run `/task #N` to re-register",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "pickup.deep-dive",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Deep Dive before any code.",
+      "enforcementPath": "scripts/task-tracker/source-edit-gate.mjs",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "pickup.per-ac",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Verify each DoD/AC.",
+      "enforcementPath": "scripts/task-tracker/lib/review-preflight.mjs",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "state.contiguous",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "Forward one state. Reads current state, picks legal next state, runs the gate.",
+      "enforcementPath": "scripts/task-tracker/verbs/promote.mjs",
+      "guidanceId": "action.promote",
+      "actionId": "promote",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "state.exceptions",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "Only a current explicit `aitm.workflow-exception/v1` GitHub record",
+      "enforcementPath": "scripts/task-tracker/lib/workflow-policy/enforcement.mjs",
+      "guidanceId": "transition.plan-to-develop",
+      "actionId": "promote",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "state.plan-approval",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "`/task promote` from Plan refuses unless",
+      "enforcementPath": "scripts/task-tracker/states/plan.mjs",
+      "guidanceId": "transition.plan-to-develop",
+      "actionId": "promote",
+      "guardId": "plan-exit-plan-approved",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "test.exact-receipt",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "`/task ac-stamp <label>` and `/task test` are Develop/Test-stage helpers",
+      "enforcementPath": "scripts/task-tracker/verbs/test.mjs",
+      "guidanceId": "action.test",
+      "actionId": "test",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "review.reuse",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "Confirm the Test receipt.",
+      "enforcementPath": "scripts/task-tracker/verbs/review.mjs",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/workflow.md",
+        "anchor": "kanban-board-states"
+      }
+    },
+    {
+      "id": "review.approval",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "Approve** → `/task approve #N`",
+      "enforcementPath": "scripts/task-tracker/states/review.mjs",
+      "guidanceId": "transition.review-approval",
+      "actionId": "deliver",
+      "guardId": "review-exit-review-approved",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "review.prompt",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "## Review-approval prompt",
+      "retainedProtocolRule": "skill/shared/rules/review.md",
+      "protocolAnchor": "surface a structured human decision",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
+      "id": "review.reject",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "**Reject** → ask follow-up",
+      "retainedProtocolRule": "skill/shared/rules/review.md",
+      "protocolAnchor": "ask follow-up for the rejection reason",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
+      "id": "review.dismiss",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "**Dismiss / no choice**",
+      "retainedProtocolRule": "skill/shared/rules/review.md",
+      "protocolAnchor": "review-prompt-dismissed",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
+      "id": "delivery.envelope",
+      "sourcePath": "skill/shared/rules/deliver.md",
+      "sourceAnchor": "exit `20` with exactly one",
+      "retainedProtocolRule": "skill/shared/rules/deliver.md",
+      "protocolAnchor": "This is the only envelope that",
+      "guidanceId": "action.deliver",
+      "actionId": "deliver",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      },
+      "proposedStatic": ["claude", "codex"]
+    },
+    {
+      "id": "delivery.no-shell",
+      "sourcePath": "skill/shared/rules/deliver.md",
+      "sourceAnchor": "Never invoke a shell merge",
+      "retainedProtocolRule": "skill/shared/rules/deliver.md",
+      "protocolAnchor": "Never invoke a shell merge",
+      "guidanceId": "action.deliver",
+      "actionId": "deliver",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      },
+      "proposedStatic": ["claude", "codex"]
+    },
+    {
+      "id": "delivery.reconcile",
+      "sourcePath": "skill/shared/rules/deliver.md",
+      "sourceAnchor": "After success, refusal, timeout, or ambiguity, rerun",
+      "retainedProtocolRule": "skill/shared/rules/deliver.md",
+      "protocolAnchor": "Never retry the external mutation before that rerun",
+      "guidanceId": "action.deliver",
+      "actionId": "deliver",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "shared-decision-boundary"
+      },
+      "proposedStatic": ["claude", "codex"]
+    },
+    {
+      "id": "close.approval",
+      "sourcePath": "skill/shared/rules/close.md",
+      "sourceAnchor": "## Review-approval gate",
+      "enforcementPath": "scripts/task-tracker/verbs/close.mjs",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "guardId": "review-exit-review-approved",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "close.human-instruction",
+      "sourcePath": "skill/shared/rules/close.md",
+      "sourceAnchor": "## Human-only step",
+      "retainedProtocolRule": "skill/shared/rules/close.md",
+      "protocolAnchor": "only after explicit human instruction",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "review-and-close-human-boundaries"
+      }
+    },
+    {
+      "id": "close.dirty",
+      "sourcePath": "skill/shared/rules/close.md",
+      "sourceAnchor": "## Dirty-Workspace Gate 2",
+      "enforcementPath": "scripts/task-tracker/verbs/close.mjs",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "commit.trace",
+      "sourcePath": "skill/shared/rules/commit-trail.md",
+      "sourceAnchor": "Every successful `git commit` made while an issue is bound",
+      "enforcementPath": "scripts/task-tracker/commit-trail-handler.mjs",
+      "guidanceId": "protocol.commit-trail",
+      "documentation": {
+        "path": "docs/guides/workflow.md",
+        "anchor": "kanban-board-states"
+      }
+    },
+    {
+      "id": "session.track",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Track before you start — no untracked work.",
+      "retainedProtocolRule": "skill/shared/router.md",
+      "protocolAnchor": "No issue, no work.",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "session.issue-create",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Never call `gh issue create` directly.",
+      "enforcementPath": "scripts/task-tracker/bash-guard.mjs",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "session.close-route",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "Never call `gh issue close` directly.",
+      "enforcementPath": "scripts/task-tracker/bash-guard.mjs",
+      "guidanceId": "action.close",
+      "actionId": "close",
+      "documentation": {
+        "path": "docs/guides/guard-architecture.md",
+        "anchor": "the-exitentry-slot-model"
+      }
+    },
+    {
+      "id": "session.role",
+      "sourcePath": "skill/shared/router.md",
+      "sourceAnchor": "`--role` flag at bind.",
+      "retainedProtocolRule": "skill/shared/router.md",
+      "protocolAnchor": "Agent picking up a sub-issue",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "pickup.bootstrap",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Bootstrap is fail-closed.",
+      "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
+      "protocolAnchor": "STOP and report `STATUS: BLOCKED",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["pickup"]
+    },
+    {
+      "id": "pickup.checkboxes",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "All pre-close checkboxes ticked before close.",
+      "enforcementPath": "scripts/task-tracker/verbs/close.mjs",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      }
+    },
+    {
+      "id": "pickup.epic",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Epic boxes wait for sub-issue Review.",
+      "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
+      "protocolAnchor": "tick no AC/DoD box until every sub-issue reaches Review",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["pickup"]
+    },
+    {
+      "id": "pickup.checkpoint",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Checkpoint Pause — re-read the conversation queue",
+      "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
+      "protocolAnchor": "Before any `/task` state move",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["pickup"]
+    },
+    {
+      "id": "pickup.mistake",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "On mistakes — STOP, surface what/why",
+      "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
+      "protocolAnchor": "wait for instruction",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["pickup"]
+    },
+    {
+      "id": "pickup.body",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Never hand-roll an issue body",
+      "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
+      "protocolAnchor": "edit live bodies only through `mutateIssueBody`",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["pickup"]
+    },
+    {
+      "id": "pickup.agent-terminal",
+      "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
+      "sourceAnchor": "Agents MUST NOT run `/task review` or `/task close`.",
+      "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
+      "protocolAnchor": "reporting `CODE_COMPLETE`",
+      "guidanceId": "protocol.pickup",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["pickup"]
+    },
+    {
+      "id": "state.reconcile",
+      "sourcePath": "skill/shared/rules/state-walk.md",
+      "sourceAnchor": "Board ↔ local field-DB disagreement.",
+      "retainedProtocolRule": "skill/shared/rules/state-walk.md",
+      "protocolAnchor": "Run before any other verb on a drifted issue.",
+      "guidanceId": "protocol.session",
+      "documentation": {
+        "path": "docs/guides/ask-the-script.md",
+        "anchor": "session-and-pickup-protocol"
+      },
+      "proposedStatic": ["router"]
+    },
+    {
+      "id": "review.no-verifier",
+      "sourcePath": "skill/shared/rules/review.md",
+      "sourceAnchor": "Review does **not** own verifier execution.",
+      "enforcementPath": "scripts/task-tracker/verbs/review.mjs",
+      "guidanceId": "action.review",
+      "actionId": "review",
+      "documentation": {
+        "path": "docs/guides/workflow.md",
+        "anchor": "kanban-board-states"
+      }
+    }
+  ]
+}

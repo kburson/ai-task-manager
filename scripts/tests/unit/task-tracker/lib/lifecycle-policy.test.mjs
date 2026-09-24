@@ -1,4 +1,4 @@
-// @story #1008
+// @story #1008 #1667 #1669
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -14,6 +14,71 @@ import {
   validateTransition,
 } from '../../../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { EXECUTABLE_MATRIX } from '../../../fixtures/state-engine-policy-baseline.mjs';
+import { resolveActionNavigation } from '../../../../task-tracker/lib/action-decision/navigation.mjs';
+
+test('early promote navigation follows the canonical forward edges', () => {
+  for (const [state, target] of [
+    ['backlog', 'refine'],
+    ['refine', 'ready-for-plan'],
+    ['ready-for-plan', 'plan'],
+    ['plan', 'develop'],
+  ]) {
+    assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state }), {
+      status: 'ready',
+      target,
+      delegate: null,
+      blocker: null,
+    });
+  }
+});
+
+test('navigation refuses rebind vocabulary and unknown or conflicting state', () => {
+  assert.equal(
+    resolveActionNavigation({ actionId: 'rebind', state: 'plan' }).blocker.code,
+    'unknown-vocabulary'
+  );
+  assert.equal(
+    resolveActionNavigation({ actionId: 'promote', state: 'mystery' }).blocker.code,
+    'state-unavailable'
+  );
+  const conflicting = resolveActionNavigation({
+    actionId: 'promote',
+    state: { recorded: 'plan', live: 'develop' },
+  });
+  assert.equal(conflicting.status, 'indeterminate');
+  assert.deepEqual(conflicting.blocker.args, { reason: 'conflicting' });
+  assert.equal(
+    resolveActionNavigation({ actionId: 'rebind', state: { recorded: 'plan', live: 'develop' } })
+      .blocker.code,
+    'unknown-vocabulary'
+  );
+});
+
+test('Done is terminal while Test and Review delegate to their read-only readiness', () => {
+  assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state: 'done' }), {
+    status: 'terminal',
+    target: null,
+    delegate: null,
+    blocker: null,
+  });
+  assert.equal(resolveActionNavigation({ actionId: 'bind', state: 'done' }).status, 'terminal');
+  assert.deepEqual(resolveActionNavigation({ actionId: 'promote', state: 'develop' }), {
+    status: 'ready',
+    target: 'test',
+    delegate: 'test',
+    blocker: null,
+  });
+  for (const [state, target, delegate] of [
+    ['test', 'review', 'review'],
+    ['review', 'done', 'close'],
+  ]) {
+    const route = resolveActionNavigation({ actionId: 'promote', state });
+    assert.deepEqual(
+      [route.status, route.target, route.delegate, route.blocker],
+      ['ready', target, delegate, null]
+    );
+  }
+});
 
 const EXPECTED_STATES = [
   'backlog',

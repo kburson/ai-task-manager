@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1714 #1716 #1720
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -240,6 +240,52 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const deliveryAttributionRecordAllowance = 1;
   // #1759 ships one operator-facing delivery attribution exception command.
   const deliveryAttributionCommandAllowance = 1;
+  // #1661 ships three shared action-decision runtime assets and one guide.
+  const actionDecisionContractAllowance = 4;
+  // #1662 ships the single compact operational presentation runtime module.
+  const actionPresentationAllowance = 1;
+  // #1728 ships the read-only authority observation collector.
+  const actionObservationAllowance = 1;
+  // #1729 ships the complete shared action evaluator.
+  const actionEvaluatorAllowance = 1;
+  // #1731 ships the pure Functional DoD projector used by explanation and execution.
+  const functionalDodProjectorAllowance = 1;
+  // #1732 ships one execution-only normalization runtime module.
+  const actionNormalizationAllowance = 1;
+  // #1750 ships the read-only session authority collector.
+  const sessionReadinessAllowance = 1;
+  // #1751 ships the complete early-promotion readiness collector.
+  const earlyPromoteReadinessAllowance = 1;
+  // #1752 ships canonical action navigation for the completed early adapters.
+  const actionNavigationAllowance = 1;
+  // #1666 ships the read-only Test-entry authority collector.
+  const testEntryReadinessAllowance = 1;
+  // #1667 ships the read-only Review-entry authority collector.
+  const reviewEntryReadinessAllowance = 1;
+  // #1668 ships the read-only delivery authority collector.
+  const deliveryReadinessAllowance = 1;
+  // #1669 ships the read-only close authority collector.
+  const closeReadinessAllowance = 1;
+  // #1671 ships six validator modules, a schema, and a complete seed catalog.
+  const guidanceValidationAllowance = 8;
+  // #1672 intentionally ships two source/admission modules, the offline
+  // recovery CLI, the release manifest, and the project-adoption guide.
+  // Measured dry-run package surface grows from 822 to 827 entries.
+  const guidanceSourceTrustAllowance = 5;
+  // #1673 adds the serialized guidance annotation and direct-entrypoint gate.
+  // The measured dry-run package surface grows from 827 to 829 entries.
+  const guidanceEntrypointAllowance = 2;
+  // #1674 ships the cache identity, compiler, and read-many loader only.
+  // The measured production surface grows from 829 to 832 entries.
+  const guidanceCacheAllowance = 3;
+  // #1675 ships the receipt protocol and public read-only explanation verb.
+  // The measured production surface grows from 832 to 834 entries.
+  const guidanceExplanationAllowance = 2;
+  // #1769 shares one fixed-budget module with the installed static meter.
+  // Its tokenizer-backed calibration CLI is development-only and excluded.
+  const guidanceContextBudgetAllowance = 1;
+  // #1773 ships five detailed human references outside routine model context.
+  const adapterReferenceAllowance = 5;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -251,12 +297,38 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     planTransitionAuthorityAllowance +
     deliverySourceInventoryAllowance +
     deliveryAttributionRecordAllowance +
-    deliveryAttributionCommandAllowance;
+    deliveryAttributionCommandAllowance +
+    actionDecisionContractAllowance +
+    actionPresentationAllowance +
+    actionObservationAllowance +
+    actionEvaluatorAllowance +
+    functionalDodProjectorAllowance +
+    actionNormalizationAllowance +
+    sessionReadinessAllowance +
+    earlyPromoteReadinessAllowance +
+    actionNavigationAllowance +
+    testEntryReadinessAllowance +
+    reviewEntryReadinessAllowance +
+    deliveryReadinessAllowance +
+    closeReadinessAllowance +
+    guidanceValidationAllowance +
+    guidanceSourceTrustAllowance +
+    guidanceEntrypointAllowance +
+    guidanceCacheAllowance +
+    guidanceExplanationAllowance +
+    guidanceContextBudgetAllowance +
+    adapterReferenceAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
       `the package surface grew — confirm intentional and raise the ceiling, or prune.`
   );
+});
+
+test('package-boundary: development-only context calibration is not shipped', () => {
+  const files = new Set(packedFiles());
+  assert.equal(files.has('scripts/task-tracker/measure-guidance-context.mjs'), false);
+  assert.equal(files.has('scripts/task-tracker/lib/context-budgets.mjs'), true);
 });
 
 test('package-boundary: runtime entry points are still shipped', () => {
@@ -269,10 +341,44 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',
     'scripts/task-tracker/lib/graph-node-authority.mjs',
     'scripts/task-tracker/lib/governed-plan-policy.mjs',
+    'scripts/task-tracker/lib/action-decision/observations.mjs',
+    'guidance/source.mjs',
+    'guidance/admission.mjs',
+    'guidance/annotation.mjs',
+    'guidance/cache-identity.mjs',
+    'guidance/compile.mjs',
+    'guidance/cache.mjs',
+    'scripts/task-tracker/lib/direct-guidance-admission.mjs',
+    'scripts/task-tracker/guidance.mjs',
+    'instructions/aitm-guidance.yml',
+    'instructions/aitm-guidance.schema.json',
+    'instructions/aitm-guidance.release.json',
+    'docs/guides/aitm-guidance-source.md',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',
   ]) {
     assert.ok(files.has(required), `required runtime file missing from package: ${required}`);
   }
+});
+
+test('package-boundary: production parser and guidance release guard are declared', () => {
+  const pkg = JSON.parse(readFileSync(join(repoRoot(), 'package.json'), 'utf8'));
+  assert.equal(pkg.dependencies['js-yaml'], '5.4.2');
+  assert.match(pkg.scripts.prepublishOnly, /lint:guidance-release-consumer/);
+  assert.match(pkg.scripts['lint:guidance-release'], /--check/);
+  assert.doesNotMatch(pkg.scripts['lint:guidance-release'], /--assert-consumer-release/);
+  assert.match(pkg.scripts['lint:guidance-release-consumer'], /--assert-consumer-release/);
+  assert.match(
+    pkg.scripts['lint:guidance-release-consumer'],
+    /measure-guidance-context\.mjs --all --assert-budgets/
+  );
+  assert.match(pkg.scripts['lint:guidance-release-consumer'], /guidance-release\.test\.mjs/);
+});
+
+test('package-boundary: tag and explicit release CI retain the B2 consumer gate', () => {
+  const workflow = readFileSync(join(repoRoot(), '.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /tags: \['v\*'\]/);
+  assert.match(workflow, /release_candidate:/);
+  assert.match(workflow, /guidance-release:\n[\s\S]*?lint:guidance-release-consumer/);
 });

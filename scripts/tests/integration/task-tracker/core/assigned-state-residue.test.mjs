@@ -37,7 +37,14 @@ const ALLOWLIST = new Map(
     'scripts/gh/init-repair.mjs': [5, 'legacy config-key rewrite'],
     'scripts/gh/lib/live-state.mjs': [1, 'raw live-board compatibility boundary'],
     'scripts/lib/self-doc.mjs': [6, 'explicit migration CLI help contract'],
-    'scripts/migrate/rename-on-deck-to-assigned.mjs': [3, 'explicit migration CLI'],
+    'scripts/migrate/rename-on-deck-to-assigned.mjs': [
+      4,
+      'explicit migration CLI and admission gate',
+    ],
+    'scripts/tests/fixtures/1558/admission-surface.json': [
+      1,
+      'explicit migration CLI admission inventory',
+    ],
     'scripts/task-tracker/lib/command-surface/entrypoints.mjs': [
       1,
       'explicit migration CLI classification',
@@ -175,7 +182,10 @@ const ALLOWLIST = new Map(
       3,
       'historical timing descriptor fixture',
     ],
-    'skill/shared/rules/state-walk.md': [1, 'documented raw-boundary compatibility exception'],
+    'skill/shared/references/state-walk-detail.md': [
+      1,
+      'historical raw-boundary compatibility detail retained outside routine context',
+    ],
   })
 );
 

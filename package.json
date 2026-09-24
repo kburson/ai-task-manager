@@ -27,6 +27,7 @@
     "test:unit:utc": "TZ=UTC node scripts/run-tests.mjs --lane unit",
     "test:coverage": "c8 node scripts/run-tests.mjs --lane all",
     "test:coverage:fast": "c8 node scripts/run-tests.mjs --lane fast",
+    "prepublishOnly": "npm run lint:guidance-release-consumer",
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
@@ -48,7 +49,10 @@
     "lint:line-cap": "node scripts/tests/tools/audit-line-cap.mjs",
     "lint:test-reach": "node scripts/maintenance/lint-test-coverage-reach.mjs",
     "lint:doc-anchors": "node scripts/maintenance/lint-doc-anchors.mjs",
-    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors",
+    "lint:action-refusals": "node scripts/maintenance/lint-action-refusals.mjs",
+    "lint:guidance-release": "node scripts/maintenance/generate-guidance-release.mjs --check",
+    "lint:guidance-release-consumer": "npm run lint:guidance-release && node scripts/maintenance/generate-guidance-release.mjs --assert-consumer-release && node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budgets && node --test scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release",
     "quality": "npm run format:check && npm run lint && npm test"
   },
   "files": [
@@ -57,9 +61,11 @@
     "NOTICE",
     "bin/",
     "config/",
+    "guidance/",
     "skill/",
     "hooks/",
     "scripts/",
+    "!scripts/task-tracker/measure-guidance-context.mjs",
     "!scripts/tests/**",
     "!scripts/maintenance/**",
     "!**/*.test.mjs",
@@ -70,6 +76,7 @@
     "docs/guides/",
     "docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md",
     "docs/introduction/",
+    "instructions/",
     "docs/ai-memory/",
     "!docs/ai-memory/archive/**",
     "templates/"
@@ -102,13 +109,14 @@
     "cspell": "^10.3.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
-    "js-yaml": "^5.4.2",
+    "js-tiktoken": "1.0.21",
     "markdownlint-cli2": "^0.23.2",
     "prettier": "^3.9.6",
     "puppeteer": "^25.11.0"
   },
   "dependencies": {
-    "espree": "^11.2.0"
+    "espree": "^11.2.0",
+    "js-yaml": "5.4.2"
   },
   "overrides": {
     "smol-toml": "1.8.0"

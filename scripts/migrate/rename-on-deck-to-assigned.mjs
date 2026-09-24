@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'rename-on-deck-to-assigned');
 // #1206 — explicitly rename the configured Status option in place.
 
 import { loadConfig } from '../task-tracker/config.mjs';

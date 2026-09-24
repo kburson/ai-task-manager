@@ -29,6 +29,13 @@ function makeDeps({
   return {
     calls,
     deps: {
+      pexec: async (bin, args) => {
+        if (bin === 'git' && args[0] === 'rev-parse') return { stdout: `${'a'.repeat(40)}\n` };
+        if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+          return { stdout: secondFetch && fetchSecondBody !== undefined ? fetchSecondBody : body };
+        }
+        throw new Error(`unexpected command: ${bin} ${args.join(' ')}`);
+      },
       assertBound: () => {},
       fetchIssueBody: async () => {
         calls.fetches++;
@@ -157,6 +164,30 @@ test('runPromote: refine→R4P promoted via direct move + refine-estimate hook',
   assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'ready-for-plan' }]);
   assert.equal(r.refinementPost.status, 'posted');
 });
+test('runPromote: consumes the final returned refinement plan without context mutation', async () => {
+  const { deps } = makeDeps({ body: refineBody(), live: 'refine' });
+  let observedContext;
+  const expectedPlan = { estimate: 7, size: 'M', commentBody: '### Refine estimate' };
+  deps.runGuards = async (_from, _to, ctx) => {
+    observedContext = ctx;
+    return {
+      ok: true,
+      status: 'ready',
+      refusals: [],
+      humanDecision: null,
+      derived: { refinementPlan: expectedPlan },
+    };
+  };
+  deps.refinementEstimate = {
+    listCommentBodies: async () => [],
+    postComment: async () => {},
+    writeIssueBody: async () => {},
+  };
+  const result = await runPromote({ issueNumber: 100, cfg, deps });
+  assert.equal(result.status, 'promoted');
+  assert.equal(Object.hasOwn(observedContext, 'refinementPlan'), false);
+  assert.equal(result.refinementPost?.status, 'posted');
+});
 test('runPromote: refine→R4P refused when refine-estimate signals missing', async () => {
   const { deps, calls } = makeDeps({
     body: refineBody(),
@@ -253,6 +284,7 @@ test('runPromote: test→review refused when dod-verified marker missing', async
 });
 test('runPromote: review→done delegates to /task close', async () => {
   const { deps, calls } = rev({ liveAfter: 'done' });
+  deps.runGuards = async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null });
   const r = await runPromote({ issueNumber: 104, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'alias:close');

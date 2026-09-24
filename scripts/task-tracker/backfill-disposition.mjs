@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'backfill-disposition');
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

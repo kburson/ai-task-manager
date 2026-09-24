@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
+enforceDirectGuidance(import.meta.url, 'value-report');
 /**
  * Generate an AI value report (HTML/PDF) from GitHub project issue data.
  *
