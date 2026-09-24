@@ -97,7 +97,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:2adb3a565a95101924c7fd0c10200ce6a651ca7a86dd7e2973824bc9f8229412"
+        "sitesSha256": "sha256:63eca302a8c564be1a772935f7939f884e23d5dd35e570862ae4d413ecc8ebd1"
       },
       "rationale": "A missing or stale verification receipt cannot be synthesized by explanation."
     },

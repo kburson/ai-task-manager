@@ -1,6 +1,10 @@
 // @story #937
 
-import { parseVerificationReceipt } from '../verification-receipt.mjs';
+import {
+  parseVerificationReceipt,
+  requiredDevelopReceiptClassifications,
+  validateVerificationReceiptStructure,
+} from '../verification-receipt.mjs';
 
 function valueOf(record) {
   return record && typeof record === 'object' && 'value' in record ? record.value : record;
@@ -8,11 +12,18 @@ function valueOf(record) {
 
 function receiptIsCurrent(receipt, snapshot) {
   const headSha = valueOf(snapshot?.headSha);
+  const issueNumber = Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue);
+  const structural = validateVerificationReceiptStructure({
+    receipt,
+    expectedIssue: issueNumber,
+    expectedStage: 'develop-final',
+  });
+  if (!structural.ok) return false;
   return (
     receipt?.stage === 'develop-final' &&
     typeof headSha === 'string' &&
     receipt.commitSha === headSha &&
-    ['lint-full', 'format-full'].every((classification) =>
+    requiredDevelopReceiptClassifications(receipt).every((classification) =>
       receipt.commands?.some(
         (command) => command.classification === classification && command.exitCode === 0
       )

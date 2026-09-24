@@ -254,19 +254,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 54,
+          "line": 55,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 72,
+          "line": 73,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 79,
+          "line": 80,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         }

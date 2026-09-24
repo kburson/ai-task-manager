@@ -34,6 +34,7 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
+const DEVELOP_RECEIPT_REQUIRED = Object.freeze(['lint-full', 'format-full']);
 // Lint and format always run. Only the complete Test lanes may be removed by
 // a valid docs-only lane-skip decision.
 const DROPPABLE_LANE_CLASSIFICATIONS = Object.freeze(
@@ -460,6 +461,19 @@ export function requiredTestReceiptClassifications(receipt) {
     )
   );
   return TEST_RECEIPT_REQUIRED.filter((classification) => !dropped.has(classification));
+}
+
+export function requiredDevelopReceiptClassifications(receipt) {
+  const providerRequired = receipt?.provider?.requiredClassifications;
+  if (
+    receipt?.provider?.id === 'project' &&
+    Array.isArray(providerRequired) &&
+    providerRequired.length > 0 &&
+    providerRequired.every((classification) => typeof classification === 'string' && classification)
+  ) {
+    return [...providerRequired];
+  }
+  return [...DEVELOP_RECEIPT_REQUIRED];
 }
 
 export function hasEarnedDocsOnlyLaneSkip(receipt) {
