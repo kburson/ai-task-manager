@@ -153,11 +153,12 @@ export const VERB_CONTRACTS = Object.freeze({
   shelve: contract(
     [
       'The target must be in Refine or Ready for Planning, --reason is required, and configured-project preflight must pass.',
-      'The current refinement snapshot, active body fields, exact configured-project fields, labels, Status, and ownership must be readable.',
+      'The refinement snapshot, active body fields, exact configured-project fields, labels, Status, and ownership must be readable.',
     ],
     [
       'Appends an immutable refinement-history snapshot before invalidating active refinement, planning, and execution evidence.',
-      'The explicit --refresh-stale-blockers intent authorizes only the schema-1 blocker migration; it is not a general stale-snapshot repair.',
+      'The explicit --refresh-stale-blockers intent authorizes only the schema-1 blocker migration.',
+      'The explicit --refresh-stale-refinement intent archives a stale schema-3 snapshot from Ready for Planning when its fields still match the live board; normal Refine must then create new evidence.',
       'Clears Priority, Size, Estimate, and Rank, moves Status to Backlog, and optionally removes the verified sole owner through one recoverable phase journal.',
     ],
     [

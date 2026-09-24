@@ -500,6 +500,109 @@ test('Shelve refreshes the exact legacy blocker-only snapshot and retains every 
   assert.equal(parseShelveJournal(h.store.body).refreshStaleBlockers, true);
 });
 
+test('explicit stale-refinement recovery archives rewritten story evidence before re-refinement', async () => {
+  const h = harness({ state: 'ready-for-plan' });
+  const oldSnapshot = h.store.body.match(/<!--\s*aitm-refinement-snapshot\s+[^>]*?-->/)?.[0];
+  h.store.body = h.store.body
+    .replace(/<!--\s*aitm-refinement-rationale:\s*[^>]*?-->\s*\n?/, '')
+    .replace('enough durable scope', 'rewritten story scope');
+  const originalBody = h.store.body;
+
+  const ordinary = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Re-refine rewritten story',
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.equal(ordinary.status, 'snapshot-refused');
+  assert.deepEqual(h.calls, []);
+
+  const recovered = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Re-refine rewritten story',
+    refreshStaleRefinement: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.equal(recovered.status, 'shelved', JSON.stringify(recovered));
+  assert.equal(h.store.state, 'backlog');
+  assert.equal(parseShelveJournal(h.store.body).refreshStaleRefinement, true);
+  const [record] = parseRefinementHistory(h.store.body);
+  assert.equal(record.refinementSnapshotDigest, oldSnapshot.match(/digest="([^"]+)"/)[1]);
+  assert.match(originalBody, /rewritten story scope/);
+  assert.doesNotMatch(h.store.body, /aitm-refinement-snapshot/);
+  assert.deepEqual(activeFieldsAfterShelve(h.store.body), {
+    priority: null,
+    size: null,
+    estimate: null,
+    rank: null,
+  });
+});
+
+test('stale-refinement recovery retries without duplicate history and refuses changed intent', async () => {
+  const h = harness({ state: 'ready-for-plan', failOnce: 'move-status' });
+  h.store.body = h.store.body.replace('enough durable scope', 'rewritten story scope');
+  const intent = {
+    issueNumber: 1215,
+    reason: 'Re-refine rewritten story',
+    refreshStaleRefinement: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+  const first = await runShelveTransaction(intent);
+  assert.equal(first.status, 'recovery-pending', JSON.stringify(first));
+  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  const changed = await runShelveTransaction({ ...intent, refreshStaleRefinement: false });
+  assert.equal(changed.status, 'retry-intent-refused');
+  const retry = await runShelveTransaction(intent);
+  assert.equal(retry.status, 'shelved', JSON.stringify(retry));
+  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+});
+
+test('stale-refinement recovery refuses mismatched board fields before mutation', async () => {
+  const h = harness({ state: 'ready-for-plan' });
+  h.store.body = h.store.body.replace('enough durable scope', 'rewritten story scope');
+  h.store.fields.rank = 3;
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Re-refine rewritten story',
+    refreshStaleRefinement: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'fields-refused');
+  assert.deepEqual(h.calls, []);
+});
+
+test('stale-refinement recovery refuses current, legacy, and conflicting snapshots', async () => {
+  for (const h of [
+    harness({ state: 'ready-for-plan' }),
+    harness({ state: 'ready-for-plan', legacyBlockers: [1212] }),
+  ]) {
+    const result = await runShelveTransaction({
+      issueNumber: 1215,
+      reason: 'Re-refine rewritten story',
+      refreshStaleRefinement: true,
+      cfg: CFG,
+      deps: h.deps,
+    });
+    assert.equal(result.status, 'snapshot-refused');
+    assert.deepEqual(h.calls, []);
+  }
+
+  const h = harness({ state: 'ready-for-plan' });
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Conflicting recovery',
+    refreshStaleRefinement: true,
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'conflicting-refresh-refused');
+  assert.deepEqual(h.calls, []);
+});
+
 test('legacy blocker refresh retries a #1335-style failed move without duplicating history or losing carriers', async () => {
   const h = harness({
     state: 'ready-for-plan',

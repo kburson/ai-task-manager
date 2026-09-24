@@ -65,12 +65,14 @@ test('strict Shelve argv accepts one explicit stale-blocker refresh flag', () =>
     reason: 'stale refinement',
     removeOwner: false,
     refreshStaleBlockers: false,
+    refreshStaleRefinement: false,
   });
   assert.deepEqual(parseArgs(['1215', '--reason=stale refinement', '--remove-owner']), {
     issueNumber: 1215,
     reason: 'stale refinement',
     removeOwner: true,
     refreshStaleBlockers: false,
+    refreshStaleRefinement: false,
   });
   assert.deepEqual(
     parseArgs(['1215', '--reason', 'stale refinement', '--refresh-stale-blockers']),
@@ -79,7 +81,32 @@ test('strict Shelve argv accepts one explicit stale-blocker refresh flag', () =>
       reason: 'stale refinement',
       removeOwner: false,
       refreshStaleBlockers: true,
+      refreshStaleRefinement: false,
     }
+  );
+});
+
+test('Shelve accepts one explicit stale-refinement recovery flag', () => {
+  assert.deepEqual(
+    parseArgs(['1215', '--reason', 'story rewritten after refine', '--refresh-stale-refinement']),
+    {
+      issueNumber: 1215,
+      reason: 'story rewritten after refine',
+      removeOwner: false,
+      refreshStaleBlockers: false,
+      refreshStaleRefinement: true,
+    }
+  );
+  assert.throws(
+    () =>
+      parseArgs([
+        '1215',
+        '--reason',
+        'x',
+        '--refresh-stale-refinement',
+        '--refresh-stale-refinement',
+      ]),
+    /duplicate flag: --refresh-stale-refinement/
   );
 });
 
