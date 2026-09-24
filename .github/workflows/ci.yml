@@ -40,6 +40,14 @@ on:
 permissions:
   contents: read
 
+# Capture fixtures were originally created with this Git identity. Pin it for
+# isolated commit-tree replay instead of inheriting a runner's global config.
+env:
+  GIT_AUTHOR_NAME: kendrick burson
+  GIT_AUTHOR_EMAIL: kpburson@pm.me
+  GIT_COMMITTER_NAME: kendrick burson
+  GIT_COMMITTER_EMAIL: kpburson@pm.me
+
 jobs:
   guidance-release:
     name: Guidance publication gate

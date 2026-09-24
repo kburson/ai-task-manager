@@ -1,6 +1,5 @@
 // @story #1765
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,6 +11,7 @@ import {
   measureLifecycleTraffic,
   validateLifecycleTranscript,
 } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
+import { capturedCommitBytes } from '../../../helpers/captured-commit-bytes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const historical = JSON.parse(
@@ -117,11 +117,8 @@ test('the committed corrected artifact is bound to its runner and preserves the 
   const runner = artifact.identity.implementationFiles.find(
     ({ path: file }) => file === runnerPath
   );
-  const committed = spawnSync('git', ['show', `${artifact.identity.sourceCommit}:${runnerPath}`], {
-    cwd: root,
-  });
-  assert.equal(committed.status, 0);
-  assert.equal(runner.sha256, sha256(committed.stdout));
+  const committed = capturedCommitBytes(root, artifact.identity.sourceCommit, runnerPath);
+  assert.equal(runner.sha256, sha256(committed));
   assert.equal(artifact.identity.transcriptSha256, sha256(JSON.stringify(artifact.events)));
   assert.deepEqual(
     artifact.events.map(({ kind, name, stateRevision }) => [kind, name, stateRevision ?? null]),
@@ -129,14 +126,10 @@ test('the committed corrected artifact is bound to its runner and preserves the 
   );
   assert.deepEqual(artifact.measurement.traffic, measureLifecycleTraffic(artifact.events));
   const historicalPath = 'scripts/tests/fixtures/1558/actual-explain-traffic.json';
-  const historicalAtSource = spawnSync(
-    'git',
-    ['show', `${artifact.identity.sourceCommit}:${historicalPath}`],
-    { cwd: root }
+  const historicalAtSource = capturedCommitBytes(
+    root,
+    artifact.identity.sourceCommit,
+    historicalPath
   );
-  assert.equal(historicalAtSource.status, 0);
-  assert.equal(
-    sha256(readFileSync(path.join(root, historicalPath))),
-    sha256(historicalAtSource.stdout)
-  );
+  assert.equal(sha256(readFileSync(path.join(root, historicalPath))), sha256(historicalAtSource));
 });

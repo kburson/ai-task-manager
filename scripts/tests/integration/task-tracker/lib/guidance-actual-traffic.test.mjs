@@ -1,6 +1,5 @@
 // @story #1675
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -8,14 +7,14 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { measureProposedStatic } from '../../../../maintenance/capture-guidance-explain.mjs';
+import { capturedCommitBytes } from '../../../helpers/captured-commit-bytes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const capture = JSON.parse(
   readFileSync(path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic.json'))
 );
 const sha256 = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
-const atCommit = (commit, file) =>
-  execFileSync('git', ['show', `${commit}:${file}`], { cwd: root, encoding: null });
+const atCommit = (commit, file) => capturedCommitBytes(root, commit, file);
 
 test('actual explanation evidence is public subprocess traffic anchored to one source commit', () => {
   assert.equal(capture.schema, 'aitm.guidance-actual-cli-capture/v2');
