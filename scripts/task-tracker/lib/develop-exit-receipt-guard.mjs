@@ -5,6 +5,7 @@ import {
   hasMalformedVerificationReceiptClaim,
   hasVerificationReceiptMarker,
   parseVerificationReceipt,
+  requiredDevelopReceiptClassifications,
   validateVerificationReceiptStructure,
   validateVerificationReceiptCommandAuthority,
 } from './verification-receipt.mjs';
@@ -35,7 +36,7 @@ function receiptPasses(receipt, issueNumber, headSha) {
     expectedStage: 'develop-final',
   });
   if (!structural.ok || receipt.commitSha !== headSha) return false;
-  return ['lint-full', 'format-full'].every((classification) =>
+  return requiredDevelopReceiptClassifications(receipt).every((classification) =>
     receipt.commands.some(
       (command) => command.classification === classification && command.exitCode === 0
     )
