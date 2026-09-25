@@ -14,12 +14,14 @@
 
 **Plan status:** The prior revision was accepted by Astra 6 / Opus 5 peer review. This Story Intent amendment requires its own review before Plan approval. Peer acceptance does not approve implementation or activate a delivery waiver.
 
+**Prior plan acceptance:** [Review manifest](../../peer-reviews/plan/2026-09-25-2026-09-24-1787-delivery-waiver-review-ceeecb3db9ae33154a3aa9cd648031fd/review-ceeecb3db9ae33154a3aa9cd648031fd-review-manifest.md), record `review-ceeecb3db9ae33154a3aa9cd648031fd`, accepted artifact commit `5b1a4d91e4340b2a828d0dcd9ee24430bb0304fc`, finalization commit `24e50125`. That manifest remains evidence for its exact prior bytes, not this amendment; it carries no signed human-authority attestation.
+
 ## Story Intent
 
-- **Beneficiary:** Release operator responsible for closing a delivered issue.
-- **Capability:** Authorize one named PR-delivery verifier divergence through a scoped, host-verified human decision and receive a visibly waived delivery receipt.
-- **Need:** A benign, understood difference between an authorized PR intent and independently observed merge evidence can otherwise strand the issue after the code has reached trunk.
-- **Value or failure prevented:** The operator can complete an auditable delivery without adding a one-off reconciliation branch or representing the waived invariant as an ordinary pass.
+- **Beneficiary:** release operator responsible for closing a delivered issue
+- **Capability:** authorize one named PR-delivery verifier divergence through a scoped, host-verified human decision and receive a visibly waived delivery receipt
+- **Need:** a benign, understood divergence between an authorized PR intent and independently observed merge evidence can otherwise strand the issue after its code has reached trunk
+- **Value or failure prevented:** the operator completes an auditable delivery without a one-off reconciliation code path and without representing the waived invariant as an ordinary pass
 
 ## Global Constraints
 
@@ -40,6 +42,8 @@
 ## Scope and Planning Decisions
 
 This is one implementation plan because the authority, consumption, verifier, and receipt changes form one delivery transaction. Tasks are independently testable boundaries, not independent user-facing releases. Keep the new effect path disconnected until Tasks 2-8 pass.
+
+**Decomposition lane:** Split the eleven numbered tasks into sequential dependent child issues through the sanctioned AITM decomposition workflow before implementation. The live classifier must see all eleven tasks and report `must-split`; this plan does not request a decomposition waiver. Establish the supported parent/child topology, exact source-plan commit and task selector, and required approvals through that workflow. Each child owns only its selected task and retains the parent plan's global constraints and accepted spec. Require the preceding child's verified integration before starting the next child; do not ship a partially connected waiver path. The combined delivery is released only after Task 11's full verification. This review prepares the source document only: it creates no issues and changes no issue kind, body, estimate, or lifecycle state. Task commit subjects use the assigned child issue once bound, with #1787 retained as parent provenance.
 
 Carry forward the accepted review's three optional clarifications without changing its sealed spec:
 
@@ -155,9 +159,26 @@ const scopeKeys = [
 
 `scope.issue` maps explicitly to the existing delivery record `issueNumber`, `scope.pullRequest` to `prNumber`, and `scope.acceptedHeadSha` to `expectedHeadSha`. Do not spread the scope into an exact-key delivery record.
 
-Task order: `1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11`. Task 6's isolated transport tests can be developed after Task 3, but its integration cannot precede Task 5. No concurrent edits to the large verifier, record module, or deliver verb.
+Task order: `1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11`. Use this strict sequence for the child-issue lane, including Task 6; its transport fixtures remain isolated from production effects. No concurrent edits to the large verifier, record module, or deliver verb.
 
-## Task 1: Characterize Existing Refusals and Historical Receipts
+## Implementation Tasks
+
+### Task 1: Characterize Existing Refusals and Historical Receipts
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs scripts/tests/unit/task-tracker/lib/close-waived-delivery-receipt.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** maintainer responsible for delivery compatibility
+- **Capability:** detect changes to default refusals and historical receipt behavior before enabling a new waiver path
+- **Need:** verifier reordering and new record versions can silently change existing delivery decisions
+- **Value or failure prevented:** operators retain the existing protections and can still recover previously recorded deliveries
+
+#### Implementation
 
 **Files:** Create `scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs`. Read/reuse `scripts/tests/unit/task-tracker/verbs/deliver-test-harness.mjs`; extend its options only if a fixture cannot otherwise express the reproduction. Run existing `delivery-records.test.mjs`, `delivery-verification-attribution.test.mjs`, and `close-waived-delivery-receipt.test.mjs` under `scripts/tests/unit/task-tracker/lib/`.
 
@@ -191,7 +212,22 @@ test('pending squash intent refuses a provider-reported merge', async () => {
 - [ ] Add explicit ordinary v1 intent/v1 receipt, warning v2 receipt, and #1755 v2 intent/v3 receipt round-trip assertions using the current builders. Add single-failure no-grant, wrong accepted SHA, missing merged PR, wrong target, unreachable merge, and malformed intent cases; preserve their existing categories/exit behavior and zero terminal writes. Separately label three reorder-sensitive multiple-failure fixtures: provider/intent method mismatch plus invalid merge SHA, invalid `mergedAt`, or valid-but-unknown Git topology. Record their current `merge-method` outcome; Task 8 owns the explicit new expectations in the same commit as the spec-required reorder. These three fixtures are not a promise of unchanged error precedence.
 - [ ] Run the new file plus the three existing suites named above. Record the baseline and commit the characterization as `test: characterize delivery waiver boundaries [#1787]`.
 
-## Task 2: Add Per-ID Capabilities and Complete Diagnostic Coverage
+### Task 2: Add Per-ID Capabilities and Complete Diagnostic Coverage
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-verification-catalog-ids.test.mjs scripts/tests/unit/task-tracker/lib/workflow-policy/catalog.test.mjs scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator evaluating a refused PR delivery
+- **Capability:** identify the exact failed requirement and distinguish disclosure-eligible divergences from non-waivable guardrails
+- **Need:** unaddressed verifier throws cannot be targeted precisely and ordinary waiver access would bypass hard delivery protections
+- **Value or failure prevented:** an exception can name one eligible failure without granting authority over unrelated or structurally unsafe inputs
+
+#### Implementation
 
 **Files:** Modify `scripts/task-tracker/lib/workflow-policy/catalog.mjs`, `consumer-coverage.mjs`, and `scripts/task-tracker/lib/delivery-verification.mjs`. Create `scripts/tests/unit/task-tracker/lib/delivery-verification-catalog-ids.test.mjs`; extend `scripts/tests/unit/task-tracker/lib/workflow-policy/catalog.test.mjs`.
 
@@ -227,7 +263,22 @@ function deliveryItem(id, guardrail = false) {
 - [ ] Add negative raising-site fixtures with a valid `delivery.verification.intent-integrity` grant: missing verifier functions, non-object PR/intent input, bad exact keys, invalid `recovery`, and malformed external `intentInput` all still refuse under `delivery.verification.input-contract`. Run these structural guards before evaluating any eligible predicate; they cannot be waived or translated into intent integrity.
 - [ ] Compare every literal `verificationError(...)` category in the source to registry entries and execute table-driven failure fixtures. A strict lookup must throw for a new unknown category; the existing diagnostic fallback cannot fabricate its ID. Re-run Task 1 to verify this mapping-only task preserves existing categories, including the labelled pre-reorder fixtures. Task 8 alone changes their declared precedence. Commit as `feat: address delivery predicates without ordinary waiver access [#1787]`.
 
-## Task 3: Implement Canonical Scope and the V2 Envelope
+### Task 3: Implement Canonical Scope and the V2 Envelope
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-waiver-scope.test.mjs scripts/tests/unit/task-tracker/lib/workflow-policy/exception-record.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator authorizing a specific delivered change
+- **Capability:** bind a delivery exception to one repository, issue, PR, accepted head, requirement, and operation
+- **Need:** ambiguous scope or permissive record parsing could carry a human decision to a different delivery
+- **Value or failure prevented:** changed or malformed scope is refused while existing ordinary exception records remain usable
+
+#### Implementation
 
 **Files:** Create `scripts/task-tracker/lib/workflow-policy/delivery-scope.mjs`. Modify `scripts/task-tracker/lib/workflow-policy/exception-record.mjs`. Create `scripts/tests/unit/task-tracker/lib/delivery-waiver-scope.test.mjs`; extend `scripts/tests/unit/task-tracker/lib/workflow-policy/exception-record.test.mjs`.
 
@@ -270,7 +321,22 @@ const waiverScopeDigest = `sha256:${createHash('sha256')
 - [ ] Test positive create/parse/readback data; each changed scope field; wildcard/null PR on the PR lane; unknown kind/schema; ordinary IDs; digest mismatch with a freshly correct outer payload hash; agent/unsupported-host authority; null/expired timestamps; non-empty constraints. The shared scope codec may describe explicit-null local-trunk scope, but #1787's production v2 kind validator must refuse that unimplemented authorization kind.
 - [ ] Re-run the two suites and existing v1 fixtures. Commit as `feat: define delivery-scoped workflow exception records [#1787]`.
 
-## Task 4: Partition Exception Chains and Preserve Ordinary Policy
+### Task 4: Partition Exception Chains and Preserve Ordinary Policy
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/workflow-policy/exception-partitions.test.mjs scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator managing multiple exception histories on one issue
+- **Capability:** revise or revoke one delivery grant without replacing ordinary workflow policy or another operation's grant
+- **Need:** an issue-wide exception chain cannot safely represent independent delivery operation histories
+- **Value or failure prevented:** concurrent or unrelated records cannot lend authority across partitions or remove ordinary deny constraints
+
+#### Implementation
 
 **Files:** Create `scripts/task-tracker/lib/workflow-policy/exception-partitions.mjs`. Modify `exception-record.mjs`, `exception-store.mjs`, `snapshot.mjs`, `preflight.mjs`, and `evaluator.mjs` under `scripts/task-tracker/lib/workflow-policy/`. Create `scripts/tests/unit/task-tracker/lib/workflow-policy/exception-partitions.test.mjs`; extend `scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs` and `workflow-preflight.test.mjs`.
 
@@ -296,7 +362,22 @@ Here `records` are actual envelopes produced by Task 3 and existing v1 fixture b
 - [ ] Add fork, duplicate root/head, unknown schema, transport ambiguity, wrong partition readback, operation-digest collision, and pre-burn re-scoping tests. Require fresh approval after re-scoping; consumed operation availability is independent of grant revision.
 - [ ] Partition `authorityRevisions`, not only active records. Render kind/key/disposition for delivery history and preserve ordinary history. The overall snapshot hash may change. Ordinary evaluation never grants a disclosure-only requirement; ordinary deny constraints still block. Re-run v1 evaluator and slow lifecycle tests, then commit as `feat: isolate delivery exception chains from workflow policy [#1787]`.
 
-## Task 5: Add Exact Human Preparation, Recording, and Authority Resolution
+### Task 5: Add Exact Human Preparation, Recording, and Authority Resolution
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-waiver-authority.test.mjs scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator deciding whether to authorize a delivery exception
+- **Capability:** inspect an exact proposal and approve, revise, or revoke it through a host-verified human statement
+- **Need:** a request file, agent assertion, or stale approval cannot establish the operator's current decision
+- **Value or failure prevented:** only the human-approved scope and action acquire authority and unattended automation cannot approve itself
+
+#### Implementation
 
 **Files:** Create `scripts/task-tracker/lib/workflow-policy/delivery-request.mjs`, `delivery-waiver-authority.mjs`. Modify `scripts/task-tracker/verbs/workflow-exception.mjs`, `verbs/help-data.mjs`, and `scripts/task-tracker/lib/command-surface/catalog.mjs`, `routing.mjs`. Create `scripts/tests/unit/task-tracker/lib/delivery-waiver-authority.test.mjs` and its fixture-only helper `delivery-waiver-authority-fixtures.mjs` in the same directory; extend `scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs` and existing command-policy tests. Keep each test file below the repository's 800-code-line cap; fixture helpers do not register tests or change the named suite command.
 
@@ -323,7 +404,22 @@ if (authority.statement !== expectedStatement) {
 - [ ] Test genuine user versus assistant/injected text, wrong statement/source hash, changed reason/expiry/scope/action, wrong issue/PR/head/base/operation, empty/placeholder reasons, unsupported host, null expiry, and read failures. Test each resolver raising branch and typed rendering; no ordinary-prefix parsing. Preserve missing-scope-section remediation.
 - [ ] Keep no `PREFLIGHT_MODE` entry for the verb, and assert prepare/show cause zero binding/timer/comment/provider effects. Re-run parser policy and v1 CLI fixtures; commit as `feat: prepare and verify scoped delivery waiver authority [#1787]`.
 
-## Task 6: Implement Durable Single-Use Consumption and Publication
+### Task 6: Implement Durable Single-Use Consumption and Publication
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-waiver-consumption.test.mjs scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator retrying delivery across hosts or interruptions
+- **Capability:** consume an approved operation once and reconcile its exact intent and receipt writes without replaying uncertain requests
+- **Need:** concurrent processes and lost write responses can otherwise duplicate durable evidence or reuse a spent approval
+- **Value or failure prevented:** retries preserve single-use authority and expose unresolved publication as indeterminate instead of a false success
+
+#### Implementation
 
 **Files:** Create `scripts/task-tracker/lib/delivery-waiver-consumption.mjs`, `delivery-waiver-journal.mjs`, `scripts/tests/unit/task-tracker/lib/delivery-waiver-consumption.test.mjs`, and `scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs`. Put reusable unit fixture setup in adjacent `delivery-waiver-consumption-fixtures.mjs` and two-clone/process setup in integration helper `delivery-waiver-journal-harness.mjs`. Helpers register no tests; all cases remain reachable through the named test files, each below the 800-code-line cap.
 
@@ -366,7 +462,22 @@ const args = [
 - [ ] Implement the terminal automated-progress refusal and human escalation contract from Consumption Serialization Decision. Test a confirmed requesting transition with a lost POST outcome and no matching comment: return typed `indeterminate`/hard ambiguity, stage/operation identity, and explicit escalation text; state whether approval is burned, and make no POST, new operation, or terminal lifecycle write. Test that this is neither `missing` nor idempotent success. A later unique exact original comment may reconcile; elapsed time, repeated empty listings, a changed grant, or a supplied operator assertion never unlock a replay. Task 10 must preserve these fields in operator output.
 - [ ] Use two clones and separate processes to prove one intent POST, burn, and receipt POST across same-operation attempts; also race two valid operation grants against one original intent and require only one intent publication. Insert crash checkpoints before push, after remote acceptance, before each POST, after each POST, and before confirmation/completion writes. Test unrelated operations interleaved on the issue journal, delayed readback, and expiry/revocation after reservation but before burn. Simulate branch-write refusal and remote identity mismatch; both fail closed. Test no-grant preparation and read-only preflight perform zero pushes. Commit as `feat: serialize delivery waiver consumption durably [#1787]`.
 
-## Task 7: Add V3 Intent, V4 Receipt, and Pinned Evidence Validation
+### Task 7: Add V3 Intent, V4 Receipt, and Pinned Evidence Validation
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator inspecting a completed waived delivery
+- **Capability:** recover the exact original intent, human grant, consumed operation, and waived requirement from validated versioned records
+- **Need:** a normal receipt or loosely matched evidence could hide the divergence or substitute a different authorization
+- **Value or failure prevented:** the terminal record visibly discloses the waiver and rejects tampered, mixed, or competing transaction evidence
+
+#### Implementation
 
 **Files:** Create `scripts/task-tracker/lib/delivery-waiver-evidence.mjs` and `scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs`. Modify `scripts/task-tracker/lib/delivery-records.mjs`; extend `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`.
 
@@ -398,7 +509,22 @@ assert.doesNotThrow(() =>
 - [ ] Add a narrow v1-to-v3 graph transition to `validateIntentGraph`: the v3 must directly supersede the chronological live original v1, retain its exact repository/issue/PR/head/base and all ordinary authorized intent fields, and pin its full canonical record digest plus provider creation timestamp. A changed schema/added generic-waiver fields are permitted only through this validated transition, not a global removal of `same-key-divergence`. Require that the predecessor has no terminal receipt. Retain duplicate-ID, fork, order, cycle, multiple-tip, and operation-reuse guards. Reject v2-to-v3 composition in this issue because the singular generic waiver does not incorporate #1755 authority.
 - [ ] Test projection of the complete `[original v1, superseding v3, terminal v4]` comment history, not just standalone codecs. Include negatives for changed original merge method/message/head/base, missing or wrong predecessor/digest/time, an already-receipted predecessor, v2 predecessor, unrelated same-key divergence, and competing successors. Require unique operation-to-intent ownership in projection. Test unknown/mixed version pairs, extra/missing keys, altered reason/scope/grant/burn digest, excessive comment size, and duplicate receipts. Re-run every legacy record fixture, then commit as `feat: represent waived delivery with pinned evidence [#1787]`.
 
-## Task 8: Evaluate One Waiver Without Skipping Other Predicates
+### Task 8: Evaluate One Waiver Without Skipping Other Predicates
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-waiver-reverification.test.mjs scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs scripts/tests/unit/task-tracker/lib/delivery-verification-catalog-ids.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator verifying a PR with one approved divergence
+- **Capability:** apply the exact single waiver while independently checking every other required provider and Git fact
+- **Need:** suppressing an early refusal can accidentally skip later checks or conceal a second failure
+- **Value or failure prevented:** one human exception never becomes a hidden pass for missing evidence or unrelated delivery defects
+
+#### Implementation
 
 **Files:** Modify `scripts/task-tracker/lib/delivery-verification.mjs`; extend Task 2's diagnostic tests and `scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs`; create `scripts/tests/unit/task-tracker/lib/delivery-waiver-reverification.test.mjs`.
 
@@ -426,7 +552,22 @@ assert.equal(writes.length, 0);
 - [ ] Accumulate failed requirement IDs before deciding to waive; two distinct IDs refuse before burn. Continue every other predicate. Never synthesize a head, PR, merge commit, timestamp, or reachability proof to keep a waived path running. An ID's catalog eligibility does not remove close's independent hard prerequisites.
 - [ ] Add a pinned re-verification path that recomputes live facts while reproducing stored provider observation/receipt bytes. Test current provider metadata appearing/disappearing, conflicting metadata, changed topology, unrelated trunk advancement, post-expiry authorization, and current-grant resolver spies that throw if called. Preserve ordinary and attribution-waiver behavior apart from the explicitly enumerated spec-required merge-observation precedence changes above. Commit as `feat: verify disclosed delivery waivers without hidden passes [#1787]`.
 
-## Task 9: Wire Effect-Time Delivery and Retry Recovery
+### Task 9: Wire Effect-Time Delivery and Retry Recovery
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator whose merged PR differs from its authorized intent
+- **Capability:** complete the generic waived delivery transaction through the existing deliver command and safely resume the same transaction
+- **Need:** the historical reconciliation lane cannot handle an existing authorized intent and facts may change before publication
+- **Value or failure prevented:** a freshly verified delivery reaches one truthful waived receipt without a second merge action or an unverified terminal write
+
+#### Implementation
 
 **Files:** Create `scripts/task-tracker/lib/delivery-waiver-transaction.mjs`. Modify `scripts/task-tracker/verbs/deliver.mjs`. Create `scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs`; extend `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs` and its harness.
 
@@ -450,7 +591,22 @@ assert.equal(calls.providerActions, 0);
 - [ ] Use Task 6's journal for receipt publication rather than the old unconditional POST/retry block. On scope change, two failed IDs, wrong grant, revised consumed operation, conflicting intent, lost write, or unresolved journal state, return a structured refusal and do not emit an ordinary receipt or terminal lifecycle effects.
 - [ ] Test race injections after preparation, before intent reservation/publication, after intent readback, before burn, and during receipt publication. Assert the actual projected comment history remains valid with one v3 successor after two-host contention, including different operations naming one predecessor. Include revoked/expired grant before burn, fresh human approval after pre-reservation re-scoping, explicit post-reservation drift refusal, and confirmed-burn retry after expiry. Re-run existing deliver-close, historical/external recovery, and #1755 integration suites. Commit as `feat: consume delivery waivers at the receipt boundary [#1787]`.
 
-## Task 10: Support Close, Recovery, and Read-Only Disclosure
+### Task 10: Support Close, Recovery, and Read-Only Disclosure
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/delivery-waiver-close-recovery.test.mjs scripts/tests/unit/task-tracker/lib/reopened-close-recovery.test.mjs scripts/tests/unit/task-tracker/lib/false-delivery-close-recovery.test.mjs scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs
+```
+
+#### Story Intent
+
+- **Beneficiary:** release operator closing or recovering an already recorded waived delivery
+- **Capability:** validate pinned historical authority against current delivery facts and inspect truthful read-only outcomes
+- **Need:** later grant expiry or journal advancement must not erase valid completed evidence or conceal current contradictions
+- **Value or failure prevented:** close and recovery preserve exact receipt bytes and distinguish waived, blocked, and indeterminate outcomes without new side effects
+
+#### Implementation
 
 **Files:** Modify `scripts/task-tracker/lib/close-delivery-receipt.mjs`, `reopened-close-recovery.mjs`, `false-delivery-close-recovery.mjs`, `action-decision/deliver.mjs`, `action-decision/close.mjs`, `action-decision/presentation.mjs`, `workflow-policy/snapshot.mjs`, `workflow-policy/preflight.mjs`, `scripts/task-tracker/verbs/workflow-preflight.mjs`, and `scripts/task-tracker/verbs/close.mjs`. Extend existing close/recovery/preflight tests; create `scripts/tests/unit/task-tracker/lib/delivery-waiver-close-recovery.test.mjs`.
 
@@ -475,7 +631,16 @@ assert.equal(receiptPosts, 0);
 - [ ] Render ordinary delivered, attribution waived, generic waived, blocked, and indeterminate distinctly in action explanations, deliver/close output, issue audit, and parsed projections. Use structured category/requirement/outcome fields. Narrow `--reconcile-merge-method` guidance to its actual historical/external lanes and point pending-intent failures to preparation.
 - [ ] Add zero-effect spies for preflight/show: no comments, timers, bindings, providers, or remote-ref writes. Test `indeterminate` is not rendered as missing or passed. Test local-trunk records never authorize a PR waiver and PR grants never authorize no-PR close. Commit as `feat: close and explain pinned waived deliveries [#1787]`.
 
-## Task 11: Package, Document, and Verify the Full Contract
+### Task 11: Package, Document, and Verify the Full Contract
+
+#### Story Intent
+
+- **Beneficiary:** release operator using the installed AITM package
+- **Capability:** use the same reviewed waiver workflow and clear recovery guidance available in the source checkout
+- **Need:** missing package files or incomplete integration coverage can leave installed consumers unable to authorize or inspect delivery safely
+- **Value or failure prevented:** the shipped workflow preserves ordinary and waived delivery guarantees and explains its unresolved-publication limitations
+
+#### Implementation
 
 **Files:** Modify `docs/guides/workflow.md`, `skill/shared/rules/deliver.md`, `scripts/task-tracker/verbs/help-data.mjs`. Create `scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs`. Extend `scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs` and `scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs` where relevant.
 
@@ -484,7 +649,9 @@ assert.equal(receiptPosts, 0);
 - [ ] Add a package smoke test following `package-workflow-exception-smoke.test.mjs`: pack into a disposable repository-local test directory, install the tarball, verify runtime modules/guide inclusion, and execute help, read-only preparation with mocked ports, and codec round trips. The test must not assert that repository planning files are packed.
 - [ ] Document proposal creation, exact Codex approval, recording, normal deliver retry, expiry versus historical verification, journal permission requirements, and Task 6's terminal unresolved-publication refusal/escalation. Explicitly disclose the availability limitation: no force-republish or fresh-grant escape path exists for an uncertain outstanding write; burned approval stays spent. State that a request file or `--reason` never grants authority and automatic cleanup/force deletion is unsupported. Explain one durable journal branch per waived issue, cumulative event/object growth, and default refspec visibility in clones. Recommend filtering audit branches out of ordinary branch displays; any optional narrowed fetch configuration must retain the adapter's explicit exact journal fetch and never imply journal deletion or automatic configuration changes.
 - [ ] Add the complete end-to-end acceptance matrix below and run it before broad gates. Include ordinary delivery and #1755 in the same regression run; assert the #1784/#1785 fixture reaches close with result visibly waived and no normal-pass backfill.
-- [ ] Run:
+- [ ] Run the labeled verification commands below, retaining the focused checks and all broad gates.
+
+**Verification Commands:**
 
 ```sh
 node --test scripts/tests/unit/task-tracker/lib/delivery-verification-catalog-ids.test.mjs scripts/tests/unit/task-tracker/lib/delivery-waiver-scope.test.mjs scripts/tests/unit/task-tracker/lib/delivery-waiver-authority.test.mjs scripts/tests/unit/task-tracker/lib/delivery-waiver-consumption.test.mjs scripts/tests/unit/task-tracker/lib/delivery-waiver-reverification.test.mjs scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs scripts/tests/unit/task-tracker/lib/delivery-waiver-close-recovery.test.mjs
@@ -527,8 +694,8 @@ Issue #1783 consumes `buildDeliveryScope`, the partition contract, and common ho
 
 - [ ] Review this plan with Astra 6 as author and Opus 5 as reviewer before implementation. Review the remote journal choice, receipt-publication uncertainty behavior, v3/v4 exact fields, and #1783 handoff explicitly.
 - [ ] If the accepted spec needs a behavioral change during plan review, record it and reopen the spec review; do not silently edit the accepted blob.
-- [ ] Preserve #1787 provenance through sanctioned task binding and any agreed child-issue decomposition. This plan does not create issues, set estimates, or advance lifecycle state.
-- [ ] After plan acceptance and required lifecycle approval, execute the verified tasks. Do not treat peer consensus on the spec as plan approval or approval to activate a real delivery waiver.
+- [ ] Preserve #1787 provenance through sanctioned task binding and the sequential child-issue decomposition selected above. Validate every extracted task's intent and executable commands before creating any child. This review does not create issues, set estimates, or advance lifecycle state.
+- [ ] After plan acceptance, sanctioned decomposition, and required lifecycle approvals, execute the verified child tasks in order. Do not treat peer consensus on the spec as plan approval or approval to activate a real delivery waiver.
 
 ## Author Self-Review
 
