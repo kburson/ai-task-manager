@@ -20,6 +20,7 @@
 // state refuses BEFORE any mutation.
 
 import { randomUUID } from 'node:crypto';
+import { validatePinnedWaiverEvidence } from './delivery-waiver-evidence.mjs';
 import path from 'node:path';
 
 import {
@@ -310,8 +311,11 @@ function validateDeliveryBundle(bundle, issueNumber, repository, acceptedSha, ca
     !isPlainObject(pullRequest) ||
     !isPlainObject(intent) ||
     !isPlainObject(receipt) ||
-    intent.schema !== 'aitm.delivery-intent/v1' ||
-    receipt.schema !== 'aitm.delivery-receipt/v1'
+    !(
+      (intent.schema === 'aitm.delivery-intent/v1' &&
+        receipt.schema === 'aitm.delivery-receipt/v1') ||
+      (intent.schema === 'aitm.delivery-intent/v3' && receipt.schema === 'aitm.delivery-receipt/v4')
+    )
   ) {
     fail(category);
   }
@@ -341,9 +345,22 @@ function validateDeliveryBundle(bundle, issueNumber, repository, acceptedSha, ca
     receipt.provider !== intent.provider ||
     intent.headRef !== pullRequest.headRefName ||
     intent.baseRef !== pullRequest.baseRefName ||
-    receipt.result !== 'delivered'
+    receipt.result !== (intent.schema === 'aitm.delivery-intent/v3' ? 'waived' : 'delivered')
   ) {
     fail(category);
+  }
+  if (intent.schema === 'aitm.delivery-intent/v3') {
+    try {
+      validatePinnedWaiverEvidence({
+        intent,
+        receipt,
+        grant: receipt.waiverGrant,
+        burn: receipt.burn,
+        originalIntent: bundle.originalIntent,
+      });
+    } catch {
+      fail(category);
+    }
   }
 }
 

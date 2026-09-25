@@ -55,11 +55,11 @@
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/close.mjs",
-        "sha256": "sha256:6f7ab80461d7f7405f1926ea1dfd41d9fe6647e4660281d4d5e1c4fce591858f"
+        "sha256": "sha256:09971cf16edf97e8b0bc767dcb26d588d1531556aa1948200500ec74c1727913"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
-        "sha256": "sha256:11046fc6e737dc8859506153b7cd296df4d20707561c1bec9a0c8c46efa56c17"
+        "sha256": "sha256:83c31f3057f5f34e7c68795baf71322abae9802254de7c732b9201e98b1e64e8"
       },
       {
         "path": "instructions/aitm-guidance.yml",
@@ -73,7 +73,7 @@
     "fakeGhSha256": "sha256:af6eaba27890494427257028110ae57508b018c549c797f59008045c3fb9d2a9",
     "fixedClockSha256": "sha256:fce21e3d55321b7163b369b88ba40e26c93984bda024d7ff5f84dc6e8a87705a",
     "transcriptSha256": "sha256:23a632b5d2dd806c649dd33f2991b3d67e3fb5c266d410af649f751c1b9cb725",
-    "sourceInputsSha256": "sha256:da4346db4d4d91953f734da1feb15edbfb0e526314cef194b7cbda6a94b8459d"
+    "sourceInputsSha256": "sha256:69b8b416e8765e10bbc0d726a1343d49df36994525ab926acfcd50ef1afb8baf"
   },
   "events": [
     {

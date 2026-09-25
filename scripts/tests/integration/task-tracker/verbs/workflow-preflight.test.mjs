@@ -153,6 +153,25 @@ test('preflight shows delivery revisions but evaluates only ordinary policy', as
   assert.equal(report.provenance.exceptionStatus, 'active');
   assert.equal(report.authorityRevisions.length, 3);
   assert.equal(report.authorityRevisions.filter(({ kind }) => kind === 'delivery').length, 2);
+  assert.deepEqual(
+    report.deliveryExceptions.map(({ category, requirementId, outcome }) => ({
+      category,
+      requirementId,
+      outcome,
+    })),
+    [
+      {
+        category: 'delivery-waiver-authority',
+        requirementId: 'delivery.verification.merge-method',
+        outcome: 'waived',
+      },
+      {
+        category: 'delivery-waiver-authority',
+        requirementId: 'delivery.verification.merge-method',
+        outcome: 'waived',
+      },
+    ]
+  );
   assert.ok(
     report.authorityRevisions
       .filter(({ kind }) => kind === 'delivery')
@@ -164,6 +183,27 @@ test('preflight shows delivery revisions but evaluates only ordinary policy', as
     ['provider.managed-execution']
   );
   assert.match(formatWorkflowPreflightReport(report), /kind=delivery/);
+  assert.match(formatWorkflowPreflightReport(report), /Delivery exceptions:/);
+});
+
+test('preflight discloses expired delivery grants as blocked without writes', async () => {
+  const runtime = runtimeFixture();
+  runtime.listRecords = async () => [deliveryRecord(1)];
+  const report = await runWorkflowPreflight({
+    repository,
+    issue,
+    target: 'done',
+    now: '2026-09-17T00:00:00.000Z',
+    runtime,
+  });
+  assert.equal(report.deliveryExceptions[0].outcome, 'blocked');
+  assert.equal(report.deliveryExceptions[0].category, 'delivery-waiver-expired');
+  assert.equal(
+    runtime.calls.some(
+      (call) => call.startsWith('write') || call.startsWith('mutate') || call === 'requestProvider'
+    ),
+    false
+  );
 });
 
 function runtimeFixture({ externalProtection = 'unknown', evidence = {} } = {}) {

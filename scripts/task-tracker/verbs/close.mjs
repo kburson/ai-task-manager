@@ -5,7 +5,7 @@ import { loadState, saveState, clearActive, stateFullWordMarker } from '../state
 import { loadSession } from '../lib/session-store.mjs';
 import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
-import { currentSessionId } from '../word-counter.mjs';
+import { currentSessionId, jsonlPath } from '../word-counter.mjs';
 import {
   inspectTerminalIssueBindingRelease,
   releaseTerminalIssueBinding,
@@ -58,6 +58,7 @@ import {
   requireDeliveryReceipt,
   resolveAcceptedDeliveryHead,
   verifyCloseDeliveryReceipt,
+  verifyPinnedDeliveryWaiverAuthority,
 } from '../lib/close-delivery-receipt.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
 import { resolveAcceptedDeliveryAuthority } from '../lib/delivery-authority.mjs';
@@ -69,6 +70,8 @@ import { projectFunctionalDod } from '../lib/functional-dod-project.mjs';
 import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { parseAitmRecord } from '../lib/github-records/record-envelope.mjs';
+import { createDeliveryWaiverJournal } from '../lib/delivery-waiver-journal.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -840,6 +843,20 @@ export async function loadCloseDeliveryGateInput({
     pullRequest: selectedPullRequest,
     pullRequests,
     records,
+    waiverRecords:
+      records?.liveIntent?.record?.schema === 'aitm.delivery-intent/v3' && comments
+        ? comments
+            .filter(({ body }) => typeof body === 'string' && /<!--\s*aitm-record/i.test(body))
+            .map((comment) => ({
+              ...parseAitmRecord({
+                commentNodeId: String(comment.id),
+                body: comment.body,
+                expectedRepository: cfg.repo,
+                expectedIssue: issueNumber,
+              }),
+              createdAt: comment.createdAt,
+            }))
+        : [],
     noCommitRecords,
     sourceInventory,
   };
@@ -1653,6 +1670,16 @@ export async function runFalseDeliveryCloseRecovery({
       pullRequest,
       intent,
       receipt,
+      ...(intent.schema === 'aitm.delivery-intent/v3'
+        ? {
+            originalIntent: (() => {
+              const entry = deliveryProjection.intents.find(
+                ({ record }) => record.intentId === intent.originalIntentId
+              );
+              return entry && { record: entry.record, createdAt: entry.createdAt };
+            })(),
+          }
+        : {}),
       testReceiptSha: gate?.testReceiptSha ?? null,
       reviewApprovedSha: gate?.recoveryReviewApprovedSha ?? null,
       verifiedDelivery: gate?.receipt?.verification?.receiptInput ?? null,
@@ -1920,7 +1947,47 @@ export async function runReopenedCloseRecovery({
     const intent = projected?.liveIntent?.record ?? null;
     const receipt = projected?.matchingReceipt?.record ?? null;
     if (!intent || !receipt) throw new Error(`reopened-close-recovery:${category}`);
-    return { pullRequest, intent, receipt };
+    const original = projected.intents.find(
+      (entry) => entry.record.intentId === intent.originalIntentId
+    );
+    if (intent.schema === 'aitm.delivery-intent/v3') {
+      const waiverRecords = normalized
+        .filter(({ body: text }) => /<!--\s*aitm-record/i.test(text))
+        .map((comment) => ({
+          ...parseAitmRecord({
+            commentNodeId: comment.id,
+            body: comment.body,
+            expectedRepository: cfg.repo,
+            expectedIssue: Number(closeIssueNum),
+          }),
+          createdAt: comment.createdAt,
+        }));
+      await verifyPinnedDeliveryWaiverAuthority({
+        gateInput: { records: projected, repository: cfg.repo, issueNumber: Number(closeIssueNum) },
+        intent,
+        receipt,
+        deps: {
+          readWaiverJournal:
+            ctx.readCloseWaiverJournal ??
+            (() =>
+              createDeliveryWaiverJournal({
+                cwd: projectDir,
+                repository: cfg.repo,
+                issue: Number(closeIssueNum),
+              }).read()),
+          listWaiverRecords: () => waiverRecords,
+          resolveTranscriptPath: ctx.resolveCloseTranscriptPath ?? jsonlPath,
+        },
+      });
+    }
+    return {
+      pullRequest,
+      intent,
+      receipt,
+      ...(intent.schema === 'aitm.delivery-intent/v3'
+        ? { originalIntent: original && { record: original.record, createdAt: original.createdAt } }
+        : {}),
+    };
   };
 
   const historical = await resolveDeliveryBundle(oldTransaction.acceptedSha, 'historical-evidence');
@@ -2442,6 +2509,16 @@ export async function verbClose(ctx) {
       testReceiptSha: resolvedTestReceiptSha,
       acceptedReviewSha: resolvedAcceptedReviewSha,
       deps: {
+        readWaiverJournal:
+          ctx.readCloseWaiverJournal ??
+          (() =>
+            createDeliveryWaiverJournal({
+              cwd: projectDir,
+              repository: cfg.repo,
+              issue: gateInput.issueNumber,
+            }).read()),
+        listWaiverRecords: ctx.listCloseWaiverRecords ?? (() => gateInput.waiverRecords),
+        resolveTranscriptPath: ctx.resolveCloseTranscriptPath ?? jsonlPath,
         fetchOriginTrunk:
           ctx.fetchOriginTrunk ??
           (async ({ remote, branch }) => {
@@ -4565,10 +4642,12 @@ export async function verbClose(ctx) {
   // operator is already reading, without turning close itself into a failure.
   if (lifecycleTickResult && !lifecycleTickResult.ok) {
     console.log(
-      `Closed ${s.active}. ⚠ Lifecycle checkboxes could not be auto-ticked — see stderr.`
+      `Closed ${s.active}.${formatCloseDeliveryDisclosure(resolvedDeliveryGate?.receipt?.receipt)} ⚠ Lifecycle checkboxes could not be auto-ticked — see stderr.`
     );
   } else {
-    console.log(`Closed ${s.active}.`);
+    console.log(
+      `Closed ${s.active}.${formatCloseDeliveryDisclosure(resolvedDeliveryGate?.receipt?.receipt)}`
+    );
   }
 }
 
@@ -4694,11 +4773,32 @@ export async function tickLifecycleOnClose({ cfg, issueNum, pexec, deps = {} }) 
 // consulting the flag. Name the reconciliation lane in the refusal itself so
 // it is discoverable from the message rather than only from the source.
 export function buildDeliveryGateRefusal(closeTarget, reason) {
+  const reconciliation =
+    reason.includes('delivery-verification:merge-method') && !reason.includes('delivery-waiver-')
+      ? ' For a historical or external merge-method discrepancy, use ' +
+        '`/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason "<why>"`.'
+      : '';
+  const preparation = reason.includes('close-delivery-receipt:missing')
+    ? ' If a delivery intent is pending because an invariant failed, prepare an exact waiver with ' +
+      '`/task workflow-exception prepare #N --input-file <proposal.json>`.'
+    : '';
   return (
     `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${reason}. ` +
-    'Run `/task deliver` until a verified exact-head receipt exists, then retry. ' +
-    'If the pull request was merged with a method this project does not declare ' +
-    '(`delivery-verification:merge-method`), reconcile it with ' +
-    '`/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason \"<why>\"`.'
+    'Run `/task deliver` until a verified exact-head receipt exists, then retry.' +
+    preparation +
+    reconciliation
   );
+}
+
+export function formatCloseDeliveryDisclosure(receipt) {
+  if (receipt?.schema === 'aitm.delivery-receipt/v4' && receipt.result === 'waived') {
+    return ` Delivery ${receipt.observedFailureCategory} waived (requirement=${receipt.waivedRequirementId}).`;
+  }
+  if (
+    receipt?.schema === 'aitm.delivery-receipt/v3' &&
+    receipt.attributionDisposition === 'waived'
+  ) {
+    return ' Delivery attribution waived.';
+  }
+  return '';
 }

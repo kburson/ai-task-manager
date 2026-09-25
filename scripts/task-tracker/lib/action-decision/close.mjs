@@ -2,6 +2,7 @@
 // @story #1767
 // Advisory close collection: all I/O is confined to command-local observations.
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
+import { createDefaultDeliverDeps } from '../../verbs/deliver.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
 import { fetchAssignmentSnapshot } from '../assignment-snapshot.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
@@ -302,6 +303,10 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
     const receiptGate = requireDeliveryReceipt(gateInput);
     if (!receiptGate.skipped) {
       const { inspectCloseMergeCommit } = await import('../../verbs/close.mjs');
+      const waiverDeps =
+        receiptGate.receipt?.schema === 'aitm.delivery-receipt/v4'
+          ? createDefaultDeliverDeps({ projectDir, cfg })
+          : null;
       await verifyCloseDeliveryReceipt({
         gateInput,
         receiptGate,
@@ -335,6 +340,18 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
           attributingCommits: async () => {
             throw new TypeError('close-readiness:unobserved-attribution');
           },
+          ...(waiverDeps
+            ? {
+                readWaiverJournal:
+                  deps.readWaiverJournal ??
+                  (() =>
+                    waiverDeps.createDeliveryWaiverJournal({ repository: cfg.repo, issue }).read()),
+                listWaiverRecords: () => gateInput.waiverRecords,
+                resolveTranscriptPath:
+                  deps.resolveTranscriptPath ?? waiverDeps.resolveTranscriptPath,
+                verifyStoredDeliveryWaiverAuthority: deps.verifyStoredDeliveryWaiverAuthority,
+              }
+            : {}),
         },
       });
     }
@@ -437,6 +454,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
   let warnings = [];
   let normalizations = [];
   let humanDecision = null;
+  let deliveryExceptions = [];
   const fail = (source) => {
     indeterminate = true;
     blockers.push(unavailable(issue, source));
@@ -530,9 +548,38 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
       try {
         if (delivery.mode === 'evidence-v2')
           requireEvidenceV2DeliveryReceipt(delivery.receiptInput);
-        else if (delivery.mode === 'ordinary' || delivery.mode === 'no-commit')
-          requireDeliveryReceipt(input);
-        else fail('delivery'); // Incorporated close has separate human authorization; never infer it.
+        else if (delivery.mode === 'ordinary' || delivery.mode === 'no-commit') {
+          const gate = requireDeliveryReceipt(input);
+          if (gate.receipt?.schema === 'aitm.delivery-receipt/v4') {
+            let outcome = 'indeterminate';
+            let category = 'delivery-waiver-authority';
+            try {
+              const proof = await ports.verifyWaiverReceipt?.({
+                gateInput: input,
+                receiptGate: gate,
+              });
+              if (proof?.outcome === 'waived') {
+                outcome = 'waived';
+                category = gate.receipt.observedFailureCategory;
+              } else if (proof?.outcome === 'blocked') {
+                outcome = 'blocked';
+                category = proof.category;
+              }
+            } catch (error) {
+              outcome = error?.outcome === 'indeterminate' ? 'indeterminate' : 'blocked';
+              category = error?.category ?? 'delivery-waiver-authority';
+            }
+            deliveryExceptions = [
+              {
+                category,
+                requirementId: gate.receipt.waivedRequirementId,
+                outcome,
+              },
+            ];
+            if (outcome === 'blocked') blockers.push(legacy('review-exit-close-gates'));
+            if (outcome === 'indeterminate') fail('delivery');
+          }
+        } else fail('delivery'); // Incorporated close has separate human authorization; never infer it.
       } catch (error) {
         if (
           error?.name === 'CloseDeliveryReceiptError' &&
@@ -602,6 +649,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
     humanDecision,
     selectedAction: 'close',
     observations,
+    ...(deliveryExceptions.length > 0 ? { deliveryExceptions } : {}),
   };
 }
 
@@ -804,6 +852,38 @@ export async function evaluateCloseReadiness({
           });
         }),
       deps: deps.guardDeps,
+      verifyWaiverReceipt:
+        deps.verifyWaiverReceipt ??
+        (async ({ gateInput, receiptGate }) => {
+          const deliveryDeps = createDefaultDeliverDeps({ projectDir, cfg });
+          const branch = gateInput.lineage.deliveryTarget;
+          const [remoteSha, localSha] = await Promise.all([
+            deliveryDeps.fetchRemoteTrunkHeadSha({ branch }),
+            deliveryDeps.resolveLocalTrunkHeadSha({ branch }),
+          ]);
+          if (remoteSha !== localSha) {
+            return { outcome: 'indeterminate', category: 'trunk-drift' };
+          }
+          await verifyCloseDeliveryReceipt({
+            gateInput,
+            receiptGate,
+            testReceiptSha: parseVerificationReceipt(gateInput.body, 'test')?.commitSha ?? null,
+            acceptedReviewSha:
+              parseVerificationReceipt(gateInput.body, 'review')?.commitSha ??
+              gateInput.acceptedSha,
+            deps: {
+              fetchOriginTrunk: async () => {},
+              isAncestor: deliveryDeps.isAncestor,
+              inspectMergeCommit: deliveryDeps.inspectMergeCommit,
+              attributingCommits: deliveryDeps.attributingCommits,
+              readWaiverJournal: () =>
+                deliveryDeps.createDeliveryWaiverJournal({ repository: cfg.repo, issue }).read(),
+              listWaiverRecords: () => gateInput.waiverRecords,
+              resolveTranscriptPath: deliveryDeps.resolveTranscriptPath,
+            },
+          });
+          return { outcome: 'waived', receipt: receiptGate.receipt };
+        }),
     },
   });
   return {

@@ -1,6 +1,7 @@
 // @story #1675
 import {
   EXPLANATION_SCHEMA,
+  EXPLANATION_SCHEMA_V3,
   presentActionDecision,
   validateExplanationEnvelope,
 } from '../scripts/task-tracker/lib/action-decision/presentation.mjs';
@@ -91,7 +92,8 @@ export function buildExplanationEnvelope({
     suppressSourceWarning,
   });
   const envelope = {
-    schema: EXPLANATION_SCHEMA,
+    schema:
+      decision?.schema === 'aitm.action-decision/v3' ? EXPLANATION_SCHEMA_V3 : EXPLANATION_SCHEMA,
     result,
     guidance: projectGuidance({ guidanceIds: decision?.guidanceIds, agentIndex, known }),
     ...(receipt && !suppressSourceWarning ? { sourceReceipt: receipt } : {}),

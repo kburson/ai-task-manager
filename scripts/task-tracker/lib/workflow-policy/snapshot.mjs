@@ -234,6 +234,35 @@ export async function buildWorkflowPreflightSnapshot({
       ? chain.conflicts.map((conflict) => ({ ...conflict, partitionKey }))
       : []
   );
+  const deliveryExceptions = Object.freeze(
+    [...grouped.delivery.entries()].map(([partitionKey, entries]) => {
+      const chain = deliveryHistory.get(partitionKey);
+      const envelope = entries.at(-1)?.envelope;
+      const outcome =
+        chain.status === 'active'
+          ? 'waived'
+          : chain.status === 'invalid'
+            ? 'indeterminate'
+            : 'blocked';
+      const category =
+        chain.status === 'active'
+          ? 'delivery-waiver-authority'
+          : chain.status === 'expired'
+            ? 'delivery-waiver-expired'
+            : chain.status === 'revoked'
+              ? 'delivery-waiver-revoked'
+              : chain.status === 'stale-scope'
+                ? 'delivery-waiver-stale-scope'
+                : 'delivery-waiver-ambiguity';
+      return Object.freeze({
+        partitionKey,
+        recordId: chain.head?.recordId ?? null,
+        requirementId: envelope?.payload?.deliveryScope?.requirementId ?? null,
+        category,
+        outcome,
+      });
+    })
+  );
   const snapshotHash = `sha256:${createHash('sha256')
     .update(
       canonicalRecordJson({
@@ -265,6 +294,7 @@ export async function buildWorkflowPreflightSnapshot({
     exceptionStatus: exception.status,
     exceptionConflicts: exception.conflicts,
     authorityRevisions: revisions,
+    deliveryExceptions,
     issueConflicts: Object.freeze([...(issueSnapshot.conflicts || []), ...deliveryConflicts]),
     projectFields: Object.freeze({ ...(issueSnapshot.projectFields || {}) }),
     repositorySnapshot: Object.freeze({ ...(repositorySnapshot || {}) }),

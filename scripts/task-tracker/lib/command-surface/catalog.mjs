@@ -78,7 +78,9 @@ export const VERB_CONTRACTS = Object.freeze({
     [
       'Reads fresh action authority and guidance without entering mutation preflight or accepting effect ports.',
     ],
-    ['Prints one closed aitm.action-explanation/v2 JSON envelope.']
+    [
+      'Prints one closed aitm.action-explanation/v2 JSON envelope, or v3 when delivery exception evidence is present.',
+    ]
   ),
   status: contract(
     ['The local tracker state must be readable; an active task is not required.'],
