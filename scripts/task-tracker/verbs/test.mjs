@@ -197,8 +197,12 @@ async function defaultRemoveWorktree({ projectDir, path: wtPath }) {
   }
 }
 
-async function defaultNpmCi({ path: wtPath }) {
-  await pexec('npm', ['ci', '--no-audit', '--no-fund'], {
+export function buildNpmCiArgv(setupArgs = []) {
+  return ['ci', '--no-audit', '--no-fund', ...setupArgs];
+}
+
+async function defaultNpmCi({ path: wtPath, setupArgs = [] }) {
+  await pexec('npm', buildNpmCiArgv(setupArgs), {
     cwd: wtPath,
     timeout: NPM_CI_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
@@ -356,13 +360,14 @@ async function runSetupWithRetry({
   removeWorktree,
   onCreated,
   captureDiag,
+  setupArgs = [],
 }) {
   let lastErr = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       await runSetupStep('git worktree add', () => createWorktree({ projectDir, path: wtPath }));
       onCreated();
-      await runSetupStep('npm ci', () => npmCi({ path: wtPath }));
+      await runSetupStep('npm ci', () => npmCi({ path: wtPath, setupArgs }));
       return { attempts: attempt };
     } catch (err) {
       lastErr = err;
@@ -499,6 +504,7 @@ export async function runVerbTest({
   }
   let verificationProvider;
   let developPlan;
+  let setupArgs = [];
   try {
     verificationProvider = (deps.resolveProvider || resolveVerificationProvider)({
       config: cfg.verificationProvider,
@@ -507,6 +513,7 @@ export async function runVerbTest({
       deps,
     });
     developPlan = verificationProvider.planDevelopFinal();
+    setupArgs = verificationProvider.planTest({ declaredCommands: [] }).setupArgs || [];
   } catch (error) {
     return {
       status: 'verification-provider-invalid',
@@ -952,6 +959,7 @@ export async function runVerbTest({
       captureDiag: (d) => {
         setupDiag = d;
       },
+      setupArgs,
     });
 
     let commandsToRun = vcs;
@@ -1287,6 +1295,12 @@ export async function runVerbTest({
             requiredClassifications: [
               ...new Set([...developRequired, ...(testPlan?.requiredClassifications || [])]),
             ],
+            setup: testPlan?.setup
+              ? {
+                  name: testPlan.setup,
+                  args: [...(testPlan.setupArgs || [])],
+                }
+              : null,
           },
           now,
         })

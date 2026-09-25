@@ -33,6 +33,7 @@ export function createProjectVerificationProvider({ config, appendTargeted }) {
         providerId: 'project',
         stage: 'test',
         setup: config.setup,
+        setupArgs: config.npmCiArgs,
         steps: [...config.testSteps, ...targeted],
         derivedSteps: [],
         requiredClassifications: config.testSteps.map(({ classification }) => classification),
