@@ -71,6 +71,10 @@ export function makeHarness(options = {}) {
     terminalBinding: 0,
   };
   const data = {
+    issueNumber: options.issueNumber ?? 939,
+    branch: options.branch ?? 'codex/939-full-auto-merge',
+    issueBody: options.issueBody ?? 'governed issue body',
+    now: options.now ?? NOW,
     head: options.head ?? HEAD,
     testReceiptSha: options.testReceiptSha ?? options.head ?? HEAD,
     acceptedReviewSha: options.acceptedReviewSha ?? options.head ?? HEAD,
@@ -142,19 +146,19 @@ export function makeHarness(options = {}) {
     },
     async fetchIssue() {
       return {
-        number: 939,
+        number: data.issueNumber,
         state: 'OPEN',
         projectState: 'Review',
         assignees: ['kburson'],
         agentReviewPassed: data.agentReviewPassed,
-        body: 'governed issue body',
+        body: data.issueBody,
       };
     },
     async resolveLineage() {
       return { ...data.lineage };
     },
     async getCurrentBranch() {
-      return 'codex/939-full-auto-merge';
+      return data.branch;
     },
     async getLocalHeadSha() {
       return data.head;
@@ -173,7 +177,7 @@ export function makeHarness(options = {}) {
     },
     async listPullRequests({ headRef }) {
       calls.listPullRequests += 1;
-      assert.equal(headRef, 'codex/939-full-auto-merge');
+      assert.equal(headRef, data.branch);
       return [{ number: data.prNumber }];
     },
     async fetchPullRequest({ prNumber }) {
@@ -185,7 +189,7 @@ export function makeHarness(options = {}) {
         merged: data.prState === 'MERGED',
         isDraft: false,
         baseRefName: 'trunk',
-        headRefName: 'codex/939-full-auto-merge',
+        headRefName: data.branch,
         headRefOid: data.prHead ?? data.head,
         mergeable: data.prState === 'OPEN' ? 'MERGEABLE' : 'UNKNOWN',
         mergeCommit: data.mergeCommitSha === null ? null : { oid: data.mergeCommitSha },
@@ -255,10 +259,21 @@ export function makeHarness(options = {}) {
       calls.createIssueComment += 1;
       const kind = body.startsWith('<!-- aitm-delivery-receipt ') ? 'receipt' : 'intent';
       calls.events.push(`${kind}:post`);
+      const createdAt =
+        options.waiverServerTimes && kind === 'receipt'
+          ? options.waiverServerTimes.receipt
+          : options.waiverServerTimes &&
+              data.comments.some(({ body: prior }) =>
+                prior.startsWith('<!-- aitm-delivery-intent ')
+              )
+            ? options.waiverServerTimes.intent
+            : kind === 'receipt'
+              ? RECEIPT_SERVER_NOW
+              : SERVER_NOW;
       data.comments.push({
         id: `comment-${data.comments.length + 1}`,
-        createdAt: kind === 'receipt' ? RECEIPT_SERVER_NOW : SERVER_NOW,
-        updatedAt: kind === 'receipt' ? RECEIPT_SERVER_NOW : SERVER_NOW,
+        createdAt,
+        updatedAt: createdAt,
         body,
       });
       if (
@@ -309,12 +324,12 @@ export function makeHarness(options = {}) {
         options.historyCommitTitle ??
         parsed?.commitTitle ??
         authorizedCommitTitle ??
-        '[#939] Governed PR delivery';
+        `[#${data.issueNumber}] Governed PR delivery`;
       const commitMessage =
         options.historyCommitMessage ??
         parsed?.commitMessage ??
         authorizedCommitMessage ??
-        `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`;
+        `PR #${data.prNumber}\nSource: ${HEAD}\n\nAttribution: [#${data.issueNumber}]`;
       if (options.historyBytesMismatch) {
         return { parents: ['d'.repeat(40)], commitTitle, commitMessage: 'wrong bytes' };
       }
@@ -355,7 +370,7 @@ export function makeHarness(options = {}) {
         : [{ sha: data.mergeCommitSha, subject: `[#${issueNumber}] delivered`, ts: data.mergedAt }];
     },
     now() {
-      return NOW;
+      return data.now;
     },
     createIntentId() {
       return INTENT_IDS[intentIdIndex++];
@@ -364,7 +379,7 @@ export function makeHarness(options = {}) {
       return 'codex';
     },
     sessionId() {
-      return 'session-939';
+      return options.sessionId ?? 'session-939';
     },
     async flushTerminalTiming() {
       calls.terminalTiming += 1;

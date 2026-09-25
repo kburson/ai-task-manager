@@ -296,6 +296,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const deliveryWaiverConsumptionAllowance = 2;
   // #1797 ships the pure pinned waiver evidence and receipt assembler.
   const deliveryWaiverEvidenceAllowance = 1;
+  // #1799 ships the effect-time delivery waiver transaction.
+  const deliveryWaiverTransactionAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -332,7 +334,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     exceptionPartitionAllowance +
     deliveryAuthorityAllowance +
     deliveryWaiverConsumptionAllowance +
-    deliveryWaiverEvidenceAllowance;
+    deliveryWaiverEvidenceAllowance +
+    deliveryWaiverTransactionAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

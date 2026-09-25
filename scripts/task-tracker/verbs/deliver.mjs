@@ -15,6 +15,9 @@ import { parseReviewApprovedMarker, parseTestStartedMarker } from '../lib/marker
 import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { createDeliveryWaiverJournal } from '../lib/delivery-waiver-journal.mjs';
+import { runDeliveryWaiverTransaction } from '../lib/delivery-waiver-transaction.mjs';
+import { DeliveryVerificationError } from '../lib/delivery-verification.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
 import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import {
@@ -902,6 +905,179 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg, lineage, pullReq
   };
 }
 
+async function runAdvancedGenericWaiver({
+  deps,
+  cfg,
+  state,
+  issueNumber,
+  issue,
+  lineage,
+  branch,
+  authority,
+  selectedPullRequest,
+  initial,
+  live,
+  preflightInput,
+  deliveryConfig,
+  historical,
+  testReceiptSha,
+  acceptedReviewSha,
+}) {
+  const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
+  const originalIntent = initial.projection.intents.find(
+    ({ record }) => record.intentId === live.record.originalIntentId
+  );
+  if (originalIntent?.record.schema !== 'aitm.delivery-intent/v1') {
+    throw deliverError('delivery-waiver-original-intent');
+  }
+  const verify = ({ intent, originalIntent: original, pullRequest, evidence }) =>
+    verifyDeliveredPullRequest({
+      acceptedSha: authority.acceptedSha,
+      intent,
+      intentCreatedAt: original.createdAt,
+      pullRequest,
+      recovery: true,
+      localHeadSha: historical.observedLocalHeadSha,
+      testReceiptSha,
+      acceptedReviewSha,
+      fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+      isAncestor: requiredDependency(deps, 'isAncestor'),
+      inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+      attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      genericWaiverEvidence: {
+        originalIntent: { record: original.record, createdAt: original.createdAt },
+        ...evidence,
+      },
+    });
+  const readFresh = async (expectedIntent) => {
+    const freshIssue = await deps.fetchIssue({ issueNumber, repository: cfg.repo });
+    const freshLineage = validateLineageResult(
+      await deps.resolveLineage({ issueNumber, repository: cfg.repo, issue: freshIssue })
+    );
+    const freshBranch = await deps.getCurrentBranch();
+    const freshLocalHead = await deps.getLocalHeadSha();
+    const freshTestSha = await deps.resolveTestReceiptSha({ issue: freshIssue, issueNumber });
+    const freshReview = await resolveLiveDeliveryReviewAuthority({
+      deps,
+      cfg,
+      issue: freshIssue,
+      issueNumber,
+      testReceiptSha: freshTestSha,
+    });
+    const freshRefs = await deps.listPullRequests({ repository: cfg.repo, headRef: freshBranch });
+    const freshPrs = await Promise.all(
+      freshRefs.map(({ number }) =>
+        deps.fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
+      )
+    );
+    const freshReviewAuthorization = await deps.resolveReviewAuthorization({
+      issue: freshIssue,
+      issueNumber,
+      expectedHeadSha: freshReview.acceptedSha,
+      acceptedReviewSha: freshReview.acceptedSha,
+    });
+    const freshInput = {
+      ...preflightInput,
+      issue: {
+        ...freshIssue,
+        agentReviewPassed: freshReview.outcome === 'passed',
+        reviewAuthority: freshReview,
+        reviewAuthorization: freshReviewAuthorization,
+      },
+      binding: bindingFromState({ branch: freshBranch, state }),
+      lineage: freshLineage,
+      pullRequests: freshPrs,
+      localHeadSha: freshLocalHead,
+      testReceiptSha: freshTestSha,
+      acceptedReviewSha: freshReview.acceptedSha,
+      dirtyPaths: await deps.listDirtyPaths({ issueNumber }),
+      config: {
+        ...deliveryConfig,
+        repositoryMergeMethods: await deps.fetchRepositoryMergeMethods({ repository: cfg.repo }),
+      },
+      commitSubjects: await mergedSourceCommitSubjects(
+        freshPrs.find(({ number }) => number === selectedPullRequest.number),
+        deps.inspectSourceCommit
+      ),
+      intent: expectedIntent.record,
+    };
+    const freshHistorical = validateHistoricalRecoveryPreflight(freshInput);
+    const freshProjection = await readProjection({ deps, issueNumber, context });
+    const manualDecision = await checkManualCodeReview({
+      deps,
+      cfg,
+      prNumber: selectedPullRequest.number,
+      expectedHeadSha: authority.acceptedSha,
+      merged: true,
+    });
+    if (
+      freshIssue.body !== issue.body ||
+      !equalJson(freshLineage, lineage) ||
+      freshBranch !== branch ||
+      freshLocalHead !== historical.observedLocalHeadSha ||
+      freshTestSha !== testReceiptSha ||
+      freshReview.acceptedSha !== acceptedReviewSha ||
+      freshHistorical.pr.number !== selectedPullRequest.number ||
+      freshHistorical.acceptedSha !== authority.acceptedSha ||
+      manualDecision.status !== 'authorized' ||
+      freshProjection.projection.liveIntent === null ||
+      canonicalRecordJson(freshProjection.projection.liveIntent.record) !==
+        canonicalRecordJson(expectedIntent.record)
+    )
+      throw deliverError('delivery-waiver-scope-drift');
+    return { issue: freshIssue, pullRequest: freshHistorical.pr, ...freshProjection };
+  };
+  return runDeliveryWaiverTransaction({
+    context: {
+      ...context,
+      issue,
+      pullRequest: historical.pr,
+      liveIntent: live,
+      matchingReceipt: initial.projection.matchingReceipt,
+      failure: null,
+      mode: 'historical-recovery',
+      recovery: true,
+    },
+    originalIntent,
+    records: initial.comments,
+    deps: {
+      now: requiredDependency(deps, 'now'),
+      createIntentId: requiredDependency(deps, 'createIntentId'),
+      createRunId: createRecordId,
+      resolveTranscriptPath: deps.resolveTranscriptPath,
+      resolveDeliveryWaiver: deps.resolveDeliveryWaiver,
+      verifyStoredDeliveryWaiverAuthority: deps.verifyStoredDeliveryWaiverAuthority,
+      journal: deps.createDeliveryWaiverJournal?.({ repository: cfg.repo, issue: issueNumber }),
+      comments: {
+        list: () => deps.listIssueComments({ issueNumber, repository: cfg.repo }),
+        post: (body) => deps.createIssueComment({ issueNumber, repository: cfg.repo, body }),
+      },
+      readFresh,
+      verifyWaived: ({ intent, originalIntent: original, waiver, pullRequest }) =>
+        verify({ intent, originalIntent: original, pullRequest, evidence: { waiver } }),
+      verifyPinned: ({
+        intent,
+        originalIntent: original,
+        grant,
+        burn,
+        burnOid,
+        receipt,
+        pullRequest,
+      }) =>
+        verify({
+          intent,
+          originalIntent: original,
+          pullRequest,
+          evidence: { grant, burn, burnOid, receipt },
+        }),
+    },
+  });
+}
+
+function equalJson(left, right) {
+  return canonicalRecordJson(left) === canonicalRecordJson(right);
+}
+
 export async function runDeliver({ issueNumber, cfg, state, reconcile = null, deps = {} } = {}) {
   // #1562 — carries the reconciliation record from the recovery path out to the
   // caller so it can be appended to the issue ledger beside the receipt.
@@ -1222,6 +1398,26 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       ...preflightInput,
       intent: live?.record ?? null,
     });
+    if (live?.record.schema === 'aitm.delivery-intent/v3') {
+      return runAdvancedGenericWaiver({
+        deps,
+        cfg,
+        state,
+        issueNumber,
+        issue,
+        lineage,
+        branch,
+        authority,
+        selectedPullRequest,
+        initial,
+        live,
+        preflightInput,
+        deliveryConfig,
+        historical,
+        testReceiptSha,
+        acceptedReviewSha,
+      });
+    }
     return verifyAndFinalize({
       deps,
       issueNumber,
@@ -1318,7 +1514,12 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   };
   // A preflight (or a prior explanation) is not a capability. Re-read the
   // mutable sources immediately before an external effect and refuse drift.
-  const assertFreshDeliveryAuthority = async ({ expectedLiveIntent = null } = {}) => {
+  let acceptedScopeBody = issue.body;
+  const assertFreshDeliveryAuthority = async ({
+    expectedLiveIntent = null,
+    allowMatchingReceipt = false,
+    allowScopeRefresh = false,
+  } = {}) => {
     const freshIssue = await fetchIssue({ issueNumber, repository: cfg.repo });
     const freshLineage = validateLineageResult(
       await resolveLineage({ issueNumber, repository: cfg.repo, issue: freshIssue })
@@ -1426,23 +1627,28 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     const freshPreflight = mergedPullRequest
       ? validateMergedDeliveryPreflight(freshInput)
       : validateDeliveryPreflight(freshInput);
+    const comparableFreshPreflight =
+      allowScopeRefresh || acceptedScopeBody !== issue.body
+        ? { ...freshPreflight, issue: { ...freshPreflight.issue, body: issue.body } }
+        : freshPreflight;
     if (
-      freshIssue.body !== issue.body ||
+      (!allowScopeRefresh && freshIssue.body !== acceptedScopeBody) ||
       JSON.stringify(freshLineage) !== JSON.stringify(lineage) ||
       freshBranch !== branch ||
       freshLocalHeadSha !== localHeadSha ||
       freshTestReceiptSha !== testReceiptSha ||
       JSON.stringify(freshReviewAuthority) !== JSON.stringify(reviewAuthority) ||
       JSON.stringify(freshReviewAuthorization) !== JSON.stringify(reviewAuthorization) ||
-      JSON.stringify(freshPreflight) !== JSON.stringify(preflight)
+      JSON.stringify(comparableFreshPreflight) !== JSON.stringify(preflight)
     ) {
       throw new TypeError('delivery-preflight:authority-drift');
     }
+    if (allowScopeRefresh) acceptedScopeBody = freshIssue.body;
     const projectionMatches = expectedLiveIntent
       ? freshProjection.projection.liveIntent !== null &&
-        canonicalRecordJson(freshProjection.projection.liveIntent) ===
-          canonicalRecordJson(expectedLiveIntent) &&
-        freshProjection.projection.matchingReceipt === null
+        canonicalRecordJson(freshProjection.projection.liveIntent.record) ===
+          canonicalRecordJson(expectedLiveIntent.record) &&
+        (allowMatchingReceipt || freshProjection.projection.matchingReceipt === null)
       : JSON.stringify(freshProjection.projection) === JSON.stringify(initial.projection);
     if (!projectionMatches) {
       throw new TypeError('delivery-preflight:delivery-record-drift');
@@ -1494,6 +1700,116 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     await assertFreshDeliveryAuthority();
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
+    const runGenericWaiver = (failure = null) => {
+      const originalIntent =
+        liveIntent?.record.schema === 'aitm.delivery-intent/v3'
+          ? initial.projection.intents.find(
+              ({ record }) => record.intentId === liveIntent.record.originalIntentId
+            )
+          : liveIntent;
+      if (!originalIntent || originalIntent.record.schema !== 'aitm.delivery-intent/v1') {
+        throw deliverError('delivery-waiver-original-intent');
+      }
+      const verifyWaived = ({ intent, originalIntent: original, waiver, pullRequest: pr }) =>
+        verifyDeliveredPullRequest({
+          acceptedSha: authority.acceptedSha,
+          intent,
+          intentCreatedAt: original.createdAt,
+          pullRequest: pr,
+          recovery,
+          localHeadSha,
+          testReceiptSha,
+          acceptedReviewSha,
+          fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+          isAncestor: requiredDependency(deps, 'isAncestor'),
+          inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+          attributingCommits: requiredDependency(deps, 'attributingCommits'),
+          genericWaiverEvidence: {
+            originalIntent: { record: original.record, createdAt: original.createdAt },
+            waiver,
+          },
+        });
+      return runDeliveryWaiverTransaction({
+        context: {
+          ...context,
+          issue,
+          pullRequest: selectedPullRequest,
+          liveIntent,
+          matchingReceipt: initial.projection.matchingReceipt,
+          failure,
+          mode: 'current-head',
+          recovery,
+        },
+        originalIntent,
+        records: initial.comments,
+        deps: {
+          now,
+          createIntentId,
+          createRunId: createRecordId,
+          resolveTranscriptPath: deps.resolveTranscriptPath,
+          resolveDeliveryWaiver: deps.resolveDeliveryWaiver,
+          verifyStoredDeliveryWaiverAuthority: deps.verifyStoredDeliveryWaiverAuthority,
+          journal: deps.createDeliveryWaiverJournal?.({ repository: cfg.repo, issue: issueNumber }),
+          comments: {
+            list: () => deps.listIssueComments({ issueNumber, repository: cfg.repo }),
+            post: (body) => deps.createIssueComment({ issueNumber, repository: cfg.repo, body }),
+          },
+          readFresh: async (expectedIntent, { allowScopeRefresh = false } = {}) => {
+            await assertFreshDeliveryAuthority({
+              expectedLiveIntent: expectedIntent,
+              allowMatchingReceipt: expectedIntent.record.schema === 'aitm.delivery-intent/v3',
+              allowScopeRefresh,
+            });
+            const [freshIssue, freshPr, freshProjection] = await Promise.all([
+              fetchIssue({ issueNumber, repository: cfg.repo }),
+              fetchPullRequest({ repository: cfg.repo, prNumber: selectedPullRequest.number }),
+              readProjection({ deps, issueNumber, context }),
+            ]);
+            if (
+              !pullRequestMerged(freshPr) ||
+              (!allowScopeRefresh && freshIssue.body !== acceptedScopeBody) ||
+              freshPr.number !== selectedPullRequest.number
+            )
+              throw deliverError('delivery-waiver-scope-drift');
+            return { issue: freshIssue, pullRequest: freshPr, ...freshProjection };
+          },
+          verifyWaived,
+          verifyPinned: ({
+            intent,
+            originalIntent: original,
+            grant,
+            burn,
+            burnOid,
+            receipt,
+            pullRequest: pr,
+          }) =>
+            verifyDeliveredPullRequest({
+              acceptedSha: authority.acceptedSha,
+              intent,
+              intentCreatedAt: original.createdAt,
+              pullRequest: pr,
+              recovery,
+              localHeadSha,
+              testReceiptSha,
+              acceptedReviewSha,
+              fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+              isAncestor: requiredDependency(deps, 'isAncestor'),
+              inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+              attributingCommits: requiredDependency(deps, 'attributingCommits'),
+              genericWaiverEvidence: {
+                originalIntent: { record: original.record, createdAt: original.createdAt },
+                grant,
+                burn,
+                burnOid,
+                receipt,
+              },
+            }),
+        },
+      });
+    };
+    if (liveIntent?.record.schema === 'aitm.delivery-intent/v3') {
+      return runGenericWaiver();
+    }
     if (liveIntent !== null && liveIntent.record.schema !== 'aitm.delivery-intent/v2') {
       const expected = buildIntentFromPreflight({
         preflight,
@@ -1606,23 +1922,34 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         beforeReceiptWrite: () => assertFreshDeliveryAuthority({ expectedLiveIntent: liveIntent }),
       });
     }
-    return verifyAndFinalize({
-      deps,
-      issueNumber,
-      repository: cfg.repo,
-      context,
-      liveIntent,
-      matchingReceipt: initial.projection.matchingReceipt,
-      pullRequest: selectedPullRequest,
-      recovery,
-      mode: 'current-head',
-      acceptedSha: authority.acceptedSha,
-      localHeadSha,
-      testReceiptSha,
-      acceptedReviewSha,
-      metadataWarnings: preflight.metadataWarnings ?? [],
-      beforeReceiptWrite: () => assertFreshDeliveryAuthority(),
-    });
+    try {
+      return await verifyAndFinalize({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        liveIntent,
+        matchingReceipt: initial.projection.matchingReceipt,
+        pullRequest: selectedPullRequest,
+        recovery,
+        mode: 'current-head',
+        acceptedSha: authority.acceptedSha,
+        localHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        metadataWarnings: preflight.metadataWarnings ?? [],
+        beforeReceiptWrite: () => assertFreshDeliveryAuthority(),
+      });
+    } catch (error) {
+      if (
+        !(error instanceof DeliveryVerificationError) ||
+        !error.requirementId?.startsWith('delivery.verification.') ||
+        initial.projection.matchingReceipt !== null ||
+        liveIntent?.record.schema !== 'aitm.delivery-intent/v1'
+      )
+        throw error;
+      return runGenericWaiver(error);
+    }
   }
   if (initial.projection.matchingReceipt !== null) {
     throw deliverError('receipt-on-open-pr');
@@ -1916,6 +2243,9 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   };
 
   return {
+    createDeliveryWaiverJournal({ repository, issue }) {
+      return createDeliveryWaiverJournal({ cwd: ctx.projectDir, repository, issue });
+    },
     resolveTranscriptPath(sessionId) {
       return jsonlPath(sessionId);
     },
