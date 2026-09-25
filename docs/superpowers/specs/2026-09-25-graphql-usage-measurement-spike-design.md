@@ -59,6 +59,14 @@ opaque invocation is never counted as one HTTP request. Each visible retry or
 page gets a separate observation; retries share a logical operation ID and
 pages carry a page index where known. Ownership belongs to the lowest observable
 boundary, so a wrapper and its caller cannot both count the same observation.
+An exact cost extracted from one visible CLI response is the cost of that
+response's operation only; it does not prove the total cost of an invocation
+with hidden attempts. Mark `costCoverage` as `complete-observation`,
+`visible-response-only`, or `unknown`, and keep unknown hidden request count
+explicit. Never treat one returned cost as the total of an opaque invocation.
+If several page responses are visible, split their observations when identities
+can be preserved; otherwise keep the invocation opaque and decline an exact
+aggregate. HTTP ownership requires evidence that each request is observed.
 Record GraphQL errors (including HTTP 200 with errors), HTTP failures, local
 spawn failures, timeouts, and partial responses without changing caller behavior.
 For pre-dispatch failures mark dispatch as not sent; for timeouts with ambiguous
@@ -122,7 +130,9 @@ Each line is one versioned JSON object with at least:
 Additional required fields are `observationKind` (HTTP attempt or opaque CLI
 invocation), `dispatchStatus` (sent, not sent, unknown), nullable `pageIndex`,
 `contextScope` (single issue, multiple issues, repository, unknown), and the
-collector/augmentation version. Include the endpoint host and a locally supplied
+collector/augmentation version. `kind` also permits `mixed` and `unknown` for
+opaque invocations; `httpStatus` is null when unavailable, never the CLI exit
+code (record that separately as `processExitCode`). Include the endpoint host and a locally supplied
 non-secret `budgetScopeId` when known; never derive it from a token. Unknown
 budget identity cannot establish a shared account. Keep budget contexts separate
 across hosts and known identities even when displaying repository-wide traffic.
@@ -175,7 +185,11 @@ conflicting duplicates as invalid rather than choosing a value. Snapshot each
 file's readable extent so active appends do not make a report unbounded.
 
 Each sum includes an explicit known-cost subtotal and unknown-cost observation count.
-The report cannot display a partial sum as a complete total. A baseline report
+The report cannot display a partial sum as a complete total. Show incomplete
+cost coverage independently from null point costs: an opaque invocation may
+have a known returned-response cost and still have unknown additional costs.
+No known-cost percentage may imply all HTTP traffic was observed when opaque
+invocations, uncovered sites, or collection gaps exist. A baseline report
 records the instrumentation version, observation interval, covered call-site
 inventory, and number of active worktrees. It must capture at least one real
 creation-to-planning workflow and an overlap period with multiple worktrees
@@ -199,9 +213,10 @@ showing raw totals, sample sizes, and remaining confounders.
    or explicitly opaque invocation, with GitHub-reported primary point cost or
    an explicit unknown reason; mutations remain valid, and failures, pagination,
    retries, and ambiguous dispatch are represented without double counting.
-3. Two worktrees can emit simultaneously into the same Git common directory
-   without interleaved or lost JSONL records, while each retains independent
-   session attribution.
+3. In healthy-storage, normal-exit concurrency tests, two worktrees emit into
+   the same Git common directory without interleaved or lost completed records,
+   while each retains independent session attribution. Crash and storage-failure
+   cases report the separate best-effort durability limits.
 4. Recording and aggregation make no extra GitHub calls, preserve the existing
    GraphQL result and error behavior, and never persist secrets or issue bodies.
 5. A local report and graph identify peak hourly usage and the highest-volume
@@ -211,9 +226,14 @@ showing raw totals, sample sizes, and remaining confounders.
    measurement remains pending/preliminary. The spike's evidence deliverable is
    not complete until that baseline exists. Its comparison procedure supports
    measured call and point reductions with matched coverage and workload.
-7. Disabled logging, no Git context, disk/write failures, abrupt termination,
-   malformed records, duplicate records, and mixed collector versions are visible
-   as coverage limitations while original command results remain intact.
+7. Disabled logging, no Git context, disk/write failures, malformed records,
+   duplicate records, and mixed collector versions are visible as coverage
+   limitations while original command results remain intact. Record writer
+   start and normal-close markers as local diagnostic metadata; an unclosed
+   writer is active or unclean, never proof of an exact crash or lost-call count.
+   If storage itself fails, emit a bounded redacted stderr warning as the fallback
+   diagnostic, preserving business stdout and original exit/result semantics.
+   Reports mark absent/unreadable collector metadata as unknown coverage.
 
 ## Verification
 
