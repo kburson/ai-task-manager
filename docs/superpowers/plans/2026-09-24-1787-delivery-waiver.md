@@ -129,6 +129,15 @@ const scopeKeys = [
 // delivery-waiver-evidence.mjs (Task 7)
 // validatePinnedWaiverEvidence({ intent, receipt, grant, burn, originalIntent })
 // -> immutable, structurally consistent pinned evidence; no I/O or current time
+// buildWaivedReceiptInput({ verifiedFacts, intent, grant, burn, burnOid })
+// -> complete v4 builder input; refuses missing/mismatched confirmed burn evidence
+
+// delivery-verification.mjs (Task 8), generic-waiver return contract only:
+// Before burn: { deliveryDisposition: 'waived', verifiedFacts, receiptInput: null }
+// Pinned path: same verifiedFacts plus a complete, reproducible receiptInput.
+// verifiedFacts = { baseReceiptInput, providerMergeMethod, observedMergeMethod,
+//                   observedFailureCategory, waivedRequirementId }
+// baseReceiptInput contains ordinary factual fields, not terminal waiver authority.
 
 // delivery-waiver-transaction.mjs (Task 9)
 // runDeliveryWaiverTransaction({ context, originalIntent, records, deps })
@@ -344,7 +353,7 @@ const args = [
 
 **Files:** Create `scripts/task-tracker/lib/delivery-waiver-evidence.mjs` and `scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs`. Modify `scripts/task-tracker/lib/delivery-records.mjs`; extend `scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`.
 
-**Interfaces:** Extend existing builders, renderers, parsers, `authorizedIntentBytes`, and `projectDeliveryRecords`; implement `validatePinnedWaiverEvidence`. V3 uses all ordinary intent keys plus the spec's generic-waiver fields, `originalIntentId`, `originalIntentCreatedAt`, `originalIntentDigest`, `waiverGrant` (canonical envelope), `providerMergeMethod`, and `observedMergeMethod`. Receipt v4 uses the ordinary receipt base plus generic-waiver fields, canonical grant, full confirmed burn with its digest and immutable `burnOid`, and pinned observations. Do not serialize the latest journal CAS cursor into a receipt. It must not acquire #1755 attribution fields by spread or implicit schema selection.
+**Interfaces:** Extend existing builders, renderers, parsers, `authorizedIntentBytes`, and `projectDeliveryRecords`; implement `validatePinnedWaiverEvidence` and `buildWaivedReceiptInput`. V3 uses all ordinary intent keys plus the spec's generic-waiver fields, `originalIntentId`, `originalIntentCreatedAt`, `originalIntentDigest`, `waiverGrant` (canonical envelope), `providerMergeMethod`, and `observedMergeMethod`. Receipt v4 uses the ordinary receipt base plus generic-waiver fields, canonical grant, full confirmed burn with its digest and immutable `burnOid`, and pinned observations. Do not serialize the latest journal CAS cursor into a receipt. It must not acquire #1755 attribution fields by spread or implicit schema selection.
 
 - [ ] Add failing exact-key/schema tests. Build a valid grant and burn using Tasks 3-6, a valid original v1 intent using the existing builder, then a v3 intent and v4 receipt. Assert schema, visible result, immutable references, and round-trip canonical equality.
 
@@ -367,6 +376,7 @@ assert.doesNotThrow(() =>
 
 - [ ] Run `node --test scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs`; expect new-schema cases to fail.
 - [ ] Implement explicit schema selection and exact version-specific keys. Reuse canonical envelope validation, bounded text/record size guards, secret-data checks, digests, and deep freezing. Hash the bounded human reason separately from the scope; preserve authorizing principal (including null when unknown) and recording actor. Keep one waived ID, even when several categories map to it.
+- [ ] Assemble terminal input only after confirmed consumption. `buildWaivedReceiptInput` checks agreement of verified facts, intent, grant, burn, and immutable burn OID, then supplies all required v4 fields. Null/absent burn, conflicting scope/operation/intent/merge SHA, or a provisional fact report passed directly to `buildDeliveryReceipt` must refuse. Pure tests use explicit validated fixtures; Task 9 supplies actual remote-confirmed evidence.
 - [ ] Pin the original authorization, not the later waiver recording time, for temporal checks. Require the original intent's exact stored digest and its real comment timestamp. Validate grant/burn/intent/receipt identity and scope agreement; reject revocation effective before authorization. Pinned validation must have no current-clock dependency.
 - [ ] Add a narrow v1-to-v3 graph transition to `validateIntentGraph`: the v3 must directly supersede the chronological live original v1, retain its exact repository/issue/PR/head/base and all ordinary authorized intent fields, and pin its full canonical record digest plus provider creation timestamp. A changed schema/added generic-waiver fields are permitted only through this validated transition, not a global removal of `same-key-divergence`. Require that the predecessor has no terminal receipt. Retain duplicate-ID, fork, order, cycle, multiple-tip, and operation-reuse guards. Reject v2-to-v3 composition in this issue because the singular generic waiver does not incorporate #1755 authority.
 - [ ] Test projection of the complete `[original v1, superseding v3, terminal v4]` comment history, not just standalone codecs. Include negatives for changed original merge method/message/head/base, missing or wrong predecessor/digest/time, an already-receipted predecessor, v2 predecessor, unrelated same-key divergence, and competing successors. Require unique operation-to-intent ownership in projection. Test unknown/mixed version pairs, extra/missing keys, altered reason/scope/grant/burn digest, excessive comment size, and duplicate receipts. Re-run every legacy record fixture, then commit as `feat: represent waived delivery with pinned evidence [#1787]`.
@@ -375,20 +385,21 @@ assert.doesNotThrow(() =>
 
 **Files:** Modify `scripts/task-tracker/lib/delivery-verification.mjs`; extend Task 2's diagnostic tests and `scripts/tests/unit/task-tracker/lib/delivery-default-refusals.test.mjs`; create `scripts/tests/unit/task-tracker/lib/delivery-waiver-reverification.test.mjs`.
 
-**Interfaces:** Extend `verifyDeliveredPullRequest` with a validated generic-waiver evidence input, distinct from existing #1755 `waivedEvidence`. Its return adds `deliveryDisposition: 'waived'` beside `receiptInput`; the receipt builder derives `result` from the explicit generic-waiver discriminator, rather than accepting an arbitrary result override. Add `evaluateDeliveryPredicate({ category, observedFailure, waiver, failures })` as a module-local helper; it records a provisional waived decision for an eligible exact ID and never performs I/O, grant lookup, burn, or receipt writes. Evidence needed to compute later predicates must exist even when a predicate is waived.
+**Interfaces:** Extend `verifyDeliveredPullRequest` with generic-waiver evidence distinct from existing #1755 `waivedEvidence`. Define two validated evidence forms: fresh current authority from Task 5 with the original intent (and confirmed v3 intent when available), or historical pinned authority with its real burn. Select the form from verified durable transaction state inside Task 9/10, never from CLI/caller mode flags. Fresh verification requires no burn and returns only provisional `verifiedFacts` with `receiptInput: null`; the historical form reconstructs full input through Task 7's assembler after validating its burn. The receipt builder derives `result` from complete generic-waiver evidence, not an arbitrary result override. Add `evaluateDeliveryPredicate({ category, observedFailure, waiver, failures })` as a module-local helper; it records a provisional waived decision for an eligible exact ID and never performs I/O, grant lookup, burn, or receipt writes. Evidence needed to compute later predicates must exist even when a predicate is waived. Preserve the existing return contracts for ordinary and #1755 paths.
 
 - [ ] Add a failing motivating verifier fixture: authorized squash; merged PR metadata says merge; two-parent Git topology proves merge; accepted Test/Review/head, target, original intent, attribution, and reachability all valid. Expect one provisional waived decision and no side effects.
 
 ```js
 const verified = await verifyDeliveredPullRequest(input);
 assert.equal(verified.deliveryDisposition, 'waived');
-assert.equal(verified.receiptInput.observedMergeMethod, 'merge');
-assert.equal(verified.receiptInput.providerMergeMethod, 'merge');
-assert.equal(verified.receiptInput.waivedRequirementId, 'delivery.verification.merge-method');
+assert.equal(verified.receiptInput, null);
+assert.equal(verified.verifiedFacts.observedMergeMethod, 'merge');
+assert.equal(verified.verifiedFacts.providerMergeMethod, 'merge');
+assert.equal(verified.verifiedFacts.waivedRequirementId, 'delivery.verification.merge-method');
 assert.equal(writes.length, 0);
 ```
 
-`input` uses the existing verifier's injected Git/provider functions and Task 7's actual pinned records; `writes` records any injected effect callback and must remain empty.
+`input` uses the existing verifier's injected Git/provider functions, the original intent, and genuinely resolved fresh grant evidence, with no burn or terminal receipt. `writes` records any injected effect callback and must remain empty. Add a separate pinned fixture with actual Task 7 records, a confirmed burn, and full receipt reconstruction. Reject fake mode booleans, incomplete historical evidence, and an attempted receipt build from provisional facts.
 
 - [ ] Run the new reverification suite and Task 1/2 suites; expect generic-waiver behavior to fail initially.
 - [ ] Move method equality after independently collecting valid optional provider metadata and known Git topology. Provider null stays null. Source disagreement, unknown topology, unavailable evidence, invalid input needed by subsequent checks, and all authority self-checks remain hard refusals. Translate typed resolver errors without changing their hard requirement ID.
@@ -415,7 +426,7 @@ assert.equal(calls.providerActions, 0);
 ```
 
 - [ ] Run the new integration file and deliver unit suite; expect the granted path to fail before wiring.
-- [ ] Dispatch from verified durable state: existing v4 receipt -> pinned verification/idempotent return; exact confirmed burn -> same-intent pinned retry; otherwise -> fresh current authority. Select/resume the immutable intent reservation through `ensureWaiverIntent`; never use the ordinary unconditional `appendIntent` helper for the v3 write. Confirm the exact v3 intent before burn, retaining the original intent identity/timestamp. Re-read issue, PR, grants, and complete live verifier evidence at the consumption boundary. Place burn after the last non-waived verification, including the existing late reachability check.
+- [ ] Dispatch from verified durable state: existing v4 receipt -> pinned verification/idempotent return; exact confirmed burn -> same-intent pinned retry; otherwise -> fresh current authority. On a fresh attempt resolve the grant, verify original-intent/live facts without a burn, construct the v3 candidate with those observations, then select/resume its immutable reservation through `ensureWaiverIntent`. Never use ordinary unconditional `appendIntent` for this write. Confirm the exact v3 intent before burn, retaining the original intent identity/timestamp. Re-read issue, PR, grants, and complete live verifier evidence at the consumption boundary. Place burn after the last non-waived verification, including late reachability. Only then call `buildWaivedReceiptInput` with the confirmed burn and `burnOid`, build the v4 receipt, and enter receipt publication. Tests assert this order and that missing/failed verification prevents the burn while an unconfirmed burn prevents receipt assembly/publication.
 - [ ] Use Task 6's journal for receipt publication rather than the old unconditional POST/retry block. On scope change, two failed IDs, wrong grant, revised consumed operation, conflicting intent, lost write, or unresolved journal state, return a structured refusal and do not emit an ordinary receipt or terminal lifecycle effects.
 - [ ] Test race injections after preparation, before intent reservation/publication, after intent readback, before burn, and during receipt publication. Assert the actual projected comment history remains valid with one v3 successor after two-host contention, including different operations naming one predecessor. Include revoked/expired grant before burn, fresh human approval after pre-reservation re-scoping, explicit post-reservation drift refusal, and confirmed-burn retry after expiry. Re-run existing deliver-close, historical/external recovery, and #1755 integration suites. Commit as `feat: consume delivery waivers at the receipt boundary [#1787]`.
 
@@ -489,7 +500,7 @@ npm run format:check
 
 ### #1783 Handoff
 
-Issue #1783 consumes `buildDeliveryScope`, the partition contract, host authority verification, and operation-journal interfaces. Its own implementation must add its exact kind validator, prove accepted-head trunk reachability and Test/Review/human authority without a PR, and emit its own `authorized-local-trunk` terminal record. It must not route through the PR verifier or fabricate a v4 PR receipt. Its positive local-trunk-close fixture from the spec belongs to that issue's plan; #1787 delivers the common primitives and cross-lane refusal tests, not a pretend production local-trunk close. This is the accepted Option B split, not a dropped requirement.
+Issue #1783 consumes `buildDeliveryScope`, the partition contract, and common host-authority verification. It may reuse the low-level CAS transport and `(repository, issue, deliveryOperationId)` uniqueness rule, but not #1787's PR-specific intent-publication/consumption schema or `ensureWaiverIntent` state machine: those require a real original PR intent and merge commit. Its own implementation must add an explicit local-trunk journal event schema/validator and version-aware shared-history dispatch, its exact authority kind validator, accepted-head trunk reachability and Test/Review/human proof, and an `authorized-local-trunk` terminal record. Unknown journal schemas remain refusals until that consumer ships; do not fabricate PR fields or widen the current validator to arbitrary events. Its positive local-trunk-close fixture from the spec belongs to that issue's plan; #1787 delivers common authority primitives and cross-lane refusal tests, not a pretend production local-trunk close. This is the accepted Option B split, not a dropped requirement.
 
 ## Plan Review and Execution Gate
 
