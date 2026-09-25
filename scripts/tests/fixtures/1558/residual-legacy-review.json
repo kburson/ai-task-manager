@@ -70,9 +70,9 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:22050d679231a84bdcbe15e641279af8569d24cf76c8cba17b51719c0e89dd87"
+        "sitesSha256": "sha256:f7121f4d8993d8db4f07df9b8c11f31e17f98c6356aefe49a1147e5413766236"
       },
-      "rationale": "Code-completion refusal lacks typed evidence to authorize Test entry or checkbox changes."
+      "rationale": "Non-AC code-completion refusals remain legacy and need investigation; AC evidence gaps are typed."
     },
     {
       "guardId": "develop-exit-commit-trail-head",

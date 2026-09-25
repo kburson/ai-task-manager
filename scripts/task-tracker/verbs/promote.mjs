@@ -123,9 +123,11 @@ function refusalsToVerbResult(refusals, { issueNumber, target }) {
   const blockers = [];
   for (const r of refusals) {
     if (Array.isArray(r.blockers) && r.blockers.length > 0) {
-      blockers.push(...r.blockers);
+      for (const blocker of r.blockers) {
+        if (!blockers.includes(blocker)) blockers.push(blocker);
+      }
     } else if (r.reason) {
-      blockers.push(r.reason);
+      if (!blockers.includes(r.reason)) blockers.push(r.reason);
     }
   }
   return {
