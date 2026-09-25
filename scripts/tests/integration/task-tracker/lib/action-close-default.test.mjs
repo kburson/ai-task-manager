@@ -226,10 +226,20 @@ async function productionCloseFixture({
 }
 
 test('production child close resolves an omitted trunkRef and keeps parent attribution blockers', async () => {
-  for (const { parentAvailable, attributed, status } of [
-    { parentAvailable: true, attributed: true, status: 'ready' },
-    { parentAvailable: false, attributed: true, status: 'indeterminate' },
-    { parentAvailable: true, attributed: false, status: 'blocked' },
+  for (const { parentAvailable, attributed, status, blocker } of [
+    { parentAvailable: true, attributed: true, status: 'ready', blocker: null },
+    {
+      parentAvailable: false,
+      attributed: true,
+      status: 'indeterminate',
+      blocker: { guardId: 'authority-collection', code: 'authority-read-failed' },
+    },
+    {
+      parentAvailable: true,
+      attributed: false,
+      status: 'blocked',
+      blocker: { guardId: 'review-exit-close-gates', code: 'unclassified-refusal' },
+    },
   ]) {
     const { result } = await productionCloseFixture({
       child: true,
@@ -238,14 +248,12 @@ test('production child close resolves an omitted trunkRef and keeps parent attri
       trunkRef: '',
     });
     assert.equal(result.status, status, JSON.stringify(result));
-    if (status !== 'ready') {
-      assert.ok(result.blockers.length > 0);
+    if (blocker)
       assert.ok(
-        result.blockers.every(
-          ({ code, guardId }) => typeof code === 'string' && typeof guardId === 'string'
+        result.blockers.some(
+          ({ guardId, code }) => guardId === blocker.guardId && code === blocker.code
         )
       );
-    }
   }
 });
 
