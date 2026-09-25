@@ -1,4 +1,4 @@
-// @story #1626
+// @story #1626 #1787 #1794
 import assert from 'node:assert/strict';
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -6,6 +6,12 @@ import test from 'node:test';
 
 import { parseAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 import { createWorkflowExceptionEnvelope } from '../../../../task-tracker/lib/workflow-policy/exception-record.mjs';
+import { buildDeliveryScope } from '../../../../task-tracker/lib/workflow-policy/delivery-scope.mjs';
+import {
+  executeWorkflowExceptionWrite,
+  inspectWorkflowException,
+} from '../../../../task-tracker/lib/workflow-policy/exception-store.mjs';
+import { partitionWorkflowExceptions } from '../../../../task-tracker/lib/workflow-policy/exception-partitions.mjs';
 import {
   createCodexSessionSourceLoader,
   hashAuthorizationStatement,
@@ -140,6 +146,72 @@ function createRuntime({
     },
   };
 }
+
+test('ordinary exception and two delivery operations retain isolated histories', async () => {
+  const runtime = createRuntime();
+  const issue = 57;
+  const ordinary = await runWorkflowException({
+    action: 'record',
+    issues: [issue],
+    request,
+    repository,
+    now: '2026-09-14T20:00:00.000Z',
+    runtime,
+  });
+  assert.equal(ordinary.status, 'recorded');
+  const scopeIdentity = runtime.comments.get(issue)[0].envelope.payload.scopeIdentity;
+  const authority = resolvedAuthority(issue).authority;
+  for (const n of [1, 2]) {
+    const deliveryScope = {
+      schema: 'aitm.delivery-exception-scope/v1',
+      repository,
+      issue,
+      exceptionKind: 'delivery.invariant-waiver',
+      pullRequest: 1785,
+      acceptedHeadSha: 'a'.repeat(40),
+      baseRef: 'trunk',
+      resolvedTrunkRef: 'origin/trunk',
+      requirementId: 'delivery.verification.merge-method',
+      deliveryOperationId: `01M2H00000000000000000000${n}`,
+    };
+    const result = await executeWorkflowExceptionWrite({
+      action: 'record',
+      repository,
+      issue,
+      scopeIdentity,
+      request: {
+        scopeKind: 'delivery',
+        deliveryScope,
+        waiverScopeDigest: buildDeliveryScope(deliveryScope).waiverScopeDigest,
+        exceptionId: `delivery-${n}`,
+        requirementIds: [deliveryScope.requirementId],
+        constraints: [],
+        reason: 'The operator approved one exact delivery operation.',
+        expiresAt: '2026-09-15T20:00:00.000Z',
+      },
+      authority,
+      now: '2026-09-14T21:00:00.000Z',
+      runtime,
+    });
+    assert.equal(result.status, 'created');
+  }
+  const records = runtime.comments.get(issue);
+  const grouped = partitionWorkflowExceptions({ records, repository, issue });
+  assert.equal(grouped.ordinary.length, 1);
+  assert.equal(grouped.delivery.size, 2);
+  const ordinaryHead = await inspectWorkflowException({
+    repository,
+    issue,
+    scopeIdentity,
+    now: '2026-09-14T21:00:00.000Z',
+    runtime,
+  });
+  assert.equal(ordinaryHead.status, 'active');
+  assert.deepEqual(ordinaryHead.active.requirementIds, ['planning.deep-dive']);
+  assert.deepEqual(ordinaryHead.active.constraints, [
+    { id: 'provider.managed-execution', effect: 'deny' },
+  ]);
+});
 
 test('argument and request parsers enforce explicit actions, issues, and closed shapes', () => {
   assert.deepEqual(

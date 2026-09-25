@@ -1,10 +1,14 @@
-// @story #1627
+// @story #1627 #1787 #1794
 import { createHash } from 'node:crypto';
 
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { stateIds, stateIndex as lifecycleStateIndex } from '../lifecycle-policy/index.mjs';
 import { computeScopeIdentity } from './scope-identity.mjs';
-import { resolveWorkflowExceptionRecords } from './exception-record.mjs';
+import {
+  resolveDeliveryExceptionChain,
+  resolveWorkflowExceptionRecords,
+} from './exception-record.mjs';
+import { partitionWorkflowExceptions } from './exception-partitions.mjs';
 
 export const WORKFLOW_STATES = stateIds();
 
@@ -68,20 +72,42 @@ function evidenceFromBody(body) {
   return evidence;
 }
 
-function authorityRevisions(records, history = []) {
-  const dispositions = new Map(history.map((item) => [item.recordId, item.disposition]));
-  return Object.freeze(
-    [...records]
-      .filter((record) => record?.envelope?.recordType === 'workflow-exception')
-      .sort((left, right) => left.envelope.payload.revision - right.envelope.payload.revision)
-      .map(({ envelope }) =>
+function authorityRevisions(grouped, ordinaryHistory = [], deliveryHistory = new Map()) {
+  const ordinaryDispositions = new Map(
+    ordinaryHistory.map((item) => [item.recordId, item.disposition])
+  );
+  const revisions = grouped.ordinary.map(({ envelope }) =>
+    Object.freeze({
+      recordId: envelope.recordId,
+      revision: envelope.payload.revision,
+      disposition: ordinaryDispositions.get(envelope.recordId) || envelope.payload.status,
+      reference: envelope.payload.approvalEvidence.reference,
+    })
+  );
+  for (const [partitionKey, records] of grouped.delivery) {
+    const dispositions = new Map(
+      (deliveryHistory.get(partitionKey)?.history ?? []).map((item) => [
+        item.recordId,
+        item.disposition,
+      ])
+    );
+    for (const { envelope } of records) {
+      revisions.push(
         Object.freeze({
           recordId: envelope.recordId,
           revision: envelope.payload.revision,
           disposition: dispositions.get(envelope.recordId) || envelope.payload.status,
           reference: envelope.payload.approvalEvidence.reference,
+          kind: 'delivery',
+          partitionKey,
         })
-      )
+      );
+    }
+  }
+  return Object.freeze(
+    revisions.sort(
+      (left, right) => left.revision - right.revision || left.recordId.localeCompare(right.recordId)
+    )
   );
 }
 
@@ -145,6 +171,20 @@ export async function buildWorkflowPreflightSnapshot({
     currentScopeIdentity: scopeIdentity,
     now,
   });
+  const grouped = partitionWorkflowExceptions({ records, repository, issue });
+  const deliveryHistory = new Map(
+    [...grouped.delivery.keys()].map((partitionKey) => [
+      partitionKey,
+      resolveDeliveryExceptionChain({
+        records,
+        partitionKey,
+        repository,
+        issue,
+        scopeIdentity,
+        now,
+      }),
+    ])
+  );
   const baselineRequirementIds = baselineRequirementsThrough(targetState);
   const evidence = {
     ...evidenceFromBody(issueSnapshot.body),
@@ -188,7 +228,12 @@ export async function buildWorkflowPreflightSnapshot({
     exception.status === 'none' || exception.status === 'invalid'
       ? []
       : [exception.active || exception.head].filter(Boolean);
-  const revisions = authorityRevisions(records, exception.history);
+  const revisions = authorityRevisions(grouped, exception.history, deliveryHistory);
+  const deliveryConflicts = [...deliveryHistory.entries()].flatMap(([partitionKey, chain]) =>
+    chain.status === 'invalid'
+      ? chain.conflicts.map((conflict) => ({ ...conflict, partitionKey }))
+      : []
+  );
   const snapshotHash = `sha256:${createHash('sha256')
     .update(
       canonicalRecordJson({
@@ -220,7 +265,7 @@ export async function buildWorkflowPreflightSnapshot({
     exceptionStatus: exception.status,
     exceptionConflicts: exception.conflicts,
     authorityRevisions: revisions,
-    issueConflicts: Object.freeze([...(issueSnapshot.conflicts || [])]),
+    issueConflicts: Object.freeze([...(issueSnapshot.conflicts || []), ...deliveryConflicts]),
     projectFields: Object.freeze({ ...(issueSnapshot.projectFields || {}) }),
     repositorySnapshot: Object.freeze({ ...(repositorySnapshot || {}) }),
     dependencies: Object.freeze([...dependencies]),

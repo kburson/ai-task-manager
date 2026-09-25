@@ -1,4 +1,4 @@
-// @story #1627
+// @story #1627 #1787 #1794
 import { WORKFLOW_POLICY_CAPABILITY } from './catalog.mjs';
 import { evaluateWorkflowPolicy } from './evaluator.mjs';
 
@@ -192,7 +192,9 @@ export function formatWorkflowPreflightReport(report, { json = false } = {}) {
       ? ['- none']
       : report.authorityRevisions.map(
           (item) =>
-            `- ${item.recordId} revision=${item.revision} disposition=${item.disposition} reference=${item.reference}`
+            `- ${item.recordId} revision=${item.revision} disposition=${item.disposition} ` +
+            `${item.kind === 'delivery' ? `kind=delivery key=${item.partitionKey} ` : ''}` +
+            `reference=${item.reference}`
         )),
     'Requirements:',
     ...report.requirements.map(

@@ -1,8 +1,9 @@
-// @story #1627
+// @story #1627 #1787 #1794
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createWorkflowExceptionEnvelope } from '../../../../task-tracker/lib/workflow-policy/exception-record.mjs';
+import { buildDeliveryScope } from '../../../../task-tracker/lib/workflow-policy/delivery-scope.mjs';
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import {
   requirementCatalog,
@@ -99,6 +100,71 @@ function revisedExceptionRecords() {
   };
   return [first, second];
 }
+
+function deliveryRecord(n) {
+  const base = exceptionRecord();
+  const deliveryScope = {
+    schema: 'aitm.delivery-exception-scope/v1',
+    repository,
+    issue,
+    exceptionKind: 'delivery.invariant-waiver',
+    pullRequest: 1785,
+    acceptedHeadSha: 'a'.repeat(40),
+    baseRef: 'trunk',
+    resolvedTrunkRef: 'origin/trunk',
+    requirementId: 'delivery.verification.merge-method',
+    deliveryOperationId: `01M2H00000000000000000003${n}`,
+  };
+  return {
+    commentNodeId: `IC_delivery_${n}`,
+    envelope: createWorkflowExceptionEnvelope({
+      schema: 'aitm.workflow-exception/v2',
+      repository,
+      issue,
+      exceptionId: `delivery-${n}`,
+      revision: 1,
+      scopeIdentity: computeScopeIdentity({ repository, issue, body }),
+      requirementIds: [deliveryScope.requirementId],
+      constraints: [],
+      reason: 'The operator approved this exact delivery waiver.',
+      authorization: base.envelope.payload.approvalEvidence,
+      expiresAt: '2026-09-16T00:00:00.000Z',
+      operationId: `sha256:${String(n).repeat(64)}`,
+      createdAt: '2026-09-14T20:00:00.000Z',
+      recordId: `01M2H00000000000000000004${n}`,
+      grantId: `01M2H00000000000000000005${n}`,
+      scopeKind: 'delivery',
+      deliveryScope,
+      waiverScopeDigest: buildDeliveryScope(deliveryScope).waiverScopeDigest,
+    }),
+  };
+}
+
+test('preflight shows delivery revisions but evaluates only ordinary policy', async () => {
+  const runtime = runtimeFixture();
+  runtime.listRecords = async () => [exceptionRecord(), deliveryRecord(1), deliveryRecord(2)];
+  const report = await runWorkflowPreflight({
+    repository,
+    issue,
+    target: 'done',
+    now: '2026-09-14T21:00:00.000Z',
+    runtime,
+  });
+  assert.equal(report.provenance.exceptionStatus, 'active');
+  assert.equal(report.authorityRevisions.length, 3);
+  assert.equal(report.authorityRevisions.filter(({ kind }) => kind === 'delivery').length, 2);
+  assert.ok(
+    report.authorityRevisions
+      .filter(({ kind }) => kind === 'delivery')
+      .every(({ partitionKey }) => typeof partitionKey === 'string')
+  );
+  assert.ok(report.waivers.some(({ id }) => id === 'planning.deep-dive'));
+  assert.deepEqual(
+    report.prohibitions.map(({ id }) => id),
+    ['provider.managed-execution']
+  );
+  assert.match(formatWorkflowPreflightReport(report), /kind=delivery/);
+});
 
 function runtimeFixture({ externalProtection = 'unknown', evidence = {} } = {}) {
   const calls = [];

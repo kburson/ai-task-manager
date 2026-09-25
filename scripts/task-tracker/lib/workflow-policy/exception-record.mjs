@@ -1,8 +1,9 @@
-// @story #1626 #1787 #1793
+// @story #1626 #1787 #1793 #1794
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
 import { validateConstraints, validateDeliveryWaiverIds, validateWaiverIds } from './catalog.mjs';
 import { buildDeliveryScope } from './delivery-scope.mjs';
+import { partitionWorkflowExceptions } from './exception-partitions.mjs';
 
 export const WORKFLOW_EXCEPTION_SCHEMA = 'aitm.workflow-exception/v1';
 export const WORKFLOW_EXCEPTION_SCHEMA_V2 = 'aitm.workflow-exception/v2';
@@ -310,7 +311,7 @@ function invalid(code = 'invalid-workflow-exception-record') {
   });
 }
 
-export function resolveWorkflowExceptionRecords({
+function resolveChain({
   records = [],
   repository,
   issue,
@@ -393,4 +394,41 @@ export function resolveWorkflowExceptionRecords({
     return Object.freeze({ status: 'stale-scope', active: null, ...base });
   }
   return Object.freeze({ status: 'active', active: head, ...base });
+}
+
+export function resolveWorkflowExceptionRecords(input = {}) {
+  if (!Array.isArray(input.records ?? [])) fail('resolver-input');
+  try {
+    const grouped = partitionWorkflowExceptions({
+      records: input.records ?? [],
+      repository: input.repository,
+      issue: input.issue,
+    });
+    return resolveChain({ ...input, records: grouped.ordinary });
+  } catch {
+    return invalid();
+  }
+}
+
+export function resolveDeliveryExceptionChain({
+  records = [],
+  partitionKey,
+  repository,
+  issue,
+  scopeIdentity,
+  now = new Date().toISOString(),
+} = {}) {
+  if (typeof partitionKey !== 'string' || partitionKey.length === 0) fail('partition-key');
+  try {
+    const grouped = partitionWorkflowExceptions({ records, repository, issue });
+    return resolveChain({
+      records: grouped.delivery.get(partitionKey) ?? [],
+      repository,
+      issue,
+      currentScopeIdentity: scopeIdentity,
+      now,
+    });
+  } catch {
+    return invalid();
+  }
 }
