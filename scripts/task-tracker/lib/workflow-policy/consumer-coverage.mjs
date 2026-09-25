@@ -25,6 +25,20 @@ export const CONSUMER_DECLARATIONS = Object.freeze({
   ci: Object.freeze(['delivery.ci']),
   delivery: Object.freeze(['delivery.safe-delivery']),
   protection: Object.freeze(['delivery.external-protection']),
+  'delivery-pr-verifier': Object.freeze([
+    'delivery.verification.accepted-head',
+    'delivery.verification.pr-merged',
+    'delivery.verification.pr-scope',
+    'delivery.verification.trunk-reachability',
+    'delivery.verification.merge-method',
+    'delivery.verification.intent-integrity',
+    'delivery.verification.commit-attribution',
+    'delivery.verification.branch-disposition',
+    'delivery.verification.input-contract',
+    'delivery.verification.merge-method-evidence',
+  ]),
+  'delivery-pinned-evidence': Object.freeze(['delivery.verification.attribution-waiver-authority']),
+  'delivery-waiver-authority-resolver': Object.freeze(['delivery.verification.waiver-authority']),
 });
 
 export function assertConsumerCoverage(declarations = CONSUMER_DECLARATIONS) {
