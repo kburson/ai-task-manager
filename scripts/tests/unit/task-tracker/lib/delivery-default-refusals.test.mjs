@@ -65,7 +65,9 @@ function assertNoTerminalWrites(harness, previousWrites) {
   assert.equal(harness.calls.createIssueComment, previousWrites);
   assert.equal(harness.calls.terminalTiming, 0);
   assert.equal(harness.calls.terminalBoard, 0);
+  assert.equal(harness.calls.terminalDisposition, 0);
   assert.equal(harness.calls.terminalClosure, 0);
+  assert.equal(harness.calls.terminalBinding, 0);
 }
 
 test('ordinary v1 intent/v1 receipt and warning v2 receipt remain readable', () => {
