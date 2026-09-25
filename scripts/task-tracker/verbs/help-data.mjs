@@ -150,13 +150,13 @@ export const VERB_REFERENCE = {
   'workflow-exception': {
     topic: 'evidence',
     summary:
-      'Prepare delivery waivers or record, inspect, revise, and revoke durable workflow exceptions.',
+      'Prepare exact PR delivery waivers or record, inspect, revise, and revoke durable workflow exceptions.',
     usage:
       '/task workflow-exception <prepare|record|show|revise|revoke> #N [#M ...] [--input-file <request.json>] [--json]',
     flags: [
       {
         flag: '--input-file <path>',
-        desc: 'closed proposal for prepare or closed request for writes; required except for show',
+        desc: 'closed delivery waiver proposal for read-only prepare or host-approved request for writes; required except for show',
       },
       { flag: '--json', desc: 'emit the versioned per-issue result as JSON' },
     ],
@@ -167,6 +167,7 @@ export const VERB_REFERENCE = {
       '/task workflow-exception prepare #57 --input-file .scratch/gh/57-delivery-proposal.json --json',
       '/task workflow-exception show #57 --json',
       '/task workflow-exception record #57 --input-file .scratch/gh/57-workflow-exception.json',
+      '/task workflow-exception revise #57 --input-file .scratch/gh/57-delivery-revision.json',
       '/task workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json',
     ],
   },

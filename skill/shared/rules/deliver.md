@@ -95,6 +95,17 @@ and exact source inventory. A retry can reuse it only while that scope and
 operation remain unchanged. The final v3 receipt visibly labels attribution
 `waived` and cites the exception; do not describe it as an ordinary pass.
 
+For a named invariant failure on an already merged PR with an existing original
+intent, follow the [generic PR delivery waiver guide](../../../docs/guides/workflow.md#generic-pr-delivery-waiver).
+`workflow-exception prepare` is read-only; the exact fresh Codex user statement
+authorizes `record` after host verification. The request file and `--reason`
+are not authority. Rerun ordinary `deliver` after recording. A valid v3 intent
+and v4 receipt report the one approved requirement as `waived`; all other
+checks retain their ordinary outcome. Close only from the live-verified receipt.
+An indeterminate `delivery-waiver-ambiguity` blocks mutation retries: preserve
+the journal and comments and follow the guide's incident escalation. Never
+force-republish, replace a reserved operation, or force-delete its journal.
+
 After the required reconciliation, a normal non-20 result with no action line
 governs the next workflow step. Never manufacture an action from human-readable
 output or from a prior invocation.

@@ -4,6 +4,10 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import { parsedDeliveryRecords, runDeliver } from '../../../task-tracker/verbs/deliver.mjs';
+import {
+  requireDeliveryReceipt,
+  verifyCloseDeliveryReceipt,
+} from '../../../task-tracker/lib/close-delivery-receipt.mjs';
 import { projectDeliveryRecords } from '../../../task-tracker/lib/delivery-records.mjs';
 import { createWorkflowExceptionEnvelope } from '../../../task-tracker/lib/workflow-policy/exception-record.mjs';
 import { buildDeliveryScope } from '../../../task-tracker/lib/workflow-policy/delivery-scope.mjs';
@@ -11,6 +15,9 @@ import { computeScopeIdentity } from '../../../task-tracker/lib/workflow-policy/
 import { renderAitmRecord } from '../../../task-tracker/lib/github-records/record-envelope.mjs';
 import { createMemoryJournal } from '../../unit/task-tracker/lib/delivery-waiver-consumption-fixtures.mjs';
 import { HEAD, makeHarness, cfg } from '../../unit/task-tracker/verbs/deliver-test-harness.mjs';
+import { runClose } from '../../helpers/close-convergence-wiring-helpers.mjs';
+import { reusedBranchDeliveryBody } from '../../helpers/reused-branch-delivery-harness.mjs';
+import { formatCloseDeliveryDisclosure } from '../../../task-tracker/verbs/close.mjs';
 
 const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 const issueNumber = 1784;
@@ -166,6 +173,108 @@ test('exact grant produces one v3 intent, immutable burn, one v4 receipt, and id
   assert.deepEqual(retry.receipt, first.receipt);
   assert.equal(f.harness.calls.createIssueComment, posts);
   assert.equal(f.harness.calls.terminalBoard, 0);
+});
+
+test('#1784/#1785 reaches the close receipt gate with merge method visibly waived', async () => {
+  const f = fixture();
+  await prepare(f);
+  const grant = addGrant(f);
+  const delivered = await runDeliver(f.input());
+  const records = projectDeliveryRecords(
+    parsedDeliveryRecords(f.harness.data.comments, {
+      repository: cfg().repo,
+      issueNumber,
+      prNumber,
+    })
+  );
+  const fetched = await f.harness.deps.fetchPullRequest({ prNumber });
+  const pullRequest = { ...fetched, mergeCommitSha: fetched.mergeCommit.oid };
+  const gateInput = {
+    issueNumber,
+    repository: cfg().repo,
+    lineage: f.harness.data.lineage,
+    branch: f.harness.data.branch,
+    acceptedSha: HEAD,
+    observedLocalHeadSha: HEAD,
+    headRelation: 'current',
+    pullRequests: [pullRequest],
+    pullRequest,
+    records,
+  };
+  const receiptGate = requireDeliveryReceipt(gateInput);
+  assert.equal(receiptGate.receipt.result, 'waived');
+  assert.equal(receiptGate.receipt.waivedRequirementId, 'delivery.verification.merge-method');
+  const closed = await verifyCloseDeliveryReceipt({
+    gateInput,
+    receiptGate,
+    testReceiptSha: HEAD,
+    acceptedReviewSha: HEAD,
+    deps: {
+      attributingCommits: f.harness.deps.attributingCommits,
+      fetchOriginTrunk: f.harness.deps.fetchOriginTrunk,
+      inspectMergeCommit: f.harness.deps.inspectMergeCommit,
+      isAncestor: f.harness.deps.isAncestor,
+      readWaiverJournal: () => f.journal.read(),
+      listWaiverRecords: async () => [{ envelope: grant, createdAt: grant.createdAt }],
+      verifyStoredDeliveryWaiverAuthority: async () => ({ verified: true }),
+      resolveDeliveryWaiver: () => {
+        throw new Error('close queried current grant');
+      },
+    },
+  });
+  assert.equal(closed.receipt.result, 'waived');
+  assert.deepEqual(closed.receipt, delivered.receipt);
+  assert.equal(closed.receipt.waivedRequirementId, 'delivery.verification.merge-method');
+  assert.equal(closed.receipt.deliveryDisposition, 'waived');
+  assert.doesNotMatch(JSON.stringify(closed.receipt), /"deliveryDisposition":"passed"/);
+  assert.match(formatCloseDeliveryDisclosure(closed.receipt), /merge-method waived/);
+  const close = await runClose({
+    issueNumber,
+    repository: cfg().repo,
+    body: reusedBranchDeliveryBody(HEAD),
+    acceptedSha: HEAD,
+    gateReviewToDone: false,
+    force: true,
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    deliveryGateInput: gateInput,
+    useInjectedDeliveryReceipt: false,
+    useInjectedFreshDeliveryVerification: false,
+    deliveryVerificationDeps: {
+      attributingCommits: f.harness.deps.attributingCommits,
+      fetchOriginTrunk: f.harness.deps.fetchOriginTrunk,
+      inspectMergeCommit: f.harness.deps.inspectMergeCommit,
+      isAncestor: f.harness.deps.isAncestor,
+      readCloseWaiverJournal: () => f.journal.read(),
+      listCloseWaiverRecords: async () => [{ envelope: grant, createdAt: grant.createdAt }],
+      resolveCloseTranscriptPath: () => '/fixture/transcript',
+    },
+    contextOverrides: {
+      verifyCloseDeliveryReceipt: ({
+        gateInput: current,
+        receiptGate,
+        testReceiptSha,
+        acceptedReviewSha,
+      }) =>
+        verifyCloseDeliveryReceipt({
+          gateInput: current,
+          receiptGate,
+          testReceiptSha,
+          acceptedReviewSha,
+          deps: {
+            attributingCommits: f.harness.deps.attributingCommits,
+            fetchOriginTrunk: f.harness.deps.fetchOriginTrunk,
+            inspectMergeCommit: f.harness.deps.inspectMergeCommit,
+            isAncestor: f.harness.deps.isAncestor,
+            readWaiverJournal: () => f.journal.read(),
+            listWaiverRecords: async () => [{ envelope: grant, createdAt: grant.createdAt }],
+            verifyStoredDeliveryWaiverAuthority: async () => ({ verified: true }),
+          },
+        }),
+    },
+  });
+  assert.equal(close.exitCode, 0);
+  assert.equal(close.calls.movesToDone.length, 1);
+  assert.equal(close.calls.issueCloses, 1);
 });
 
 test('grant expiry after v3 intent readback refuses the burn and leaves no receipt', async () => {
