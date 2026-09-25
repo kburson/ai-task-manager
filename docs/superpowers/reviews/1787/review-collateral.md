@@ -34,3 +34,38 @@ was committed. That is a separate plan review, not an extension or alteration
 of the finalized spec review. SAR convergence alone does not confer independent
 plan acceptance or implementation approval. The new XPR's event authority and
 eventual manifest determine its status.
+
+### Finalized Plan XPR
+
+Review `review-ceeecb3db9ae33154a3aa9cd648031fd` is now accepted by
+reviewer consensus between GPT-6 Astra (runtime author identity) and Claude
+Opus 5 (declared reviewer identity, launched as `claude-opus-5`, high effort).
+The [manifest](../../../peer-reviews/plan/2026-09-25-2026-09-24-1787-delivery-waiver-review-ceeecb3db9ae33154a3aa9cd648031fd/review-ceeecb3db9ae33154a3aa9cd648031fd-review-manifest.md)
+was committed in `24e50125`. It pins plan commit
+`5b1a4d91e4340b2a828d0dcd9ee24430bb0304fc`, blob
+`bfc352b5725916f1fbb465dcf1b3dba13ddb98bc`, SHA-256
+`785478b50d21c6001388c6edabca76470d99569f5cdde11be5dc326f2d09a6c0`.
+
+Round 1 requested four changes; the author addressed all four and the five
+optional suggestions. Round 2 accepted with no findings or required changes.
+Its three optional implementation refinements remain in the
+[final reviewer response](../../../peer-reviews/plan/2026-09-25-2026-09-24-1787-delivery-waiver-review-ceeecb3db9ae33154a3aa9cd648031fd/review-ceeecb3db9ae33154a3aa9cd648031fd-reviewer-response-2.md):
+an additional topology-error precedence fixture, explicit fresh-v1 input-key
+selection, and renderer assertions for all terminal ambiguity fields. They are
+not unresolved acceptance challenges and must not be described as changes
+already made to the accepted plan.
+
+The normal launcher reproduced the known turn-two response-routing defect
+tracked in `kburson/ai-peer-review` #91. It returned `outcome-unknown` without
+submitting. One recovery used the official same-session Claude resume command
+with the current event-derived response path and package-generated exact
+permissions. Claude submitted round 2 from that same registered session, with
+no permission denials. No scratch state, protected metadata, reviewer identity,
+reviewer response text, or Git boundary was rewritten by the author to recover.
+This operational recovery is recorded here; the manifest's empty `recoveries`
+array describes protocol recovery events, not transport attempts.
+
+Acceptance is durable normal-commit review evidence, not human Plan approval:
+the manifest reports `authority_assurance: unavailable` and no human signed
+attestation. No lifecycle promotion, runtime implementation, real waiver,
+publication, push, or merge was performed. The accepted specification is unchanged.
