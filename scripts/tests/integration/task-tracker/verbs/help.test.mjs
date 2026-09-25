@@ -125,11 +125,12 @@ test('(e) per-verb help names the requested verb and shows exit codes', () => {
   }
 });
 
-test('Shelve help documents the narrow schema-1 stale-blocker migration', () => {
+test('Shelve help distinguishes the two explicit snapshot recovery paths', () => {
   const out = capture(() => verbHelp('shelve'));
   assert.match(out, /--refresh-stale-blockers/);
   assert.match(out, /schema-1 blocker migration/i);
-  assert.match(out, /not a general stale-snapshot repair/i);
+  assert.match(out, /--refresh-stale-refinement/);
+  assert.match(out, /stale schema-3 snapshot/i);
 });
 
 test('Park help omits the Shelve-only stale-blocker migration flag', () => {

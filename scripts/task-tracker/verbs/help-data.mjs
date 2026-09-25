@@ -265,13 +265,18 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Return Refine or Ready for Planning work to Backlog with immutable refinement history.',
-    usage: '/task shelve <N> --reason "<text>" [--remove-owner] [--refresh-stale-blockers]',
+    usage:
+      '/task shelve <N> --reason "<text>" [--remove-owner] [--refresh-stale-blockers|--refresh-stale-refinement]',
     flags: [
       { flag: '--reason <text>', desc: 'required shelving provenance' },
       { flag: '--remove-owner', desc: 'also remove the verified sole owner' },
       {
         flag: '--refresh-stale-blockers',
-        desc: 'authorize only the schema-1 blocker migration; not a general stale-snapshot repair',
+        desc: 'authorize only the schema-1 blocker migration',
+      },
+      {
+        flag: '--refresh-stale-refinement',
+        desc: 'archive a stale schema-3 snapshot from Ready for Planning before re-refinement',
       },
     ],
     exitCodes: [
@@ -281,6 +286,7 @@ export const VERB_REFERENCE = {
     examples: [
       '/task shelve 1215 --reason "refinement is no longer current"',
       '/task shelve 1215 --reason "blocker added after schema-1 refinement" --refresh-stale-blockers',
+      '/task shelve 1733 --reason "story rewritten after refinement" --refresh-stale-refinement',
     ],
   },
   'cancel-plan': {

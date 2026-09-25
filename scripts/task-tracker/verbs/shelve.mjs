@@ -17,10 +17,11 @@ const SHELVE_POLICY = actionPolicyFor('shelve');
 export const SHELVE_TARGET = SHELVE_POLICY.target;
 export const LEGAL_FROM = new Set(SHELVE_POLICY.allowedStates);
 export const SHELVE_USAGE =
-  'Usage: shelve <N> --reason <text> [--remove-owner] [--refresh-stale-blockers]';
+  'Usage: shelve <N> --reason <text> [--remove-owner] [--refresh-stale-blockers|--refresh-stale-refinement]';
 
 function usageFor(verb) {
-  const migrationFlag = verb === 'shelve' ? ' [--refresh-stale-blockers]' : '';
+  const migrationFlag =
+    verb === 'shelve' ? ' [--refresh-stale-blockers|--refresh-stale-refinement]' : '';
   return `Usage: ${verb} <N> --reason <text> [--remove-owner]${migrationFlag}`;
 }
 
@@ -32,8 +33,17 @@ export function parseArgs(rest = [], { verb = 'shelve' } = {}) {
   if (allowsRefreshStaleBlockers && refreshCount > 1) {
     throw new StrictArgvError('duplicate flag: --refresh-stale-blockers', { usage });
   }
+  const refinementCount = argv.filter((arg) => arg === '--refresh-stale-refinement').length;
+  if (allowsRefreshStaleBlockers && refinementCount > 1) {
+    throw new StrictArgvError('duplicate flag: --refresh-stale-refinement', { usage });
+  }
   const parsed = parseStrict(argv, {
-    flags: ['--remove-owner', ...(allowsRefreshStaleBlockers ? ['--refresh-stale-blockers'] : [])],
+    flags: [
+      '--remove-owner',
+      ...(allowsRefreshStaleBlockers
+        ? ['--refresh-stale-blockers', '--refresh-stale-refinement']
+        : []),
+    ],
     options: ['--reason'],
     positionals: { min: 1, max: 1 },
     usage,
@@ -46,6 +56,8 @@ export function parseArgs(rest = [], { verb = 'shelve' } = {}) {
     removeOwner: parsed.values['--remove-owner'] === true,
     refreshStaleBlockers:
       allowsRefreshStaleBlockers && parsed.values['--refresh-stale-blockers'] === true,
+    refreshStaleRefinement:
+      allowsRefreshStaleBlockers && parsed.values['--refresh-stale-refinement'] === true,
   };
 }
 
@@ -54,6 +66,7 @@ export async function runShelve({
   reason,
   removeOwner = false,
   refreshStaleBlockers = false,
+  refreshStaleRefinement = false,
   cfg,
   cursorCommand = 'shelve',
   deps = {},
@@ -71,6 +84,7 @@ export async function runShelve({
     reason: why,
     removeOwner: Boolean(removeOwner),
     refreshStaleBlockers: Boolean(refreshStaleBlockers),
+    refreshStaleRefinement: Boolean(refreshStaleRefinement),
     cfg,
     cursorCommand,
     deps,
@@ -107,7 +121,11 @@ export async function verbShelveAs(displayVerb, rest, cfg, deps = {}) {
   }
 
   if (result.status === 'shelved') {
-    const migration = args.refreshStaleBlockers ? '; schema-1 stale-blocker migration' : '';
+    const migration = args.refreshStaleBlockers
+      ? '; schema-1 stale-blocker migration'
+      : args.refreshStaleRefinement
+        ? '; stale-refinement history archived'
+        : '';
     process.stdout.write(
       `${displayVerb}: #${args.issueNumber} ${result.from} → backlog; refinement history ${result.tx}${migration}\n`
     );

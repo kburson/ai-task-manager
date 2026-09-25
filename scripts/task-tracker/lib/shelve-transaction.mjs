@@ -20,6 +20,7 @@ import { canonicalLogins, ownershipDecision } from './ownership-policy.mjs';
 import { hasExecutionProof, stripExecutionProof } from './proof-marker.mjs';
 import { buildCommandCursorRequest } from './state-cursor.mjs';
 import {
+  parseRefinementSnapshot,
   verifyLegacyRefinementSnapshotForBlockerRefresh,
   verifyRefinementSnapshot,
 } from './refinement-snapshot.mjs';
@@ -62,9 +63,10 @@ function sha256(value) {
   return createHash('sha256').update(String(value)).digest('hex');
 }
 
-function intentDigest(reason, removeOwner, refreshStaleBlockers) {
+function intentDigest(reason, removeOwner, refreshStaleBlockers, refreshStaleRefinement) {
   const intent = { reason: String(reason).trim(), removeOwner: Boolean(removeOwner) };
   if (refreshStaleBlockers) intent.refreshStaleBlockers = true;
+  if (refreshStaleRefinement) intent.refreshStaleRefinement = true;
   return sha256(JSON.stringify(intent));
 }
 
@@ -275,6 +277,7 @@ function serializeJournal(journal) {
     'previous-owner': journal.previousOwner || '',
   };
   if (journal.refreshStaleBlockers) props['refresh-stale-blockers'] = 'true';
+  if (journal.refreshStaleRefinement) props['refresh-stale-refinement'] = 'true';
   return serializeMarker('shelve-transaction', props);
 }
 
@@ -298,7 +301,11 @@ export function parseShelveJournals(body) {
       !/^[0-9a-f]{64}$/.test(props['intent-digest'] || '') ||
       !/^[0-9a-f]{64}$/.test(props['history-digest'] || '') ||
       !/^[0-9a-f]{64}$/.test(props['evidence-digest'] || '') ||
-      (Object.hasOwn(props, 'refresh-stale-blockers') && props['refresh-stale-blockers'] !== 'true')
+      (Object.hasOwn(props, 'refresh-stale-blockers') &&
+        props['refresh-stale-blockers'] !== 'true') ||
+      (Object.hasOwn(props, 'refresh-stale-refinement') &&
+        props['refresh-stale-refinement'] !== 'true') ||
+      (props['refresh-stale-blockers'] === 'true' && props['refresh-stale-refinement'] === 'true')
     ) {
       throw new Error('shelve: malformed transaction journal');
     }
@@ -315,6 +322,7 @@ export function parseShelveJournals(body) {
       removeOwner: props['remove-owner'] === 'true',
       previousOwner: props['previous-owner'] || null,
       refreshStaleBlockers: props['refresh-stale-blockers'] === 'true',
+      refreshStaleRefinement: props['refresh-stale-refinement'] === 'true',
     });
   }
   return journals;
@@ -489,12 +497,15 @@ function ownershipRefusal(snapshot, { gateAssignee, currentUser } = {}) {
   return null;
 }
 
-function sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers } = {}) {
+function sourceRefusal(
+  snapshot,
+  { gateAssignee, currentUser, refreshStaleBlockers, refreshStaleRefinement } = {}
+) {
   const recorded = readLastKnownState(snapshot.body).state;
   if (!recorded || recorded !== snapshot.state) {
     return { status: 'drift-refused', recorded, live: snapshot.state };
   }
-  if (refreshStaleBlockers && snapshot.state !== 'ready-for-plan') {
+  if ((refreshStaleBlockers || refreshStaleRefinement) && snapshot.state !== 'ready-for-plan') {
     return { status: 'migration-source-refused', from: snapshot.state };
   }
   const policy = actionPolicyFor('shelve', snapshot.state);
@@ -512,6 +523,19 @@ function sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlocke
     if (!migrated.ok) return { status: 'snapshot-refused', reason: migrated.reason };
     const carrierRefusal = migrationCarrierRefusal(snapshot, migrated.liveBlockers);
     if (carrierRefusal) return { status: 'migration-carriers-refused', reason: carrierRefusal };
+  } else if (refreshStaleRefinement) {
+    const parsed = parseRefinementSnapshot(snapshot.body);
+    const current = verifyRefinementSnapshot(snapshot.body, { labels: snapshot.labels });
+    if (
+      parsed?.schema !== '3' ||
+      current.reason !== 'stale refinement snapshot' ||
+      !sameFields(parsed.fields, snapshot.fields)
+    ) {
+      return {
+        status: 'snapshot-refused',
+        reason: current.reason || 'not a stale schema-3 snapshot',
+      };
+    }
   } else {
     const currentSnapshot = verifyRefinementSnapshot(snapshot.body, { labels: snapshot.labels });
     if (!currentSnapshot.ok) {
@@ -522,7 +546,7 @@ function sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlocke
 }
 
 function migrationJournalStateRefusal(snapshot, journal, record) {
-  if (!journal.refreshStaleBlockers) return null;
+  if (!journal.refreshStaleBlockers && !journal.refreshStaleRefinement) return null;
   if (journal.from !== 'ready-for-plan' || record.sourceState !== 'ready-for-plan') {
     return { status: 'migration-source-refused', from: snapshot.state };
   }
@@ -540,6 +564,7 @@ export async function runShelveTransaction({
   reason,
   removeOwner = false,
   refreshStaleBlockers = false,
+  refreshStaleRefinement = false,
   cfg,
   cursorCommand = 'shelve',
   deps = {},
@@ -550,6 +575,8 @@ export async function runShelveTransaction({
   if (!cfg?.repo || !cfg?.projectId) throw new Error('shelve: cfg is required');
   const why = String(reason || '').trim();
   if (!why) return { status: 'reason-required' };
+  if (refreshStaleBlockers && refreshStaleRefinement)
+    return { status: 'conflicting-refresh-refused' };
 
   (deps.assertIssueLockHeld || defaultAssertIssueLockHeld)(issueNumber);
 
@@ -568,7 +595,12 @@ export async function runShelveTransaction({
   const now = deps.now || (() => new Date().toISOString());
   const makeTx = deps.makeTx || randomUUID;
   const resolveLogin = deps.resolveLogin || defaultResolveLogin;
-  const requestedIntent = intentDigest(why, removeOwner, refreshStaleBlockers);
+  const requestedIntent = intentDigest(
+    why,
+    removeOwner,
+    refreshStaleBlockers,
+    refreshStaleRefinement
+  );
 
   let snapshot = await fetchSnapshot({ issueNumber, cfg });
   if (snapshot.issueState !== 'OPEN') {
@@ -587,7 +619,8 @@ export async function runShelveTransaction({
       journal.issueNumber !== issueNumber ||
       journal.intentDigest !== requestedIntent ||
       journal.removeOwner !== Boolean(removeOwner) ||
-      journal.refreshStaleBlockers !== Boolean(refreshStaleBlockers)
+      journal.refreshStaleBlockers !== Boolean(refreshStaleBlockers) ||
+      journal.refreshStaleRefinement !== Boolean(refreshStaleRefinement)
     ) {
       return { status: 'retry-intent-refused', phase: journal.phase };
     }
@@ -597,7 +630,10 @@ export async function runShelveTransaction({
     }
     const stateRefusal = migrationJournalStateRefusal(snapshot, journal, record);
     if (stateRefusal) return stateRefusal;
-  } else if (refreshStaleBlockers && snapshot.state !== 'ready-for-plan') {
+  } else if (
+    (refreshStaleBlockers || refreshStaleRefinement) &&
+    snapshot.state !== 'ready-for-plan'
+  ) {
     return { status: 'migration-source-refused', from: snapshot.state };
   }
   const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
@@ -619,7 +655,12 @@ export async function runShelveTransaction({
       return { status: 'recovery-pending', phase: journal.phase, error: carrierRefusal };
     }
   } else {
-    let refusal = sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers });
+    let refusal = sourceRefusal(snapshot, {
+      gateAssignee,
+      currentUser,
+      refreshStaleBlockers,
+      refreshStaleRefinement,
+    });
     if (refusal) return refusal;
 
     // Re-fetch the complete source immediately before building durable history.
@@ -631,7 +672,12 @@ export async function runShelveTransaction({
         status: snapshot.issueState === 'CLOSED' ? 'closed-issue-refused' : 'issue-state-refused',
       };
     }
-    refusal = sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers });
+    refusal = sourceRefusal(snapshot, {
+      gateAssignee,
+      currentUser,
+      refreshStaleBlockers,
+      refreshStaleRefinement,
+    });
     if (refusal) return refusal;
 
     const migration = refreshStaleBlockers
@@ -669,6 +715,7 @@ export async function runShelveTransaction({
       removeOwner: Boolean(removeOwner),
       previousOwner: owners[0] || null,
       refreshStaleBlockers: Boolean(refreshStaleBlockers),
+      refreshStaleRefinement: Boolean(refreshStaleRefinement),
     };
     try {
       snapshot = await mutateAndFetch({

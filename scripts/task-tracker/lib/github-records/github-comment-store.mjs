@@ -1,50 +1,13 @@
 import { isDeepStrictEqual } from 'node:util';
 
+import {
+  getCorrelatedCommentNodesByIds,
+  listCorrelatedCommentNodes,
+  normalizeCorrelatedCommentNode,
+  readCorrelatedCommentNode,
+} from './comment-transport.mjs';
 import { parseAitmRecord } from './record-envelope.mjs';
 
-const COMMENTS_BY_NODE_IDS_QUERY = `
-  query AitmCommentsByNodeIds($ids: [ID!]!) {
-    nodes(ids: $ids) {
-      __typename
-      ... on IssueComment {
-        id
-        body
-        author { login }
-        createdAt
-        updatedAt
-        issue {
-          number
-          repository { nameWithOwner }
-        }
-      }
-    }
-  }
-`;
-const ISSUE_COMMENT_PAGE_SIZE = 100;
-const ISSUE_COMMENTS_QUERY = `
-  query AitmIssueComments($owner: String!, $name: String!, $issue: Int!, $after: String) {
-    repository(owner: $owner, name: $name) {
-      issue(number: $issue) {
-        number
-        repository { nameWithOwner }
-        comments(first: ${ISSUE_COMMENT_PAGE_SIZE}, after: $after) {
-          nodes {
-            __typename
-            ... on IssueComment {
-              id
-              body
-              author { login }
-              createdAt
-              updatedAt
-              issue { number repository { nameWithOwner } }
-            }
-          }
-          pageInfo { hasNextPage endCursor }
-        }
-      }
-    }
-  }
-`;
 const UPDATE_ISSUE_COMMENT_MUTATION = `
   mutation AitmUpdateIssueComment($id: ID!, $body: String!) {
     updateIssueComment(input: { id: $id, body: $body }) {
@@ -52,7 +15,6 @@ const UPDATE_ISSUE_COMMENT_MUTATION = `
     }
   }
 `;
-const MAX_ISSUE_COMMENT_PAGES = 1000;
 
 export class GitHubCommentStoreError extends Error {
   constructor(category, options) {
@@ -96,16 +58,7 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
-export function normalizeGitHubInstant(value) {
-  if (typeof value !== 'string') return null;
-  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?Z$/.exec(value);
-  if (match === null) return null;
-  const canonical = `${match[1]}.${(match[2] ?? '').padEnd(3, '0')}Z`;
-  const timestamp = Date.parse(canonical);
-  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === canonical
-    ? canonical
-    : null;
-}
+export { normalizeGitHubInstant } from './comment-transport.mjs';
 
 function assertContext({ repository, issue, graphql }) {
   if (
@@ -133,25 +86,16 @@ function assertReadInput({ ids, ...context }) {
 }
 
 function validateCommentNode(node, expectedId, repository, issue) {
-  if (node === null) throw storeError('missing-node');
-  if (node?.__typename !== 'IssueComment') throw storeError('wrong-type');
-  if (!isOpaqueId(node.id) || node.id !== expectedId) throw storeError('node-mismatch');
-  if (node.issue?.number !== issue || node.issue?.repository?.nameWithOwner !== repository) {
-    throw storeError('correlation');
+  try {
+    const normalized = normalizeCorrelatedCommentNode(node, expectedId, repository, issue);
+    return Object.freeze({
+      authorLogin: normalized.authorLogin,
+      createdAt: normalized.createdAt,
+      updatedAt: normalized.updatedAt,
+    });
+  } catch (error) {
+    throw storeError(error.category ?? 'response-shape', error.cause);
   }
-  if (typeof node.body !== 'string') throw storeError('response-shape');
-  const createdAt = normalizeGitHubInstant(node.createdAt);
-  const updatedAt = normalizeGitHubInstant(node.updatedAt);
-  const authorLogin = isOpaqueId(node.author?.login) ? node.author.login : null;
-  const hasAnyProviderProvenance = node.createdAt !== undefined || node.author !== undefined;
-  if (
-    updatedAt === null ||
-    (hasAnyProviderProvenance && (createdAt === null || authorLogin === null))
-  ) {
-    throw storeError('response-shape');
-  }
-  if (createdAt !== null && updatedAt < createdAt) throw storeError('response-shape');
-  return Object.freeze({ authorLogin, createdAt, updatedAt });
 }
 
 function claimsAitmRecord(body) {
@@ -174,6 +118,32 @@ function parseComment(node, expectedId, repository, issue) {
   } catch {
     throw storeError('envelope');
   }
+}
+
+function parseTransportComment(node, repository, issue) {
+  try {
+    return Object.freeze({
+      ...parseAitmRecord({
+        commentNodeId: node.id,
+        body: node.body,
+        expectedRepository: repository,
+        expectedIssue: issue,
+      }),
+      body: node.body,
+      authorLogin: node.authorLogin,
+      createdAt: node.createdAt,
+      updatedAt: node.updatedAt,
+    });
+  } catch {
+    throw storeError('envelope');
+  }
+}
+
+function remapTransportError(error) {
+  if (error?.name === 'GitHubCommentTransportError') {
+    throw storeError(error.category, error.cause);
+  }
+  throw error;
 }
 
 function parseExpectedBody(body, repository, issue) {
@@ -229,26 +199,25 @@ async function verifyWriteReadBack({
 export async function getCommentsByNodeIds(input = {}) {
   assertReadInput(input);
   const { ids, repository, issue, graphql } = input;
-  let response;
+  let nodes;
   try {
-    response = await graphql({
-      query: COMMENTS_BY_NODE_IDS_QUERY,
-      variables: { ids: [...ids] },
-    });
+    nodes = await getCorrelatedCommentNodesByIds({ ids, repository, issue, graphql });
   } catch (error) {
-    throw storeError('transport', error);
+    remapTransportError(error);
   }
-  assertNoGraphqlErrors(response);
-  if (!Array.isArray(response?.data?.nodes)) throw storeError('partial-response');
-  if (response.data.nodes.length !== ids.length) throw storeError('missing-node');
-  return Object.freeze(
-    response.data.nodes.map((node, index) => parseComment(node, ids[index], repository, issue))
-  );
+  return Object.freeze(nodes.map((node) => parseTransportComment(node, repository, issue)));
 }
 
 export async function readBackComment({ commentNodeId, ...context } = {}) {
-  const [comment] = await getCommentsByNodeIds({ ids: [commentNodeId], ...context });
-  return comment;
+  assertContext(context);
+  if (!isOpaqueId(commentNodeId)) throw storeError('input');
+  let node;
+  try {
+    node = await readCorrelatedCommentNode({ commentNodeId, ...context });
+  } catch (error) {
+    remapTransportError(error);
+  }
+  return parseTransportComment(node, context.repository, context.issue);
 }
 
 export async function createIssueComment(input = {}) {
@@ -314,52 +283,16 @@ export async function listIssueCommentsSince(input = {}) {
   const { since, repository, issue, graphql } = input;
   assertContext(input);
   if (!isCanonicalInstant(since)) throw storeError('input');
-  const [owner, name] = repository.split('/');
+  let nodes;
+  try {
+    nodes = await listCorrelatedCommentNodes({ repository, issue, graphql });
+  } catch (error) {
+    remapTransportError(error);
+  }
   const comments = [];
-  const seenIds = new Set();
-  const seenCursors = new Set();
-  let after = null;
-  let pageCount = 0;
-  while (true) {
-    pageCount += 1;
-    if (pageCount > MAX_ISSUE_COMMENT_PAGES) throw storeError('pagination');
-    let response;
-    try {
-      response = await graphql({
-        query: ISSUE_COMMENTS_QUERY,
-        variables: { owner, name, issue, after },
-      });
-    } catch (error) {
-      throw storeError('transport', error);
-    }
-    assertNoGraphqlErrors(response);
-    const responseIssue = response?.data?.repository?.issue;
-    if (
-      responseIssue?.number !== issue ||
-      responseIssue?.repository?.nameWithOwner !== repository
-    ) {
-      throw storeError('correlation');
-    }
-    const connection = responseIssue.comments;
-    if (!Array.isArray(connection?.nodes)) throw storeError('partial-response');
-    if (connection.nodes.length > ISSUE_COMMENT_PAGE_SIZE) throw storeError('pagination');
-    if (typeof connection.pageInfo?.hasNextPage !== 'boolean') throw storeError('pagination');
-    if (connection.pageInfo.hasNextPage && connection.nodes.length === 0) {
-      throw storeError('pagination');
-    }
-    for (const comment of connection.nodes) {
-      validateCommentNode(comment, comment?.id, repository, issue);
-      if (seenIds.has(comment.id)) throw storeError('pagination');
-      seenIds.add(comment.id);
-      if (!claimsAitmRecord(comment.body)) continue;
-      const parsed = parseComment(comment, comment?.id, repository, issue);
-      comments.push(parsed);
-    }
-    if (!connection.pageInfo.hasNextPage) break;
-    const nextCursor = connection.pageInfo.endCursor;
-    if (!isOpaqueId(nextCursor) || seenCursors.has(nextCursor)) throw storeError('pagination');
-    seenCursors.add(nextCursor);
-    after = nextCursor;
+  for (const node of nodes) {
+    if (!claimsAitmRecord(node.body)) continue;
+    comments.push(parseTransportComment(node, repository, issue));
   }
   return Object.freeze(comments.filter((comment) => comment.updatedAt > since));
 }

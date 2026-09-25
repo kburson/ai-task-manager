@@ -52,12 +52,14 @@ test('Park strict argv accepts the Shelve owner-removal flag', () => {
     reason: 'premise falsified',
     removeOwner: false,
     refreshStaleBlockers: false,
+    refreshStaleRefinement: false,
   });
   assert.deepEqual(parseArgs(['848', '--reason=deprioritized', '--remove-owner']), {
     issueNumber: 848,
     reason: 'deprioritized',
     removeOwner: true,
     refreshStaleBlockers: false,
+    refreshStaleRefinement: false,
   });
 });
 
@@ -65,6 +67,10 @@ test('Park strict argv refuses the Shelve-only stale-blocker migration flag', ()
   assert.throws(
     () => parseArgs(['848', '--reason', 'premise falsified', '--refresh-stale-blockers']),
     /unrecognized argument: --refresh-stale-blockers/
+  );
+  assert.throws(
+    () => parseArgs(['848', '--reason', 'premise falsified', '--refresh-stale-refinement']),
+    /unrecognized argument: --refresh-stale-refinement/
   );
 });
 

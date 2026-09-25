@@ -286,6 +286,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const guidanceContextBudgetAllowance = 1;
   // #1773 ships five detailed human references outside routine model context.
   const adapterReferenceAllowance = 5;
+  // #1733 ships the first two story-cost runtime modules: closed payload schemas
+  // and bounded diagnostics. Test fixtures remain development-only.
+  const storyCostSchemaAllowance = 2;
+  // #1734 ships isolated cost record codec/store modules and the shared raw
+  // comment transport used to keep cost reads separate from governance reads.
+  const storyCostTransportAllowance = 3;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -317,7 +323,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     guidanceCacheAllowance +
     guidanceExplanationAllowance +
     guidanceContextBudgetAllowance +
-    adapterReferenceAllowance;
+    adapterReferenceAllowance +
+    storyCostSchemaAllowance +
+    storyCostTransportAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

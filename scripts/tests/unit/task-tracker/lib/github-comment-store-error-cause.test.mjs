@@ -117,14 +117,23 @@ test('all comment-store transport boundaries preserve the original error as caus
 });
 
 test('source has no transport catch that discards its caught error', () => {
-  const source = readFileSync(
+  const storeSource = readFileSync(
     new URL(
       '../../../../task-tracker/lib/github-records/github-comment-store.mjs',
       import.meta.url
     ),
     'utf8'
   );
-  assert.doesNotMatch(source, /catch\s*\{\s*throw storeError\('transport'\)/s);
-  assert.equal((source.match(/catch \(error\) \{/g) || []).length, 4);
-  assert.equal((source.match(/throw storeError\('transport', error\);/g) || []).length, 4);
+  const transportSource = readFileSync(
+    new URL('../../../../task-tracker/lib/github-records/comment-transport.mjs', import.meta.url),
+    'utf8'
+  );
+
+  assert.doesNotMatch(storeSource, /catch\s*\{\s*throw storeError\('transport'\)/s);
+  assert.doesNotMatch(transportSource, /catch\s*\{\s*throw transportError\('transport'\)/s);
+  assert.equal((storeSource.match(/throw storeError\('transport', error\);/g) || []).length, 2);
+  assert.equal(
+    (transportSource.match(/throw transportError\('transport', error\);/g) || []).length,
+    2
+  );
 });
