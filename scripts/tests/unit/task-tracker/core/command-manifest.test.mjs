@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #556 #1012
+// @story #556 #1012 #1787 #1795
 // Routing identity is narrow; the command catalog owns public metadata.
 
 import { test } from 'node:test';
@@ -98,4 +98,10 @@ test('migrate-dependencies is globally routed without issue preflight', () => {
   });
   assert.equal(commandByName('migrate-dependencies').routing, 'verbs/migrate-dependencies.mjs');
   assert.equal(PREFLIGHT_MODE['migrate-dependencies'], undefined);
+});
+
+test('workflow-exception prepare is public and has no binding preflight', () => {
+  assert.equal(PREFLIGHT_MODE['workflow-exception'], undefined);
+  const route = ROUTE_IDENTITIES.find((entry) => entry.verb === 'workflow-exception');
+  assert.equal(route?.dispatch, 'verbs/workflow-exception.mjs');
 });

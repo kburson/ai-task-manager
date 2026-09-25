@@ -24,13 +24,19 @@ import {
 } from '../no-commit-delivery-record.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { parseAitmRecord } from '../github-records/record-envelope.mjs';
+import { requireDeliveryReceipt, verifyCloseDeliveryReceipt } from '../close-delivery-receipt.mjs';
 import {
   verifyDeliveredPullRequest,
   verifyExternalDeliveredPullRequest,
   DeliveryVerificationError,
 } from '../delivery-verification.mjs';
 import { createObservationAttempt } from './observations.mjs';
-import { mergedSourceCommitSubjects, openSourceCommitSubjects } from '../../verbs/deliver.mjs';
+import {
+  classifySourceCommitSubjects,
+  mergedSourceCommitSubjects,
+  openSourceCommitSubjects,
+} from '../../verbs/deliver.mjs';
 
 const authorityFailure = (issue, source = 'delivery') => ({
   guardId: 'authority-collection',
@@ -39,7 +45,7 @@ const authorityFailure = (issue, source = 'delivery') => ({
   noAutomaticRemediation: { reason: 'authority-investigation-required' },
 });
 
-async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
+export async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
   const selected = preflightInput.pullRequests.length === 1 ? preflightInput.pullRequests[0] : null;
   if (
     !selected ||
@@ -92,12 +98,88 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
       inspectMergeCommit: deps.inspectMergeCommit,
       attributingCommits: deps.attributingCommits,
     };
+    if (live?.record?.schema === 'aitm.delivery-intent/v3') {
+      const stored = projection.matchingReceipt?.record;
+      if (stored?.schema !== 'aitm.delivery-receipt/v4') {
+        return { status: 'refused', category: 'delivery-waiver-burn-mismatch' };
+      }
+      const gateInput = {
+        issueNumber: issue,
+        repository: preflightInput.config.repo,
+        lineage: preflightInput.lineage,
+        branch: preflightInput.binding.branch,
+        acceptedSha: preflight.expectedHeadSha,
+        observedLocalHeadSha: preflightInput.localHeadSha,
+        headRelation:
+          preflightInput.localHeadSha === preflight.expectedHeadSha ? 'current' : 'advanced',
+        pullRequests: [selected],
+        pullRequest: selected,
+        records: projection,
+      };
+      const receiptGate = requireDeliveryReceipt(gateInput);
+      const waiverRecords = comments
+        .filter(({ body }) => typeof body === 'string' && /<!--\s*aitm-record/i.test(body))
+        .map((comment) => ({
+          ...parseAitmRecord({
+            commentNodeId: String(comment.id),
+            body: comment.body,
+            expectedRepository: preflightInput.config.repo,
+            expectedIssue: issue,
+          }),
+          createdAt: comment.createdAt,
+        }));
+      const verified = await verifyCloseDeliveryReceipt({
+        gateInput,
+        receiptGate,
+        testReceiptSha: preflightInput.testReceiptSha,
+        acceptedReviewSha: preflightInput.acceptedReviewSha,
+        deps: {
+          ...common,
+          readWaiverJournal:
+            deps.readWaiverJournal ??
+            (() =>
+              deps
+                .createDeliveryWaiverJournal?.({ repository: preflightInput.config.repo, issue })
+                ?.read()),
+          listWaiverRecords: () => waiverRecords,
+          resolveTranscriptPath: deps.resolveTranscriptPath,
+          verifyStoredDeliveryWaiverAuthority: deps.verifyStoredDeliveryWaiverAuthority,
+        },
+      });
+      return {
+        status: 'verified',
+        expectedHeadSha: preflight.expectedHeadSha,
+        mergeCommitSha: stored.mergeCommitSha,
+        trunkHeadSha: remoteSha,
+        metadataWarnings: [],
+        deliveryDisposition: 'waived',
+        category: stored.observedFailureCategory,
+        requirementId: stored.waivedRequirementId,
+        receipt: verified.receipt,
+      };
+    }
+    const attributionWaiver = live?.record?.schema === 'aitm.delivery-intent/v2';
+    const classified = attributionWaiver
+      ? await classifySourceCommitSubjects(selected, deps.inspectSourceCommit)
+      : null;
     const verification = live
       ? await verifyDeliveredPullRequest({
           ...common,
           intent: live.record,
           intentCreatedAt: live.createdAt,
           recovery: live.record.provider === 'external',
+          ...(attributionWaiver
+            ? {
+                waivedEvidence: {
+                  sourceInventory: {
+                    commits: selected.sourceCommits,
+                    attributableCommits: classified.attributableCommits,
+                    verifiedMergeShas: classified.verifiedMergeShas,
+                  },
+                  exceptionRecord: projection.matchingReceipt?.record?.exceptionRecord,
+                },
+              }
+            : {}),
         })
       : await verifyExternalDeliveredPullRequest({
           ...common,
@@ -139,10 +221,23 @@ async function readOnlyMergedProof({ issue, preflightInput, comments, deps }) {
       mergeCommitSha: verification.receiptInput.mergeCommitSha,
       trunkHeadSha: remoteSha,
       metadataWarnings,
+      ...(attributionWaiver
+        ? {
+            deliveryDisposition: 'attribution-waived',
+            category: 'attribution',
+            requirementId: 'delivery.verification.commit-attribution',
+          }
+        : {}),
     };
   } catch (error) {
     if (error instanceof DeliveryVerificationError || error instanceof DeliveryPreflightError) {
       return { status: 'refused', category: error.category };
+    }
+    if (typeof error?.category === 'string') {
+      return {
+        status: error.outcome === 'indeterminate' ? 'unavailable' : 'refused',
+        category: error.category,
+      };
     }
     return { status: 'unavailable' };
   }
@@ -277,10 +372,39 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
   }
   if (merged) {
     const proof = value.mergedProof;
+    const pinned =
+      projection?.liveIntent?.record?.schema === 'aitm.delivery-intent/v3' &&
+      projection?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v4';
+    const attributionWaived =
+      projection?.liveIntent?.record?.schema === 'aitm.delivery-intent/v2' &&
+      projection?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v3';
+    const deliveryExceptions =
+      pinned || attributionWaived
+        ? [
+            {
+              category:
+                proof?.status === 'verified'
+                  ? pinned
+                    ? projection.matchingReceipt.record.observedFailureCategory
+                    : 'attribution'
+                  : (proof?.category ?? 'delivery-waiver-authority'),
+              requirementId: pinned
+                ? projection.matchingReceipt.record.waivedRequirementId
+                : 'delivery.verification.commit-attribution',
+              outcome:
+                proof?.status === 'verified'
+                  ? 'waived'
+                  : proof?.status === 'refused'
+                    ? 'blocked'
+                    : 'indeterminate',
+            },
+          ]
+        : [];
     if (proof?.status !== 'verified') {
       return proof?.status === 'refused'
         ? {
             status: 'blocked',
+            deliveryExceptions,
             blockers: [
               {
                 guardId: 'authority-collection',
@@ -293,6 +417,7 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
           }
         : {
             status: 'indeterminate',
+            deliveryExceptions,
             blockers: [
               {
                 guardId: 'action-navigation',
@@ -387,7 +512,11 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
       throw new TypeError('delivery-readiness:head');
     }
     const live = projection?.liveIntent?.record;
-    if (live && live.expectedHeadSha === preflight.expectedHeadSha) {
+    if (
+      live &&
+      live.schema !== 'aitm.delivery-intent/v3' &&
+      live.expectedHeadSha === preflight.expectedHeadSha
+    ) {
       const expected = buildDeliveryIntent({
         intentId: live.intentId,
         supersedesIntentId: live.supersedesIntentId,
@@ -486,6 +615,26 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
   return {
     status: 'ready',
     blockers: [],
+    deliveryExceptions:
+      projection?.liveIntent?.record?.schema === 'aitm.delivery-intent/v2' &&
+      projection?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v3'
+        ? [
+            {
+              category: 'attribution',
+              requirementId: 'delivery.verification.commit-attribution',
+              outcome: 'waived',
+            },
+          ]
+        : projection?.liveIntent?.record?.schema === 'aitm.delivery-intent/v3' &&
+            projection?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v4'
+          ? [
+              {
+                category: projection.matchingReceipt.record.observedFailureCategory,
+                requirementId: projection.matchingReceipt.record.waivedRequirementId,
+                outcome: 'waived',
+              },
+            ]
+          : [],
     warnings: (value.mergedProof?.metadataWarnings ?? []).map((reason) => ({
       code: 'delivery-metadata-warning',
       args: { reason },
@@ -558,7 +707,12 @@ export async function evaluateDeliveryReadiness({
       testReceiptSha,
     });
     const acceptedReviewSha = reviewAuthority.acceptedSha;
-    const selected = pullRequests.length === 1 ? pullRequests[0] : null;
+    // A branch can have older merged PRs. Delivery execution selects the PR
+    // at the accepted head, so explanation must observe the same candidate.
+    const currentHeadPullRequests = pullRequests.filter(
+      (pr) => pr?.headRefOid === acceptedReviewSha
+    );
+    const selected = currentHeadPullRequests.length === 1 ? currentHeadPullRequests[0] : null;
     const noCommit = pullRequests.length === 0 && isIssueResidentDeliveryKind(observedIssue.body);
     const [repositoryMergeMethods, dirtyPaths] = noCommit
       ? [[], []]
@@ -623,7 +777,7 @@ export async function evaluateDeliveryReadiness({
         timerState: state?.entryStartTs ? 'running' : 'paused',
       },
       lineage,
-      pullRequests,
+      pullRequests: currentHeadPullRequests,
       localHeadSha,
       testReceiptSha,
       acceptedReviewSha,

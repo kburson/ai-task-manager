@@ -557,6 +557,38 @@ test('routine and diagnostic explanation envelopes enforce closed declared modes
   assert.throws(() => validateExplanationEnvelope('{"schema":'));
 });
 
+test('a v3 delivery explanation preserves structured waived outcome without changing ordinary v2', () => {
+  const ordinary = decision({ actionId: 'deliver', state: 'review' });
+  const waived = {
+    ...ordinary,
+    schema: 'aitm.action-decision/v3',
+    deliveryExceptions: [
+      {
+        category: 'merge-method',
+        requirementId: 'delivery.verification.merge-method',
+        outcome: 'waived',
+      },
+    ],
+  };
+  const result = presentActionDecision({ decision: waived });
+  assert.deepEqual(result.deliveryExceptions, waived.deliveryExceptions);
+  assert.equal(
+    Object.hasOwn(presentActionDecision({ decision: ordinary }), 'deliveryExceptions'),
+    false
+  );
+  const envelope = {
+    schema: 'aitm.action-explanation/v3',
+    result,
+    guidance: [guidanceFor(result)],
+    fullDecision: waived,
+    diagnosticMessages: [],
+  };
+  assert.equal(validateExplanationEnvelope(envelope, { diagnostic: true }), envelope);
+  assert.throws(() =>
+    validateExplanationEnvelope({ ...envelope, schema: EXPLANATION_SCHEMA }, { diagnostic: true })
+  );
+});
+
 test('routine guidance accepts catalog-owned sequences, but rejects unknown operations', () => {
   const result = presentActionDecision({ decision: decision() });
   const customGuidance = {

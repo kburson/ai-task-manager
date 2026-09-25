@@ -4,6 +4,7 @@ import { actionDescriptorFor } from '../lifecycle-policy/actions.mjs';
 import {
   ACTION_DECISION_SCHEMA,
   ACTION_DECISION_SCHEMA_V1,
+  ACTION_DECISION_SCHEMA_V3,
   BOUNDARY_PRODUCER_IDS,
   CODE_DEFINITIONS,
   REGISTERED_GUARD_IDS,
@@ -15,6 +16,7 @@ import {
 
 export const EXPLANATION_SCHEMA_V1 = 'aitm.action-explanation/v1';
 export const EXPLANATION_SCHEMA = 'aitm.action-explanation/v2';
+export const EXPLANATION_SCHEMA_V3 = 'aitm.action-explanation/v3';
 
 // This is a closed wire contract. Any field or semantic change, including an
 // additive one, requires a new outer major plus renewed adapter, alias, shared-
@@ -130,9 +132,27 @@ function validateWarningOrder(warnings) {
 
 export function validateActionPresentation(input, { schema = ACTION_DECISION_SCHEMA } = {}) {
   const value = parse(input, 'root');
-  if (![ACTION_DECISION_SCHEMA_V1, ACTION_DECISION_SCHEMA].includes(schema))
+  if (
+    ![ACTION_DECISION_SCHEMA_V1, ACTION_DECISION_SCHEMA, ACTION_DECISION_SCHEMA_V3].includes(schema)
+  )
     fail('schema', 'unsupported');
-  exact(value, PRESENTATION_KEYS, 'root');
+  exact(
+    value,
+    [...PRESENTATION_KEYS, ...(schema === ACTION_DECISION_SCHEMA_V3 ? ['deliveryExceptions'] : [])],
+    'root'
+  );
+  if (schema === ACTION_DECISION_SCHEMA_V3) {
+    if (!Array.isArray(value.deliveryExceptions) || value.deliveryExceptions.length === 0)
+      fail('deliveryExceptions', 'nonempty-array');
+    value.deliveryExceptions.forEach((item, index) => {
+      const where = `deliveryExceptions[${index}]`;
+      exact(item, ['category', 'requirementId', 'outcome'], where);
+      nonemptyString(item.category, `${where}.category`);
+      nonemptyString(item.requirementId, `${where}.requirementId`);
+      if (!['delivered', 'waived', 'blocked', 'indeterminate'].includes(item.outcome))
+        fail(`${where}.outcome`, 'enum');
+    });
+  }
   if (!Number.isInteger(value.issue) || value.issue <= 0) fail('issue', 'positive-integer');
   const descriptor = value.actionId === null ? null : actionDescriptorFor(value.actionId);
   if (value.actionId !== null && descriptor === null) fail('actionId', 'unknown');
@@ -144,7 +164,7 @@ export function validateActionPresentation(input, { schema = ACTION_DECISION_SCH
     fail('blockers', 'nonempty');
   }
   const mixedStatus =
-    schema === ACTION_DECISION_SCHEMA &&
+    schema !== ACTION_DECISION_SCHEMA_V1 &&
     value.status === 'indeterminate' &&
     value.blockers.some(({ code }) =>
       CODE_DEFINITIONS[code]?.legalStatuses.includes('indeterminate')
@@ -259,6 +279,9 @@ export function presentActionDecision({
     })),
     warnings: [...presentedAdmissionWarnings, ...structuredClone(validated.warnings)],
     humanDecision: structuredClone(validated.humanDecision),
+    ...(validated.schema === ACTION_DECISION_SCHEMA_V3
+      ? { deliveryExceptions: structuredClone(validated.deliveryExceptions) }
+      : {}),
   };
   return validateActionPresentation(result, { schema: validated.schema });
 }
@@ -338,10 +361,14 @@ export function validateExplanationEnvelope(input, { diagnostic = false } = {}) 
     : ['schema', 'result', 'guidance'];
   if (Object.hasOwn(envelope, 'sourceReceipt')) keys.push('sourceReceipt');
   exact(envelope, keys, 'envelope');
-  if (![EXPLANATION_SCHEMA_V1, EXPLANATION_SCHEMA].includes(envelope.schema))
+  if (![EXPLANATION_SCHEMA_V1, EXPLANATION_SCHEMA, EXPLANATION_SCHEMA_V3].includes(envelope.schema))
     fail('schema', 'unsupported');
   const decisionSchema =
-    envelope.schema === EXPLANATION_SCHEMA_V1 ? ACTION_DECISION_SCHEMA_V1 : ACTION_DECISION_SCHEMA;
+    envelope.schema === EXPLANATION_SCHEMA_V1
+      ? ACTION_DECISION_SCHEMA_V1
+      : envelope.schema === EXPLANATION_SCHEMA_V3
+        ? ACTION_DECISION_SCHEMA_V3
+        : ACTION_DECISION_SCHEMA;
   const result = validateActionPresentation(envelope.result, { schema: decisionSchema });
   validateGuidance(envelope.guidance);
   const sourceWarnings = result.warnings.filter(({ code }) => code === 'guidance-source-diverged');

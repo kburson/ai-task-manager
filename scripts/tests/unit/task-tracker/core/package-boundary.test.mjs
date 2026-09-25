@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728
+// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -286,6 +286,18 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const guidanceContextBudgetAllowance = 1;
   // #1773 ships five detailed human references outside routine model context.
   const adapterReferenceAllowance = 5;
+  // #1793 ships the canonical delivery scope codec used by v2 exception records.
+  const deliveryScopeAllowance = 1;
+  // #1794 ships one runtime partition module for isolated exception chains.
+  const exceptionPartitionAllowance = 1;
+  // #1795 ships closed delivery proposal and host authority modules.
+  const deliveryAuthorityAllowance = 2;
+  // #1796 ships the durable journal and consumption state machine.
+  const deliveryWaiverConsumptionAllowance = 2;
+  // #1797 ships the pure pinned waiver evidence and receipt assembler.
+  const deliveryWaiverEvidenceAllowance = 1;
+  // #1799 ships the effect-time delivery waiver transaction.
+  const deliveryWaiverTransactionAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -317,7 +329,13 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     guidanceCacheAllowance +
     guidanceExplanationAllowance +
     guidanceContextBudgetAllowance +
-    adapterReferenceAllowance;
+    adapterReferenceAllowance +
+    deliveryScopeAllowance +
+    exceptionPartitionAllowance +
+    deliveryAuthorityAllowance +
+    deliveryWaiverConsumptionAllowance +
+    deliveryWaiverEvidenceAllowance +
+    deliveryWaiverTransactionAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

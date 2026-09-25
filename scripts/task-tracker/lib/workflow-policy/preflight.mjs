@@ -1,4 +1,4 @@
-// @story #1627
+// @story #1627 #1787 #1794
 import { WORKFLOW_POLICY_CAPABILITY } from './catalog.mjs';
 import { evaluateWorkflowPolicy } from './evaluator.mjs';
 
@@ -101,6 +101,7 @@ export function evaluateWorkflowPreflight(snapshot) {
     capability: snapshot.runtimeCapability,
     inspectedAt: snapshot.now,
     authorityRevisions: snapshot.authorityRevisions,
+    deliveryExceptions: snapshot.deliveryExceptions,
     requirements,
     waivers,
     prohibitions,
@@ -150,6 +151,7 @@ export function indeterminateWorkflowPreflightReport({
     capability: WORKFLOW_POLICY_CAPABILITY,
     inspectedAt,
     authorityRevisions: Object.freeze([]),
+    deliveryExceptions: Object.freeze([]),
     requirements: Object.freeze([]),
     waivers: Object.freeze([]),
     prohibitions: Object.freeze([]),
@@ -192,7 +194,16 @@ export function formatWorkflowPreflightReport(report, { json = false } = {}) {
       ? ['- none']
       : report.authorityRevisions.map(
           (item) =>
-            `- ${item.recordId} revision=${item.revision} disposition=${item.disposition} reference=${item.reference}`
+            `- ${item.recordId} revision=${item.revision} disposition=${item.disposition} ` +
+            `${item.kind === 'delivery' ? `kind=delivery key=${item.partitionKey} ` : ''}` +
+            `reference=${item.reference}`
+        )),
+    'Delivery exceptions:',
+    ...(report.deliveryExceptions.length === 0
+      ? ['- none']
+      : report.deliveryExceptions.map(
+          (item) =>
+            `- ${item.category} requirement=${item.requirementId} outcome=${item.outcome} record=${item.recordId ?? 'unknown'}`
         )),
     'Requirements:',
     ...report.requirements.map(

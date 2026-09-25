@@ -215,7 +215,7 @@ assert.match(
 // The "Closed" success line must come AFTER the failure branch (i.e. it is no
 // longer reached unconditionally).
 const failBranchIdx = closeSrc.indexOf('!moveResult.ok && !moveResult.benign');
-const closedLineIdx = closeSrc.indexOf('console.log(`Closed ${s.active}.`)');
+const closedLineIdx = closeSrc.indexOf('`Closed ${s.active}.${formatCloseDeliveryDisclosure(');
 assert.ok(
   failBranchIdx >= 0 && closedLineIdx >= 0,
   'both the failure branch and the Closed line must exist'

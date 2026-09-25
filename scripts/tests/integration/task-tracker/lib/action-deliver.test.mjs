@@ -436,21 +436,29 @@ test('issue-resident no-commit delivery is explainable without a merge provider'
   assert.deepEqual(item.effects, []);
 });
 
-test('production reader reconstructs open-PR authority from read-only delivery dependencies', async () => {
+test('production reader selects the current head among historical branch PRs', async () => {
   assert.equal(typeof deliveryDecision.evaluateDeliveryReadiness, 'function');
   const input = openPrInput();
   input.issue.body = BODY;
+  const historical = {
+    ...input.pullRequests[0],
+    number: 98,
+    state: 'MERGED',
+    merged: true,
+    headRefOid: 'b'.repeat(40),
+  };
   const effects = [];
   const deps = {
     fetchIssue: async () => input.issue,
     resolveLineage: async () => input.lineage,
     getCurrentBranch: async () => input.binding.branch,
-    listPullRequests: async () => [{ number: 99 }],
+    listPullRequests: async () => [{ number: 98 }, { number: 99 }],
     getLocalHeadSha: async () => HEAD,
     resolveTestReceiptSha: async () => HEAD,
     resolveAcceptedReviewSha: async () => HEAD,
     resolveAgentReviewPassed: async () => true,
-    fetchPullRequest: async () => input.pullRequests[0],
+    fetchPullRequest: async ({ prNumber }) =>
+      prNumber === 98 ? historical : input.pullRequests[0],
     fetchRequiredChecks: async () => input.checks,
     fetchRepositoryMergeMethods: async () => input.config.repositoryMergeMethods,
     listCommitSubjects: async () => input.commitSubjects,

@@ -5,6 +5,7 @@
 // may use one exact merge head while preserving the historical accepted SHA.
 
 import { randomUUID } from 'node:crypto';
+import { validatePinnedWaiverEvidence } from './delivery-waiver-evidence.mjs';
 
 import {
   readDeliveredCloseTransactions,
@@ -144,8 +145,11 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
     !isObject(pullRequest) ||
     !isObject(intent) ||
     !isObject(receipt) ||
-    intent.schema !== 'aitm.delivery-intent/v1' ||
-    receipt.schema !== 'aitm.delivery-receipt/v1' ||
+    !(
+      (intent.schema === 'aitm.delivery-intent/v1' &&
+        receipt.schema === 'aitm.delivery-receipt/v1') ||
+      (intent.schema === 'aitm.delivery-intent/v3' && receipt.schema === 'aitm.delivery-receipt/v4')
+    ) ||
     !SHA_RE.test(deliveryHeadSha || '') ||
     current.testReceiptSha !== deliveryHeadSha ||
     current.reviewApprovedSha !== deliveryHeadSha ||
@@ -167,9 +171,22 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
     receipt.baseRef !== intent.baseRef ||
     receipt.mergeMethod !== intent.mergeMethod ||
     receipt.provider !== intent.provider ||
-    receipt.result !== 'delivered'
+    receipt.result !== (intent.schema === 'aitm.delivery-intent/v3' ? 'waived' : 'delivered')
   ) {
     fail('current-evidence');
+  }
+  if (intent.schema === 'aitm.delivery-intent/v3') {
+    try {
+      validatePinnedWaiverEvidence({
+        intent,
+        receipt,
+        grant: receipt.waiverGrant,
+        burn: receipt.burn,
+        originalIntent: current.originalIntent,
+      });
+    } catch {
+      fail('current-evidence');
+    }
   }
   const verified = current.verifiedDelivery;
   if (

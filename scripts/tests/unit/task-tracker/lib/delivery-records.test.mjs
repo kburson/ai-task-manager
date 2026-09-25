@@ -795,3 +795,17 @@ test('receipt authority follows comment order while retaining superseded-intent 
   assert.equal(recoveryProjection.matchingReceipt, null);
   assert.deepEqual(recoveryProjection.receipts, [receipt]);
 });
+
+// @story #1787 #1797
+test('generic delivery waiver schema is explicit and never inferred from attribution fields', () => {
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ deliveryDisposition: 'waived' })),
+    /intent-input-keys/
+  );
+  assert.throws(
+    () => buildDeliveryReceipt(receiptInput({ deliveryDisposition: 'waived' })),
+    /receipt-input-keys/
+  );
+  assert.equal(buildDeliveryIntent(intentInput()).schema, 'aitm.delivery-intent/v1');
+  assert.equal(buildDeliveryReceipt(receiptInput()).schema, 'aitm.delivery-receipt/v1');
+});

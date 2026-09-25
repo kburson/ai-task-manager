@@ -4,7 +4,11 @@
 // Task 1 projection.
 
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
-import { buildDeliveryReceipt } from './delivery-records.mjs';
+import {
+  buildDeliveryReceipt,
+  renderDeliveryIntentComment,
+  renderDeliveryReceiptComment,
+} from './delivery-records.mjs';
 import { verifyDeliveredPullRequest } from './delivery-verification.mjs';
 import {
   isIssueResidentDeliveryKind,
@@ -12,6 +16,8 @@ import {
   parseIssueKind,
 } from './issue-kind.mjs';
 import { validateRecord } from './evidence-v2/codec.mjs';
+import { validatePinnedWaiverEvidence } from './delivery-waiver-evidence.mjs';
+import { verifyHistoricalDeliveryWaiverAuthority } from './delivery-waiver-transaction.mjs';
 
 export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
 
@@ -137,7 +143,16 @@ export function requireDeliveryReceipt({
   if (receipt.expectedHeadSha !== acceptedSha) fail('head-mismatch');
   if (receipt.mergeCommitSha !== pr.mergeCommitSha) fail('merge-commit-mismatch');
   if (receipt.baseRef !== lineage.deliveryTarget) fail('base-mismatch');
-  if (receipt.result !== 'delivered') fail('malformed');
+  const pinnedWaiver =
+    records.liveIntent.record.schema === 'aitm.delivery-intent/v3' &&
+    receipt.schema === 'aitm.delivery-receipt/v4';
+  if (pinnedWaiver ? receipt.result !== 'waived' : receipt.result !== 'delivered')
+    fail('malformed');
+  if (
+    (records.liveIntent.record.schema === 'aitm.delivery-intent/v3') !==
+    (receipt.schema === 'aitm.delivery-receipt/v4')
+  )
+    fail('malformed');
   return frozenResult({ skipped: false, receipt });
 }
 
@@ -152,6 +167,70 @@ export function requireEvidenceV2DeliveryReceipt({ delivery, acceptanceId, inten
   )
     fail('v2-receipt');
   return frozenResult({ skipped: false, mode: 'v2', receipt: delivery });
+}
+
+/** Authenticate immutable waiver evidence against the burn commit, not the moving journal tip. */
+export async function verifyPinnedDeliveryWaiverAuthority({
+  gateInput,
+  intent,
+  receipt,
+  deps,
+} = {}) {
+  if (
+    intent?.schema !== 'aitm.delivery-intent/v3' ||
+    receipt?.schema !== 'aitm.delivery-receipt/v4'
+  )
+    fail('malformed');
+  const originalEntry = gateInput.records.intents.find(
+    (entry) => entry.record.intentId === intent.originalIntentId
+  );
+  if (!originalEntry) fail('delivery-waiver-burn-mismatch');
+  const originalIntent = { record: originalEntry.record, createdAt: originalEntry.createdAt };
+  const journal = await deps?.readWaiverJournal?.();
+  const operation =
+    journal?.operations instanceof Map ? journal.operations.get(intent.deliveryOperationId) : null;
+  if (
+    operation?.state !== 'completed' ||
+    operation.burnOid !== receipt.burnOid ||
+    !isObject(operation.burn) ||
+    canonicalRecordJson(operation.burn) !== canonicalRecordJson(receipt.burn) ||
+    operation.intentPublication?.intentId !== intent.intentId ||
+    operation.intentPublication?.originalIntentId !== originalIntent.record.intentId ||
+    operation.intentPublication?.originalIntentDigest !== intent.originalIntentDigest ||
+    operation.intentPublication?.intentBody !== renderDeliveryIntentComment(intent) ||
+    operation.publication?.receiptBody !== renderDeliveryReceiptComment(receipt)
+  )
+    fail('delivery-waiver-burn-mismatch');
+  try {
+    validatePinnedWaiverEvidence({
+      intent,
+      receipt,
+      grant: receipt.waiverGrant,
+      burn: operation.burn,
+      originalIntent,
+    });
+    await verifyHistoricalDeliveryWaiverAuthority({
+      records: await deps?.listWaiverRecords?.(),
+      grant: receipt.waiverGrant,
+      burn: operation.burn,
+      repository: gateInput.repository,
+      issue: gateInput.issueNumber,
+      runtime: {
+        resolveTranscriptPath: deps?.resolveTranscriptPath,
+        verifyStoredDeliveryWaiverAuthority: deps?.verifyStoredDeliveryWaiverAuthority,
+      },
+    });
+  } catch (error) {
+    if (error?.category) throw error;
+    fail('delivery-waiver-burn-mismatch');
+  }
+  return {
+    originalIntent,
+    grant: receipt.waiverGrant,
+    burn: operation.burn,
+    burnOid: operation.burnOid,
+    receipt,
+  };
 }
 
 export async function verifyCloseDeliveryReceipt({
@@ -180,6 +259,10 @@ export async function verifyCloseDeliveryReceipt({
   const intent = liveIntent?.record;
   const pullRequest = gateInput?.pullRequest;
   if (!isObject(receipt) || !isObject(intent) || !isObject(pullRequest)) fail('fresh-input');
+  const pinned = intent.schema === 'aitm.delivery-intent/v3';
+  const genericWaiverEvidence = pinned
+    ? await verifyPinnedDeliveryWaiverAuthority({ gateInput, intent, receipt, deps })
+    : null;
   const verified = await verifyDeliveredPullRequest({
     acceptedSha: gateInput.acceptedSha,
     acceptedReviewSha,
@@ -193,18 +276,22 @@ export async function verifyCloseDeliveryReceipt({
     pullRequest: {
       ...pullRequest,
       headRefDeleted: false,
-      mergeMethod: pullRequest.mergeMethod ?? intent.mergeMethod,
+      mergeMethod: pinned
+        ? pullRequest.mergeMethod
+        : (pullRequest.mergeMethod ?? intent.mergeMethod),
     },
     recovery: gateInput.headRelation === 'advanced',
     testReceiptSha,
-    ...(intent.schema === 'aitm.delivery-intent/v2'
-      ? {
-          waivedEvidence: {
-            sourceInventory: gateInput.sourceInventory,
-            exceptionRecord: receipt.exceptionRecord,
-          },
-        }
-      : {}),
+    ...(pinned
+      ? { genericWaiverEvidence }
+      : intent.schema === 'aitm.delivery-intent/v2'
+        ? {
+            waivedEvidence: {
+              sourceInventory: gateInput.sourceInventory,
+              exceptionRecord: receipt.exceptionRecord,
+            },
+          }
+        : {}),
   });
   if (
     canonicalRecordJson(buildDeliveryReceipt(verified.receiptInput)) !==

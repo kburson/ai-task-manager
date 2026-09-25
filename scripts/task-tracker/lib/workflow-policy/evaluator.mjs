@@ -1,3 +1,4 @@
+// @story #1787 #1794
 import {
   WORKFLOW_POLICY_CAPABILITY,
   requirementById,
@@ -19,6 +20,13 @@ function conflict(code, detail = null) {
 function validateRecord(record, context) {
   const conflicts = [];
   if (!record || typeof record !== 'object') return { conflicts: [conflict('malformed-record')] };
+  if (record.scopeKind === 'delivery' || record.deliveryScope !== undefined) {
+    return {
+      conflicts: [conflict('delivery-record-not-ordinary')],
+      requirementIds: [],
+      constraints: [],
+    };
+  }
   if (record.disposition !== 'active')
     conflicts.push(conflict('record-not-active', record.disposition));
   if (String(record.repository || '').toLowerCase() !== context.repository.toLowerCase()) {

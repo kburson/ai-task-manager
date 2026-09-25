@@ -59,6 +59,113 @@ provenance, CI, safe delivery, and external protection remain mandatory. Review
 waivers do not grant completion approval. An active managed-provider denial
 wins over Full-Auto and retry requests.
 
+### Generic PR delivery waiver
+
+Use this only for one named, catalogued delivery verification requirement on
+one already merged PR with an existing original delivery intent. The ordinary
+delivery checks still run; only the approved requirement can be reported as
+`waived`. For example, a provider merge-method divergence can be authorized
+for one issue, PR, accepted head, base, trunk ref, and delivery operation. A
+request file, issue comment outside this protocol, or `deliver --reason` never
+grants authority. `--reconcile-merge-method` serves its documented historical
+and external recovery lanes; it does not replace this workflow for an existing
+authorized intent.
+
+1. Confirm the original authorized delivery intent was recorded before the
+   PR merged. For an open PR, ordinary `npx aitm deliver 57` can create that
+   intent through its normal provider-action path. For an already merged PR,
+   inspect its existing intent and run `deliver` only to observe the refusal
+   and live facts; a new post-merge intent cannot retroactively authorize the
+   merge. Choose one stable requirement ID, not a broad category or a second
+   failed requirement.
+2. Save a closed `aitm.delivery-waiver-proposal/v1` JSON file with exactly
+   `schema`, `action: "record"`, `exceptionId: null`, `priorRecordId: null`,
+   `priorRevision: null`, `requirementId`, a substantive `reason`, a future
+   canonical UTC `expiresAt`, and `deliveryOperationId: null`. Prepare it
+   without a write:
+
+   ```bash
+   npx aitm workflow-exception prepare #57 --input-file .scratch/gh/57-delivery-proposal.json --json
+   ```
+
+3. Preserve the returned IDs, request, proposal digest, and exact approval
+   statement. The operator must send that exact statement as a new Codex user
+   message. Put its `aitm.authorization-source/v1` Codex session ID, message ID,
+   and statement hash in the returned request's `authorizationSource`. The
+   recording host verifies the user message and live scope again; an assistant
+   assertion, Full-Auto instruction, stale statement, or unsupported host cannot
+   supply approval. Then record and inspect:
+
+   ```bash
+   npx aitm workflow-exception record #57 --input-file .scratch/gh/57-delivery-request.json
+   npx aitm workflow-exception show #57 --json
+   npx aitm deliver #57
+   ```
+
+4. Retry normal `deliver` after the already merged PR is observed. It verifies
+   all non-waived predicates again, reserves and confirms one v3 intent, burns
+   the single-use approval, and publishes a v4 receipt. Continue to `close`
+   only with a live-verified receipt whose result and named requirement are
+   visibly `waived`; never backfill an ordinary `passed` result. The completed
+   receipt pins the grant, intent, burn, and merge evidence. Later expiry or
+   revocation blocks new consumption but does not erase valid completed
+   evidence; close still checks its immutable bytes and current PR/Git facts.
+
+To revise or revoke an unconsumed grant, prepare a new exact proposal with
+`action: "revise"` or `"revoke"`, its prior record ID and revision, the same
+exception and operation identity, and a fresh exact Codex approval. Use the
+matching `workflow-exception revise` or `revoke` command and inspect with
+`show`. A burned approval stays spent.
+
+The repository must allow the designated AITM Git identity to read and push
+`refs/heads/aitm/delivery-waivers/<issue>`. This durable, append-only journal
+serializes one waived issue across hosts. Each waived issue has one branch; its
+events and Git objects grow cumulatively. Ordinary clone default fetch rules may
+show these branches in `git branch -r`. Filter `aitm/delivery-waivers/*` from
+ordinary branch displays if needed. An optional narrowed fetch configuration
+must preserve the adapter's explicit exact journal fetch. AITM does not change
+fetch configuration or delete/compact journal branches automatically. Force
+deletion or manual record repair is unsupported.
+
+An uncertain intent or receipt POST can leave the operation in
+`delivery-waiver-ambiguity` with `outcome: "indeterminate"`. The command names
+the operation and pending stage. Preserve the journal and GitHub comment
+evidence; stop mutation retries and escalate through the defect/incident
+workflow to a repository administrator. An exact original comment discovered
+later can be reconciled read-only and the original operation continued. Empty
+listings, elapsed time, or an administrator assertion do not authorize another
+POST. There is no force-republish or fresh-grant escape path for an uncertain
+outstanding write. At `receipt-requesting` the approval is already burned;
+at `intent-requesting` publication is reserved and replacement is prohibited.
+This availability limitation requires separately designed, authorized recovery
+when exact readback cannot establish the original write.
+
+#### Delivery waiver acceptance coverage
+
+The #1787 verification run includes the following matrix. The #1784/#1785
+fixture is synthetic and makes no live GitHub waiver write. Run the focused
+waiver suites together with ordinary deliver/close, #1755 attribution exception,
+workflow-exception/preflight, and external recovery in the full integration
+lane before treating the workflow as releasable.
+
+| Contract                                    | Verification evidence                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Default refusals and ten hard gates         | `delivery-default-refusals`, `delivery-verification-catalog-ids` unit suites                                       |
+| Stable IDs and consumer declarations        | `delivery-verification-catalog-ids`, `delivery-waiver-scope` unit suites                                           |
+| Exact scope, digest, and operation          | `delivery-waiver-scope`, `delivery-waiver-authority` unit suites                                                   |
+| Exact v2 validation and v1 compatibility    | `delivery-waiver-authority`, workflow-exception integration suites                                                 |
+| Ordinary and delivery exception coexistence | workflow-exception lifecycle slow suite; workflow-exception integration suite                                      |
+| Host-verified human authority               | `delivery-waiver-authority` unit and workflow-exception integration suites                                         |
+| One burn and uncertain publication          | `delivery-waiver-consumption` unit and `delivery-waiver-journal` integration suites                                |
+| Truthful v3/v4 intent and waived receipt    | `delivery-waived-receipt` unit and `delivery-waiver-merge-method` integration suites                               |
+| Original intent before merge                | `delivery-waiver-reverification` unit and merge-method integration suites                                          |
+| Independent provider/Git merge facts        | `delivery-waiver-reverification` unit suite                                                                        |
+| All non-waived checks before burn           | `delivery-waiver-reverification` and merge-method integration suites                                               |
+| Close after burn, expiry, or revocation     | `delivery-waiver-close-recovery` unit and #1784/#1785 close-gate integration fixture                               |
+| Reopened and false-delivery recovery        | `reopened-close-recovery`, `false-delivery-close-recovery` unit suites                                             |
+| Read-only disclosure and installed parity   | workflow-preflight integration and `package-delivery-waiver-smoke` suites                                          |
+| Ordinary delivery and #1755 regression      | full `npm run test:integration` lane, including ordinary deliver/close and `delivery-attribution-exception` suites |
+
 ### Scoped delivery attribution exception
 
 Ordinary open-PR delivery requires canonical `[#N]` attribution in its source
