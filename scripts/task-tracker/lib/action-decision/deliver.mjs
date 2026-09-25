@@ -707,7 +707,12 @@ export async function evaluateDeliveryReadiness({
       testReceiptSha,
     });
     const acceptedReviewSha = reviewAuthority.acceptedSha;
-    const selected = pullRequests.length === 1 ? pullRequests[0] : null;
+    // A branch can have older merged PRs. Delivery execution selects the PR
+    // at the accepted head, so explanation must observe the same candidate.
+    const currentHeadPullRequests = pullRequests.filter(
+      (pr) => pr?.headRefOid === acceptedReviewSha
+    );
+    const selected = currentHeadPullRequests.length === 1 ? currentHeadPullRequests[0] : null;
     const noCommit = pullRequests.length === 0 && isIssueResidentDeliveryKind(observedIssue.body);
     const [repositoryMergeMethods, dirtyPaths] = noCommit
       ? [[], []]
@@ -772,7 +777,7 @@ export async function evaluateDeliveryReadiness({
         timerState: state?.entryStartTs ? 'running' : 'paused',
       },
       lineage,
-      pullRequests,
+      pullRequests: currentHeadPullRequests,
       localHeadSha,
       testReceiptSha,
       acceptedReviewSha,
