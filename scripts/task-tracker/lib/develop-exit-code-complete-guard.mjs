@@ -15,14 +15,15 @@
 import { gateCodeComplete } from './code-complete-gate.mjs';
 import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 
 export const GUARD_ID = 'develop-exit-code-complete';
 
 function codeCompleteRefusal(blocker) {
   const match = /^code-complete-ac-(unticked|unverified): (.+)$/.exec(blocker);
   if (!match) return { reason: blocker };
-  const nonDemonstrable = /<!--\s*aitm-non-demonstrable\s*-->/.test(match[2]);
-  const label = match[2].replace(/<!--\s*aitm-non-demonstrable\s*-->/g, '').trim();
+  const nonDemonstrable = NON_DEMONSTRABLE_TAG_RE.test(match[2]);
+  const label = match[2].replace(/<!--\s*aitm-non-demonstrable\s*-->/gi, '').trim();
   const condition = nonDemonstrable ? 'unticked-non-demonstrable' : match[1];
   const nextAction = nonDemonstrable
     ? 'In Develop, run npx aitm ensureChecked --allow-unverified-ticks --label "<AC label>".'

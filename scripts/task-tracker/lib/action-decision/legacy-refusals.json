@@ -215,13 +215,13 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 59,
+          "line": 60,
           "fingerprint": "sha256:35ab73220d5c1a4b647728fd346de0fcce347f558603dcefadb1056ebe79e6ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 74,
+          "line": 75,
           "fingerprint": "sha256:7c2785bf0d639ed741cdcdd532b8eb5c1a7036c8d03ca66c1866e6434647de85",
           "kind": "refusal"
         }

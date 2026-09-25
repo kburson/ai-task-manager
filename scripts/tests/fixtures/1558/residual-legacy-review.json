@@ -70,7 +70,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:f7121f4d8993d8db4f07df9b8c11f31e17f98c6356aefe49a1147e5413766236"
+        "sitesSha256": "sha256:7bb25d289f31ce97a92babebe23c389c3c54ac9a4b9733740849202a27980937"
       },
       "rationale": "Non-AC code-completion refusals remain legacy and need investigation; AC evidence gaps are typed."
     },

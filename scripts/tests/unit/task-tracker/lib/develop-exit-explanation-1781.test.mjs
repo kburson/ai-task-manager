@@ -74,3 +74,21 @@ test('Develop exit directs non-demonstrable ACs to the audited checkbox route', 
     'In Develop, run npx aitm ensureChecked --allow-unverified-ticks --label "<AC label>".'
   );
 });
+
+test('Develop exit recognizes the gate-accepted mixed-case non-demonstrable marker', async () => {
+  const result = await developExitCodeCompleteGuard.run({
+    toState: 'test',
+    cfg: { repo: 'example/project' },
+    issueNumber: 1781,
+    body: '## Acceptance Criteria\n- [ ] Explain a refusal. <!-- AITM-NON-DEMONSTRABLE -->',
+    deps: {
+      codeCompleteGate: async () => ({
+        ok: false,
+        blockers: ['code-complete-ac-unticked: Explain a refusal. <!-- AITM-NON-DEMONSTRABLE -->'],
+      }),
+    },
+  });
+
+  assert.equal(result.refusals?.[0]?.args.condition, 'unticked-non-demonstrable');
+  assert.equal(result.refusals?.[0]?.args.label, 'Explain a refusal.');
+});
