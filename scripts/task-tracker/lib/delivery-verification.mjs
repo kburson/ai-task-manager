@@ -72,7 +72,40 @@ const EVIDENCE_INPUT_KEYS = [
   'sourceSha',
 ];
 
-const VERIFICATION_DIAGNOSTICS = Object.freeze({
+const REQUIREMENT_BY_CATEGORY = Object.freeze({
+  'authority-sha': 'accepted-head',
+  'authority-sha-mismatch': 'accepted-head',
+  'pull-request-not-merged': 'pr-merged',
+  'merge-commit-sha': 'pr-merged',
+  'merged-at': 'pr-merged',
+  'pr-number': 'pr-scope',
+  'base-ref': 'pr-scope',
+  'expected-head-sha': 'pr-scope',
+  'fetch-origin-trunk': 'trunk-reachability',
+  'trunk-reachability': 'trunk-reachability',
+  'merge-method': 'merge-method',
+  'merge-method-observation': 'merge-method-evidence',
+  'merge-method-evidence': 'merge-method-evidence',
+  'merge-method-unknown': 'merge-method-evidence',
+  'merge-method-unattributable': 'merge-method-evidence',
+  'merge-method-source-disagreement': 'merge-method-evidence',
+  'merge-before-intent': 'intent-integrity',
+  'intent-created-at': 'intent-integrity',
+  input: 'input-contract',
+  'input-keys': 'input-contract',
+  'merge-commit-bytes': 'commit-attribution',
+  attribution: 'commit-attribution',
+  'branch-disposition': 'branch-disposition',
+  'waived-evidence': 'attribution-waiver-authority',
+  'waived-inventory': 'attribution-waiver-authority',
+  'waived-authority': 'attribution-waiver-authority',
+  'delivery-waiver-authority': 'waiver-authority',
+  'delivery-waiver-replay': 'waiver-authority',
+  'delivery-waiver-burn-mismatch': 'waiver-authority',
+  'delivery-waiver-ambiguity': 'waiver-authority',
+});
+
+const DIAGNOSTIC_OVERRIDES = Object.freeze({
   'authority-sha-mismatch': {
     predicate: 'accepted-head-authority',
     recoveryAction:
@@ -89,13 +122,41 @@ const VERIFICATION_DIAGNOSTICS = Object.freeze({
   },
 });
 
+export const VERIFICATION_DIAGNOSTICS = Object.freeze(
+  Object.fromEntries(
+    Object.entries(REQUIREMENT_BY_CATEGORY).map(([category, suffix]) => [
+      category,
+      Object.freeze({
+        predicate: category,
+        recoveryAction:
+          'correct the failed predicate through the governed workflow and retry delivery',
+        ...(DIAGNOSTIC_OVERRIDES[category] ?? {}),
+        requirementId: `delivery.verification.${suffix}`,
+      }),
+    ])
+  )
+);
+
+export function deliveryRequirementId(category) {
+  const diagnostic = VERIFICATION_DIAGNOSTICS[category];
+  if (!Object.hasOwn(VERIFICATION_DIAGNOSTICS, category)) {
+    throw new TypeError(`delivery-verification:unknown-category:${String(category)}`);
+  }
+  return diagnostic.requirementId;
+}
+
 export class DeliveryVerificationError extends TypeError {
   constructor(category, cause, details = {}) {
+    const registered = VERIFICATION_DIAGNOSTICS[category];
+    if (!Object.hasOwn(VERIFICATION_DIAGNOSTICS, category)) {
+      throw new TypeError(`delivery-verification:unknown-category:${String(category)}`);
+    }
+    const outcome = details.outcome ?? 'missing';
+    if (outcome !== 'missing' && outcome !== 'indeterminate') {
+      throw new TypeError(`delivery-verification:outcome:${String(outcome)}`);
+    }
     const diagnostic = {
-      predicate: category,
-      recoveryAction:
-        'correct the failed predicate through the governed workflow and retry delivery',
-      ...(VERIFICATION_DIAGNOSTICS[category] ?? {}),
+      ...registered,
       ...details,
     };
     super(
@@ -106,6 +167,10 @@ export class DeliveryVerificationError extends TypeError {
     this.category = category;
     this.predicate = diagnostic.predicate;
     this.recoveryAction = diagnostic.recoveryAction;
+    Object.defineProperties(this, {
+      requirementId: { value: registered.requirementId, enumerable: true },
+      outcome: { value: outcome, enumerable: true },
+    });
   }
 }
 
@@ -577,6 +642,9 @@ function assertVerificationFunctions(input) {
 }
 
 async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
+  if (!isPlainObject(input.pullRequest) || !isPlainObject(intent)) {
+    throw verificationError('input');
+  }
   const waived = intent.schema === 'aitm.delivery-intent/v2';
   const exceptionRecord = waived ? verifyWaivedEvidence(intent, input.waivedEvidence) : null;
   assertAuthorityShas(input, intent, recovery);

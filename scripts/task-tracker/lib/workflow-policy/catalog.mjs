@@ -4,6 +4,15 @@ function item(id, family, waivable) {
   return Object.freeze({ id, family, waivable });
 }
 
+function deliveryItem(id, guardrail = false) {
+  return Object.freeze({
+    id: `delivery.verification.${id}`,
+    family: guardrail ? 'delivery-waiver-guardrail' : 'delivery-pr-verifier',
+    waivable: false,
+    waivableWithDisclosure: !guardrail,
+  });
+}
+
 const CATALOG = Object.freeze([
   item('planning.deep-dive', 'planning-output', true),
   item('planning.metadata', 'planning-output', true),
@@ -25,6 +34,18 @@ const CATALOG = Object.freeze([
   item('delivery.ci', 'delivery-invariant', false),
   item('delivery.safe-delivery', 'delivery-invariant', false),
   item('delivery.external-protection', 'delivery-invariant', false),
+  deliveryItem('accepted-head'),
+  deliveryItem('pr-merged'),
+  deliveryItem('pr-scope'),
+  deliveryItem('trunk-reachability'),
+  deliveryItem('merge-method'),
+  deliveryItem('intent-integrity'),
+  deliveryItem('commit-attribution'),
+  deliveryItem('branch-disposition'),
+  deliveryItem('input-contract', true),
+  deliveryItem('merge-method-evidence', true),
+  deliveryItem('attribution-waiver-authority', true),
+  deliveryItem('waiver-authority', true),
 ]);
 
 const BY_ID = new Map(CATALOG.map((requirement) => [requirement.id, requirement]));
@@ -86,6 +107,27 @@ export function validateWaiverIds(ids = []) {
     seen.add(requirement.id);
   }
   return Object.freeze([...seen]);
+}
+
+export function validateDeliveryWaiverIds(requirementIds, deliveryScope) {
+  if (!Array.isArray(requirementIds) || requirementIds.length !== 1) {
+    throw new TypeError('workflow-policy:delivery-requirement-ids');
+  }
+  const [requirementId] = requirementIds;
+  const requirement = requirementById(requirementId);
+  if (
+    !deliveryScope ||
+    typeof deliveryScope !== 'object' ||
+    Array.isArray(deliveryScope) ||
+    deliveryScope.exceptionKind !== 'delivery.invariant-waiver' ||
+    deliveryScope.requirementId !== requirement.id
+  ) {
+    throw new TypeError('workflow-policy:delivery-scope-mismatch');
+  }
+  if (requirement.waivableWithDisclosure !== true || requirement.waivable !== false) {
+    throw new TypeError(`workflow-policy:non-waivable-delivery-requirement:${requirement.id}`);
+  }
+  return Object.freeze([requirement.id]);
 }
 
 export function validateConstraints(constraints = []) {
