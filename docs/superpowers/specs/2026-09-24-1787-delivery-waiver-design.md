@@ -207,6 +207,28 @@ the pinned historical authorization rules below. Category coverage should extend
 diagnostic fallback, an unmapped category must fail coverage and must not acquire
 an inferred requirement ID.
 
+The shared delivery-exception authority resolver is the raising site for the four
+`delivery-waiver-*` categories in the table. It must expose a closed category
+registry and a typed failure carrying `category`, `requirementId`, `outcome`
+(`missing` or `indeterminate`), and a bounded remediation. All four categories
+always carry `delivery.verification.waiver-authority`; callers cannot replace
+that ID with the waivable predicate's ID. Invalid authority/scope uses
+`delivery-waiver-authority`, reuse by a different transaction uses
+`delivery-waiver-replay`, conflicting pinned consumption uses
+`delivery-waiver-burn-mismatch`, and ambiguous/unreadable chain or consumption
+evidence uses `delivery-waiver-ambiguity` with outcome `indeterminate`.
+
+The PR verifier translates this typed failure into `DeliveryVerificationError`
+with the same category, requirement ID, outcome, and remediation, without
+consulting waiver authority for that guardrail. Other delivery consumers,
+including #1783, consume the same structured fields directly. Operator output,
+close explanation, and record projections use those fields, never error-prefix
+parsing. No grant present is still an ordinary failed-predicate decision, not an
+authority exception. Extend coverage beyond `verificationError(...)` sites:
+enumerate the resolver's closed registry, test every raising branch and its
+non-waivable mapping, and test PR translation and direct-consumer rendering,
+including `indeterminate`. New unmapped resolver categories must fail the suite.
+
 ## Waiver Authority
 
 Delivery waivers require `aitm.workflow-exception/v2` records and the existing
@@ -273,6 +295,29 @@ record must name exactly one requirement ID, identical to
 every other predicate must pass. Multiple delivery records can coexist, but
 cannot be accumulated into a multi-invariant override of one transaction.
 
+`validateWorkflowExceptionEnvelope` must dispatch on the exact payload schema
+and discriminator before checking the schema-specific key set or requirement
+capability. V1 continues to use `validateWaiverIds` and `validateConstraints`
+unchanged. For a v2 `delivery.invariant-waiver`, add
+`validateDeliveryWaiverIds(requirementIds, deliveryScope)` in the catalog module:
+it requires exactly one ID in `payload.requirementIds`, identical to
+`deliveryScope.requirementId`, whose catalog entry has `waivable: false` and
+`waivableWithDisclosure: true`. It rejects ordinary waiver IDs, guardrails,
+unknown IDs, duplicates, and a mismatched exception kind. This structural
+validator admits the payload; it does not authorize delivery without the
+resolver's scope and human-authority checks.
+
+V2 must have `constraints: []`; non-empty constraints are invalid rather than
+silently ignored. The validated single delivery requirement satisfies the v2
+non-empty-policy rule, so v2 does not call the ordinary waiver validator or rely
+on a constraint to pass `empty-policy`. V1 keeps its existing non-empty-policy
+rule. Writers, parsers, readback, and typed projections must all use this same
+schema-dispatched validation. Ordinary deny constraints remain in the separately
+evaluated v1 partition and continue to block the operation; v2 cannot carry or
+override them. A future #1783 kind-specific validator must explicitly admit its
+own local-trunk ID under the same dispatch contract. Unknown kinds refuse, and
+local-trunk authority cannot validate as a PR invariant waiver.
+
 ### Record Family and Chain Boundaries
 
 #1755 already provides `aitm.delivery-attribution-exception/v1` in
@@ -301,6 +346,14 @@ forks, duplicate heads, and cross-chain references refuse. Unknown or malformed
 schema/discriminator combinations refuse parsing rather than silently becoming
 ordinary exceptions or disappearing during partitioning.
 
+Each delivery partition has one immutable `exceptionId`, unique among delivery
+partitions for the issue. It identifies the grant chain but does not replace or
+extend the scope-partition key. A second exception ID in one partition, or reuse
+of an exception ID in another, is invalid. Before consumption, a revision may
+change non-key scope fields only with a fresh human approval for the new exact
+proposal; it never inherits approval for the previous scope. Once consumed,
+neither revision nor re-scoping restores availability of the operation.
+
 `exception-store.mjs` must select the addressed partition before its
 `revision-required` check and operation readback. `exception-record.mjs` must
 apply its one-chain rule within that partition, not over every comment on the
@@ -311,6 +364,13 @@ bundle ambiguous. Distinct delivery chains may coexist; the resolver selects
 only the exact requested key. Two failed requirement IDs in one transaction
 still refuse, even if each has a separately valid grant. Existing deny constraints
 continue to apply to the operation regardless of delivery authorization.
+
+In `snapshot.mjs`, partition `authorityRevisions` as well as the active decision.
+Ordinary revision history retains its current meaning; delivery history includes
+its explicit kind and partition identity with dispositions from its own chain.
+Render both histories distinctly. The overall `snapshotHash` may change when
+delivery history changes because it represents the full snapshot, but ordinary
+history and its dispositions must not be relabeled or merged with delivery ones.
 
 ### Identifiers and Derivation Order
 
@@ -417,12 +477,24 @@ never hashes a receipt that in turn hashes the burn.
 
 The delivery verifier stays fail-closed. It should evaluate predicates in the
 same order as today and still compute the observed failure from provider and Git
-evidence before considering a waiver. When a predicate fails:
+evidence before considering a waiver, except that merge-method equality follows
+the required evidence-source agreement checks below.
+
+Dispatch first using verified durable transaction state, not a caller-supplied
+mode or authorization boolean. An existing terminal receipt uses **Consumption
+and Completed-Receipt Verification** directly: re-read its pinned grant and burn,
+validate historical authorization and current non-waived delivery facts, and
+reproduce its receipt. Do not load a current grant decision or check current
+expiry/revocation. A confirmed burn with no receipt uses that same subsection's
+pending-transaction retry rules. Neither path re-enters initial authorization.
+
+Only for a new, unconsumed transaction, when a predicate fails:
 
 1. translate the verifier category to its requirement ID;
-2. load the current workflow-exception decision for the issue;
-3. validate delivery scope against the live PR, intent, accepted SHA, base ref,
-   trunk/ref target, operation, expiry, revocation, and reason;
+2. load the current workflow-exception decision for initial authorization only;
+3. for this initial authorization, validate delivery scope against the live PR,
+   intent, accepted SHA, base ref, trunk/ref target, operation, current expiry,
+   current revocation, and reason;
 4. if authority or evidence cannot be read safely, refuse with a distinct
    indeterminate result and include the requirement ID;
 5. if no exact waiver exists, throw the same delivery refusal with the
@@ -431,8 +503,7 @@ evidence before considering a waiver. When a predicate fails:
    every other predicate, including all evidence and waiver guardrails;
 7. only after the complete verification succeeds, confirm the single-use burn
    and write the truthful waived receipt. Do not mark the waived predicate as
-   satisfied. Completed-receipt verification uses the pinned-authority path
-   above and performs neither step's writes.
+   satisfied.
 
 `indeterminate` is fail-closed. It is not an ordinary `missing` waiver and must
 be distinguishable in operator output, record projection, and close explanation,
@@ -627,6 +698,9 @@ Focused tests should cover:
   evaluator refuse disclosure-only IDs; no plain record can obtain a delivery
   waiver without the typed v2 resolver;
 - every `verificationError(...)` category maps to a stable requirement ID;
+- every authority-resolver category and raising branch maps to the mandatory
+  non-waivable guardrail, including translation into PR verifier errors and
+  structured `indeterminate` rendering by direct consumers;
 - every delivery requirement ID has a consumer mapping by extending
   `CONSUMER_DECLARATIONS` rather than building a duplicate coverage mechanism;
 - no waiver present preserves the current refusal category and exit behavior;
@@ -635,11 +709,17 @@ Focused tests should cover:
   stale-scope records refuse;
 - v2 delivery records reject `expiresAt: null`; v1 expiry optionality remains
   unchanged;
+- a v2 payload with one matching disclosure-only requirement and empty
+  constraints is created, parsed, and read back successfully, while that ID on
+  v1, mismatched IDs, guardrail IDs, empty requirements, unknown kinds, and
+  non-empty v2 constraints refuse; ordinary deny constraints still block;
 - a waiver stays current when unrelated commits advance the same trunk ref,
   while a changed target ref still refuses;
 - a review-bundle exception and delivery waiver can be recorded, read back,
   revised, and evaluated on the same issue without colliding; multiple delivery
   chains remain isolated, and duplicate heads/cross-chain links refuse;
+- delivery exception IDs cannot cross partitions; pre-burn re-scoping requires
+  a fresh approval; ordinary and delivery revision histories render separately;
 - minting the delivery ULID, then scope digest, then write-idempotency digest is
   deterministic on retry, acyclic, and sensitive to every delivery scope field;
 - unsupported non-Codex authority refuses rather than degrading to a weaker
@@ -660,6 +740,8 @@ Focused tests should cover:
 - a waived receipt re-verifies and closes byte-identically after expiry and
   unrelated trunk activity, with its matching burn already recorded; tampered
   grant/burn evidence and mismatched current delivery facts still refuse;
+- completed-receipt and confirmed-burn retry paths never invoke the initial
+  current-grant resolver or its expiry/revocation checks;
 - provider metadata and Git topology disagreement, unknown topology, or invalid
   provider metadata cannot be waived; absent metadata is not backfilled from
   the intent, and changes in optional metadata availability do not change the
