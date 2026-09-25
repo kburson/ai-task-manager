@@ -1,4 +1,4 @@
-// @story #1787 #1794
+// @story #1787 #1794 #1795
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
@@ -267,6 +267,8 @@ function deliveryRequest(n) {
     constraints: [],
     reason: envelope.payload.reason,
     expiresAt,
+    priorRecordId: null,
+    priorRevision: null,
   };
 }
 
@@ -288,6 +290,8 @@ test('store records, retries, and revokes one delivery partition without touchin
   assert.equal((await write('record', deliveryRequest(2))).status, 'existing');
   const revised = await write('revise', {
     ...deliveryRequest(2),
+    priorRecordId: runtime.records[1].envelope.recordId,
+    priorRevision: 1,
     reason: 'The operator revised the exact delivery reason.',
   });
   assert.equal(revised.status, 'created');
@@ -316,7 +320,12 @@ test('store records, retries, and revokes one delivery partition without touchin
     (
       await write(
         'revoke',
-        { ...deliveryRequest(2), reason: 'Revoke this exact delivery grant.' },
+        {
+          ...deliveryRequest(2),
+          priorRecordId: runtime.records[2].envelope.recordId,
+          priorRevision: 2,
+          reason: 'Revoke this exact delivery grant.',
+        },
         '2026-09-25T08:02:00.000Z'
       )
     ).status,
@@ -347,6 +356,8 @@ test('re-scoping within one delivery operation requires a fresh approval referen
   const changedScope = { ...deliveryRequest(2).deliveryScope, acceptedHeadSha: 'b'.repeat(40) };
   const request = {
     ...deliveryRequest(2),
+    priorRecordId: ulid(2),
+    priorRevision: 1,
     deliveryScope: changedScope,
     waiverScopeDigest: buildDeliveryScope(changedScope).waiverScopeDigest,
   };

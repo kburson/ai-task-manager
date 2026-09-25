@@ -2,6 +2,7 @@
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
 import { validateConstraints, validateDeliveryWaiverIds, validateWaiverIds } from './catalog.mjs';
+import { meaningfulDeliveryReason } from './delivery-request.mjs';
 import { buildDeliveryScope } from './delivery-scope.mjs';
 import { partitionWorkflowExceptions } from './exception-partitions.mjs';
 
@@ -166,6 +167,12 @@ export function validateWorkflowExceptionEnvelope(
   if (!HASH_RE.test(payload.scopeIdentity ?? '')) fail('scope-identity');
   if (!HASH_RE.test(payload.operationId ?? '')) fail('operation-id');
   if (!opaque(payload.reason)) fail('reason');
+  if (
+    payload.schema === WORKFLOW_EXCEPTION_SCHEMA_V2 &&
+    !meaningfulDeliveryReason(payload.reason)
+  ) {
+    fail('reason');
+  }
   validateAuthorization(payload.approvalEvidence);
   if (envelope.authority.actor !== payload.approvalEvidence.recordingActor) {
     fail('recording-actor-mismatch');

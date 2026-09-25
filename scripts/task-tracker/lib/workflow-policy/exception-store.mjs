@@ -1,4 +1,4 @@
-// @story #1626 #1787 #1794
+// @story #1626 #1787 #1794 #1795
 import { isDeepStrictEqual } from 'node:util';
 
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
@@ -186,6 +186,18 @@ export async function executeWorkflowExceptionWrite({
       ? null
       : (selected.find((record) => record.envelope.recordId === resolved.head.recordId) ?? null);
   const head = headRecord?.envelope ?? null;
+  if (partitionKey !== null) {
+    if (action === 'record') {
+      if (request.priorRecordId !== null || request.priorRevision !== null) {
+        return recordResult(issue, 'blocked', head, { code: 'stale-prior-selector' });
+      }
+    } else if (
+      head?.recordId !== request.priorRecordId ||
+      head?.payload?.revision !== request.priorRevision
+    ) {
+      return recordResult(issue, 'blocked', head, { code: 'stale-prior-selector' });
+    }
+  }
 
   let policy;
   let status;
@@ -222,6 +234,7 @@ export async function executeWorkflowExceptionWrite({
       scopeIdentity,
       reason: request.reason,
       authorization: authority,
+      ...(partitionKey !== null ? { expiresAt: request.expiresAt } : {}),
     };
     status = 'revoked';
   } else {

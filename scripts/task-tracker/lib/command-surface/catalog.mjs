@@ -1,4 +1,4 @@
-// @story #1011 #1012 #1675
+// @story #1011 #1012 #1675 #1787 #1795
 // Aggregate normalized command catalog. Help metadata is canonical here;
 // routing identities contribute only the verb-to-dispatch relationship.
 
@@ -532,10 +532,10 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'workflow-exception': contract(
     [
-      'Every issue is explicit; mutation modes require a closed request and a host-verified user-message authorization source.',
+      'Every issue is explicit; delivery prepare uses exactly one issue and is read-only; mutation modes require a closed request and a host-verified user-message authorization source.',
     ],
     [
-      'Appends immutable exception revisions or revocations through the canonical GitHub record store; show is read-only.',
+      'Prepare returns an exact proposal and approval statement without writing; writes append immutable revisions or revocations through the canonical GitHub record store; show is read-only.',
       'Series execution is per issue, idempotent, and reports partial or indeterminate results without claiming aggregate success.',
     ],
     ['Prints matching human or aitm.workflow-exception-result/v1 JSON output.'],
@@ -881,7 +881,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     positional('#N', 'Issue number whose marker-owned comment will be upserted.'),
   ]),
   'workflow-exception': Object.freeze([
-    positional('<record|show|revise|revoke>', 'Exception lifecycle operation.'),
+    positional('<prepare|record|show|revise|revoke>', 'Exception lifecycle operation.'),
     positional('#N [#M ...]', 'One or more explicit issue numbers.'),
   ]),
   'delivery-attribution-exception': Object.freeze([
