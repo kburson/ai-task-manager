@@ -70,9 +70,9 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:22050d679231a84bdcbe15e641279af8569d24cf76c8cba17b51719c0e89dd87"
+        "sitesSha256": "sha256:7bb25d289f31ce97a92babebe23c389c3c54ac9a4b9733740849202a27980937"
       },
-      "rationale": "Code-completion refusal lacks typed evidence to authorize Test entry or checkbox changes."
+      "rationale": "Non-AC code-completion refusals remain legacy and need investigation; AC evidence gaps are typed."
     },
     {
       "guardId": "develop-exit-commit-trail-head",
@@ -268,7 +268,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:2389b1d79a14197f8c3d650ff445dd491564353a4c55c4b170fbc74f63c58577"
+        "sitesSha256": "sha256:507f072f431e590fa37c21c149e74a5315973b848f756ccf3aa2adeb8d5913e7"
       },
       "rationale": "Close-gate refusals and warnings combine delivery, approval, and timing authority."
     },
