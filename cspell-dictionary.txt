@@ -553,3 +553,12 @@ enoent
 reparses
 sharedindex
 tiktoken
+backdoors
+mktree
+parentless
+preimage
+reappend
+reapproval
+rebaseline
+refspec
+waivability
