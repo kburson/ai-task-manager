@@ -1,4 +1,5 @@
 // @story #1669
+// @story #1802
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -111,6 +112,12 @@ test('production delivery reader uses canonical parent lineage and current recei
   assert.equal(delivery.gateInput.lineage.deliveryTarget, 'feature/epic/1558');
   assert.equal(delivery.gateInput.acceptedSha, HEAD);
   assert.ok(calls.every(([command, args]) => !(command === 'git' && args[0] === 'fetch')));
+  assert.ok(
+    calls.every(
+      ([command, args]) => !(command === 'git' && args[0] === 'rev-parse' && args[1] === '--verify')
+    ),
+    'an explicit trunkRef must win without a default probe'
+  );
 });
 
 test('production delivery rejects evidence-v2 without invoking its mutating close runner', async () => {
@@ -172,6 +179,10 @@ async function productionCloseFixture({
   bodyOnRead,
   revisionOnRead,
   policyGuard = false,
+  child = false,
+  parentAvailable = true,
+  attributed = true,
+  trunkRef = 'origin/trunk',
 } = {}) {
   const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
     'base64url'
@@ -193,7 +204,7 @@ async function productionCloseFixture({
     cfg: {
       repo: REPO,
       projectId: 'P',
-      trunkRef: 'origin/trunk',
+      trunkRef,
       lifecycleCheckboxesRequired: false,
       fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
     },
@@ -245,7 +256,11 @@ async function productionCloseFixture({
         if (command === 'gh' && args.includes('graphql'))
           return {
             stdout: JSON.stringify({
-              data: { repository: { issue: { number: ISSUE, body, parent: null } } },
+              data: {
+                repository: {
+                  issue: { number: ISSUE, body, parent: child ? { number: 1558, body: '' } : null },
+                },
+              },
             }),
           };
         if (command === 'gh' && args[0] === 'api') return { stdout: '[[]]' };
@@ -256,9 +271,17 @@ async function productionCloseFixture({
         if (command === 'git' && args[0] === 'cat-file') return { stdout: '' };
         if (command === 'git' && args[0] === 'rev-list') return { stdout: HEAD };
         if (command === 'git' && args[0] === 'ls-remote')
-          return { stdout: `${HEAD}\trefs/heads/trunk\n` };
+          return {
+            stdout: child
+              ? parentAvailable
+                ? `${HEAD}\trefs/heads/feature/epic/1558\n`
+                : ''
+              : `${HEAD}\trefs/heads/trunk\n`,
+          };
         if (command === 'git' && args[0] === 'log')
-          return { stdout: `${HEAD}\t[#1669] Close readiness\t2026-09-21T00:00:00Z\n` };
+          return {
+            stdout: attributed ? `${HEAD}\t[#1669] Close readiness\t2026-09-21T00:00:00Z\n` : '',
+          };
         throw new Error(`unexpected ${command} ${args.join(' ')}`);
       },
     },

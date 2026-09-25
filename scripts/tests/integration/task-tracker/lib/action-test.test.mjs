@@ -344,12 +344,25 @@ test('a configured provider rejected by execution is blocked in Test explanation
   assert.deepEqual(fixture.effects, []);
 });
 
-test('real Develop-exit guards refuse incomplete body evidence without effects', async () => {
-  const fixture = testFixture({ runGuards });
-  const decision = await fixture.evaluate('test');
-  assert.equal(decision.status, 'blocked', JSON.stringify(decision));
-  assert.ok(decision.blockers.some(({ guardId }) => guardId !== 'authority-collection'));
-  assert.deepEqual(fixture.effects, []);
+test('real Develop-exit guards explain the affected AC and repair on Test and Promote', async () => {
+  for (const actionId of ['test', 'promote']) {
+    const fixture = testFixture({ runGuards });
+    const decision = await fixture.evaluate(actionId);
+    assert.equal(decision.status, 'blocked', JSON.stringify(decision));
+    const blocker = decision.blockers.find(
+      ({ guardId, code }) =>
+        guardId === 'develop-exit-code-complete' && code === 'code-complete-ac-evidence-incomplete'
+    );
+    assert.deepEqual(blocker?.args, {
+      label: 'Test entry can be explained without effects.',
+      condition: 'unticked',
+      section: 'Acceptance Criteria',
+      nextAction:
+        'In Develop, add a targeted verifier declaration with npx aitm issue-body if one is missing; then run npx aitm ac-stamp "<AC label>" and npx aitm ensureChecked "<AC label>".',
+    });
+    assert.deepEqual(blocker?.noAutomaticRemediation, { reason: 'operator-action-required' });
+    assert.deepEqual(fixture.effects, []);
+  }
 });
 
 test('Test entry retains registered guard warnings while remaining blocked', async () => {

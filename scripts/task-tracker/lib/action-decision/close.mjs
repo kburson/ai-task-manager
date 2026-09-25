@@ -1,5 +1,6 @@
 // @story #1669
 // @story #1767
+// @story #1802
 // Advisory close collection: all I/O is confined to command-local observations.
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { createDefaultDeliverDeps } from '../../verbs/deliver.mjs';
@@ -23,6 +24,7 @@ import { resolveProjectDir } from '../project-dir.mjs';
 import { readWorktreeIdentity } from '../worktree-binding-guard.mjs';
 import { buildGraphNodeAuthority } from '../graph-node-authority.mjs';
 import { resolveEpicLineage } from '../resolve-epic-lineage.mjs';
+import { resolveTrunkRef } from '../trunk-ref.mjs';
 import { PROTOCOL_MARKER_RE } from '../evidence-v2/protocol.mjs';
 import { isIssueResidentDeliveryKind, parseIssueKind } from '../issue-kind.mjs';
 import { findCommitTrailComment, parseCommitShas } from '../code-complete-gate.mjs';
@@ -176,11 +178,24 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
       throw new TypeError('close-readiness:evidence-v2-read-only-cycle-unavailable');
     if (/aitm-incorporated-close|aitm-close-disposition[^]*?incorporated/.test(body))
       throw new TypeError('close-readiness:incorporated-authorization-unavailable');
-    let trunk = cfg.trunkRef;
-    if (typeof trunk !== 'string' || !trunk)
-      throw new TypeError('close-readiness:trunk-configuration-unavailable');
-    const local = trunk.startsWith('refs/heads/');
-    trunk = trunk.replace(/^(?:refs\/heads\/|origin\/)/, '');
+    let trunk = await resolveTrunkRef({
+      cfg,
+      projectDir,
+      deps: { git: (args) => output('git', args) },
+    });
+    if (!trunk) throw new TypeError('close-readiness:trunk-configuration-unavailable');
+    const configuredRemote = cfg.trunkRemote?.trim() || 'origin';
+    const remotePrefix = `${configuredRemote}/`;
+    const remoteRef = trunk.startsWith('refs/remotes/')
+      ? trunk.slice('refs/remotes/'.length)
+      : trunk;
+    const remote = remoteRef.startsWith(remotePrefix)
+      ? configuredRemote
+      : remoteRef.startsWith('origin/')
+        ? 'origin'
+        : null;
+    const local = remote === null;
+    trunk = local ? trunk.replace(/^refs\/heads\//, '') : remoteRef.slice(remote.length + 1);
     const graph = new Map();
     let number = issue;
     let target;
@@ -191,12 +206,14 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
       const lineage = resolveEpicLineage(number, { deps: { graph: () => node, trunk } });
       target = lineage.parentBranch;
       if (node.parent === null || local) break;
-      const remote = (await output('git', ['ls-remote', 'origin', `refs/heads/${target}`])).trim();
-      if (remote) {
+      const remoteResult = (
+        await output('git', ['ls-remote', remote, `refs/heads/${target}`])
+      ).trim();
+      if (remoteResult) {
         if (
           !new RegExp(
             `^[a-f0-9]{40,64}\\s+${`refs/heads/${target}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
-          ).test(remote)
+          ).test(remoteResult)
         )
           throw new TypeError('close-readiness:lineage-ref-ambiguous');
         break;
@@ -233,7 +250,7 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
           : 'ordinary',
       gateInput,
       lifecycleEvidence,
-      authority: local ? { localRef: target } : { remote: 'origin' },
+      authority: local ? { localRef: target } : { remote },
       graph: [...graph.entries()],
     };
   };
@@ -317,12 +334,18 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
         deps: {
           // Completeness was already established against this exact tip. Never fetch.
           fetchOriginTrunk: async ({ remote, branch }) => {
-            if (remote !== 'origin' || branch !== gateInput.lineage.deliveryTarget)
+            if (
+              remote !== (context.delivery.authority?.remote ?? 'origin') ||
+              branch !== gateInput.lineage.deliveryTarget
+            )
               throw new TypeError('close-readiness:unobserved-target');
           },
           isAncestor: async ({ ancestor, descendant }) => {
             const target =
-              descendant === `origin/${gateInput.lineage.deliveryTarget}` ? tip : descendant;
+              descendant ===
+              `${context.delivery.authority?.remote ?? 'origin'}/${gateInput.lineage.deliveryTarget}`
+                ? tip
+                : descendant;
             if (!SHA.test(ancestor ?? '') || !SHA.test(target ?? ''))
               throw new TypeError('close-readiness:ancestry-ref');
             await output('git', ['cat-file', '-e', `${ancestor}^{commit}`]);

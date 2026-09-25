@@ -15,8 +15,32 @@
 import { gateCodeComplete } from './code-complete-gate.mjs';
 import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 
 export const GUARD_ID = 'develop-exit-code-complete';
+
+function codeCompleteRefusal(blocker) {
+  const match = /^code-complete-ac-(unticked|unverified): (.+)$/.exec(blocker);
+  if (!match) return { reason: blocker };
+  const nonDemonstrable = NON_DEMONSTRABLE_TAG_RE.test(match[2]);
+  const label = match[2].replace(/<!--\s*aitm-non-demonstrable\s*-->/gi, '').trim();
+  const condition = nonDemonstrable ? 'unticked-non-demonstrable' : match[1];
+  const nextAction = nonDemonstrable
+    ? 'In Develop, run npx aitm ensureChecked --allow-unverified-ticks --label "<AC label>".'
+    : condition === 'unverified'
+      ? 'Add a targeted verifier declaration to this AC with npx aitm issue-body; then in Develop run npx aitm ac-stamp "<AC label>".'
+      : 'In Develop, add a targeted verifier declaration with npx aitm issue-body if one is missing; then run npx aitm ac-stamp "<AC label>" and npx aitm ensureChecked "<AC label>".';
+  return {
+    code: 'code-complete-ac-evidence-incomplete',
+    args: {
+      label,
+      condition,
+      section: 'Acceptance Criteria',
+      nextAction,
+    },
+    noAutomaticRemediation: { reason: 'operator-action-required' },
+  };
+}
 
 export const developExitCodeCompleteGuard = {
   id: GUARD_ID,
@@ -52,6 +76,9 @@ export const developExitCodeCompleteGuard = {
       ok: false,
       reason: (result.blockers || []).join('; ') || 'code-complete-refused',
       blockers: result.blockers || [],
+      refusals: (result.blockers?.length ? result.blockers : ['code-complete-refused']).map(
+        codeCompleteRefusal
+      ),
     };
   },
 };

@@ -215,14 +215,14 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 36,
+          "line": 60,
           "fingerprint": "sha256:35ab73220d5c1a4b647728fd346de0fcce347f558603dcefadb1056ebe79e6ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 51,
-          "fingerprint": "sha256:6ff67738649c9c7df880bd8236cd7054064a47b5d1aff69f20aca00a76e879ea",
+          "line": 75,
+          "fingerprint": "sha256:7c2785bf0d639ed741cdcdd532b8eb5c1a7036c8d03ca66c1866e6434647de85",
           "kind": "refusal"
         }
       ]
@@ -835,7 +835,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/action-decision/close.mjs",
-          "line": 825,
+          "line": 848,
           "fingerprint": "sha256:29ab192a2d91255b4af9c4ce8825c47b08f17e74821df6fcd239015563d88b7a",
           "kind": "refusal"
         },

@@ -147,6 +147,18 @@ export const CODE_DEFINITIONS = Object.freeze({
     'authority-collection',
   ]),
   'unclassified-refusal': decisionBlocked('unclassified-refusal', registeredGuard),
+  'code-complete-ac-evidence-incomplete': decisionBlocked(
+    'code-complete-ac-evidence-incomplete',
+    ['develop-exit-code-complete'],
+    {
+      argumentSchema: args(['label', 'condition', 'section', 'nextAction'], {
+        label: stringType,
+        condition: enumType('unticked', 'unticked-non-demonstrable', 'unverified'),
+        section: enumType('Acceptance Criteria'),
+        nextAction: stringType,
+      }),
+    }
+  ),
   'session-bind-mismatch': decisionBlocked('session-bind-mismatch', ['authority-collection'], {
     phases: ['collection'],
   }),
@@ -401,6 +413,7 @@ export const CODE_DEFINITIONS = Object.freeze({
 
 const NO_AUTOMATIC_REASONS = Object.freeze([
   'legacy-guard-requires-human-investigation',
+  'operator-action-required',
   'authority-investigation-required',
   'state-investigation-required',
   'result-investigation-required',
