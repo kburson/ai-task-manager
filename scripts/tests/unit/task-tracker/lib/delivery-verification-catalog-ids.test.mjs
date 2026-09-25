@@ -96,18 +96,17 @@ test('every literal verifier category has a frozen, strict requirement mapping',
     new URL('../../../../task-tracker/lib/delivery-verification.mjs', import.meta.url),
     'utf8'
   );
-  const categories = [...source.matchAll(/verificationError\('([^']+)'/g)].map((match) => match[1]);
+  const categories = [
+    ...[...source.matchAll(/verificationError\('([^']+)'/g)].map((match) => match[1]),
+    ...[...source.matchAll(/category: '([^']+)'/g)].map((match) => match[1]),
+  ];
   assert.ok(categories.length > 20);
   assert.ok(Object.isFrozen(VERIFICATION_DIAGNOSTICS));
   assert.deepEqual(
     Object.keys(VERIFICATION_DIAGNOSTICS)
-      .filter(
-        (category) =>
-          !category.startsWith('delivery-waiver-') &&
-          category !== 'merge-method-source-disagreement'
-      )
+      .filter((category) => !category.startsWith('delivery-waiver-'))
       .sort(),
-    [...new Set(categories)].sort()
+    [...new Set(categories)].filter((category) => !category.startsWith('delivery-waiver-')).sort()
   );
   for (const category of categories) {
     const diagnostic = VERIFICATION_DIAGNOSTICS[category];

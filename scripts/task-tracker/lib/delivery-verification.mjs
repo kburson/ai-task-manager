@@ -1,11 +1,19 @@
-// @story #939 #1583
+// @story #939 #1583 #1787 #1798
 // Independent live verification for governed pull-request delivery.
 
 import { createHash } from 'node:crypto';
 import { verifyDelivery } from './evidence-v2/delivery.mjs';
 
 import { validateProviderAction } from './delivery-provider-action.mjs';
-import { buildDeliveryIntent } from './delivery-records.mjs';
+import { buildDeliveryIntent, renderDeliveryIntentComment } from './delivery-records.mjs';
+import {
+  buildWaivedReceiptInput,
+  validatePinnedWaiverEvidence,
+} from './delivery-waiver-evidence.mjs';
+import { validateWorkflowExceptionEnvelope } from './workflow-policy/exception-record.mjs';
+import { buildDeliveryScope } from './workflow-policy/delivery-scope.mjs';
+import { validateDeliveryWaiverIds } from './workflow-policy/catalog.mjs';
+import { DeliveryWaiverAuthorityError } from './workflow-policy/delivery-waiver-authority.mjs';
 import {
   canonicalSourceInventory,
   evaluateDeliveryAttributionException,
@@ -39,6 +47,12 @@ const EXTERNAL_VERIFICATION_INPUT_KEYS = VERIFICATION_INPUT_KEYS.filter(
   (key) => !['intent', 'intentCreatedAt', 'recovery'].includes(key)
 ).concat('intentInput');
 const WAIVED_VERIFICATION_INPUT_KEYS = [...VERIFICATION_INPUT_KEYS, 'waivedEvidence'];
+const GENERIC_WAIVER_VERIFICATION_INPUT_KEYS = [
+  ...VERIFICATION_INPUT_KEYS,
+  'genericWaiverEvidence',
+];
+const FRESH_WAIVER_EVIDENCE_KEYS = ['originalIntent', 'waiver'];
+const PINNED_WAIVER_EVIDENCE_KEYS = ['originalIntent', 'grant', 'burn', 'burnOid', 'receipt'];
 const EXTERNAL_INTENT_INPUT_KEYS = [
   'attributionTokens',
   'baseRef',
@@ -219,7 +233,148 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function assertAuthorityShas(input, intent, recovery) {
+function sameRecord(left, right) {
+  return canonicalRecordJson(left) === canonicalRecordJson(right);
+}
+
+const ORIGINAL_AUTHORIZED_FIELDS = [
+  'issueNumber',
+  'repository',
+  'prNumber',
+  'expectedHeadSha',
+  'attributionTokens',
+  'baseRef',
+  'commitMessage',
+  'commitMessageSha256',
+  'commitTitle',
+  'commitTitleSha256',
+  'headRef',
+  'mergeMethod',
+  'provider',
+  'sessionId',
+];
+
+function validateGenericWaiverEvidence(input) {
+  const { intent, genericWaiverEvidence: evidence } = input;
+  if (evidence instanceof DeliveryWaiverAuthorityError) {
+    throw verificationError(evidence.category, evidence, { outcome: evidence.outcome });
+  }
+  const fresh = hasExactKeys(evidence, FRESH_WAIVER_EVIDENCE_KEYS);
+  const pinned = hasExactKeys(evidence, PINNED_WAIVER_EVIDENCE_KEYS);
+  if (!fresh && !pinned) throw verificationError('input');
+  if (!hasExactKeys(evidence.originalIntent, ['record', 'createdAt'])) {
+    throw verificationError('input');
+  }
+  const original = evidence.originalIntent.record;
+  try {
+    renderDeliveryIntentComment(original);
+    renderDeliveryIntentComment(intent);
+  } catch (error) {
+    throw verificationError('delivery-waiver-authority', error);
+  }
+  if (
+    original.schema !== 'aitm.delivery-intent/v1' ||
+    !isCanonicalInstant(evidence.originalIntent.createdAt)
+  ) {
+    throw verificationError('delivery-waiver-authority');
+  }
+  if (intent.schema === 'aitm.delivery-intent/v1') {
+    if (!fresh || !sameRecord(intent, original)) throw verificationError('input');
+    if (input.intentCreatedAt !== evidence.originalIntent.createdAt) {
+      throw verificationError('delivery-waiver-authority');
+    }
+  } else if (intent.schema === 'aitm.delivery-intent/v3') {
+    if (
+      intent.originalIntentId !== original.intentId ||
+      intent.supersedesIntentId !== original.intentId ||
+      intent.originalIntentCreatedAt !== evidence.originalIntent.createdAt ||
+      intent.originalIntentDigest !== `sha256:${sha256(canonicalRecordJson(original))}` ||
+      ORIGINAL_AUTHORIZED_FIELDS.some((field) => !sameRecord(intent[field], original[field]))
+    )
+      throw verificationError('delivery-waiver-authority');
+  } else {
+    throw verificationError('input');
+  }
+  if (pinned && intent.schema !== 'aitm.delivery-intent/v3') throw verificationError('input');
+
+  let grant;
+  if (pinned) {
+    try {
+      validatePinnedWaiverEvidence({
+        intent,
+        receipt: evidence.receipt,
+        grant: evidence.grant,
+        burn: evidence.burn,
+        originalIntent: evidence.originalIntent,
+      });
+    } catch (error) {
+      throw verificationError('delivery-waiver-burn-mismatch', error);
+    }
+    if (evidence.receipt.burnOid !== evidence.burnOid) {
+      throw verificationError('delivery-waiver-burn-mismatch');
+    }
+    grant = evidence.grant;
+  } else {
+    if (
+      !hasExactKeys(evidence.waiver, [
+        'outcome',
+        'grant',
+        'waiverScopeDigest',
+        'waiverReasonDigest',
+      ]) ||
+      evidence.waiver.outcome !== 'waived'
+    )
+      throw verificationError('delivery-waiver-authority');
+    grant = evidence.waiver.grant;
+  }
+  let scope;
+  try {
+    validateWorkflowExceptionEnvelope(grant);
+    scope = grant.payload.deliveryScope;
+    validateDeliveryWaiverIds(grant.payload.requirementIds, scope);
+    const built = buildDeliveryScope(scope);
+    if (
+      grant.payload.status !== 'active' ||
+      grant.payload.waiverScopeDigest !== built.waiverScopeDigest ||
+      scope.repository !== original.repository ||
+      scope.issue !== original.issueNumber ||
+      scope.pullRequest !== original.prNumber ||
+      scope.acceptedHeadSha !== original.expectedHeadSha ||
+      scope.baseRef !== original.baseRef ||
+      scope.resolvedTrunkRef !== `origin/${original.baseRef}` ||
+      (fresh &&
+        (evidence.waiver.waiverScopeDigest !== built.waiverScopeDigest ||
+          evidence.waiver.waiverReasonDigest !== `sha256:${sha256(grant.payload.reason)}`)) ||
+      (intent.schema === 'aitm.delivery-intent/v3' &&
+        (intent.waiverRecordId !== grant.recordId ||
+          intent.waivedRequirementId !== scope.requirementId ||
+          intent.deliveryOperationId !== scope.deliveryOperationId ||
+          !sameRecord(intent.waiverGrant, grant)))
+    )
+      throw new TypeError('scope-mismatch');
+  } catch (error) {
+    throw verificationError('delivery-waiver-authority', error);
+  }
+  return { kind: pinned ? 'pinned' : 'fresh', grant, scope, original, evidence };
+}
+
+function evaluateDeliveryPredicate({
+  category,
+  observedFailure,
+  waiver,
+  failures,
+  canContinue = true,
+}) {
+  if (!observedFailure) return;
+  const error = verificationError(category);
+  failures.push(error);
+  // Catalog eligibility does not supply the missing fact needed by later checks.
+  if (!canContinue) throw error;
+  if (waiver?.scope.requirementId !== error.requirementId) throw error;
+  if (failures.some((failure) => failure.requirementId !== error.requirementId)) throw error;
+}
+
+function assertAuthorityShas(input, intent, recovery, waiver, failures) {
   const authorities = [
     input.pullRequest?.headRefOid,
     intent?.expectedHeadSha,
@@ -227,30 +382,69 @@ function assertAuthorityShas(input, intent, recovery) {
     input.testReceiptSha,
     input.acceptedReviewSha,
   ];
-  if (authorities.some((sha) => typeof sha !== 'string' || !SHA_RE.test(sha))) {
-    throw verificationError('authority-sha');
-  }
-  if (new Set(authorities).size !== 1) throw verificationError('authority-sha-mismatch');
-  if (typeof input.localHeadSha !== 'string' || !SHA_RE.test(input.localHeadSha)) {
-    throw verificationError('authority-sha');
-  }
-  if (input.localHeadSha !== input.acceptedSha && recovery !== true) {
-    throw verificationError('authority-sha-mismatch');
-  }
+  evaluateDeliveryPredicate({
+    category: 'authority-sha',
+    observedFailure: authorities.some((sha) => typeof sha !== 'string' || !SHA_RE.test(sha)),
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'authority-sha-mismatch',
+    observedFailure: new Set(authorities).size !== 1,
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'authority-sha',
+    observedFailure: typeof input.localHeadSha !== 'string' || !SHA_RE.test(input.localHeadSha),
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'authority-sha-mismatch',
+    observedFailure: input.localHeadSha !== input.acceptedSha && recovery !== true,
+    waiver,
+    failures,
+  });
 }
 
-function assertMergedPullRequest(pullRequest, intent) {
+function assertMergedPullRequest(pullRequest, intent, waiver, failures) {
   if (!isPlainObject(pullRequest) || !isPlainObject(intent)) {
     throw verificationError('input');
   }
   const merged =
     pullRequest.merged === true || String(pullRequest.state || '').toUpperCase() === 'MERGED';
-  if (!merged) throw verificationError('pull-request-not-merged');
-  if (pullRequest.number !== intent.prNumber) throw verificationError('pr-number');
-  if (pullRequest.baseRefName !== intent.baseRef) throw verificationError('base-ref');
-  if (pullRequest.headRefOid !== intent.expectedHeadSha) {
-    throw verificationError('expected-head-sha');
-  }
+  evaluateDeliveryPredicate({
+    category: 'pull-request-not-merged',
+    observedFailure: !merged,
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'pr-number',
+    observedFailure: pullRequest.number !== intent.prNumber,
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'base-ref',
+    observedFailure: pullRequest.baseRefName !== intent.baseRef,
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'expected-head-sha',
+    observedFailure: pullRequest.headRefOid !== intent.expectedHeadSha,
+    waiver,
+    failures,
+    canContinue: false,
+  });
   let mergeMethodObservation = null;
   if (pullRequest.mergeMethod !== null && pullRequest.mergeMethod !== undefined) {
     if (
@@ -260,15 +454,22 @@ function assertMergedPullRequest(pullRequest, intent) {
       throw verificationError('merge-method-observation');
     }
     mergeMethodObservation = pullRequest.mergeMethod;
-    if (mergeMethodObservation !== intent.mergeMethod) {
-      throw verificationError('merge-method');
-    }
   }
   const sha = mergeCommitSha(pullRequest);
-  if (typeof sha !== 'string' || !SHA_RE.test(sha)) {
-    throw verificationError('merge-commit-sha');
-  }
-  if (!isCanonicalInstant(pullRequest.mergedAt)) throw verificationError('merged-at');
+  evaluateDeliveryPredicate({
+    category: 'merge-commit-sha',
+    observedFailure: typeof sha !== 'string' || !SHA_RE.test(sha),
+    waiver,
+    failures,
+    canContinue: false,
+  });
+  evaluateDeliveryPredicate({
+    category: 'merged-at',
+    observedFailure: !isCanonicalInstant(pullRequest.mergedAt),
+    waiver,
+    failures,
+    canContinue: false,
+  });
   return { mergeCommitSha: sha, mergedAt: pullRequest.mergedAt, mergeMethodObservation };
 }
 
@@ -583,6 +784,16 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   });
 }
 
+function isMissingFinalAttributionWithoutConflict(inspection, intent) {
+  const lines = inspection.commitMessage.split('\n');
+  if (lines.some((line) => line.trimStart().startsWith('Attribution:'))) return false;
+  const allowed = new Set(intent.attributionTokens);
+  const observed = [
+    ...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE),
+  ].map((match) => `#${match[1]}`);
+  return observed.every((token) => allowed.has(token));
+}
+
 function verifyWaivedEvidence(intent, evidence) {
   if (!hasExactKeys(evidence, ['sourceInventory', 'exceptionRecord'])) {
     throw verificationError('waived-evidence');
@@ -641,20 +852,30 @@ function assertVerificationFunctions(input) {
   }
 }
 
-async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
+async function verifyLiveDelivery(
+  input,
+  intent,
+  { requireAuthorizedBytes, recovery, genericWaiver = null }
+) {
   if (!isPlainObject(input.pullRequest) || !isPlainObject(intent)) {
     throw verificationError('input');
   }
   const waived = intent.schema === 'aitm.delivery-intent/v2';
   const exceptionRecord = waived ? verifyWaivedEvidence(intent, input.waivedEvidence) : null;
-  assertAuthorityShas(input, intent, recovery);
+  const failures = [];
+  assertAuthorityShas(input, intent, recovery, genericWaiver, failures);
   const { pullRequest } = input;
-  const merged = assertMergedPullRequest(pullRequest, intent);
+  const merged = assertMergedPullRequest(pullRequest, intent, genericWaiver, failures);
+  const originalCreatedAt =
+    genericWaiver?.evidence.originalIntent.createdAt ?? input.intentCreatedAt;
   if (intent.provider !== 'external') {
-    if (!isCanonicalInstant(input.intentCreatedAt)) throw verificationError('intent-created-at');
-    if (Date.parse(merged.mergedAt) < Date.parse(input.intentCreatedAt)) {
-      throw verificationError('merge-before-intent');
-    }
+    if (!isCanonicalInstant(originalCreatedAt)) throw verificationError('intent-created-at');
+    evaluateDeliveryPredicate({
+      category: 'merge-before-intent',
+      observedFailure: Date.parse(merged.mergedAt) < Date.parse(originalCreatedAt),
+      waiver: genericWaiver,
+      failures,
+    });
   }
 
   try {
@@ -729,13 +950,38 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         : 'unknown';
   }
   if (observedMergeMethod === 'unknown') throw verificationError('merge-method-unknown');
-  if (observedMergeMethod !== intent.mergeMethod) throw verificationError('merge-method');
+  if (
+    merged.mergeMethodObservation !== null &&
+    merged.mergeMethodObservation !== observedMergeMethod
+  )
+    throw verificationError('merge-method-source-disagreement');
+  if (genericWaiver?.kind === 'pinned' || intent.schema === 'aitm.delivery-intent/v3') {
+    const pinned = genericWaiver.kind === 'pinned' ? genericWaiver.evidence.receipt : intent;
+    if (
+      observedMergeMethod !== pinned.observedMergeMethod ||
+      (merged.mergeMethodObservation !== null &&
+        pinned.providerMergeMethod !== null &&
+        merged.mergeMethodObservation !== pinned.providerMergeMethod)
+    )
+      throw verificationError('merge-method-source-disagreement');
+  }
+  evaluateDeliveryPredicate({
+    category: 'merge-method',
+    observedFailure: observedMergeMethod !== intent.mergeMethod,
+    waiver: genericWaiver,
+    failures,
+  });
   if (
     requireAuthorizedBytes &&
     (inspection.commitTitle !== intent.commitTitle ||
       (!waived && inspection.commitMessage !== intent.commitMessage))
   ) {
-    throw verificationError('merge-commit-bytes');
+    evaluateDeliveryPredicate({
+      category: 'merge-commit-bytes',
+      observedFailure: true,
+      waiver: genericWaiver,
+      failures,
+    });
   }
 
   const verifiedIntent = requireAuthorizedBytes
@@ -745,60 +991,149 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
         commitTitle: inspection.commitTitle,
         commitMessage: inspection.commitMessage,
       });
-  const metadataWarnings = assertMergeCommitAttribution(
-    inspection,
-    verifiedIntent,
-    provenSingleSourceSquash,
-    {
-      provenMultiSourceSquash,
-      provenMerge: observedMergeMethod === 'merge',
-      waived,
-    }
-  );
+  // A missing final trailer can be disclosed under the exact attribution ID.
+  // A conflicting claim or unauthorized issue token remains hard evidence.
+  let metadataWarnings;
+  try {
+    metadataWarnings = assertMergeCommitAttribution(
+      inspection,
+      verifiedIntent,
+      provenSingleSourceSquash,
+      {
+        provenMultiSourceSquash,
+        provenMerge: observedMergeMethod === 'merge',
+        waived,
+      }
+    );
+  } catch (error) {
+    if (
+      !(error instanceof DeliveryVerificationError) ||
+      error.category !== 'attribution' ||
+      genericWaiver === null ||
+      !isMissingFinalAttributionWithoutConflict(inspection, verifiedIntent)
+    )
+      throw error;
+    evaluateDeliveryPredicate({
+      category: 'attribution',
+      observedFailure: true,
+      waiver: genericWaiver,
+      failures,
+    });
+    // V4 receipts disclose this waiver through their exact failure category and
+    // requirement ID; the v4 schema has no metadataWarnings field.
+    metadataWarnings = [];
+  }
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');
   }
 
+  const baseReceiptInput = {
+    intentId: verifiedIntent.intentId,
+    issueNumber: verifiedIntent.issueNumber,
+    prNumber: verifiedIntent.prNumber,
+    expectedHeadSha: verifiedIntent.expectedHeadSha,
+    mergeCommitSha: merged.mergeCommitSha,
+    baseRef: verifiedIntent.baseRef,
+    mergeMethod: verifiedIntent.mergeMethod,
+    verifiedTrunkRef,
+    provider: verifiedIntent.provider,
+    sessionId: verifiedIntent.sessionId,
+    verifiedAt: merged.mergedAt,
+    ...(waived
+      ? {
+          attributionDisposition: 'waived',
+          exceptionRecordId: exceptionRecord.recordId,
+          exceptionRecord: structuredClone(exceptionRecord),
+        }
+      : {}),
+    ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
+  };
+  if (genericWaiver !== null) {
+    const failedIds = new Set(failures.map((failure) => failure.requirementId));
+    if (failedIds.size !== 1 || !failedIds.has(genericWaiver.scope.requirementId)) {
+      throw verificationError('delivery-waiver-authority');
+    }
+    const pinnedObservation =
+      genericWaiver.kind === 'pinned'
+        ? genericWaiver.evidence.receipt
+        : intent.schema === 'aitm.delivery-intent/v3'
+          ? intent
+          : null;
+    const verifiedFacts = {
+      baseReceiptInput,
+      providerMergeMethod: pinnedObservation?.providerMergeMethod ?? merged.mergeMethodObservation,
+      observedMergeMethod,
+      observedFailureCategory: failures[0].category,
+      waivedRequirementId: failures[0].requirementId,
+    };
+    if (pinnedObservation?.providerMergeMethod === null) verifiedFacts.providerMergeMethod = null;
+    let receiptInput = null;
+    if (genericWaiver.kind === 'pinned') {
+      try {
+        receiptInput = buildWaivedReceiptInput({
+          verifiedFacts,
+          intent,
+          grant: genericWaiver.grant,
+          burn: genericWaiver.evidence.burn,
+          burnOid: genericWaiver.evidence.burnOid,
+        });
+      } catch (error) {
+        throw verificationError('delivery-waiver-burn-mismatch', error);
+      }
+      if (
+        !sameRecord(
+          receiptInput,
+          Object.fromEntries(
+            Object.entries(genericWaiver.evidence.receipt).filter(
+              ([key]) => !['schema', 'state', 'result'].includes(key)
+            )
+          )
+        )
+      )
+        throw verificationError('delivery-waiver-burn-mismatch');
+    }
+    return deepFreeze({
+      intent: verifiedIntent,
+      deliveryDisposition: 'waived',
+      verifiedFacts,
+      receiptInput,
+      recovery,
+      branchDisposition: pullRequest.headRefDeleted ? 'deleted' : 'retained',
+    });
+  }
   return deepFreeze({
     intent: verifiedIntent,
-    receiptInput: {
-      intentId: verifiedIntent.intentId,
-      issueNumber: verifiedIntent.issueNumber,
-      prNumber: verifiedIntent.prNumber,
-      expectedHeadSha: verifiedIntent.expectedHeadSha,
-      mergeCommitSha: merged.mergeCommitSha,
-      baseRef: verifiedIntent.baseRef,
-      mergeMethod: verifiedIntent.mergeMethod,
-      verifiedTrunkRef,
-      provider: verifiedIntent.provider,
-      sessionId: verifiedIntent.sessionId,
-      verifiedAt: merged.mergedAt,
-      ...(waived
-        ? {
-            attributionDisposition: 'waived',
-            exceptionRecordId: exceptionRecord.recordId,
-            exceptionRecord: structuredClone(exceptionRecord),
-          }
-        : {}),
-      ...(metadataWarnings.length > 0 ? { metadataWarnings } : {}),
-    },
+    receiptInput: baseReceiptInput,
     recovery,
     branchDisposition: pullRequest.headRefDeleted ? 'deleted' : 'retained',
   });
 }
 
 export async function verifyDeliveredPullRequest(input = {}) {
+  const schema = input.intent?.schema;
+  const generic = Object.hasOwn(input, 'genericWaiverEvidence');
   const keys =
-    input.intent?.schema === 'aitm.delivery-intent/v2'
+    schema === 'aitm.delivery-intent/v2'
       ? WAIVED_VERIFICATION_INPUT_KEYS
-      : VERIFICATION_INPUT_KEYS;
+      : schema === 'aitm.delivery-intent/v3' || generic
+        ? GENERIC_WAIVER_VERIFICATION_INPUT_KEYS
+        : VERIFICATION_INPUT_KEYS;
   if (!hasExactKeys(input, keys)) throw verificationError('input-keys');
+  if (
+    !['aitm.delivery-intent/v1', 'aitm.delivery-intent/v2', 'aitm.delivery-intent/v3'].includes(
+      schema
+    )
+  ) {
+    throw verificationError('input');
+  }
   assertVerificationFunctions(input);
   if (typeof input.recovery !== 'boolean') throw verificationError('input');
+  const genericWaiver = generic ? validateGenericWaiverEvidence(input) : null;
   return verifyLiveDelivery(input, input.intent, {
     requireAuthorizedBytes: true,
     recovery: input.recovery,
+    genericWaiver,
   });
 }
 

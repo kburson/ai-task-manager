@@ -230,27 +230,33 @@ test('malformed persisted intent refuses without a receipt', async () => {
   assertNoTerminalWrites(h, writes);
 });
 
-for (const [label, mutate] of [
+for (const [label, mutate, category, requirementId] of [
   [
     'invalid merge SHA',
     (h) => {
       h.data.mergeCommitSha = 'not-a-sha';
     },
+    'merge-commit-sha',
+    'delivery.verification.pr-merged',
   ],
   [
     'invalid mergedAt',
     (h) => {
       h.data.mergedAt = 'not-an-instant';
     },
+    'merged-at',
+    'delivery.verification.pr-merged',
   ],
   [
     'unknown Git topology',
     (h) => {
       h.data.historyMergeMethod = 'unknown';
     },
+    'merge-method-unknown',
+    'delivery.verification.merge-method-evidence',
   ],
 ]) {
-  test(`pre-Task-8 precedence: method mismatch plus ${label} reports merge-method`, async () => {
+  test(`Task 8 precedence: method mismatch plus ${label} reports ${category}`, async () => {
     const h = makeHarness();
     await mergePendingIntent(h);
     h.data.prMergeMethod = 'merge';
@@ -259,7 +265,8 @@ for (const [label, mutate] of [
     await assert.rejects(
       () => deliver(h),
       (error) => {
-        assert.equal(error.category, 'merge-method');
+        assert.equal(error.category, category);
+        assert.equal(error.requirementId, requirementId);
         return true;
       }
     );
