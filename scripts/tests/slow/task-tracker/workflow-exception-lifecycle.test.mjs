@@ -1,4 +1,4 @@
-// @story #1630
+// @story #1630 #1787 #1793
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -230,7 +230,7 @@ test('expired, revoked, wrong repository, wrong issue, stale scope, ambiguous, a
     recordType: supported.recordType,
     repository,
     issue,
-    payload: { ...supported.payload, schema: 'aitm.workflow-exception/v2' },
+    payload: { ...supported.payload, schema: 'aitm.workflow-exception/v3' },
     actor: authority.recordingActor,
     createdAt: supported.createdAt,
     recordId: '01M2HQ00000000000000000003',

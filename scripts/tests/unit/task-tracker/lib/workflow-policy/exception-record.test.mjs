@@ -1,6 +1,13 @@
-// @story #1626
+// @story #1626 #1787 #1793
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import {
+  parseAitmRecord,
+  renderAitmRecord,
+  hashRecordPayload,
+} from '../../../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { buildDeliveryScope } from '../../../../../task-tracker/lib/workflow-policy/delivery-scope.mjs';
 
 import {
   createWorkflowExceptionEnvelope,
@@ -53,6 +60,124 @@ function envelope(overrides = {}) {
 function stored(value, suffix = '1') {
   return { commentNodeId: `IC_exception_${suffix}`, envelope: value };
 }
+
+const deliveryScope = {
+  schema: 'aitm.delivery-exception-scope/v1',
+  repository,
+  issue,
+  exceptionKind: 'delivery.invariant-waiver',
+  pullRequest: 1785,
+  acceptedHeadSha: 'a'.repeat(40),
+  baseRef: 'trunk',
+  resolvedTrunkRef: 'origin/trunk',
+  requirementId: 'delivery.verification.merge-method',
+  deliveryOperationId: recordId(2),
+};
+
+function deliveryEnvelope(overrides = {}) {
+  return envelope({
+    schema: 'aitm.workflow-exception/v2',
+    scopeKind: 'delivery',
+    deliveryScope,
+    waiverScopeDigest: buildDeliveryScope(deliveryScope).waiverScopeDigest,
+    requirementIds: [deliveryScope.requirementId],
+    constraints: [],
+    ...overrides,
+  });
+}
+
+test('v2 delivery envelope round trips with its exact scope and digest', () => {
+  const value = deliveryEnvelope();
+  assert.equal(value.payload.schema, 'aitm.workflow-exception/v2');
+  assert.equal(value.payload.scopeKind, 'delivery');
+  assert.equal(
+    value.payload.waiverScopeDigest,
+    buildDeliveryScope(deliveryScope).waiverScopeDigest
+  );
+  assert.equal(validateWorkflowExceptionEnvelope(value), value);
+  const rendered = renderAitmRecord({
+    envelope: value,
+    visibleMarkdown: 'Approved delivery scope.',
+  });
+  const parsed = parseAitmRecord({
+    commentNodeId: 'IC_delivery_1',
+    body: rendered,
+    expectedRepository: repository,
+    expectedIssue: issue,
+  });
+  assert.deepEqual(parsed.envelope, value);
+  assert.equal(
+    toEvaluatorRecord(parsed.envelope).deliveryScope.requirementId,
+    deliveryScope.requirementId
+  );
+  assert.throws(
+    () =>
+      parseAitmRecord({
+        commentNodeId: 'IC_delivery_1',
+        body: rendered.replace('The existing incident authorization', 'An edited authorization'),
+        expectedRepository: repository,
+        expectedIssue: issue,
+      }),
+    /hash-mismatch/
+  );
+});
+
+test('v2 refuses scope, kind, capability, expiry, and authority drift', () => {
+  const candidate = deliveryEnvelope();
+  for (const overrides of [
+    { scopeKind: 'ordinary' },
+    { schema: 'aitm.workflow-exception/v3' },
+    { requirementIds: ['planning.deep-dive'] },
+    { requirementIds: ['delivery.verification.waiver-authority'] },
+    { requirementIds: [deliveryScope.requirementId, deliveryScope.requirementId] },
+    { constraints: [{ id: 'provider.managed-execution', effect: 'deny' }] },
+    { expiresAt: null },
+    { expiresAt: createdAt },
+    { deliveryScope: { ...deliveryScope, pullRequest: null } },
+    { deliveryScope: { ...deliveryScope, pullRequest: '*' } },
+    { deliveryScope: { ...deliveryScope, repository: 'other/repo' } },
+    { deliveryScope: { ...deliveryScope, issue: issue + 1 } },
+    {
+      deliveryScope: {
+        ...deliveryScope,
+        exceptionKind: 'delivery.local-trunk-close-authorization',
+        pullRequest: null,
+      },
+    },
+    { waiverScopeDigest: `sha256:${'f'.repeat(64)}` },
+    { authorization: { ...authorization, verificationLevel: 'agent-asserted' } },
+  ]) {
+    assert.throws(() => deliveryEnvelope(overrides), /workflow-exception:/);
+  }
+  const changedScope = { ...candidate.payload.deliveryScope, acceptedHeadSha: 'b'.repeat(40) };
+  const changedPayload = { ...candidate.payload, deliveryScope: changedScope };
+  const forged = {
+    ...candidate,
+    payload: changedPayload,
+    payloadHash: hashRecordPayload(changedPayload),
+  };
+  assert.throws(() => validateWorkflowExceptionEnvelope(forged), /scope-digest/);
+  for (const [key, value] of [
+    ['pullRequest', deliveryScope.pullRequest + 1],
+    ['acceptedHeadSha', 'b'.repeat(40)],
+    ['baseRef', 'release'],
+    ['resolvedTrunkRef', 'origin/release'],
+    ['requirementId', 'delivery.verification.pr-scope'],
+    ['deliveryOperationId', recordId(3)],
+  ]) {
+    const changed = { ...candidate.payload, deliveryScope: { ...deliveryScope, [key]: value } };
+    assert.throws(
+      () =>
+        validateWorkflowExceptionEnvelope({
+          ...candidate,
+          payload: changed,
+          payloadHash: hashRecordPayload(changed),
+        }),
+      /scope-digest/,
+      key
+    );
+  }
+});
 
 test('a valid record preserves closed authority, policy, identity, and lifecycle fields', () => {
   const value = envelope();

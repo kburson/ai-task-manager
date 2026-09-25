@@ -1,9 +1,11 @@
-// @story #1626
+// @story #1626 #1787 #1793
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
-import { validateConstraints, validateWaiverIds } from './catalog.mjs';
+import { validateConstraints, validateDeliveryWaiverIds, validateWaiverIds } from './catalog.mjs';
+import { buildDeliveryScope } from './delivery-scope.mjs';
 
 export const WORKFLOW_EXCEPTION_SCHEMA = 'aitm.workflow-exception/v1';
+export const WORKFLOW_EXCEPTION_SCHEMA_V2 = 'aitm.workflow-exception/v2';
 export const WORKFLOW_EXCEPTION_RECORD_TYPE = 'workflow-exception';
 
 const ENVELOPE_KEYS = [
@@ -32,6 +34,7 @@ const PAYLOAD_KEYS = [
   'scopeIdentity',
   'status',
 ];
+const DELIVERY_PAYLOAD_KEYS = [...PAYLOAD_KEYS, 'scopeKind', 'deliveryScope', 'waiverScopeDigest'];
 const AUTHORIZATION_KEYS = [
   'origin',
   'principal',
@@ -148,8 +151,14 @@ export function validateWorkflowExceptionEnvelope(
   }
 
   const payload = envelope.payload;
-  exact(payload, PAYLOAD_KEYS, 'payload-keys');
-  if (payload.schema !== WORKFLOW_EXCEPTION_SCHEMA) fail('unsupported-schema');
+  if (payload?.schema === WORKFLOW_EXCEPTION_SCHEMA) {
+    exact(payload, PAYLOAD_KEYS, 'payload-keys');
+  } else if (payload?.schema === WORKFLOW_EXCEPTION_SCHEMA_V2) {
+    if (payload.scopeKind !== 'delivery') fail('scope-kind');
+    exact(payload, DELIVERY_PAYLOAD_KEYS, 'payload-keys');
+  } else {
+    fail('unsupported-schema');
+  }
   if (!EXCEPTION_ID_RE.test(payload.exceptionId ?? '')) fail('exception-id');
   if (!Number.isSafeInteger(payload.revision) || payload.revision <= 0) fail('revision');
   if (!['active', 'revoked'].includes(payload.status)) fail('status');
@@ -163,14 +172,32 @@ export function validateWorkflowExceptionEnvelope(
   let requirementIds;
   let constraints;
   try {
-    requirementIds = validateWaiverIds(payload.requirementIds);
-    constraints = validateConstraints(payload.constraints);
+    if (payload.schema === WORKFLOW_EXCEPTION_SCHEMA_V2) {
+      const { scope, waiverScopeDigest } = buildDeliveryScope(payload.deliveryScope);
+      if (scope.exceptionKind !== 'delivery.invariant-waiver') fail('delivery-kind');
+      if (scope.repository !== envelope.repository || scope.issue !== envelope.issue) {
+        fail('delivery-scope-identity');
+      }
+      if (payload.waiverScopeDigest !== waiverScopeDigest) fail('scope-digest');
+      requirementIds = validateDeliveryWaiverIds(payload.requirementIds, scope);
+      if (!Array.isArray(payload.constraints) || payload.constraints.length !== 0) {
+        fail('delivery-constraints');
+      }
+      constraints = [];
+    } else {
+      requirementIds = validateWaiverIds(payload.requirementIds);
+      constraints = validateConstraints(payload.constraints);
+    }
   } catch (error) {
+    if (error?.message?.startsWith('workflow-exception:')) throw error;
     fail(error.message.replace(/^workflow-policy:/, 'policy-'));
   }
   if (requirementIds.length === 0 && constraints.length === 0) fail('empty-policy');
   if (new Set(constraints.map(({ id }) => id)).size !== constraints.length) {
     fail('duplicate-constraint');
+  }
+  if (payload.schema === WORKFLOW_EXCEPTION_SCHEMA_V2 && payload.expiresAt === null) {
+    fail('expires-at');
   }
   if (payload.expiresAt !== null) {
     if (
@@ -186,6 +213,7 @@ export function validateWorkflowExceptionEnvelope(
 }
 
 export function createWorkflowExceptionEnvelope({
+  schema = WORKFLOW_EXCEPTION_SCHEMA,
   repository,
   issue,
   exceptionId,
@@ -203,9 +231,12 @@ export function createWorkflowExceptionEnvelope({
   createdAt,
   recordId,
   grantId,
+  scopeKind,
+  deliveryScope,
+  waiverScopeDigest,
 } = {}) {
   const payload = {
-    schema: WORKFLOW_EXCEPTION_SCHEMA,
+    schema,
     exceptionId,
     revision,
     status,
@@ -216,6 +247,9 @@ export function createWorkflowExceptionEnvelope({
     approvalEvidence: authorization,
     expiresAt,
     operationId,
+    ...(schema === WORKFLOW_EXCEPTION_SCHEMA_V2
+      ? { scopeKind, deliveryScope, waiverScopeDigest }
+      : {}),
   };
   let envelope;
   try {
@@ -256,6 +290,13 @@ export function toEvaluatorRecord(envelope) {
     }),
     createdAt: envelope.createdAt,
     expiresAt: payload.expiresAt,
+    ...(payload.schema === WORKFLOW_EXCEPTION_SCHEMA_V2
+      ? {
+          scopeKind: payload.scopeKind,
+          deliveryScope: Object.freeze({ ...payload.deliveryScope }),
+          waiverScopeDigest: payload.waiverScopeDigest,
+        }
+      : {}),
   });
 }
 
