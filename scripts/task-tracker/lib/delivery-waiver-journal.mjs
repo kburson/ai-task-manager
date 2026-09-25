@@ -256,6 +256,12 @@ function runGit(cwd, args, input = '', trim = true) {
       if (stderr.length > 1024 * 1024) child.kill();
     });
     child.on('error', reject);
+    // Git commands that do not read stdin can exit before Node closes the
+    // pipe. An empty-input EPIPE is harmless; the child exit code still owns
+    // the command result. A failed write of real input must remain fatal.
+    child.stdin.on('error', (error) => {
+      if (error.code !== 'EPIPE' || input.length > 0) reject(error);
+    });
     child.on('close', (code) =>
       code === 0
         ? resolve(trim ? stdout.trim() : stdout)
