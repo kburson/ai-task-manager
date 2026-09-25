@@ -69,3 +69,50 @@ Acceptance is durable normal-commit review evidence, not human Plan approval:
 the manifest reports `authority_assurance: unavailable` and no human signed
 attestation. No lifecycle promotion, runtime implementation, real waiver,
 publication, push, or merge was performed. The accepted specification is unchanged.
+
+### Story Intent Amendment XPR
+
+After the prior branch landed through PR #1789, the root Story Intent amendment
+was committed in `f48cf94a`. A new, independent normal-commit review
+`review-4547416fdb31d53d90c8c77ea4a8ba3a` now accepts the amended and
+decomposition-ready plan. It does not rewrite or extend the earlier manifest.
+
+The [new manifest](../../../peer-reviews/plan/2026-09-25-2026-09-24-1787-delivery-waiver-review-4547416fdb31d53d90c8c77ea4a8ba3a/review-4547416fdb31d53d90c8c77ea4a8ba3a-review-manifest.md)
+was finalized in `6772b233` with reviewer consensus between GPT-6 Astra (runtime
+author identity) and Claude Opus 5 (declared reviewer identity, launched as
+`claude-opus-5`, high effort). It pins:
+
+- Artifact commit: `a830796fc6dfae4f1c548224261ced6e8e91c172`
+- Plan blob: `40c26773cee48ee14d66b2e1550122f43725ef53`
+- SHA-256: `3cd2d2e87de671e93477a7271f278019631a329db28c981f6bae09844c94d9f0`
+
+Round 1 requested root-clause corrections, parser-visible task headings, and an
+explicit decomposition lane. The author supplied all three, including eleven
+distinct task intents and labeled verifier fences for sequential dependent child
+issues. Round 2 accepted with no findings or required changes. The author ran
+the live root/task/proposal validators and 101 targeted contract tests; Claude
+independently traced the artifact through source. His attempted validator shell
+command was denied by the exact reviewer permissions, which were not widened;
+he explicitly does not claim to have rerun those tests.
+
+The known launcher turn-two routing issue was avoided using the official
+same-session Claude resume command with package-generated exact permissions and
+the event-authorized pending response. Claude submitted his own decision from
+the same registered session. No protected metadata, private provider state,
+identity, or reviewer Git boundary was altered.
+
+The [accepted response](../../../peer-reviews/plan/2026-09-25-2026-09-24-1787-delivery-waiver-review-4547416fdb31d53d90c8c77ea4a8ba3a/review-4547416fdb31d53d90c8c77ea4a8ba3a-reviewer-response-2.md)
+retains three optional execution notes. Carry these into the governed handoff
+without silently changing the accepted artifact: the parent needs the sanctioned
+epic/WBS topology and a pinned `Decomposition-plan` before its own Develop entry;
+future splitting must use the final accepted artifact commit and exact task
+selector; and the spec pin identifies its historical accepted bytes rather than
+the later formatting-repaired live file. The live spec was already changed by
+`47c70187` (table spacing and escaped issue references) and hashes to
+`a2a45d49f2cc5142e339c9bdf1cdfb183393be9a49a340d091beab70ec06ff1b`;
+its accepted historical digest remains `bcc6d2bf...` at `b02b4b26`.
+
+The prior manifests and the current spec are unchanged by this amendment review.
+No child issues, issue-body repair, lifecycle transition, or runtime implementation
+was performed here. The new manifest still has `authority_assurance: unavailable`:
+peer acceptance is not human Plan approval or authorization for a real waiver.
