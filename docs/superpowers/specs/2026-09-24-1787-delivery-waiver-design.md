@@ -27,7 +27,7 @@ delivery invariants: a delivery predicate refuses by default; a human can record
 a current, scoped `workflow-exception` for that named invariant; the verifier can
 then emit a truthful waived receipt instead of an ordinary pass.
 
-#1783 overlaps because it asks for the same kind of human authority and truthful
+\#1783 overlaps because it asks for the same kind of human authority and truthful
 close audit, but its proof problem is different. #1783 is a one-issue
 authorization for a no-PR local-trunk close when the accepted SHA is already
 trunk-reachable and ordinary PR/provider delivery evidence is absent. #1787 is a
@@ -107,11 +107,11 @@ Out of scope:
 
 There are three plausible ways to handle the overlap.
 
-| Option | Shape | Result |
-| --- | --- | --- |
-| A. Merge #1783 fully into #1787 | One issue implements both PR verifier waivers and local-trunk no-PR close authorization | Too broad. It couples two proof systems and risks making local-trunk closure look like a waived PR predicate. |
-| B. Keep separate issues with shared authority | #1787 builds the generic delivery-exception authority contract plus PR verifier waiver; #1783 consumes the same contract for local-trunk close | Recommended. It avoids duplicate backdoors while preserving different evidence rules. |
-| C. Generalize only #1783 first | Build one-issue local-trunk authorization, defer PR verifier waivers | Insufficient for #1784/#1785 and leaves bare delivery-verifier throws unaddressed. |
+| Option                                        | Shape                                                                                                                                          | Result                                                                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| A. Merge #1783 fully into #1787               | One issue implements both PR verifier waivers and local-trunk no-PR close authorization                                                        | Too broad. It couples two proof systems and risks making local-trunk closure look like a waived PR predicate. |
+| B. Keep separate issues with shared authority | #1787 builds the generic delivery-exception authority contract plus PR verifier waiver; #1783 consumes the same contract for local-trunk close | Recommended. It avoids duplicate backdoors while preserving different evidence rules.                         |
+| C. Generalize only #1783 first                | Build one-issue local-trunk authorization, defer PR verifier waivers                                                                           | Insufficient for #1784/#1785 and leaves bare delivery-verifier throws unaddressed.                            |
 
 The better boundary is Option B. The common module is a delivery-exception
 authority resolver, not a universal delivery override. It should answer:
@@ -168,19 +168,19 @@ surface by accident.
 Each delivery verifier predicate maps to exactly one stable requirement ID. A
 starter mapping should include:
 
-| Verifier category | Requirement ID | Notes |
-| --- | --- | --- |
-| `authority-sha`, `authority-sha-mismatch` | `delivery.verification.accepted-head` | accepted PR/Test/Review/head agreement |
-| `pull-request-not-merged`, `merge-commit-sha`, `merged-at` | `delivery.verification.pr-merged` | merged PR evidence exists and is well formed |
-| `pr-number`, `base-ref`, `expected-head-sha` | `delivery.verification.pr-scope` | PR identity, target ref, and accepted head scope |
-| `fetch-origin-trunk`, `trunk-reachability` | `delivery.verification.trunk-reachability` | merge commit is reachable from refreshed trunk |
-| `merge-method` | `delivery.verification.merge-method` | only the equality of the authorized method to an independently proven observed method |
-| `merge-method-observation`, `merge-method-evidence`, `merge-method-unknown`, `merge-method-unattributable`, new `merge-method-source-disagreement` | `delivery.verification.merge-method-evidence` | non-waivable guardrail: valid, known topology and agreement between available provider metadata and Git evidence |
-| `merge-before-intent`, `intent-created-at`, `input`, `input-keys` | `delivery.verification.intent-integrity` | authorized intent shape and temporal order |
-| `merge-commit-bytes`, `attribution` | `delivery.verification.commit-attribution` | final merge bytes and attribution proof |
-| `branch-disposition` | `delivery.verification.branch-disposition` | post-delivery branch deletion/readback |
-| `waived-evidence`, `waived-inventory`, `waived-authority` | `delivery.verification.attribution-waiver-authority` | #1755 attribution-waiver self-checks; this ID is never itself waivable |
-| new `delivery-waiver-authority`, `delivery-waiver-replay`, `delivery-waiver-burn-mismatch`, `delivery-waiver-ambiguity` | `delivery.verification.waiver-authority` | mandatory non-waivable guardrail for generic waiver validity, scope, chain, replay, and consumption checks |
+| Verifier category                                                                                                                                  | Requirement ID                                       | Notes                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `authority-sha`, `authority-sha-mismatch`                                                                                                          | `delivery.verification.accepted-head`                | accepted PR/Test/Review/head agreement                                                                           |
+| `pull-request-not-merged`, `merge-commit-sha`, `merged-at`                                                                                         | `delivery.verification.pr-merged`                    | merged PR evidence exists and is well formed                                                                     |
+| `pr-number`, `base-ref`, `expected-head-sha`                                                                                                       | `delivery.verification.pr-scope`                     | PR identity, target ref, and accepted head scope                                                                 |
+| `fetch-origin-trunk`, `trunk-reachability`                                                                                                         | `delivery.verification.trunk-reachability`           | merge commit is reachable from refreshed trunk                                                                   |
+| `merge-method`                                                                                                                                     | `delivery.verification.merge-method`                 | only the equality of the authorized method to an independently proven observed method                            |
+| `merge-method-observation`, `merge-method-evidence`, `merge-method-unknown`, `merge-method-unattributable`, new `merge-method-source-disagreement` | `delivery.verification.merge-method-evidence`        | non-waivable guardrail: valid, known topology and agreement between available provider metadata and Git evidence |
+| `merge-before-intent`, `intent-created-at`, `input`, `input-keys`                                                                                  | `delivery.verification.intent-integrity`             | authorized intent shape and temporal order                                                                       |
+| `merge-commit-bytes`, `attribution`                                                                                                                | `delivery.verification.commit-attribution`           | final merge bytes and attribution proof                                                                          |
+| `branch-disposition`                                                                                                                               | `delivery.verification.branch-disposition`           | post-delivery branch deletion/readback                                                                           |
+| `waived-evidence`, `waived-inventory`, `waived-authority`                                                                                          | `delivery.verification.attribution-waiver-authority` | #1755 attribution-waiver self-checks; this ID is never itself waivable                                           |
+| new `delivery-waiver-authority`, `delivery-waiver-replay`, `delivery-waiver-burn-mismatch`, `delivery-waiver-ambiguity`                            | `delivery.verification.waiver-authority`             | mandatory non-waivable guardrail for generic waiver validity, scope, chain, replay, and consumption checks       |
 
 The `delivery.verification.*` prefix identifies verifier requirements, not a
 waivability rule. Per-ID catalog capabilities distinguish disclosure-only
@@ -236,7 +236,7 @@ GitHub-native comment chain. Version 1 remains readable for existing
 non-delivery workflow exceptions, but it must not be used for delivery waivers:
 its payload key set is closed and its `scopeIdentity` is derived only from the
 issue body. The shared delivery-exception authority contract is used by both
-#1787 and #1783. A valid delivery exception has all ordinary workflow-exception
+\#1787 and #1783. A valid delivery exception has all ordinary workflow-exception
 protections plus delivery-specific scope:
 
 - repository and issue number;
@@ -320,7 +320,7 @@ local-trunk authority cannot validate as a PR invariant waiver.
 
 ### Record Family and Chain Boundaries
 
-#1755 already provides `aitm.delivery-attribution-exception/v1` in
+\#1755 already provides `aitm.delivery-attribution-exception/v1` in
 `delivery-attribution-exception-record.mjs`: exact PR scope, a proposal digest,
 ULID operation identity, bounded expiry, grant/revision/revocation chains, and
 host-verified authority. Its `verifyWaivedEvidence` consumer is also the precedent
@@ -665,7 +665,7 @@ render its typed waived/blocked/indeterminate results.
 
 ## Local-Trunk Consumer Sketch
 
-#1783 should consume the shared authority contract through a local-trunk-specific
+\#1783 should consume the shared authority contract through a local-trunk-specific
 resolver. It should be eligible only when all of the following are true:
 
 - the issue is in the correct terminal pre-close state with exact Test, Review,
