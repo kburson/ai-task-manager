@@ -22,7 +22,8 @@ use the same user token.
 
 ## Goals
 
-1. Attribute the primary GraphQL point cost of each AITM-owned GraphQL request
+1. Measure operation volume as the baseline prioritization signal, keeping HTTP
+   attempts and opaque invocations separate. Attribute primary GraphQL point cost
    where GitHub exposes an exact same-response cost, and explicitly account for
    unknown costs elsewhere. Attribute observations to operation, time, worktree,
    session or process, and issue state where known without additional API calls.
@@ -85,6 +86,26 @@ records/diagnostics and introduces no new payload persistence. Verify usage-only
 action-only, both-enabled, and both-disabled modes. Existing action-capture
 regression checks must pass.
 
+The usage bootstrap propagates an explicit measurement session context into every
+child shim and HTTP adapter. When the caller has a trustworthy AITM/provider
+session ID, normalize/hash it into a non-secret `sessionId` and record
+`sessionSource: runtime`. Otherwise the measurement launcher allocates a random
+measurement-session ID once for its child process tree, labeled
+`sessionSource: measurement-launcher`; it is not represented as an agent session.
+Pass that ID, source, worktree ID, enrollment ID, and collection launch route in
+usage-specific environment fields. Do not use the per-invocation
+`AITM_CAPTURE_INVOCATION_ID` as a session ID. Nested bootstraps in the same enrolled
+process tree preserve the context; separate sessions in one worktree have distinct
+IDs. A missing or invalid inherited context yields explicit unknown session
+attribution and a diagnostic, never a fabricated runtime session.
+
+The participant manifest records these same session and enrollment IDs and their
+source before the process tree starts. Reports join observations to those rows;
+unknown or unmatched IDs are unaccounted participants and cannot satisfy session
+coverage. Sessions which cannot create common-root records are still entered by
+the operator in the manifest. The manifest is local evidence supplied to the
+report, not another telemetry staging root.
+
 The shared shim covers shell and synchronous callers as opaque invocations when
 installed in their inherited PATH. Wire the repository usage bootstrap into all
 inventoried AITM launch routes, including `bin/aitm.mjs`, `bin/cli.mjs` launching
@@ -118,8 +139,9 @@ log a second usage record. Internal CLI retries remain opaque.
 
 ## Collection design
 
-The implementation introduces a shared observation interface with adapters for
-existing transport boundaries. Distinguish a directly observed HTTP attempt from
+The shared `gh` shim is the primary observation boundary. Known Node builders
+supply safe cost augmentation; direct HTTP adapters cover the minority of calls
+that bypass the CLI. All emit through the shared metadata observation interface. Distinguish a directly observed HTTP attempt from
 one CLI invocation whose internal attempts or pagination cannot be seen. An
 opaque invocation is never counted as one HTTP request. Each visible retry or
 page gets a separate observation; retries share a logical operation ID and
@@ -203,7 +225,11 @@ Each line is one versioned JSON object with at least:
 Additional required fields are `observationKind` (HTTP attempt or opaque CLI
 invocation), `dispatchStatus` (sent, not sent, unknown), nullable `pageIndex`,
 `contextScope` (single issue, multiple issues, repository, unknown), and the
-collector/augmentation version. `kind` also permits `mixed` and `unknown` for
+collector/augmentation version, `sessionSource`, `enrollmentId`, and
+`collectorLaunchRoute` (AITM CLI, legacy CLI shell route, measurement launcher,
+inherited environment, or unknown). Inherited routes retain their originating
+route as well. Route metadata corroborates observed coverage; it cannot prove
+that bypassing calls did not occur. `kind` also permits `mixed` and `unknown` for
 opaque invocations; `httpStatus` is null when unavailable, never the CLI exit
 code (record that separately as `processExitCode`). Include the endpoint host and a locally supplied
 non-secret `budgetScopeId` when known; never derive it from a token. Unknown
@@ -236,13 +262,40 @@ silently stage usage records in another root. An operator arranges authorized
 access to this exact subtree for participating sessions; if that is unavailable,
 restrict the run to permitted sessions and disclose the selection bias.
 
+The launcher/bootstrap performs enrollment once per measurement session and
+runtime permission context. Cache the successful probe in the inherited usage
+environment as an enrollment ID, normalized common-root identity, collector
+version, and probe timestamp. This cache is process-tree-local, contains no
+credentials, and is not persisted in the shared root; a failed root therefore
+cannot prevent reading the enrollment result. It is valid for at most 60 minutes
+and only for the same root, session, collector version, and permission context.
+Launching a new sandbox/permission context requires fresh enrollment even if its
+environment was inherited. A missing, malformed, or expired cache triggers a new
+probe at bootstrap before dispatch; record the new enrollment outcome and refresh
+inherited context. Already running shims may perform one fresh probe when their
+inherited entry has expired; they do not persist a shared renewal cache, so
+long-lived launchers should renew context before launching more children.
+
+Every actual append still handles failure even with a valid cached probe. Mark
+that observation's enrollment stale/unavailable locally, emit the bounded fallback
+diagnostic, and invalidate any context retained by the launcher before its next
+child; separate already-running children discover failure on their own writes.
+Do not claim global invalidation or uninterrupted availability from a cached
+success. Operators update manifest outcomes from enrollment/write diagnostics;
+missing updates remain unknown coverage. Failed enrollment is not cached as a
+success and never blocks the original GitHub operation.
+
 Resolve Git from the consuming project/worktree context, never from the installed
 AITM package directory or the current directory of an unrelated subprocess.
 Propagate that context through child commands. Resolve the absolute path with `git rev-parse --path-format=absolute
 --git-common-dir`; do not assume `<cwd>/.git` is a directory. Store files under
 `<git-common-dir>/aitm/graphql-usage/v1/<worktree-id>/<session-id-or-unknown>/`.
 Each process incarnation uses a random unique writer ID in its append-only
-JSONL filename, so PID reuse cannot collide. Serialize writes within that
+JSONL filename, so PID reuse cannot collide. Keep this model for short-lived
+shims too: one invocation may produce one small file. Concurrent processes must
+not append to a shared session/worktree file; avoiding that lock/corruption risk
+is intentional. The spike accepts the file-count overhead, measures it, and does
+not add compaction or a collector daemon. Serialize writes within that
 process, including overlapping async calls. This avoids
 a cross-worktree append lock and permits a reader to aggregate complete lines
 from many active writers. IDs used in paths are normalized or hashed, never
@@ -254,10 +307,12 @@ collection is unavailable with a diagnostic, never a fallback into a package's
 repository. Flush completed observations before normal command exit. Abrupt
 termination can lose buffered or in-flight observations; report that limitation
 and do not promise crash-proof exactly-once delivery. Keep data until explicit
-local cleanup after export; report bytes used and storage failures. Cleanup must
+local cleanup after export; report bytes used, file count, and storage failures. Cleanup must
 exclude active writers and disclose removed observation intervals. Check and
-report total retained bytes during baseline preflight and periodically during the
-run; configure and disclose a soft-cap warning for that run. Do not silently
+report total retained bytes and file count during baseline preflight and
+periodically during the run; configure and disclose soft-cap warnings for both
+measures. Report aggregation file-open count and elapsed read time so inode/open
+cost remains visible even when total bytes are small. Do not silently
 truncate records or delete historical data to meet it. Any operator-directed
 collection pause or cleanup is a disclosed coverage gap.
 
@@ -316,6 +371,35 @@ runs with the same collector, coverage, workload/stage mix, interval definitions
 and relevant configuration, normalizing by completed comparable workflows and
 showing raw totals, sample sizes, and remaining confounders.
 
+### Decision sufficiency and fallback
+
+Before the long baseline, use the inventory and a short smoke collection to name
+the candidate operations and expected coverage. Declare which comparable signal
+will prioritize each candidate group: HTTP-attempt volume, opaque-invocation
+volume, or exact point cost. Never combine HTTP and opaque counts into a claimed
+HTTP-call total. The default is volume within a common observation kind; exact
+known-point contributions are supplemental evidence until this stricter gate holds.
+
+Total-point ranking requires **100% complete cost coverage for every operation
+in the declared candidate group** during the comparison interval: every included
+observation has a known cost with `costCoverage: complete-observation`, and no
+relevant opaque hidden attempts, uncovered paths, or enrollment/collection gaps
+remain. State the denominator as observed candidate-group observations, with
+unobserved coverage limitations separately; 100% of recorded rows alone is not
+sufficient. Do not remove poorly measured candidates after the run to claim the
+original group's gate passed. Point rankings for a smaller predeclared group must
+be labeled as applying only to that group, never the entire epic.
+
+Below that gate, mark total-point prioritization **insufficient**. Use the
+predeclared comparable volume signal, with uncertainty and known-point lower
+bounds shown; if volume coverage or comparability is also inadequate, the baseline
+is preliminary and cannot rank that candidate group. Document targeted augmentation
+or launch-coverage work needed for a follow-up run; do not silently expand spike
+implementation scope or manufacture estimated costs. A completed volume-based
+baseline can inform epic planning, but its outcome must explicitly say that point
+ranking was not achieved. This is a valid spike finding, not evidence of point
+savings.
+
 ## Acceptance criteria
 
 1. A read-only call-site inventory lists all AITM-owned production GraphQL
@@ -328,14 +412,19 @@ showing raw totals, sample sizes, and remaining confounders.
    or explicitly opaque invocation, with GitHub-reported primary point cost or
    an explicit unknown reason; mutations remain valid, and failures, pagination,
    retries, and ambiguous dispatch are represented without double counting.
-3. In healthy-storage, normal-exit concurrency tests, two worktrees emit into
+3. In healthy-storage, normal-exit concurrency tests, with health established
+   by the same runtime-context enrollment probe as AC9, two worktrees emit into
    the same Git common directory without interleaved or lost completed records,
-   while each retains independent session attribution. Crash and storage-failure
+   while each retains independent session attribution. Exercise the shim through
+   both shell and synchronous callers, including two sessions in one worktree;
+   validate inherited session IDs against the participant manifest. Crash and storage-failure
    cases report the separate best-effort durability limits.
 4. Recording and aggregation make no extra GitHub calls, preserve the existing
    GraphQL result and error behavior, and never persist secrets or issue bodies.
 5. A local report and graph identify peak hourly usage and the highest-volume
-   and highest-point operations, with coverage and missing-cost counts visible.
+   and known-point contributing operations, with coverage and missing-cost counts
+   visible. Total-point rankings require the declared 100% complete-coverage gate;
+   otherwise state insufficiency and the volume fallback or preliminary outcome.
 6. The baseline report includes a real creation-to-planning workflow and
    concurrent worktree interval with coverage limits, or explicitly states that
    measurement remains pending/preliminary. The spike's evidence deliverable is
