@@ -59,7 +59,7 @@
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
-        "sha256": "sha256:83c31f3057f5f34e7c68795baf71322abae9802254de7c732b9201e98b1e64e8"
+        "sha256": "sha256:23ac902208278b055151a40c9bc1fccdffcaf5c4f9f48092ae875dc1c98caa03"
       },
       {
         "path": "instructions/aitm-guidance.yml",
@@ -73,7 +73,7 @@
     "fakeGhSha256": "sha256:af6eaba27890494427257028110ae57508b018c549c797f59008045c3fb9d2a9",
     "fixedClockSha256": "sha256:fce21e3d55321b7163b369b88ba40e26c93984bda024d7ff5f84dc6e8a87705a",
     "transcriptSha256": "sha256:23a632b5d2dd806c649dd33f2991b3d67e3fb5c266d410af649f751c1b9cb725",
-    "sourceInputsSha256": "sha256:1c0fd054ef885334fffdbc4495a9c08391d1cc761756f76a0a946fd2882ed6f4"
+    "sourceInputsSha256": "sha256:2d990f6080c514338fcdb274abf140f5f69039b44dbf536fec895809dbfd32b7"
   },
   "events": [
     {
