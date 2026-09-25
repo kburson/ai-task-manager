@@ -99,8 +99,12 @@ process tree preserve the context; separate sessions in one worktree have distin
 IDs. A missing or invalid inherited context yields explicit unknown session
 attribution and a diagnostic, never a fabricated runtime session.
 
-The participant manifest records these same session and enrollment IDs and their
-source before the process tree starts. Reports join observations to those rows;
+The participant manifest records these same session and enrollment IDs, their
+source, and `commonRootId` before the process tree starts. Derive the non-secret
+root ID consistently from the canonical absolute Git common-directory path on
+this machine (normalize/resolve symlinks, then hash); a changed root requires
+fresh enrollment. The identifier distinguishes separate clones, even when they
+use the same remote repository and account. Reports join observations to those rows;
 unknown or unmatched IDs are unaccounted participants and cannot satisfy session
 coverage. Sessions which cannot create common-root records are still entered by
 the operator in the manifest. The manifest is local evidence supplied to the
@@ -132,7 +136,7 @@ first implementation supports known Node request builders with compatibility
 fixtures; the shim alone does not rewrite arbitrary shell query text or buffered
 stdout. Other shim calls retain explicit unavailable cost until safe augmentation
 is demonstrated. A builder can pass a private observation context to the shim so
-it owns the single usage record and extracts any already-added cost field;
+the shim owns the single usage record and extracts any already-added cost field;
 only the builder strips its private response alias before returning business
 data. The shim preserves original child stdout, and neither caller nor shim may
 log a second usage record. Internal CLI retries remain opaque.
@@ -226,7 +230,7 @@ Additional required fields are `observationKind` (HTTP attempt or opaque CLI
 invocation), `dispatchStatus` (sent, not sent, unknown), nullable `pageIndex`,
 `contextScope` (single issue, multiple issues, repository, unknown), and the
 collector/augmentation version, `sessionSource`, `enrollmentId`, and
-`collectorLaunchRoute` (AITM CLI, legacy CLI shell route, measurement launcher,
+`commonRootId`, and `collectorLaunchRoute` (AITM CLI, legacy CLI shell route, measurement launcher,
 inherited environment, or unknown). Inherited routes retain their originating
 route as well. Route metadata corroborates observed coverage; it cannot prove
 that bypassing calls did not occur. `kind` also permits `mixed` and `unknown` for
@@ -288,7 +292,12 @@ success and never blocks the original GitHub operation.
 Resolve Git from the consuming project/worktree context, never from the installed
 AITM package directory or the current directory of an unrelated subprocess.
 Propagate that context through child commands. Resolve the absolute path with `git rev-parse --path-format=absolute
---git-common-dir`; do not assume `<cwd>/.git` is a directory. Store files under
+--git-common-dir`; do not assume `<cwd>/.git` is a directory. If `--path-format`
+is unsupported, use plain `git rev-parse --git-common-dir` from the consuming
+worktree and resolve a relative result against that exact command cwd. Validate
+that the result is an existing Git common directory before probing; invalid or
+unsupported resolution gets `git-common-root-resolution-unavailable`, distinct
+from permission/storage failures. Store files under
 `<git-common-dir>/aitm/graphql-usage/v1/<worktree-id>/<session-id-or-unknown>/`.
 Each process incarnation uses a random unique writer ID in its append-only
 JSONL filename, so PID reuse cannot collide. Keep this model for short-lived
@@ -318,7 +327,15 @@ collection pause or cleanup is a disclosed coverage gap.
 
 ## Reporting and baseline
 
-An offline command reads the JSONL files without GitHub API calls. It reports:
+An offline command reads the JSONL files without GitHub API calls. It declares
+one canonical common root and its `commonRootId` as the aggregation boundary.
+Manifest rows with a different root ID are `out-of-root` participants, distinct
+from missing/unknown enrollment. Exclude foreign-root observations from totals
+and report them as a root mismatch if supplied accidentally. Do not search other
+clones automatically or treat repository/remote equality as root equality.
+Out-of-root participants count toward excluded-population disclosure and prevent
+claims of fleet-wide completeness; separate clones require separately labeled
+reports or a future explicitly scoped aggregation extension. It reports:
 
 - observed HTTP attempts and opaque invocation counts separately, and exact points by hour (UTC and selectable local time), worktree,
   session, issue, lifecycle state, and operation;
@@ -359,7 +376,8 @@ its enrollment result, including denied or unreachable participants whose writer
 cannot report centrally. Unknown enrollment outcomes remain unknown. Report
 counts for each denial class, and label observed fleet size and concurrency as
 lower bounds if any participant is denied, missing, or has unknown coverage.
-The minimum concurrency sample is two enrolled, permitted worktrees with active
+The minimum concurrency sample is two enrolled, permitted worktrees sharing the
+report's `commonRootId`, with active
 collectors over a declared overlapping 60-minute observation window and observed
 AITM traffic from both. Report actual traffic/activity durations; a 60-minute
 collector window does not imply continuous request load. If only unsandboxed
@@ -379,6 +397,10 @@ will prioritize each candidate group: HTTP-attempt volume, opaque-invocation
 volume, or exact point cost. Never combine HTTP and opaque counts into a claimed
 HTTP-call total. The default is volume within a common observation kind; exact
 known-point contributions are supplemental evidence until this stricter gate holds.
+
+With the current mutation-cost-unavailable policy, any candidate group containing
+mutations cannot pass the total-point gate. Declare volume for such groups before
+collection; only a demonstrated exact mutation source could change that result.
 
 Total-point ranking requires **100% complete cost coverage for every operation
 in the declared candidate group** during the comparison interval: every included
@@ -429,7 +451,10 @@ savings.
    concurrent worktree interval with coverage limits, or explicitly states that
    measurement remains pending/preliminary. The spike's evidence deliverable is
    not complete until that baseline exists. Its comparison procedure supports
-   measured call and point reductions with matched coverage and workload.
+   measured volume reductions with stated coverage limits and matched workload.
+   Measured point reductions require the complete-coverage gate for the compared
+   group in both intervals, with matched coverage and workload; otherwise no
+   point-savings claim is supported.
 7. Disabled logging, no Git context, disk/write failures, malformed records,
    duplicate records, and mixed collector versions are visible as coverage
    limitations while original command results remain intact. Record writer
