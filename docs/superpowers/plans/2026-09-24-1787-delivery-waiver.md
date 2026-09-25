@@ -12,7 +12,14 @@
 
 **Acceptance:** [Review manifest](../../peer-reviews/spec/2026-09-25-2026-09-24-1787-delivery-waiver-design-review-341532c92eac97134dfede8a4f29fba6/review-341532c92eac97134dfede8a4f29fba6-review-manifest.md), Astra 6 author / Opus 5 reviewer, reviewer consensus accepted; finalization commit `3358b074`. This is peer acceptance, with no signed human-authority attestation.
 
-**Plan status:** Draft for Astra 6 / Opus 5 plan review. Creating this document does not approve implementation, alter issue state, or activate a delivery waiver.
+**Plan status:** The prior revision was accepted by Astra 6 / Opus 5 peer review. This Story Intent amendment requires its own review before Plan approval. Peer acceptance does not approve implementation or activate a delivery waiver.
+
+## Story Intent
+
+- **Beneficiary:** Release operator responsible for closing a delivered issue.
+- **Capability:** Authorize one named PR-delivery verifier divergence through a scoped, host-verified human decision and receive a visibly waived delivery receipt.
+- **Need:** A benign, understood difference between an authorized PR intent and independently observed merge evidence can otherwise strand the issue after the code has reached trunk.
+- **Value or failure prevented:** The operator can complete an auditable delivery without adding a one-off reconciliation branch or representing the waived invariant as an ordinary pass.
 
 ## Global Constraints
 
