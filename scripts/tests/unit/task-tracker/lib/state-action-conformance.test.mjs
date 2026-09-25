@@ -10,10 +10,13 @@ import {
   createGenesisHead,
 } from '../../../../task-tracker/lib/resident-action-ledger-write.mjs';
 import { createResidentActionRunner } from '../../../../task-tracker/lib/resident-action-runner.mjs';
+import { createVerificationReceipt } from '../../../../task-tracker/lib/verification-receipt.mjs';
 import { STATE_MACHINE } from '../../../../task-tracker/states/index.mjs';
 
 const ISSUE = 1459;
 const CWD = '/worktree';
+const HEAD = 'a'.repeat(40);
+const INSTANT = '2026-09-01T12:00:00.000Z';
 const ENTRY = [
   '<!-- aitm-entered-review ts="2026-08-31T12:00:00.000Z" -->',
   '- [ ] Agent Review Passed',
@@ -25,21 +28,55 @@ function registeredActions() {
   );
 }
 
+function verificationFingerprint(commitSha) {
+  return {
+    commitSha,
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: `sha256:${'a'.repeat(64)}`,
+      configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
+      sandbox: { kind: 'worktree', identity: CWD, clean: true },
+    },
+  };
+}
+
+function verificationCommand(classification, args, kind) {
+  return {
+    classification,
+    providerId: 'node',
+    kind,
+    command: 'npm',
+    args,
+    exitCode: 0,
+    durationMs: 1,
+    startedAt: INSTANT,
+    completedAt: INSTANT,
+  };
+}
+
+function developReceipt(snapshot) {
+  return createVerificationReceipt({
+    issueNumber: ISSUE,
+    stage: 'develop-final',
+    fingerprint: verificationFingerprint(snapshot.headSha?.value ?? snapshot.headSha),
+    provider: {
+      id: 'node',
+      requiredClassifications: ['lint-full', 'format-full'],
+    },
+    commands: [
+      verificationCommand('lint-full', ['run', 'lint'], 'lint'),
+      verificationCommand('format-full', ['run', 'format:check'], 'format'),
+    ],
+    now: () => INSTANT,
+  });
+}
+
 function actionCapabilities(repository, { pass = true } = {}) {
   return {
     develop: {
       readReceipt: async ({ snapshot }) =>
-        repository.providerEffectCount > 0
-          ? {
-              receiptId: 'develop-receipt',
-              stage: 'develop-final',
-              commitSha: snapshot.headSha?.value ?? snapshot.headSha,
-              commands: [
-                { classification: 'lint-full', exitCode: 0 },
-                { classification: 'format-full', exitCode: 0 },
-              ],
-            }
-          : null,
+        repository.providerEffectCount > 0 ? developReceipt(snapshot) : null,
       finalize: async () => ({
         ok: true,
         receipt: { receiptId: 'develop-receipt', stage: 'develop-final' },
@@ -99,6 +136,7 @@ for (const { state, action } of registeredActions()) {
       stateVisitId: `${state}:1`,
       actionId: action.id,
       body: ENTRY,
+      gitSnapshot: { headSha: HEAD },
     });
     const initial = await snapshot(repository, action.id);
     const before = repository.mutationSnapshot();
@@ -116,6 +154,7 @@ for (const { state, action } of registeredActions()) {
       stateVisitId: `${state}:1`,
       actionId: action.id,
       body: ENTRY,
+      gitSnapshot: { headSha: HEAD },
     });
     const runner = createResidentActionRunner({
       repository,
@@ -126,7 +165,10 @@ for (const { state, action } of registeredActions()) {
       writeAuthorized: true,
     });
     const freshRunner = createResidentActionRunner({
-      repository: repository.freshAdapter(),
+      repository: new InMemoryRepositoryAdapter({
+        sharedStore: repository.store,
+        gitSnapshot: { headSha: HEAD },
+      }),
       actionContext: actionCapabilities(repository),
     });
     const second = await freshRunner.resume([action], await snapshot(repository, action.id), {

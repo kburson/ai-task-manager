@@ -98,6 +98,21 @@ describe('verification provider registry', () => {
     assert.ok(testPlan.steps.every(Object.isFrozen));
   });
 
+  test('normalizes allowlisted project Test npm-ci args', () => {
+    const provider = resolveVerificationProvider({
+      projectDir,
+      config: projectConfig({
+        test: { ...projectConfig().test, npmCiArgs: ['--legacy-peer-deps'] },
+      }),
+      deps: { validateCommand: accept },
+    });
+
+    const testPlan = provider.planTest({ declaredCommands: [] });
+    assert.equal(testPlan.setup, 'npm-ci');
+    assert.deepEqual(testPlan.setupArgs, ['--legacy-peer-deps']);
+    assert.ok(Object.isFrozen(testPlan.setupArgs));
+  });
+
   test('appends non-duplicate issue commands as deterministic targeted Test steps', () => {
     const provider = resolveVerificationProvider({
       projectDir,
@@ -168,6 +183,21 @@ describe('verification provider registry', () => {
       'unsupported setup',
       projectConfig({ test: { ...projectConfig().test, setup: 'xcode-install' } }),
       /test.setup must equal npm-ci/,
+    ],
+    [
+      'unsupported npm-ci arg',
+      projectConfig({ test: { ...projectConfig().test, npmCiArgs: ['--script-shell=/bin/sh'] } }),
+      /test.npmCiArgs contains unsupported arg: --script-shell=\/bin\/sh/,
+    ],
+    [
+      'duplicate npm-ci arg',
+      projectConfig({
+        test: {
+          ...projectConfig().test,
+          npmCiArgs: ['--legacy-peer-deps', '--legacy-peer-deps'],
+        },
+      }),
+      /duplicate test.npmCiArgs entry: --legacy-peer-deps/,
     ],
   ];
 

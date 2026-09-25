@@ -34,6 +34,7 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
+const DEVELOP_RECEIPT_REQUIRED = Object.freeze(['lint-full', 'format-full']);
 // Lint and format always run. Only the complete Test lanes may be removed by
 // a valid docs-only lane-skip decision.
 const DROPPABLE_LANE_CLASSIFICATIONS = Object.freeze(
@@ -249,6 +250,14 @@ export function createVerificationReceipt({
       requiredClassifications: [
         ...new Set((provider?.requiredClassifications || []).map((value) => String(value))),
       ],
+      ...(provider?.setup
+        ? {
+            setup: {
+              name: String(provider.setup.name || ''),
+              args: Object.freeze([...(provider.setup.args || []).map((value) => String(value))]),
+            },
+          }
+        : {}),
     };
   }
   return receipt;
@@ -298,7 +307,9 @@ function malformedReceipt(receipt) {
       !provider ||
       typeof provider !== 'object' ||
       Array.isArray(provider) ||
-      Object.keys(provider).some((key) => !['id', 'requiredClassifications'].includes(key)) ||
+      Object.keys(provider).some(
+        (key) => !['id', 'requiredClassifications', 'setup'].includes(key)
+      ) ||
       !['node', 'project'].includes(provider.id) ||
       !Array.isArray(provider.requiredClassifications) ||
       provider.requiredClassifications.length === 0 ||
@@ -308,6 +319,19 @@ function malformedReceipt(receipt) {
       new Set(provider.requiredClassifications).size !== provider.requiredClassifications.length
     ) {
       return true;
+    }
+    if (provider.setup !== undefined) {
+      if (
+        !provider.setup ||
+        typeof provider.setup !== 'object' ||
+        Array.isArray(provider.setup) ||
+        Object.keys(provider.setup).some((key) => !['name', 'args'].includes(key)) ||
+        provider.setup.name !== 'npm-ci' ||
+        !Array.isArray(provider.setup.args) ||
+        provider.setup.args.some((arg) => typeof arg !== 'string' || arg.length === 0)
+      ) {
+        return true;
+      }
     }
   }
   const environment = receipt.environment;
@@ -460,6 +484,19 @@ export function requiredTestReceiptClassifications(receipt) {
     )
   );
   return TEST_RECEIPT_REQUIRED.filter((classification) => !dropped.has(classification));
+}
+
+export function requiredDevelopReceiptClassifications(receipt) {
+  const providerRequired = receipt?.provider?.requiredClassifications;
+  if (
+    receipt?.provider?.id === 'project' &&
+    Array.isArray(providerRequired) &&
+    providerRequired.length > 0 &&
+    providerRequired.every((classification) => typeof classification === 'string' && classification)
+  ) {
+    return [...providerRequired];
+  }
+  return [...DEVELOP_RECEIPT_REQUIRED];
 }
 
 export function hasEarnedDocsOnlyLaneSkip(receipt) {

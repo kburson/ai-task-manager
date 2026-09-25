@@ -4,8 +4,10 @@ import { test } from 'node:test';
 
 import {
   canonicalVerificationCommandSet,
+  createVerificationReceipt,
   parseVerificationReceipt,
 } from '../../../../task-tracker/lib/verification-receipt.mjs';
+import { developExitReceiptGuard } from '../../../../task-tracker/lib/develop-exit-receipt-guard.mjs';
 import { runDevelopVerification } from '../../../../task-tracker/verify-develop.mjs';
 import { runVerbTest } from '../../../../task-tracker/verbs/test.mjs';
 
@@ -120,6 +122,7 @@ test('project provider owns Develop and Test plans with typed exact-SHA evidence
   assert.deepEqual(receipt.provider, {
     id: 'project',
     requiredClassifications: ['xcode-build', 'simulator-ready', 'xcode-tests'],
+    setup: { name: 'npm-ci', args: [] },
   });
   assert.deepEqual(
     receipt.commands.map(({ classification, kind }) => [classification, kind]),
@@ -130,4 +133,81 @@ test('project provider owns Develop and Test plans with typed exact-SHA evidence
       ['test-targeted-1', 'test'],
     ]
   );
+});
+
+test('Develop-to-Test guard accepts project-provider Develop-final classifications', async () => {
+  const receipt = createVerificationReceipt({
+    issueNumber: 1779,
+    stage: 'develop-final',
+    fingerprint: fingerprint('/outer'),
+    provider: {
+      id: 'project',
+      requiredClassifications: ['xcode-build'],
+    },
+    commands: [
+      {
+        classification: 'xcode-build',
+        providerId: 'project',
+        kind: 'build',
+        command: 'npm',
+        args: ['run', 'lint'],
+        exitCode: 0,
+        durationMs: 1,
+        startedAt: INSTANT,
+        completedAt: INSTANT,
+      },
+    ],
+    now: () => INSTANT,
+  });
+
+  const result = await developExitReceiptGuard.run({
+    issueNumber: 1779,
+    toState: 'test',
+    body: '## Verification Commands\n- [ ] `npm run test:unit`\n',
+    headSha: SHA,
+    deps: {
+      readDevelopReceipt: async () => receipt,
+    },
+  });
+
+  assert.deepEqual(result, { ok: true });
+});
+
+test('Develop-to-Test guard does not let Node receipts override lint and format requirements', async () => {
+  const receipt = createVerificationReceipt({
+    issueNumber: 1779,
+    stage: 'develop-final',
+    fingerprint: fingerprint('/outer'),
+    provider: {
+      id: 'node',
+      requiredClassifications: ['xcode-build'],
+    },
+    commands: [
+      {
+        classification: 'xcode-build',
+        providerId: 'node',
+        kind: 'build',
+        command: 'npm',
+        args: ['run', 'lint'],
+        exitCode: 0,
+        durationMs: 1,
+        startedAt: INSTANT,
+        completedAt: INSTANT,
+      },
+    ],
+    now: () => INSTANT,
+  });
+
+  const result = await developExitReceiptGuard.run({
+    issueNumber: 1779,
+    toState: 'test',
+    body: '## Verification Commands\n- [ ] `npm run test:unit`\n',
+    headSha: SHA,
+    deps: {
+      readDevelopReceipt: async () => receipt,
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /develop-to-test-receipt-missing/);
 });
