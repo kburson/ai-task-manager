@@ -1,4 +1,5 @@
-// @story #1787 #1799
+// @story #1787 #1799 #1813
+// cspell:ignore ACNTK CVXXBEB
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
@@ -20,8 +21,8 @@ import { reusedBranchDeliveryBody } from '../../helpers/reused-branch-delivery-h
 import { formatCloseDeliveryDisclosure } from '../../../task-tracker/verbs/close.mjs';
 
 const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
-const issueNumber = 1784;
-const prNumber = 1785;
+const issueNumber = 9184;
+const prNumber = 9185;
 const operationId = '01M2H000000000000000000001';
 const body = [
   '## User Story',
@@ -39,11 +40,11 @@ function fixture() {
     issueNumber,
     prNumber,
     issueBody: body,
-    branch: 'feature/child/1784',
-    commitSubjects: ['[#1784] Deliver governed story'],
+    branch: 'feature/child/9184',
+    commitSubjects: ['[#9184] Deliver governed story'],
     historyMergeMethod: 'merge',
     prMergeMethod: 'merge',
-    sessionId: 'session-1784',
+    sessionId: 'session-9184',
     now: '2026-08-22T14:02:00.000Z',
     waiverServerTimes: { intent: '2026-08-22T14:02:01.000Z', receipt: '2026-08-22T14:02:02.000Z' },
   });
@@ -51,7 +52,7 @@ function fixture() {
   const input = () => ({
     issueNumber,
     cfg: cfg(),
-    state: { active: '#1784', entryStartTs: '2026-08-22T13:00:00.000Z' },
+    state: { active: '#9184', entryStartTs: '2026-08-22T13:00:00.000Z' },
     deps: harness.deps,
   });
   return { harness, journal, input };
@@ -68,7 +69,7 @@ function addGrant(
   f,
   {
     selectedOperationId = operationId,
-    exceptionId = 'delivery-1784',
+    exceptionId = 'delivery-9184',
     recordId = '01M2H000000000000000000004',
     grantId = '01M2H000000000000000000005',
   } = {}
@@ -175,7 +176,7 @@ test('exact grant produces one v3 intent, immutable burn, one v4 receipt, and id
   assert.equal(f.harness.calls.terminalBoard, 0);
 });
 
-test('#1784/#1785 reaches the close receipt gate with merge method visibly waived', async () => {
+test('synthetic historical waiver reaches the close receipt gate with method visibly waived', async () => {
   const f = fixture();
   await prepare(f);
   const grant = addGrant(f);
@@ -377,7 +378,7 @@ test('fresh approval after pre-reservation issue re-scoping selects the revised 
         schema: 'aitm.workflow-exception/v2',
         repository: cfg().repo,
         issue: issueNumber,
-        exceptionId: 'delivery-1784',
+        exceptionId: 'delivery-9184',
         revision: 2,
         status: 'active',
         scopeIdentity: computeScopeIdentity({
@@ -404,7 +405,7 @@ test('fresh approval after pre-reservation issue re-scoping selects the revised 
         waiverScopeDigest: prior.payload.waiverScopeDigest,
       });
       f.harness.data.comments.push({
-        id: 'revised-grant-1784',
+        id: 'revised-grant-9184',
         body: renderAitmRecord({ envelope: revised }),
         createdAt: revised.createdAt,
         updatedAt: revised.createdAt,
@@ -512,7 +513,7 @@ test('revocation recorded after the burn leaves the historical receipt verifiabl
     schema: 'aitm.workflow-exception/v2',
     repository: cfg().repo,
     issue: issueNumber,
-    exceptionId: 'delivery-1784',
+    exceptionId: 'delivery-9184',
     revision: 2,
     status: 'revoked',
     scopeIdentity: grant.payload.scopeIdentity,
@@ -532,7 +533,7 @@ test('revocation recorded after the burn leaves the historical receipt verifiabl
     waiverScopeDigest: grant.payload.waiverScopeDigest,
   });
   f.harness.data.comments.push({
-    id: 'revocation-1784',
+    id: 'revocation-9184',
     body: renderAitmRecord({ envelope: revoked }),
     createdAt: revoked.createdAt,
     updatedAt: revoked.createdAt,
@@ -685,7 +686,7 @@ test('two authorized operations naming one predecessor refuse before either rese
     schema: 'aitm.workflow-exception/v2',
     repository: cfg().repo,
     issue: issueNumber,
-    exceptionId: 'delivery-1784-second',
+    exceptionId: 'delivery-9184-second',
     revision: 1,
     status: 'active',
     scopeIdentity: grant.payload.scopeIdentity,
@@ -703,7 +704,7 @@ test('two authorized operations naming one predecessor refuse before either rese
     waiverScopeDigest: secondScope.waiverScopeDigest,
   });
   f.harness.data.comments.push({
-    id: 'grant-1784-second',
+    id: 'grant-9184-second',
     body: renderAitmRecord({ envelope: second }),
     createdAt: second.createdAt,
     updatedAt: second.createdAt,
@@ -732,7 +733,7 @@ test('stale per-host grant views for distinct operations still reserve one prede
   const otherOperation = '01M2H000000000000000000008';
   addGrant(b, {
     selectedOperationId: otherOperation,
-    exceptionId: 'delivery-1784-other',
+    exceptionId: 'delivery-9184-other',
     recordId: '01M2H000000000000000000009',
     grantId: '01M2H000000000000000000010',
   });

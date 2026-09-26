@@ -3,6 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { verifyDelivery } from './evidence-v2/delivery.mjs';
+import { verifyObservedIntegration } from './delivery-integration-proof.mjs';
 
 import { validateProviderAction } from './delivery-provider-action.mjs';
 import { buildDeliveryIntent, renderDeliveryIntentComment } from './delivery-records.mjs';
@@ -42,6 +43,11 @@ const VERIFICATION_INPUT_KEYS = [
   'pullRequest',
   'recovery',
   'testReceiptSha',
+];
+const OBSERVED_VERIFICATION_INPUT_KEYS = [
+  ...VERIFICATION_INPUT_KEYS,
+  'compareDeliveryContent',
+  'resolveTrunkHeadSha',
 ];
 const EXTERNAL_VERIFICATION_INPUT_KEYS = VERIFICATION_INPUT_KEYS.filter(
   (key) => !['intent', 'intentCreatedAt', 'recovery'].includes(key)
@@ -764,7 +770,7 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   if (
     !claimsCanonicalAttribution &&
     options.provenMultiSourceSquash === true &&
-    intent.provider === 'external' &&
+    (intent.provider === 'external' || options.observedFacts === true) &&
     provesDefaultSquashBodyAttribution({ intent, inspection })
   ) {
     return ['missing-merge-attribution-trailer'];
@@ -772,10 +778,19 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   if (
     !claimsCanonicalAttribution &&
     options.provenMerge === true &&
-    intent.provider === 'external' &&
+    (intent.provider === 'external' || options.observedFacts === true) &&
     provesDefaultMergeBodyAttribution({ intent, inspection })
   ) {
     return ['missing-merge-attribution-trailer'];
+  }
+  if (!claimsCanonicalAttribution && options.observedFacts === true) {
+    const observed = [
+      ...`${inspection.commitTitle}\n${inspection.commitMessage}`.matchAll(ISSUE_ID_GLOBAL_RE),
+    ].map((match) => `#${match[1]}`);
+    const allowed = new Set(intent.attributionTokens);
+    if (observed.includes(topLevelToken) && observed.every((token) => allowed.has(token))) {
+      return ['missing-merge-attribution-trailer'];
+    }
   }
   throw verificationError('attribution', undefined, {
     predicate: 'merge-message-attribution-conflict',
@@ -855,7 +870,7 @@ function assertVerificationFunctions(input) {
 async function verifyLiveDelivery(
   input,
   intent,
-  { requireAuthorizedBytes, recovery, genericWaiver = null }
+  { requireAuthorizedBytes, recovery, genericWaiver = null, observedFacts = false }
 ) {
   if (!isPlainObject(input.pullRequest) || !isPlainObject(intent)) {
     throw verificationError('input');
@@ -910,6 +925,54 @@ async function verifyLiveDelivery(
   } catch (error) {
     throw verificationError('merge-method-evidence', error);
   }
+  let observedProof = null;
+  if (observedFacts) {
+    const evidence = pullRequest.sourceCommitEvidence;
+    const listed = pullRequest.sourceCommits;
+    if (
+      !Array.isArray(listed) ||
+      !Array.isArray(evidence) ||
+      listed.length !== evidence.length ||
+      listed.some((commit, index) => (commit?.oid ?? commit) !== evidence[index]?.oid)
+    ) {
+      throw verificationError('merge-method-evidence');
+    }
+    let trunkRef;
+    try {
+      trunkRef = await input.resolveTrunkHeadSha({ branch: intent.baseRef });
+      const proven = await verifyObservedIntegration({
+        repository: intent.repository,
+        pullRequest: { ...pullRequest, mergeCommitSha: merged.mergeCommitSha },
+        acceptedHeadSha: intent.expectedHeadSha,
+        mergedCommitSha: merged.mergeCommitSha,
+        sourceCommits: evidence,
+        inspectCommit: ({ commitSha }) => input.inspectMergeCommit({ mergeCommitSha: commitSha }),
+        isAncestor: input.isAncestor,
+        compareContent: input.compareDeliveryContent,
+        trunkRef,
+      });
+      observedProof = {
+        method: proven.method,
+        mergeCommitSha: proven.mergeCommitSha,
+        parents: proven.parents,
+        tree: proven.tree,
+        commitTitle: proven.title,
+        commitMessage: proven.message,
+        sourceMapping: proven.sourceMapping,
+        contentProof: proven.contentProof,
+      };
+    } catch (error) {
+      throw verificationError('merge-method-evidence', error);
+    }
+    if (
+      observedProof.commitTitle !== inspection.commitTitle ||
+      observedProof.commitMessage !== inspection.commitMessage ||
+      canonicalRecordJson(observedProof.parents) !== canonicalRecordJson(inspection.parents) ||
+      observedProof.tree !== inspection.tree
+    ) {
+      throw verificationError('merge-method-evidence');
+    }
+  }
   let observedMergeMethod = classifyMergeMethod(
     inspection,
     intent.expectedHeadSha,
@@ -949,6 +1012,7 @@ async function verifyLiveDelivery(
         ? 'squash'
         : 'unknown';
   }
+  if (observedFacts) observedMergeMethod = observedProof.method;
   if (observedMergeMethod === 'unknown') throw verificationError('merge-method-unknown');
   if (
     merged.mergeMethodObservation !== null &&
@@ -967,12 +1031,13 @@ async function verifyLiveDelivery(
   }
   evaluateDeliveryPredicate({
     category: 'merge-method',
-    observedFailure: observedMergeMethod !== intent.mergeMethod,
+    observedFailure: !observedFacts && observedMergeMethod !== intent.mergeMethod,
     waiver: genericWaiver,
     failures,
   });
   if (
     requireAuthorizedBytes &&
+    !observedFacts &&
     (inspection.commitTitle !== intent.commitTitle ||
       (!waived && inspection.commitMessage !== intent.commitMessage))
   ) {
@@ -1000,8 +1065,10 @@ async function verifyLiveDelivery(
       verifiedIntent,
       provenSingleSourceSquash,
       {
-        provenMultiSourceSquash,
+        provenMultiSourceSquash:
+          observedFacts && observedProof.method === 'squash' ? true : provenMultiSourceSquash,
         provenMerge: observedMergeMethod === 'merge',
+        observedFacts,
         waived,
       }
     );
@@ -1035,8 +1102,14 @@ async function verifyLiveDelivery(
     expectedHeadSha: verifiedIntent.expectedHeadSha,
     mergeCommitSha: merged.mergeCommitSha,
     baseRef: verifiedIntent.baseRef,
-    mergeMethod: verifiedIntent.mergeMethod,
+    mergeMethod: observedFacts ? observedProof.method : verifiedIntent.mergeMethod,
     verifiedTrunkRef,
+    ...(observedFacts
+      ? {
+          observedIntegration: observedProof,
+          sourceDigest: `sha256:${sha256(canonicalRecordJson(pullRequest.sourceCommitEvidence))}`,
+        }
+      : {}),
     provider: verifiedIntent.provider,
     sessionId: verifiedIntent.sessionId,
     verifiedAt: merged.mergedAt,
@@ -1113,8 +1186,10 @@ async function verifyLiveDelivery(
 export async function verifyDeliveredPullRequest(input = {}) {
   const schema = input.intent?.schema;
   const generic = Object.hasOwn(input, 'genericWaiverEvidence');
-  const keys =
-    schema === 'aitm.delivery-intent/v2'
+  const observedFacts = Object.hasOwn(input, 'compareDeliveryContent');
+  const keys = observedFacts
+    ? OBSERVED_VERIFICATION_INPUT_KEYS
+    : schema === 'aitm.delivery-intent/v2'
       ? WAIVED_VERIFICATION_INPUT_KEYS
       : schema === 'aitm.delivery-intent/v3' || generic
         ? GENERIC_WAIVER_VERIFICATION_INPUT_KEYS
@@ -1129,11 +1204,19 @@ export async function verifyDeliveredPullRequest(input = {}) {
   }
   assertVerificationFunctions(input);
   if (typeof input.recovery !== 'boolean') throw verificationError('input');
+  if (
+    observedFacts &&
+    (schema !== 'aitm.delivery-intent/v1' ||
+      typeof input.compareDeliveryContent !== 'function' ||
+      typeof input.resolveTrunkHeadSha !== 'function')
+  )
+    throw verificationError('input');
   const genericWaiver = generic ? validateGenericWaiverEvidence(input) : null;
   return verifyLiveDelivery(input, input.intent, {
     requireAuthorizedBytes: true,
     recovery: input.recovery,
     genericWaiver,
+    observedFacts,
   });
 }
 

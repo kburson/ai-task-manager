@@ -298,6 +298,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const deliveryWaiverEvidenceAllowance = 1;
   // #1799 ships the effect-time delivery waiver transaction.
   const deliveryWaiverTransactionAllowance = 1;
+  // #1811 ships the observed integration proof used by delivery and Close.
+  const deliveryIntegrationProofAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -335,7 +337,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryAuthorityAllowance +
     deliveryWaiverConsumptionAllowance +
     deliveryWaiverEvidenceAllowance +
-    deliveryWaiverTransactionAllowance;
+    deliveryWaiverTransactionAllowance +
+    deliveryIntegrationProofAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

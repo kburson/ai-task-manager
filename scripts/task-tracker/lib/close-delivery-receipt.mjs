@@ -267,6 +267,12 @@ export async function verifyCloseDeliveryReceipt({
     acceptedSha: gateInput.acceptedSha,
     acceptedReviewSha,
     attributingCommits: deps?.attributingCommits,
+    ...(receipt.schema === 'aitm.delivery-receipt/v5'
+      ? {
+          compareDeliveryContent: deps?.compareDeliveryContent,
+          resolveTrunkHeadSha: deps?.resolveTrunkHeadSha,
+        }
+      : {}),
     fetchOriginTrunk: deps?.fetchOriginTrunk,
     inspectMergeCommit: deps?.inspectMergeCommit,
     intent,
@@ -278,7 +284,10 @@ export async function verifyCloseDeliveryReceipt({
       headRefDeleted: false,
       mergeMethod: pinned
         ? pullRequest.mergeMethod
-        : (pullRequest.mergeMethod ?? intent.mergeMethod),
+        : (pullRequest.mergeMethod ??
+          (receipt.schema === 'aitm.delivery-receipt/v5'
+            ? receipt.mergeMethod
+            : intent.mergeMethod)),
     },
     recovery: gateInput.headRelation === 'advanced',
     testReceiptSha,

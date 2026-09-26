@@ -313,7 +313,7 @@ function validateDeliveryBundle(bundle, issueNumber, repository, acceptedSha, ca
     !isPlainObject(receipt) ||
     !(
       (intent.schema === 'aitm.delivery-intent/v1' &&
-        receipt.schema === 'aitm.delivery-receipt/v1') ||
+        ['aitm.delivery-receipt/v1', 'aitm.delivery-receipt/v5'].includes(receipt.schema)) ||
       (intent.schema === 'aitm.delivery-intent/v3' && receipt.schema === 'aitm.delivery-receipt/v4')
     )
   ) {
@@ -341,7 +341,9 @@ function validateDeliveryBundle(bundle, issueNumber, repository, acceptedSha, ca
     receipt.mergeCommitSha !== pullRequest.mergeCommitSha ||
     receipt.intentId !== intent.intentId ||
     receipt.baseRef !== intent.baseRef ||
-    receipt.mergeMethod !== intent.mergeMethod ||
+    (receipt.schema !== 'aitm.delivery-receipt/v5' && receipt.mergeMethod !== intent.mergeMethod) ||
+    (receipt.schema === 'aitm.delivery-receipt/v5' &&
+      receipt.observedIntegration?.method !== receipt.mergeMethod) ||
     receipt.provider !== intent.provider ||
     intent.headRef !== pullRequest.headRefName ||
     intent.baseRef !== pullRequest.baseRefName ||

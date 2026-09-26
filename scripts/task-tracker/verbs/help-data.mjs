@@ -469,12 +469,12 @@ export const VERB_REFERENCE = {
   deliver: {
     topic: 'board',
     summary:
-      'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action.',
+      'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action. A manual GitHub merge is verified by observed method and content, then Close replays the receipt.',
     usage: '/task deliver #N [--reconcile-merge-method <merge|squash|rebase> --reason <text>]',
     flags: [
       {
         flag: '--reconcile-merge-method <merge|squash|rebase>',
-        desc: 'declare the observed method for an already-merged external recovery; squash-direction reconciliation is unsupported',
+        desc: 'declare the observed method for already-merged external recovery without an original intent; not needed for a verified manual method difference',
       },
       {
         flag: '--reason <text>',
@@ -488,7 +488,7 @@ export const VERB_REFERENCE = {
     examples: [
       '/task deliver 939',
       'npx aitm deliver #N',
-      '/task deliver 939 --reconcile-merge-method merge --reason "provider used merge"',
+      '/task explain 939 --action deliver --json',
     ],
   },
   evidence: {

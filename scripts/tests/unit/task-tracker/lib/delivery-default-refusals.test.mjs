@@ -70,6 +70,45 @@ function assertNoTerminalWrites(harness, previousWrites) {
   assert.equal(harness.calls.terminalBinding, 0);
 }
 
+test('observed merge receipt preserves a proposed squash intent', () => {
+  const intent = buildDeliveryIntent(intentInput);
+  const observedIntegration = {
+    method: 'merge',
+    mergeCommitSha: MERGE_HEAD,
+    parents: ['1'.repeat(40), HEAD],
+    tree: '2'.repeat(40),
+    commitTitle: 'Merge pull request #1400 from kburson/codex/939-full-auto-merge',
+    commitMessage: '[#939] Governed delivery',
+    sourceMapping: [{ source: HEAD, integrated: HEAD }],
+    contentProof: {
+      kind: 'equivalent-delta',
+      sourceBase: '3'.repeat(40),
+      sourceHead: HEAD,
+      integrationBase: '1'.repeat(40),
+      integrationHead: MERGE_HEAD,
+    },
+  };
+  const receipt = buildDeliveryReceipt({
+    ...receiptInput,
+    mergeMethod: 'merge',
+    sourceDigest: `sha256:${'4'.repeat(64)}`,
+    observedIntegration,
+  });
+  assert.equal(intent.mergeMethod, 'squash');
+  assert.equal(receipt.schema, 'aitm.delivery-receipt/v5');
+  assert.deepEqual(roundTrip(receipt, renderDeliveryReceiptComment, 'receipt-v5'), receipt);
+  assert.throws(
+    () =>
+      buildDeliveryReceipt({
+        ...receiptInput,
+        mergeMethod: 'merge',
+        observedIntegration: { ...observedIntegration, method: 'squash' },
+        sourceDigest: `sha256:${'4'.repeat(64)}`,
+      }),
+    /observed-integration/
+  );
+});
+
 test('ordinary v1 intent/v1 receipt and warning v2 receipt remain readable', () => {
   const intent = buildDeliveryIntent(intentInput);
   const receipt = buildDeliveryReceipt(receiptInput);
