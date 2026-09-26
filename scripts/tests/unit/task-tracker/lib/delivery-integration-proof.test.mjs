@@ -18,7 +18,8 @@ function fixture(overrides = {}) {
     repository: 'kburson/ai-task-manager',
     requestedMergeMethod: 'squash',
     requestedCommitTitle: '[#1784] Governed PR delivery',
-    requestedCommitMessage: 'Source: accepted head with an attribution trailer',
+    requestedCommitMessage:
+      'PR #1785\nSource: edaa8e402f340af3ca15b5b36ec845b038040d58\n\nAttribution: [#1784]',
     pullRequest: {
       number: 1785,
       merged: true,
