@@ -4,9 +4,8 @@
 //   chore-mode off [--resume] — clear choreMode.active; optionally rebind prior
 //   chore-mode status         — print on/off + since + previousIssue + reason
 //
-// `on` refuses when any worktree-scoped sub-agent is recorded as live in the
-// fleet registry. This avoids chore-mode interacting with a live parallel
-// fan-out (#327 non-goal: chore-mode is single-thread main-loop only).
+// Chore-mode state belongs to the current worktree. Activity in sibling
+// worktrees does not affect this worktree's edit gate or task binding.
 //
 // While active, chore-mode bypasses the source-edit gate (every Edit/Write
 // allowed) and commit-trail-handler refuses any subject that does not start
@@ -14,52 +13,6 @@
 
 import { loadState, saveState } from '../state.mjs';
 import { readChoreMode, writeChoreMode, appendChoreModeAudit } from '../lib/chore-mode.mjs';
-import {
-  readFleet,
-  fleetRegistryPath,
-  findMainWorktreePath,
-  effectiveKind,
-} from '../fleet-registry.mjs';
-
-// Returns the list of fleet entries that look like a live worktree-scoped
-// agent. Used by the `on` refusal gate. An entry is considered live if its
-// `status === 'active'` AND its effective kind is `worktree` (a real
-// worktree-scoped spawn, not a main-thread bind).
-//
-// #441 — a main-thread `/task #N` bind stores `worktreePath = projectDir`
-// (= the main worktree), which is byte-identical to a real agent's path. The
-// old "non-empty worktreePath" test therefore false-blocked chore-mode on
-// every main bind (the #405@trunk class). We now key on the stored `kind`,
-// falling back to path-inference against `mainWorktreePath` for legacy entries
-// that predate the tag. When `mainWorktreePath` is omitted, only the stored
-// kind is honored (still strictly better than the old behavior).
-export function liveWorktreeAgents(fleet, mainWorktreePath) {
-  const out = [];
-  if (!fleet || typeof fleet !== 'object') return out;
-  for (const [ref, entry] of Object.entries(fleet)) {
-    if (!entry || typeof entry !== 'object') continue;
-    if (entry.status !== 'active') continue;
-    if (!entry.worktreePath || typeof entry.worktreePath !== 'string') continue;
-    if (effectiveKind(entry, mainWorktreePath) !== 'worktree') continue;
-    out.push({ ref, ...entry });
-  }
-  return out;
-}
-
-// Pure helper: build the structured refusal payload for the `on` gate.
-// Exported so tests can pin the shape without spawning the verb.
-export function buildLiveFleetRefusal(agents) {
-  const lines = agents.map((a) => `  - ${a.ref} @ ${a.branch || '?'} (${a.worktreePath})`);
-  return {
-    code: 'chore-mode-live-fleet',
-    message:
-      'chore-mode on refused: live worktree-scoped agent(s) detected.\n' +
-      'chore-mode is single-thread main-loop only — incompatible with parallel fan-out.\n' +
-      'Live agents:\n' +
-      lines.join('\n') +
-      '\nResolve: wait for each agent to finish (or stop them) before entering chore-mode.',
-  };
-}
 
 // Pure helper: format the status output for `chore-mode status`.
 export function formatStatus(cm) {
@@ -81,15 +34,12 @@ export function formatStatus(cm) {
 
 export async function choreModeOn(ctx, deps = {}) {
   const { statePath, projectDir, rest } = ctx;
-  const readFleetImpl = deps.readFleet || readFleet;
-  const findMainImpl = deps.findMainWorktreePath || findMainWorktreePath;
   const readCM = deps.readChoreMode || readChoreMode;
   const writeCM = deps.writeChoreMode || writeChoreMode;
   const appendAudit = deps.appendChoreModeAudit || appendChoreModeAudit;
   const nowIso = deps.nowIso || (() => new Date().toISOString());
   const flushActiveToGH = deps.flushActiveToGH || ctx.flushActiveToGH;
   const out = deps.out || process.stdout;
-  const err = deps.err || process.stderr;
 
   const currentCM = readCM(projectDir);
   if (currentCM.active) {
@@ -97,24 +47,6 @@ export async function choreModeOn(ctx, deps = {}) {
       `chore-mode is already on (since ${currentCM.since}; previousIssue ${currentCM.previousIssue || 'none'}).\n`
     );
     return 0;
-  }
-
-  // Refuse if a live worktree-scoped agent is recorded in the fleet registry.
-  let fleet = {};
-  let mainPath;
-  try {
-    mainPath = findMainImpl(projectDir);
-    fleet = readFleetImpl(fleetRegistryPath(mainPath));
-  } catch {
-    // Missing/unreadable registry is treated as "no live agents" — chore-mode
-    // is a developer-only flow and a missing fleet file means no fan-out is
-    // even possible.
-  }
-  const live = liveWorktreeAgents(fleet, mainPath);
-  if (live.length > 0) {
-    const refusal = buildLiveFleetRefusal(live);
-    err.write(`[task-tracker] ${refusal.code}: ${refusal.message}\n`);
-    return 2;
   }
 
   // Slice rest=['on', ...reason] → reason string.

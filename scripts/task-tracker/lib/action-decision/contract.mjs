@@ -12,6 +12,7 @@ import {
 
 export const ACTION_DECISION_SCHEMA_V1 = 'aitm.action-decision/v1';
 export const ACTION_DECISION_SCHEMA = 'aitm.action-decision/v2';
+export const ACTION_DECISION_SCHEMA_V3 = 'aitm.action-decision/v3';
 export const ACTION_VOCABULARY_VERSION = 'aitm.action-vocabulary/v2';
 export const BOUNDARY_PRODUCER_IDS = Object.freeze([
   'authority-collection',
@@ -886,10 +887,28 @@ export function validateActionDecision(value) {
       'warnings',
       'humanDecision',
       'guidanceIds',
+      ...(value?.schema === ACTION_DECISION_SCHEMA_V3 ? ['deliveryExceptions'] : []),
     ],
     'root'
   );
-  if (![ACTION_DECISION_SCHEMA_V1, ACTION_DECISION_SCHEMA].includes(value.schema)) fail('schema');
+  if (
+    ![ACTION_DECISION_SCHEMA_V1, ACTION_DECISION_SCHEMA, ACTION_DECISION_SCHEMA_V3].includes(
+      value.schema
+    )
+  )
+    fail('schema');
+  if (value.schema === ACTION_DECISION_SCHEMA_V3) {
+    if (!Array.isArray(value.deliveryExceptions) || value.deliveryExceptions.length === 0)
+      fail('deliveryExceptions', 'nonempty-array');
+    value.deliveryExceptions.forEach((item, index) => {
+      const where = `deliveryExceptions[${index}]`;
+      exact(item, ['category', 'requirementId', 'outcome'], where);
+      nonemptyString(item.category, `${where}.category`);
+      nonemptyString(item.requirementId, `${where}.requirementId`);
+      if (!['delivered', 'waived', 'blocked', 'indeterminate'].includes(item.outcome))
+        fail(`${where}.outcome`, 'enum');
+    });
+  }
   if (!Number.isInteger(value.issue) || value.issue <= 0) fail('issue', 'positive-integer');
   if (value.actionId !== null) nonemptyString(value.actionId, 'actionId');
   if (!STATUSES.includes(value.status)) fail('status', 'enum');
@@ -897,7 +916,7 @@ export function validateActionDecision(value) {
   if (value.status === 'ready' && value.blockers.length !== 0) fail('blockers', 'ready-empty');
   if (value.status !== 'ready' && value.blockers.length === 0) fail('blockers', 'nonempty');
   const mixedStatus =
-    value.schema === ACTION_DECISION_SCHEMA &&
+    value.schema !== ACTION_DECISION_SCHEMA_V1 &&
     value.status === 'indeterminate' &&
     value.blockers.some(({ code }) =>
       CODE_DEFINITIONS[code]?.legalStatuses.includes('indeterminate')

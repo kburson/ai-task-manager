@@ -11,6 +11,7 @@ import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import { requirementIdsForGuardRefusals } from '../workflow-policy/enforcement.mjs';
 import {
   ACTION_DECISION_SCHEMA,
+  ACTION_DECISION_SCHEMA_V3,
   REGISTERED_GUARD_IDS,
   validateActionDecision,
 } from './contract.mjs';
@@ -604,6 +605,7 @@ async function evaluateCompletedAction({
   let normalizations = [];
   let selectedAction = null;
   let collectorFailed = false;
+  let deliveryExceptions = [];
   if (navigation.status === 'terminal') {
     const [bodyObservation, boardObservation] = await Promise.all([
       attempt.observe({ resource: 'issue-body', identity: `issue:${issue}:1`, scope }),
@@ -706,6 +708,7 @@ async function evaluateCompletedAction({
       status = result.status;
       blockers = result.blockers;
       warnings = result.warnings ?? [];
+      deliveryExceptions = result.deliveryExceptions ?? [];
       normalizations = result.normalizations ?? [];
       selectedAction = result.selectedAction ?? null;
       humanDecision = result.humanDecision ?? null;
@@ -838,7 +841,7 @@ async function evaluateCompletedAction({
     })),
   });
   const decision = {
-    schema: ACTION_DECISION_SCHEMA,
+    schema: deliveryExceptions.length > 0 ? ACTION_DECISION_SCHEMA_V3 : ACTION_DECISION_SCHEMA,
     issue,
     actionId: decisionActionId,
     status,
@@ -846,6 +849,7 @@ async function evaluateCompletedAction({
     blockers,
     normalizations,
     warnings,
+    ...(deliveryExceptions.length > 0 ? { deliveryExceptions } : {}),
     humanDecision,
     guidanceIds: [
       navigation.status === 'terminal' && snapshotState === 'done'

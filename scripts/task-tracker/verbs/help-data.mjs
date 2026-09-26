@@ -1,4 +1,4 @@
-// @story #1675
+// @story #1675 #1787 #1795
 // Per-verb reference data for `/task help` (#667).
 //
 // This module is the single data source behind the reworked help surface. It is
@@ -149,13 +149,14 @@ export const VERB_REFERENCE = {
   },
   'workflow-exception': {
     topic: 'evidence',
-    summary: 'Record, inspect, revise, or revoke durable issue-scoped workflow exceptions.',
+    summary:
+      'Prepare exact PR delivery waivers or record, inspect, revise, and revoke durable workflow exceptions.',
     usage:
-      '/task workflow-exception <record|show|revise|revoke> #N [#M ...] [--input-file <request.json>] [--json]',
+      '/task workflow-exception <prepare|record|show|revise|revoke> #N [#M ...] [--input-file <request.json>] [--json]',
     flags: [
       {
         flag: '--input-file <path>',
-        desc: 'closed workflow-exception request; required except for show',
+        desc: 'closed delivery waiver proposal for read-only prepare or host-approved request for writes; required except for show',
       },
       { flag: '--json', desc: 'emit the versioned per-issue result as JSON' },
     ],
@@ -163,8 +164,10 @@ export const VERB_REFERENCE = {
       { code: 6, meaning: 'one or more explicit issue operations were blocked or indeterminate' },
     ],
     examples: [
+      '/task workflow-exception prepare #57 --input-file .scratch/gh/57-delivery-proposal.json --json',
       '/task workflow-exception show #57 --json',
       '/task workflow-exception record #57 --input-file .scratch/gh/57-workflow-exception.json',
+      '/task workflow-exception revise #57 --input-file .scratch/gh/57-delivery-revision.json',
       '/task workflow-exception revoke #57 --input-file .scratch/gh/57-workflow-revocation.json',
     ],
   },

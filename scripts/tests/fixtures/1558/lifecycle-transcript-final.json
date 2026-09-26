@@ -306,9 +306,9 @@
         "frozenTranscriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:17ca8eaf97c9f55f355bbc26c6828657065932fa4c12bc5f4ffc5620cb707282",
+        "currentCaptureSha256": "sha256:ba991915ec61ea4e09f03c30ac79f725c2899133064eaeceddae0254483f8a80",
         "currentSourceCommit": null,
-        "currentSourceInputsSha256": "sha256:8dc006c318e223ec22bf7aebfc5788a5d23805e7dd83743b6cc3bd927b28d9a4"
+        "currentSourceInputsSha256": "sha256:2d990f6080c514338fcdb274abf140f5f69039b44dbf536fec895809dbfd32b7"
       },
       "streams": {
         "legacy": [
@@ -1072,9 +1072,9 @@
         "frozenTranscriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:17ca8eaf97c9f55f355bbc26c6828657065932fa4c12bc5f4ffc5620cb707282",
+        "currentCaptureSha256": "sha256:ba991915ec61ea4e09f03c30ac79f725c2899133064eaeceddae0254483f8a80",
         "currentSourceCommit": null,
-        "currentSourceInputsSha256": "sha256:8dc006c318e223ec22bf7aebfc5788a5d23805e7dd83743b6cc3bd927b28d9a4"
+        "currentSourceInputsSha256": "sha256:2d990f6080c514338fcdb274abf140f5f69039b44dbf536fec895809dbfd32b7"
       },
       "streams": {
         "legacy": [
@@ -1539,7 +1539,7 @@
     "schema": "aitm.guidance-tokenizer-calibration/v1",
     "source": {
       "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",
-      "sha256": "sha256:17ca8eaf97c9f55f355bbc26c6828657065932fa4c12bc5f4ffc5620cb707282",
+      "sha256": "sha256:ba991915ec61ea4e09f03c30ac79f725c2899133064eaeceddae0254483f8a80",
       "sourceCommit": null,
       "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
     },
@@ -1654,7 +1654,7 @@
     "currentV2": {
       "captureKind": "protocol-valid-synthetic-v2-presentation",
       "scope": "Serializer sensitivity; this combination is not asserted as an observed evaluator result.",
-      "seedCaptureSha256": "sha256:17ca8eaf97c9f55f355bbc26c6828657065932fa4c12bc5f4ffc5620cb707282",
+      "seedCaptureSha256": "sha256:ba991915ec61ea4e09f03c30ac79f725c2899133064eaeceddae0254483f8a80",
       "inputs": {
         "action": "close",
         "childCount": 4,
