@@ -67,6 +67,7 @@ export async function loadCloseLocalTrunkProof({
     body: gateInput.body,
   });
   let selectedGrant = grant;
+  let activeEnvelope = null;
   if (selectedGrant === undefined) {
     const pages = listGrantRecords
       ? await listGrantRecords()
@@ -128,6 +129,7 @@ export async function loadCloseLocalTrunkProof({
       );
       if (heads.length !== 1) throw new TypeError('local-trunk-proof:grant-head');
       await verifyStoredAuthority(heads[0].envelope, { resolveTranscriptPath });
+      activeEnvelope = heads[0].envelope;
     }
     selectedGrant = chain?.active
       ? {
@@ -152,7 +154,7 @@ export async function loadCloseLocalTrunkProof({
             { cwd: projectDir, timeout: GIT_TIMEOUT_MS }
           );
         }));
-  return collectLocalTrunkCloseProof({
+  const proof = await collectLocalTrunkCloseProof({
     facts: {
       repository: cfg.repo,
       issue: gateInput.issueNumber,
@@ -178,6 +180,9 @@ export async function loadCloseLocalTrunkProof({
     listPullRequestPages,
     fetchRemoteTip: fetchTip,
   });
+  return proof.outcome === 'authorized-local-trunk-close'
+    ? Object.freeze({ ...proof, grantEnvelope: activeEnvelope, scopeIdentity })
+    : proof;
 }
 
 /** Locked Close must consume a fresh proof but cannot finish until #1826 publishes its receipt. */
@@ -185,6 +190,7 @@ export async function requireCloseReceiptOrLocalTrunkProof({
   gateInput,
   requireReceipt,
   readProof,
+  consumeLocalClose,
 }) {
   try {
     return requireReceipt(gateInput);
@@ -197,6 +203,7 @@ export async function requireCloseReceiptOrLocalTrunkProof({
       isNoCommitKind(gateInput.body)
     )
       throw error;
+    if (typeof consumeLocalClose === 'function') return consumeLocalClose();
     const proof = await readProof();
     if (proof.outcome !== 'authorized-local-trunk-close')
       throw new Error(`local-trunk-close-proof:${proof.reasonId}`);

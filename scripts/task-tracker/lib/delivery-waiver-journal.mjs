@@ -2,6 +2,10 @@
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+import {
+  projectLocalTrunkCloseJournal,
+  validateLocalTrunkCloseJournalEntry,
+} from './local-trunk-close-receipt.mjs';
 
 const ENTRY_SCHEMA = 'aitm.delivery-waiver-journal-entry/v1';
 const BURN_SCHEMA = 'aitm.delivery-waiver-consumption/v1';
@@ -320,6 +324,7 @@ export function createDeliveryWaiverJournal({
   remote = 'origin',
   host = 'github.com',
   allowLocalRemote = false,
+  mode = 'waiver',
 } = {}) {
   if (
     !bounded(cwd, 4096) ||
@@ -327,10 +332,17 @@ export function createDeliveryWaiverJournal({
     !Number.isSafeInteger(issue) ||
     issue < 1 ||
     !/^[A-Za-z0-9._-]+$/.test(remote) ||
-    !/^[A-Za-z0-9.-]+$/.test(host)
+    !/^[A-Za-z0-9.-]+$/.test(host) ||
+    !['waiver', 'local-trunk'].includes(mode)
   )
     refuse('configuration');
-  const ref = `refs/heads/aitm/delivery-waivers/${issue}`;
+  const ref = `refs/heads/aitm/${mode === 'local-trunk' ? 'local-trunk-closes' : 'delivery-waivers'}/${issue}`;
+  const project =
+    mode === 'local-trunk' ? projectLocalTrunkCloseJournal : projectDeliveryWaiverJournal;
+  const validate =
+    mode === 'local-trunk'
+      ? validateLocalTrunkCloseJournalEntry
+      : validateDeliveryWaiverJournalEntry;
   const git = (args, input) => runGit(cwd, args, input);
   const gitRaw = (args, input) => runGit(cwd, args, input, false);
   let lastSeen = null;
@@ -354,16 +366,16 @@ export function createDeliveryWaiverJournal({
     const output = await git(['ls-remote', remote, ref]);
     if (!output) return null;
     const lines = output.split('\n');
-    const match = /^([0-9a-f]{40})\s+(refs\/heads\/aitm\/delivery-waivers\/\d+)$/.exec(lines[0]);
-    if (lines.length !== 1 || !match || match[2] !== ref) refuse('remote-ref');
-    return match[1];
+    const [oid, advertisedRef] = lines[0].split(new RegExp('\\s+'));
+    if (lines.length !== 1 || !SHA.test(oid) || advertisedRef !== ref) refuse('remote-ref');
+    return oid;
   }
   async function read() {
     await assertRemote();
     const tip = await remoteTip();
     if (!tip) {
       if (lastSeen) refuse('history-reset');
-      return projectDeliveryWaiverJournal([], { repository, issue });
+      return project([], { repository, issue });
     }
     await git(['fetch', '--no-tags', remote, ref]);
     const fetched = await git(['rev-parse', 'FETCH_HEAD']);
@@ -391,7 +403,7 @@ export function createDeliveryWaiverJournal({
       } catch {
         refuse('entry-json');
       }
-      if (validateDeliveryWaiverJournalEntry(entry) !== body) refuse('entry-canonical');
+      if (validate(entry) !== body) refuse('entry-canonical');
       if (entry.predecessorOid !== (parents[0] ?? null)) refuse('commit-parent');
       reversed.push({ oid, entry });
       oid = parents[0] ?? null;
@@ -399,7 +411,7 @@ export function createDeliveryWaiverJournal({
     const events = reversed.reverse();
     if (lastSeen && !events.some((event) => event.oid === lastSeen)) refuse('history-reset');
     lastSeen = tip;
-    return projectDeliveryWaiverJournal(events, { repository, issue });
+    return project(events, { repository, issue });
   }
   async function compareAndAppend({ expectedOid, entry }) {
     await assertRemote();
@@ -412,15 +424,20 @@ export function createDeliveryWaiverJournal({
       entry.issue !== issue
     )
       refuse('append-boundary');
-    const projected = projectDeliveryWaiverJournal(
+    const projected = project(
       [...(await historyFromTip(before.oid)), { oid: '0'.repeat(40), entry }],
       { repository, issue }
     );
     if (!projected.operations.has(entry.deliveryOperationId)) refuse('append-projection');
-    const body = validateDeliveryWaiverJournalEntry(entry);
+    const body = validate(entry);
     const blob = await git(['hash-object', '-w', '--stdin'], body);
     const tree = await git(['mktree'], `100644 blob ${blob}\tentry.json\n`);
-    const args = ['commit-tree', tree, '-m', 'AITM delivery waiver journal'];
+    const args = [
+      'commit-tree',
+      tree,
+      '-m',
+      mode === 'waiver' ? 'AITM delivery waiver journal' : 'AITM local trunk journal',
+    ];
     if (expectedOid) args.push('-p', expectedOid);
     const nextOid = await git(args);
     if (!SHA.test(nextOid)) refuse('created-oid');

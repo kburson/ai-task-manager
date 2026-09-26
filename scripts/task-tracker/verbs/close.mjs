@@ -72,6 +72,7 @@ import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import { parseAitmRecord } from '../lib/github-records/record-envelope.mjs';
 import { createDeliveryWaiverJournal } from '../lib/delivery-waiver-journal.mjs';
+import { consumeLocalTrunkClose } from '../lib/delivery-waiver-consumption.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -2491,16 +2492,35 @@ export async function verbClose(ctx) {
     }
     const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
     const localTrunkPort = await import('../lib/local-trunk-close-read-port.mjs');
+    const readLocalProof = (grant) =>
+      (ctx.loadCloseLocalTrunkProof ?? localTrunkPort.loadCloseLocalTrunkProof)({
+        gateInput,
+        grant,
+        cfg,
+        projectDir,
+        pexec,
+      });
     const receipt = await localTrunkPort.requireCloseReceiptOrLocalTrunkProof({
       gateInput,
       requireReceipt: receiptGate,
-      readProof: () =>
-        (ctx.loadCloseLocalTrunkProof ?? localTrunkPort.loadCloseLocalTrunkProof)({
+      readProof: () => readLocalProof(),
+      consumeLocalClose: async () => {
+        const completed = await (ctx.consumeLocalTrunkClose ?? consumeLocalTrunkClose)({
           gateInput,
           cfg,
           projectDir,
           pexec,
-        }),
+          readProof: readLocalProof,
+          runId: randomUUID(),
+        });
+        return {
+          skipped: false,
+          mode: 'local-trunk',
+          receipt: completed.receipt,
+          comment: completed.comment,
+          outcome: completed.outcome,
+        };
+      },
     });
     const freshReceiptVerifier = ctx.verifyCloseDeliveryReceipt || verifyCloseDeliveryReceipt;
     // #1490 — capture the EXACT values this gate validates. The reopened-close
@@ -2533,6 +2553,15 @@ export async function verbClose(ctx) {
               issue: gateInput.issueNumber,
             }).read()),
         listWaiverRecords: ctx.listCloseWaiverRecords ?? (() => gateInput.waiverRecords),
+        readLocalTrunkJournal:
+          ctx.readCloseLocalTrunkJournal ??
+          (() =>
+            createDeliveryWaiverJournal({
+              cwd: projectDir,
+              repository: cfg.repo,
+              issue: gateInput.issueNumber,
+              mode: 'local-trunk',
+            }).read()),
         resolveTranscriptPath: ctx.resolveCloseTranscriptPath ?? jsonlPath,
         fetchOriginTrunk:
           ctx.fetchOriginTrunk ??
@@ -4812,6 +4841,12 @@ export function buildDeliveryGateRefusal(closeTarget, reason) {
 }
 
 export function formatCloseDeliveryDisclosure(receipt) {
+  if (
+    receipt?.schema === 'aitm.local-trunk-close-receipt/v1' &&
+    receipt.result === 'authorized-local-trunk-close'
+  ) {
+    return ` Local-trunk close authorized (operation=${receipt.deliveryOperationId}, burn=${receipt.burnOid}).`;
+  }
   if (receipt?.schema === 'aitm.delivery-receipt/v4' && receipt.result === 'waived') {
     return ` Delivery ${receipt.observedFailureCategory} waived (requirement=${receipt.waivedRequirementId}).`;
   }

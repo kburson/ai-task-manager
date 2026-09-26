@@ -1,6 +1,11 @@
 // @story #1787 #1796
 import { createHash } from 'node:crypto';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+import { parseAitmRecord } from './github-records/record-envelope.mjs';
+import { createDeliveryWaiverJournal } from './delivery-waiver-journal.mjs';
+import { buildLocalTrunkCloseBurn, completeLocalTrunkClose } from './local-trunk-close-receipt.mjs';
+import { verifyStoredDeliveryWaiverAuthority } from './workflow-policy/delivery-waiver-authority.mjs';
+import { jsonlPath } from '../word-counter.mjs';
 import {
   validateDeliveryWaiverBurn,
   validateDeliveryWaiverJournalEntry,
@@ -637,4 +642,163 @@ export async function publishWaivedReceipt({
     };
   }
   ambiguity(operationId, 'receipt-requesting', true);
+}
+
+/** The local-trunk lane uses the same remote Git CAS/readback journal primitive with typed local entries. */
+export async function consumeLocalTrunkClose({
+  gateInput,
+  cfg,
+  projectDir,
+  pexec,
+  readProof,
+  journal = null,
+  comments = null,
+  runId,
+  now = () => new Date().toISOString(),
+  verifyStoredAuthority = verifyStoredDeliveryWaiverAuthority,
+  resolveTranscriptPath = jsonlPath,
+} = {}) {
+  if (
+    !gateInput ||
+    !cfg?.repo ||
+    !projectDir ||
+    typeof pexec !== 'function' ||
+    typeof readProof !== 'function' ||
+    typeof runId !== 'string' ||
+    !runId
+  )
+    throw new TypeError('local-trunk-close:input');
+  const activeJournal =
+    journal ??
+    createDeliveryWaiverJournal({
+      cwd: projectDir,
+      repository: cfg.repo,
+      issue: gateInput.issueNumber,
+      mode: 'local-trunk',
+    });
+  const listComments = async () => {
+    const { stdout } = await pexec('gh', [
+      'api',
+      '--paginate',
+      '--slurp',
+      `repos/${cfg.repo}/issues/${gateInput.issueNumber}/comments?per_page=100`,
+    ]);
+    const pages = JSON.parse(String(stdout ?? ''));
+    if (!Array.isArray(pages) || pages.some((page) => !Array.isArray(page)))
+      throw new TypeError('local-trunk-close:comment-pages');
+    return pages.flat();
+  };
+  const commentPort = comments ?? {
+    async list() {
+      return (await listComments()).map((item) => ({
+        id: item.node_id ?? item.id,
+        body: item.body,
+        createdAt: item.created_at,
+      }));
+    },
+    async post({ body }) {
+      const { stdout } = await pexec('gh', [
+        'api',
+        '--method',
+        'POST',
+        `repos/${cfg.repo}/issues/${gateInput.issueNumber}/comments`,
+        '-f',
+        `body=${body}`,
+      ]);
+      const item = JSON.parse(String(stdout ?? ''));
+      return { id: item.node_id ?? item.id, body: item.body, createdAt: item.created_at };
+    },
+  };
+  const loadGrant = async (recordId) => {
+    const values = await listComments();
+    const records = values
+      .filter((item) => typeof item?.body === 'string' && item.body.includes('aitm-record'))
+      .map(
+        (item) =>
+          parseAitmRecord({
+            commentNodeId: String(item.node_id ?? item.id),
+            body: item.body,
+            expectedRepository: cfg.repo,
+            expectedIssue: gateInput.issueNumber,
+          }).envelope
+      );
+    const matches = records.filter((record) => record.recordId === recordId);
+    if (matches.length !== 1) throw new TypeError('local-trunk-close:grant-ambiguous');
+    return { grant: matches[0], records };
+  };
+  const verifyHistoricalBurn = async ({ confirmedBurn }) => {
+    const { grant, records } = await loadGrant(confirmedBurn.grantRecordId);
+    await verifyStoredAuthority(grant, { resolveTranscriptPath });
+    const rebuilt = buildLocalTrunkCloseBurn({
+      grant,
+      authorizedAt: confirmedBurn.authorizedAt,
+    });
+    if (!equal(rebuilt, confirmedBurn)) throw new TypeError('local-trunk-close:historical-burn');
+    if (
+      records.some(
+        (record) =>
+          record.recordType === 'workflow-exception' &&
+          record.payload?.exceptionId === grant.payload.exceptionId &&
+          record.payload.revision > grant.payload.revision &&
+          Date.parse(record.createdAt) <= Date.parse(confirmedBurn.authorizedAt)
+      )
+    )
+      throw new TypeError('local-trunk-close:pre-burn-supersession');
+    const scope = grant.payload.deliveryScope;
+    const proof = await readProof({
+      active: true,
+      scope,
+      scopeIdentity: grant.payload.scopeIdentity,
+      deliveryOperationId: scope.deliveryOperationId,
+      waiverScopeDigest: grant.payload.waiverScopeDigest,
+    });
+    if (proof?.outcome !== 'authorized-local-trunk-close')
+      throw new TypeError(`local-trunk-close:historical-proof:${proof?.reasonId}`);
+    return true;
+  };
+  let snapshot;
+  try {
+    snapshot = await activeJournal.read();
+  } catch {
+    throw new TypeError('local-trunk-close:indeterminate:journal-read');
+  }
+  if (!(snapshot?.operations instanceof Map))
+    throw new TypeError('local-trunk-close:indeterminate:journal-snapshot');
+  const existing = [...snapshot.operations.values()].filter(
+    (operation) =>
+      operation.burn?.repository === cfg.repo &&
+      operation.burn?.issue === gateInput.issueNumber &&
+      operation.burn?.acceptedHeadSha === gateInput.acceptedSha
+  );
+  if (existing.length > 1) throw new TypeError('local-trunk-close:indeterminate:operations');
+  let candidate;
+  if (existing.length === 1) {
+    candidate = existing[0].burn;
+    await verifyHistoricalBurn({ confirmedBurn: candidate });
+  } else {
+    const proof = await readProof();
+    if (proof?.outcome !== 'authorized-local-trunk-close' || !proof.grantEnvelope)
+      throw new TypeError(
+        `local-trunk-close:initial-proof:${proof?.reasonId ?? 'grant-unavailable'}`
+      );
+    candidate = buildLocalTrunkCloseBurn({ grant: proof.grantEnvelope, authorizedAt: now() });
+  }
+  return completeLocalTrunkClose({
+    candidate,
+    journal: activeJournal,
+    comments: commentPort,
+    runId,
+    verifyInitialBurn: async () => {
+      const proof = await readProof();
+      if (proof?.outcome !== 'authorized-local-trunk-close' || !proof.grantEnvelope)
+        throw new TypeError(
+          `local-trunk-close:initial-proof:${proof?.reasonId ?? 'grant-unavailable'}`
+        );
+      const live = buildLocalTrunkCloseBurn({ grant: proof.grantEnvelope, authorizedAt: now() });
+      if (!equal({ ...live, authorizedAt: candidate.authorizedAt }, candidate))
+        throw new TypeError('local-trunk-close:initial-grant-drift');
+      return candidate;
+    },
+    verifyHistoricalBurn,
+  });
 }
