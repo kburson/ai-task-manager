@@ -2,8 +2,8 @@
 
 ## Status and sequence
 
-This is an AITM design for project-local estimation evidence. It does not assign
-a new issue number. Complete the independent GraphQL measurement spike
+This is the AITM design for project-local estimation evidence tracked by
+[#1821](https://github.com/kburson/ai-task-manager/issues/1821). Complete the independent GraphQL measurement spike
 [#1818](https://github.com/kburson/ai-task-manager/issues/1818) and record its
 baseline before implementing this design. After implementation, repeat an
 equivalent workload and assess the remaining open stories in the overlap map
