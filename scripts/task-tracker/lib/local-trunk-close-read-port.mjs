@@ -11,6 +11,8 @@ import { parseAitmRecord } from './github-records/record-envelope.mjs';
 import { buildDeliveryScope } from './workflow-policy/delivery-scope.mjs';
 import { resolveDeliveryExceptionChain } from './workflow-policy/exception-record.mjs';
 import { computeScopeIdentity } from './workflow-policy/scope-identity.mjs';
+import { verifyStoredDeliveryWaiverAuthority } from './workflow-policy/delivery-waiver-authority.mjs';
+import { jsonlPath } from '../word-counter.mjs';
 import { resolveLocalTrunkAcceptedSha } from '../verbs/workflow-exception.mjs';
 
 /** Fresh proof port for the one-issue local-trunk lane. The grant is supplied by the journal consumer. */
@@ -24,6 +26,8 @@ export async function loadCloseLocalTrunkProof({
   deliveryOperationId = null,
   waiverScopeDigest = null,
   listGrantRecords = null,
+  verifyStoredAuthority = verifyStoredDeliveryWaiverAuthority,
+  resolveTranscriptPath = jsonlPath,
 } = {}) {
   if (!gateInput || !cfg || !projectDir) throw new TypeError('local-trunk-proof:input');
   const remote = cfg.trunkRemote?.trim() || 'origin';
@@ -118,6 +122,13 @@ export async function loadCloseLocalTrunkProof({
           })
         : null;
     if (chain?.status === 'invalid') throw new TypeError('local-trunk-proof:grant-ambiguous');
+    if (chain?.active) {
+      const heads = localRecords.filter(
+        ({ envelope }) => envelope.recordId === chain.head.recordId
+      );
+      if (heads.length !== 1) throw new TypeError('local-trunk-proof:grant-head');
+      await verifyStoredAuthority(heads[0].envelope, { resolveTranscriptPath });
+    }
     selectedGrant = chain?.active
       ? {
           active: true,

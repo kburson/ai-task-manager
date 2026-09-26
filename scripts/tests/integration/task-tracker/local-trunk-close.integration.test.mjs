@@ -20,6 +20,12 @@ import { collectCloseReadiness } from '../../../task-tracker/lib/action-decision
 import { createObservationAttempt } from '../../../task-tracker/lib/action-decision/observations.mjs';
 import { computeScopeIdentity } from '../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import { buildDeliveryScope } from '../../../task-tracker/lib/workflow-policy/delivery-scope.mjs';
+import { parseAitmRecord } from '../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { hashAuthorizationStatement } from '../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
+import {
+  parseWorkflowExceptionRequest,
+  runWorkflowException,
+} from '../../../task-tracker/verbs/workflow-exception.mjs';
 import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 import {
   evaluateLocalTrunkCloseProof,
@@ -440,6 +446,132 @@ test('close read port gathers exact Review evidence and fresh PR and trunk obser
     waiverScopeDigest: grant.waiverScopeDigest,
   });
   assert.equal(mismatch.reasonId, 'grant-scope-mismatch');
+
+  const records = [];
+  let exactStatement;
+  const runtime = {
+    async fetchIssue() {
+      return { number: 1825, body };
+    },
+    async fetchDeliveryFacts() {
+      return {
+        repository: 'owner/repo',
+        issue: 1825,
+        scopeIdentity: grant.scopeIdentity,
+        pullRequest: null,
+        acceptedHeadSha: acceptedSha,
+        baseRef: 'trunk',
+        resolvedTrunkRef: 'origin/trunk',
+        originalIntentRecordId: null,
+        prior: null,
+        now: '2026-09-26T08:00:00.000Z',
+        existingDeliveryRecords: records,
+      };
+    },
+    async listRecords() {
+      return [...records];
+    },
+    async resolveAuthority() {
+      return {
+        status: 'verified',
+        authority: {
+          reference: 'codex://sessions/01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed/messages/msg_local',
+          statement: exactStatement,
+          principal: null,
+          recordingActor: 'codex/session:01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed',
+          origin: 'codex-session-transcript',
+          verificationLevel: 'host-verified-user-message',
+        },
+      };
+    },
+    async appendRecord({ body: comment }) {
+      records.push({
+        ...parseAitmRecord({
+          commentNodeId: 'IC_local_1825',
+          body: comment,
+          expectedRepository: 'owner/repo',
+          expectedIssue: 1825,
+        }),
+        body: comment,
+      });
+    },
+    nextIds() {
+      return { recordId: '01M2H000000000000000000012', grantId: '01M2H000000000000000000013' };
+    },
+  };
+  const draft = await runWorkflowException({
+    action: 'prepare',
+    issues: [1825],
+    repository: 'owner/repo',
+    request: {
+      schema: 'aitm.local-trunk-close-proposal/v1',
+      action: 'record',
+      exceptionId: null,
+      priorRecordId: null,
+      priorRevision: null,
+      requirementId: 'delivery.local-trunk-close-authorization',
+      reason: 'The operator accepts this exact verified no-PR close.',
+      expiresAt: '2026-09-27T08:00:00.000Z',
+      deliveryOperationId: null,
+    },
+    now: '2026-09-26T08:00:00.000Z',
+    runtime,
+  });
+  assert.equal(draft.status, 'prepared');
+  exactStatement = draft.results[0].statement;
+  const recorded = await runWorkflowException({
+    action: 'record',
+    issues: [1825],
+    repository: 'owner/repo',
+    request: parseWorkflowExceptionRequest(
+      {
+        ...draft.results[0].request,
+        authorizationSource: {
+          schema: 'aitm.authorization-source/v1',
+          adapter: 'codex-session/v1',
+          sessionId: '01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed',
+          messageId: 'msg_local',
+          statementHash: hashAuthorizationStatement(exactStatement),
+        },
+      },
+      { action: 'record' }
+    ),
+    now: '2026-09-26T08:00:00.000Z',
+    runtime,
+  });
+  assert.equal(recorded.status, 'recorded', JSON.stringify(recorded));
+  let verified = 0;
+  const readStored = (verifyStoredAuthority) =>
+    loadCloseLocalTrunkProof({
+      gateInput: {
+        body,
+        branch,
+        issueNumber: 1825,
+        acceptedSha,
+        lineage: { parentIssueNumber: null },
+      },
+      cfg: { repo: 'owner/repo', trunkRef: 'origin/trunk' },
+      projectDir,
+      pexec,
+      fetchRemoteTip: false,
+      listGrantRecords: async () => [[{ node_id: 'IC_local_1825', body: records[0].body }]],
+      verifyStoredAuthority,
+    });
+  assert.equal(
+    (
+      await readStored(async () => {
+        verified += 1;
+      })
+    ).outcome,
+    'authorized-local-trunk-close'
+  );
+  assert.equal(verified, 1);
+  await assert.rejects(
+    readStored(async () => {
+      throw new Error('source missing');
+    }),
+    /source missing/
+  );
 });
 
 test('Explain consumes local proof and stays blocked before a burn receipt', async () => {
