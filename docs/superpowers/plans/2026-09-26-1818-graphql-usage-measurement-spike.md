@@ -139,14 +139,14 @@ than silently delivering all work under one oversized story.
 
 ## Traceability Map
 
-| Spec acceptance area                                                        | Owning task | Required verifier evidence                                                    |
-| --------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| Production call-site inventory and coverage classes                         | Task 1      | inventory scan and metadata-schema tests                                      |
-| Metadata-only record shape, redaction, operation identity, cost fields      | Task 1      | record validation fixtures with forbidden payload cases                       |
-| Git common-root resolution, enrollment, manifest, concurrency, writer files | Task 2      | disposable git worktree storage and enrollment tests                          |
-| CLI shim and direct HTTP collection without behavior changes                | Task 3      | fake `gh`, injected transport, existing action-capture regression tests       |
-| Single-root aggregation, graphs, coverage gates, point/volume sufficiency   | Task 4      | report fixtures for foreign roots, gaps, denied participants, known-cost rows |
-| Real creation-to-planning baseline and #1817 handoff                        | Task 5      | baseline report, participant manifest, measured duration and comparison notes |
+| Spec acceptance area                                                                                  | Owning task | Required verifier evidence                                                                                          |
+| ----------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Production call-site inventory and coverage classes                                                   | Task 1      | inventory scan and metadata-schema tests                                                                            |
+| Metadata-only record shape, redaction, operation identity, cost fields                                | Task 1      | record validation fixtures with forbidden payload cases                                                             |
+| Git common-root resolution, enrollment, manifest, concurrency, writer files                           | Task 2      | disposable git worktree storage and enrollment tests                                                                |
+| CLI shim and direct HTTP collection without behavior changes                                          | Task 3      | fake `gh`, injected transport, header-capture, existing action-capture regression tests                             |
+| Single-root aggregation, graphs, coverage gates, latency, budget, read-cost, point/volume sufficiency | Task 4      | report fixtures for foreign roots, gaps, denied participants, known-cost rows, unavailable budget, readable extents |
+| Real creation-to-planning baseline and #1817 handoff                                                  | Task 5      | baseline report, participant manifest, measured duration and comparison notes                                       |
 
 ## Implementation Tasks
 
@@ -185,7 +185,7 @@ records. Classify call sites as `direct-http`, `gh-api-graphql`,
       common-root ID, operation identity, `logicalOperationId`, `pageIndex`,
       `processExitCode`, `httpStatus`, `rateLimit`, endpoint host,
       `budgetScopeId`, `kind: mixed | unknown`, instrumented-request cost
-      labeling, and coverage diagnostics.
+      labeling, augmentation version, and coverage diagnostics.
 - [ ] Add tests that reject raw query text, variables, response bodies, issue
       bodies, secrets, and unsanitized path/session values from all record shapes.
 - [ ] Add fingerprint fixtures proving inline literals are redacted before hashing.
@@ -244,8 +244,13 @@ context, and write per-process JSONL files below
       without inventing a runtime identity. Add manifest rows for
       launcher-allocated sessions and tests for propagation to nested children
       plus distinct IDs for independent launcher sessions.
-- [ ] Add writer start and normal-close markers, soft-cap diagnostics, retained
-      byte/file counts, and bounded redacted stderr fallback for storage failure.
+- [ ] Add writer start and normal-close markers, owner-only directory/file
+      permissions where supported, soft-cap diagnostics, retained byte/file counts,
+      and bounded redacted stderr fallback for storage failure.
+- [ ] Implement explicit local cleanup semantics: retain observations until
+      operator-directed cleanup after export, exclude active writers, disclose
+      removed observation intervals, and mark cleanup or pause actions as coverage
+      gaps.
 - [ ] Amend `CLAUDE.md` with the narrow reviewed exception for GraphQL usage
       metadata under the Git common directory.
 
@@ -302,6 +307,11 @@ business data.
 - [ ] Own `action-capture.mjs` telemetry-specific classification here: preserve
       existing public classification behavior while wiring the Task 1 classifier
       contract for comments, selected operations, and unsupported syntax.
+- [ ] Capture `x-ratelimit-limit`, `x-ratelimit-remaining`,
+      `x-ratelimit-used`, `x-ratelimit-reset`, and `x-ratelimit-resource` from
+      direct HTTP adapter responses only. For shim-observed records, write an
+      explicit transport-unavailable budget reason and do not add `--include` or
+      any flag that alters stdout contracts.
 - [ ] Add collection-side no-extra-GitHub-call tests by injecting transports and
       failing if recording or context capture issues any additional API request.
 - [ ] Resolve issue number and lifecycle state only from current command
@@ -362,11 +372,16 @@ complete-observation costs from visible-response-only costs.
       invocation latency.
 - [ ] Report account-budget context from `x-ratelimit-*` headers without
       attributing other clients' usage to AITM, separated by endpoint host and known
-      `budgetScopeId`.
+      `budgetScopeId`; render shim-only budget data as transport-unavailable, not
+      zero or blank.
 - [ ] Report aggregation file-open count and elapsed read time so the
-      file-per-process storage choice has measured read-side overhead.
+      file-per-process storage choice has measured read-side overhead. Snapshot
+      each file's readable extent before parsing so active appends cannot make a
+      report unbounded.
 - [ ] Add reporting-side no-extra-GitHub-call tests by injecting filesystem roots
-      and failing if aggregation issues a GitHub request.
+      and failing if aggregation issues a GitHub request. Add fixtures for
+      shim-only budget context, cleanup-removed intervals, and active-writer
+      readable-extent snapshots.
 - [ ] Enforce the total-point ranking sufficiency gate: 100% complete cost
       coverage for the predeclared candidate group and no relevant opaque hidden
       attempts, uncovered paths, denied participants, unknown enrollment, or
