@@ -537,7 +537,7 @@ export const VERB_CONTRACTS = Object.freeze({
       'Every issue is explicit; delivery prepare uses exactly one issue and is read-only; mutation modes require a closed request and a host-verified user-message authorization source.',
     ],
     [
-      'Prepare returns an exact proposal and approval statement without writing; writes append immutable revisions or revocations through the canonical GitHub record store; show is read-only.',
+      'Prepare returns an exact PR-waiver or one-issue local-trunk proposal and approval statement without writing; writes append immutable revisions or revocations through the canonical GitHub record store; show is read-only.',
       'Series execution is per issue, idempotent, and reports partial or indeterminate results without claiming aggregate success.',
     ],
     ['Prints matching human or aitm.workflow-exception-result/v1 JSON output.'],

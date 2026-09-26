@@ -150,13 +150,13 @@ export const VERB_REFERENCE = {
   'workflow-exception': {
     topic: 'evidence',
     summary:
-      'Prepare exact PR delivery waivers or record, inspect, revise, and revoke durable workflow exceptions.',
+      'Prepare exact PR waivers or one-issue local-trunk close grants; record, inspect, revise, and revoke workflow exceptions.',
     usage:
       '/task workflow-exception <prepare|record|show|revise|revoke> #N [#M ...] [--input-file <request.json>] [--json]',
     flags: [
       {
         flag: '--input-file <path>',
-        desc: 'closed delivery waiver proposal for read-only prepare or host-approved request for writes; required except for show',
+        desc: 'closed PR-waiver or local-trunk proposal for read-only prepare, or host-approved request for writes; required except for show',
       },
       { flag: '--json', desc: 'emit the versioned per-issue result as JSON' },
     ],

@@ -1,0 +1,46 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "lane-regressions",
+      "description": "Prove ordinary PR, waiver, child-to-epic, no-commit, and standing local-trunk Close remain isolated from one-issue grants",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["delivery-default-refusals", "action-close", "close-delivery-receipt"],
+        "dependencies": ["local-trunk-close-receipt", "delivery-waiver-authority"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "operator-guidance",
+      "description": "Document read-only preparation, exact fresh user approval, record, one-use close, and refusal recovery",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": ["workflow-guide", "workflow-exception-help"],
+        "dependencies": ["local-trunk-close-proof", "workflow-exception"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "readiness-parity",
+      "description": "Keep advisory Explain aligned with completed local receipt and locked Close without effects",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": ["action-decision-close", "action-close-test"],
+        "dependencies": ["local-trunk-close-receipt", "close-read-port"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 45
+  },
+  "risks": [
+    "An advisory Explanation incorrectly claims unused authority is complete",
+    "A local grant masks an ordinary PR failure",
+    "Documentation implies a generic deliver instruction is sufficient approval"
+  ],
+  "comparableIssueIds": [1825, 1826]
+}

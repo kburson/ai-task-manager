@@ -5,6 +5,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import { buildDeliveryAttributionProposal } from '../../../../task-tracker/lib/delivery-attribution-exception-record.mjs';
+import { prepareDeliveryWaiver } from '../../../../task-tracker/lib/workflow-policy/delivery-request.mjs';
 import {
   buildDeliveryIntent,
   buildDeliveryReceipt,
@@ -312,3 +313,34 @@ for (const [label, mutate, category, requirementId] of [
     assertNoTerminalWrites(h, writes);
   });
 }
+
+test('one-issue local-trunk proposal cannot waive a PR delivery failure', () => {
+  const localProposal = {
+    schema: 'aitm.local-trunk-close-proposal/v1',
+    action: 'record',
+    exceptionId: null,
+    priorRecordId: null,
+    priorRevision: null,
+    requirementId: 'delivery.local-trunk-close-authorization',
+    reason: 'Only this no-PR issue can close after code is already on trunk.',
+    expiresAt: '2026-09-27T00:00:00.000Z',
+    deliveryOperationId: null,
+  };
+  assert.throws(() =>
+    prepareDeliveryWaiver({
+      input: localProposal,
+      facts: {
+        repository: context.repository,
+        issue: context.issueNumber,
+        scopeIdentity: `sha256:${'a'.repeat(64)}`,
+        pullRequest: context.prNumber,
+        acceptedHeadSha: HEAD,
+        baseRef: 'trunk',
+        resolvedTrunkRef: 'origin/trunk',
+        originalIntentRecordId: null,
+        prior: null,
+        now: '2026-09-26T00:00:00.000Z',
+      },
+    })
+  );
+});
