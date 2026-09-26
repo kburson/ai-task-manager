@@ -1,3 +1,11 @@
+---
+issue: 1817
+issue_url: https://github.com/kburson/ai-task-manager/issues/1817
+design: docs/superpowers/specs/2026-09-25-1817-worktree-local-backlog-and-history-design.md
+review_type: SAR
+status: no_material_findings
+---
+
 # Worktree-local backlog and history design: review summary
 
 An independent read-only reviewer examined the epic specification in five passes. The reviewer found no remaining material issues in the final pass.

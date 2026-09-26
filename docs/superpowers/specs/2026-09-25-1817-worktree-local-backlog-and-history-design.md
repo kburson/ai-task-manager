@@ -5,8 +5,8 @@
 This specification describes the proposed backlog epic. It is separate from
 the standalone GraphQL usage measurement spike. The spike may be implemented
 and measured first; its call-site inventory, coverage report, and baseline
-will set the epic's implementation order and quantitative targets. No GitHub
-issue number has been assigned to this specification.
+will set the epic's implementation order and quantitative targets. The
+[Backlog epic is #1817](https://github.com/kburson/ai-task-manager/issues/1817).
 
 ## Problem and intended outcome
 
