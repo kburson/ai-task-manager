@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { createRecordId } from '../github-records/record-envelope.mjs';
 import { validateAuthorizationSource } from './authority-resolver.mjs';
-import { validateDeliveryWaiverIds } from './catalog.mjs';
+import { validateDeliveryExceptionIds, validateDeliveryWaiverIds } from './catalog.mjs';
 import { buildDeliveryScope, DELIVERY_SCOPE_SCHEMA } from './delivery-scope.mjs';
 
 export const DELIVERY_PROPOSAL_SCHEMA = 'aitm.delivery-waiver-proposal/v1';
@@ -160,7 +160,7 @@ export function parseDeliveryWaiverRequest(input, { action } = {}) {
     fail('digest');
   const built = buildDeliveryScope(value.deliveryScope);
   if (built.waiverScopeDigest !== value.waiverScopeDigest) fail('scope-digest');
-  validateDeliveryWaiverIds(value.requirementIds, built.scope);
+  validateDeliveryExceptionIds(value.requirementIds, built.scope);
   if (
     value.exceptionId === null ||
     typeof value.exceptionId !== 'string' ||

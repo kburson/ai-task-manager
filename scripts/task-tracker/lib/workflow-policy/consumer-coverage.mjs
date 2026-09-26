@@ -25,6 +25,7 @@ export const CONSUMER_DECLARATIONS = Object.freeze({
   ci: Object.freeze(['delivery.ci']),
   delivery: Object.freeze(['delivery.safe-delivery']),
   protection: Object.freeze(['delivery.external-protection']),
+  'delivery-local-trunk-scope': Object.freeze(['delivery.local-trunk-close-authorization']),
   'delivery-pr-verifier': Object.freeze([
     'delivery.verification.accepted-head',
     'delivery.verification.pr-merged',

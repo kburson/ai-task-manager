@@ -34,6 +34,12 @@ const CATALOG = Object.freeze([
   item('delivery.ci', 'delivery-invariant', false),
   item('delivery.safe-delivery', 'delivery-invariant', false),
   item('delivery.external-protection', 'delivery-invariant', false),
+  Object.freeze({
+    id: 'delivery.local-trunk-close-authorization',
+    family: 'delivery-local-trunk-authorization',
+    waivable: false,
+    waivableWithDisclosure: false,
+  }),
   deliveryItem('accepted-head'),
   deliveryItem('pr-merged'),
   deliveryItem('pr-scope'),
@@ -128,6 +134,24 @@ export function validateDeliveryWaiverIds(requirementIds, deliveryScope) {
     throw new TypeError(`workflow-policy:non-waivable-delivery-requirement:${requirement.id}`);
   }
   return Object.freeze([requirement.id]);
+}
+
+export function validateDeliveryExceptionIds(requirementIds, deliveryScope) {
+  if (deliveryScope?.exceptionKind === 'delivery.invariant-waiver') {
+    return validateDeliveryWaiverIds(requirementIds, deliveryScope);
+  }
+  if (
+    !Array.isArray(requirementIds) ||
+    requirementIds.length !== 1 ||
+    requirementIds[0] !== 'delivery.local-trunk-close-authorization' ||
+    deliveryScope?.exceptionKind !== 'delivery.local-trunk-close-authorization' ||
+    deliveryScope.requirementId !== requirementIds[0] ||
+    deliveryScope.pullRequest !== null
+  ) {
+    throw new TypeError('workflow-policy:local-trunk-close-scope-mismatch');
+  }
+  requirementById(requirementIds[0]);
+  return Object.freeze([requirementIds[0]]);
 }
 
 export function validateConstraints(constraints = []) {
