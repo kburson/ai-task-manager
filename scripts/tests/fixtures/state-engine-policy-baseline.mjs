@@ -320,7 +320,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/chore-mode.mjs',
-      131,
+      63,
       'flush-call',
       "'chore-mode-enter'",
       ['chore-mode-enter']

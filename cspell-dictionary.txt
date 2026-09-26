@@ -562,3 +562,8 @@ reapproval
 rebaseline
 refspec
 waivability
+overpromise
+overpromises
+predeclared
+unsanitized
+unsandboxed
