@@ -436,6 +436,17 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
     readWorktree,
     readChildren,
     readDelivery,
+    readLocalTrunkProof: async ({ gateInput, grant }) => {
+      const { loadCloseLocalTrunkProof } = await import('../../verbs/close.mjs');
+      return loadCloseLocalTrunkProof({
+        gateInput,
+        grant,
+        cfg,
+        projectDir,
+        pexec: run,
+        fetchRemoteTip: false,
+      });
+    },
     readGuardAuthority,
     runReadOnlyGuards,
     hasAttributingCommit,

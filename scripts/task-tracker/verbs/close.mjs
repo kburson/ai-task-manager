@@ -4812,3 +4812,5 @@ export function formatCloseDeliveryDisclosure(receipt) {
   }
   return '';
 }
+
+export { loadCloseLocalTrunkProof } from '../lib/local-trunk-close-read-port.mjs';
