@@ -47,13 +47,13 @@ the shared GitHub account.
 
 PR #1814 merged the reviewed spike specification and review evidence before
 issue #1818 was created. The spec states that #1818 is independent of epic
-#1817, but its measured findings guide that epic's planning. The current issue
+issue #1817, but its measured findings guide that epic's planning. The current issue
 is in Plan and has no reviewed plan artifact before this file.
 
 The scope is larger than one implementation story: it touches launch routes,
 the `gh` shim, direct GraphQL HTTP adapters, storage, manifests, reporting,
 documentation, tests, and a real measured baseline. The plan therefore treats
-#1818 as an epic candidate. Hydration should convert #1818 to kind `epic` and
+issue #1818 as an epic candidate. Hydration should convert #1818 to kind `epic` and
 create ordered children for the implementation slices below. If AITM refuses
 epic conversion for a spike-origin issue, stop and record the refusal rather
 than silently delivering all work under one oversized story.
@@ -174,7 +174,7 @@ operator docs as needed.
 
 **Interface:** Define versioned observation, diagnostic, manifest, and inventory
 records. Classify call sites as `direct-http`, `gh-api-graphql`,
-`opaque-gh-cli`, `rest-or-nongraphql`, `uncovered`, or `out-of-scope`.
+`opaque-gh-cli`, `rest-or-non-graphql`, `uncovered`, or `out-of-scope`.
 
 - [ ] Add a source inventory test that scans shipped Node and shell sources for
       GraphQL call patterns, direct `gh api graphql`, action-capture shim traffic,
@@ -437,7 +437,7 @@ declared permitted sample remain in the manifest with selection-bias and
 lower-bound disclosure and forbid fleet-wide generalization, but do not by
 themselves block scoped volume evidence.
 
-- [ ] Predeclare candidate operation groups, permitted population, and the
+- [ ] Pre-declare candidate operation groups, permitted population, and the
       comparable signal for each: HTTP-attempt volume, opaque-invocation volume,
       or exact point cost where the complete-coverage gate can realistically pass.
       Do not remove poorly measured, denied, or inconvenient candidates after the
