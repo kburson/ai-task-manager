@@ -12,8 +12,15 @@ import {
   projectDeliveryRecords,
 } from '../lib/delivery-records.mjs';
 import { resolveCurrentIssueWorktreeBranch } from '../lib/issue-worktree-location.mjs';
-import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
+import {
+  canonicalVerificationCommandSet,
+  parseValidatedVerificationReceipts,
+  requiredTestReceiptClassifications,
+  validateVerificationReceipt,
+} from '../lib/verification-receipt.mjs';
 import { parseReviewApprovedMarker } from '../lib/markers.mjs';
+import { parseVerificationCommands } from '../lib/verification-commands.mjs';
+import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
 import {
   createIssueComment,
   listIssueCommentsSince,
@@ -264,10 +271,14 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
           const prs = parseGhJson(stdout);
           if (!Array.isArray(prs) || prs.length !== 0) fail('local-trunk-pr-ambiguity');
         }
-        const testSha = parseVerificationReceipt(snapshot.body, 'test')?.commitSha;
-        const reviewSha = parseReviewApprovedMarker(snapshot.body)?.approvedSha;
-        if (action !== 'revoke' && (!testSha || testSha !== reviewSha))
-          fail('local-trunk-accepted-head');
+        const testSha =
+          action === 'revoke'
+            ? prior.deliveryScope.acceptedHeadSha
+            : resolveLocalTrunkAcceptedSha({
+                body: snapshot.body,
+                issue,
+                projectDir: ctx.projectDir,
+              });
         const trunkRef = ctx.cfg.trunkRef;
         if (typeof trunkRef !== 'string' || !trunkRef) fail('local-trunk-ref');
         return {
@@ -275,7 +286,7 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
           issue,
           scopeIdentity,
           pullRequest: null,
-          acceptedHeadSha: action === 'revoke' ? prior.deliveryScope.acceptedHeadSha : testSha,
+          acceptedHeadSha: testSha,
           baseRef: trunkRef.split('/').at(-1),
           resolvedTrunkRef: trunkRef,
           originalIntentRecordId: null,
@@ -613,4 +624,47 @@ export async function verbWorkflowException(ctx) {
   });
   process.stdout.write(`${formatWorkflowExceptionResult(result, { json: parsed.json })}\n`);
   if (['blocked', 'partial'].includes(result.status)) process.exitCode = 6;
+}
+
+export function resolveLocalTrunkAcceptedSha({ body, issue, projectDir } = {}) {
+  let receipts;
+  let verificationCommands;
+  try {
+    receipts = parseValidatedVerificationReceipts(body, { expectedIssue: issue });
+    verificationCommands = canonicalVerificationCommandSet(parseVerificationCommands(body), {
+      projectDir,
+    });
+  } catch {
+    fail('local-trunk-accepted-head');
+  }
+  const test = receipts.filter((receipt) => receipt.stage === 'test');
+  const review = receipts.filter((receipt) => receipt.stage === 'review');
+  const approval = parseReviewApprovedMarker(body);
+  if (
+    test.length !== 1 ||
+    review.length > 1 ||
+    !isAgentReviewComplete(body) ||
+    !approval?.approvedSha ||
+    approval.approvedSha !== test[0].commitSha ||
+    (review.length === 1 && review[0].commitSha !== test[0].commitSha)
+  )
+    fail('local-trunk-accepted-head');
+  const valid = (receipt, stage, required = []) =>
+    validateVerificationReceipt({
+      receipt,
+      expectedIssue: issue,
+      expectedStage: stage,
+      fingerprint: {
+        commitSha: test[0].commitSha,
+        verificationCommands,
+        environment: receipt.environment,
+      },
+      required,
+    }).ok;
+  if (
+    !valid(test[0], 'test', requiredTestReceiptClassifications(test[0])) ||
+    (review.length === 1 && !valid(review[0], 'review'))
+  )
+    fail('local-trunk-accepted-head');
+  return test[0].commitSha;
 }
