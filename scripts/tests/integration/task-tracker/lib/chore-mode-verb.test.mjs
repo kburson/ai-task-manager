@@ -4,12 +4,10 @@
 //
 // Covers AC #3, #4, #5, #8, and #9(e)/(g):
 //   - `chore-mode on` writes active=true + previousIssue + reason
-//   - `chore-mode on` refuses when fleet has live worktree-scoped agent
+//   - `chore-mode on` permits active agents in sibling worktrees
 //   - `chore-mode off` clears active
 //   - `chore-mode off --resume` invokes verbStart for the previous issue
 //   - `chore-mode status` formats the current record
-//   - liveWorktreeAgents helper classification
-//   - buildLiveFleetRefusal shape
 
 import { strict as assert } from 'node:assert';
 import { after, before, beforeEach, test } from 'node:test';
@@ -24,8 +22,6 @@ import {
   choreModeOn,
   choreModeOff,
   choreModeStatus,
-  liveWorktreeAgents,
-  buildLiveFleetRefusal,
   formatStatus,
 } from '../../../../task-tracker/verbs/chore-mode.mjs';
 import { readChoreMode } from '../../../../task-tracker/lib/chore-mode.mjs';
@@ -71,32 +67,6 @@ function mkCtx(root, restAfterSub) {
     cfg: { repo: 'kburson/ai-task-manager' },
   };
 }
-
-test('liveWorktreeAgents filters active+worktreePath entries', () => {
-  const fleet = {
-    '#1': { status: 'active', worktreePath: '/wt/1', branch: '1-foo' },
-    '#2': { status: 'paused', worktreePath: '/wt/2', branch: '2-bar' },
-    '#3': { status: 'active' }, // no worktreePath → main-thread bind
-    '#4': { status: 'active', worktreePath: '/wt/4', branch: '4-baz' },
-  };
-  const live = liveWorktreeAgents(fleet);
-  assert.equal(live.length, 2);
-  assert.deepEqual(live.map((a) => a.ref).sort(), ['#1', '#4']);
-});
-
-test('liveWorktreeAgents tolerates null / non-object input', () => {
-  assert.deepEqual(liveWorktreeAgents(null), []);
-  assert.deepEqual(liveWorktreeAgents(undefined), []);
-  assert.deepEqual(liveWorktreeAgents('bogus'), []);
-});
-
-test('buildLiveFleetRefusal includes each agent ref + worktreePath', () => {
-  const refusal = buildLiveFleetRefusal([{ ref: '#42', branch: '42-foo', worktreePath: '/wt/42' }]);
-  assert.equal(refusal.code, 'chore-mode-live-fleet');
-  assert.match(refusal.message, /#42/);
-  assert.match(refusal.message, /\/wt\/42/);
-  assert.match(refusal.message, /single-thread main-loop only/);
-});
 
 test('formatStatus renders all fields', () => {
   const text = formatStatus({
@@ -145,32 +115,35 @@ test('chore-mode on writes active=true with reason and previousIssue', async () 
   }
 });
 
-test('chore-mode on refuses when fleet has live worktree-scoped agent', async () => {
-  const root = createCaseRoot('chore-on-refuse-');
+test('chore-mode on stays local while another worktree agent is active', async () => {
+  const root = createCaseRoot('chore-on-parallel-');
+  const sibling = createCaseRoot('chore-sibling-');
   try {
     writeState(root, { active: null, lastActive: null });
+    writeState(sibling, { active: '#888', lastActive: '#888' });
     const out = buf();
     const err = buf();
     const ctx = {
       statePath: statePath(root),
       projectDir: root,
-      rest: ['on'],
+      rest: ['on', 'spell', 'dictionary'],
     };
     const rc = await choreModeOn(ctx, {
       readFleet: () => ({
-        '#888': { status: 'active', worktreePath: '/wt/888', branch: '888-x' },
+        '#888': { status: 'active', kind: 'worktree', worktreePath: sibling, branch: '888-x' },
       }),
       findMainWorktreePath: () => root,
       out,
       err,
     });
-    assert.equal(rc, 2);
-    assert.match(err.text(), /chore-mode-live-fleet/);
-    assert.match(err.text(), /#888/);
-    const cm = readChoreMode(root);
-    assert.equal(cm.active, false, 'must not flip active on refusal');
+    assert.equal(rc, 0);
+    assert.equal(readChoreMode(root).active, true);
+    assert.equal(readChoreMode(sibling).active, false);
+    assert.equal(JSON.parse(readFileSync(statePath(sibling), 'utf8')).active, '#888');
+    assert.equal(err.text(), '');
   } finally {
     rmSync(root, { recursive: true, force: true });
+    rmSync(sibling, { recursive: true, force: true });
   }
 });
 

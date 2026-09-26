@@ -564,3 +564,8 @@ refspec
 waivability
 premerge
 unreachability
+overpromise
+overpromises
+predeclared
+unsanitized
+unsandboxed
