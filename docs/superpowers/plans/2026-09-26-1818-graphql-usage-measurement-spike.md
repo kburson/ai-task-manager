@@ -7,7 +7,7 @@
 
 **Goal:** Measure AITM-owned GitHub GraphQL usage across concurrent worktrees
 without changing GitHub request or response behavior, then produce a truthful
-baseline that can guide backlog-cache epic #1817.
+decision-grade baseline that can guide backlog-cache epic #1817.
 
 **Architecture:** Convert #1818 into an epic that delivers a repository-level
 metadata collector, shared Git-common storage, participant enrollment, offline
@@ -19,9 +19,11 @@ traffic. Each child preserves the reviewed spec boundary and leaves caching,
 rate coordination, lifecycle policy changes, and backlog optimization to later
 work.
 
-**Tech Stack:** Node.js 26 ESM, GitHub CLI/GraphQL, Git common-directory local
-storage, `node:test`, existing AITM action-capture helpers, Markdown/JSONL
-report artifacts, and AITM governed lifecycle verbs.
+**Tech Stack:** Node.js ESM with Node 26 as the development runtime and
+compatibility preserved for the package's supported Node floor, GitHub
+CLI/GraphQL, Git common-directory local storage, `node:test`, existing AITM
+action-capture helpers, Markdown/JSONL report artifacts, and AITM governed
+lifecycle verbs.
 
 **Spec:** `docs/superpowers/specs/2026-09-25-1818-graphql-usage-measurement-spike-design.md`
 
@@ -53,8 +55,8 @@ the `gh` shim, direct GraphQL HTTP adapters, storage, manifests, reporting,
 documentation, tests, and a real measured baseline. The plan therefore treats
 #1818 as an epic candidate. Hydration should convert #1818 to kind `epic` and
 create ordered children for the implementation slices below. If AITM refuses
-conversion for a spike-origin issue, stop and record the refusal rather than
-silently delivering all work under one oversized story.
+epic conversion for a spike-origin issue, stop and record the refusal rather
+than silently delivering all work under one oversized story.
 
 ## Acceptance Criteria
 
@@ -64,27 +66,35 @@ silently delivering all work under one oversized story.
       unsupported, and ambiguous-dispatch cases emit metadata-only observations
       with exact same-response costs or explicit unknown-cost reasons.
 - [ ] Concurrent worktrees and sessions write complete, non-interleaved JSONL
-      records under the same Git common directory with independent attribution.
+      records under the same canonical Git common directory with independent
+      attribution.
 - [ ] Collection preserves original stdout, stderr, exit, exception, and
       response behavior and persists no query text, variables, secrets, issue
       bodies, or response payloads.
 - [ ] Offline reports and graphs display call volume, known points, hourly
       peaks, operation and stage breakdowns, malformed/duplicate data, and coverage
       limits without presenting partial sums as complete totals.
+- [ ] Reports enforce one canonical `commonRootId`, exclude out-of-root
+      observations from totals, and refuse total-point ranking when relevant
+      hidden attempts, uncovered paths, denied participants, or collection gaps remain.
 - [ ] Usage collection reuses action-capture interception without enabling
       body capture and remains independent of active issue binding.
 - [ ] The implementation includes the narrow `CLAUDE.md` Git-common storage
       exception, runtime shared-root reachability checks, participant manifests,
       and denial/selection-bias disclosures.
-- [ ] A measured creation-to-planning baseline with overlapping permitted
-      worktrees is recorded, or the spike explicitly reports why the result remains
-      preliminary.
+- [ ] A decision-grade measured baseline is complete: one real
+      creation-to-planning workflow, two enrolled permitted worktrees sharing the
+      report `commonRootId`, an overlapping 60-minute collector window, observed
+      AITM traffic from both worktrees, actual traffic/activity durations, and
+      matched-workload comparison guidance for #1817. Short, missing, or
+      inadequately covered measurement remains pending/preliminary and cannot
+      satisfy parent Review.
 
 ## Plan Metadata
 
 - Priority: P1
 - Size: XL
-- Estimate: 42 hours
+- Estimate: 46 hours
 - Labels: SPIKE, enhancement, backend, dx, reliability, test
 - Parent issue: #1818
 - Decomposition: convert #1818 to an epic and create five ordered children. The
@@ -122,7 +132,19 @@ silently delivering all work under one oversized story.
 - Use AITM issue #1818 for the parent. Child commits, PRs, Test receipts, and
   Review evidence use their assigned child issue numbers.
 - Parent Review waits until every child reaches Review and the baseline evidence
-  is reconciled against the parent acceptance criteria.
+  is reconciled against the parent acceptance criteria. A preliminary baseline
+  report is useful evidence, but it is not parent completion evidence.
+
+## Traceability Map
+
+| Spec acceptance area                                                        | Owning task | Required verifier evidence                                                    |
+| --------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
+| Production call-site inventory and coverage classes                         | Task 1      | inventory scan and metadata-schema tests                                      |
+| Metadata-only record shape, redaction, operation identity, cost fields      | Task 1      | record validation fixtures with forbidden payload cases                       |
+| Git common-root resolution, enrollment, manifest, concurrency, writer files | Task 2      | disposable git worktree storage and enrollment tests                          |
+| CLI shim and direct HTTP collection without behavior changes                | Task 3      | fake `gh`, injected transport, existing action-capture regression tests       |
+| Single-root aggregation, graphs, coverage gates, point/volume sufficiency   | Task 4      | report fixtures for foreign roots, gaps, denied participants, known-cost rows |
+| Real creation-to-planning baseline and #1817 handoff                        | Task 5      | baseline report, participant manifest, measured duration and comparison notes |
 
 ## Implementation Tasks
 
@@ -141,8 +163,8 @@ silently delivering all work under one oversized story.
 #### Files and Delivery Boundary
 
 **Estimate:** 7 hours. This child owns inventory, schemas, stable operation
-identity, and source-level coverage checks. It does not wire production launch
-routes or write reports beyond inventory output.
+identity, redacted query fingerprints, and source-level coverage checks. It does
+not wire production launch routes or write reports beyond inventory output.
 
 **Modify or create:** `scripts/task-tracker/lib/graphql-usage/*`,
 `scripts/task-tracker/lib/action-capture.mjs` only where shared classification
@@ -160,9 +182,10 @@ records. Classify call sites as `direct-http`, `gh-api-graphql`,
       CLI surfaces.
 - [ ] Define the metadata-only observation schema, including cost coverage,
       dispatch status, context scope, launch route, session source, common-root ID,
-      operation identity, and coverage diagnostics.
+      operation identity, instrumented-request cost labeling, and coverage diagnostics.
 - [ ] Add tests that reject raw query text, variables, response bodies, issue
       bodies, secrets, and unsanitized path/session values from all record shapes.
+- [ ] Add fingerprint fixtures proving inline literals are redacted before hashing.
 - [ ] Record the initial inventory and uncovered-path expectations in the child
       issue or committed documentation.
 
@@ -173,7 +196,57 @@ node --test scripts/tests/unit/task-tracker/lib/graphql-usage-inventory.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/graphql-usage-records.test.mjs
 ```
 
-### Task 2: Wire Usage Collection Through CLI and HTTP Boundaries
+### Task 2: Implement Git-Common Storage, Enrollment, and Concurrency
+
+#### Story Intent
+
+- **Beneficiary:** operators measuring multiple concurrent worktrees
+- **Capability:** share usage observations under one Git common directory with
+  trustworthy participant attribution
+- **Need:** the reviewed spec requires real permission-context enrollment before
+  a measured process tree starts
+- **Value or failure prevented:** later production wiring has a real sink,
+  manifest contract, and denial vocabulary instead of an unspecified temporary store
+
+#### Files and Delivery Boundary
+
+**Estimate:** 9 hours. Depends on Task 1. This child owns root resolution,
+reachability probes, writer files, session/enrollment context, inherited context,
+participant manifest helpers, and storage diagnostics. It may use injected
+observation records only; it does not wire production launch routes.
+
+**Modify or create:** Git common-root resolver, storage writer, enrollment cache,
+participant manifest helpers, CLAUDE.md storage exception, and integration tests
+with disposable git worktrees and permission/failure fixtures.
+
+**Interface:** Resolve the consuming worktree's absolute Git common directory,
+probe `<git-common-dir>/aitm/graphql-usage/`, derive a non-secret common-root
+ID, write prelaunch participant rows, allocate or preserve session/enrollment
+context, and write per-process JSONL files below
+`v1/<worktree-id>/<session-id-or-unknown>/`.
+
+- [ ] Add tests for normal gitdir files, worktrees, unsupported git resolution,
+      no Git context, denied shared-root access, disk/write failures, stale
+      enrollment cache, expired enrollment, and changed permission context.
+- [ ] Exercise two worktrees, two sessions in one worktree, short-lived writers,
+      concurrent async observations, partial final lines, malformed records, and
+      duplicate/conflicting `callId` records through the storage API.
+- [ ] Own runtime session allocation, inherited context preservation, nested
+      bootstrap context, enrollment refresh, and manifest row updates. Missing or
+      invalid runtime identity must produce unknown attribution, not a fabricated session.
+- [ ] Add writer start and normal-close markers, soft-cap diagnostics, retained
+      byte/file counts, and bounded redacted stderr fallback for storage failure.
+- [ ] Amend `CLAUDE.md` with the narrow reviewed exception for GraphQL usage
+      metadata under the Git common directory.
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/graphql-usage-storage.test.mjs
+```
+
+### Task 3: Wire Usage Collection Through CLI and HTTP Boundaries
 
 #### Story Intent
 
@@ -187,9 +260,9 @@ node --test scripts/tests/unit/task-tracker/lib/graphql-usage-records.test.mjs
 
 #### Files and Delivery Boundary
 
-**Estimate:** 10 hours. Depends on Task 1's record contract. This child owns
-collection wiring and behavior preservation, not shared storage aggregation or
-reports.
+**Estimate:** 10 hours. Depends on Tasks 1 and 2. This child owns collection
+wiring, production bootstrap, measurement launcher, direct HTTP adapters, and
+behavior preservation using the Task 2 sink. It does not own aggregate reports.
 
 **Modify or create:** `scripts/task-tracker/lib/action-capture.mjs`,
 `scripts/task-tracker/action-capture-bin/gh`, AITM CLI/bootstrap entry points,
@@ -197,14 +270,14 @@ direct HTTP GraphQL adapters such as value-report helpers, measurement-launcher
 support, and focused integration tests with fake `gh` and injected transports.
 
 **Interface:** A shared usage observation sink receives exactly one record per
-lowest observable boundary. Known Node query builders may augment supported
-queries with a collision-free `rateLimit { cost }` selection and strip only the
-added telemetry alias before returning business data.
+lowest observable boundary and flushes to Task 2 storage. Known Node query
+builders may augment supported queries with a collision-free `rateLimit { cost }`
+selection and strip only the added telemetry alias before returning business data.
 
 - [ ] Cover usage-only, action-only, both-enabled, and both-disabled modes
       without enabling action-capture payload storage from usage collection.
 - [ ] Add shell and synchronous subprocess tests proving a completed observation
-      is flushed before the parent returns on normal exit.
+      is persisted before the parent returns on normal exit.
 - [ ] Add injected transport tests for query, mutation, selected operation,
       fragments, aliases, inline literals, GraphQL errors, HTTP failures, retries,
       pagination, ambiguous dispatch, and unsupported syntax.
@@ -212,58 +285,16 @@ added telemetry alias before returning business data.
       cooperate through a private observation context.
 - [ ] Preserve existing action-capture public classification behavior while
       adding safer telemetry-specific classification.
+- [ ] Rerun existing action-capture regression coverage after wiring:
+      `scripts/tests/integration/task-tracker/lib/action-capture.test.mjs` and
+      `scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs`.
 
 **Verification Commands:**
 
 ```sh
 node --test scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/action-capture.test.mjs
-```
-
-### Task 3: Implement Git-Common Storage, Enrollment, and Concurrency
-
-#### Story Intent
-
-- **Beneficiary:** operators measuring multiple concurrent worktrees
-- **Capability:** share usage observations under one Git common directory with
-  trustworthy participant attribution
-- **Need:** per-worktree `.tmp` output cannot serve as the reviewed evidence
-  root for this spike, and cross-process appends can corrupt shared files
-- **Value or failure prevented:** concurrent sessions produce readable,
-  attributable, non-interleaved evidence with explicit denial and storage
-  failure diagnostics
-
-#### Files and Delivery Boundary
-
-**Estimate:** 8 hours. Depends on Tasks 1 and 2. This child owns root
-resolution, reachability probes, writer files, manifest handling, and storage
-diagnostics. It does not own aggregate reports beyond storage inspection.
-
-**Modify or create:** Git common-root resolver, storage writer, enrollment cache,
-participant manifest helpers, CLAUDE.md storage exception, and integration tests
-with disposable git worktrees and permission/failure fixtures.
-
-**Interface:** Resolve the consuming worktree's absolute Git common directory,
-probe `<git-common-dir>/aitm/graphql-usage/`, derive a non-secret common-root
-ID, and write per-process JSONL files below
-`v1/<worktree-id>/<session-id-or-unknown>/`.
-
-- [ ] Add tests for normal gitdir files, worktrees, unsupported git resolution,
-      no Git context, denied shared-root access, disk/write failures, stale
-      enrollment cache, and expired enrollment.
-- [ ] Exercise two worktrees, two sessions in one worktree, short-lived shims,
-      concurrent async observations, partial final lines, malformed records, and
-      duplicate/conflicting `callId` records.
-- [ ] Add writer start and normal-close markers, soft-cap diagnostics, retained
-      byte/file counts, and bounded redacted stderr fallback for storage failure.
-- [ ] Amend `CLAUDE.md` with the narrow reviewed exception for GraphQL usage
-      metadata under the Git common directory.
-
-**Verification Commands:**
-
-```sh
-node --test scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/graphql-usage-storage.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
+node --test scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 ```
 
 ### Task 4: Build Offline Reports, Graphs, and Coverage Diagnostics
@@ -280,19 +311,21 @@ node --test scripts/tests/unit/task-tracker/lib/graphql-usage-storage.test.mjs
 
 #### Files and Delivery Boundary
 
-**Estimate:** 8 hours. Depends on Task 3's storage shape. This child owns the
-offline report command, aggregation rules, graph generation, and coverage
-language. It does not perform the long baseline run.
+**Estimate:** 9 hours. Depends on Task 2's storage shape. This child owns the
+offline report command, aggregation rules, graph generation, single-root
+boundary, and coverage language. It does not perform the long baseline run.
 
 **Modify or create:** a `graphql-usage` report command or AITM report subcommand,
 aggregation libraries, Markdown/JSON report emitters, graph fixtures, and tests
 for UTC/local intervals, rolling windows, schema validation, malformed input,
-and coverage gates.
+root boundaries, and coverage gates.
 
 **Interface:** Reports read only supplied Git-common usage roots and participant
-manifests. They never call GitHub. They separate HTTP attempts from opaque
-invocations, known points from unknown costs, and complete-observation costs
-from visible-response-only costs.
+manifests. They never call GitHub. They select one canonical common root and
+`commonRootId` as the aggregation boundary, exclude foreign-root observations
+from totals, and classify out-of-root participants separately. They separate
+HTTP attempts from opaque invocations, known points from unknown costs, and
+complete-observation costs from visible-response-only costs.
 
 - [ ] Aggregate by UTC half-open buckets and rolling `(t - 60 minutes, t]`
       windows, with selectable local display including UTC offsets.
@@ -301,10 +334,15 @@ from visible-response-only costs.
       duplicates, partial final lines, mixed collector versions, storage gaps, and
       root mismatches.
 - [ ] Enforce the total-point ranking sufficiency gate: 100% complete cost
-      coverage for the predeclared candidate group, with opaque/uncovered/gap
-      limitations separately disclosed.
-- [ ] Emit preliminary or volume-fallback conclusions when point ranking is
+      coverage for the predeclared candidate group and no relevant opaque hidden
+      attempts, uncovered paths, denied participants, unknown enrollment, or
+      collection gaps. One hundred percent known cost for recorded rows alone is
       insufficient.
+- [ ] Add negative fixtures for foreign roots, 100% known recorded costs with a
+      denied participant, 100% known recorded costs with an uncovered relevant path,
+      and visible-response-only opaque costs. None may produce a complete total-point ranking.
+- [ ] Permit volume fallback only for predeclared candidate groups with adequate
+      coverage and comparable observation kinds; otherwise report preliminary.
 
 **Verification Commands:**
 
@@ -327,20 +365,27 @@ node --test scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs
 
 #### Files and Delivery Boundary
 
-**Estimate:** 9 hours. Depends on Tasks 1-4. This child owns the authorized live
+**Estimate:** 11 hours. Depends on Tasks 1-4. This child owns the authorized live
 smoke, real baseline procedure, report artifact, final docs, and parent
 reconciliation evidence. It does not mutate the backlog solely to generate
 traffic.
 
 **Modify or create:** baseline runbook, checked-in report summary, participant
 manifest example or sanitized evidence, docs linking #1818 findings to #1817
-planning inputs, and final parent reconciliation notes.
+planning inputs, final parent reconciliation notes, and integration tests for
+baseline completion gates.
 
 **Interface:** The baseline records at least one real creation-to-planning
-workflow and a declared overlap interval with two enrolled permitted worktrees
-sharing the report common-root ID, or explicitly reports why the result remains
-preliminary.
+workflow and the minimum concurrency sample: two enrolled permitted worktrees
+sharing the report `commonRootId`, active collectors over a declared overlapping
+60-minute collector window, observed AITM traffic from both worktrees, actual
+traffic/activity durations, and lower-bound/selection-bias disclosures. A short
+window, missing workflow, denied participant, or missing traffic keeps parent
+completion pending/preliminary.
 
+- [ ] Predeclare candidate operation groups and the comparable signal for each:
+      HTTP-attempt volume, opaque-invocation volume, or exact point cost where the
+      complete-coverage gate can realistically pass.
 - [ ] Run one controlled live query and one controlled live mutation only in an
       authorized test workflow, with cleanup accounted as observed traffic.
 - [ ] Run the creation-to-planning baseline using the measurement launcher and
@@ -348,16 +393,29 @@ preliminary.
       traffic generation.
 - [ ] Publish the baseline report with observation interval, collector version,
       participant coverage, denial counts, selected operations, exact known points,
-      unknown-cost rates, volume rankings, and any insufficiency findings.
+      unknown-cost rates, actual traffic/activity durations, volume rankings, and
+      any insufficiency findings.
+- [ ] Apply the spec's matched-workload comparison procedure for #1817 handoff:
+      raw totals, sample sizes, comparable workflow normalization, remaining
+      confounders, and whether point-savings claims are unsupported.
+- [ ] Add completion-gate tests for short-window, missing-workflow,
+      single-worktree, no-observed-traffic, sufficient-volume/insufficient-points,
+      and decision-grade baseline cases.
 - [ ] Reconcile #1818 parent acceptance criteria against child results and name
-      the concrete planning inputs for #1817.
-- [ ] Run root verification at the final integrated head and prepare the parent
-      for Review after every child reaches Review.
+      the concrete planning inputs for #1817. Parent Review must refuse if the
+      baseline is still preliminary.
+- [ ] Run final integrated focused regressions after all children land, including
+      usage collection/report/storage suites and both existing action-capture suites.
 
 **Verification Commands:**
 
 ```sh
-npm run quality
+node --test scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs
+node --test scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs
+node --test scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs
+node --test scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
+node --test scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 npm run lint
 npm run format:check
 git log --oneline -1
