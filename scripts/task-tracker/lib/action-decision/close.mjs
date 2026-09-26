@@ -317,7 +317,11 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
       throw new TypeError('close-readiness:guard-lineage-unavailable');
     const tip = context.attribution.tip.sha;
     const gateInput = context.delivery.gateInput;
-    const receiptGate = requireDeliveryReceipt(gateInput);
+    const localProof = context.delivery.localTrunkProof;
+    const receiptGate =
+      localProof?.outcome === 'authorized-local-trunk-close'
+        ? { skipped: true, receipt: null }
+        : requireDeliveryReceipt(gateInput);
     if (!receiptGate.skipped) {
       const { inspectCloseMergeCommit } = await import('../../verbs/close.mjs');
       const waiverDeps =
@@ -489,6 +493,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
   let normalizations = [];
   let humanDecision = null;
   let deliveryExceptions = [];
+  let localTrunkProof = null;
   const fail = (source) => {
     indeterminate = true;
     blockers.push(unavailable(issue, source));
@@ -583,7 +588,33 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
         if (delivery.mode === 'evidence-v2')
           requireEvidenceV2DeliveryReceipt(delivery.receiptInput);
         else if (delivery.mode === 'ordinary' || delivery.mode === 'no-commit') {
-          const gate = requireDeliveryReceipt(input);
+          let gate;
+          try {
+            gate = requireDeliveryReceipt(input);
+          } catch (error) {
+            if (
+              error?.category !== 'ambiguous-pr' ||
+              input.lineage?.parentIssueNumber !== null ||
+              !Array.isArray(input.pullRequests) ||
+              input.pullRequests.length !== 0 ||
+              typeof ports.readLocalTrunkProof !== 'function'
+            )
+              throw error;
+            const proof = await ports.readLocalTrunkProof({ gateInput: input });
+            localTrunkProof = proof;
+            deliveryExceptions = [
+              {
+                category: proof.reasonId ?? 'local-trunk-close',
+                requirementId: 'delivery.local-trunk-close-authorization',
+                outcome: proof.outcome,
+              },
+            ];
+            if (proof.outcome === 'indeterminate') fail('delivery');
+            else blockers.push(legacy('review-exit-close-gates'));
+            // #1826 will replace this delivery blocker only after a verified
+            // single-use burn and issue-resident local-trunk receipt.
+            gate = { skipped: true, receipt: null };
+          }
           if (gate.receipt?.schema === 'aitm.delivery-receipt/v4') {
             let outcome = 'indeterminate';
             let category = 'delivery-waiver-authority';
@@ -646,7 +677,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
           toState: 'done',
           readOnly: true,
           headSha: head,
-          delivery,
+          delivery: localTrunkProof ? { ...delivery, localTrunkProof } : delivery,
           attribution,
           children: children?.children,
           lifecycleEvidence: delivery?.lifecycleEvidence ?? null,
@@ -886,6 +917,7 @@ export async function evaluateCloseReadiness({
           });
         }),
       deps: deps.guardDeps,
+      readLocalTrunkProof: deps.readLocalTrunkProof ?? production.readLocalTrunkProof,
       verifyWaiverReceipt:
         deps.verifyWaiverReceipt ??
         (async ({ gateInput, receiptGate }) => {

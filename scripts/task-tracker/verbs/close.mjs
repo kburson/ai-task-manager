@@ -2490,7 +2490,18 @@ export async function verbClose(ctx) {
       throw new Error('review-authorization-missing');
     }
     const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
-    const receipt = receiptGate(gateInput);
+    const localTrunkPort = await import('../lib/local-trunk-close-read-port.mjs');
+    const receipt = await localTrunkPort.requireCloseReceiptOrLocalTrunkProof({
+      gateInput,
+      requireReceipt: receiptGate,
+      readProof: () =>
+        (ctx.loadCloseLocalTrunkProof ?? localTrunkPort.loadCloseLocalTrunkProof)({
+          gateInput,
+          cfg,
+          projectDir,
+          pexec,
+        }),
+    });
     const freshReceiptVerifier = ctx.verifyCloseDeliveryReceipt || verifyCloseDeliveryReceipt;
     // #1490 — capture the EXACT values this gate validates. The reopened-close
     // recovery authorizes on them, and must never substitute its own defaults for

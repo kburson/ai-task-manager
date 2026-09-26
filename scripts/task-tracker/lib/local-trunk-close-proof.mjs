@@ -3,6 +3,14 @@
 import { buildDeliveryScope } from './workflow-policy/delivery-scope.mjs';
 
 const SHA = /^[0-9a-f]{40}$/;
+const HASH = /^sha256:[0-9a-f]{64}$/;
+const OPERATION = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+const validBranch = (value) =>
+  typeof value === 'string' &&
+  /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value) &&
+  !value.includes('..') &&
+  !value.includes('//') &&
+  !value.endsWith('/');
 const result = (outcome, reasonId) => Object.freeze({ outcome, reasonId });
 const missing = (reasonId) => result('missing', reasonId);
 const unknown = (reasonId) => result('indeterminate', reasonId);
@@ -38,7 +46,12 @@ export function parseCompletePullRequestPages(pages, branch, acceptedSha = null)
 
 /** Observe named local and remote refs using complete local objects. The caller separately proves remote freshness. */
 export async function observeLocalTrunkGraph({ acceptedSha, localRef, remoteRef, run }) {
-  if (!SHA.test(acceptedSha ?? '') || !localRef || !remoteRef || typeof run !== 'function')
+  if (
+    !SHA.test(acceptedSha ?? '') ||
+    !validBranch(localRef) ||
+    !remoteRef ||
+    typeof run !== 'function'
+  )
     throw new TypeError('local-trunk-proof:graph-input');
   const shallow = (await run(['rev-parse', '--is-shallow-repository'])) === 'true';
   if (shallow)
@@ -49,7 +62,7 @@ export async function observeLocalTrunkGraph({ acceptedSha, localRef, remoteRef,
       remoteContains: false,
     });
   const [localSha, remoteSha] = await Promise.all([
-    run(['rev-parse', '--verify', `${localRef}^{commit}`]),
+    run(['rev-parse', '--verify', `refs/heads/${localRef}^{commit}`]),
     run(['rev-parse', '--verify', `${remoteRef}^{commit}`]),
   ]);
   if (!SHA.test(localSha) || !SHA.test(remoteSha))
@@ -105,6 +118,12 @@ export function evaluateLocalTrunkCloseProof(facts) {
   if (graph.localContains !== true) return missing('local-unreachable');
   if (graph.remoteContains !== true) return missing('remote-unreachable');
   if (facts.grant?.active !== true) return missing('grant-inactive');
+  if (
+    !OPERATION.test(facts.deliveryOperationId ?? '') ||
+    !HASH.test(facts.waiverScopeDigest ?? '') ||
+    !HASH.test(facts.scopeIdentity ?? '')
+  )
+    return unknown('scope-facts-unavailable');
   let scope;
   try {
     scope = buildDeliveryScope(facts.grant.scope).scope;
@@ -120,9 +139,9 @@ export function evaluateLocalTrunkCloseProof(facts) {
     scope.acceptedHeadSha !== facts.acceptedSha ||
     scope.baseRef !== facts.localRef ||
     scope.resolvedTrunkRef !== facts.remoteRef ||
-    (facts.deliveryOperationId && scope.deliveryOperationId !== facts.deliveryOperationId) ||
-    (facts.waiverScopeDigest &&
-      buildDeliveryScope(scope).waiverScopeDigest !== facts.waiverScopeDigest)
+    scope.deliveryOperationId !== facts.deliveryOperationId ||
+    buildDeliveryScope(scope).waiverScopeDigest !== facts.waiverScopeDigest ||
+    facts.grant.scopeIdentity !== facts.scopeIdentity
   )
     return missing('grant-scope-mismatch');
   return result('authorized-local-trunk-close', null);
@@ -137,7 +156,13 @@ export async function observeFreshLocalTrunkGraph({
   run,
   fetchRemoteTip,
 }) {
-  if (!remote || !branch || !SHA.test(acceptedSha ?? '') || typeof run !== 'function')
+  if (
+    !remote ||
+    !validBranch(branch) ||
+    !validBranch(localRef) ||
+    !SHA.test(acceptedSha ?? '') ||
+    typeof run !== 'function'
+  )
     throw new TypeError('local-trunk-proof:remote-input');
   const remoteRef = `${remote}/${branch}`;
   const line = await run(['ls-remote', '--exit-code', remote, `refs/heads/${branch}`]);
@@ -147,7 +172,7 @@ export async function observeFreshLocalTrunkGraph({
   const remoteSha = parts[0];
   const shallow = (await run(['rev-parse', '--is-shallow-repository'])) === 'true';
   if (shallow) return Object.freeze({ complete: false, shallow: true, localRef, remoteRef });
-  const localSha = await run(['rev-parse', '--verify', `${localRef}^{commit}`]);
+  const localSha = await run(['rev-parse', '--verify', `refs/heads/${localRef}^{commit}`]);
   if (!SHA.test(localSha)) throw new TypeError('local-trunk-proof:local-ref');
   const ensureCommit = async (sha) => run(['cat-file', '-e', `${sha}^{commit}`]);
   await ensureCommit(acceptedSha);

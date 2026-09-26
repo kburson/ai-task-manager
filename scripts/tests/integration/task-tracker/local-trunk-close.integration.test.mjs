@@ -5,6 +5,21 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
+import {
+  loadCloseLocalTrunkProof,
+  requireCloseReceiptOrLocalTrunkProof,
+} from '../../../task-tracker/lib/local-trunk-close-read-port.mjs';
+import {
+  canonicalVerificationCommandSet,
+  createVerificationReceipt,
+  upsertVerificationReceipt,
+  VERIFICATION_COMMAND_IDENTITIES,
+} from '../../../task-tracker/lib/verification-receipt.mjs';
+import { parseVerificationCommands } from '../../../task-tracker/lib/verification-commands.mjs';
+import { collectCloseReadiness } from '../../../task-tracker/lib/action-decision/close.mjs';
+import { createObservationAttempt } from '../../../task-tracker/lib/action-decision/observations.mjs';
+import { computeScopeIdentity } from '../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
+import { buildDeliveryScope } from '../../../task-tracker/lib/workflow-policy/delivery-scope.mjs';
 import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 import {
   evaluateLocalTrunkCloseProof,
@@ -16,6 +31,7 @@ import {
 
 const SHA = 'a'.repeat(40);
 const operation = '00000000000000000000000001';
+const scopeIdentity = `sha256:${'f'.repeat(64)}`;
 const scope = {
   schema: 'aitm.delivery-exception-scope/v1',
   repository: 'owner/repo',
@@ -43,7 +59,10 @@ const facts = () => ({
   remoteRef: 'origin/trunk',
   pullRequests: { complete: true, values: [] },
   graph: { complete: true, shallow: false, localContains: true, remoteContains: true },
-  grant: { scope, active: true },
+  deliveryOperationId: operation,
+  waiverScopeDigest: buildDeliveryScope(scope).waiverScopeDigest,
+  scopeIdentity,
+  grant: { scope, active: true, scopeIdentity },
 });
 
 test('pure proof admits only an exact, complete no-PR trunk case', () => {
@@ -68,7 +87,11 @@ test('pure proof admits only an exact, complete no-PR trunk case', () => {
       { pullRequests: { complete: true, values: [{ number: 1, headRefOid: SHA }] } },
       'pr-candidate',
     ],
-    [{ grant: { scope: { ...scope, issue: 1826 }, active: true } }, 'grant-scope-mismatch'],
+    [
+      { grant: { scope: { ...scope, issue: 1826 }, active: true, scopeIdentity } },
+      'grant-scope-mismatch',
+    ],
+    [{ deliveryOperationId: '00000000000000000000000002' }, 'grant-scope-mismatch'],
   ];
   for (const [change, reasonId] of cases) {
     assert.equal(evaluateLocalTrunkCloseProof({ ...facts(), ...change }).reasonId, reasonId);
@@ -121,6 +144,21 @@ test('disposable Git graph observes accepted SHA on both independently named ref
       (
         await observeLocalTrunkGraph({
           acceptedSha: divergentSha,
+          localRef: 'trunk',
+          remoteRef: 'origin/trunk',
+          run,
+        })
+      ).localContains,
+      false
+    );
+    git('tag', 'trunk', acceptedSha);
+    git('checkout', '--orphan', 'unrelated');
+    git('commit', '--allow-empty', '-qm', 'unrelated root');
+    git('update-ref', 'refs/heads/trunk', git('rev-parse', 'HEAD'));
+    assert.equal(
+      (
+        await observeLocalTrunkGraph({
+          acceptedSha,
           localRef: 'trunk',
           remoteRef: 'origin/trunk',
           run,
@@ -212,7 +250,9 @@ test('fresh remote tip and complete inventory are required by the shared collect
       acceptedSha,
       testSha: acceptedSha,
       reviewSha: acceptedSha,
-      grant: { active: true, scope: { ...scope, acceptedHeadSha: acceptedSha } },
+      grant: { active: true, scope: { ...scope, acceptedHeadSha: acceptedSha }, scopeIdentity },
+      waiverScopeDigest: buildDeliveryScope({ ...scope, acceptedHeadSha: acceptedSha })
+        .waiverScopeDigest,
     };
     const args = {
       facts: eligible,
@@ -248,4 +288,229 @@ test('fresh remote tip and complete inventory are required by the shared collect
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('locked Close consumes proof and refuses Done until the burn receipt exists', async () => {
+  const gateInput = {
+    lineage: { parentIssueNumber: null },
+    pullRequests: [],
+    body: '## Scope\ncode',
+  };
+  const noPr = () => {
+    const error = new Error('no PR');
+    error.category = 'ambiguous-pr';
+    throw error;
+  };
+  let reads = 0;
+  await assert.rejects(
+    requireCloseReceiptOrLocalTrunkProof({
+      gateInput,
+      requireReceipt: noPr,
+      readProof: async () => {
+        reads += 1;
+        return { outcome: 'authorized-local-trunk-close' };
+      },
+    }),
+    (error) => error.message.includes('local-trunk-close-receipt-pending')
+  );
+  assert.equal(reads, 1);
+  await assert.rejects(
+    requireCloseReceiptOrLocalTrunkProof({
+      gateInput,
+      requireReceipt: noPr,
+      readProof: async () => ({ outcome: 'indeterminate', reasonId: 'graph-incomplete' }),
+    }),
+    (error) => error.message.includes('local-trunk-close-proof:graph-incomplete')
+  );
+  const ordinary = { skipped: false, receipt: { result: 'delivered' } };
+  assert.equal(
+    await requireCloseReceiptOrLocalTrunkProof({
+      gateInput,
+      requireReceipt: () => ordinary,
+      readProof: async () => {
+        throw new Error('unexpected proof');
+      },
+    }),
+    ordinary
+  );
+});
+
+test('close read port gathers exact Review evidence and fresh PR and trunk observations', async () => {
+  const acceptedSha = 'b'.repeat(40);
+  const projectDir = process.cwd();
+  const branch = 'codex/proof';
+  const base = [
+    '## User Story',
+    'As an operator',
+    'I want an exact close',
+    'So that delivery is proven',
+    '## Scope',
+    'One issue.',
+    '## Acceptance Criteria',
+    '- [x] Exact close.',
+    '## Verification Commands',
+    '- [ ] `npm test`',
+    '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" result="pass" -->',
+    `<!-- aitm-review-approved ts="2026-09-26T08:00:00.000Z" approved-sha="${acceptedSha}" -->`,
+    '<!-- aitm-last-known-state state="review" ts="2026-09-26T08:00:00.000Z" -->',
+    `<!-- aitm-worktree-location worktree="${projectDir}" branch="${branch}" sid="test" ts="2026-09-26T08:00:00.000Z" -->`,
+  ].join('\n');
+  const verificationCommands = canonicalVerificationCommandSet(parseVerificationCommands(base), {
+    projectDir,
+  });
+  const receipt = createVerificationReceipt({
+    issueNumber: 1825,
+    stage: 'test',
+    fingerprint: {
+      commitSha: acceptedSha,
+      verificationCommands,
+      environment: {
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        lockfileHash: `sha256:${'a'.repeat(64)}`,
+        configHashes: {},
+        sandbox: { kind: 'worktree', identity: projectDir, clean: true },
+      },
+    },
+    commands: Object.entries(VERIFICATION_COMMAND_IDENTITIES).map(([classification, identity]) => ({
+      classification,
+      command: identity.command,
+      args: [...identity.args],
+      exitCode: 0,
+      durationMs: 1,
+    })),
+    now: () => '2026-09-26T08:00:00.000Z',
+  });
+  const body = upsertVerificationReceipt(base, receipt);
+  const scoped = { ...scope, acceptedHeadSha: acceptedSha };
+  const grant = {
+    active: true,
+    scope: scoped,
+    scopeIdentity: computeScopeIdentity({ repository: 'owner/repo', issue: 1825, body }),
+    deliveryOperationId: operation,
+    waiverScopeDigest: buildDeliveryScope(scoped).waiverScopeDigest,
+  };
+  const calls = [];
+  const pexec = async (command, args) => {
+    calls.push([command, args]);
+    if (command === 'gh') return { stdout: '[[]]' };
+    if (args[0] === 'branch') return { stdout: branch };
+    if (args[0] === 'ls-remote') return { stdout: `${acceptedSha}\trefs/heads/trunk\n` };
+    if (args[0] === 'rev-parse' && args[1] === '--is-shallow-repository')
+      return { stdout: 'false' };
+    if (args[0] === 'rev-parse' && args[1] === '--verify') return { stdout: acceptedSha };
+    if (args[0] === 'cat-file' || args[0] === 'merge-base') return { stdout: '' };
+    throw new Error(`unexpected ${command} ${args.join(' ')}`);
+  };
+  const result = await loadCloseLocalTrunkProof({
+    gateInput: {
+      body,
+      branch,
+      issueNumber: 1825,
+      acceptedSha,
+      lineage: { parentIssueNumber: null },
+    },
+    grant,
+    cfg: { repo: 'owner/repo', trunkRef: 'origin/trunk' },
+    projectDir,
+    pexec,
+    fetchRemoteTip: false,
+    deliveryOperationId: operation,
+    waiverScopeDigest: grant.waiverScopeDigest,
+  });
+  assert.equal(result.outcome, 'authorized-local-trunk-close');
+  assert.ok(calls.some(([command, args]) => command === 'gh' && args.includes('--paginate')));
+  assert.ok(
+    calls.some(([command, args]) => command === 'git' && args.includes('refs/heads/trunk^{commit}'))
+  );
+  const mismatch = await loadCloseLocalTrunkProof({
+    gateInput: {
+      body,
+      branch,
+      issueNumber: 1825,
+      acceptedSha,
+      lineage: { parentIssueNumber: null },
+    },
+    grant,
+    cfg: { repo: 'owner/repo', trunkRef: 'origin/trunk' },
+    projectDir,
+    pexec,
+    fetchRemoteTip: false,
+    deliveryOperationId: '00000000000000000000000002',
+    waiverScopeDigest: grant.waiverScopeDigest,
+  });
+  assert.equal(mismatch.reasonId, 'grant-scope-mismatch');
+});
+
+test('Explain consumes local proof and stays blocked before a burn receipt', async () => {
+  const issue = 1825;
+  const body = [
+    '## User Story',
+    'Close safely',
+    '## Scope',
+    'Read-only close',
+    '## Acceptance Criteria',
+    '- [x] Close safely',
+    '<!-- aitm-last-known-state state="review" ts="2026-09-26T08:00:00Z" -->',
+  ].join('\n');
+  const sha = 'a'.repeat(40);
+  const values = {
+    'issue-body': { number: issue, body, state: 'OPEN' },
+    'project-board': { state: 'review' },
+    worktree: { matches: true, headSha: sha },
+    [`evidence:${issue}:1`]: {
+      mode: 'ordinary',
+      gateInput: {
+        issueNumber: issue,
+        repository: 'owner/repo',
+        body,
+        branch: 'codex/proof',
+        acceptedSha: sha,
+        lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+        pullRequests: [],
+      },
+    },
+    [`evidence:${issue}:2`]: {
+      status: 'attributed',
+      tip: {
+        status: 'observed',
+        remote: 'origin',
+        ref: 'refs/heads/trunk',
+        sha,
+        objectComplete: true,
+        shallow: false,
+      },
+    },
+    [`evidence:${issue}:3`]: { complete: true, children: [] },
+  };
+  const attempt = createObservationAttempt({
+    repository: 'owner/repo',
+    issue,
+    boundaryId: 'local-trunk-close-test',
+    now: () => '2026-09-26T08:00:00.000Z',
+    read: async (request) => ({
+      ...request,
+      value: values[request.identity] ?? values[request.resource],
+    }),
+  });
+  let reads = 0;
+  const result = await collectCloseReadiness({
+    issue,
+    attempt,
+    ports: {
+      scope: computeScopeIdentity({ repository: 'owner/repo', issue, body }),
+      cfg: { repo: 'owner/repo' },
+      head: sha,
+      projectDir: process.cwd(),
+      evaluatedAt: '2026-09-26T08:00:00.000Z',
+      readLocalTrunkProof: async () => {
+        reads += 1;
+        return { outcome: 'authorized-local-trunk-close', reasonId: null };
+      },
+      runGuards: async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null }),
+    },
+  });
+  assert.equal(reads, 1);
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.deliveryExceptions[0].outcome, 'authorized-local-trunk-close');
 });

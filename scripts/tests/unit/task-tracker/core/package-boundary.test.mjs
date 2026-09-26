@@ -300,6 +300,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const deliveryWaiverTransactionAllowance = 1;
   // #1811 ships the observed integration proof used by delivery and Close.
   const deliveryIntegrationProofAllowance = 1;
+  // #1825 ships the pure local-trunk proof and its fresh read adapter.
+  const localTrunkProofAllowance = 2;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -338,7 +340,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryWaiverConsumptionAllowance +
     deliveryWaiverEvidenceAllowance +
     deliveryWaiverTransactionAllowance +
-    deliveryIntegrationProofAllowance;
+    deliveryIntegrationProofAllowance +
+    localTrunkProofAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
