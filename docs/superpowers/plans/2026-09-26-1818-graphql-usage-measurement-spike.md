@@ -231,9 +231,14 @@ context, and write per-process JSONL files below
 - [ ] Exercise two worktrees, two sessions in one worktree, short-lived writers,
       concurrent async observations, partial final lines, malformed records, and
       duplicate/conflicting `callId` records through the storage API.
-- [ ] Own runtime session allocation, inherited context preservation, nested
-      bootstrap context, enrollment refresh, and manifest row updates. Missing or
-      invalid runtime identity must produce unknown attribution, not a fabricated session.
+- [ ] Own three distinct identity paths: preserve a normalized trusted runtime
+      session ID when provider/AITM identity is trustworthy; allocate one random
+      process-tree measurement-session ID, record `sessionSource` as
+      `measurement-launcher`, when runtime identity is unavailable; and diagnose
+      missing or invalid inherited context in descendants as unknown attribution
+      without inventing a runtime identity. Add manifest rows for
+      launcher-allocated sessions and tests for propagation to nested children
+      plus distinct IDs for independent launcher sessions.
 - [ ] Add writer start and normal-close markers, soft-cap diagnostics, retained
       byte/file counts, and bounded redacted stderr fallback for storage failure.
 - [ ] Amend `CLAUDE.md` with the narrow reviewed exception for GraphQL usage
@@ -379,13 +384,20 @@ baseline completion gates.
 workflow and the minimum concurrency sample: two enrolled permitted worktrees
 sharing the report `commonRootId`, active collectors over a declared overlapping
 60-minute collector window, observed AITM traffic from both worktrees, actual
-traffic/activity durations, and lower-bound/selection-bias disclosures. A short
-window, missing workflow, denied participant, or missing traffic keeps parent
-completion pending/preliminary.
+traffic/activity durations, and lower-bound/selection-bias disclosures. Parent
+completion depends on sufficient evidence for the predeclared permitted
+population and candidate group: a short window, missing workflow, missing
+traffic, or a denial that makes declared-group coverage inadequate keeps parent
+completion pending/preliminary. Denied or unreachable participants outside the
+declared permitted sample remain in the manifest with selection-bias and
+lower-bound disclosure and forbid fleet-wide generalization, but do not by
+themselves block scoped volume evidence.
 
-- [ ] Predeclare candidate operation groups and the comparable signal for each:
-      HTTP-attempt volume, opaque-invocation volume, or exact point cost where the
-      complete-coverage gate can realistically pass.
+- [ ] Predeclare candidate operation groups, permitted population, and the
+      comparable signal for each: HTTP-attempt volume, opaque-invocation volume,
+      or exact point cost where the complete-coverage gate can realistically pass.
+      Do not remove poorly measured, denied, or inconvenient candidates after the
+      run to manufacture sufficiency.
 - [ ] Run one controlled live query and one controlled live mutation only in an
       authorized test workflow, with cleanup accounted as observed traffic.
 - [ ] Run the creation-to-planning baseline using the measurement launcher and
@@ -400,7 +412,9 @@ completion pending/preliminary.
       confounders, and whether point-savings claims are unsupported.
 - [ ] Add completion-gate tests for short-window, missing-workflow,
       single-worktree, no-observed-traffic, sufficient-volume/insufficient-points,
-      and decision-grade baseline cases.
+      predeclared restricted permitted sample with a disclosed excluded denial,
+      denial leaving declared-group coverage inadequate, and decision-grade
+      baseline cases.
 - [ ] Reconcile #1818 parent acceptance criteria against child results and name
       the concrete planning inputs for #1817. Parent Review must refuse if the
       baseline is still preliminary.
