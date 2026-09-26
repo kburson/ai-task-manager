@@ -18,6 +18,10 @@ import {
 import { validateRecord } from './evidence-v2/codec.mjs';
 import { validatePinnedWaiverEvidence } from './delivery-waiver-evidence.mjs';
 import { verifyHistoricalDeliveryWaiverAuthority } from './delivery-waiver-transaction.mjs';
+import {
+  buildLocalTrunkCloseReceipt,
+  parseLocalTrunkCloseReceipt,
+} from './local-trunk-close-receipt.mjs';
 
 export { resolveAcceptedDeliveryHead } from './delivery-authority.mjs';
 
@@ -241,6 +245,42 @@ export async function verifyCloseDeliveryReceipt({
   deps,
 } = {}) {
   if (receiptGate?.skipped === true) return frozenResult({ skipped: true, receipt: null });
+  if (receiptGate?.mode === 'local-trunk') {
+    const receipt = receiptGate.receipt;
+    if (
+      testReceiptSha !== gateInput?.acceptedSha ||
+      acceptedReviewSha !== gateInput?.acceptedSha ||
+      receipt?.schema !== 'aitm.local-trunk-close-receipt/v1' ||
+      receipt.result !== 'authorized-local-trunk-close' ||
+      receipt.repository !== gateInput.repository ||
+      receipt.issue !== gateInput.issueNumber ||
+      receipt.acceptedHeadSha !== gateInput.acceptedSha ||
+      gateInput.lineage?.parentIssueNumber !== null ||
+      gateInput.pullRequests?.length !== 0
+    )
+      fail('local-trunk-input');
+    const snapshot = await deps?.readLocalTrunkJournal?.();
+    const operation =
+      snapshot?.operations instanceof Map
+        ? snapshot.operations.get(receipt.deliveryOperationId)
+        : null;
+    if (
+      operation?.state !== 'completed' ||
+      operation.burnOid !== receipt.burnOid ||
+      canonicalRecordJson(
+        buildLocalTrunkCloseReceipt({
+          burn: operation.burn,
+          burnOid: operation.burnOid,
+        })
+      ) !== canonicalRecordJson(receipt) ||
+      operation.publication?.commentNodeId !== receiptGate.comment?.id ||
+      operation.publication?.createdAt !== receiptGate.comment?.createdAt ||
+      canonicalRecordJson(parseLocalTrunkCloseReceipt(receiptGate.comment?.body)) !==
+        canonicalRecordJson(receipt)
+    )
+      fail('local-trunk-receipt');
+    return frozenResult({ skipped: false, mode: 'local-trunk', receipt });
+  }
   if (receiptGate?.mode === 'no-commit') {
     if (testReceiptSha !== gateInput?.acceptedSha || acceptedReviewSha !== gateInput?.acceptedSha) {
       fail('head-mismatch');

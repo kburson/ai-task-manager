@@ -1,4 +1,4 @@
-// @story #1626 #1787 #1795
+// @story #1626 #1787 #1795 #1824
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -13,10 +13,24 @@ import {
 } from '../lib/delivery-records.mjs';
 import { resolveCurrentIssueWorktreeBranch } from '../lib/issue-worktree-location.mjs';
 import {
+  canonicalVerificationCommandSet,
+  parseValidatedVerificationReceipts,
+  requiredTestReceiptClassifications,
+  validateVerificationReceipt,
+} from '../lib/verification-receipt.mjs';
+import { parseReviewApprovedMarker } from '../lib/markers.mjs';
+import { parseVerificationCommands } from '../lib/verification-commands.mjs';
+import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
+import {
   createIssueComment,
   listIssueCommentsSince,
 } from '../lib/github-records/github-comment-store.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
+import { createDeliveryWaiverJournal } from '../lib/delivery-waiver-journal.mjs';
+import {
+  reserveLocalTrunkRevision,
+  reserveLocalTrunkRevisionPost,
+} from '../lib/local-trunk-close-receipt.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
 import {
   createCodexSessionSourceLoader,
@@ -226,7 +240,19 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
           scopeIdentity: payload.scopeIdentity,
           now,
         });
-        if (chain.head?.recordId !== envelope.recordId || chain.status === 'invalid') {
+        const successors = existing.filter(
+          ({ envelope: candidate }) =>
+            candidate?.predecessor === envelope.recordId &&
+            candidate.payload?.revision === payload.revision + 1
+        );
+        const exactRetrySuccessor =
+          payload.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization' &&
+          successors.length === 1 &&
+          chain.head?.recordId === successors[0].envelope.recordId;
+        if (
+          chain.status === 'invalid' ||
+          (chain.head?.recordId !== envelope.recordId && !exactRetrySuccessor)
+        ) {
           fail('delivery-prior');
         }
         prior = {
@@ -236,6 +262,54 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
           deliveryScope: payload.deliveryScope,
           waiverScopeDigest: payload.waiverScopeDigest,
           status: payload.status,
+        };
+      }
+      if (
+        input.schema === 'aitm.local-trunk-close-proposal/v1' ||
+        prior?.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization'
+      ) {
+        const branch = resolveCurrentIssueWorktreeBranch(snapshot.body);
+        if (!branch) fail('delivery-branch');
+        if (action !== 'revoke') {
+          const { stdout } = await run('gh', [
+            'pr',
+            'list',
+            '-R',
+            repository,
+            '--head',
+            branch,
+            '--state',
+            'all',
+            '--limit',
+            '1000',
+            '--json',
+            'number',
+          ]);
+          const prs = parseGhJson(stdout);
+          if (!Array.isArray(prs) || prs.length !== 0) fail('local-trunk-pr-ambiguity');
+        }
+        const testSha =
+          action === 'revoke'
+            ? prior.deliveryScope.acceptedHeadSha
+            : resolveLocalTrunkAcceptedSha({
+                body: snapshot.body,
+                issue,
+                projectDir: ctx.projectDir,
+              });
+        const trunkRef = ctx.cfg.trunkRef;
+        if (typeof trunkRef !== 'string' || !trunkRef) fail('local-trunk-ref');
+        return {
+          repository,
+          issue,
+          scopeIdentity,
+          pullRequest: null,
+          acceptedHeadSha: testSha,
+          baseRef: trunkRef.split('/').at(-1),
+          resolvedTrunkRef: trunkRef,
+          originalIntentRecordId: null,
+          existingDeliveryRecords: existing,
+          prior,
+          now,
         };
       }
       let prNumber;
@@ -330,6 +404,32 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
       });
       return normalizeStored(stored);
     },
+    async readLocalTrunkJournal(issue) {
+      return createDeliveryWaiverJournal({
+        cwd: ctx.projectDir,
+        repository,
+        issue,
+        mode: 'local-trunk',
+      }).read();
+    },
+    async reserveLocalTrunkRevision(candidate) {
+      const journal = createDeliveryWaiverJournal({
+        cwd: ctx.projectDir,
+        repository,
+        issue: candidate.issue,
+        mode: 'local-trunk',
+      });
+      return reserveLocalTrunkRevision({ candidate, journal });
+    },
+    async reserveLocalTrunkRevisionPost(candidate) {
+      const journal = createDeliveryWaiverJournal({
+        cwd: ctx.projectDir,
+        repository,
+        issue: candidate.issue,
+        mode: 'local-trunk',
+      });
+      return reserveLocalTrunkRevisionPost({ candidate, journal });
+    },
     nextIds() {
       return { recordId: createRecordId(), grantId: createRecordId() };
     },
@@ -353,7 +453,10 @@ function topStatus(action, results) {
 
 function proposalFromRequest(request) {
   return {
-    schema: 'aitm.delivery-waiver-proposal/v1',
+    schema:
+      request.deliveryScope.exceptionKind === 'delivery.local-trunk-close-authorization'
+        ? 'aitm.local-trunk-close-proposal/v1'
+        : 'aitm.delivery-waiver-proposal/v1',
     action: request.action,
     exceptionId: request.exceptionId,
     priorRecordId: request.priorRecordId,
@@ -564,4 +667,47 @@ export async function verbWorkflowException(ctx) {
   });
   process.stdout.write(`${formatWorkflowExceptionResult(result, { json: parsed.json })}\n`);
   if (['blocked', 'partial'].includes(result.status)) process.exitCode = 6;
+}
+
+export function resolveLocalTrunkAcceptedSha({ body, issue, projectDir } = {}) {
+  let receipts;
+  let verificationCommands;
+  try {
+    receipts = parseValidatedVerificationReceipts(body, { expectedIssue: issue });
+    verificationCommands = canonicalVerificationCommandSet(parseVerificationCommands(body), {
+      projectDir,
+    });
+  } catch {
+    fail('local-trunk-accepted-head');
+  }
+  const test = receipts.filter((receipt) => receipt.stage === 'test');
+  const review = receipts.filter((receipt) => receipt.stage === 'review');
+  const approval = parseReviewApprovedMarker(body);
+  if (
+    test.length !== 1 ||
+    review.length > 1 ||
+    !isAgentReviewComplete(body) ||
+    !approval?.approvedSha ||
+    approval.approvedSha !== test[0].commitSha ||
+    (review.length === 1 && review[0].commitSha !== test[0].commitSha)
+  )
+    fail('local-trunk-accepted-head');
+  const valid = (receipt, stage, required = []) =>
+    validateVerificationReceipt({
+      receipt,
+      expectedIssue: issue,
+      expectedStage: stage,
+      fingerprint: {
+        commitSha: test[0].commitSha,
+        verificationCommands,
+        environment: receipt.environment,
+      },
+      required,
+    }).ok;
+  if (
+    !valid(test[0], 'test', requiredTestReceiptClassifications(test[0])) ||
+    (review.length === 1 && !valid(review[0], 'review'))
+  )
+    fail('local-trunk-accepted-head');
+  return test[0].commitSha;
 }

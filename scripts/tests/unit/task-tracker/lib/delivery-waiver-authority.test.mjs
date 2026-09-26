@@ -37,7 +37,7 @@ const input = Object.freeze({
   priorRevision: null,
   requirementId: 'delivery.verification.merge-method',
   reason: 'The operator accepts the observed provider merge method for this delivery.',
-  expiresAt: '2026-09-26T08:00:00.000Z',
+  expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   deliveryOperationId: null,
 });
 

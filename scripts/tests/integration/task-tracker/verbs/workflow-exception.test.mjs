@@ -88,7 +88,7 @@ test('delivery preparation returns an exact draft without authority or comment e
     priorRevision: null,
     requirementId: 'delivery.verification.merge-method',
     reason: 'The operator accepts this provider merge method for the exact pull request.',
-    expiresAt: '2026-09-26T08:00:00.000Z',
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     deliveryOperationId: null,
   };
   let authorityReads = 0;
@@ -284,7 +284,7 @@ test('delivery record, revise, and revoke consume separately prepared exact stat
     priorRevision: null,
     requirementId: 'delivery.verification.merge-method',
     reason: 'The operator accepts this exact observed merge method for the pull request.',
-    expiresAt: '2026-09-26T08:00:00.000Z',
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     deliveryOperationId: null,
   };
   const write = async (input) => {
@@ -368,7 +368,7 @@ test('delivery write refuses changed live head after preparation before appendin
     priorRevision: null,
     requirementId: 'delivery.verification.merge-method',
     reason: 'The operator approves this exact observed merge method for one delivery.',
-    expiresAt: '2026-09-26T08:00:00.000Z',
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     deliveryOperationId: null,
   };
   const draft = await runWorkflowException({

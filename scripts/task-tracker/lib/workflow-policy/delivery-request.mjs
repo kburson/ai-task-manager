@@ -1,13 +1,14 @@
-// @story #1787 #1795
+// @story #1787 #1795 #1824
 import { createHash } from 'node:crypto';
 
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { createRecordId } from '../github-records/record-envelope.mjs';
 import { validateAuthorizationSource } from './authority-resolver.mjs';
-import { validateDeliveryWaiverIds } from './catalog.mjs';
+import { validateDeliveryExceptionIds, validateDeliveryWaiverIds } from './catalog.mjs';
 import { buildDeliveryScope, DELIVERY_SCOPE_SCHEMA } from './delivery-scope.mjs';
 
 export const DELIVERY_PROPOSAL_SCHEMA = 'aitm.delivery-waiver-proposal/v1';
+export const LOCAL_TRUNK_PROPOSAL_SCHEMA = 'aitm.local-trunk-close-proposal/v1';
 export const DELIVERY_REQUEST_SCHEMA = 'aitm.workflow-exception-request/v2';
 export const DELIVERY_REVOCATION_SCHEMA = 'aitm.workflow-exception-revocation/v2';
 
@@ -77,7 +78,13 @@ function canonicalFuture(value, now) {
 export function parseDeliveryWaiverProposal(input) {
   const value = typeof input === 'string' ? JSON.parse(input) : structuredClone(input);
   exact(value, PROPOSAL_KEYS);
-  if (value.schema !== DELIVERY_PROPOSAL_SCHEMA) fail('schema');
+  if (![DELIVERY_PROPOSAL_SCHEMA, LOCAL_TRUNK_PROPOSAL_SCHEMA].includes(value.schema))
+    fail('schema');
+  if (value.schema === LOCAL_TRUNK_PROPOSAL_SCHEMA) {
+    if (value.requirementId !== 'delivery.local-trunk-close-authorization') fail('requirement-id');
+  } else if (value.requirementId === 'delivery.local-trunk-close-authorization') {
+    fail('requirement-id');
+  }
   if (!['record', 'revise', 'revoke'].includes(value.action)) fail('action');
   if (!meaningfulDeliveryReason(value.reason)) fail('reason');
   if (typeof value.requirementId !== 'string' || value.requirementId.length === 0) {
@@ -106,9 +113,13 @@ export function parseDeliveryWaiverProposal(input) {
   return Object.freeze(value);
 }
 
-export function deliveryApprovalStatement({ action, proposalDigest } = {}) {
+export function deliveryApprovalStatement({ action, proposalDigest, deliveryScope = null } = {}) {
   if (!['record', 'revise', 'revoke'].includes(action) || !HASH_RE.test(proposalDigest ?? '')) {
     fail('statement');
+  }
+  if (deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization') {
+    const scope = buildDeliveryScope(deliveryScope).scope;
+    return `Authorize ${action} of one-issue local-trunk close for ${scope.repository} #${scope.issue}, accepted SHA ${scope.acceptedHeadSha}, trunk ${scope.resolvedTrunkRef}, operation ${scope.deliveryOperationId}, proposal ${proposalDigest}.`;
   }
   return `Authorize ${action} of delivery exception proposal ${proposalDigest}.`;
 }
@@ -160,7 +171,7 @@ export function parseDeliveryWaiverRequest(input, { action } = {}) {
     fail('digest');
   const built = buildDeliveryScope(value.deliveryScope);
   if (built.waiverScopeDigest !== value.waiverScopeDigest) fail('scope-digest');
-  validateDeliveryWaiverIds(value.requirementIds, built.scope);
+  validateDeliveryExceptionIds(value.requirementIds, built.scope);
   if (
     value.exceptionId === null ||
     typeof value.exceptionId !== 'string' ||
@@ -193,7 +204,10 @@ export function parseDeliveryWaiverRequest(input, { action } = {}) {
 
 export function prepareDeliveryWaiver({ input, facts, ids = null } = {}) {
   const proposal = parseDeliveryWaiverProposal(input);
-  if (!facts || typeof facts !== 'object' || !facts.originalIntentRecordId) fail('original-intent');
+  const localTrunk = proposal.schema === LOCAL_TRUNK_PROPOSAL_SCHEMA;
+  if (!facts || typeof facts !== 'object' || (!localTrunk && !facts.originalIntentRecordId))
+    fail('original-intent');
+  if (localTrunk && facts.pullRequest !== null) fail('pull-request');
   if (!HASH_RE.test(facts.scopeIdentity ?? '')) fail('scope-identity');
   const now = facts.now ?? new Date().toISOString();
   if (!canonicalFuture(proposal.expiresAt, now)) fail('expires-at');
@@ -237,7 +251,9 @@ export function prepareDeliveryWaiver({ input, facts, ids = null } = {}) {
           schema: DELIVERY_SCOPE_SCHEMA,
           repository: facts.repository,
           issue: facts.issue,
-          exceptionKind: 'delivery.invariant-waiver',
+          exceptionKind: localTrunk
+            ? 'delivery.local-trunk-close-authorization'
+            : 'delivery.invariant-waiver',
           pullRequest: facts.pullRequest,
           acceptedHeadSha: facts.acceptedHeadSha,
           baseRef: facts.baseRef,
@@ -248,7 +264,8 @@ export function prepareDeliveryWaiver({ input, facts, ids = null } = {}) {
   const built = buildDeliveryScope(scopeInput);
   if (built.scope.repository !== facts.repository || built.scope.issue !== facts.issue)
     fail('issue-scope');
-  validateDeliveryWaiverIds([proposal.requirementId], built.scope);
+  if (localTrunk) validateDeliveryExceptionIds([proposal.requirementId], built.scope);
+  else validateDeliveryWaiverIds([proposal.requirementId], built.scope);
   const proposalDigest = deliveryProposalDigest({
     action: proposal.action,
     repository: facts.repository,
@@ -280,7 +297,11 @@ export function prepareDeliveryWaiver({ input, facts, ids = null } = {}) {
   });
   return Object.freeze({
     proposal: selected,
-    statement: deliveryApprovalStatement({ action: proposal.action, proposalDigest }),
+    statement: deliveryApprovalStatement({
+      action: proposal.action,
+      proposalDigest,
+      deliveryScope: built.scope,
+    }),
     request,
   });
 }

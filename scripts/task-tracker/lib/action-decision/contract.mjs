@@ -905,7 +905,15 @@ export function validateActionDecision(value) {
       exact(item, ['category', 'requirementId', 'outcome'], where);
       nonemptyString(item.category, `${where}.category`);
       nonemptyString(item.requirementId, `${where}.requirementId`);
-      if (!['delivered', 'waived', 'blocked', 'indeterminate'].includes(item.outcome))
+      if (
+        ![
+          'delivered',
+          'waived',
+          'blocked',
+          'indeterminate',
+          'authorized-local-trunk-close',
+        ].includes(item.outcome)
+      )
         fail(`${where}.outcome`, 'enum');
     });
   }

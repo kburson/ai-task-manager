@@ -40,7 +40,7 @@ export function gitInput(cwd, args, input) {
   });
 }
 
-export async function createTwoCloneHarness(issue = 1796) {
+export async function createTwoCloneHarness(issue = 1796, mode = 'waiver') {
   const root = await mkdtemp(
     join(projectScratchDir('test', process.cwd()), 'aitm-waiver-journal-')
   );
@@ -65,12 +65,14 @@ export async function createTwoCloneHarness(issue = 1796) {
       repository: 'example/project',
       issue,
       allowLocalRemote: true,
+      mode,
     }),
     hostB: createDeliveryWaiverJournal({
       cwd: b,
       repository: 'example/project',
       issue,
       allowLocalRemote: true,
+      mode,
     }),
     git,
     cleanup: () => rm(root, { recursive: true, force: true }),

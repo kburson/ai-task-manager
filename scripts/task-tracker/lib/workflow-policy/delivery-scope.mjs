@@ -68,6 +68,12 @@ export function buildDeliveryScope(input) {
   } else if (input.pullRequest !== null) {
     fail('pull-request');
   }
+  if (
+    input.exceptionKind === 'delivery.local-trunk-close-authorization' &&
+    input.requirementId !== 'delivery.local-trunk-close-authorization'
+  ) {
+    fail('requirement-id');
+  }
   if (typeof input.acceptedHeadSha !== 'string' || !SHA_RE.test(input.acceptedHeadSha)) {
     fail('accepted-head');
   }

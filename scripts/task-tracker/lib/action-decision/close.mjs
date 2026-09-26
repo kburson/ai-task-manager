@@ -18,6 +18,9 @@ import {
   verifyCloseDeliveryReceipt,
 } from '../close-delivery-receipt.mjs';
 import { parseVerificationReceipt } from '../verification-receipt.mjs';
+import { parseLocalTrunkCloseReceipt } from '../local-trunk-close-receipt.mjs';
+import { createDeliveryWaiverJournal } from '../delivery-waiver-journal.mjs';
+import { verifyHistoricalLocalTrunkGrant } from '../delivery-waiver-consumption.mjs';
 import { evaluateCompleteGuards, evaluateExactTrunkAttribution } from './evaluate.mjs';
 import { createObservationAttempt } from './observations.mjs';
 import { resolveProjectDir } from '../project-dir.mjs';
@@ -317,7 +320,12 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
       throw new TypeError('close-readiness:guard-lineage-unavailable');
     const tip = context.attribution.tip.sha;
     const gateInput = context.delivery.gateInput;
-    const receiptGate = requireDeliveryReceipt(gateInput);
+    const localProof = context.delivery.localTrunkProof;
+    const receiptGate =
+      context.delivery.localTrunkReceipt ??
+      (localProof?.outcome === 'authorized-local-trunk-close'
+        ? { skipped: true, receipt: null }
+        : requireDeliveryReceipt(gateInput));
     if (!receiptGate.skipped) {
       const { inspectCloseMergeCommit } = await import('../../verbs/close.mjs');
       const waiverDeps =
@@ -363,6 +371,19 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
           attributingCommits: async () => {
             throw new TypeError('close-readiness:unobserved-attribution');
           },
+          ...(receiptGate.mode === 'local-trunk'
+            ? {
+                readLocalTrunkJournal:
+                  deps.readLocalTrunkJournal ??
+                  (() =>
+                    createDeliveryWaiverJournal({
+                      cwd: projectDir,
+                      repository: cfg.repo,
+                      issue,
+                      mode: 'local-trunk',
+                    }).read()),
+              }
+            : {}),
           ...(waiverDeps
             ? {
                 readWaiverJournal:
@@ -436,6 +457,82 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
     readWorktree,
     readChildren,
     readDelivery,
+    readLocalTrunkReceipt: async ({ gateInput, lifecycleEvidence }) => {
+      const pages = deps.listLocalTrunkComments
+        ? await deps.listLocalTrunkComments()
+        : JSON.parse(
+            await output('gh', [
+              'api',
+              '--paginate',
+              '--slurp',
+              `repos/${cfg.repo}/issues/${issue}/comments?per_page=100`,
+            ])
+          );
+      if (!Array.isArray(pages) || pages.some((page) => !Array.isArray(page)))
+        throw new TypeError('close-readiness:local-receipt-pages');
+      const matching = pages
+        .flat()
+        .filter(
+          (item) =>
+            typeof item?.body === 'string' &&
+            item.body.startsWith('<!-- aitm-local-trunk-close-receipt ')
+        );
+      if (matching.length === 0) return null;
+      if (matching.length !== 1) throw new TypeError('close-readiness:local-receipt-ambiguous');
+      const item = matching[0];
+      const receipt = parseLocalTrunkCloseReceipt(item.body);
+      const receiptGate = {
+        skipped: false,
+        mode: 'local-trunk',
+        receipt,
+        comment: {
+          id: String(item.node_id ?? item.id),
+          createdAt: item.created_at,
+          body: item.body,
+        },
+      };
+      const journalSnapshot = await (
+        deps.readLocalTrunkJournal ??
+        (() =>
+          createDeliveryWaiverJournal({
+            cwd: projectDir,
+            repository: cfg.repo,
+            issue,
+            mode: 'local-trunk',
+          }).read())
+      )();
+      await verifyCloseDeliveryReceipt({
+        gateInput,
+        receiptGate,
+        testReceiptSha: parseVerificationReceipt(gateInput.body, 'test')?.commitSha ?? null,
+        acceptedReviewSha:
+          lifecycleEvidence?.expectedSha ??
+          parseVerificationReceipt(gateInput.body, 'review')?.commitSha ??
+          gateInput.acceptedSha,
+        deps: { readLocalTrunkJournal: async () => journalSnapshot },
+      });
+      const grant = await (deps.verifyHistoricalLocalTrunkGrant ?? verifyHistoricalLocalTrunkGrant)(
+        {
+          confirmedBurn: journalSnapshot.operations.get(receipt.deliveryOperationId)?.burn,
+          journalSnapshot,
+          comments: pages.flat(),
+          repository: cfg.repo,
+          issue,
+        }
+      );
+      return { ...receiptGate, grant };
+    },
+    readLocalTrunkProof: async ({ gateInput, grant }) => {
+      const { loadCloseLocalTrunkProof } = await import('../../verbs/close.mjs');
+      return loadCloseLocalTrunkProof({
+        gateInput,
+        grant,
+        cfg,
+        projectDir,
+        pexec: run,
+        fetchRemoteTip: false,
+      });
+    },
     readGuardAuthority,
     runReadOnlyGuards,
     hasAttributingCommit,
@@ -478,6 +575,8 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
   let normalizations = [];
   let humanDecision = null;
   let deliveryExceptions = [];
+  let localTrunkProof = null;
+  let localTrunkReceipt = null;
   const fail = (source) => {
     indeterminate = true;
     blockers.push(unavailable(issue, source));
@@ -572,7 +671,56 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
         if (delivery.mode === 'evidence-v2')
           requireEvidenceV2DeliveryReceipt(delivery.receiptInput);
         else if (delivery.mode === 'ordinary' || delivery.mode === 'no-commit') {
-          const gate = requireDeliveryReceipt(input);
+          let gate;
+          try {
+            gate = requireDeliveryReceipt(input);
+          } catch (error) {
+            if (
+              error?.category !== 'ambiguous-pr' ||
+              input.lineage?.parentIssueNumber !== null ||
+              !Array.isArray(input.pullRequests) ||
+              input.pullRequests.length !== 0 ||
+              typeof ports.readLocalTrunkProof !== 'function'
+            )
+              throw error;
+            const completed = await ports.readLocalTrunkReceipt?.({
+              gateInput: input,
+              lifecycleEvidence: delivery.lifecycleEvidence,
+            });
+            if (completed) {
+              if (!completed.grant) throw new TypeError('close-readiness:historical-grant');
+              const proof = await ports.readLocalTrunkProof({
+                gateInput: input,
+                grant: completed.grant,
+              });
+              localTrunkProof = proof;
+              if (proof.outcome === 'indeterminate') fail('delivery');
+              else if (proof.outcome !== 'authorized-local-trunk-close')
+                blockers.push(legacy('review-exit-close-gates'));
+              gate = completed;
+              localTrunkReceipt = completed;
+              deliveryExceptions = [
+                {
+                  category: proof.reasonId ?? 'local-trunk-close',
+                  requirementId: 'delivery.local-trunk-close-authorization',
+                  outcome: proof.outcome,
+                },
+              ];
+            } else {
+              const proof = await ports.readLocalTrunkProof({ gateInput: input });
+              localTrunkProof = proof;
+              deliveryExceptions = [
+                {
+                  category: proof.reasonId ?? 'local-trunk-close',
+                  requirementId: 'delivery.local-trunk-close-authorization',
+                  outcome: proof.outcome,
+                },
+              ];
+              if (proof.outcome === 'indeterminate') fail('delivery');
+              else blockers.push(legacy('review-exit-close-gates'));
+              gate = { skipped: true, receipt: null };
+            }
+          }
           if (gate.receipt?.schema === 'aitm.delivery-receipt/v4') {
             let outcome = 'indeterminate';
             let category = 'delivery-waiver-authority';
@@ -635,7 +783,10 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
           toState: 'done',
           readOnly: true,
           headSha: head,
-          delivery,
+          delivery:
+            localTrunkProof || localTrunkReceipt
+              ? { ...delivery, localTrunkProof, localTrunkReceipt }
+              : delivery,
           attribution,
           children: children?.children,
           lifecycleEvidence: delivery?.lifecycleEvidence ?? null,
@@ -875,6 +1026,8 @@ export async function evaluateCloseReadiness({
           });
         }),
       deps: deps.guardDeps,
+      readLocalTrunkProof: deps.readLocalTrunkProof ?? production.readLocalTrunkProof,
+      readLocalTrunkReceipt: deps.readLocalTrunkReceipt ?? production.readLocalTrunkReceipt,
       verifyWaiverReceipt:
         deps.verifyWaiverReceipt ??
         (async ({ gateInput, receiptGate }) => {

@@ -59,6 +59,56 @@ provenance, CI, safe delivery, and external protection remain mandatory. Review
 waivers do not grant completion approval. An active managed-provider denial
 wins over Full-Auto and retry requests.
 
+### One-issue local-trunk close
+
+Use this lane when a top-level, commit-bearing issue is in Review and its accepted
+Test and Review SHA is already on both the local and remote configured trunk,
+with no PR for the issue branch. Ordinary PR delivery remains the path whenever
+a PR exists. A general request to deliver an issue does not authorize this
+exception.
+
+1. Confirm the issue is bound to its recorded worktree and the configured trunk
+   ref is current. Save an `aitm.local-trunk-close-proposal/v1` JSON file with
+   exactly `schema`, `action: "record"`, `exceptionId: null`,
+   `priorRecordId: null`, `priorRevision: null`,
+   `requirementId: "delivery.local-trunk-close-authorization"`, a substantive
+   `reason`, a future canonical UTC `expiresAt`, and
+   `deliveryOperationId: null`. Prepare without a write:
+
+   ```bash
+   npx aitm workflow-exception prepare #57 --input-file .scratch/gh/57-local-close-proposal.json --json
+   ```
+
+2. Preserve the returned request, operation ID, proposal digest, and exact
+   approval statement. The operator must send that exact statement as a **new
+   Codex user message**. Add its `aitm.authorization-source/v1` session ID,
+   message ID, and statement hash to the returned request. The recording host
+   verifies the message and live scope; the request file or assistant text
+   alone is not approval. Record and inspect the grant:
+
+   ```bash
+   npx aitm workflow-exception record #57 --input-file .scratch/gh/57-local-close-request.json
+   npx aitm workflow-exception show #57 --json
+   ```
+
+3. Run `npx aitm close #57` from the bound worktree. Close rechecks the exact
+   no-PR trunk proof, consumes the single grant in
+   `refs/heads/aitm/local-trunk-closes/57`, publishes an
+   `aitm.local-trunk-close-receipt/v1` comment, verifies its readback, and only
+   then moves the issue to Done. The result is
+   `authorized-local-trunk-close`; it is neither PR `delivered` nor a passed
+   PR waiver. An exact completed retry may reuse this receipt after grant
+   expiry, but the grant cannot authorize another close.
+
+To revise or revoke an unconsumed grant, prepare a new exact proposal with its
+prior record ID and revision, obtain a fresh exact operator message, then use
+`workflow-exception revise` or `revoke`. The revision barrier and close burn
+share one Git compare-and-append history. A pre-burn revision blocks the old
+grant; a post-burn revision cannot erase an already consumed operation. If a
+receipt or revision comment POST has an uncertain outcome, preserve its journal
+and GitHub evidence. Retry only for exact readback; an absent comment after a
+one-shot POST claim remains indeterminate and requires incident recovery.
+
 ### Generic PR delivery waiver
 
 Use this only for a genuine, named delivery verification exception on one

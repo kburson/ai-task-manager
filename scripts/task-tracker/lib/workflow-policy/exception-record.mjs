@@ -1,7 +1,11 @@
 // @story #1626 #1787 #1793 #1794
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
-import { validateConstraints, validateDeliveryWaiverIds, validateWaiverIds } from './catalog.mjs';
+import {
+  validateConstraints,
+  validateDeliveryExceptionIds,
+  validateWaiverIds,
+} from './catalog.mjs';
 import { meaningfulDeliveryReason } from './delivery-request.mjs';
 import { buildDeliveryScope } from './delivery-scope.mjs';
 import { partitionWorkflowExceptions } from './exception-partitions.mjs';
@@ -182,12 +186,11 @@ export function validateWorkflowExceptionEnvelope(
   try {
     if (payload.schema === WORKFLOW_EXCEPTION_SCHEMA_V2) {
       const { scope, waiverScopeDigest } = buildDeliveryScope(payload.deliveryScope);
-      if (scope.exceptionKind !== 'delivery.invariant-waiver') fail('delivery-kind');
       if (scope.repository !== envelope.repository || scope.issue !== envelope.issue) {
         fail('delivery-scope-identity');
       }
       if (payload.waiverScopeDigest !== waiverScopeDigest) fail('scope-digest');
-      requirementIds = validateDeliveryWaiverIds(payload.requirementIds, scope);
+      requirementIds = validateDeliveryExceptionIds(payload.requirementIds, scope);
       if (!Array.isArray(payload.constraints) || payload.constraints.length !== 0) {
         fail('delivery-constraints');
       }

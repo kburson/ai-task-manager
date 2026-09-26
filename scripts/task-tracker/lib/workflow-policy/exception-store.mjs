@@ -1,8 +1,8 @@
-// @story #1626 #1787 #1794 #1795
+// @story #1626 #1787 #1794 #1795 #1824
 import { isDeepStrictEqual } from 'node:util';
 
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
-import { renderAitmRecord } from '../github-records/record-envelope.mjs';
+import { createRecordId, renderAitmRecord } from '../github-records/record-envelope.mjs';
 import {
   createWorkflowExceptionEnvelope,
   resolveDeliveryExceptionChain,
@@ -195,6 +195,51 @@ export async function executeWorkflowExceptionWrite({
       head?.recordId !== request.priorRecordId ||
       head?.payload?.revision !== request.priorRevision
     ) {
+      if (request.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization') {
+        const prior = selected.find(
+          ({ envelope }) => envelope.recordId === request.priorRecordId
+        )?.envelope;
+        const successor = selected.find(
+          ({ envelope }) => envelope.recordId === head?.recordId
+        )?.envelope;
+        if (
+          prior &&
+          successor?.predecessor === prior.recordId &&
+          successor.payload.revision === prior.payload.revision + 1
+        ) {
+          const replayPolicy =
+            action === 'revoke'
+              ? {
+                  ...policyOf(prior.payload),
+                  scopeIdentity,
+                  reason: request.reason,
+                  authorization: authority,
+                  expiresAt: request.expiresAt,
+                }
+              : desiredPolicy({ request, scopeIdentity, authority });
+          const replayOperationId = operationId({
+            action,
+            repository,
+            issue,
+            revision: prior.payload.revision + 1,
+            status: action === 'revoke' ? 'revoked' : 'active',
+            ...replayPolicy,
+          });
+          if (successor.payload.operationId === replayOperationId) {
+            const journal = await runtime.readLocalTrunkJournal?.(issue);
+            const barrier = journal?.barriers?.get(prior.recordId);
+            if (
+              barrier?.entry.revisionRecordId === successor.recordId &&
+              barrier.entry.revisionOperationId === replayOperationId &&
+              barrier.entry.revisionGrantId === successor.authority.grantId &&
+              barrier.entry.revisionCreatedAt === successor.createdAt &&
+              barrier.entry.action === action &&
+              barrier.post
+            )
+              return recordResult(issue, action === 'revoke' ? 'revoked' : 'existing', successor);
+          }
+        }
+      }
       return recordResult(issue, 'blocked', head, { code: 'stale-prior-selector' });
     }
   }
@@ -253,6 +298,23 @@ export async function executeWorkflowExceptionWrite({
     return recordResult(issue, 'blocked', null, { code: 'ambiguous-operation' });
   }
   if (existingOperation.length === 1) {
+    if (
+      request.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization' &&
+      action !== 'record'
+    ) {
+      const priorBarrier = await runtime.readLocalTrunkJournal?.(issue);
+      const barrier = priorBarrier?.barriers?.get(head.recordId);
+      if (
+        barrier?.entry.revisionRecordId !== existingOperation[0].envelope.recordId ||
+        barrier?.entry.revisionOperationId !== opId ||
+        barrier?.entry.revisionGrantId !== existingOperation[0].envelope.authority.grantId ||
+        barrier?.entry.revisionCreatedAt !== existingOperation[0].envelope.createdAt ||
+        barrier?.entry.action !== action
+      )
+        return recordResult(issue, 'indeterminate', null, {
+          code: 'local-trunk-revision-barrier-missing',
+        });
+    }
     return recordResult(
       issue,
       status === 'revoked' ? 'revoked' : 'existing',
@@ -260,7 +322,9 @@ export async function executeWorkflowExceptionWrite({
     );
   }
   const ids = runtime.nextIds();
-  const envelope = createWorkflowExceptionEnvelope({
+  // Validate the complete candidate before a CAS barrier can make this grant
+  // unavailable to a concurrent burn.
+  createWorkflowExceptionEnvelope({
     repository,
     issue,
     ...policy,
@@ -272,15 +336,114 @@ export async function executeWorkflowExceptionWrite({
     createdAt: now,
     ...ids,
   });
+  const localTrunk =
+    policy.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization';
+  let reservedIds = { ...ids, createdAt: now };
+  // Local-trunk revisions linearize with the burn before posting a comment.
+  // The journal pins generated IDs and time so a retry can reconstruct the
+  // exact same envelope and visible comment after a lost POST response.
+  if (localTrunk && action !== 'record') {
+    if (typeof runtime.reserveLocalTrunkRevision !== 'function')
+      return recordResult(issue, 'indeterminate', null, { code: 'local-trunk-revision-journal' });
+    let reservation;
+    try {
+      reservation = await runtime.reserveLocalTrunkRevision({
+        repository,
+        issue,
+        deliveryOperationId: policy.deliveryScope.deliveryOperationId,
+        priorGrantRecordId: head.recordId,
+        revisionRecordId: ids.recordId,
+        revisionGrantId: ids.grantId,
+        revisionCreatedAt: now,
+        revisionOperationId: opId,
+        action,
+      });
+    } catch {
+      return recordResult(issue, 'indeterminate', null, { code: 'local-trunk-revision-journal' });
+    }
+    const pinned = reservation?.barrier?.entry;
+    if (
+      pinned?.revisionOperationId !== opId ||
+      pinned?.priorGrantRecordId !== head.recordId ||
+      pinned?.action !== action
+    )
+      return recordResult(issue, 'indeterminate', null, { code: 'local-trunk-revision-journal' });
+    reservedIds = {
+      recordId: pinned.revisionRecordId,
+      grantId: pinned.revisionGrantId,
+      createdAt: pinned.revisionCreatedAt,
+    };
+  }
+  const envelope = createWorkflowExceptionEnvelope({
+    repository,
+    issue,
+    ...policy,
+    revision,
+    status,
+    operationId: opId,
+    predecessor: head?.recordId ?? null,
+    supersedes: head?.recordId ?? null,
+    ...reservedIds,
+  });
   const body = renderAitmRecord({
     envelope,
-    visibleMarkdown:
-      `AITM workflow exception ${status === 'revoked' ? 'revoked' : 'recorded'}: ` +
-      `${policy.exceptionId} revision ${revision}.\n`,
+    visibleMarkdown: localTrunk
+      ? `AITM one-issue local-trunk close authority ${status === 'revoked' ? 'revoked' : 'recorded'}: ` +
+        `${policy.exceptionId} revision ${revision}, ${repository} #${issue}, ` +
+        `accepted SHA ${policy.deliveryScope.acceptedHeadSha}, operation ` +
+        `${policy.deliveryScope.deliveryOperationId}. No PR delivery is asserted.\n`
+      : `AITM workflow exception ${status === 'revoked' ? 'revoked' : 'recorded'}: ` +
+        `${policy.exceptionId} revision ${revision}.\n`,
   });
+  let mayPost = true;
+  if (localTrunk && action !== 'record') {
+    if (typeof runtime.reserveLocalTrunkRevisionPost !== 'function')
+      return recordResult(issue, 'indeterminate', null, {
+        code: 'local-trunk-revision-post-journal',
+      });
+    let claim;
+    try {
+      claim = await runtime.reserveLocalTrunkRevisionPost({
+        repository,
+        issue,
+        deliveryOperationId: policy.deliveryScope.deliveryOperationId,
+        priorGrantRecordId: head.recordId,
+        revisionRecordId: envelope.recordId,
+        revisionOperationId: opId,
+        runId: createRecordId(),
+      });
+    } catch {
+      return recordResult(issue, 'indeterminate', null, {
+        code: 'local-trunk-revision-post-journal',
+      });
+    }
+    mayPost = claim?.status === 'reserved';
+    if (!mayPost && claim?.status !== 'existing')
+      return recordResult(issue, 'indeterminate', null, {
+        code: 'local-trunk-revision-post-journal',
+      });
+  }
   let recoveredAfterTransport = false;
   try {
-    await runtime.appendRecord({ issue, body, envelope });
+    if (mayPost) await runtime.appendRecord({ issue, body, envelope });
+    else {
+      const priorPost = await reconcileOperation({
+        issue,
+        expectedOperationId: opId,
+        partitionKey,
+        repository,
+        runtime,
+      });
+      if (
+        priorPost.status !== 'found' ||
+        priorPost.record.envelope.recordId !== envelope.recordId ||
+        priorPost.record.body !== body
+      )
+        return recordResult(issue, 'indeterminate', null, {
+          code: 'local-trunk-revision-post-unknown',
+        });
+      recoveredAfterTransport = true;
+    }
   } catch {
     const reconciled = await reconcileOperation({
       issue,
@@ -303,6 +466,21 @@ export async function executeWorkflowExceptionWrite({
     repository,
     runtime,
   });
+  if (localTrunk && action !== 'record' && verified.status === 'found') {
+    const journal = await runtime.readLocalTrunkJournal?.(issue);
+    const barrier = journal?.barriers?.get(head.recordId);
+    if (
+      barrier?.entry.revisionRecordId !== envelope.recordId ||
+      barrier?.entry.revisionOperationId !== opId ||
+      barrier?.entry.revisionGrantId !== verified.record?.envelope.authority.grantId ||
+      barrier?.entry.revisionCreatedAt !== verified.record?.envelope.createdAt ||
+      verified.record?.body !== body ||
+      barrier?.entry.action !== action
+    )
+      return recordResult(issue, 'indeterminate', null, {
+        code: 'local-trunk-revision-barrier-missing',
+      });
+  }
   if (verified.status !== 'found') {
     return recordResult(issue, 'indeterminate', null, { code: 'readback-mismatch' });
   }

@@ -1,0 +1,32 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "proof-core",
+      "description": "Build pure local trunk close proof with Git and PR observation validation",
+      "baseHumanHours": 5,
+      "signals": {
+        "modules": ["local-trunk-close-proof", "git"],
+        "dependencies": ["delivery-authority", "verification-receipt"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "close-readers",
+      "description": "Wire fresh proof reads into Explain and locked Close with tests",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["action-decision", "close"],
+        "dependencies": ["proof-core", "workflow-exception"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 35
+  },
+  "risks": ["Incomplete PR pagination", "Local and remote ref drift", "Shallow clone ambiguity"],
+  "comparableIssueIds": [1783, 1824]
+}
