@@ -10,7 +10,10 @@ import {
   prepareDeliveryWaiver,
 } from '../../../../task-tracker/lib/workflow-policy/delivery-request.mjs';
 import { parseAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
-import { hashAuthorizationStatement } from '../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
+import {
+  hashAuthorizationStatement,
+  resolveWorkflowExceptionAuthority,
+} from '../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 
 const repository = 'kburson/ai-task-manager';
@@ -301,4 +304,51 @@ test('local revise and revoke statements bind the same operation and prior revis
       facts: { ...facts, prior },
     })
   );
+});
+
+test('local statement source rejects assistant, stale, and unavailable host evidence', async () => {
+  const prepared = prepareDeliveryWaiver({
+    input: proposal,
+    facts,
+    ids: { exceptionId: 'local-one', deliveryOperationId: '01M2H000000000000000000001' },
+  });
+  const source = {
+    schema: 'aitm.authorization-source/v1',
+    adapter: 'codex-session/v1',
+    sessionId: '01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed',
+    messageId: 'msg_local',
+    statementHash: hashAuthorizationStatement(prepared.statement),
+  };
+  const resolve = (loadSource) =>
+    resolveWorkflowExceptionAuthority({
+      source,
+      recordingActor: `codex/session:${source.sessionId}`,
+      loadSource,
+    });
+  const good = await resolve(async () => ({
+    role: 'user',
+    statement: prepared.statement,
+    statementHash: source.statementHash,
+    principal: null,
+  }));
+  assert.equal(good.status, 'verified');
+  assert.equal(good.authority.statement, prepared.statement);
+  const assistant = await resolve(async () => ({
+    role: 'assistant',
+    statement: prepared.statement,
+    statementHash: source.statementHash,
+    principal: null,
+  }));
+  assert.equal(assistant.code, 'authorization-source-not-human');
+  const stale = await resolve(async () => ({
+    role: 'user',
+    statement: 'deliver 1783',
+    statementHash: hashAuthorizationStatement('deliver 1783'),
+    principal: null,
+  }));
+  assert.equal(stale.code, 'authorization-source-mismatch');
+  const unavailable = await resolve(async () => {
+    throw new Error('unsupported host');
+  });
+  assert.equal(unavailable.code, 'authorization-source-unavailable');
 });
