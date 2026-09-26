@@ -489,7 +489,6 @@ function validateReceipt(receipt) {
       typeof proof.commitTitle !== 'string' ||
       !proof.commitTitle.length ||
       typeof proof.commitMessage !== 'string' ||
-      !proof.commitMessage.length ||
       !Array.isArray(proof.sourceMapping) ||
       !proof.sourceMapping.length ||
       proof.sourceMapping.some(

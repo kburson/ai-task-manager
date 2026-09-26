@@ -61,15 +61,15 @@ wins over Full-Auto and retry requests.
 
 ### Generic PR delivery waiver
 
-Use this only for one named, catalogued delivery verification requirement on
-one already merged PR with an existing original delivery intent. The ordinary
+Use this only for a genuine, named delivery verification exception on one
+already merged PR with an existing original delivery intent. The ordinary
 delivery checks still run; only the approved requirement can be reported as
-`waived`. For example, a provider merge-method divergence can be authorized
-for one issue, PR, accepted head, base, trunk ref, and delivery operation. A
-request file, issue comment outside this protocol, or `deliver --reason` never
-grants authority. `--reconcile-merge-method` serves its documented historical
-and external recovery lanes; it does not replace this workflow for an existing
-authorized intent.
+`waived`. A requested merge method or commit wording that differs from a
+verified manual GitHub integration is recorded in the observed receipt and
+does not need a waiver. A request file, issue comment outside this protocol,
+or `deliver --reason` never grants authority. `--reconcile-merge-method`
+remains available for historical and external recovery without an original
+intent; it does not rewrite an existing intent.
 
 1. Confirm the original authorized delivery intent was recorded before the
    PR merged. For an open PR, ordinary `npx aitm deliver 57` can create that
@@ -142,8 +142,10 @@ when exact readback cannot establish the original write.
 
 #### Delivery waiver acceptance coverage
 
-The #1787 verification run includes the following matrix. The #1784/#1785
-fixture is synthetic and makes no live GitHub waiver write. Run the focused
+The #1787 verification run includes the following historical waiver matrix.
+Its waiver fixture uses fictional #9184/#9185 and makes no live GitHub write.
+A separate regression uses the actual #1784 intent and #1785 merge to prove
+ordinary v5 delivery and Close without consuming a waiver. Run the focused
 waiver suites together with ordinary deliver/close, #1755 attribution exception,
 workflow-exception/preflight, and external recovery in the full integration
 lane before treating the workflow as releasable.
@@ -161,7 +163,7 @@ lane before treating the workflow as releasable.
 | Original intent before merge                | `delivery-waiver-reverification` unit and merge-method integration suites                                          |
 | Independent provider/Git merge facts        | `delivery-waiver-reverification` unit suite                                                                        |
 | All non-waived checks before burn           | `delivery-waiver-reverification` and merge-method integration suites                                               |
-| Close after burn, expiry, or revocation     | `delivery-waiver-close-recovery` unit and #1784/#1785 close-gate integration fixture                               |
+| Close after burn, expiry, or revocation     | `delivery-waiver-close-recovery` unit and synthetic #9184/#9185 close-gate integration fixture                     |
 | Reopened and false-delivery recovery        | `reopened-close-recovery`, `false-delivery-close-recovery` unit suites                                             |
 | Read-only disclosure and installed parity   | workflow-preflight integration and `package-delivery-waiver-smoke` suites                                          |
 | Ordinary delivery and #1755 regression      | full `npm run test:integration` lane, including ordinary deliver/close and `delivery-attribution-exception` suites |
@@ -636,10 +638,16 @@ Delivered by [#908](https://github.com/kburson/ai-task-manager/issues/908) (epic
 [#912](https://github.com/kburson/ai-task-manager/issues/912)). Full-Auto PR
 delivery uses the `provider-action` mechanism. In Review, `/task deliver #N`
 validates the accepted head and required checks, appends an immutable intent, and
-emits one structured provider action containing the exact expected-head SHA and
-merge bytes. The host executes only that sanctioned provider integration, then
-reruns `deliver`; only AITM's independent live verification and receipt permit
-`close` to proceed. Close never performs the PR mutation.
+emits a structured provider action containing the exact expected-head SHA,
+configured method, title, and message. The host can execute that action only
+when it supports the requested provider integration.
+`npx aitm explain #N --action deliver --json` reports
+`delivery-provider-unavailable` when it does not. Run `deliver` to record the
+intent, merge the exact accepted PR head through GitHub's manual merge UI,
+then rerun `deliver`; do not invent a provider action.
+The manual GitHub method and generated wording may differ from the suggestion.
+Only AITM's independent live verification and receipt permit `close` to
+proceed. Close never performs the PR mutation.
 
 The earlier `gh-auto-merge` mechanism is retired and is refused with migration
 guidance; AITM does not silently translate it or run `gh pr merge --auto`. An
@@ -672,7 +680,9 @@ the branch happens to name now.
 - An **open current-head provider action** appends an intent and emits one exact
   `AITM_PROVIDER_ACTION_REQUIRED` envelope. The host may perform only that
   sanctioned action. Rerunning `deliver` re-reads the provider and trunk and
-  appends the live-verified receipt.
+  appends a v5 receipt when complete source evidence is available. It records
+  the observed method, parents, tree, title, message, source mapping, and
+  content proof. Close replays that proof.
 - An **already-merged current-head external recovery** emits
   `mode="current-head"` with no action. After validating current-head preflight,
   including required checks, AITM writes an external intent and exact receipt for
@@ -680,7 +690,8 @@ the branch happens to name now.
 - **Advanced-head historical receipt recovery** requires the prior exact intent
   for the accepted SHA and emits `mode="historical-recovery"` with **no provider
   action**. It proves the exact pull request, accepted head, merge commit, method,
-  attribution, intent bytes, and trunk reachability. It does not reapply the
+  attribution, observed integration and content, and trunk reachability. It
+  does not reapply the
   current-head required-check gate to the historical path.
 
 Branch reuse does not weaken either mode. Pull-request selection uses the exact
@@ -689,12 +700,14 @@ earlier story. Mere **cumulative inclusion** of the accepted bytes somewhere in
 trunk is not a delivery receipt and is never converted into one.
 
 Delivery recovery separates **safety authority** from **audit convention**.
-Accepted-head identity, pull-request identity, required hosted checks, merge
-method and topology, trunk reachability, tree equality, lifecycle state,
+Accepted-head identity, pull-request identity, required hosted checks, observed
+method and topology, trunk reachability, content equality, lifecycle state,
 approval, and record readback remain mandatory safety authority. The `[#N]`
 source subjects and merge attribution trailer are audit convention: only when an
 otherwise proven external merge has that metadata wholly absent may AITM recover
-with an `aitm.delivery-receipt/v2` warning. Source absence records
+with a metadata warning in the ordinary v5 receipt when complete source
+evidence supports it. Historical v2 warning receipts remain readable. Source
+absence records
 `missing-source-attribution`; an absent default merge or squash trailer records
 `missing-merge-attribution-trailer`. Any present malformed, partial, extra, or
 conflicting attribution remains fatal. Warning-bearing receipts preserve the

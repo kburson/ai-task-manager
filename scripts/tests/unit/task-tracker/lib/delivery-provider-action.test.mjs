@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #939
+// @story #939 #1813
 // cspell:ignore NDEKTSV RRFFQ
 
 import { strict as assert } from 'node:assert';
@@ -449,7 +449,11 @@ test('provider action accepts every delivery-verifiable merge method authorized 
       clientCreatedAt: '2026-08-22T12:00:00.000Z',
     });
 
-    assert.equal(buildProviderAction(intent).mergeMethod, mergeMethod);
+    const action = buildProviderAction(intent);
+    assert.equal(action.mergeMethod, mergeMethod);
+    assert.equal(action.expectedHeadSha, HEAD);
+    assert.equal(action.commitTitle, intent.commitTitle);
+    assert.equal(action.commitMessage, intent.commitMessage);
   }
 });
 
