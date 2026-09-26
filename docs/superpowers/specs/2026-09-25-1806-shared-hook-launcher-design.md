@@ -2,7 +2,12 @@
 
 # Shared Codex and Claude Hook Launcher Design
 
-Date: 2026-09-25. Issue: #1806. Status: proposed for specification review.
+Date: 2026-09-25. Issue: #1806. Status: ratified by GPT-6-Astra SAR.
+
+Review record: [SAR round 1](../reviews/1806/SAR/self-review-r1.md) and
+[terminal SAR verdict](../reviews/1806/SAR/self-review-r2.md). Ratification
+covers the design and its implementation gates; it does not verify an
+implementation.
 
 ## Purpose and boundary
 
