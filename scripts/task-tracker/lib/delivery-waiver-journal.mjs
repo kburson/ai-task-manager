@@ -317,6 +317,16 @@ function remoteRepository(url, { host, allowLocalRemote }) {
   return owner && repo && REPO.test(`${owner}/${repo}`) ? `${owner}/${repo}` : null;
 }
 
+export function confirmsJournalEntry(snapshot, entry, mode) {
+  const recorded =
+    mode === 'local-trunk' && entry.schema === 'aitm.local-trunk-revision-barrier/v1'
+      ? snapshot.barriers.get(entry.priorGrantRecordId)?.entry
+      : mode === 'local-trunk' && entry.schema === 'aitm.local-trunk-revision-post/v1'
+        ? snapshot.barriers.get(entry.priorGrantRecordId)?.post?.entry
+        : snapshot.operations.get(entry.deliveryOperationId)?.entry;
+  return Boolean(recorded && equal(recorded, entry));
+}
+
 export function createDeliveryWaiverJournal({
   cwd,
   repository,
@@ -468,10 +478,7 @@ export function createDeliveryWaiverJournal({
       refuse('push-outcome');
     }
     if (after.oid === nextOid) return { status: 'appended', snapshot: after };
-    if (
-      after.operations.get(entry.deliveryOperationId)?.entry &&
-      equal(after.operations.get(entry.deliveryOperationId).entry, entry)
-    ) {
+    if (confirmsJournalEntry(after, entry, mode)) {
       return { status: 'confirmed', snapshot: after };
     }
     if (pushError && after.oid === expectedOid) refuse('push-refused', 'missing');

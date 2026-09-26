@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { createTwoCloneHarness } from './delivery-waiver-journal-harness.mjs';
+import { confirmsJournalEntry } from '../../../../task-tracker/lib/delivery-waiver-journal.mjs';
 import {
   completeLocalTrunkClose,
   reserveLocalTrunkRevision,
@@ -189,5 +190,24 @@ test('revision POST claim is one-shot across two Git clones', async (t) => {
   assert.equal(
     (await h.hostB.read()).barriers.get(revision.priorGrantRecordId).post.entry.runId,
     'host-a'
+  );
+  const laterRevision = {
+    ...revision,
+    priorGrantRecordId: '00000000000000000000000008',
+    revisionRecordId: '00000000000000000000000009',
+    revisionGrantId: '00000000000000000000000010',
+    revisionOperationId: digest('other revision'),
+  };
+  await reserveLocalTrunkRevision({ candidate: laterRevision, journal: h.hostB });
+  const laterTip = await h.hostA.read();
+  assert.notEqual(laterTip.oid, first.post.oid);
+  assert.equal(
+    confirmsJournalEntry(laterTip, first.post.entry, 'local-trunk'),
+    true,
+    "the claim owner remains confirmed beneath another clone's later tip"
+  );
+  assert.equal(
+    confirmsJournalEntry(laterTip, { ...first.post.entry, runId: 'host-b' }, 'local-trunk'),
+    false
   );
 });
