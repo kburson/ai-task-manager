@@ -55,6 +55,14 @@ required, digest-checked install artifact. Consumers commit the installed file
 with their hook configuration so Git worktrees and fresh clones contain it.
 The installer and doctor refuse or report drift when config points at a
 missing or stale launcher. No handler scripts are copied to that directory.
+The launcher is security infrastructure when a guard uses it: the existing
+pre-tool self-modification interlock must protect the installed project-local
+launcher before guard commands migrate. That protection runs ahead of chore
+mode and other edit bypasses, covers all supported edit tools and patch paths,
+and distinguishes an installed consumer copy from editable AITM source.
+Installer upgrades replace owned bytes through an atomic, verified path; an
+agent edit to the installed launcher is denied even if the file currently
+exists and passes a simple path check.
 
 Both provider configs pass a closed logical handler ID to the launcher, for
 example `timing`, `memory-index`, `bash-guard`, `activity-guard`,
@@ -63,9 +71,17 @@ example `timing`, `memory-index`, `bash-guard`, `activity-guard`,
 and fail policy. It never interprets an ID as an arbitrary path. For each
 invocation it resolves the scoped package candidate first, then the
 repository-source candidate, using the active worktree root rather than an
-unrelated checkout. It imports the selected handler in the same Node process,
-normalizes `process.argv` for the handler's `isMain` gate, retains phase
-arguments, and leaves stdin/stdout/stderr intact.
+unrelated checkout. After launch, it derives and validates that root from the
+physical launcher location and the invocation directory; a launcher anchored
+to a different checkout is refused for a guard and skipped with a diagnostic
+for a lifecycle hook. It records the original invocation directory for any
+handler that needs it, changes `process.cwd()` to the active project root
+before importing existing handlers, and audits handlers for assumptions about
+the old directory. This keeps `memory-index.mjs` and state paths rooted in the
+active worktree even when a session starts from a nested directory. It imports
+the selected handler in the same Node process, normalizes `process.argv` for
+the handler's `isMain` gate, retains phase arguments, and leaves
+stdin/stdout/stderr intact.
 
 The provider hook engine still invokes each matching entry separately. The
 launcher does not combine timing and memory hooks or idle-resume and prompt
@@ -98,15 +114,23 @@ migration is explicit and reported by installer/doctor, never silently
 presented as complete parity.
 
 Claude's positive Bash permission allowlist and Codex trust controls remain in
-force. The launcher is not a substitute for either. Windows verification also
-covers Claude's PowerShell tool matcher when Bash is unavailable; the hook must
-not disappear merely because the tool name changes.
+force. The launcher is not a substitute for either. Windows PowerShell is a
+separate guard-policy surface: the current `activity-guard.mjs` passes unknown
+tool names, and Bash command analysis cannot be treated as PowerShell policy.
+The implementation must either add and test PowerShell-aware deny behavior
+through the shared launcher or mark the Windows guard path unsupported and
+leave its existing configuration unchanged. A matcher firing or a launcher
+exit code alone does not certify PowerShell enforcement. Installer and doctor
+must report the unsupported state; no successful cross-platform guard-parity
+claim is permitted until prohibited PowerShell operations are blocked.
 
 ## Installer and migration contract
 
 The installer owns the launcher copy, package inclusion, content digest,
 provider commands, and exact migration of known AITM inline and bare-path
-commands. It preserves unrelated user hooks. Reinstalling twice yields
+commands. It installs and verifies the self-modification interlock before any
+guard command cutover, preserving old guards if that protection is unavailable.
+It preserves unrelated user hooks. Reinstalling twice yields
 byte-identical launcher and hook config. A new installation and an upgrade from
 the tracked 2026-09-25 configurations produce the same managed hook contract,
 subject to the explicit security portability gate above. Doctor distinguishes
@@ -124,19 +148,26 @@ instead of deleting user changes.
 ## Verification required before implementation acceptance
 
 1. Unit tests prove closed ID dispatch, candidate order, path containment,
-   argv/phase normalization, stdin/stdout/stderr behavior, and distinct
+   argv/phase normalization, stdin/stdout/stderr behavior, authoritative
+   handler working directory, original-directory retention, and distinct
    missing-handler policies.
 2. Integration tests invoke every managed hook command from project root and
    nested directories in a seeded checkout, unseeded worktree, and packed
-   downstream consumer, on macOS/Linux and Windows runners.
+   downstream consumer, on macOS/Linux and Windows runners. Assert the actual
+   memory-index output and state location, not merely that a command exited 0.
 3. For each security guard, remove launcher and then handler independently;
    observe the provider-level tool decision and exact blocking reason. If a
    provider/OS cannot block on missing launcher, that guard stays on its
    current command and the test records the intentional mixed state.
-4. Verify Claude Bash and Windows PowerShell matchers, Codex Bash and edit
-   matchers, lifecycle event counts, memory index opt-in, Codex timestamp
-   context, and all existing hook outputs remain behaviorally equivalent.
-5. Run installer twice, doctor, package/clone tests, fresh-worktree setup,
+4. Verify the launcher cannot be edited by an agent in a consumer checkout,
+   including patch, chore mode, and a replacement-with-no-op attempt, while
+   legitimate AITM source edits and verified installer upgrades remain possible.
+5. Verify Claude Bash and, when claimed supported, PowerShell policy denial
+   on prohibited operations; also verify Codex Bash and edit matchers,
+   lifecycle event counts, memory index opt-in, Codex timestamp context, and
+   existing hook outputs remain behaviorally equivalent. An unsupported
+   PowerShell path is reported explicitly and never counted as a pass.
+6. Run installer twice, doctor, package/clone tests, fresh-worktree setup,
    uninstall ownership checks, format/lint, and targeted hook suites. Assert
    that no managed hook has duplicate command entries and no obsolete AITM
    command remains after migration.
