@@ -176,6 +176,37 @@ test('fresh remote tip and complete inventory are required by the shared collect
     });
     assert.equal(observed.remoteSha, acceptedSha);
     assert.equal(observed.remoteContains, true);
+    const clone = spawnSync(
+      'git',
+      [
+        'clone',
+        '--quiet',
+        '--depth',
+        '1',
+        '--branch',
+        'trunk',
+        `file://${join(dir, 'remote.git')}`,
+        join(dir, 'shallow'),
+      ],
+      { cwd: dir, encoding: 'utf8' }
+    );
+    assert.equal(clone.status, 0, clone.stderr);
+    const shallowRun = async (args) => {
+      const value = spawnSync('git', args, { cwd: join(dir, 'shallow'), encoding: 'utf8' });
+      if (value.status !== 0) throw new Error(value.stderr);
+      return value.stdout.trim();
+    };
+    assert.equal(
+      (
+        await observeLocalTrunkGraph({
+          acceptedSha,
+          localRef: 'trunk',
+          remoteRef: 'origin/trunk',
+          run: shallowRun,
+        })
+      ).shallow,
+      true
+    );
     const eligible = {
       ...facts(),
       acceptedSha,
