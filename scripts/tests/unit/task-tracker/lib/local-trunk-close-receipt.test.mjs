@@ -97,6 +97,7 @@ const complete = ({
   runId = 'host-a',
   verifyInitialBurn,
   verifyHistoricalBurn,
+  verifyPendingBurn,
 } = {}) =>
   completeLocalTrunkClose({
     candidate: burn,
@@ -105,6 +106,7 @@ const complete = ({
     runId,
     verifyInitialBurn: verifyInitialBurn ?? (async () => burn),
     verifyHistoricalBurn: verifyHistoricalBurn ?? (async () => true),
+    verifyPendingBurn: verifyPendingBurn ?? (async () => true),
   });
 
 test('typed burn and receipt pin the issue, grant, operation, SHA, refs, and burn OID', () => {
@@ -191,6 +193,67 @@ test('first close burns once, publishes one exact receipt, and completes before 
   assert.equal(comments.posts, 1);
   assert.equal(liveReads, 1);
   assert.equal((await journal.read()).operations.get(operation).state, 'completed');
+});
+
+test('without-barrier revision observed after CAS prevents receipt publication and Done', async () => {
+  const journal = fakeJournal();
+  const comments = fakeComments();
+  let revoked = false;
+  const append = journal.compareAndAppend.bind(journal);
+  journal.compareAndAppend = async (input) => {
+    const result = await append(input);
+    if (input.entry.state === 'burned') revoked = true;
+    return result;
+  };
+  await assert.rejects(
+    complete({
+      journal,
+      comments,
+      verifyPendingBurn: async () => {
+        if (revoked) throw new Error('without-barrier revision during burn');
+        return true;
+      },
+    }),
+    (error) => error.message.includes('without-barrier revision during burn')
+  );
+  assert.equal((await journal.read()).operations.get(operation).state, 'burned');
+  assert.equal(comments.posts, 0);
+  await assert.rejects(
+    complete({
+      journal,
+      comments,
+      runId: 'retry',
+      verifyPendingBurn: async () => {
+        throw new Error('without-barrier revision');
+      },
+    })
+  );
+  assert.equal(comments.posts, 0);
+});
+
+test('without-barrier revision during receipt POST leaves journal incomplete and blocks Done', async () => {
+  const journal = fakeJournal();
+  const comments = fakeComments();
+  let revoked = false;
+  const post = comments.post.bind(comments);
+  comments.post = async (input) => {
+    const result = await post(input);
+    revoked = true;
+    return result;
+  };
+  await assert.rejects(
+    complete({
+      journal,
+      comments,
+      verifyPendingBurn: async () => {
+        if (revoked) throw new Error('without-barrier revision during publication');
+        return true;
+      },
+    }),
+    (error) => error.message.includes('without-barrier revision during publication')
+  );
+  assert.equal((await journal.read()).operations.get(operation).state, 'receipt-requesting');
+  assert.equal(comments.posts, 1);
 });
 
 test('exact completed retry reuses receipt after expiry without another live grant', async () => {

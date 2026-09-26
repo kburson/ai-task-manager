@@ -259,6 +259,138 @@ test('exact host-verified statement records one visible typed grant with readbac
   });
   assert.equal(retry.results[0].status, 'existing');
   assert.equal(records.length, 1);
+
+  const barriers = new Map();
+  const originalAppend = runtime.appendRecord.bind(runtime);
+  runtime.reserveLocalTrunkRevision = async (candidate) => {
+    assert.equal(candidate.priorGrantRecordId, records[0].envelope.recordId);
+    assert.equal(candidate.action, 'revoke');
+    const existing = barriers.get(candidate.priorGrantRecordId);
+    if (existing) return { status: 'existing', barrier: existing };
+    const barrier = { entry: candidate };
+    barriers.set(candidate.priorGrantRecordId, barrier);
+    return { status: 'reserved', barrier };
+  };
+  runtime.readLocalTrunkJournal = async () => ({ barriers });
+  let postClaim = null;
+  runtime.reserveLocalTrunkRevisionPost = async (candidate) => {
+    if (postClaim) return { status: 'existing', post: postClaim };
+    postClaim = { entry: candidate };
+    barriers.get(candidate.priorGrantRecordId).post = postClaim;
+    return { status: 'reserved', post: postClaim };
+  };
+  let dropNextPost = false;
+  runtime.appendRecord = async (input) => {
+    assert.ok(barriers.has(records[0].envelope.recordId), 'barrier must precede comment POST');
+    if (dropNextPost) {
+      dropNextPost = false;
+      throw new Error('POST did not arrive');
+    }
+    await originalAppend(input);
+  };
+  let nextId = 4;
+  runtime.nextIds = () => ({
+    recordId: `01M2H000000000000000000${String(nextId++).padStart(3, '0')}`,
+    grantId: `01M2H000000000000000000${String(nextId++).padStart(3, '0')}`,
+  });
+  const prior = {
+    recordId: records[0].envelope.recordId,
+    revision: 1,
+    exceptionId: records[0].envelope.payload.exceptionId,
+    deliveryScope: records[0].envelope.payload.deliveryScope,
+    waiverScopeDigest: records[0].envelope.payload.waiverScopeDigest,
+    status: 'active',
+  };
+  liveFacts.prior = prior;
+  const revocationDraft = await runWorkflowException({
+    action: 'prepare',
+    issues: [issue],
+    repository,
+    now,
+    request: {
+      ...proposal,
+      action: 'revoke',
+      exceptionId: prior.exceptionId,
+      deliveryOperationId: prior.deliveryScope.deliveryOperationId,
+      priorRecordId: prior.recordId,
+      priorRevision: 1,
+      reason: 'The operator revokes the exact local-trunk grant before use.',
+    },
+    runtime,
+  });
+  assert.equal(revocationDraft.status, 'prepared', JSON.stringify(revocationDraft));
+  approvedStatement = revocationDraft.results[0].statement;
+  const revokeRequest = parseWorkflowExceptionRequest(
+    {
+      ...revocationDraft.results[0].request,
+      authorizationSource: {
+        schema: 'aitm.authorization-source/v1',
+        adapter: 'codex-session/v1',
+        sessionId: '01a0a1d4-c130-7a42-8ccd-4f31b7d4f0ed',
+        messageId: 'msg_local_revoke',
+        statementHash: hashAuthorizationStatement(approvedStatement),
+      },
+    },
+    { action: 'revoke' }
+  );
+  const reserve = runtime.reserveLocalTrunkRevision;
+  runtime.reserveLocalTrunkRevision = async () => {
+    throw new Error('journal unavailable');
+  };
+  const refused = await runWorkflowException({
+    action: 'revoke',
+    issues: [issue],
+    request: revokeRequest,
+    repository,
+    now,
+    runtime,
+  });
+  assert.equal(refused.status, 'blocked');
+  assert.equal(records.length, 1, 'no comment may precede the CAS barrier');
+  runtime.reserveLocalTrunkRevision = reserve;
+  const reservePost = runtime.reserveLocalTrunkRevisionPost;
+  runtime.reserveLocalTrunkRevisionPost = async () => {
+    throw new Error('post claim unavailable');
+  };
+  const absentPost = await runWorkflowException({
+    action: 'revoke',
+    issues: [issue],
+    request: revokeRequest,
+    repository,
+    now,
+    runtime,
+  });
+  assert.equal(absentPost.status, 'blocked');
+  assert.equal(records.length, 1, 'a missing POST leaves the barrier pending');
+  assert.equal(postClaim, null, 'no POST was claimed yet');
+  runtime.reserveLocalTrunkRevisionPost = reservePost;
+  const pinnedId = barriers.get(prior.recordId).entry.revisionRecordId;
+  const revokeResult = await runWorkflowException({
+    action: 'revoke',
+    issues: [issue],
+    request: revokeRequest,
+    repository,
+    now,
+    runtime,
+  });
+  assert.equal(revokeResult.status, 'revoked', JSON.stringify(revokeResult));
+  assert.equal(records.length, 2);
+  assert.equal(
+    records[1].envelope.recordId,
+    pinnedId,
+    'retry must reuse the barrier-pinned ID after a missing POST'
+  );
+  assert.equal(barriers.get(prior.recordId).entry.revisionRecordId, records[1].envelope.recordId);
+  const exactRetry = await runWorkflowException({
+    action: 'revoke',
+    issues: [issue],
+    request: revokeRequest,
+    repository,
+    now,
+    runtime,
+  });
+  assert.equal(exactRetry.status, 'revoked', JSON.stringify(exactRetry));
+  assert.equal(records.length, 2, 'exact retry must not publish a second revision');
 });
 
 test('local revise and revoke statements bind the same operation and prior revision', () => {

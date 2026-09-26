@@ -26,6 +26,11 @@ import {
   listIssueCommentsSince,
 } from '../lib/github-records/github-comment-store.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
+import { createDeliveryWaiverJournal } from '../lib/delivery-waiver-journal.mjs';
+import {
+  reserveLocalTrunkRevision,
+  reserveLocalTrunkRevisionPost,
+} from '../lib/local-trunk-close-receipt.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
 import {
   createCodexSessionSourceLoader,
@@ -235,7 +240,19 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
           scopeIdentity: payload.scopeIdentity,
           now,
         });
-        if (chain.head?.recordId !== envelope.recordId || chain.status === 'invalid') {
+        const successors = existing.filter(
+          ({ envelope: candidate }) =>
+            candidate?.predecessor === envelope.recordId &&
+            candidate.payload?.revision === payload.revision + 1
+        );
+        const exactRetrySuccessor =
+          payload.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization' &&
+          successors.length === 1 &&
+          chain.head?.recordId === successors[0].envelope.recordId;
+        if (
+          chain.status === 'invalid' ||
+          (chain.head?.recordId !== envelope.recordId && !exactRetrySuccessor)
+        ) {
           fail('delivery-prior');
         }
         prior = {
@@ -386,6 +403,32 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
         },
       });
       return normalizeStored(stored);
+    },
+    async readLocalTrunkJournal(issue) {
+      return createDeliveryWaiverJournal({
+        cwd: ctx.projectDir,
+        repository,
+        issue,
+        mode: 'local-trunk',
+      }).read();
+    },
+    async reserveLocalTrunkRevision(candidate) {
+      const journal = createDeliveryWaiverJournal({
+        cwd: ctx.projectDir,
+        repository,
+        issue: candidate.issue,
+        mode: 'local-trunk',
+      });
+      return reserveLocalTrunkRevision({ candidate, journal });
+    },
+    async reserveLocalTrunkRevisionPost(candidate) {
+      const journal = createDeliveryWaiverJournal({
+        cwd: ctx.projectDir,
+        repository,
+        issue: candidate.issue,
+        mode: 'local-trunk',
+      });
+      return reserveLocalTrunkRevisionPost({ candidate, journal });
     },
     nextIds() {
       return { recordId: createRecordId(), grantId: createRecordId() };

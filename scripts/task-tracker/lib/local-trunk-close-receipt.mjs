@@ -6,6 +6,8 @@ import { validateWorkflowExceptionEnvelope } from './workflow-policy/exception-r
 
 const BURN_SCHEMA = 'aitm.local-trunk-close-burn/v1';
 const ENTRY_SCHEMA = 'aitm.local-trunk-close-journal-entry/v1';
+const BARRIER_SCHEMA = 'aitm.local-trunk-revision-barrier/v1';
+const REVISION_POST_SCHEMA = 'aitm.local-trunk-revision-post/v1';
 const RECEIPT_SCHEMA = 'aitm.local-trunk-close-receipt/v1';
 const MARKER = '<!-- aitm-local-trunk-close-receipt ';
 const SHA = new RegExp('^[0-9a-f]{40}$');
@@ -39,6 +41,34 @@ const ENTRY_KEYS = [
   'state',
   'burn',
   'publication',
+];
+const BARRIER_KEYS = [
+  'schema',
+  'sequence',
+  'predecessorOid',
+  'repository',
+  'issue',
+  'deliveryOperationId',
+  'state',
+  'priorGrantRecordId',
+  'revisionRecordId',
+  'revisionGrantId',
+  'revisionCreatedAt',
+  'revisionOperationId',
+  'action',
+];
+const REVISION_POST_KEYS = [
+  'schema',
+  'sequence',
+  'predecessorOid',
+  'repository',
+  'issue',
+  'deliveryOperationId',
+  'state',
+  'priorGrantRecordId',
+  'revisionRecordId',
+  'revisionOperationId',
+  'runId',
 ];
 const PUBLICATION_KEYS = ['receiptBody', 'receiptDigest', 'runId', 'commentNodeId', 'createdAt'];
 const STATES = ['burned', 'receipt-requesting', 'completed'];
@@ -189,7 +219,54 @@ export function parseLocalTrunkCloseReceipt(body) {
   return receipt;
 }
 
+export function validateLocalTrunkRevisionBarrier(entry) {
+  if (
+    !exact(entry, BARRIER_KEYS) ||
+    entry.schema !== BARRIER_SCHEMA ||
+    !Number.isSafeInteger(entry.sequence) ||
+    entry.sequence < 1 ||
+    !(entry.predecessorOid === null || SHA.test(entry.predecessorOid)) ||
+    !REPO.test(entry.repository) ||
+    !Number.isSafeInteger(entry.issue) ||
+    entry.issue < 1 ||
+    !OPERATION.test(entry.deliveryOperationId) ||
+    !OPERATION.test(entry.priorGrantRecordId) ||
+    !OPERATION.test(entry.revisionRecordId) ||
+    !OPERATION.test(entry.revisionGrantId) ||
+    !instant(entry.revisionCreatedAt) ||
+    !HASH.test(entry.revisionOperationId) ||
+    !['revise', 'revoke'].includes(entry.action) ||
+    entry.state !== 'revision-barrier'
+  )
+    fail('revision-barrier');
+  return canonicalRecordJson(entry);
+}
+
+export function validateLocalTrunkRevisionPost(entry) {
+  if (
+    !exact(entry, REVISION_POST_KEYS) ||
+    entry.schema !== REVISION_POST_SCHEMA ||
+    !Number.isSafeInteger(entry.sequence) ||
+    entry.sequence < 1 ||
+    !(entry.predecessorOid === null || SHA.test(entry.predecessorOid)) ||
+    !REPO.test(entry.repository) ||
+    !Number.isSafeInteger(entry.issue) ||
+    entry.issue < 1 ||
+    !OPERATION.test(entry.deliveryOperationId) ||
+    !OPERATION.test(entry.priorGrantRecordId) ||
+    !OPERATION.test(entry.revisionRecordId) ||
+    !HASH.test(entry.revisionOperationId) ||
+    typeof entry.runId !== 'string' ||
+    !entry.runId ||
+    entry.state !== 'revision-post-requesting'
+  )
+    fail('revision-post');
+  return canonicalRecordJson(entry);
+}
+
 export function validateLocalTrunkCloseJournalEntry(entry) {
+  if (entry?.schema === REVISION_POST_SCHEMA) return validateLocalTrunkRevisionPost(entry);
+  if (entry?.schema === BARRIER_SCHEMA) return validateLocalTrunkRevisionBarrier(entry);
   if (
     !exact(entry, ENTRY_KEYS) ||
     entry.schema !== ENTRY_SCHEMA ||
@@ -246,6 +323,7 @@ export function projectLocalTrunkCloseJournal(events, { repository, issue } = {}
     fail('history-input');
   const operations = new Map();
   const grantOwners = new Map();
+  const barriers = new Map();
   let previous = null;
   for (const { oid, entry } of events) {
     if (!SHA.test(oid ?? '')) fail('history-oid');
@@ -257,6 +335,32 @@ export function projectLocalTrunkCloseJournal(events, { repository, issue } = {}
       entry.predecessorOid !== (previous?.oid ?? null)
     )
       fail('history-chain');
+    if (entry.schema === BARRIER_SCHEMA) {
+      if (barriers.has(entry.priorGrantRecordId)) fail('revision-barrier-replay');
+      barriers.set(entry.priorGrantRecordId, {
+        entry,
+        oid,
+        afterBurn: grantOwners.has(entry.priorGrantRecordId),
+      });
+      previous = { oid, entry };
+      continue;
+    }
+    if (entry.schema === REVISION_POST_SCHEMA) {
+      const barrier = barriers.get(entry.priorGrantRecordId);
+      if (
+        !barrier ||
+        barrier.post ||
+        barrier.entry.revisionRecordId !== entry.revisionRecordId ||
+        barrier.entry.revisionOperationId !== entry.revisionOperationId ||
+        barrier.entry.deliveryOperationId !== entry.deliveryOperationId
+      )
+        fail('revision-post-chain');
+      barriers.set(entry.priorGrantRecordId, { ...barrier, post: { entry, oid } });
+      previous = { oid, entry };
+      continue;
+    }
+    if (barriers.has(entry.burn.grantRecordId) && !grantOwners.has(entry.burn.grantRecordId))
+      fail('revision-before-burn');
     const prior = operations.get(entry.deliveryOperationId);
     if (prior) {
       if (
@@ -283,6 +387,7 @@ export function projectLocalTrunkCloseJournal(events, { repository, issue } = {}
       state: entry.state,
       burn: entry.burn,
       burnOid,
+      burnSequence: prior?.burnSequence ?? entry.sequence,
       publication: entry.publication,
       entry,
     });
@@ -293,6 +398,7 @@ export function projectLocalTrunkCloseJournal(events, { repository, issue } = {}
     sequence: previous?.entry.sequence ?? 0,
     operations,
     grantOwners,
+    barriers,
   };
 }
 
@@ -348,6 +454,116 @@ async function exactReadback(comments, receiptBody, candidate) {
   return { id, createdAt: found.createdAt, body: found.body };
 }
 
+/** Serialize a local grant revision against the same CAS ref as its burn. */
+export async function reserveLocalTrunkRevision({ candidate, journal } = {}) {
+  const fields = [
+    'repository',
+    'issue',
+    'deliveryOperationId',
+    'priorGrantRecordId',
+    'revisionRecordId',
+    'revisionGrantId',
+    'revisionCreatedAt',
+    'revisionOperationId',
+    'action',
+  ];
+  if (!exact(candidate, fields) || !journal) fail('revision-input');
+  const stable = [
+    'repository',
+    'issue',
+    'deliveryOperationId',
+    'priorGrantRecordId',
+    'revisionOperationId',
+    'action',
+  ];
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    let snapshot;
+    try {
+      snapshot = await journal.read();
+    } catch {
+      uncertain('revision-journal-read');
+    }
+    if (!(snapshot?.barriers instanceof Map) || !(snapshot.grantOwners instanceof Map))
+      uncertain('revision-journal-snapshot');
+    const prior = snapshot.barriers.get(candidate.priorGrantRecordId);
+    if (prior) {
+      if (stable.some((field) => prior.entry[field] !== candidate[field])) fail('revision-replay');
+      return { status: 'existing', barrier: prior };
+    }
+    const entry = {
+      schema: BARRIER_SCHEMA,
+      sequence: snapshot.sequence + 1,
+      predecessorOid: snapshot.oid,
+      state: 'revision-barrier',
+      ...candidate,
+    };
+    validateLocalTrunkRevisionBarrier(entry);
+    let appended;
+    try {
+      appended = await journal.compareAndAppend({ expectedOid: snapshot.oid, entry });
+    } catch {
+      uncertain('revision-outcome');
+    }
+    if (appended.status === 'stale') continue;
+    if (!['appended', 'confirmed'].includes(appended.status)) uncertain('revision-outcome');
+    const barrier = appended.snapshot?.barriers?.get(candidate.priorGrantRecordId);
+    if (!barrier || fields.some((field) => barrier.entry[field] !== candidate[field]))
+      uncertain('revision-readback');
+    return { status: 'reserved', barrier };
+  }
+  uncertain('revision-cas-retries');
+}
+
+/** Claim the only allowed POST for a reserved revision. Missing readback later is indeterminate. */
+export async function reserveLocalTrunkRevisionPost({ candidate, journal } = {}) {
+  const fields = [
+    'repository',
+    'issue',
+    'deliveryOperationId',
+    'priorGrantRecordId',
+    'revisionRecordId',
+    'revisionOperationId',
+    'runId',
+  ];
+  if (!exact(candidate, fields) || !journal) fail('revision-post-input');
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    let snapshot;
+    try {
+      snapshot = await journal.read();
+    } catch {
+      uncertain('revision-post-journal-read');
+    }
+    const barrier = snapshot?.barriers?.get(candidate.priorGrantRecordId);
+    if (
+      !barrier ||
+      barrier.entry.revisionRecordId !== candidate.revisionRecordId ||
+      barrier.entry.revisionOperationId !== candidate.revisionOperationId
+    )
+      fail('revision-post-barrier');
+    if (barrier.post) return { status: 'existing', post: barrier.post };
+    const entry = {
+      schema: REVISION_POST_SCHEMA,
+      sequence: snapshot.sequence + 1,
+      predecessorOid: snapshot.oid,
+      state: 'revision-post-requesting',
+      ...candidate,
+    };
+    validateLocalTrunkRevisionPost(entry);
+    let appended;
+    try {
+      appended = await journal.compareAndAppend({ expectedOid: snapshot.oid, entry });
+    } catch {
+      uncertain('revision-post-outcome');
+    }
+    if (appended.status === 'stale') continue;
+    if (!['appended', 'confirmed'].includes(appended.status)) uncertain('revision-post-outcome');
+    const post = appended.snapshot?.barriers?.get(candidate.priorGrantRecordId)?.post;
+    if (!post || !equal(post.entry, entry)) uncertain('revision-post-readback');
+    return { status: 'reserved', post };
+  }
+  uncertain('revision-post-cas-retries');
+}
+
 /** Burn first, then reserve and read back the exact receipt before any Done transition. */
 export async function completeLocalTrunkClose({
   candidate,
@@ -356,6 +572,7 @@ export async function completeLocalTrunkClose({
   runId,
   verifyInitialBurn,
   verifyHistoricalBurn,
+  verifyPendingBurn,
 } = {}) {
   validateLocalTrunkCloseBurn(candidate);
   if (!journal || !comments || typeof runId !== 'string' || !runId) fail('input');
@@ -369,6 +586,7 @@ export async function completeLocalTrunkClose({
     if (
       !(snapshot?.operations instanceof Map) ||
       !(snapshot.grantOwners instanceof Map) ||
+      !(snapshot.barriers instanceof Map) ||
       !Number.isSafeInteger(snapshot.sequence)
     )
       uncertain('journal-snapshot');
@@ -378,6 +596,7 @@ export async function completeLocalTrunkClose({
     )
       fail('grant-replay');
     let operation = snapshot.operations.get(candidate.deliveryOperationId);
+    if (!operation && snapshot.barriers.has(candidate.grantRecordId)) fail('revision-before-burn');
     if (!operation) {
       if (typeof verifyInitialBurn !== 'function') fail('initial-verifier');
       const live = await verifyInitialBurn({ candidate, journalOid: snapshot.oid });
@@ -425,6 +644,15 @@ export async function completeLocalTrunkClose({
         comment: found,
       };
     }
+    // The grant source and Git journal are separate authorities. Re-read the
+    // grant chain after CAS, before any publication, so a revoke racing the
+    // first burn cannot turn an earlier proof into a completed close.
+    if (
+      typeof verifyPendingBurn !== 'function' ||
+      (await verifyPendingBurn({ confirmedBurn: operation.burn, burnOid: operation.burnOid })) !==
+        true
+    )
+      fail('pending-authority');
     let reservedHere = false;
     if (operation.state === 'burned') {
       const publication = {
@@ -463,6 +691,13 @@ export async function completeLocalTrunkClose({
       found = await exactReadback(comments, receiptBody, candidate);
       if (!found) uncertain('publication-unknown');
     }
+    // A revoke arriving while the comment POST was pending must also block
+    // the completed journal state and the subsequent Done transition.
+    if (
+      (await verifyPendingBurn({ confirmedBurn: operation.burn, burnOid: operation.burnOid })) !==
+      true
+    )
+      fail('pending-authority');
     const publication = {
       ...operation.publication,
       commentNodeId: found.id,

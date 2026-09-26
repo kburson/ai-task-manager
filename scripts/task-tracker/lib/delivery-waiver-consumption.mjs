@@ -726,7 +726,7 @@ export async function consumeLocalTrunkClose({
     if (matches.length !== 1) throw new TypeError('local-trunk-close:grant-ambiguous');
     return { grant: matches[0], records };
   };
-  const verifyHistoricalBurn = async ({ confirmedBurn }) => {
+  const verifyRecordedBurn = async ({ confirmedBurn }) => {
     const { grant, records } = await loadGrant(confirmedBurn.grantRecordId);
     await verifyStoredAuthority(grant, { resolveTranscriptPath });
     const rebuilt = buildLocalTrunkCloseBurn({
@@ -734,16 +734,34 @@ export async function consumeLocalTrunkClose({
       authorizedAt: confirmedBurn.authorizedAt,
     });
     if (!equal(rebuilt, confirmedBurn)) throw new TypeError('local-trunk-close:historical-burn');
-    if (
-      records.some(
-        (record) =>
-          record.recordType === 'workflow-exception' &&
-          record.payload?.exceptionId === grant.payload.exceptionId &&
-          record.payload.revision > grant.payload.revision &&
-          Date.parse(record.createdAt) <= Date.parse(confirmedBurn.authorizedAt)
+    // A local revision comment is authoritative only with a matching barrier
+    // in the same CAS history as the burn. Its journal sequence, not a local
+    // timestamp, determines whether it preceded the one-use burn.
+    const journalSnapshot = await activeJournal.read();
+    const operation = journalSnapshot.operations.get(confirmedBurn.deliveryOperationId);
+    if (!operation || !equal(operation.burn, confirmedBurn))
+      throw new TypeError('local-trunk-close:historical-journal');
+    for (const record of records) {
+      if (
+        record.recordType !== 'workflow-exception' ||
+        record.payload?.exceptionId !== grant.payload.exceptionId ||
+        record.payload.revision <= grant.payload.revision
       )
-    )
-      throw new TypeError('local-trunk-close:pre-burn-supersession');
+        continue;
+      const barrier = journalSnapshot.barriers?.get(record.predecessor);
+      if (
+        !barrier ||
+        barrier.entry.revisionRecordId !== record.recordId ||
+        barrier.entry.revisionOperationId !== record.payload.operationId ||
+        barrier.entry.revisionGrantId !== record.authority.grantId ||
+        barrier.entry.revisionCreatedAt !== record.createdAt ||
+        barrier.entry.deliveryOperationId !== confirmedBurn.deliveryOperationId ||
+        barrier.entry.action !== (record.payload.status === 'revoked' ? 'revoke' : 'revise')
+      )
+        throw new TypeError('local-trunk-close:without-barrier-revision');
+      if (barrier.entry.sequence < operation.burnSequence)
+        throw new TypeError('local-trunk-close:pre-burn-supersession');
+    }
     const scope = grant.payload.deliveryScope;
     const proof = await readProof({
       active: true,
@@ -756,6 +774,8 @@ export async function consumeLocalTrunkClose({
       throw new TypeError(`local-trunk-close:historical-proof:${proof?.reasonId}`);
     return true;
   };
+  const verifyHistoricalBurn = (input) => verifyRecordedBurn(input);
+  const verifyPendingBurn = (input) => verifyRecordedBurn(input);
   let snapshot;
   try {
     snapshot = await activeJournal.read();
@@ -800,5 +820,6 @@ export async function consumeLocalTrunkClose({
       return candidate;
     },
     verifyHistoricalBurn,
+    verifyPendingBurn,
   });
 }

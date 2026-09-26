@@ -428,7 +428,14 @@ export function createDeliveryWaiverJournal({
       [...(await historyFromTip(before.oid)), { oid: '0'.repeat(40), entry }],
       { repository, issue }
     );
-    if (!projected.operations.has(entry.deliveryOperationId)) refuse('append-projection');
+    if (
+      mode === 'local-trunk' && entry.schema === 'aitm.local-trunk-revision-barrier/v1'
+        ? !projected.barriers.has(entry.priorGrantRecordId)
+        : mode === 'local-trunk' && entry.schema === 'aitm.local-trunk-revision-post/v1'
+          ? !projected.barriers.get(entry.priorGrantRecordId)?.post
+          : !projected.operations.has(entry.deliveryOperationId)
+    )
+      refuse('append-projection');
     const body = validate(entry);
     const blob = await git(['hash-object', '-w', '--stdin'], body);
     const tree = await git(['mktree'], `100644 blob ${blob}\tentry.json\n`);
