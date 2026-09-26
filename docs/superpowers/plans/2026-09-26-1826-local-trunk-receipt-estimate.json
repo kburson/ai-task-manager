@@ -1,0 +1,47 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "single-use-burn",
+      "description": "Bind the local close operation to a durable single-use journal burn without a PR or merge surrogate",
+      "baseHumanHours": 5,
+      "signals": {
+        "modules": ["delivery-waiver-journal", "delivery-waiver-consumption"],
+        "dependencies": ["workflow-exception", "local-trunk-close-proof"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "typed-receipt",
+      "description": "Publish and verify a distinct local-trunk close receipt before Done",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["local-trunk-close-receipt", "close-delivery-receipt", "close"],
+        "dependencies": ["single-use-burn", "verification-receipt"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "retry-and-race-tests",
+      "description": "Cover first burn, uncertain publication, exact retry, competing hosts, revocation, expiry, and tampering",
+      "baseHumanHours": 4,
+      "signals": {
+        "modules": ["local-trunk-close-receipt-test", "close-integration"],
+        "dependencies": ["typed-receipt", "delivery-waiver-consumption"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 45
+  },
+  "risks": [
+    "Cross-host compare-and-swap races",
+    "Unknown receipt publication outcome",
+    "Historical burn replay after grant expiry",
+    "Accidental PR-delivery evidence substitution"
+  ],
+  "comparableIssueIds": [1787, 1825]
+}
