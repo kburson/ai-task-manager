@@ -18,7 +18,6 @@ import {
   pruneFleet,
   STALE_MS_DEFAULT,
 } from '../../../../task-tracker/fleet-registry.mjs';
-import { liveWorktreeAgents } from '../../../../task-tracker/verbs/chore-mode.mjs';
 
 const tmp = mkdtempProjectIsolated('tt-fleet-gc-');
 
@@ -58,16 +57,6 @@ try {
     'legacy entry off main path → worktree'
   );
   assert.equal(effectiveKind({ kind: 'main', worktreePath: '/wt/x' }, mainPath), 'main');
-
-  // --- liveWorktreeAgents: #405@trunk-class main bind no longer blocks ---
-  const legacyFleet = {
-    '#405': { worktreePath: mainPath, branch: 'trunk', status: 'active' }, // legacy main bind, no kind
-    '#500': { worktreePath: '/wt/real-agent', branch: '500-x', status: 'active', kind: 'worktree' },
-    '#600': { worktreePath: '/wt/paused', branch: '600-x', status: 'paused', kind: 'worktree' },
-  };
-  const live = liveWorktreeAgents(legacyFleet, mainPath);
-  const liveRefs = live.map((a) => a.ref).sort();
-  assert.deepEqual(liveRefs, ['#500'], 'only the real active worktree agent counts as live');
 
   // --- isStaleEntry branches ---
   const now = Date.parse('2026-06-17T12:00:00Z');

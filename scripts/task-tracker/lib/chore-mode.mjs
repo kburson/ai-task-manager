@@ -1,9 +1,9 @@
 // #327 — chore-mode state read/write helpers.
 //
-// chore-mode is a tracker-wide bypass mode for source edits. It lives in the
-// global `task-tracker-state.json` (not per-session) because the PreToolUse
-// source-edit gate runs in any session context and must agree on whether the
-// bypass is currently in force.
+// Chore-mode is a worktree-local bypass mode for source edits. It lives in
+// this worktree's `task-tracker-state.json` (not per-session) because the
+// PreToolUse source-edit gate runs in any session context in the worktree and
+// must agree on whether the bypass is currently in force.
 //
 // Shape (persisted under `choreMode` key of the global state file):
 //
