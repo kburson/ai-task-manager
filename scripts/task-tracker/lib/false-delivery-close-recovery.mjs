@@ -147,7 +147,7 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
     !isObject(receipt) ||
     !(
       (intent.schema === 'aitm.delivery-intent/v1' &&
-        receipt.schema === 'aitm.delivery-receipt/v1') ||
+        ['aitm.delivery-receipt/v1', 'aitm.delivery-receipt/v5'].includes(receipt.schema)) ||
       (intent.schema === 'aitm.delivery-intent/v3' && receipt.schema === 'aitm.delivery-receipt/v4')
     ) ||
     !SHA_RE.test(deliveryHeadSha || '') ||
@@ -169,7 +169,9 @@ function validateDeliveryBundle(current, { repository, issueNumber, acceptedSha 
     receipt.mergeCommitSha !== pullRequest.mergeCommitSha ||
     receipt.intentId !== intent.intentId ||
     receipt.baseRef !== intent.baseRef ||
-    receipt.mergeMethod !== intent.mergeMethod ||
+    (receipt.schema !== 'aitm.delivery-receipt/v5' && receipt.mergeMethod !== intent.mergeMethod) ||
+    (receipt.schema === 'aitm.delivery-receipt/v5' &&
+      receipt.observedIntegration?.method !== receipt.mergeMethod) ||
     receipt.provider !== intent.provider ||
     receipt.result !== (intent.schema === 'aitm.delivery-intent/v3' ? 'waived' : 'delivered')
   ) {

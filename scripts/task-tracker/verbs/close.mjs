@@ -792,7 +792,11 @@ export async function loadCloseDeliveryGateInput({
         .filter(Boolean)
     );
     const waivedIntent = records.liveIntent?.record?.schema === 'aitm.delivery-intent/v2';
-    if (records.liveIntent?.record?.provider === 'external' || waivedIntent) {
+    if (
+      records.liveIntent?.record?.provider === 'external' ||
+      waivedIntent ||
+      records.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v5'
+    ) {
       const deliverDeps = createDefaultDeliverDeps({ cfg, projectDir });
       const fetchEvidence = ctx.fetchClosePullRequestEvidence ?? deliverDeps.fetchPullRequest;
       const evidenced = await fetchEvidence({ prNumber: selectedPullRequest.number });
@@ -2548,6 +2552,12 @@ export async function verbClose(ctx) {
           ctx.attributingCommits ??
           ((issueNumber, options) =>
             defaultAttributingCommits(issueNumber, { cwd: projectDir, ...options })),
+        compareDeliveryContent:
+          ctx.compareCloseDeliveryContent ??
+          createDefaultDeliverDeps({ cfg, projectDir }).compareDeliveryContent,
+        resolveTrunkHeadSha:
+          ctx.resolveCloseTrunkHeadSha ??
+          createDefaultDeliverDeps({ cfg, projectDir }).resolveLocalTrunkHeadSha,
       },
     });
     const nextGate = {

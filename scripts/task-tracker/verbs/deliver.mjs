@@ -599,12 +599,21 @@ async function verifyAndFinalize({
       isAncestor: requiredDependency(deps, 'isAncestor'),
       inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
       attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      ...(liveIntent.record.schema === 'aitm.delivery-intent/v1' &&
+      (matchingReceipt === null || matchingReceipt.record.schema === 'aitm.delivery-receipt/v5') &&
+      typeof deps.compareDeliveryContent === 'function' &&
+      typeof deps.resolveLocalTrunkHeadSha === 'function' &&
+      Array.isArray(verifiedPullRequest.sourceCommitEvidence)
+        ? {
+            compareDeliveryContent: deps.compareDeliveryContent,
+            resolveTrunkHeadSha: deps.resolveLocalTrunkHeadSha,
+          }
+        : {}),
       ...(waived ? { waivedEvidence } : {}),
     }));
-  const combinedWarnings = combinedMetadataWarnings(
-    metadataWarnings,
-    verification.receiptInput.metadataWarnings ?? []
-  );
+  const combinedWarnings = Object.hasOwn(verification.receiptInput, 'observedIntegration')
+    ? (verification.receiptInput.metadataWarnings ?? [])
+    : combinedMetadataWarnings(metadataWarnings, verification.receiptInput.metadataWarnings ?? []);
   const receipt = buildDeliveryReceipt({
     ...verification.receiptInput,
     ...(combinedWarnings.length > 0 ? { metadataWarnings: combinedWarnings } : {}),

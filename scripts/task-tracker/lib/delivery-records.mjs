@@ -17,6 +17,7 @@ const RECEIPT_SCHEMA_V1 = 'aitm.delivery-receipt/v1';
 const RECEIPT_SCHEMA_V2 = 'aitm.delivery-receipt/v2';
 const RECEIPT_SCHEMA_V3 = 'aitm.delivery-receipt/v3';
 const RECEIPT_SCHEMA_V4 = 'aitm.delivery-receipt/v4';
+const RECEIPT_SCHEMA_V5 = 'aitm.delivery-receipt/v5';
 const INTENT_MARKER = 'aitm-delivery-intent';
 const RECEIPT_MARKER = 'aitm-delivery-receipt';
 const HIDDEN_MARKER_RE = /^<!--\s*aitm-delivery-(?:intent|receipt)(?=\s)/gm;
@@ -122,10 +123,12 @@ const RECEIPT_KEYS_V4 = [
   'recordingActor',
   'humanReason',
 ];
+const RECEIPT_KEYS_V5 = [...RECEIPT_KEYS_V1, 'observedIntegration', 'sourceDigest'];
 const RECEIPT_INPUT_KEYS_V1 = RECEIPT_KEYS_V1.filter((key) => !['schema', 'result'].includes(key));
 const RECEIPT_INPUT_KEYS_V2 = [...RECEIPT_INPUT_KEYS_V1, 'metadataWarnings'];
 const RECEIPT_INPUT_KEYS_V3 = [...RECEIPT_INPUT_KEYS_V1, ...WAIVED_RECEIPT_KEYS];
 const RECEIPT_INPUT_KEYS_V4 = RECEIPT_KEYS_V4.filter((key) => !['schema', 'result'].includes(key));
+const RECEIPT_INPUT_KEYS_V5 = RECEIPT_KEYS_V5.filter((key) => !['schema', 'result'].includes(key));
 const PARSED_RECORD_KEYS = ['createdAt', 'id', 'record'];
 const CONTEXT_KEYS = ['issueNumber', 'prNumber', 'repository'];
 const AUTHORIZED_INTENT_KEYS = [
@@ -422,13 +425,17 @@ function validateReceipt(receipt) {
       ? RECEIPT_KEYS_V1
       : receipt?.schema === RECEIPT_SCHEMA_V2
         ? RECEIPT_KEYS_V2
-        : receipt?.schema === RECEIPT_SCHEMA_V4
-          ? RECEIPT_KEYS_V4
-          : receipt?.schema === RECEIPT_SCHEMA_V3
-            ? Object.hasOwn(receipt, 'metadataWarnings')
-              ? [...RECEIPT_KEYS_V3, 'metadataWarnings']
-              : RECEIPT_KEYS_V3
-            : null;
+        : receipt?.schema === RECEIPT_SCHEMA_V5
+          ? Object.hasOwn(receipt, 'metadataWarnings')
+            ? [...RECEIPT_KEYS_V5, 'metadataWarnings']
+            : RECEIPT_KEYS_V5
+          : receipt?.schema === RECEIPT_SCHEMA_V4
+            ? RECEIPT_KEYS_V4
+            : receipt?.schema === RECEIPT_SCHEMA_V3
+              ? Object.hasOwn(receipt, 'metadataWarnings')
+                ? [...RECEIPT_KEYS_V3, 'metadataWarnings']
+                : RECEIPT_KEYS_V3
+              : null;
   if (expectedKeys === null) throw deliveryError('receipt-schema');
   if (!hasExactlyKeys(receipt, expectedKeys)) throw deliveryError('receipt-keys');
   if (receipt.schema === RECEIPT_SCHEMA_V2) assertMetadataWarnings(receipt.metadataWarnings);
@@ -452,6 +459,63 @@ function validateReceipt(receipt) {
         receipt.metadataWarnings.some((warning) => warning !== 'missing-merge-attribution-trailer')
       )
         throw deliveryError('waived-metadata-warnings');
+    }
+  }
+  if (receipt.schema === RECEIPT_SCHEMA_V5) {
+    if (Object.hasOwn(receipt, 'metadataWarnings'))
+      assertMetadataWarnings(receipt.metadataWarnings);
+    if (!/^sha256:[0-9a-f]{64}$/.test(receipt.sourceDigest)) throw deliveryError('source-digest');
+    const proof = receipt.observedIntegration;
+    if (
+      !hasExactlyKeys(proof, [
+        'method',
+        'mergeCommitSha',
+        'parents',
+        'tree',
+        'commitTitle',
+        'commitMessage',
+        'sourceMapping',
+        'contentProof',
+      ])
+    )
+      throw deliveryError('observed-integration');
+    if (
+      proof.method !== receipt.mergeMethod ||
+      proof.mergeCommitSha !== receipt.mergeCommitSha ||
+      !Array.isArray(proof.parents) ||
+      ![1, 2].includes(proof.parents.length) ||
+      proof.parents.some((parent) => !SHA_RE.test(parent)) ||
+      !SHA_RE.test(proof.tree) ||
+      typeof proof.commitTitle !== 'string' ||
+      !proof.commitTitle.length ||
+      typeof proof.commitMessage !== 'string' ||
+      !proof.commitMessage.length ||
+      !Array.isArray(proof.sourceMapping) ||
+      !proof.sourceMapping.length ||
+      proof.sourceMapping.some(
+        (entry) =>
+          !hasExactlyKeys(entry, ['source', 'integrated']) ||
+          !SHA_RE.test(entry.source) ||
+          !SHA_RE.test(entry.integrated)
+      ) ||
+      !hasExactlyKeys(proof.contentProof, [
+        'kind',
+        'sourceBase',
+        'sourceHead',
+        'integrationBase',
+        'integrationHead',
+      ]) ||
+      !['equivalent-delta', 'ordered-replay'].includes(proof.contentProof.kind) ||
+      ['sourceBase', 'sourceHead', 'integrationBase', 'integrationHead'].some(
+        (key) => !SHA_RE.test(proof.contentProof[key])
+      ) ||
+      proof.contentProof.sourceHead !== receipt.expectedHeadSha ||
+      proof.contentProof.integrationHead !== receipt.mergeCommitSha ||
+      (proof.method !== 'rebase' && proof.contentProof.integrationBase !== proof.parents[0]) ||
+      (proof.method === 'rebase' && proof.contentProof.kind !== 'ordered-replay') ||
+      (proof.method !== 'rebase' && proof.contentProof.kind !== 'equivalent-delta')
+    ) {
+      throw deliveryError('observed-integration');
     }
   }
   if (receipt.schema === RECEIPT_SCHEMA_V4) {
@@ -564,24 +628,29 @@ export function buildDeliveryReceipt(input = {}) {
   const waived = Object.hasOwn(input, 'attributionDisposition');
   const generic = Object.hasOwn(input, 'deliveryDisposition');
   const warningBearing = Object.hasOwn(input, 'metadataWarnings');
-  const inputKeys = generic
-    ? RECEIPT_INPUT_KEYS_V4
-    : waived
-      ? [...RECEIPT_INPUT_KEYS_V3, ...(warningBearing ? ['metadataWarnings'] : [])]
-      : warningBearing
-        ? RECEIPT_INPUT_KEYS_V2
-        : RECEIPT_INPUT_KEYS_V1;
+  const observed = Object.hasOwn(input, 'observedIntegration');
+  const inputKeys = observed
+    ? [...RECEIPT_INPUT_KEYS_V5, ...(warningBearing ? ['metadataWarnings'] : [])]
+    : generic
+      ? RECEIPT_INPUT_KEYS_V4
+      : waived
+        ? [...RECEIPT_INPUT_KEYS_V3, ...(warningBearing ? ['metadataWarnings'] : [])]
+        : warningBearing
+          ? RECEIPT_INPUT_KEYS_V2
+          : RECEIPT_INPUT_KEYS_V1;
   if (!hasExactlyKeys(input, inputKeys)) {
     throw deliveryError('receipt-input-keys');
   }
   const receipt = {
-    schema: generic
-      ? RECEIPT_SCHEMA_V4
-      : waived
-        ? RECEIPT_SCHEMA_V3
-        : warningBearing
-          ? RECEIPT_SCHEMA_V2
-          : RECEIPT_SCHEMA_V1,
+    schema: observed
+      ? RECEIPT_SCHEMA_V5
+      : generic
+        ? RECEIPT_SCHEMA_V4
+        : waived
+          ? RECEIPT_SCHEMA_V3
+          : warningBearing
+            ? RECEIPT_SCHEMA_V2
+            : RECEIPT_SCHEMA_V1,
     intentId: input.intentId,
     issueNumber: input.issueNumber,
     prNumber: input.prNumber,
@@ -594,6 +663,12 @@ export function buildDeliveryReceipt(input = {}) {
     sessionId: input.sessionId,
     verifiedAt: input.verifiedAt,
     result: generic ? 'waived' : 'delivered',
+    ...(observed
+      ? {
+          observedIntegration: structuredClone(input.observedIntegration),
+          sourceDigest: input.sourceDigest,
+        }
+      : {}),
     ...(waived
       ? {
           attributionDisposition: input.attributionDisposition,
@@ -840,9 +915,13 @@ function validateParsedRecord(parsed) {
     return validateIntent(parsed.record);
   }
   if (
-    [RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2, RECEIPT_SCHEMA_V3, RECEIPT_SCHEMA_V4].includes(
-      parsed.record?.schema
-    )
+    [
+      RECEIPT_SCHEMA_V1,
+      RECEIPT_SCHEMA_V2,
+      RECEIPT_SCHEMA_V3,
+      RECEIPT_SCHEMA_V4,
+      RECEIPT_SCHEMA_V5,
+    ].includes(parsed.record?.schema)
   ) {
     return validateReceipt(parsed.record);
   }
@@ -961,8 +1040,8 @@ function validateReceipts(receipts, intentsById) {
       receipt.prNumber !== intent.prNumber ||
       receipt.expectedHeadSha !== intent.expectedHeadSha ||
       receipt.baseRef !== intent.baseRef ||
-      receipt.mergeMethod !== intent.mergeMethod ||
-      (intent.schema === INTENT_SCHEMA_V3 &&
+      (receipt.schema !== RECEIPT_SCHEMA_V5 && receipt.mergeMethod !== intent.mergeMethod) ||
+      ((intent.schema === INTENT_SCHEMA_V3 || receipt.schema === RECEIPT_SCHEMA_V5) &&
         (receipt.provider !== intent.provider || receipt.sessionId !== intent.sessionId))
     ) {
       throw deliveryError('receipt-correlation');
@@ -990,7 +1069,10 @@ function validateReceipts(receipts, intentsById) {
           canonicalRecordJson(intent.attributionTokens)
       )
         throw deliveryError('receipt-waiver-correlation');
-    } else if ([RECEIPT_SCHEMA_V3, RECEIPT_SCHEMA_V4].includes(receipt.schema)) {
+    } else if (
+      [RECEIPT_SCHEMA_V3, RECEIPT_SCHEMA_V4].includes(receipt.schema) ||
+      (receipt.schema === RECEIPT_SCHEMA_V5 && intent.schema !== INTENT_SCHEMA)
+    ) {
       throw deliveryError('receipt-waiver-correlation');
     }
     const existing = byIntentId.get(receipt.intentId);
@@ -1031,9 +1113,13 @@ export function projectDeliveryRecords(records) {
     [INTENT_SCHEMA, INTENT_SCHEMA_V2, INTENT_SCHEMA_V3].includes(record.schema)
   );
   const receipts = copies.filter(({ record }) =>
-    [RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2, RECEIPT_SCHEMA_V3, RECEIPT_SCHEMA_V4].includes(
-      record.schema
-    )
+    [
+      RECEIPT_SCHEMA_V1,
+      RECEIPT_SCHEMA_V2,
+      RECEIPT_SCHEMA_V3,
+      RECEIPT_SCHEMA_V4,
+      RECEIPT_SCHEMA_V5,
+    ].includes(record.schema)
   );
   const graph = validateIntentGraph(intents);
   const receiptsByIntentId = validateReceipts(receipts, graph.byId);
