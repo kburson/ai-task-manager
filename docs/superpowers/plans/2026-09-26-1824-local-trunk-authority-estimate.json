@@ -1,0 +1,33 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "prepare",
+      "description": "Read-only exact local-trunk proposal",
+      "baseHumanHours": 3,
+      "signals": { "modules": ["workflow-exception"], "dependencies": ["scope-catalog"] },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "record",
+      "description": "Host-verified authority record",
+      "baseHumanHours": 4,
+      "signals": { "modules": ["workflow-exception"], "dependencies": ["transcript-verifier"] },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "verify",
+      "description": "Authority integration coverage",
+      "baseHumanHours": 2,
+      "signals": { "modules": ["integration-tests"], "dependencies": ["record"] },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 20
+  },
+  "risks": ["Transcript source mismatch", "Replay across operations"],
+  "comparableIssueIds": [1787]
+}

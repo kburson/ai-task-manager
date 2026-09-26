@@ -1,4 +1,4 @@
-// @story #1787 #1795
+// @story #1787 #1795 #1824
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -127,6 +127,7 @@ export async function verifyStoredDeliveryWaiverAuthority(envelope, runtime) {
   const expected = deliveryApprovalStatement({
     action: actionOf(envelope),
     proposalDigest: reconstructDeliveryProposalDigest(envelope),
+    deliveryScope: payload.deliveryScope,
   });
   if (
     result.authority.statement !== expected ||

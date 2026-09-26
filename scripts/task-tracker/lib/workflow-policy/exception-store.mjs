@@ -1,4 +1,4 @@
-// @story #1626 #1787 #1794 #1795
+// @story #1626 #1787 #1794 #1795 #1824
 import { isDeepStrictEqual } from 'node:util';
 
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
@@ -272,11 +272,17 @@ export async function executeWorkflowExceptionWrite({
     createdAt: now,
     ...ids,
   });
+  const localTrunk =
+    policy.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization';
   const body = renderAitmRecord({
     envelope,
-    visibleMarkdown:
-      `AITM workflow exception ${status === 'revoked' ? 'revoked' : 'recorded'}: ` +
-      `${policy.exceptionId} revision ${revision}.\n`,
+    visibleMarkdown: localTrunk
+      ? `AITM one-issue local-trunk close authority ${status === 'revoked' ? 'revoked' : 'recorded'}: ` +
+        `${policy.exceptionId} revision ${revision}, ${repository} #${issue}, ` +
+        `accepted SHA ${policy.deliveryScope.acceptedHeadSha}, operation ` +
+        `${policy.deliveryScope.deliveryOperationId}. No PR delivery is asserted.\n`
+      : `AITM workflow exception ${status === 'revoked' ? 'revoked' : 'recorded'}: ` +
+        `${policy.exceptionId} revision ${revision}.\n`,
   });
   let recoveredAfterTransport = false;
   try {

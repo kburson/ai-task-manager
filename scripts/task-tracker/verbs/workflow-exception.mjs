@@ -1,4 +1,4 @@
-// @story #1626 #1787 #1795
+// @story #1626 #1787 #1795 #1824
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -12,6 +12,8 @@ import {
   projectDeliveryRecords,
 } from '../lib/delivery-records.mjs';
 import { resolveCurrentIssueWorktreeBranch } from '../lib/issue-worktree-location.mjs';
+import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
+import { parseReviewApprovedMarker } from '../lib/markers.mjs';
 import {
   createIssueComment,
   listIssueCommentsSince,
@@ -238,6 +240,50 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
           status: payload.status,
         };
       }
+      if (
+        input.schema === 'aitm.local-trunk-close-proposal/v1' ||
+        prior?.deliveryScope?.exceptionKind === 'delivery.local-trunk-close-authorization'
+      ) {
+        const branch = resolveCurrentIssueWorktreeBranch(snapshot.body);
+        if (!branch) fail('delivery-branch');
+        if (action !== 'revoke') {
+          const { stdout } = await run('gh', [
+            'pr',
+            'list',
+            '-R',
+            repository,
+            '--head',
+            branch,
+            '--state',
+            'all',
+            '--limit',
+            '1000',
+            '--json',
+            'number',
+          ]);
+          const prs = parseGhJson(stdout);
+          if (!Array.isArray(prs) || prs.length !== 0) fail('local-trunk-pr-ambiguity');
+        }
+        const testSha = parseVerificationReceipt(snapshot.body, 'test')?.commitSha;
+        const reviewSha = parseReviewApprovedMarker(snapshot.body)?.approvedSha;
+        if (action !== 'revoke' && (!testSha || testSha !== reviewSha))
+          fail('local-trunk-accepted-head');
+        const trunkRef = ctx.cfg.trunkRef;
+        if (typeof trunkRef !== 'string' || !trunkRef) fail('local-trunk-ref');
+        return {
+          repository,
+          issue,
+          scopeIdentity,
+          pullRequest: null,
+          acceptedHeadSha: action === 'revoke' ? prior.deliveryScope.acceptedHeadSha : testSha,
+          baseRef: trunkRef.split('/').at(-1),
+          resolvedTrunkRef: trunkRef,
+          originalIntentRecordId: null,
+          existingDeliveryRecords: existing,
+          prior,
+          now,
+        };
+      }
       let prNumber;
       if (action === 'revoke') {
         prNumber = prior.deliveryScope.pullRequest;
@@ -353,7 +399,10 @@ function topStatus(action, results) {
 
 function proposalFromRequest(request) {
   return {
-    schema: 'aitm.delivery-waiver-proposal/v1',
+    schema:
+      request.deliveryScope.exceptionKind === 'delivery.local-trunk-close-authorization'
+        ? 'aitm.local-trunk-close-proposal/v1'
+        : 'aitm.delivery-waiver-proposal/v1',
     action: request.action,
     exceptionId: request.exceptionId,
     priorRecordId: request.priorRecordId,
