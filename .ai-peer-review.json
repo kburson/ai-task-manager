@@ -5,6 +5,12 @@
       "resume": {
         "command": ["codex", "resume"]
       },
+      "identity": {
+        "model_id": "gpt-6-astra",
+        "model_display": "GPT-6 Astra",
+        "provider": "openai",
+        "host": "codex"
+      },
       "automatic": {
         "adapter_version": "2.0.0",
         "capability": "live-wait",
