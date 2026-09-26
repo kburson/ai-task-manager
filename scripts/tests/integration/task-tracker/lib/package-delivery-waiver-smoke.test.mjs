@@ -1,4 +1,4 @@
-// @story #1787 #1801
+// @story #1787 #1827 #1801
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -81,8 +81,10 @@ test('offline installed package prepares a delivery waiver read-only and exposes
         }
       );
       assert.match(help, new RegExp(`/task ${verb}`));
-      if (verb === 'workflow-exception')
-        assert.match(help, /delivery waiver.*prepare.*record.*show.*revise.*revoke/is);
+      if (verb === 'workflow-exception') {
+        assert.match(help, /Prepare exact PR waivers or one-issue local-trunk close grants/);
+        assert.match(help, /<prepare\|record\|show\|revise\|revoke>/);
+      }
     }
     const { runWorkflowException } = await import(
       pathToFileURL(join(installed, 'scripts/task-tracker/verbs/workflow-exception.mjs'))
