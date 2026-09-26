@@ -227,15 +227,30 @@ export async function verifyObservedIntegration({
 // A failed dependency is indeterminate, never an implicit pass. The caller owns
 // fetching and pinning the PR, checks, review, and trunk head before invocation.
 export async function diagnoseDeliverySnapshot(snapshot = {}) {
+  const observation = {
+    ...snapshot,
+    intent: structuredClone(snapshot.intent),
+    pullRequest: structuredClone(snapshot.pullRequest),
+    sourceCommits: structuredClone(snapshot.sourceCommits),
+    requiredChecks: structuredClone(snapshot.requiredChecks),
+  };
   const failures = [];
   const record = (predicate, status, detail = null) => {
     if (status !== 'passed') failures.push({ predicate, status, detail });
   };
-  const { intent, pullRequest } = snapshot;
+  const { intent, pullRequest } = observation;
   if (!intent || !pullRequest) {
     throw new TypeError('delivery-diagnosis:input');
   }
   record('pr-number', pullRequest.number === intent.prNumber ? 'passed' : 'failed');
+  record(
+    'pr-merged',
+    pullRequest.merged === true
+      ? 'passed'
+      : pullRequest.merged === false
+        ? 'failed'
+        : 'indeterminate'
+  );
   record(
     'base-ref',
     pullRequest.baseRefName === undefined
@@ -245,20 +260,20 @@ export async function diagnoseDeliverySnapshot(snapshot = {}) {
         : 'failed'
   );
   record('accepted-head', pullRequest.headRefOid === intent.expectedHeadSha ? 'passed' : 'failed');
-  record('test-head', snapshot.testReceiptSha === intent.expectedHeadSha ? 'passed' : 'failed');
+  record('test-head', observation.testReceiptSha === intent.expectedHeadSha ? 'passed' : 'failed');
   record(
     'review-head',
-    snapshot.acceptedReviewSha === intent.expectedHeadSha ? 'passed' : 'failed'
+    observation.acceptedReviewSha === intent.expectedHeadSha ? 'passed' : 'failed'
   );
   record(
     'review-complete',
-    snapshot.agentReviewPassed === true
+    observation.agentReviewPassed === true
       ? 'passed'
-      : snapshot.agentReviewPassed === false
+      : observation.agentReviewPassed === false
         ? 'failed'
         : 'indeterminate'
   );
-  const checks = snapshot.requiredChecks;
+  const checks = observation.requiredChecks;
   record(
     'required-checks',
     !Array.isArray(checks)
@@ -271,17 +286,17 @@ export async function diagnoseDeliverySnapshot(snapshot = {}) {
   );
   record(
     'source-attribution',
-    snapshot.sourceAttribution === true
+    observation.sourceAttribution === true
       ? 'passed'
-      : snapshot.sourceAttribution === false
+      : observation.sourceAttribution === false
         ? 'failed'
         : 'indeterminate'
   );
   let reachable;
   try {
-    reachable = await snapshot.isAncestor({
-      ancestor: snapshot.mergedCommitSha,
-      descendant: snapshot.trunkRef,
+    reachable = await observation.isAncestor({
+      ancestor: observation.mergedCommitSha,
+      descendant: observation.trunkRef,
     });
   } catch {
     reachable = null;
@@ -292,7 +307,7 @@ export async function diagnoseDeliverySnapshot(snapshot = {}) {
   );
   let proof = null;
   try {
-    proof = await verifyObservedIntegration(snapshot);
+    proof = await verifyObservedIntegration(observation);
   } catch (error) {
     const detail = error?.message ?? String(error);
     record(

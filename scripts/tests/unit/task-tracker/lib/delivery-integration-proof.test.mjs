@@ -21,6 +21,7 @@ function fixture(overrides = {}) {
     requestedCommitMessage: 'Source: accepted head with an attribution trailer',
     pullRequest: {
       number: 1785,
+      merged: true,
       baseRefName: 'trunk',
       sourceCommitsComplete: true,
       sourceCommitsHeadSha: accepted,
@@ -177,6 +178,7 @@ test('one read-only diagnosis reports independent blockers from the same snapsho
   const observation = fixture({
     pullRequest: {
       number: 999,
+      merged: false,
       baseRefName: 'trunk',
       sourceCommitsComplete: true,
       sourceCommitsHeadSha: accepted,
@@ -199,6 +201,7 @@ test('one read-only diagnosis reports independent blockers from the same snapsho
     diagnosis.failures.map(({ predicate }) => predicate),
     [
       'pr-number',
+      'pr-merged',
       'accepted-head',
       'test-head',
       'review-head',
@@ -259,4 +262,25 @@ test('diagnosis identifies an unavailable inspection dependency as indeterminate
   assert.deepEqual(diagnosis.failures, [
     { predicate: 'integration-proof', status: 'indeterminate', detail: 'Git object unavailable' },
   ]);
+});
+
+test('diagnosis pins PR and checks before asynchronous proof callbacks', async () => {
+  const observation = fixture();
+  const snapshot = {
+    ...observation,
+    intent: { issueNumber: 1784, prNumber: 1785, expectedHeadSha: accepted, baseRef: 'trunk' },
+    testReceiptSha: accepted,
+    acceptedReviewSha: accepted,
+    agentReviewPassed: true,
+    requiredChecks: [{ headSha: accepted, conclusion: 'SUCCESS' }],
+    sourceAttribution: true,
+    isAncestor: async () => {
+      snapshot.pullRequest.headRefOid = sha('9');
+      snapshot.requiredChecks[0].conclusion = 'FAILURE';
+      return true;
+    },
+  };
+  const diagnosis = await diagnoseDeliverySnapshot(snapshot);
+  assert.equal(diagnosis.ok, true);
+  assert.equal(diagnosis.proof.method, 'merge');
 });
