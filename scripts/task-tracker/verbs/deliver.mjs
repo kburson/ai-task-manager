@@ -2612,6 +2612,53 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     async inspectMergeCommit({ mergeCommitSha }) {
       return inspectCommitObject(mergeCommitSha);
     },
+    async compareDeliveryContent({
+      method,
+      sourceBase,
+      sourceHead,
+      integrationBase,
+      integrationHead,
+    }) {
+      if (
+        ![sourceBase, sourceHead, integrationBase, integrationHead].every((value) =>
+          SHA_RE.test(value)
+        )
+      ) {
+        throw deliverError('integration-content-input');
+      }
+      // Git's virtual merge computes the tree obtained by applying the complete
+      // accepted source onto the observed integration base. Comparing trees
+      // proves content even when trunk advanced in unrelated files.
+      if (!['merge', 'squash', 'rebase-step', 'rebase-total'].includes(method)) {
+        throw deliverError('integration-content-method');
+      }
+      if (method !== 'rebase-step') {
+        try {
+          await run('git', ['merge-base', '--is-ancestor', sourceBase, integrationBase]);
+        } catch (error) {
+          if (Number(error?.code) === 1) return false;
+          throw deliverError('integration-content-ancestry', error);
+        }
+      }
+      let expectedTree;
+      try {
+        const { stdout } = await run('git', [
+          'merge-tree',
+          '--write-tree',
+          '--merge-base',
+          sourceBase,
+          integrationBase,
+          sourceHead,
+        ]);
+        expectedTree = String(stdout || '').trim();
+      } catch (error) {
+        if (Number(error?.code) === 1) return false;
+        throw deliverError('integration-content-merge', error);
+      }
+      if (!SHA_RE.test(expectedTree)) throw deliverError('integration-content-tree');
+      const observed = await inspectCommitObject(integrationHead);
+      return observed.tree === expectedTree;
+    },
     async inspectSourceCommit({ commitSha }) {
       return inspectCommitObject(commitSha);
     },

@@ -562,3 +562,5 @@ reapproval
 rebaseline
 refspec
 waivability
+premerge
+unreachability
