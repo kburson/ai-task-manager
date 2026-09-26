@@ -69,11 +69,13 @@ than silently delivering all work under one oversized story.
       records under the same canonical Git common directory with independent
       attribution.
 - [ ] Collection preserves original stdout, stderr, exit, exception, and
-      response behavior and persists no query text, variables, secrets, issue
-      bodies, or response payloads.
-- [ ] Offline reports and graphs display call volume, known points, hourly
-      peaks, operation and stage breakdowns, malformed/duplicate data, and coverage
-      limits without presenting partial sums as complete totals.
+      response behavior; persists no query text, variables, secrets, issue bodies,
+      or response payloads; and recording/aggregation make no extra GitHub API
+      calls.
+- [ ] Offline reports and graphs display call volume, known points, point-cost
+      and latency distributions, account-budget context, hourly peaks, operation
+      and stage breakdowns, malformed/duplicate data, aggregation file-open/read
+      costs, and coverage limits without presenting partial sums as complete totals.
 - [ ] Reports enforce one canonical `commonRootId`, exclude out-of-root
       observations from totals, and refuse total-point ranking when relevant
       hidden attempts, uncovered paths, denied participants, or collection gaps remain.
@@ -96,7 +98,7 @@ than silently delivering all work under one oversized story.
 - Size: XL
 - Estimate: 46 hours
 - Labels: SPIKE, enhancement, backend, dx, reliability, test
-- Parent issue: #1818
+- Parent issue: none; #1818 is the planned top-level epic
 - Decomposition: convert #1818 to an epic and create five ordered children. The
   parent owns final baseline acceptance, epic reconciliation, and handoff to
   #1817.
@@ -166,9 +168,7 @@ than silently delivering all work under one oversized story.
 identity, redacted query fingerprints, and source-level coverage checks. It does
 not wire production launch routes or write reports beyond inventory output.
 
-**Modify or create:** `scripts/task-tracker/lib/graphql-usage/*`,
-`scripts/task-tracker/lib/action-capture.mjs` only where shared classification
-helpers belong, inventory fixtures under `scripts/tests/fixtures/`, focused unit
+**Modify or create:** `scripts/task-tracker/lib/graphql-usage/*`, inventory fixtures under `scripts/tests/fixtures/`, focused unit
 tests under `scripts/tests/unit/task-tracker/lib/graphql-usage*.test.mjs`, and
 operator docs as needed.
 
@@ -181,13 +181,18 @@ records. Classify call sites as `direct-http`, `gh-api-graphql`,
       direct HTTP GraphQL builders, absolute-path bypasses, and high-level opaque
       CLI surfaces.
 - [ ] Define the metadata-only observation schema, including cost coverage,
-      dispatch status, context scope, launch route, session source, common-root ID,
-      operation identity, instrumented-request cost labeling, and coverage diagnostics.
+      dispatch status, `stateSource`, `contextScope`, launch route, session source,
+      common-root ID, operation identity, `logicalOperationId`, `pageIndex`,
+      `processExitCode`, `httpStatus`, `rateLimit`, endpoint host,
+      `budgetScopeId`, `kind: mixed | unknown`, instrumented-request cost
+      labeling, and coverage diagnostics.
 - [ ] Add tests that reject raw query text, variables, response bodies, issue
       bodies, secrets, and unsanitized path/session values from all record shapes.
 - [ ] Add fingerprint fixtures proving inline literals are redacted before hashing.
 - [ ] Record the initial inventory and uncovered-path expectations in the child
-      issue or committed documentation.
+      issue or committed documentation. Define reusable telemetry classifier
+      contracts in `graphql-usage/*`; do not edit `action-capture.mjs` in this
+      child.
 
 **Verification Commands:**
 
@@ -271,13 +276,18 @@ behavior preservation using the Task 2 sink. It does not own aggregate reports.
 
 **Modify or create:** `scripts/task-tracker/lib/action-capture.mjs`,
 `scripts/task-tracker/action-capture-bin/gh`, AITM CLI/bootstrap entry points,
-direct HTTP GraphQL adapters such as value-report helpers, measurement-launcher
-support, and focused integration tests with fake `gh` and injected transports.
+direct HTTP GraphQL adapters such as value-report helpers,
+`scripts/gh/lib/github-projects.mjs`, `scripts/gh/lib/gh-client.mjs` only if
+needed for context propagation, measurement-launcher support, and focused integration tests with fake `gh` and injected transports.
 
 **Interface:** A shared usage observation sink receives exactly one record per
 lowest observable boundary and flushes to Task 2 storage. Known Node query
 builders may augment supported queries with a collision-free `rateLimit { cost }`
 selection and strip only the added telemetry alias before returning business data.
+Task 3 explicitly owns `scripts/gh/lib/github-projects.mjs:gql()` cost
+augmentation and its private-observation-context handoff with the `gh` shim; the
+shim owns the single durable record while `gql()` strips its private alias from
+business data.
 
 - [ ] Cover usage-only, action-only, both-enabled, and both-disabled modes
       without enabling action-capture payload storage from usage collection.
@@ -285,11 +295,19 @@ selection and strip only the added telemetry alias before returning business dat
       is persisted before the parent returns on normal exit.
 - [ ] Add injected transport tests for query, mutation, selected operation,
       fragments, aliases, inline literals, GraphQL errors, HTTP failures, retries,
-      pagination, ambiguous dispatch, and unsupported syntax.
-- [ ] Verify no duplicate records are produced when a known builder and the shim
-      cooperate through a private observation context.
-- [ ] Preserve existing action-capture public classification behavior while
-      adding safer telemetry-specific classification.
+      pagination, ambiguous dispatch, unsupported syntax, and the
+      `github-projects.mjs:gql()` stdin `gh api graphql --input -` payload shape.
+- [ ] Verify no duplicate records are produced when `gql()` or another known
+      builder and the shim cooperate through a private observation context.
+- [ ] Own `action-capture.mjs` telemetry-specific classification here: preserve
+      existing public classification behavior while wiring the Task 1 classifier
+      contract for comments, selected operations, and unsupported syntax.
+- [ ] Add collection-side no-extra-GitHub-call tests by injecting transports and
+      failing if recording or context capture issues any additional API request.
+- [ ] Resolve issue number and lifecycle state only from current command
+      arguments or local state; capture context at dispatch; record `unknown`
+      when no trustworthy state exists; mark multi-issue context without dividing
+      cost among issues.
 - [ ] Rerun existing action-capture regression coverage after wiring:
       `scripts/tests/integration/task-tracker/lib/action-capture.test.mjs` and
       `scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs`.
@@ -316,7 +334,7 @@ node --test scripts/tests/slow/task-tracker/lib/action-capture-integration.test.
 
 #### Files and Delivery Boundary
 
-**Estimate:** 9 hours. Depends on Task 2's storage shape. This child owns the
+**Estimate:** 9 hours. Depends on Task 1's record schema and Task 2's storage shape. This child owns the
 offline report command, aggregation rules, graph generation, single-root
 boundary, and coverage language. It does not perform the long baseline run.
 
@@ -338,6 +356,17 @@ complete-observation costs from visible-response-only costs.
       breakdowns, retries, failures, malformed lines, unsupported versions,
       duplicates, partial final lines, mixed collector versions, storage gaps, and
       root mismatches.
+- [ ] Report mean, median, and high-percentile point cost and latency per
+      operation, with point percentiles computed only from known-cost samples and
+      sample counts shown. Separate HTTP-observation latency from whole-CLI
+      invocation latency.
+- [ ] Report account-budget context from `x-ratelimit-*` headers without
+      attributing other clients' usage to AITM, separated by endpoint host and known
+      `budgetScopeId`.
+- [ ] Report aggregation file-open count and elapsed read time so the
+      file-per-process storage choice has measured read-side overhead.
+- [ ] Add reporting-side no-extra-GitHub-call tests by injecting filesystem roots
+      and failing if aggregation issues a GitHub request.
 - [ ] Enforce the total-point ranking sufficiency gate: 100% complete cost
       coverage for the predeclared candidate group and no relevant opaque hidden
       attempts, uncovered paths, denied participants, unknown enrollment, or
@@ -400,6 +429,12 @@ themselves block scoped volume evidence.
       run to manufacture sufficiency.
 - [ ] Run one controlled live query and one controlled live mutation only in an
       authorized test workflow, with cleanup accounted as observed traffic.
+- [ ] At Task 5 preflight, identify the independently scheduled real workflow
+      that will supply creation-to-planning traffic, such as an already planned
+      backlog issue being hydrated through Plan, and record why it was scheduled
+      independently of this spike. If no such workflow lands inside the declared
+      window, publish a preliminary baseline and defer parent Review rather than
+      synthesizing traffic.
 - [ ] Run the creation-to-planning baseline using the measurement launcher and
       participant manifest; do not create artificial backlog changes solely for
       traffic generation.
@@ -432,7 +467,6 @@ node --test scripts/tests/integration/task-tracker/lib/action-capture.test.mjs
 node --test scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs
 npm run lint
 npm run format:check
-git log --oneline -1
 ```
 
 ## Parent Hydration and Delivery
