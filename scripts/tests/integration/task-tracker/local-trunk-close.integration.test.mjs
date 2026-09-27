@@ -341,7 +341,8 @@ test('locked Close consumes proof and refuses Done until the burn receipt exists
   );
 });
 
-test('close read port gathers exact Review evidence and fresh PR and trunk observations', async () => {
+test('close read port gathers exact Review evidence and fresh PR and trunk observations', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-26T08:00:00.000Z') });
   const acceptedSha = 'b'.repeat(40);
   const projectDir = process.cwd();
   const branch = 'codex/proof';

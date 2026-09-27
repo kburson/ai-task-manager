@@ -100,7 +100,8 @@ test('local preparation is read only and names the exact lane and scope', async 
   );
 });
 
-test('a generic deliver instruction cannot record the local grant', async () => {
+test('a generic deliver instruction cannot record the local grant', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date(now) });
   const prepared = prepareDeliveryWaiver({
     input: proposal,
     facts,
@@ -162,7 +163,8 @@ test('PR waiver and local-trunk proposal shapes cannot cross-authorize', () => {
   );
 });
 
-test('exact host-verified statement records one visible typed grant with readback', async () => {
+test('exact host-verified statement records one visible typed grant with readback', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date(now) });
   const body =
     '## User Story\n\nAs an operator\nI want one close\nSo that the issue is done\n\n## Scope\n\nExact issue.\n\n## Acceptance Criteria\n\n- [ ] Exact grant.';
   const records = [];

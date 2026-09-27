@@ -15,6 +15,18 @@
       "siblings_only": true
     }
   },
+  "overrides": [
+    {
+      "filter": [
+        "docs/superpowers/plans/2026-09-27-1830-mutation-guard-context.md",
+        "docs/superpowers/reviews/1830/plan/SAR/plan.r1.md",
+        "docs/superpowers/reviews/1830/plan/SAR/plan.r2.md",
+        "docs/superpowers/reviews/1830/plan/SAR/plan.r3.md"
+      ],
+      "config": { "MD034": false },
+      "combine": "merge"
+    }
+  ],
   "globs": ["**/*.md", "!.tmp/**", "!.scratch/**"],
   "ignores": [
     "node_modules/**",

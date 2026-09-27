@@ -569,3 +569,7 @@ overpromises
 predeclared
 unsanitized
 unsandboxed
+gitlink
+gitlinks
+targetless
+uninspectable
