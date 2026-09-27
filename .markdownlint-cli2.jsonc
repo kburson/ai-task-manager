@@ -15,7 +15,6 @@
       "siblings_only": true
     }
   },
-  // #1830: preserve the exact bytes sealed by SAR and XPR. Keep all other rules.
   "overrides": [
     {
       "filter": [
