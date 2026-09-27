@@ -28,7 +28,8 @@ const REQUIRED = [
   'scripts/task-tracker/lib/delivery-records.mjs',
 ];
 
-test('offline installed package prepares a delivery waiver read-only and exposes codecs and help', async () => {
+test('offline installed package prepares a delivery waiver read-only and exposes codecs and help', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T00:00:00.000Z') });
   const before = execFileSync('git', ['status', '--porcelain=v1'], { cwd: ROOT, encoding: 'utf8' });
   const scratch = mkdtempSync(join(projectScratchDir('test'), 'aitm-waiver-pack-'));
   const packDir = join(scratch, 'pack');
