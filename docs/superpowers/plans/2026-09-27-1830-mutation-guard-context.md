@@ -2,17 +2,19 @@
 
 ## Document control
 
-- Revision: r3.
-- Status: implementation plan; SAR verdicts are recorded in the review responses.
+- Revision: r4.
+- Status: revised after XPR reviewer turn 1; awaiting reviewer acceptance.
 - Issue: https://github.com/kburson/ai-task-manager/issues/1830.
 - Source baseline: `32fc3a04b0cc3f738902aea0f1e6430e4888d579`.
-- Previous revision: [r2](../reviews/1830/plan/SAR/plan.r2.md).
-- Revision-triggering review: [r3](../reviews/1830/plan/SAR/review-response.r3.md).
+- Previous revision: [r3](../reviews/1830/plan/SAR/plan.r3.md), committed in `fd37bb0427d9e2e876084110b2fc5a8aaf13c664`.
+- Revision-triggering review: [XPR reviewer turn 1](../../peer-reviews/plan/2026-09-27-2026-09-27-1830-mutation-guard-context-review-9db94a29416795699db536014299a9a6/review-9db94a29416795699db536014299a9a6-reviewer-response-1.md).
 - Revision history: r1 closes SAR-01 through SAR-04 by defining command eligibility,
   artifact eligibility, Plan edit/commit permissions, and their verification seams.
   Revision r2 closes SAR-05 through SAR-07 with target ancestry, configuration
   constraints, and a canonical Story Intent section. Revision r3 closes SAR-08
   and SAR-09 by clarifying new-path ancestry and invocation input contracts.
+  Revision r4 addresses XPR findings R1-F001 through R1-F004 and all four
+  optional suggestions; the SAR convergence record remains specific to r3.
 
 ## Scope
 
@@ -145,6 +147,14 @@ adding an evidence format later requires a named contract and tests rather
 than broadening the existing `docs/**` glob. Root agent instructions, runtime
 configuration, installed guard trees, and machine-local state are not eligible.
 
+This predicate is a fixed contract implemented in the guard's shared helper,
+independent of project activity policy. Neither `docGlobs`, `docGlobsExtra`, nor
+any other `activity-policy.json` key can define or widen `COMMIT_DOCS`
+eligibility. Existing configurable edit classification remains separate. Prove
+that replacing `docGlobs` with `['**/*']` or adding root `CLAUDE.md`,
+`scripts/**`, or `docs/**` via `docGlobsExtra` does not admit root instructions,
+source, configuration, or executable files as document commits.
+
 Read NUL-delimited staged change status and Git modes. Evaluate additions,
 modifications, deletions, and both sides of rename/copy records. Every relevant
 path and mode must qualify; a code-to-Markdown rename or source deletion keeps
@@ -165,9 +175,21 @@ would require a separate execution-boundary design.
 For the new Plan document path, establish parseable targets and physical context,
 then apply installed-guard and scope checks, exact session binding, fresh
 singleton ownership and state, artifact eligibility, and the activity decision.
-Installed-guard rejection precedes scratch and chore allowances. A policy read
-or ownership read failure refuses this allowance. Never claim an unassigned
-issue from inside a mutation hook.
+For edit/patch tools, preserve `activity-guard.mjs`'s existing #659 installed-guard
+interlock ahead of scratch and chore allowances. Explicitly add the same shared
+lexical/physical target check to `source-edit-gate.mjs`, ahead of its current
+`decideSourceEdit` chore-mode and scratch returns. Its hook entry point must
+resolve all targets before those returns; pure decisions consume the same
+validated target result. This is a deliberate new refusal in that individual
+guard, aligning it with the already-enforced combined-hook contract. It does
+not remove the chore/scratch allowance for ordinary non-installed targets.
+
+Cover each guard independently and the combined chain: installed guard targets
+must refuse even under chore mode, through an installed self-link, or through a
+scratch alias into an installed tree. Ordinary scratch paths and the package's
+own non-installed source checkout remain positive controls under their existing
+permissions. A policy read or ownership read failure refuses the Plan allowance.
+Never claim an unassigned issue from inside a mutation hook.
 
 Require exactly one assignee matching the authenticated owner, independently
 of the generic early-state `ownershipDecision().ok`; that helper accepts
@@ -185,6 +207,23 @@ inspection and refuse conflicting issue attribution for this Plan allowance.
 | Done                                | Refuse                                                     | Refuse                                     | Refuse                     |
 | No active binding or unknown state  | No new permission                                          | Refuse                                     | Existing fail-closed rules |
 
+Implement the no-binding row explicitly in `activity-policy.mjs::isAllowed`:
+add `COMMIT_DOCS` to the existing `state == null` refusal set, preserving the
+current behavior of other classes. Keep unknown non-null states fail-closed.
+Test null and undefined state directly, plus never-bound and paused sessions
+through the hook (which reduces either to null state), and an unknown-state
+session. These are separate from a Plan session with a missing binding record.
+The activity hook must apply the new class's binding/state decision before any
+blanket chore-mode commit bypass: chore mode cannot grant `COMMIT_DOCS` to an
+unbound session. Explicitly test that combination; existing chore behavior for
+other classes remains outside this new allowance.
+
+For AC4, "intended pre-Develop lifecycle states" means exactly Plan in this
+repair; Backlog, Refine, and Ready for Planning receive no new commit permission.
+Review-state document editing remains possible, but committing tracked review
+collateral requires the governed rework path back to Develop, followed by fresh
+Test/Review evidence. This issue does not create a Review-state commit exception.
+
 Update source-edit to classify the eligible Plan document path before its
 blanket pre-Develop source refusal. This narrow path does not require completed
 deep-dive markers: planning documents must be editable while the deep dive is
@@ -200,6 +239,14 @@ fields. Preserve the extracted bytes. Add hook-entry fixtures using the actual
 adapter-normalized envelope as well as pure parser fixtures; malformed inputs
 must not silently become targetless or read-only. Confirm the transport with a
 captured or adapter-defined fixture before claiming why an observed call failed.
+Conflicting-field rejection deliberately tightens the current first-truthy-field
+behavior. Identical duplicate string fields are allowed; differing nonempty
+values are conflicts. Fixture inspection must establish the actual shape for
+every supported adapter, including whether it emits multiple fields and what
+those fields mean. Do not infer that an adapter uses only one field. If a
+supported adapter legitimately supplies different metadata alongside patch text,
+define and test its explicit field contract in the shared extractor before
+switching behavior; do not silently reject a supported shape or guess precedence.
 This is guard input handling, not a redesign of the shared hook launcher.
 
 Remove exactly one optional terminal LF or CRLF before checking the existing
@@ -211,29 +258,53 @@ lines, rename destinations, and multiple target operations.
 
 ## Implementation sequence
 
-1. Add failing regression tables to the issue's five named test files. Add focused
-   helper fixtures using the canonical test walker rather than another test root.
+1. Add failing regression tables, including direct shared-helper tests, inside
+   the five existing VC1 test files enumerated below. Do not create a separate
+   helper test file for this repair; VC1 remains the complete targeted proof.
+   Use those files' existing fixture patterns and canonical suite discovery.
 2. Implement shared invocation parsing and physical/recorded identity comparison;
    integrate activity, worktree, source-edit, and ownership consumers together.
-3. Add staged status/mode classification and the explicit matrix. Remove parallel
-   ad hoc parser decisions at the touched seams. Update block messages and
-   relevant workflow documentation without widening unrelated activity policy.
-4. Apply the minimal patch-ending change and retain existing unsafe-path tests.
-5. Run targeted tests and the required package verifiers, commit with `[#1830]`,
+3. Add fixed, policy-independent staged status/mode classification and the
+   explicit matrix, including `isAllowed`'s null-state denial and its placement
+   before the chore commit bypass. Remove parallel ad hoc parser decisions at
+   the touched seams. Update block messages and relevant workflow documentation.
+   Amend the `activity-policy.mjs` header's deferred Epic W2 (#67) note to identify
+   only the Git mutation discovery shared here; broader shell write-target
+   extraction remains deferred. Do not claim this issue completes that epic.
+4. Add the explicit installed-target interlock to `source-edit-gate` before its
+   chore/scratch exits and retain the activity guard's existing ordering. Prove
+   independent and combined-hook refusal plus the non-installed positive controls.
+5. Apply shared patch transport extraction and the minimal patch-ending change;
+   retain unsafe-path tests and verify supported adapters' field compatibility.
+6. Run targeted tests and the required package verifiers, commit with `[#1830]`,
    and use normal exact-head finalization, Test, Review, delivery, and Close.
    Resolve real refusals through their governed remediation; SAR does not approve
    these lifecycle actions or waive any requirement.
 
 ## Acceptance and regression mapping
 
-| Issue criterion                | Required proof                                                                                                                                                                                                                            |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC1: actual tool worktree      | Main-process/linked-payload fixture; tool workdir precedence and relative bases; absent versus invalid fields; environment disagreement; physical aliases; current-session binding; new nested targets, broken links, and symlink escapes |
-| AC2: equivalent Git forms      | Plain, sequential/global-option forms; common discovery across all consumers; alias/shell/opaque negatives; harmless configuration positives; selector/hook/config-injection negatives; literal text control                              |
-| AC3: staged artifact classes   | Markdown positive; code/config under docs; mixed files; rename/deletion sides; executable/symlink/gitlink/conflict/empty/unreadable index                                                                                                 |
-| AC4: governed pre-Develop path | Full Plan edit-stage-commit through all hooks; every state row; wrong owner, unassigned, wrong issue, stale branch, missing binding, installed guard negatives                                                                            |
-| AC5: patch terminator          | Shared transport extraction plus exact positive/negative envelope table through hook entry points, with all unsafe-target checks                                                                                                          |
-| AC6: integration parity        | Real temporary linked worktrees; hook process/payload disagreement; all guards together; compound index/cwd mutation refusals                                                                                                             |
+| Issue criterion                | Required proof                                                                                                                                                                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC1: actual tool worktree      | Main-process/linked-payload fixture; tool workdir precedence and relative bases; absent versus invalid fields; environment disagreement; physical aliases; current-session binding; new nested targets, broken links, and symlink escapes                                                               |
+| AC2: equivalent Git forms      | Plain, sequential/global-option forms; common discovery across all consumers; alias/shell/opaque negatives; harmless configuration positives; selector/hook/config-injection negatives; literal text control                                                                                            |
+| AC3: staged artifact classes   | Markdown positive; code/config under docs; mixed files; rename/deletion sides; executable/symlink/gitlink/conflict/empty/unreadable index; widened docGlobs/docGlobsExtra cannot expand eligibility                                                                                                     |
+| AC4: governed pre-Develop path | Full Plan edit-stage-commit through all hooks; every state row; never-bound/paused/unknown-state COMMIT_DOCS refusals including chore mode; wrong owner, unassigned, wrong issue, stale branch, missing binding; installed-target refusals in each guard before chore/scratch and in the combined chain |
+| AC5: patch terminator          | Shared transport extraction plus exact positive/negative envelope table through hook entry points, with all unsafe-target checks                                                                                                                                                                        |
+| AC6: integration parity        | Real temporary linked worktrees; hook process/payload disagreement; all guards together; compound index/cwd mutation refusals                                                                                                                                                                           |
+
+VC1 remains the existing five-file command. Place direct helper/parser and
+null-state/policy-override tables in
+`scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs`;
+patch extraction and envelope tables in
+`scripts/tests/unit/task-tracker/lib/apply-patch-targets.test.mjs`; activity entry
+and staged-index fixtures in
+`scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs`; source-edit
+interlock, target ancestry, and transport fixtures in
+`scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs`; and
+binding plus combined linked-worktree hook parity in
+`scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs`.
+All helper behavior needed to substantiate an AC must be exercised by these
+files; general suite discovery alone is not evidence for a `vc:1` citation.
 
 Run the issue's targeted `node --test` command, then `npm test`,
 `npm run test:slow`, `npm run lint`, and `npm run format:check` as required by the
