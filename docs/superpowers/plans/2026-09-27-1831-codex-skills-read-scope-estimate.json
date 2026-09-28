@@ -1,0 +1,32 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "regression",
+      "description": "Strict subprocess regression cases for the Codex skills read boundary",
+      "baseHumanHours": 1.5,
+      "signals": {
+        "modules": ["bash-guard-tests"],
+        "dependencies": []
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "guard",
+      "description": "Narrow lexical read allowance and diagnostics",
+      "baseHumanHours": 1.5,
+      "signals": {
+        "modules": ["bash-guard"],
+        "dependencies": ["regression"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 15
+  },
+  "risks": ["Traversal beyond the skills subtree", "Existing write-policy regression"],
+  "comparableIssueIds": []
+}
