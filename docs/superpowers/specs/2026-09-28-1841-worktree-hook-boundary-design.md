@@ -3,7 +3,7 @@
 - **Issue:** [#1841](https://github.com/kburson/ai-task-manager/issues/1841)
 - **Date:** 2026-09-28
 - **Status:** Draft for review
-- **Source:** #1841 body version 7 and its [guard inventory](https://github.com/kburson/ai-task-manager/issues/1841#issuecomment-5873006963)
+- **Source:** #1841 live issue body and its [guard inventory](https://github.com/kburson/ai-task-manager/issues/1841#issuecomment-5873006963); the issue body may evolve during review
 - **Baseline:** `92bf48881640a07fa2a19d45f872d7b6c47b4f99` in the isolated #1841 worktree
 
 ## Decision sought
@@ -56,9 +56,9 @@ Transition/evidence validators for `refine`, `plan`, `test`, approval, and close
 
 ## Scope and ownership
 
-AITM owns task/session binding, its installed hook registrations, issue/board/body/close operations, and transition evidence. The standalone `ai-peer-review` package owns the active review protocol. Its design says the reviewer may not edit or commit the authoritative artifact; #1841 must preserve that contract without imposing reviewer-wide file restrictions in AITM. If the installed package needs a change, record and link a separate `ai-peer-review` issue before #1841 is considered complete.
+AITM owns task/session binding, its installed hook registrations, issue/board/body/close operations, and transition evidence. The standalone `ai-peer-review` package owns the active review protocol. The installed `.codex/skills/peer-review/SKILL.md` currently forbids reviewer Git commands and writes outside the response and package scratch, and seals the index and entire worktree. That is broader than the maintainer's requested rule that only the author may mutate the authoritative spec or plan during active partner review. #1841 must track a dependent `ai-peer-review` change, verify its generated provider policies and installed behavior, and cannot pass the review-ownership criterion merely by linking an unresolved issue.
 
-The host owns process-level sandboxing. For Codex, use the workspace-write root supplied by the host. For Claude or another provider, validate an equivalent host or OS sandbox when available. If there is no reliable sandbox, AITM must say "filesystem boundary not verified" in setup/doctor output and must not claim that its Bash hook enforces one. Lack of a sandbox is surfaced as a capability limitation, not silently replaced with the current brittle command scanner. Host authorization governs any requested outside-root write.
+The host owns process-level sandboxing. For Codex, use the workspace-write root supplied by the host. For Claude or another provider, validate an equivalent host or OS sandbox when available. If there is no reliable sandbox, AITM must say "filesystem boundary not verified" in setup/doctor output and must not claim that its Bash hook enforces one. Lack of a sandbox is surfaced as a capability limitation, not silently replaced with the current brittle command scanner. Host authorization governs outside-root working-file writes and the narrow Git administrative access described below.
 
 ## Maintainer lifecycle direction and related stories
 
@@ -88,7 +88,7 @@ This direction creates explicit **cross-story reconciliation work**:
 
 For a hook invocation, use the payload `session_id` and effective invocation directory in that order: tool `workdir`/`cwd` when supplied, then hook `cwd`, then process cwd. For direct Git commands with a directory selector, resolve its target before selecting the checkout. Canonicalize the selected directory to the containing Git worktree root; a `.git` file identifies a linked worktree, and a `.git` directory identifies the primary clone.
 
-Read only that root's active record for the exact session. Do not search the fleet for a newer binding. If this root has no record, local file work is still allowed; a governed AITM task verb must independently establish the requested issue and its binding. A record for another checkout cannot make this one foreign. The CLI's explicit audited foreign-worktree override remains available for an operation that truly names another issue-bound checkout. Stop, pause, closed-binding release, and resume must not leave an occupancy claim that blocks a later valid session.
+Read only that root's active record for the exact session. Do not search the fleet for a newer binding. If this root has no record, local file work is still allowed. A local edit, test, build, or Git operation inside a checkout authorized by the host is not refused merely because another checkout has an issue binding. A governed AITM mutation must independently establish its target issue, branch, live session, and target worktree; a mismatch with a genuinely foreign binding is refused with both identities. An explicit audited foreign-worktree override may authorize only the governed mutation it names, and failed or unavailable audit persistence must refuse the override. For `git -C <child>`, resolve the child as the effective checkout; host access to that checkout is still required, and any governed AITM verb targeting it must match its binding. Stop, pause, closed-binding release, and resume must not leave an occupancy claim that blocks a later valid session.
 
 ### 2. Local file boundary
 
@@ -97,6 +97,8 @@ Retain a small PreToolUse boundary for file tools whose targets are explicit: Ed
 No AITM file classification, issue state, owner, deep-dive marker, or network lookup runs for a contained local file write. `.scratch/**` has no special permission gate because it is inside the checkout. `.tmp/**` and other contained files receive the same local access rule. Reads are governed by host permissions; AITM removes its custom read allowlist.
 
 Bash cannot be confined through static command parsing. Remove AITM's generic read/write target regexes and activity classification from the Bash PreToolUse path. Validate process-level confinement with a provider-specific integration fixture; report the capability in doctor/setup. A host that cannot enforce the boundary is accurately described as unverified rather than being represented as protected by regexes.
+
+Linked-worktree Git administration is distinct from working-file access. The checkout's `.git` file points to a per-worktree Git directory, while the common Git directory contains shared objects, refs, and logs; both may be outside the checkout root. Discover these paths from Git's resolved metadata for the selected repository, and require an explicit host VCS capability or per-operation host authorization for ordinary `git add` and `git commit` to write only the metadata Git needs. Do not grant agent file tools, arbitrary shell writes, or sibling/primary working files a general exception for those external paths. If the host cannot authorize Git metadata writes, report that limitation and the host approval path instead of promising a working local commit. Integration tests must complete add and commit in a linked worktree under the claimed host capability, while refusing unauthorized writes to primary or sibling working files.
 
 ### 3. Governed operations and evidence
 
@@ -108,28 +110,28 @@ The installed-copy self-edit ban and the source-edit chore bypass become unneces
 
 ### 4. Review artifact ownership
 
-During an active `ai-peer-review` session, only the registered author may mutate the authoritative spec or plan. The reviewer may read it and write allowed review collateral, but may not edit, stage, commit, or push the authoritative artifact. That enforcement is scoped to the review artifact and review interval in the owning package. Outside that interval, AITM does not impose an author-only file gate. Verify the installed package's behavior before declaring this requirement satisfied.
+During an active `ai-peer-review` session, only the registered author may mutate, stage, commit, or push the authoritative spec or plan. The reviewer may read it and mutate unrelated files, including `.scratch/**`, within the reviewer checkout's host boundary. The installed peer-review skill and provider launch policy currently impose a reviewer-wide Git/write seal, so AITM hook removal alone cannot deliver this contract. The owning package must revise its authoritative protocol, generated skill text, provider permissions, and runtime enforcement; AITM must adopt the resulting version and verify it. Tests must refuse reviewer mutation of the authoritative artifact, allow reviewer writes to unrelated contained files and scratch, and prove that the artifact-only restriction ends after review. A dependent issue is tracking, not acceptance evidence. Until the owning-package behavior is implemented and verified, #1841's review-ownership criterion remains unmet.
 
 ## Migration sequence
 
-1. Add regression fixtures for exact hook session, nested worktree, separate agents, stopped occupancy, and direct Git directory targeting; repair the fleet-selection bug.
-2. Introduce and test the explicit file-tool boundary and provider sandbox capability report. Test symlink escape, missing descendants, multi-file patches, and in-root scratch writes in every state and without a task.
+1. Add regression fixtures for exact hook session, nested worktree, separate agents, stopped occupancy, and direct Git directory targeting; repair the fleet-selection bug. Separate positive local work from negative governed foreign-mutation cases, and test successful and failed audited override.
+2. Introduce and test the explicit file-tool boundary, provider sandbox capability report, and host-authorized linked-worktree Git metadata path. Test symlink escape, missing descendants, multi-file patches, in-root scratch writes in every state and without a task, a real linked-worktree add/commit, and denial of unrelated primary/sibling working-file writes.
 3. Move remote-command checks out of the mixed Bash path. Remove activity/state/owner/deep-dive checks from PreToolUse for local work, then remove dead policy wiring and update installer templates for Codex, Claude, and other installed providers.
-4. Validate that governed remote mutations and state-transition evidence still refuse invalid claims while read-only inspection and local work remain available.
+4. Validate that governed remote mutations and state-transition evidence still refuse invalid claims while read-only inspection and local work remain available. Reconcile #1841's existing foreign-command acceptance wording and test fixtures with the local-work versus governed-mutation distinction. Track and verify the dependent `ai-peer-review` artifact-only policy change before marking that criterion met.
 5. Run focused real-payload hook tests, installer parity tests, the issue's fast and slow suites, lint, and format. Only then remove the obsolete hook modules and restore this worktree's temporary uncommitted hook configuration to the intended generated result.
 
 The current worktree has temporary, uncommitted removals of three PreToolUse registrations. They are an operational unblock, not the implementation. They must not be included accidentally in a spec-only commit or mistaken for installer-level delivery.
 
 ## Acceptance mapping
 
-| #1841 outcome                                         | Design mechanism                                                        | Verification                                                                   |
-| ----------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Independent parallel agents and nested child checkout | Exact payload session plus invoking-root record; no newest-fleet lookup | Separate-session, nested-root, stale/default-record and stop/resume fixtures   |
-| In-root work, scratch, and no bound task              | Explicit file-tool boundary without lifecycle/owner classification      | Real Codex/Claude payload tests across states; scratch Bash test under sandbox |
-| Outside-root and symlink escape                       | Physical target containment and host process sandbox                    | Symlink, missing-path, multi-target, and Bash sandbox integration cases        |
-| Governed remote mutation and transition evidence      | Operation-level validators plus narrow direct-command accident guard    | Negative issue/body/board/close tests and positive read-only tests             |
-| Author-only review artifact                           | Standalone peer-review protocol                                         | Package ownership tests or linked dependent issue with verified result         |
-| Installer durability                                  | Updated generated hook sets                                             | Fresh install, update, repair, and provider parity tests                       |
+| #1841 outcome                                         | Design mechanism                                                          | Verification                                                                                                                                       |
+| ----------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Independent parallel agents and nested child checkout | Exact payload session plus invoking-root record; no newest-fleet lookup   | Separate-session, nested-root, stale/default-record and stop/resume fixtures                                                                       |
+| In-root work, scratch, and no bound task              | Explicit file-tool boundary without lifecycle/owner classification        | Real Codex/Claude payload tests across states; scratch Bash test under sandbox                                                                     |
+| Outside-root, symlink, and Git metadata boundary      | Physical working-file containment plus host-authorized Git administration | Symlink, missing-path, multi-target, Bash sandbox, linked-worktree add/commit, and sibling-write denial                                            |
+| Governed remote mutation and transition evidence      | Operation-level validators plus narrow direct-command accident guard      | Negative issue/body/board/close and foreign-binding tests; positive local work and read-only tests; audited override success and failure           |
+| Author-only review artifact                           | Implemented and adopted `ai-peer-review` artifact-only protocol           | Reviewer artifact refusal, unrelated/scratch write allowance, post-review release, and installed-policy parity; linked issue alone is insufficient |
+| Installer durability                                  | Updated generated hook sets                                               | Fresh install, update, repair, and provider parity tests                                                                                           |
 
 ## Risks and limits
 
