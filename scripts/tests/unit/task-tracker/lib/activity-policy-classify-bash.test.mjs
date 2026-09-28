@@ -440,6 +440,33 @@ test('real staged index classifies regular Markdown and mixed source separately'
   }
 });
 
+test('compound document staging cannot hide a source write', () => {
+  assert.equal(classifyBash('echo x > scripts/example.mjs; git add docs/review.md'), 'WRITE_CODE');
+  assert.equal(classifyBash('echo x > scripts/example.mjs; echo y > docs/review.md'), 'WRITE_CODE');
+  assert.equal(classifyBash('echo x > docs/review.md; git add docs/review.md'), 'WRITE_DOCS');
+});
+
+test('read-only Git config and worktree queries stay read-only', () => {
+  for (const command of [
+    'git config --get remote.origin.url',
+    'git config --list',
+    'git worktree list --porcelain',
+  ]) {
+    assert.equal(discoverBashActivity(command, process.cwd()), null, command);
+    assert.equal(classifyBash(command), 'READ_*', command);
+  }
+  for (const command of ['git config --global user.name test', 'git worktree add ../other']) {
+    assert.equal(discoverBashActivity(command, process.cwd()), 'COMMIT_CODE', command);
+  }
+});
+
+test('command and env wrappers preserve nested shell mutations', () => {
+  for (const command of ["env bash -c 'git commit -m x'", "command bash -c 'git commit -m x'"]) {
+    assert.equal(discoverBashActivity(command, process.cwd()), 'COMMIT_CODE', command);
+    assert.equal(classifyBash(command), 'COMMIT_CODE', command);
+  }
+});
+
 test('nested shell discovery enforces executable mutations but ignores printed text', () => {
   const binary = 'g' + 'it';
   const verb = 'com' + 'mit';

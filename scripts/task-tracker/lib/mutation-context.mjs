@@ -319,6 +319,30 @@ const GIT_READS = new Set([
   'help',
   'version',
 ]);
+function readOnlyGitCommand(direct) {
+  if (GIT_READS.has(direct.kind)) return true;
+  if (!direct.contextSafe) return false;
+  if (direct.kind === 'config') {
+    return ['--get', '--get-all', '--get-regexp', '--list', '-l'].includes(direct.args[0]);
+  }
+  return direct.kind === 'worktree' && direct.args[0] === 'list';
+}
+
+function nestedShellCommand(words) {
+  let index = 0;
+  if (words[index] === 'command') index++;
+  if (words[index] === 'env') {
+    index++;
+    if (words[index] === '-i') index++;
+    while (words[index]?.match(/^[A-Za-z_][A-Za-z0-9_]*=/)) index++;
+  }
+  if (!['sh', 'bash', 'zsh'].includes(path.basename(words[index] || ''))) return null;
+  const flag = words.findIndex(
+    (word, position) => position > index && ['-c', '-lc', '-ic'].includes(word)
+  );
+  return flag >= 0 ? words[flag + 1] || null : null;
+}
+
 export function discoverBashActivity(command, invocationDir, depth = 0) {
   if (depth > 4) return 'COMMIT_CODE';
   let result = null;
@@ -334,7 +358,7 @@ export function discoverBashActivity(command, invocationDir, depth = 0) {
     } else if (
       direct.kind !== 'other' &&
       direct.kind !== 'unsupported' &&
-      !GIT_READS.has(direct.kind)
+      !readOnlyGitCommand(direct)
     ) {
       current = 'COMMIT_CODE';
     } else if (direct.kind === 'unsupported') {
@@ -346,12 +370,8 @@ export function discoverBashActivity(command, invocationDir, depth = 0) {
       } catch {
         return 'COMMIT_CODE';
       }
-      const first = path.basename(words[0] || '');
-      if (['sh', 'bash', 'zsh'].includes(first)) {
-        const flag = words.findIndex((word) => word === '-c' || word === '-lc' || word === '-ic');
-        if (flag >= 0 && words[flag + 1])
-          current = discoverBashActivity(words[flag + 1], invocationDir, depth + 1);
-      }
+      const nested = nestedShellCommand(words);
+      if (nested) current = discoverBashActivity(nested, invocationDir, depth + 1);
     }
     if (current === 'COMMIT_CODE') return current;
     if (current === 'WRITE_CODE') result = current;
