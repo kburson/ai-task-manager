@@ -187,7 +187,7 @@ export function resolveCurrentSessionWorktreeBinding({
     const resolved = {
       issueNumber: issueMatch ? Number(issueMatch[1]) : null,
       ...identity,
-      worktreeBranch: record.worktreeBranch,
+      worktreeBranch: record.worktreeBranch ?? identity.worktreeBranch,
       timestamp,
     };
     if (!best || resolved.timestamp > best.timestamp) best = resolved;
