@@ -479,3 +479,101 @@ test('visible HTTP retries share identity and selected-operation fragments retai
   assert.ok(rows.some((row) => row.dispatchStatus === 'unknown' && row.pointCost === null));
   assert.ok(rows.some((row) => row.pointCost === 2 && row.costCoverage === 'complete-observation'));
 });
+
+test('non-object HTTP JSON body preserves transport behavior', async (t) => {
+  const { prepareUsageEnv, observeGraphqlHttp } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  let calls = 0;
+  const result = await observeGraphqlHttp(
+    'https://api.github.com/graphql',
+    { body: 'null' },
+    {
+      cwd,
+      env: prepared,
+      fetch: async (_url, options) => {
+        calls++;
+        assert.equal(options.body, 'null');
+        return new Response('{"data":{"ok":true}}');
+      },
+    }
+  );
+  assert.equal(calls, 1);
+  assert.deepEqual(result, { data: { ok: true } });
+});
+
+test('CLI fields and enterprise host are attributed without persisting field values', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const args = ['api', 'graphql', '-f', 'query=query Q($issue:Int!){viewer{id}}', '-F', 'issue=42'];
+  const first = spawnSync('gh', args, {
+    cwd,
+    env: { ...prepared, GH_HOST: 'github.example.com' },
+    encoding: 'utf8',
+  });
+  assert.equal(first.status, 0, first.stderr);
+  const second = spawnSync('gh', [...args, '--hostname', 'github.internal.example'], {
+    cwd,
+    env: { ...prepared, GH_HOST: 'github.example.com' },
+    encoding: 'utf8',
+  });
+  assert.equal(second.status, 0, second.stderr);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => r.endpointHost).sort(), [
+    'github.example.com',
+    'github.internal.example',
+  ]);
+  assert.ok(rows.every((r) => r.issueNumber === 42 && r.contextScope === 'single-issue'));
+  assert.equal(JSON.stringify(rows).includes('issue=42'), false);
+});
+
+test('enrollment diagnostics identify invalid context and Git root failure', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, base, env } = await setup(t);
+  const messages = [];
+  const original = process.stderr.write;
+  process.stderr.write = (chunk) => {
+    messages.push(String(chunk));
+    return true;
+  };
+  try {
+    await prepareUsageEnv({ cwd, env: { ...env, AITM_GRAPHQL_USAGE_CONTEXT: 'bad' } });
+    await prepareUsageEnv({ cwd: path.join(base, 'not-a-repo'), env });
+  } finally {
+    process.stderr.write = original;
+  }
+  assert.match(messages.join(''), /invalid-inherited-context/);
+  assert.match(messages.join(''), /git-root-resolution-failed/);
+  const diagnostics = (await readUsage((await resolveUsageRoot(cwd)).root)).diagnostics;
+  assert.ok(diagnostics.some((entry) => entry.code === 'invalid-inherited-context'));
+});
+
+test('value report page loop passes one logical identity and page indexes', async () => {
+  const { fetchProject } = await import('../../../reports/generate-value-report.mjs');
+  const metadata = [];
+  const project = await fetchProject({
+    request: async (_query, _variables, context) => {
+      metadata.push(context);
+      return {
+        node: {
+          title: 'fixture',
+          items: {
+            nodes: [],
+            pageInfo: {
+              hasNextPage: metadata.length === 1,
+              endCursor: 'next',
+            },
+          },
+        },
+      };
+    },
+  });
+  assert.equal(project.title, 'fixture');
+  assert.deepEqual(
+    metadata.map((entry) => entry.pageIndex),
+    [0, 1]
+  );
+  assert.equal(metadata[0].logicalOperationId, metadata[1].logicalOperationId);
+});

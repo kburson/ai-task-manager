@@ -135,7 +135,7 @@
     },
     {
       "key": "scripts/reports/generate-value-report.mjs|gh-api-graphql|planned",
-      "count": 3
+      "count": 2
     },
     {
       "key": "scripts/reports/generate-value-report.mjs|opaque-gh-cli|opaque",
@@ -555,13 +555,12 @@
     "scripts/migrate/options-co-pilot-status-swap.mjs|98|gh-api-graphql|planned",
     "scripts/migrate/start-time-field.mjs|50|gh-api-graphql|planned",
     "scripts/migrate/start-time-field.mjs|98|gh-api-graphql|planned",
-    "scripts/reports/generate-value-report.mjs|1228|gh-api-graphql|planned",
-    "scripts/reports/generate-value-report.mjs|151|opaque-gh-cli|opaque",
-    "scripts/reports/generate-value-report.mjs|156|gh-api-graphql|planned",
-    "scripts/reports/generate-value-report.mjs|157|direct-http|covered",
-    "scripts/reports/generate-value-report.mjs|173|gh-api-graphql|planned",
+    "scripts/reports/generate-value-report.mjs|1230|gh-api-graphql|planned",
+    "scripts/reports/generate-value-report.mjs|152|opaque-gh-cli|opaque",
+    "scripts/reports/generate-value-report.mjs|157|gh-api-graphql|planned",
+    "scripts/reports/generate-value-report.mjs|158|direct-http|covered",
     "scripts/reports/heal-backlog-attribution.mjs|160|opaque-gh-cli|opaque",
-    "scripts/task-tracker/action-capture-bin/gh|88|opaque-gh-cli|opaque",
+    "scripts/task-tracker/action-capture-bin/gh|101|opaque-gh-cli|opaque",
     "scripts/task-tracker/backfill-plan-metadata.mjs|219|uncovered|uncovered",
     "scripts/task-tracker/backfill-timing-logs.mjs|183|uncovered|uncovered",
     "scripts/task-tracker/backfill-vc-sections.mjs|101|uncovered|uncovered",

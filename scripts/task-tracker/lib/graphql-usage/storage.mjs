@@ -378,6 +378,18 @@ export async function createUsageWriter(
   }
   return {
     file,
+    appendDiagnostic(record) {
+      if (closed || !enrollment.available) return Promise.resolve(false);
+      let snapshot;
+      try {
+        snapshot = JSON.parse(JSON.stringify(validateDiagnostic(record)));
+      } catch {
+        warn('storage-failure');
+        return Promise.resolve(false);
+      }
+      queue = queue.then(() => appendRow(snapshot));
+      return queue;
+    },
     append(record) {
       if (closed || !enrollment.available) return Promise.resolve(false);
       let snapshot;

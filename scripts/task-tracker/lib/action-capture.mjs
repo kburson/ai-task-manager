@@ -462,6 +462,23 @@ export function summarizeActionCorpus(context, deps = {}) {
 }
 
 // @story #1837
+function graphqlFieldVariables(args) {
+  const values = {};
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = String(args[index]);
+    let field = null;
+    if (['-f', '-F', '--field', '--raw-field'].includes(arg)) field = args[++index];
+    else if (arg.startsWith('--field=')) field = arg.slice('--field='.length);
+    else if (arg.startsWith('--raw-field=')) field = arg.slice('--raw-field='.length);
+    else if (arg.startsWith('-F') || arg.startsWith('-f')) field = arg.slice(2);
+    if (typeof field !== 'string') continue;
+    const match = /^(issue|issueNumber)=(\d+)$/.exec(field);
+    if (match && Number.isSafeInteger(Number(match[2])) && Number(match[2]) > 0)
+      values[match[1]] = Number(match[2]);
+  }
+  return values;
+}
+
 export function classifyGhUsage(args, stdin) {
   if (args[0] === 'api' && args[1] !== 'graphql') return null;
   if (['auth', 'version', 'help', '--version', '--help', 'completion', 'config'].includes(args[0]))
@@ -478,7 +495,7 @@ export function classifyGhUsage(args, stdin) {
   return {
     query,
     selectedOperation,
-    variables: payload?.variables || {},
+    variables: { ...graphqlFieldVariables(args), ...(payload?.variables || {}) },
     ...identifyGraphqlOperation(query, { selectedOperation }),
   };
 }

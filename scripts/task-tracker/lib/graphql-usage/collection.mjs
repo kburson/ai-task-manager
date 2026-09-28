@@ -10,8 +10,19 @@ import { prepareGraphqlQuery, identifyGraphqlOperation } from './identity.mjs';
 export function usageEnabled(env = process.env) {
   return env.AITM_GRAPHQL_USAGE === '1';
 }
-const warning = () =>
-  process.stderr.write('[aitm] GraphQL usage unavailable: collection-failure\n');
+const warning = (code = 'collection-failure') =>
+  process.stderr.write('[aitm graphql-usage] ' + code + '\n');
+async function reportDiagnostics(enrollment, writer = null) {
+  const entries = enrollment.diagnostics || [];
+  for (const entry of entries) warning(entry.code);
+  if (!enrollment.available || entries.length === 0) return;
+  const sink = writer || (await createUsageWriter(enrollment));
+  try {
+    for (const entry of entries) await sink.appendDiagnostic(entry);
+  } finally {
+    if (!writer) await sink.close();
+  }
+}
 export async function prepareUsageEnv({
   cwd = process.cwd(),
   env = process.env,
@@ -35,6 +46,7 @@ export async function prepareUsageEnv({
       trustedRuntime: Boolean(runtimeSessionId),
       runtimeSessionId,
     });
+    await reportDiagnostics(enrollment);
     const shimDir = fileURLToPath(new URL('../../action-capture-bin', import.meta.url));
     const realGh =
       env.AITM_CAPTURE_REAL_GH ||
@@ -128,8 +140,12 @@ export async function beginObservation({
       descendant: true,
       permissionContext: env.AITM_GRAPHQL_USAGE_PERMISSION_CONTEXT,
     });
-    if (!enrollment.available) return null;
+    if (!enrollment.available) {
+      await reportDiagnostics(enrollment);
+      return null;
+    }
     const writer = await createUsageWriter(enrollment);
+    await reportDiagnostics(enrollment, writer);
     const c = enrollment.context;
     const callId = randomUUID();
     const startedAt = new Date().toISOString();
@@ -289,6 +305,8 @@ export async function observeGraphqlHttp(
   } catch {
     return (await transport(url, options)).json();
   }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+    return (await transport(url, options)).json();
   const prepared = prepareGraphqlQuery(payload.query, { selectedOperation: payload.operationName });
   const finish = await beginObservation({
     env,
