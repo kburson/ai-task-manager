@@ -106,12 +106,9 @@ than silently delivering all work under one oversized story.
 ## Story Intent
 
 - **Beneficiary:** AITM maintainer planning GitHub GraphQL reduction work
-- **Capability:** measure GraphQL call volume, point costs, unknown costs, and
-  coverage across concurrent worktrees
-- **Need:** current rate-limit pressure is shared across sessions, but the
-  project cannot attribute cost by operation or lifecycle stage
-- **Value or failure prevented:** #1817 can prioritize real bottlenecks without
-  guessing, hiding unknowns, or changing production behavior during measurement
+- **Capability:** measure GraphQL call volume, point costs, unknown costs, and coverage across concurrent worktrees
+- **Need:** current rate-limit pressure is shared across sessions, but the project cannot attribute cost by operation or lifecycle stage
+- **Value or failure prevented:** #1817 can prioritize real bottlenecks without guessing, hiding unknowns, or changing production behavior during measurement
 
 ## Global Constraints
 
@@ -155,12 +152,9 @@ than silently delivering all work under one oversized story.
 #### Story Intent
 
 - **Beneficiary:** spike implementer and reviewer
-- **Capability:** know every AITM-owned production GraphQL path and the record
-  contract each path must satisfy
-- **Need:** instrumentation cannot be trusted if direct, shell, synchronous,
-  HTTP, and opaque CLI paths are not classified up front
-- **Value or failure prevented:** the baseline reports honest coverage instead
-  of silently treating unobserved traffic as zero
+- **Capability:** know every AITM-owned production GraphQL path and the record contract each path must satisfy
+- **Need:** instrumentation cannot be trusted if direct, shell, synchronous, HTTP, and opaque CLI paths are not classified up front
+- **Value or failure prevented:** the baseline reports honest coverage instead of silently treating unobserved traffic as zero
 
 #### Files and Delivery Boundary
 
@@ -206,12 +200,9 @@ node --test scripts/tests/unit/task-tracker/lib/graphql-usage-records.test.mjs
 #### Story Intent
 
 - **Beneficiary:** operators measuring multiple concurrent worktrees
-- **Capability:** share usage observations under one Git common directory with
-  trustworthy participant attribution
-- **Need:** the reviewed spec requires real permission-context enrollment before
-  a measured process tree starts
-- **Value or failure prevented:** later production wiring has a real sink,
-  manifest contract, and denial vocabulary instead of an unspecified temporary store
+- **Capability:** share usage observations under one Git common directory with trustworthy participant attribution
+- **Need:** the reviewed spec requires real permission-context enrollment before a measured process tree starts
+- **Value or failure prevented:** later production wiring has a real sink, manifest contract, and denial vocabulary instead of an unspecified temporary store
 
 #### Files and Delivery Boundary
 
@@ -266,12 +257,9 @@ node --test scripts/tests/unit/task-tracker/lib/graphql-usage-storage.test.mjs
 #### Story Intent
 
 - **Beneficiary:** AITM operator running normal commands
-- **Capability:** observe GraphQL attempts and opaque invocations without
-  changing command behavior
-- **Need:** existing GraphQL traffic flows through mixed shell, shim, sync
-  subprocess, and direct HTTP paths
-- **Value or failure prevented:** measurement covers production routes while
-  preserving stdout, stderr, exits, exceptions, and response payloads
+- **Capability:** observe GraphQL attempts and opaque invocations without changing command behavior
+- **Need:** existing GraphQL traffic flows through mixed shell, shim, sync subprocess, and direct HTTP paths
+- **Value or failure prevented:** measurement covers production routes while preserving stdout, stderr, exits, exceptions, and response payloads
 
 #### Files and Delivery Boundary
 
@@ -335,12 +323,9 @@ node --test scripts/tests/slow/task-tracker/lib/action-capture-integration.test.
 #### Story Intent
 
 - **Beneficiary:** maintainer deciding which GraphQL work to prioritize
-- **Capability:** inspect volume, known points, unknowns, peaks, failures, and
-  coverage gaps by operation, stage, issue, session, and worktree
-- **Need:** raw JSONL is not decision-grade, and partial cost sums can mislead
-  if displayed as complete totals
-- **Value or failure prevented:** #1817 receives truthful lower-bound evidence
-  and explicit insufficiency findings instead of false point rankings
+- **Capability:** inspect volume, known points, unknowns, peaks, failures, and coverage gaps by operation, stage, issue, session, and worktree
+- **Need:** raw JSONL is not decision-grade, and partial cost sums can mislead if displayed as complete totals
+- **Value or failure prevented:** #1817 receives truthful lower-bound evidence and explicit insufficiency findings instead of false point rankings
 
 #### Files and Delivery Boundary
 
@@ -405,12 +390,9 @@ node --test scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs
 #### Story Intent
 
 - **Beneficiary:** #1817 planner and future implementers
-- **Capability:** use a real measured creation-to-planning baseline with honest
-  concurrency and coverage limits
-- **Need:** instrumentation without a baseline does not answer which operations
-  should be optimized first
-- **Value or failure prevented:** backlog-cache work starts from measured lower
-  bounds and documented unknowns rather than intuition
+- **Capability:** use a real measured creation-to-planning baseline with honest concurrency and coverage limits
+- **Need:** instrumentation without a baseline does not answer which operations should be optimized first
+- **Value or failure prevented:** backlog-cache work starts from measured lower bounds and documented unknowns rather than intuition
 
 #### Files and Delivery Boundary
 
