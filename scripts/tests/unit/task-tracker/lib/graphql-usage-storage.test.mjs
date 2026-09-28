@@ -140,7 +140,7 @@ test('reader preserves complete lines and reports malformed, partial and conflic
   await w.close();
   await fs.appendFile(w.file, 'bad-json\n{"partial":');
   const r = await usage.readUsage(e.root);
-  assert.equal(r.observations.length, 1);
+  assert.equal(r.observations.length, 0);
   assert.equal(r.duplicateCount, 1);
   assert.equal(r.conflictCount, 1);
   assert.equal(r.partialLineCount, 1);
@@ -269,4 +269,94 @@ test('cleanup refuses a shared-root symlink swapped after enrollment', async (t)
   await fs.rename(e.root, moved);
   await fs.symlink(moved, e.root);
   await assert.rejects(usage.cleanupUsage(e.root, { afterExport: true, operatorDirected: true }));
+});
+
+test('conflicting call IDs remain excluded when repeated again, preserving unrelated calls', async (t) => {
+  const { cwd } = await repository(t);
+  const e = await usage.enrollUsage(options(cwd));
+  const a = await usage.createUsageWriter(e);
+  const b = await usage.createUsageWriter(e);
+  const row = observation(e.context, 'conflict');
+  await a.append(row);
+  await a.append(observation(e.context, 'valid'));
+  await b.append({ ...row, pointCost: 2 });
+  await b.append(row);
+  await a.close();
+  await b.close();
+  const read = await usage.readUsage(e.root);
+  assert.deepEqual(
+    read.observations.map((r) => r.callId),
+    ['valid']
+  );
+  assert.equal(read.invalidCallIds.includes('conflict'), true);
+});
+
+test('unknown ancestor launch route remains explicitly unknown without throwing in descendants', async (t) => {
+  const { cwd } = await repository(t);
+  const ancestor = await usage.enrollUsage(options(cwd, { launchRoute: 'unknown' }));
+  assert.equal(ancestor.available, true);
+  const child = await usage.enrollUsage(options(cwd, { descendant: true, env: ancestor.env }));
+  assert.equal(child.available, true);
+  assert.equal(child.context.sessionId, ancestor.context.sessionId);
+  assert.equal(child.context.collectorLaunchRoute, 'unknown');
+  assert.equal(child.context.originatingLaunchRoute, null);
+  assert.ok(child.diagnostics.some((d) => d.code === 'unsupported-context'));
+});
+
+test('writer refuses filename and root redirection after startup without touching outside files', async (t) => {
+  for (const redirectRoot of [false, true]) {
+    const { cwd, base } = await repository(t);
+    const e = await usage.enrollUsage(options(cwd));
+    const w = await usage.createUsageWriter(e, { stderr: () => {} });
+    const outside = path.join(base, 'outside');
+    await fs.mkdir(outside);
+    const target = path.join(outside, 'target.jsonl');
+    await fs.writeFile(target, 'unchanged');
+    if (redirectRoot) {
+      await fs.rename(e.root, path.join(base, 'old-root'));
+      await fs.symlink(outside, e.root);
+      const redirected = path.join(outside, path.relative(e.root, w.file));
+      await fs.mkdir(path.dirname(redirected), { recursive: true });
+      await fs.symlink(target, redirected);
+    } else {
+      await fs.unlink(w.file);
+      await fs.symlink(target, w.file);
+    }
+    assert.equal(await w.append(observation(e.context)), false);
+    assert.equal(e.available, false);
+    assert.equal(await fs.readFile(target, 'utf8'), 'unchanged');
+    await w.close();
+  }
+});
+
+test('reader bounds each active-file read to the extent captured before concurrent append', async (t) => {
+  const { cwd } = await repository(t);
+  const e = await usage.enrollUsage(options(cwd));
+  const w = await usage.createUsageWriter(e);
+  await w.append(observation(e.context, 'before'));
+  let appended = false;
+  const io = {
+    ...fs,
+    open: async (...args) => {
+      const handle = await fs.open(...args);
+      const stat = handle.stat.bind(handle);
+      handle.stat = async () => {
+        const extent = await stat();
+        if (args[0] === w.file && !appended) {
+          appended = true;
+          await w.append(observation(e.context, 'after'));
+        }
+        return extent;
+      };
+      return handle;
+    },
+  };
+  const snapshot = await usage.readUsage(e.root, { io });
+  assert.equal(appended, true);
+  assert.deepEqual(
+    snapshot.observations.map((r) => r.callId),
+    ['before']
+  );
+  assert.equal((await usage.readUsage(e.root)).observations.length, 2);
+  await w.close();
 });

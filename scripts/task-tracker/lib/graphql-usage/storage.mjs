@@ -243,6 +243,12 @@ export async function enrollUsage({
   const permissionContextId = hash(
     typeof permissionContext === 'string' && permissionContext ? permissionContext : randomUUID()
   );
+  const inheritedOrigin = inherited?.originatingLaunchRoute ?? inherited?.collectorLaunchRoute;
+  const knownOrigin = ['aitm-cli', 'legacy-cli-shell', 'measurement-launcher'].includes(
+    inheritedOrigin
+  );
+  if (descendant && inherited && !knownOrigin)
+    diagnostics.push(usageDiagnostic('unsupported-context', resolved, now));
   const context = {
     schemaVersion: 'aitm.graphql-usage.enrollment/v1',
     commonRootId: resolved.commonRootId,
@@ -253,11 +259,9 @@ export async function enrollUsage({
     collectorVersion,
     permissionContextId,
     probedAt: now,
-    collectorLaunchRoute: descendant && inherited ? 'inherited-environment' : launchRoute,
-    originatingLaunchRoute:
-      descendant && inherited
-        ? (inherited.originatingLaunchRoute ?? inherited.collectorLaunchRoute)
-        : null,
+    collectorLaunchRoute:
+      descendant && inherited ? (knownOrigin ? 'inherited-environment' : 'unknown') : launchRoute,
+    originatingLaunchRoute: descendant && inherited && knownOrigin ? inheritedOrigin : null,
   };
   result.context = context;
   const reusable =
@@ -317,6 +321,8 @@ export async function createUsageWriter(
   let queue = Promise.resolve();
   let closed = false;
   let file = null;
+  let handle = null;
+  let identity = null;
   let writes = 0;
   const checkRetention = async () => {
     try {
@@ -336,13 +342,14 @@ export async function createUsageWriter(
   };
   const appendRow = async (row) => {
     try {
-      const handle = await io.open(file, 'a', 0o600);
-      try {
-        await handle.writeFile(JSON.stringify(row) + '\n');
-        await handle.sync();
-      } finally {
-        await handle.close();
-      }
+      await assertRoot(enrollment.root);
+      if ((await io.realpath(file)) !== file) throw new Error('redirected writer');
+      const current = await io.lstat(file);
+      if (!current.isFile() || current.dev !== identity.dev || current.ino !== identity.ino)
+        throw new Error('replaced writer');
+      // The held descriptor prevents a pathname swap after identity checking from redirecting writes.
+      await handle.writeFile(JSON.stringify(row) + '\n');
+      await handle.sync();
       return true;
     } catch {
       return fail();
@@ -361,8 +368,8 @@ export async function createUsageWriter(
       await privateDirectory(path.dirname(directory), io);
       await privateDirectory(directory, io);
       file = path.join(directory, `${randomUUID()}.jsonl`);
-      const handle = await io.open(file, 'wx', 0o600);
-      await handle.close();
+      handle = await io.open(file, 'wx', 0o600);
+      identity = await handle.stat();
       await appendRow(usageDiagnostic('writer-start', context));
       await checkRetention();
     } catch {
@@ -398,9 +405,21 @@ export async function createUsageWriter(
     async close() {
       if (closed) return queue;
       closed = true;
-      queue = queue.then(() =>
-        enrollment.available && file ? appendRow(usageDiagnostic('writer-close', context)) : false
-      );
+      queue = queue.then(async () => {
+        const written =
+          enrollment.available && file
+            ? await appendRow(usageDiagnostic('writer-close', context))
+            : false;
+        if (handle) {
+          try {
+            await handle.close();
+          } catch {
+            return fail();
+          }
+          handle = null;
+        }
+        return written;
+      });
       return queue;
     },
   };
@@ -488,7 +507,25 @@ function parseLines(text) {
   }
   return { rows, partial, malformed };
 }
-export async function readUsage(root) {
+async function snapshotText(file, io) {
+  const handle = await io.open(file, 'r');
+  try {
+    const { size } = await handle.stat();
+    const chunks = [];
+    let position = 0;
+    while (position < size) {
+      const buffer = Buffer.alloc(Math.min(65536, size - position));
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+      if (!bytesRead) break;
+      chunks.push(buffer.subarray(0, bytesRead));
+      position += bytesRead;
+    }
+    return Buffer.concat(chunks).toString('utf8');
+  } finally {
+    await handle.close();
+  }
+}
+export async function readUsage(root, { io = fs } = {}) {
   const started = performance.now();
   const result = {
     observations: [],
@@ -502,11 +539,12 @@ export async function readUsage(root) {
     elapsedMs: 0,
   };
   const seen = new Map();
+  const invalid = new Set();
   for (const file of await filesUnder(root)) {
     let parsed;
     try {
       result.fileOpenCount++;
-      parsed = parseLines(await fs.readFile(file, 'utf8'));
+      parsed = parseLines(await snapshotText(file, io));
     } catch {
       result.diagnostics.push(usageDiagnostic('storage-failure'));
       continue;
@@ -522,7 +560,10 @@ export async function readUsage(root) {
         const previous = seen.get(row.callId);
         if (previous) {
           if (JSON.stringify(previous) === JSON.stringify(row)) result.duplicateCount++;
-          else result.conflictCount++;
+          else {
+            result.conflictCount++;
+            invalid.add(row.callId);
+          }
           result.diagnostics.push(usageDiagnostic('duplicate-call-id', row));
         } else {
           seen.set(row.callId, row);
@@ -533,6 +574,8 @@ export async function readUsage(root) {
       else result.controls.push(row);
     }
   }
+  result.observations = result.observations.filter((row) => !invalid.has(row.callId));
+  result.invalidCallIds = [...invalid];
   result.elapsedMs = performance.now() - started;
   return result;
 }
