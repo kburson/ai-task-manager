@@ -10,7 +10,7 @@ import {
   completeCapturedAction,
 } from '../lib/action-capture.mjs';
 
-import { beginObservation } from '../lib/graphql-usage/collection.mjs';
+import { beginObservation, parseGhArguments } from '../lib/graphql-usage/collection.mjs';
 
 function warning(message) {
   process.stderr.write(
@@ -67,28 +67,22 @@ function finishCapture(handle, result) {
 }
 
 function endpointHost(args, env) {
-  let explicit = null;
-  let repository = null;
+  const parsed = parseGhArguments(args);
   let urlHost = null;
-  for (let i = 0; i < args.length; i++) {
-    const arg = String(args[i]);
-    if (arg === '--hostname') explicit = args[++i];
-    else if (arg.startsWith('--hostname=')) explicit = arg.slice('--hostname='.length);
-    else if (arg === '--repo' || arg === '-R') repository = args[++i];
-    else if (arg.startsWith('--repo=')) repository = arg.slice('--repo='.length);
-    else if (arg.startsWith('-R') && arg.length > 2) repository = arg.slice(2);
-    else if (/^https?:\/\//.test(arg)) {
+  if (!parsed.ambiguous && ['issue', 'pr'].includes(args[0])) {
+    for (const operand of parsed.operands) {
+      if (!/^https?:\/\//.test(operand)) continue;
       try {
-        const url = new URL(arg);
+        const url = new URL(operand);
         if (/\/(issues|pull)\/\d+(?:\/|$)/.test(url.pathname)) urlHost = url.hostname;
       } catch {
         /* invalid URL is not trusted host context */
       }
     }
   }
-  const repoParts = String(repository || '').split('/');
+  const repoParts = String(parsed.repository || '').split('/');
   const repositoryHost = repoParts.length === 3 ? repoParts[0] : null;
-  const host = explicit || repositoryHost || urlHost || env.GH_HOST;
+  const host = parsed.hostname || repositoryHost || urlHost || env.GH_HOST;
   if (!host) return 'api.github.com';
   if (!/^[A-Za-z0-9.-]{1,253}$/.test(host)) return null;
   return host.toLowerCase() === 'github.com' ? 'api.github.com' : host.toLowerCase();

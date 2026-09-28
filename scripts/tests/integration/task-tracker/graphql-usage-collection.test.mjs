@@ -674,3 +674,35 @@ test('host-qualified issue URL controls CLI endpoint attribution', async (t) => 
   assert.equal(rows.length, 1);
   assert.equal(rows[0].endpointHost, 'github.example.com');
 });
+
+test('interspersed edit options and issue URLs preserve multi-issue context', async () => {
+  const { dispatchContext } = await import(collectionUrl);
+  for (const args of [
+    ['issue', 'edit', '23', '--add-label', 'bug', '34'],
+    ['issue', 'edit', '23', 'https://github.com/owner/repo/issues/34', '--add-label', 'bug'],
+  ]) {
+    const context = dispatchContext({ args, lifecycleState: 'develop' });
+    assert.equal(context.issueNumber, null);
+    assert.equal(context.contextScope, 'multiple-issues');
+    assert.equal(context.lifecycleState, 'unknown');
+  }
+  const one = dispatchContext({
+    args: ['issue', 'edit', '23', '--parent', '100', '--body', '34'],
+  });
+  assert.equal(one.issueNumber, 23);
+});
+
+test('body URL cannot override GH CLI endpoint host', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const run = spawnSync(
+    'gh',
+    ['issue', 'edit', '23', '--body', 'https://github.example.com/owner/repo/issues/42'],
+    { cwd, env: { ...prepared, GH_HOST: '' }, encoding: 'utf8' }
+  );
+  assert.equal(run.status, 0, run.stderr);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].endpointHost, 'api.github.com');
+});

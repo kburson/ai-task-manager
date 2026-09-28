@@ -82,6 +82,92 @@ export async function prepareUsageEnv({
   }
 }
 
+const ghValueFlags = new Set([
+  '--add-assignee',
+  '--add-blocked-by',
+  '--add-blocking',
+  '--add-label',
+  '--add-project',
+  '--add-sub-issue',
+  '--assignee',
+  '--body',
+  '--body-file',
+  '--comment',
+  '--hostname',
+  '--json',
+  '--jq',
+  '--limit',
+  '--milestone',
+  '--parent',
+  '--remove-assignee',
+  '--remove-blocked-by',
+  '--remove-blocking',
+  '--remove-label',
+  '--remove-project',
+  '--remove-sub-issue',
+  '--repo',
+  '--search',
+  '--state',
+  '--template',
+  '--title',
+  '--type',
+  '-R',
+  '-F',
+  '-b',
+  '-m',
+  '-t',
+]);
+const ghSwitchFlags = new Set([
+  '--help',
+  '--remove-milestone',
+  '--remove-parent',
+  '--remove-type',
+  '--web',
+]);
+
+export function parseGhArguments(args = []) {
+  const operands = [];
+  let hostname = null;
+  let repository = null;
+  let ambiguous = false;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = String(args[index]);
+    if (arg === '--') {
+      operands.push(...args.slice(index + 1).filter((_, offset) => index + 1 + offset > 1));
+      break;
+    }
+    const option = arg.includes('=') ? arg.slice(0, arg.indexOf('=')) : arg;
+    if (ghValueFlags.has(option)) {
+      const value = option === arg ? args[++index] : arg.slice(option.length + 1);
+      if (value === undefined) ambiguous = true;
+      if (option === '--hostname') hostname = value || null;
+      if (option === '--repo' || option === '-R') repository = value || null;
+      continue;
+    }
+    if (arg.length > 2 && ghValueFlags.has(arg.slice(0, 2))) {
+      if (arg.startsWith('-R')) repository = arg.slice(2);
+      continue;
+    }
+    if (ghSwitchFlags.has(arg)) continue;
+    if (arg.startsWith('-')) {
+      ambiguous = true;
+      continue;
+    }
+    if (index > 1) operands.push(arg);
+  }
+  return { operands, hostname, repository, ambiguous };
+}
+
+function issueOperandNumber(value) {
+  if (/^\d+$/.test(value)) return Number(value);
+  try {
+    const url = new URL(value);
+    const match = url.pathname.match(/^\/[^/]+\/[^/]+\/issues\/(\d+)\/?$/);
+    return match ? Number(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
 export function dispatchContext({
   args = [],
   variables = {},
@@ -90,14 +176,12 @@ export function dispatchContext({
   stateSource = 'argument',
   issueNumber = null,
 } = {}) {
-  const explicit = [];
-  if (args[0] === 'issue') {
-    for (const value of args.slice(2)) {
-      if (!/^\d+$/.test(value)) break;
-      explicit.push(Number(value));
-      if (args[1] !== 'edit') break;
-    }
-  }
+  const parsed = parseGhArguments(args);
+  const targetArgs = args[0] === 'issue' ? parsed.operands : [];
+  const explicit = targetArgs.map(issueOperandNumber);
+  const ambiguousTargets =
+    args[0] === 'issue' &&
+    (parsed.ambiguous || explicit.some((value) => !Number.isSafeInteger(value)));
   const values = [
     issueNumber,
     ...explicit,
@@ -107,7 +191,7 @@ export function dispatchContext({
   ]
     .filter((value) => Number.isSafeInteger(Number(value)) && Number(value) > 0)
     .map(Number);
-  const issues = [...new Set(values)];
+  const issues = ambiguousTargets ? [] : [...new Set(values)];
   return {
     repository: /^[\w.-]+\/[\w.-]+$/.test(repository || '') ? repository : null,
     issueNumber: issues.length === 1 ? issues[0] : null,
