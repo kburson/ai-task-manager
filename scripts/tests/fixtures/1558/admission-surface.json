@@ -1495,9 +1495,11 @@
       "command": null,
       "staticImports": [
         "node:fs",
-        "node:child_process",
+        "node:path",
+        "./lib/worktree-binding-guard.mjs",
+        "./lib/mutation-context.mjs",
+        "./lib/assignee-guard.mjs",
         "./activity-policy.mjs",
-        "./lib/process-timeouts.mjs",
         "./lib/activity-block-reason.mjs",
         "./lib/bound-state.mjs",
         "./lib/chore-mode.mjs",
@@ -2312,6 +2314,9 @@
         "./lib/ownership-policy.mjs",
         "./lib/assignment-snapshot.mjs",
         "./lib/apply-patch-targets.mjs",
+        "./lib/mutation-context.mjs",
+        "./lib/worktree-binding-guard.mjs",
+        "./lib/installed-guard-path.mjs",
         "./lib/workflow-policy/enforcement.mjs"
       ],
       "firstPotentialEffect": "internal invocation",

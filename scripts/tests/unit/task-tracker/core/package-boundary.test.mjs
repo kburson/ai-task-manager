@@ -304,6 +304,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const localTrunkProofAllowance = 2;
   // #1826 ships the typed local-trunk burn and close receipt runtime.
   const localTrunkReceiptAllowance = 1;
+  // #1830 ships one shared mutation-context runtime module.
+  const mutationContextAllowance = 1;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -344,7 +346,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryWaiverTransactionAllowance +
     deliveryIntegrationProofAllowance +
     localTrunkProofAllowance +
-    localTrunkReceiptAllowance;
+    localTrunkReceiptAllowance +
+    mutationContextAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

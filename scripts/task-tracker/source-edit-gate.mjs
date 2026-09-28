@@ -15,7 +15,8 @@
 //   - `.scratch/**` disposable operator and workflow scratch
 //   - `.scratch/**` disposable scratch
 //
-// When chore-mode is active, every path is allowed (full bypass).
+// Chore-mode bypasses ordinary source policy after target containment and
+// installed-guard checks.
 //
 // Cache: the `(state, hasPostedMarker, hasCompleteMarker, fetchedAt)`
 // tuple is persisted in a gitignored sidecar at `.ai-task-manager/.cache/active-issue.json`
@@ -36,7 +37,15 @@ import { loadConfig } from './config.mjs';
 import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 import { ownershipDecision } from './lib/ownership-policy.mjs';
 import { fetchAssignmentSnapshot } from './lib/assignment-snapshot.mjs';
-import { extractApplyPatchTargets } from './lib/apply-patch-targets.mjs';
+import { extractApplyPatchTargets, extractApplyPatchText } from './lib/apply-patch-targets.mjs';
+import {
+  resolveInvocationDirectory,
+  resolveMutationTarget,
+  readExactSessionBinding,
+  bindingMatches,
+} from './lib/mutation-context.mjs';
+import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
+import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
   loadWorkflowBoundary,
@@ -95,12 +104,27 @@ export function decideSourceEdit({
   currentUser,
   workflowPolicy,
   policy = DEFAULT_POLICY,
+  planBindingValid = false,
+  validatedTarget = null,
 }) {
   if (!GATED_TOOLS.has(toolName)) {
     return { decision: 'allow', reason: 'tool-not-gated' };
   }
 
-  const relPath = normalizePath(filePath, projectDir);
+  const relPath = validatedTarget?.relative ?? normalizePath(filePath, projectDir);
+  if (
+    isInstalledGuardPath(filePath) ||
+    isInstalledGuardPath(relPath) ||
+    (validatedTarget &&
+      (isInstalledGuardPath(validatedTarget.lexical) ||
+        isInstalledGuardPath(validatedTarget.physical)))
+  ) {
+    return {
+      decision: 'block',
+      code: 'source-edit-installed-guard',
+      reason: `[task-tracker] Refusing installed guard target: ${filePath}`,
+    };
+  }
 
   // Chore-mode bypass: any path allowed.
   if (choreModeActive) {
@@ -160,6 +184,17 @@ export function decideSourceEdit({
           recovery,
       };
     }
+  }
+
+  if (
+    state === 'plan' &&
+    planBindingValid &&
+    /^(?:docs|\.claude\/plans)\/(?:[^/]+\/)*[^/]+\.md$/.test(relPath) &&
+    Array.isArray(assignees) &&
+    assignees.length === 1 &&
+    assignees[0] === currentUser
+  ) {
+    return { decision: 'allow', reason: 'plan-document-allowed' };
   }
 
   if (PRE_DEVELOP_STATES.has(state)) {
@@ -387,31 +422,32 @@ function readStdin() {
   }
 }
 
-function findProjectDir(startDir) {
-  if (process.env.AI_TASK_MANAGER_PROJECT_DIR) return process.env.AI_TASK_MANAGER_PROJECT_DIR;
-  let dir = path.resolve(startDir || process.cwd());
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(path.join(dir, '.ai-task-manager'))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
-}
-
 export async function runHook(payload, deps = {}) {
   const toolName = payload?.tool_name;
   if (!GATED_TOOLS.has(toolName)) return { decision: 'allow', reason: 'tool-not-gated' };
 
-  const projectDir =
-    'projectDir' in deps ? deps.projectDir : findProjectDir(payload?.cwd || process.cwd());
+  let invocationDir;
+  let projectDir;
+  try {
+    invocationDir = (deps.resolveInvocationDirectory || resolveInvocationDirectory)(payload);
+    projectDir =
+      'projectDir' in deps
+        ? deps.projectDir
+        : readWorktreeIdentity({ projectDir: invocationDir }).worktreePath;
+  } catch (error) {
+    return {
+      decision: 'block',
+      code: 'source-edit-context',
+      reason: `[task-tracker] Source-edit context unavailable: ${error.message}`,
+    };
+  }
   if (!projectDir) return { decision: 'allow', reason: 'no-project-dir' };
 
   let targets = [];
   if (toolName === 'apply_patch') {
     try {
       targets = (deps.extractApplyPatchTargets || extractApplyPatchTargets)(
-        payload?.tool_input?.patch || payload?.tool_input?.input || payload?.tool_input?.text || ''
+        extractApplyPatchText(payload?.tool_input)
       );
     } catch (error) {
       return {
@@ -429,8 +465,29 @@ export async function runHook(payload, deps = {}) {
     if (filePath) targets = [filePath];
   }
 
+  const validatedTargets = [];
+  for (const filePath of targets) {
+    try {
+      if (existsSync(projectDir))
+        validatedTargets.push(
+          (deps.resolveMutationTarget || resolveMutationTarget)(filePath, invocationDir, projectDir)
+        );
+      else validatedTargets.push(null);
+    } catch (error) {
+      return {
+        decision: 'block',
+        code: 'source-edit-target',
+        reason: `[task-tracker] Source-edit target refused: ${error.message}`,
+      };
+    }
+  }
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
-  const boundIssue = (deps.loadBoundIssue || loadBoundIssue)(projectDir);
+  const exactBinding = (deps.readExactSessionBinding || readExactSessionBinding)(projectDir);
+  const boundIssue = deps.loadBoundIssue
+    ? deps.loadBoundIssue(projectDir)
+    : exactBinding
+      ? `#${exactBinding.issueNumber}`
+      : loadBoundIssue(projectDir);
 
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
   if (!choreModeActive && boundIssue) {
@@ -492,7 +549,13 @@ export async function runHook(payload, deps = {}) {
     }
   }
   let allowedResult = { decision: 'allow', reason: 'all-mutation-targets-allowed' };
-  for (const filePath of targets.length ? targets : ['']) {
+  const observed = existsSync(projectDir) ? readWorktreeIdentity({ projectDir }) : null;
+  const planBindingValid = bindingMatches(
+    observed,
+    exactBinding,
+    Number(String(boundIssue || '').replace(/^#/, ''))
+  );
+  for (const [index, filePath] of (targets.length ? targets : ['']).entries()) {
     const result = decideSourceEdit({
       toolName: toolName === 'apply_patch' ? 'Edit' : toolName,
       filePath,
@@ -506,6 +569,8 @@ export async function runHook(payload, deps = {}) {
       currentUser: signals.currentUser,
       workflowPolicy,
       policy,
+      planBindingValid,
+      validatedTarget: validatedTargets[index],
     });
     if (result.decision === 'block') return result;
     allowedResult = result;

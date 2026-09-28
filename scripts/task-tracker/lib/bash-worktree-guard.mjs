@@ -8,6 +8,7 @@
 import path from 'node:path';
 
 import { splitCommandSegments } from './gh-edit-guard.mjs';
+import { discoverBashActivity } from './mutation-context.mjs';
 
 export const FOREIGN_WORKTREE_OVERRIDE = '--allow-foreign-worktree';
 
@@ -166,7 +167,10 @@ function classifySegment(segment) {
   if (hasShellWriteSyntax(segment) || SIMPLE_WRITE_COMMANDS.has(executable) || inPlaceEdit) {
     return { guarded: true, kind: 'shell-write', segment, override };
   }
-  if (executable === 'git' && gitIsMutation(tokens)) {
+  if (
+    discoverBashActivity(segment, process.cwd()) ||
+    (executable === 'git' && gitIsMutation(tokens))
+  ) {
     return { guarded: true, kind: 'git-mutation', segment, override };
   }
   if (['npm', 'npx', 'node', 'aitm', 'task'].includes(executable) || executable === '/task') {
@@ -192,7 +196,10 @@ export function evaluateBashWorktreeBinding({ command, bound, invoking, classifi
   if (!classified.guarded) return { block: false, status: 'read-only' };
   if (!bound) return { block: false, status: 'unbound' };
   if (!invoking) throw new Error('bash-worktree-guard: invoking worktree identity is required');
-  if (bound.worktreePath === invoking.worktreePath) {
+  if (
+    bound.worktreePath === invoking.worktreePath &&
+    bound.worktreeBranch === invoking.worktreeBranch
+  ) {
     return { block: false, status: 'matched' };
   }
   if (classified.override) return { block: false, status: 'override' };

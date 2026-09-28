@@ -243,7 +243,8 @@ for (const [handlerName, input, env, cwd] of [
   [
     'source-edit-gate',
     { ...nativeBase, toolName: 'write', toolInput: { file_path: 'README.md' } },
-    { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: tmp },
+    process.env,
+    guardMain,
   ],
   [
     'agent-guard',

@@ -53,8 +53,8 @@ function makeRepo() {
   return { root, child };
 }
 
-async function runGuard({ cwd, command, sessionId }) {
-  const payload = JSON.stringify({ tool_name: 'Bash', cwd, tool_input: { command } });
+async function runGuard({ cwd, payloadCwd = cwd, command, sessionId }) {
+  const payload = JSON.stringify({ tool_name: 'Bash', cwd: payloadCwd, tool_input: { command } });
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [GUARD], {
       cwd,
@@ -99,6 +99,16 @@ test('classifies writes and verification across compound command segments', () =
   }
 });
 
+test('wrapped nested commits require the bound worktree', () => {
+  for (const command of [
+    "env bash -c 'git commit -m x'",
+    "command bash -c 'git commit -m x'",
+    "LANG=C bash -c 'git commit -m x'",
+  ]) {
+    assert.equal(classifyBashWorktreeCommand(command).guarded, true, command);
+  }
+});
+
 test('allows navigation and read-only inspection classifications', () => {
   for (const command of [
     'cd /repo/.worktrees/1166',
@@ -106,6 +116,9 @@ test('allows navigation and read-only inspection classifications', () => {
     'git status --short',
     'git log --oneline -3',
     'git diff --check',
+    'git config --get remote.origin.url',
+    'git config --local --get remote.origin.url',
+    'git worktree list --porcelain',
     'rg worktree scripts',
     'sed -n 1,80p file.txt',
     'find scripts -type f',
@@ -194,4 +207,52 @@ test('existing gh-edit evaluator outcomes are unchanged', () => {
   assert.deepEqual(evaluateGhEdit({ command: 'gh issue edit 1166 --add-label bug' }), {
     block: false,
   });
+});
+
+test('hook process in main checkout honors linked payload directory and recorded branch', async (t) => {
+  const { root, child } = makeRepo();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const sessionId = 'binding-payload-1830';
+  setActiveTask(
+    sessionId,
+    {
+      issue: '#1830',
+      worktreePath: child,
+      worktreeBranch: 'feature/child/1166',
+      worktreeResolvedAt: new Date().toISOString(),
+    },
+    child
+  );
+  writeFleet(fleetPath(root), {
+    '#1830': {
+      worktreePath: child,
+      branch: 'feature/child/1166',
+      kind: 'worktree',
+      status: 'active',
+      startedAt: new Date().toISOString(),
+    },
+  });
+  const matched = await runGuard({ cwd: root, payloadCwd: child, command: 'npm test', sessionId });
+  assert.equal(matched.stdout, '', matched.stderr);
+  setActiveTask(
+    sessionId,
+    {
+      issue: '#1830',
+      worktreePath: child,
+      worktreeBranch: 'trunk',
+      worktreeResolvedAt: new Date().toISOString(),
+    },
+    child
+  );
+  const stale = await runGuard({ cwd: root, payloadCwd: child, command: 'npm test', sessionId });
+  assert.equal(JSON.parse(stale.stdout).decision, 'block');
+  assert.match(JSON.parse(stale.stdout).reason, /binding mismatch/);
+});
+
+test('aliases and literal nested shells remain guarded worktree mutations', () => {
+  const binary = 'g' + 'it';
+  const verb = 'com' + 'mit';
+  for (const command of [`${binary} ci -m fix`, `bash -c '${binary} ${verb} -m fix'`])
+    assert.equal(classifyBashWorktreeCommand(command).guarded, true, command);
+  assert.equal(classifyBashWorktreeCommand(`echo '${binary} ${verb} -m fix'`).guarded, false);
 });

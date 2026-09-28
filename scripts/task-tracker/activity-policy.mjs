@@ -16,13 +16,13 @@
 // Pure module: classifiers do no I/O. `loadPolicy` reads the filesystem once
 // per call and falls back to defaults on missing/invalid file.
 //
-// Bash command-target extraction (redirect / `tee` / heredoc / `touch|mkdir|rm`)
-// duplicates `bash-guard.mjs` lines 80-105. Epic W2 (#67) will lift those
-// helpers into a shared module and re-import here; the patterns are inlined
-// verbatim until then.
+// Git mutation discovery is shared with the hook consumers by #1830.
+// Broader shell write-target extraction (redirect / tee / heredoc /
+// touch|mkdir|rm) remains deferred under Epic W2 (#67).
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { discoverBashActivity } from './lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -101,10 +101,11 @@ export const STATE_MATRIX = Object.freeze({
   backlog: ['WRITE_ISSUE', 'READ_*'],
   refine: ['WRITE_ISSUE', 'READ_*'],
   'ready-for-plan': ['WRITE_ISSUE', 'READ_*'],
-  plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
+  plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'RUN_TESTS', 'READ_*'],
   develop: [
     'WRITE_CODE',
     'COMMIT_CODE',
+    'COMMIT_DOCS',
     'WRITE_DOCS',
     'WRITE_ISSUE',
     'RUN_TESTS',
@@ -279,8 +280,29 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   if (typeof command !== 'string' || !command) return 'READ_*';
   const cmd = command.replace(/^\s+/, '');
 
-  // `git commit ...`
-  if (/^git\s+commit\b/.test(cmd)) return 'COMMIT_CODE';
+  // A compound command may stage a document after writing source. Inspect all
+  // shell write targets before granting the narrower Git or runner activity.
+  const targets = extractWriteTargets(cmd);
+  let writeActivity = null;
+  for (const target of targets) {
+    const activity = classifyEdit(target, policy);
+    if (activity === 'WRITE_CODE') {
+      writeActivity = activity;
+      break;
+    }
+    if (
+      activity === 'WRITE_ISSUE' ||
+      (activity === 'WRITE_DOCS' && writeActivity !== 'WRITE_ISSUE')
+    ) {
+      writeActivity = activity;
+    } else if (!writeActivity) writeActivity = activity;
+  }
+  const gitActivity = discoverBashActivity(cmd, process.cwd());
+  if (gitActivity === 'COMMIT_CODE') return gitActivity;
+  if (writeActivity === 'WRITE_CODE') return writeActivity;
+  if (gitActivity === 'WRITE_CODE') return gitActivity;
+  if (writeActivity === 'WRITE_ISSUE') return writeActivity;
+  if (gitActivity) return gitActivity;
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);
@@ -294,20 +316,7 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
     if (startsWithCommand(cmd, pat)) return 'RUN_BUILD';
   }
 
-  // Write targets (redirect / tee / touch / mkdir / rm).
-  const targets = extractWriteTargets(cmd);
-  if (targets.length > 0) {
-    // Classify the most-specific target — if any matches code or docs, return that.
-    // Iterate by precedence: WRITE_ISSUE > WRITE_DOCS > WRITE_CODE > WRITE_OTHER.
-    let best = 'WRITE_OTHER';
-    for (const t of targets) {
-      const cls = classifyEdit(t, policy);
-      if (cls === 'WRITE_ISSUE') return 'WRITE_ISSUE';
-      if (cls === 'WRITE_DOCS') best = 'WRITE_DOCS';
-      else if (cls === 'WRITE_CODE' && best !== 'WRITE_DOCS') best = 'WRITE_CODE';
-    }
-    return best;
-  }
+  if (writeActivity) return writeActivity;
 
   return 'READ_*';
 }
@@ -322,7 +331,12 @@ export function isAllowed(state, activityClass) {
 
   // No-active-task policy: refuse WRITE_CODE / COMMIT_CODE; allow all else.
   if (state == null) {
-    if (activityClass === 'WRITE_CODE' || activityClass === 'COMMIT_CODE') return false;
+    if (
+      activityClass === 'WRITE_CODE' ||
+      activityClass === 'COMMIT_CODE' ||
+      activityClass === 'COMMIT_DOCS'
+    )
+      return false;
     return true;
   }
 

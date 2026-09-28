@@ -15,7 +15,8 @@
 // Decision protocol (matches bash-guard.mjs):
 //   Pass:    exit 0, no stdout.
 //   Block:   stdout = JSON {decision:'block', reason:'<msg>'}, exit 0.
-//   Errors:  pass (exit 0) — never deadlock the agent on parse/I/O failure.
+//   Errors:  malformed JSON passes; mutation context, targets, or staged-index
+//            failures refuse the affected mutation.
 //
 // State source (#218 + follow-up): the bound issue's `aitm-last-known-state`
 // body marker IS the local kanban state. Because hooks must read synchronously
@@ -27,8 +28,20 @@
 // but an active task is bound, the guard refuses writes and points at
 // `reconcile accept-live` to repair the body marker.
 
-import { readFileSync, realpathSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
+import {
+  resolveInvocationDirectory,
+  resolveMutationTarget,
+  parseDirectGit,
+  readStagedRecords,
+  classifyStagedRecords,
+  readExactSessionBinding,
+  bindingMatches,
+  hasUnsupportedGitEnvironment,
+} from './lib/mutation-context.mjs';
+import { checkAssigneeMatch } from './lib/assignee-guard.mjs';
 
 import {
   classifyEdit,
@@ -37,12 +50,11 @@ import {
   loadPolicy,
   STATE_MATRIX,
 } from './activity-policy.mjs';
-import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
-import { extractApplyPatchTargets } from './lib/apply-patch-targets.mjs';
+import { extractApplyPatchTargets, extractApplyPatchText } from './lib/apply-patch-targets.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -64,25 +76,25 @@ if (!toolName) process.exit(0);
 // Resolve project root + load policy + state
 // ---------------------------------------------------------------------------
 
+let invocationDir;
 let projectRoot;
+let observedIdentity;
+let gitContext = null;
 try {
-  projectRoot = execSync('git rev-parse --show-toplevel', {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore'],
-    timeout: GIT_TIMEOUT_MS,
-  }).trim();
-} catch {
-  projectRoot = process.cwd();
+  invocationDir = resolveInvocationDirectory(input);
+  if (toolName === 'Bash') gitContext = parseDirectGit(toolInput?.command, invocationDir);
+  const effectiveDir = gitContext?.cwd || invocationDir;
+  observedIdentity = readWorktreeIdentity({ projectDir: effectiveDir });
+  projectRoot = observedIdentity.worktreePath;
+} catch (error) {
+  block(`[task-tracker] mutation context unavailable: ${error.message}`);
 }
-
 const policy = loadPolicy(projectRoot);
 
 let applyPatchTargets = [];
 if (toolName === 'apply_patch') {
   try {
-    applyPatchTargets = extractApplyPatchTargets(
-      toolInput?.patch || toolInput?.input || toolInput?.text || ''
-    );
+    applyPatchTargets = extractApplyPatchTargets(extractApplyPatchText(toolInput));
   } catch (error) {
     block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
@@ -120,7 +132,14 @@ if (
   ) {
     process.exit(0);
   }
-  const normalizedTargets = filePaths.map((filePath) => normalizePath(filePath, projectRoot));
+  let normalizedTargets;
+  try {
+    normalizedTargets = filePaths.map(
+      (filePath) => resolveMutationTarget(filePath, invocationDir, projectRoot).relative
+    );
+  } catch (error) {
+    block(`[task-tracker] mutation target refused: ${error.message}`);
+  }
   target = normalizedTargets.join(', ');
   // #659 AC2 — installed-guard self-modification interlock. A write whose
   // resolved path lands inside an installed guard tree (a `node_modules/`
@@ -163,9 +182,40 @@ if (
   if (typeof command !== 'string' || !command) process.exit(0);
   target = command;
   activityClass = classifyBash(command, policy);
+  if (gitContext?.kind === 'commit') {
+    try {
+      const staged = readStagedRecords(gitContext.cwd);
+      if (staged.length === 0 && isChoreModeActive(projectRoot)) {
+        // Preserve the existing chore-mode preflight for an empty index. There
+        // is no document inventory that could receive the new Plan allowance.
+        activityClass = 'COMMIT_CODE';
+      } else {
+        const stagedClass = classifyStagedRecords(staged);
+        activityClass =
+          gitContext.docEligible && !hasUnsupportedGitEnvironment() ? stagedClass : 'COMMIT_CODE';
+      }
+    } catch (error) {
+      block(`[task-tracker] commit inventory unavailable: ${error.message}`);
+    }
+  }
 } else {
   // Unknown tool — not our concern.
   process.exit(0);
+}
+
+function commitMessageFileText(args, cwd) {
+  const parts = [];
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    let file = null;
+    if (arg === '-F' || arg === '--file') file = args[++index];
+    else if (arg.startsWith('--file=')) file = arg.slice('--file='.length);
+    else if (arg.startsWith('-F') && arg.length > 2) file = arg.slice(2);
+    if (file === null) continue;
+    if (!file || file === '-') throw new Error('commit message file is not inspectable');
+    parts.push(readFileSync(path.resolve(cwd, file), 'utf8'));
+  }
+  return parts.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +234,67 @@ if (
 // grants a bypass (#440 AC2). The commit-subject contract is unaffected: the
 // PostToolUse commit-trail still requires `chore:` subjects while chore-mode is
 // on, so loosening the edit gate does not loosen the commit gate (#440 AC5).
-if (isChoreModeActive(projectRoot)) process.exit(0);
+if (
+  activityClass === 'COMMIT_DOCS' ||
+  (state === 'plan' && (activityClasses || []).includes('WRITE_DOCS')) ||
+  (state === 'plan' &&
+    toolName === 'Bash' &&
+    gitContext?.kind === 'add' &&
+    activityClass === 'WRITE_DOCS')
+) {
+  const bound = readExactSessionBinding(projectRoot);
+  const valid = bindingMatches(
+    observedIdentity,
+    bound,
+    Number(String(activeIssue || '').replace(/^#/, ''))
+  );
+  if (!valid)
+    block(
+      '[task-tracker] Plan document mutation refused: current session binding, branch, or worktree mismatch.'
+    );
+  if (toolName === 'Bash' && gitContext?.kind === 'add' && state === 'plan') {
+    if (!gitContext.contextSafe) block('[task-tracker] Plan staging context is not inspectable.');
+    try {
+      for (const filePath of gitContext.args)
+        resolveMutationTarget(filePath, gitContext.cwd, projectRoot);
+    } catch (error) {
+      block(`[task-tracker] Plan staging target refused: ${error.message}`);
+    }
+  }
+  if (activityClass === 'COMMIT_DOCS') {
+    let messageFiles;
+    try {
+      messageFiles = commitMessageFileText(gitContext.args, gitContext.cwd);
+    } catch (error) {
+      block(`[task-tracker] document commit message unavailable: ${error.message}`);
+    }
+    const refs = [...(target + '\n' + messageFiles).matchAll(/\[#(\d+)\]/g)].map((match) =>
+      Number(match[1])
+    );
+    if (refs.some((issue) => issue !== bound.issueNumber))
+      block('[task-tracker] document commit references another issue.');
+  }
+  try {
+    const cfg = JSON.parse(
+      readFileSync(path.join(projectRoot, '.ai-task-manager', 'task-tracker.json'), 'utf8')
+    );
+    const verdict = await checkAssigneeMatch({
+      issueNumber: bound.issueNumber,
+      cfg,
+      state: 'develop',
+    });
+    if (
+      !verdict.ok ||
+      verdict.assignees.length !== 1 ||
+      verdict.assignees[0] !== verdict.currentUser
+    ) {
+      block('[task-tracker] document mutation requires exact singleton issue ownership.');
+    }
+  } catch (error) {
+    block(`[task-tracker] document ownership unavailable: ${error.message}`);
+  }
+}
+if (isChoreModeActive(projectRoot) && activityClass !== 'COMMIT_DOCS') process.exit(0);
 
 // Active task bound but no kanban state recorded → drift. Refuse all write
 // activity classes and point at reconcile. READ_* still passes.
@@ -206,28 +316,6 @@ block(buildReason({ activityClass: refusedClass, target, state, activeIssue, too
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function normalizePath(filePath, root) {
-  // Resolve symlinks on root so /var/... and /private/var/... unify on macOS.
-  // (filePath may not exist yet, so don't realpath it.)
-  const roots = new Set([root]);
-  try {
-    roots.add(realpathSync(root));
-  } catch {
-    /* noop */
-  }
-  // On macOS /var → /private/var; map both directions to widen the prefix set.
-  for (const r of [...roots]) {
-    if (r.startsWith('/private/')) roots.add(r.slice('/private'.length));
-    else if (r.startsWith('/')) roots.add('/private' + r);
-  }
-
-  for (const r of roots) {
-    if (filePath.startsWith(r + '/')) return filePath.slice(r.length + 1);
-  }
-  if (filePath.startsWith('./')) return filePath.slice(2);
-  return filePath;
-}
 
 // #273 — extracted to lib/activity-block-reason.mjs so tests can pin the
 // block-message shape without importing the hook script. These thin wrappers

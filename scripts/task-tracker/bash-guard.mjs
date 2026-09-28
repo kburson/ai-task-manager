@@ -40,7 +40,7 @@
 // starts, so it cannot self-defend; that case is guarded at install/startup.
 
 import { readFileSync } from 'node:fs';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 
@@ -108,21 +108,15 @@ async function evaluate(input) {
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
+  const { resolveInvocationDirectory, parseDirectGit } = await import('./lib/mutation-context.mjs');
 
   const command = input?.tool_input?.command ?? '';
   if (!command) process.exit(0);
 
-  // Resolve project root; fall back to cwd when not in a git repo.
-  let projectRoot;
-  try {
-    projectRoot = execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: GIT_TIMEOUT_MS,
-    }).trim();
-  } catch {
-    projectRoot = process.cwd();
-  }
+  const invocationDir = resolveInvocationDirectory(input);
+  const directGit = parseDirectGit(command, invocationDir);
+  const effectiveDir = directGit.cwd || invocationDir;
+  const projectRoot = readWorktreeIdentity({ projectDir: effectiveDir }).worktreePath;
 
   const homeDir = homedir();
   const claudeDir = join(homeDir, '.claude');
@@ -148,7 +142,7 @@ async function evaluate(input) {
   // inspection remain available so the operator can reach the corrective path.
   const worktreeClassification = classifyBashWorktreeCommand(command);
   if (worktreeClassification.guarded) {
-    const invokingDir = input?.cwd || process.cwd();
+    const invokingDir = effectiveDir;
     const bound = resolveCurrentSessionWorktreeBinding({ invokingDir });
     const invoking = bound ? readWorktreeIdentity({ projectDir: invokingDir }) : null;
     const worktreeResult = evaluateBashWorktreeBinding({
@@ -164,6 +158,8 @@ async function evaluate(input) {
   // project root and is the canonical scratch directory. System `/tmp` and
   // `/private/tmp` are deliberately excluded.
   const WRITE_ALLOWED = [projectRoot + '/'];
+  const allowedPath = (candidate, prefixes) =>
+    candidate === projectRoot || prefixes.some((prefix) => candidate.startsWith(prefix));
 
   // Read-allowed prefixes — project root, ~/.claude, and system paths.
   // Codex skills have a separate normalized-containment check below.
@@ -321,7 +317,7 @@ async function evaluate(input) {
 
   // --- Validate write targets ---
   for (const p of writePaths) {
-    if (!WRITE_ALLOWED.some((prefix) => p.startsWith(prefix))) {
+    if (!allowedPath(p, WRITE_ALLOWED)) {
       block(
         `Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside the project root; use \`./.scratch/\` for disposable scratch — \`./.scratch/gh/\` for issue bodies, \`./.scratch/plan/\` for create-issue fragments; \`./.tmp/\` is runtime/generated output; system \`/tmp\` and \`/private/tmp\` are not allowed)`
       );
@@ -335,7 +331,7 @@ async function evaluate(input) {
   // --- Validate read/exec paths (everything not identified as a write target) ---
   for (const p of allPaths) {
     if (writePaths.has(p)) continue; // already validated above
-    if (!READ_ALLOWED.some((prefix) => p.startsWith(prefix)) && !isCodexSkillsRead(p)) {
+    if (!allowedPath(p, READ_ALLOWED) && !isCodexSkillsRead(p)) {
       block(
         `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, ~/.claude/, ~/.codex/skills/, and system binaries; system \`/tmp\` is not in scope — use \`./.scratch/\` for scratch)`
       );
@@ -421,7 +417,7 @@ async function evaluate(input) {
         }
       }
     };
-    for (const { index, args } of commits) {
+    for (const { index, args, effectiveDir: commitDir } of commits) {
       const segment = rawSegments[index] || '';
       if (hasDynamicCommitMessage(args)) {
         block(
@@ -438,7 +434,9 @@ async function evaluate(input) {
           );
         }
         try {
-          const absolutePath = isAbsolute(messagePath) ? messagePath : resolve(root, messagePath);
+          const absolutePath = isAbsolute(messagePath)
+            ? messagePath
+            : resolve(commitDir || root, messagePath);
           addRefs(readFileSync(absolutePath, 'utf8'));
         } catch (error) {
           block(
@@ -451,7 +449,7 @@ async function evaluate(input) {
         try {
           addRefs(
             execFileSync('git', ['log', '-1', '--format=%B', inheritedRef], {
-              cwd: root,
+              cwd: commitDir || root,
               encoding: 'utf8',
               stdio: ['ignore', 'pipe', 'pipe'],
               timeout: GIT_TIMEOUT_MS,
@@ -575,6 +573,8 @@ async function evaluate(input) {
   }
 
   function parseGitCommitSegment(segment, root) {
+    const direct = parseDirectGit(segment, invocationDir);
+    if (direct.kind === 'commit') return { args: direct.args, effectiveDir: direct.cwd };
     const tokens = shellWords(segment);
     const gitIndex = tokens.findIndex((token) => basename(token) === 'git');
     if (gitIndex < 0) return false;
@@ -589,10 +589,10 @@ async function evaluate(input) {
       index = gitSubcommandIndex(tokens, index);
       const token = tokens[index];
       if (!token) return false;
-      if (token === 'commit') return { args: tokens.slice(index + 1) };
+      if (token === 'commit') return { args: tokens.slice(index + 1), effectiveDir: root };
       const alias = readGitAlias(token, aliases, root);
       if (aliasInvokesCommit(alias, { aliases, root, seen: new Set([token]) })) {
-        return { args: tokens.slice(index + 1) };
+        return { args: tokens.slice(index + 1), effectiveDir: root };
       }
       return false;
     }
