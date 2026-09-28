@@ -323,13 +323,16 @@ function readOnlyGitCommand(direct) {
   if (GIT_READS.has(direct.kind)) return true;
   if (!direct.contextSafe) return false;
   if (direct.kind === 'config') {
-    return ['--get', '--get-all', '--get-regexp', '--list', '-l'].includes(direct.args[0]);
+    let index = 0;
+    while (['--local', '--global', '--system', '--worktree'].includes(direct.args[index])) index++;
+    return ['--get', '--get-all', '--get-regexp', '--list', '-l'].includes(direct.args[index]);
   }
   return direct.kind === 'worktree' && direct.args[0] === 'list';
 }
 
 function nestedShellCommand(words) {
   let index = 0;
+  while (words[index]?.match(/^[A-Za-z_][A-Za-z0-9_]*=/)) index++;
   if (words[index] === 'command') index++;
   if (words[index] === 'env') {
     index++;

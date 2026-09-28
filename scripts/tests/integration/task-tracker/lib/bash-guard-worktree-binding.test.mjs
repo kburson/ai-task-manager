@@ -100,7 +100,11 @@ test('classifies writes and verification across compound command segments', () =
 });
 
 test('wrapped nested commits require the bound worktree', () => {
-  for (const command of ["env bash -c 'git commit -m x'", "command bash -c 'git commit -m x'"]) {
+  for (const command of [
+    "env bash -c 'git commit -m x'",
+    "command bash -c 'git commit -m x'",
+    "LANG=C bash -c 'git commit -m x'",
+  ]) {
     assert.equal(classifyBashWorktreeCommand(command).guarded, true, command);
   }
 });
@@ -113,6 +117,7 @@ test('allows navigation and read-only inspection classifications', () => {
     'git log --oneline -3',
     'git diff --check',
     'git config --get remote.origin.url',
+    'git config --local --get remote.origin.url',
     'git worktree list --porcelain',
     'rg worktree scripts',
     'sed -n 1,80p file.txt',

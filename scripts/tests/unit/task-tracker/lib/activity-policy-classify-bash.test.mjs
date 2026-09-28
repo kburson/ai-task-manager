@@ -449,6 +449,7 @@ test('compound document staging cannot hide a source write', () => {
 test('read-only Git config and worktree queries stay read-only', () => {
   for (const command of [
     'git config --get remote.origin.url',
+    'git config --local --get remote.origin.url',
     'git config --list',
     'git worktree list --porcelain',
   ]) {
