@@ -90,10 +90,17 @@ export function dispatchContext({
   stateSource = 'argument',
   issueNumber = null,
 } = {}) {
-  const explicit = args[0] === 'issue' && /^\d+$/.test(args[2] || '') ? Number(args[2]) : null;
+  const explicit = [];
+  if (args[0] === 'issue') {
+    for (const value of args.slice(2)) {
+      if (!/^\d+$/.test(value)) break;
+      explicit.push(Number(value));
+      if (args[1] !== 'edit') break;
+    }
+  }
   const values = [
     issueNumber,
-    explicit,
+    ...explicit,
     variables.issue,
     variables.issueNumber,
     ...(Array.isArray(variables.issues) ? variables.issues : []),
@@ -199,6 +206,7 @@ export async function beginObservation({
       processExitCode = null,
       error = null,
       signal = null,
+      responseReceived = false,
     } = {}) => {
       if (completed) return;
       completed = true;
@@ -209,13 +217,23 @@ export async function beginObservation({
         row.processExitCode = processExitCode;
         const timeout = signal || ['TimeoutError', 'AbortError'].includes(error?.name);
         row.dispatchStatus =
-          error?.code === 'ENOENT' ? 'not-sent' : error || signal ? 'unknown' : 'sent';
+          error?.code === 'ENOENT'
+            ? 'not-sent'
+            : responseReceived
+              ? 'sent'
+              : error || signal
+                ? 'unknown'
+                : 'sent';
         row.errorClass = timeout
           ? 'timeout'
           : error
             ? error.code === 'ENOENT'
               ? 'spawn-error'
-              : 'unknown'
+              : responseReceived
+                ? httpStatus >= 400
+                  ? 'http-error'
+                  : 'parse-error'
+                : 'unknown'
             : httpStatus >= 400
               ? 'http-error'
               : response?.errors
@@ -331,7 +349,12 @@ export async function observeGraphqlHttp(
     if (prepared.alias && result?.data) delete result.data[prepared.alias];
     return result;
   } catch (error) {
-    await finish?.({ error, httpStatus: response?.status ?? null, headers: response?.headers });
+    await finish?.({
+      error,
+      httpStatus: response?.status ?? null,
+      headers: response?.headers,
+      responseReceived: Boolean(response),
+    });
     throw error;
   }
 }

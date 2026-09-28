@@ -68,11 +68,27 @@ function finishCapture(handle, result) {
 
 function endpointHost(args, env) {
   let explicit = null;
+  let repository = null;
+  let urlHost = null;
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--hostname') explicit = args[i + 1];
-    else if (args[i].startsWith('--hostname=')) explicit = args[i].slice('--hostname='.length);
+    const arg = String(args[i]);
+    if (arg === '--hostname') explicit = args[++i];
+    else if (arg.startsWith('--hostname=')) explicit = arg.slice('--hostname='.length);
+    else if (arg === '--repo' || arg === '-R') repository = args[++i];
+    else if (arg.startsWith('--repo=')) repository = arg.slice('--repo='.length);
+    else if (arg.startsWith('-R') && arg.length > 2) repository = arg.slice(2);
+    else if (/^https?:\/\//.test(arg)) {
+      try {
+        const url = new URL(arg);
+        if (/\/(issues|pull)\/\d+(?:\/|$)/.test(url.pathname)) urlHost = url.hostname;
+      } catch {
+        /* invalid URL is not trusted host context */
+      }
+    }
   }
-  const host = explicit || env.GH_HOST;
+  const repoParts = String(repository || '').split('/');
+  const repositoryHost = repoParts.length === 3 ? repoParts[0] : null;
+  const host = explicit || repositoryHost || urlHost || env.GH_HOST;
   if (!host) return 'api.github.com';
   if (!/^[A-Za-z0-9.-]{1,253}$/.test(host)) return null;
   return host.toLowerCase() === 'github.com' ? 'api.github.com' : host.toLowerCase();

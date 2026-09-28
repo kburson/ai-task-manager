@@ -479,8 +479,51 @@ function graphqlFieldVariables(args) {
   return values;
 }
 
+function apiEndpoint(args) {
+  const valued = new Set([
+    '--cache',
+    '--field',
+    '--header',
+    '--hostname',
+    '--input',
+    '--jq',
+    '--method',
+    '--preview',
+    '--raw-field',
+    '--template',
+    '-F',
+    '-H',
+    '-X',
+    '-p',
+    '-f',
+    '-q',
+    '-t',
+  ]);
+  const switches = new Set([
+    '--allow-escape-sequences',
+    '--include',
+    '--paginate',
+    '--silent',
+    '--slurp',
+    '--verbose',
+    '-i',
+  ]);
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = String(args[index]);
+    if (arg === '--') return args[index + 1] || null;
+    if (valued.has(arg)) {
+      index += 1;
+      continue;
+    }
+    if (switches.has(arg) || /^--[\w-]+=/.test(arg) || /^-[FHXpfqt].+/.test(arg)) continue;
+    if (arg.startsWith('-')) return null;
+    return arg;
+  }
+  return null;
+}
+
 export function classifyGhUsage(args, stdin) {
-  if (args[0] === 'api' && args[1] !== 'graphql') return null;
+  if (args[0] === 'api' && apiEndpoint(args) !== 'graphql') return null;
   if (['auth', 'version', 'help', '--version', '--help', 'completion', 'config'].includes(args[0]))
     return null;
   let payload = {};

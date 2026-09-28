@@ -577,3 +577,100 @@ test('value report page loop passes one logical identity and page indexes', asyn
   );
   assert.equal(metadata[0].logicalOperationId, metadata[1].logicalOperationId);
 });
+
+test('multi-issue gh edit is never attributed to only its first issue', async () => {
+  const { dispatchContext } = await import(collectionUrl);
+  const context = dispatchContext({
+    args: ['issue', 'edit', '23', '34', '--add-label', 'help wanted'],
+    lifecycleState: 'develop',
+  });
+  assert.equal(context.issueNumber, null);
+  assert.equal(context.contextScope, 'multiple-issues');
+  assert.equal(context.lifecycleState, 'unknown');
+});
+
+test('gh api flags before graphql still produce one durable observation', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const run = spawnSync(
+    'gh',
+    ['api', '--hostname', 'github.example.com', 'graphql', '-f', 'query={viewer{id}}'],
+    { cwd, env: prepared, encoding: 'utf8' }
+  );
+  assert.equal(run.status, 0, run.stderr);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].endpointHost, 'github.example.com');
+  assert.equal(rows[0].kind, 'query');
+});
+
+test('host-qualified repo selector controls CLI endpoint attribution', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const run = spawnSync('gh', ['issue', 'view', '42', '--repo', 'github.example.com/owner/repo'], {
+    cwd,
+    env: { ...prepared, GH_HOST: '' },
+    encoding: 'utf8',
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].endpointHost, 'github.example.com');
+});
+
+test('HTTP response parse failures retain sent status and known HTTP failure', async (t) => {
+  const { prepareUsageEnv, observeGraphqlHttp } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  let calls = 0;
+  for (const status of [502, 200]) {
+    await assert.rejects(
+      observeGraphqlHttp(
+        'https://api.github.com/graphql',
+        { body: JSON.stringify({ query: 'query Q { viewer { id } }' }) },
+        {
+          cwd,
+          env: prepared,
+          fetch: async () => {
+            calls += 1;
+            return new Response('<html>not json</html>', { status });
+          },
+        }
+      ),
+      SyntaxError
+    );
+  }
+  assert.equal(calls, 2);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 2);
+  rows.sort((a, b) => b.httpStatus - a.httpStatus);
+  assert.deepEqual(
+    rows.map((row) => row.dispatchStatus),
+    ['sent', 'sent']
+  );
+  assert.deepEqual(
+    rows.map((row) => row.errorClass),
+    ['http-error', 'parse-error']
+  );
+  assert.deepEqual(
+    rows.map((row) => row.costUnknownReason),
+    ['no-same-response-cost', 'no-same-response-cost']
+  );
+});
+
+test('host-qualified issue URL controls CLI endpoint attribution', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const run = spawnSync(
+    'gh',
+    ['issue', 'view', 'https://github.example.com/owner/repo/issues/42'],
+    { cwd, env: { ...prepared, GH_HOST: '' }, encoding: 'utf8' }
+  );
+  assert.equal(run.status, 0, run.stderr);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].endpointHost, 'github.example.com');
+});
