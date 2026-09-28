@@ -515,7 +515,12 @@ function apiEndpoint(args) {
       index += 1;
       continue;
     }
-    if (switches.has(arg) || /^--[\w-]+=/.test(arg) || /^-[FHXpfqt].+/.test(arg)) continue;
+    if (
+      switches.has(arg) ||
+      /^--[\w-]+=/.test(arg) ||
+      (arg.length > 2 && valued.has(arg.slice(0, 2)))
+    )
+      continue;
     if (arg.startsWith('-')) return null;
     return arg;
   }
