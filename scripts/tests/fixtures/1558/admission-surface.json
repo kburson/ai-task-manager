@@ -1401,8 +1401,10 @@
       "classification": "agent-callable-standalone",
       "command": "value-report",
       "staticImports": [
+        "../task-tracker/lib/graphql-usage/collection.mjs",
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:child_process",
+        "node:crypto",
         "node:fs",
         "node:path",
         "node:url",
@@ -1770,6 +1772,16 @@
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-launch.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:child_process", "./lib/graphql-usage/collection.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
       "fixtureId": null
     },
     {
