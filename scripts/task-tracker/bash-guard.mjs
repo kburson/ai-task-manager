@@ -11,7 +11,7 @@
 //                    `gh/`, `plan/`, `heal/`, `inspect/`). System `/tmp` and
 //                    `/private/tmp` are NOT writable — use `./.scratch/<sub>/`
 //                    instead. All other destinations → block.
-// Read permissions:  project root + ~/.claude/ + system binaries.
+// Read permissions:  project root + ~/.claude/ + ~/.codex/skills/ + system binaries.
 //                    All other sources → block.
 // ~/.claude/ writes: always blocked (read-only for the task manager).
 //
@@ -126,6 +126,7 @@ async function evaluate(input) {
 
   const homeDir = homedir();
   const claudeDir = join(homeDir, '.claude');
+  const codexSkillsDir = join(homeDir, '.codex', 'skills');
 
   // Unconditionally dangerous patterns — block regardless of path.
   const ALWAYS_BLOCK = [
@@ -164,7 +165,8 @@ async function evaluate(input) {
   // `/private/tmp` are deliberately excluded.
   const WRITE_ALLOWED = [projectRoot + '/'];
 
-  // Read-allowed prefixes — project root, temp, ~/.claude, and system paths.
+  // Read-allowed prefixes — project root, ~/.claude, and system paths.
+  // Codex skills have a separate normalized-containment check below.
   const READ_ALLOWED = [
     ...WRITE_ALLOWED,
     claudeDir + '/',
@@ -177,6 +179,9 @@ async function evaluate(input) {
     '/Library/Developer/',
     '/Applications/',
   ];
+  const codexSkillsPrefix = codexSkillsDir + '/';
+  const isCodexSkillsRead = (p) =>
+    p.startsWith(codexSkillsPrefix) && resolve(p).startsWith(codexSkillsPrefix);
 
   // Replace single- and double-quoted regions with same-length spaces so the
   // extraction regexes below don't pick up shell metachars or path-like
@@ -330,9 +335,9 @@ async function evaluate(input) {
   // --- Validate read/exec paths (everything not identified as a write target) ---
   for (const p of allPaths) {
     if (writePaths.has(p)) continue; // already validated above
-    if (!READ_ALLOWED.some((prefix) => p.startsWith(prefix))) {
+    if (!READ_ALLOWED.some((prefix) => p.startsWith(prefix)) && !isCodexSkillsRead(p)) {
       block(
-        `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, ~/.claude/, and system binaries; system \`/tmp\` is not in scope — use \`./.scratch/\` for scratch)`
+        `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, ~/.claude/, ~/.codex/skills/, and system binaries; system \`/tmp\` is not in scope — use \`./.scratch/\` for scratch)`
       );
     }
   }
