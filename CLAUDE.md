@@ -152,6 +152,7 @@ manually when you want a coverage snapshot.
 - Wrap currency in backticks: `$200`.
 - Disposable scratch and staging files go in `./.scratch/` (gitignored except for its contract README), under a purpose subfolder such as `gh/`, `plan/`, `heal/`, or `inspect/`. Nothing in the repository may depend on them. Reusable helpers graduate to tracked `scripts/maintenance/`; do not leave maintained code in scratch.
 - Keep machine-local runtime state and generated output in `./.tmp/` (for example `.tmp/aitm/`, `.tmp/reports/`, and `.tmp/coverage/`). Do not write scratch under `.git/` or confuse disposable `.scratch/` work with runtime `.tmp/` artifacts.
+  Exception: GraphQL usage metadata and its collection control/coverage metadata may live only under `<git-common-dir>/aitm/graphql-usage/`; no scratch, request/response payloads, or other runtime output is authorized there.
 
 ## Formatting
 

@@ -12,3 +12,16 @@ export {
   inventorySites,
   compareInventory,
 } from './inventory.mjs';
+// @story #1836
+export {
+  resolveUsageRoot,
+  enrollUsage,
+  createUsageWriter,
+  readUsage,
+  usageRetention,
+  cleanupUsage,
+  pauseUsage,
+  validateUsageControl,
+  manifestRow,
+  writeParticipant,
+} from './storage.mjs';
