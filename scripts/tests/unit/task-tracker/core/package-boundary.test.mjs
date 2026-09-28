@@ -306,6 +306,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const localTrunkReceiptAllowance = 1;
   // #1830 ships one shared mutation-context runtime module.
   const mutationContextAllowance = 1;
+  // #1835 intentionally ships four usage contract modules, inventory expectations,
+  // and the operator inventory guide; tests remain excluded from the package.
+  const graphqlUsageContractAllowance = 6;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -347,7 +350,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryIntegrationProofAllowance +
     localTrunkProofAllowance +
     localTrunkReceiptAllowance +
-    mutationContextAllowance;
+    mutationContextAllowance +
+    graphqlUsageContractAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
