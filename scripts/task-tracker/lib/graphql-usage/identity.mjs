@@ -98,22 +98,23 @@ class GraphqlShapeParser {
       this.depth -= 1;
     }
   }
-  parseValue() {
+  parseValue(constant = false) {
     return this.nested(() => {
       const token = this.peek();
       if (token === '$') {
+        if (constant) throw new Error('variable in GraphQL constant value');
         this.eat('$');
         this.eatName();
       } else if (token === '[') {
         this.eat('[');
-        while (this.peek() !== ']') this.parseValue();
+        while (this.peek() !== ']') this.parseValue(constant);
         this.eat(']');
       } else if (token === '{') {
         this.eat('{');
         while (this.peek() !== '}') {
           this.eatName();
           this.eat(':');
-          this.parseValue();
+          this.parseValue(constant);
         }
         this.eat('}');
       } else if (token === '<string>' || token === '<number>' || name.test(token || '')) {
@@ -159,7 +160,7 @@ class GraphqlShapeParser {
       this.parseType();
       if (this.peek() === '=') {
         this.eat('=');
-        this.parseValue();
+        this.parseValue(true);
       }
       this.parseDirectives();
       count += 1;

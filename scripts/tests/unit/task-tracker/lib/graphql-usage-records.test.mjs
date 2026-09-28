@@ -340,6 +340,12 @@ test('diagnostic classes and root-denial vocabularies are finite', () => {
   };
   assert.deepEqual(usage.validateDiagnostic(diagnostic), diagnostic);
   assert.throws(() => usage.validateDiagnostic({ ...diagnostic, detailClass: 'privateToken' }));
+  assert.throws(() =>
+    usage.validateDiagnostic({
+      ...diagnostic,
+      originatingLaunchRoute: { responseBody: 'sensitive' },
+    })
+  );
   for (const code of ['shared-root-access-denied', 'git-root-resolution-failed'])
     assert.deepEqual(usage.validateDiagnostic({ ...diagnostic, code }), { ...diagnostic, code });
   const manifest = {
@@ -414,6 +420,19 @@ test('enum, boolean, null, list, object, and variable-default values are redacte
   assert.equal(first.queryFingerprint, second.queryFingerprint);
   assert.equal(JSON.stringify(first).includes('SECRET_ENUM'), false);
   assert.equal(JSON.stringify(first).includes('PRIVATE'), false);
+});
+
+test('variable defaults reject variables at every nested depth', () => {
+  for (const value of ['$other', '[$other]', '{nested: $other}', '[{nested: [$other]}]']) {
+    const identity = usage.identifyGraphqlOperation(`query Q($id: Input = ${value}) { viewer }`);
+    assert.equal(identity.kind, 'unknown', value);
+    assert.equal(identity.queryFingerprint, null, value);
+  }
+  assert.equal(
+    usage.identifyGraphqlOperation('query Q($id: Input = {nested: [ONE]}) { viewer(arg: $id) }')
+      .kind,
+    'query'
+  );
 });
 
 test('balanced malformed GraphQL never receives a confident operation identity', () => {

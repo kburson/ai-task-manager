@@ -341,10 +341,10 @@ export function validateDiagnostic(record) {
   identityFields(record);
   if (record.collectorVersion !== undefined)
     matches(record.collectorVersion, safeId, 'collectorVersion');
-  if (record.collectorLaunchRoute !== undefined) {
+  if (record.collectorLaunchRoute !== undefined)
     member(record.collectorLaunchRoute, launchRoutes, 'collectorLaunchRoute');
+  if (record.collectorLaunchRoute !== undefined || Object.hasOwn(record, 'originatingLaunchRoute'))
     routeFields(record);
-  }
   if (record.detailClass !== undefined) member(record.detailClass, detailClasses, 'detailClass');
   return record;
 }
