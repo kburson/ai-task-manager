@@ -203,6 +203,21 @@ if (
   process.exit(0);
 }
 
+function commitMessageFileText(args, cwd) {
+  const parts = [];
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    let file = null;
+    if (arg === '-F' || arg === '--file') file = args[++index];
+    else if (arg.startsWith('--file=')) file = arg.slice('--file='.length);
+    else if (arg.startsWith('-F') && arg.length > 2) file = arg.slice(2);
+    if (file === null) continue;
+    if (!file || file === '-') throw new Error('commit message file is not inspectable');
+    parts.push(readFileSync(path.resolve(cwd, file), 'utf8'));
+  }
+  return parts.join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Decision
 // ---------------------------------------------------------------------------
@@ -247,7 +262,15 @@ if (
     }
   }
   if (activityClass === 'COMMIT_DOCS') {
-    const refs = [...target.matchAll(/\[#(\d+)\]/g)].map((match) => Number(match[1]));
+    let messageFiles;
+    try {
+      messageFiles = commitMessageFileText(gitContext.args, gitContext.cwd);
+    } catch (error) {
+      block(`[task-tracker] document commit message unavailable: ${error.message}`);
+    }
+    const refs = [...(target + '\n' + messageFiles).matchAll(/\[#(\d+)\]/g)].map((match) =>
+      Number(match[1])
+    );
     if (refs.some((issue) => issue !== bound.issueNumber))
       block('[task-tracker] document commit references another issue.');
   }

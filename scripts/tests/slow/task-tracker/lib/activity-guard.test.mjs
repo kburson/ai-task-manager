@@ -692,6 +692,26 @@ test('linked Plan document commit uses payload worktree and exact owner', () => 
       env,
     });
     assert.equal(wrong.decision?.decision, 'block');
+    mkdirSync(path.join(child, '.scratch'));
+    const messageFile = path.join(child, '.scratch', 'commit-message.txt');
+    writeFileSync(messageFile, '[#9999] docs');
+    const foreignMessageFile = {
+      ...payload,
+      tool_input: { command: `${binary} ${verb} -F .scratch/commit-message.txt` },
+    };
+    const ownershipOnly = runGuard({
+      cwd: root,
+      payload: foreignMessageFile,
+      env,
+      guardPath: BASH_GUARD,
+    });
+    assert.equal(ownershipOnly.stdout, '', ownershipOnly.stderr);
+    const refusedFile = runGuard({ cwd: root, payload: foreignMessageFile, env });
+    assert.equal(refusedFile.decision?.decision, 'block');
+    assert.match(refusedFile.decision.reason, /references another issue/);
+    writeFileSync(messageFile, '[#1830] docs');
+    const matchingFile = runGuard({ cwd: root, payload: foreignMessageFile, env });
+    assert.equal(matchingFile.stdout, '', matchingFile.stderr);
     writeFileSync(path.join(child, 'docs', 'run.mjs'), 'code');
     run(child, 'add', 'docs/run.mjs');
     const mixed = runGuard({ cwd: root, payload, env });
