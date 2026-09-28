@@ -63,6 +63,12 @@ function classify(line, source) {
     return ['gh-api-graphql', 'explicit GraphQL CLI or shared gql wrapper', 'planned'];
   if (/\bgh\s+api\s+(?!graphql\b)/.test(value) || /['"]api['"]\s*,\s*['"]repos\//.test(value))
     return ['rest-or-non-graphql', 'explicit REST or non GraphQL endpoint', 'out-of-scope'];
+  if (/\b(?:run|runCommand)\s*\(\s*['"]gh['"]/.test(value))
+    return [
+      'uncovered',
+      'dynamic gh wrapper arguments require runtime classification',
+      'uncovered',
+    ];
   if (
     /\bgh\s+(?:issue|project|pr|repo|auth)\b/.test(value) ||
     /(?:execFile|execFileSync|spawn|spawnSync)\s*\(\s*['"]gh['"]/.test(value) ||
@@ -90,7 +96,7 @@ export function scanGraphqlSurfaces({ root, files } = {}) {
         }
         consumed = next - 1;
       } else if (
-        ['execFileSync(', 'execFile(', 'spawnSync(', 'spawn('].some((call) =>
+        ['execFileSync(', 'execFile(', 'spawnSync(', 'spawn(', 'run(', 'runCommand('].some((call) =>
           candidate.includes(call)
         ) &&
         !candidate.includes(');')

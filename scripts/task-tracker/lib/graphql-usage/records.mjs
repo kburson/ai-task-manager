@@ -26,6 +26,7 @@ const observationKeys = new Set([
   'stateSource',
   'contextScope',
   'collectorLaunchRoute',
+  'originatingLaunchRoute',
   'observationKind',
   'dispatchStatus',
   'pageIndex',
@@ -48,6 +49,7 @@ const observationKeys = new Set([
   'endpointHost',
   'budgetScopeId',
   'rateLimit',
+  'rateLimitUnavailableReason',
 ]);
 const diagnosticKeys = new Set([
   'schemaVersion',
@@ -59,6 +61,7 @@ const diagnosticKeys = new Set([
   'sessionId',
   'collectorVersion',
   'collectorLaunchRoute',
+  'originatingLaunchRoute',
   'detailClass',
 ]);
 const manifestKeys = new Set([
@@ -69,6 +72,7 @@ const manifestKeys = new Set([
   'sessionSource',
   'enrollmentId',
   'collectorLaunchRoute',
+  'originatingLaunchRoute',
   'outcome',
   'recordedAt',
   'reasonCode',
@@ -138,6 +142,36 @@ const launchRoutes = [
   'unknown',
 ];
 const sessionSources = ['runtime', 'measurement-launcher', 'unknown'];
+const detailClasses = [
+  'filesystem',
+  'permission',
+  'git-root',
+  'context',
+  'transport',
+  'parse',
+  'unknown',
+];
+const rootFailureCodes = [
+  'shared-root-out-of-sandbox-scope',
+  'shared-root-access-denied',
+  'git-root-resolution-failed',
+];
+function routeFields(record) {
+  if (record.collectorLaunchRoute === 'inherited-environment') {
+    member(
+      record.originatingLaunchRoute,
+      launchRoutes.filter((route) => route !== 'inherited-environment' && route !== 'unknown'),
+      'originatingLaunchRoute'
+    );
+  } else if (Object.hasOwn(record, 'originatingLaunchRoute')) {
+    member(
+      record.originatingLaunchRoute,
+      launchRoutes.filter((route) => route !== 'inherited-environment' && route !== 'unknown'),
+      'originatingLaunchRoute',
+      true
+    );
+  }
+}
 
 export function validateObservation(record) {
   keys(
@@ -174,6 +208,7 @@ export function validateObservation(record) {
     'contextScope'
   );
   member(record.collectorLaunchRoute, launchRoutes, 'collectorLaunchRoute');
+  routeFields(record);
   member(record.observationKind, ['http-attempt', 'opaque-cli-invocation'], 'observationKind');
   member(record.dispatchStatus, ['sent', 'not-sent', 'unknown'], 'dispatchStatus');
   member(record.kind, ['query', 'mutation', 'mixed', 'unknown'], 'kind');
@@ -237,8 +272,30 @@ export function validateObservation(record) {
     )
       throw new TypeError('known cost requires sent query and same-response source');
   }
-  if (record.observationKind === 'opaque-cli-invocation' && record.httpStatus !== null)
-    throw new TypeError('opaque invocation cannot have httpStatus');
+  if (record.observationKind === 'opaque-cli-invocation') {
+    if (record.httpStatus !== null) throw new TypeError('opaque invocation cannot have httpStatus');
+    if (record.hiddenRequestCount === 0)
+      throw new TypeError('opaque invocation cannot prove zero hidden requests');
+    if (record.pointCost !== null && record.costCoverage !== 'visible-response-only')
+      throw new TypeError('opaque known cost covers visible response only');
+  } else {
+    if (record.hiddenRequestCount !== 0)
+      throw new TypeError('HTTP attempt has zero hidden requests');
+    if (record.costCoverage === 'visible-response-only')
+      throw new TypeError('HTTP attempt cannot use visible-response-only coverage');
+    if (record.pointCost !== null && record.costCoverage !== 'complete-observation')
+      throw new TypeError('known HTTP cost requires complete observation coverage');
+  }
+  member(
+    record.rateLimitUnavailableReason,
+    ['transport-unavailable', 'not-returned', 'not-dispatched', 'unknown'],
+    'rateLimitUnavailableReason',
+    true
+  );
+  if (record.rateLimit === null && record.rateLimitUnavailableReason === null)
+    throw new TypeError('missing rateLimit requires unavailable reason');
+  if (record.rateLimit !== null && record.rateLimitUnavailableReason !== null)
+    throw new TypeError('present rateLimit cannot have unavailable reason');
   if (record.rateLimit !== null) {
     keys(
       record.rateLimit,
@@ -275,6 +332,7 @@ export function validateDiagnostic(record) {
       'writer-close',
       'malformed-record',
       'duplicate-call-id',
+      ...rootFailureCodes,
       'unknown',
     ],
     'code'
@@ -283,9 +341,11 @@ export function validateDiagnostic(record) {
   identityFields(record);
   if (record.collectorVersion !== undefined)
     matches(record.collectorVersion, safeId, 'collectorVersion');
-  if (record.collectorLaunchRoute !== undefined)
+  if (record.collectorLaunchRoute !== undefined) {
     member(record.collectorLaunchRoute, launchRoutes, 'collectorLaunchRoute');
-  if (record.detailClass !== undefined) matches(record.detailClass, safeWord, 'detailClass');
+    routeFields(record);
+  }
+  if (record.detailClass !== undefined) member(record.detailClass, detailClasses, 'detailClass');
   return record;
 }
 
@@ -301,6 +361,7 @@ export function validateManifest(record) {
       'sessionSource',
       'enrollmentId',
       'collectorLaunchRoute',
+      'originatingLaunchRoute',
       'outcome',
       'recordedAt',
     ],
@@ -310,12 +371,20 @@ export function validateManifest(record) {
   identityFields(record);
   member(record.sessionSource, sessionSources, 'sessionSource');
   member(record.collectorLaunchRoute, launchRoutes, 'collectorLaunchRoute');
+  routeFields(record);
   member(record.outcome, ['enrolled', 'denied', 'unknown'], 'outcome');
   timestamp(record.recordedAt, 'recordedAt');
   if (record.reasonCode !== undefined)
     member(
       record.reasonCode,
-      ['permission-denied', 'root-unavailable', 'probe-failed', 'context-invalid', 'unknown'],
+      [
+        'permission-denied',
+        'root-unavailable',
+        'probe-failed',
+        'context-invalid',
+        ...rootFailureCodes,
+        'unknown',
+      ],
       'reasonCode',
       true
     );
@@ -357,6 +426,7 @@ export function validateInventoryRow(record) {
       'shared action capture shim process boundary',
       'shared action capture shim lacks usage observation',
       'static command text without dispatch evidence',
+      'dynamic gh wrapper arguments require runtime classification',
     ],
     'reason'
   );

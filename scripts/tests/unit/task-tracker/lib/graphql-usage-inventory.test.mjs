@@ -60,3 +60,26 @@ test('moving a source site cannot hide behind an unchanged per-file count', () =
   const moved = rows.map((row, index) => (index === 0 ? { ...row, line: row.line + 1 } : row));
   assert.notDeepEqual(usage.compareInventory(moved, { root }), []);
 });
+
+test('dynamic run wrappers remain visible as uncovered GraphQL-capable dispatches', () => {
+  const rows = usage.scanGraphqlSurfaces({
+    files: {
+      'scripts/dynamic.mjs':
+        "const created = run('gh', ghArgs, { timeout: 1000 });\nconst report = runCommand('gh', args);",
+    },
+  });
+  assert.equal(rows.filter((row) => row.classification === 'uncovered').length, 2);
+  assert.ok(rows.every((row) => row.reason.includes('dynamic')));
+});
+
+test('production inventory includes the dynamic issue-creation dispatch', () => {
+  const rows = usage.scanGraphqlSurfaces({ root });
+  assert.ok(
+    rows.some(
+      (row) =>
+        row.source === 'scripts/gh/create-issue.mjs' &&
+        row.classification === 'uncovered' &&
+        row.reason.includes('dynamic')
+    )
+  );
+});
