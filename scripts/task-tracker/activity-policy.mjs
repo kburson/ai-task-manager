@@ -16,13 +16,13 @@
 // Pure module: classifiers do no I/O. `loadPolicy` reads the filesystem once
 // per call and falls back to defaults on missing/invalid file.
 //
-// Bash command-target extraction (redirect / `tee` / heredoc / `touch|mkdir|rm`)
-// duplicates `bash-guard.mjs` lines 80-105. Epic W2 (#67) will lift those
-// helpers into a shared module and re-import here; the patterns are inlined
-// verbatim until then.
+// Git mutation discovery is shared with the hook consumers by #1830.
+// Broader shell write-target extraction (redirect / tee / heredoc /
+// touch|mkdir|rm) remains deferred under Epic W2 (#67).
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { discoverBashActivity } from './lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -101,10 +101,11 @@ export const STATE_MATRIX = Object.freeze({
   backlog: ['WRITE_ISSUE', 'READ_*'],
   refine: ['WRITE_ISSUE', 'READ_*'],
   'ready-for-plan': ['WRITE_ISSUE', 'READ_*'],
-  plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
+  plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'RUN_TESTS', 'READ_*'],
   develop: [
     'WRITE_CODE',
     'COMMIT_CODE',
+    'COMMIT_DOCS',
     'WRITE_DOCS',
     'WRITE_ISSUE',
     'RUN_TESTS',
@@ -280,7 +281,8 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   const cmd = command.replace(/^\s+/, '');
 
   // `git commit ...`
-  if (/^git\s+commit\b/.test(cmd)) return 'COMMIT_CODE';
+  const gitActivity = discoverBashActivity(cmd, process.cwd());
+  if (gitActivity) return gitActivity;
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);
@@ -322,7 +324,12 @@ export function isAllowed(state, activityClass) {
 
   // No-active-task policy: refuse WRITE_CODE / COMMIT_CODE; allow all else.
   if (state == null) {
-    if (activityClass === 'WRITE_CODE' || activityClass === 'COMMIT_CODE') return false;
+    if (
+      activityClass === 'WRITE_CODE' ||
+      activityClass === 'COMMIT_CODE' ||
+      activityClass === 'COMMIT_DOCS'
+    )
+      return false;
     return true;
   }
 

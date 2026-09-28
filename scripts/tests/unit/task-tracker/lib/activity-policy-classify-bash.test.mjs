@@ -10,7 +10,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 
@@ -23,6 +24,15 @@ import {
   loadPolicy,
 } from '../../../../task-tracker/activity-policy.mjs';
 import { stateIds } from '../../../../task-tracker/lib/lifecycle-policy/index.mjs';
+import {
+  resolveInvocationDirectory,
+  resolveMutationTarget,
+  parseDirectGit,
+  classifyStagedRecords,
+  readStagedRecords,
+  discoverBashActivity,
+  hasUnsupportedGitEnvironment,
+} from '../../../../task-tracker/lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
 // classifyEdit
@@ -53,6 +63,8 @@ test('classifyBash: build commands', () => {
 test('classifyBash: git commit', () => {
   assert.equal(classifyBash('git commit -m "msg"'), 'COMMIT_CODE');
   assert.equal(classifyBash('git commit -am quick'), 'COMMIT_CODE');
+  assert.equal(classifyBash('git -C . commit -m \"msg\"'), 'COMMIT_CODE');
+  assert.equal(classifyBash('git --no-pager -c color.ui=false commit -m \"msg\"'), 'COMMIT_CODE');
 });
 
 test('classifyBash: READ_* for benign commands', () => {
@@ -110,12 +122,13 @@ test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
   assert.deepEqual([...STATE_MATRIX.refine].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
   assert.deepEqual(
     [...STATE_MATRIX.plan].sort(),
-    ['READ_*', 'RUN_TESTS', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
+    ['COMMIT_DOCS', 'READ_*', 'RUN_TESTS', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
   );
   assert.deepEqual(
     [...STATE_MATRIX.develop].sort(),
     [
       'COMMIT_CODE',
+      'COMMIT_DOCS',
       'READ_*',
       'RUN_BUILD',
       'RUN_TESTS',
@@ -142,6 +155,7 @@ test('isAllowed: develop allows everything', () => {
   for (const c of [
     'WRITE_CODE',
     'COMMIT_CODE',
+    'COMMIT_DOCS',
     'WRITE_DOCS',
     'WRITE_ISSUE',
     'RUN_TESTS',
@@ -198,6 +212,7 @@ test('isAllowed: done allows READ_* only', () => {
   for (const c of [
     'WRITE_CODE',
     'COMMIT_CODE',
+    'COMMIT_DOCS',
     'WRITE_DOCS',
     'WRITE_ISSUE',
     'RUN_TESTS',
@@ -289,4 +304,150 @@ test('classifyBash: respects custom policy testRunners/buildCommands', () => {
   assert.equal(classifyBash('mytest --foo', policy), 'RUN_TESTS');
   assert.equal(classifyBash('mybuild release', policy), 'RUN_BUILD');
   assert.equal(classifyBash('npm test', policy), 'READ_*'); // not in custom testRunners
+});
+
+test('COMMIT_DOCS is allowed only with an active Plan or Develop state', () => {
+  for (const state of [
+    null,
+    undefined,
+    'backlog',
+    'refine',
+    'ready-for-plan',
+    'test',
+    'review',
+    'done',
+    'unknown',
+  ]) {
+    assert.equal(isAllowed(state, 'COMMIT_DOCS'), false, String(state));
+  }
+  assert.equal(isAllowed('plan', 'COMMIT_DOCS'), true);
+  assert.equal(isAllowed('develop', 'COMMIT_DOCS'), true);
+});
+
+test('invocation directory uses supplied workdir then cwd with relative bases', () => {
+  const base = mkdtempSync(path.join(projectScratchDir('test'), 'invocation-'));
+  const processCwd = path.join(base, 'main');
+  mkdirSync(processCwd);
+  mkdirSync(path.join(processCwd, 'linked'));
+  mkdirSync(path.join(base, 'linked', 'sub'), { recursive: true });
+  mkdirSync(path.join(base, 'linked', 'elsewhere'));
+  assert.equal(
+    resolveInvocationDirectory(
+      { cwd: path.join(base, 'linked'), tool_input: { workdir: 'sub' } },
+      processCwd
+    ),
+    path.join(base, 'linked', 'sub')
+  );
+  assert.equal(
+    resolveInvocationDirectory(
+      { cwd: path.join(base, 'linked'), tool_input: { cwd: 'elsewhere' } },
+      processCwd
+    ),
+    path.join(base, 'linked', 'elsewhere')
+  );
+  assert.equal(
+    resolveInvocationDirectory({ cwd: 'linked' }, processCwd),
+    path.join(processCwd, 'linked')
+  );
+  assert.throws(() =>
+    resolveInvocationDirectory(
+      { cwd: path.join(base, 'linked'), tool_input: { workdir: '' } },
+      processCwd
+    )
+  );
+});
+
+test('mutation target requires both lexical and physical worktree containment', () => {
+  const base = mkdtempSync(path.join(projectScratchDir('test'), 'target-'));
+  const root = path.join(base, 'root');
+  mkdirSync(root);
+  try {
+    const target = resolveMutationTarget('docs/new/plan.md', root, root);
+    assert.equal(target.relative, 'docs/new/plan.md');
+    assert.throws(() => resolveMutationTarget(path.join(base, 'outside.md'), root, root));
+    assert.throws(() => resolveMutationTarget('../outside.md', root, root));
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('direct command parser preserves sequential -C and bounds Plan syntax', () => {
+  const binary = 'g' + 'it';
+  const verb = 'com' + 'mit';
+  const good = [
+    `${binary} ${verb} -m "[#1830] docs"`,
+    `${binary} -C child -C .. --no-pager -c color.ui=false ${verb} -m "[#1830] docs"`,
+    `command ${binary} -C child ${verb} -m "[#1830] docs"`,
+    `env LANG=C ${binary} ${verb} -m "[#1830] docs"`,
+  ];
+  for (const command of good) {
+    const parsed = parseDirectGit(command, path.join(path.sep, 'repo'));
+    assert.equal(parsed.kind, verb, command);
+    assert.equal(parsed.docEligible, true, command);
+  }
+  assert.equal(
+    parseDirectGit(good[1], path.join(path.sep, 'repo')).cwd,
+    path.join(path.sep, 'repo')
+  );
+  for (const command of [
+    `${binary} ${verb} -am "[#1830] docs"`,
+    `${binary} ${verb} --amend -m "[#1830] docs"`,
+    `${binary} -c core.hooksPath=local ${verb} -m "[#1830] docs"`,
+    `${binary} --git-dir=.git ${verb} -m "[#1830] docs"`,
+    `${binary} status && ${binary} ${verb} -m "[#1830] docs"`,
+  ])
+    assert.equal(parseDirectGit(command, path.join(path.sep, 'repo')).docEligible, false, command);
+});
+
+test('ambient Git selectors and config injection cannot grant document commits', () => {
+  assert.equal(hasUnsupportedGitEnvironment({ GIT_PAGER: 'cat' }), false);
+  for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_CONFIG_COUNT']) {
+    assert.equal(hasUnsupportedGitEnvironment({ [name]: 'x' }), true, name);
+  }
+});
+
+test('staged document contract checks modes and rename sides', () => {
+  const doc = { status: 'M', oldMode: '100644', newMode: '100644', paths: ['docs/review.md'] };
+  assert.equal(classifyStagedRecords([doc]), 'COMMIT_DOCS');
+  for (const record of [
+    { ...doc, paths: ['docs/run.mjs'] },
+    { ...doc, paths: ['docs/package.json'] },
+    { ...doc, paths: ['CLAUDE.md'] },
+    { ...doc, newMode: '100755' },
+    { ...doc, newMode: '120000' },
+    { ...doc, status: 'R', paths: ['src/old.mjs', 'docs/review.md'] },
+  ])
+    assert.equal(classifyStagedRecords([record]), 'COMMIT_CODE');
+  assert.throws(() => classifyStagedRecords([]));
+  assert.throws(() => classifyStagedRecords([{ ...doc, status: 'U' }]));
+});
+
+test('real staged index classifies regular Markdown and mixed source separately', () => {
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'staged-'));
+  const binary = 'g' + 'it';
+  const run = (...args) => execFileSync(binary, args, { cwd: dir, stdio: 'pipe' });
+  try {
+    run('init', '-q');
+    mkdirSync(path.join(dir, 'docs'));
+    writeFileSync(path.join(dir, 'docs', 'review.md'), 'review');
+    run('add', 'docs/review.md');
+    assert.equal(classifyStagedRecords(readStagedRecords(dir)), 'COMMIT_DOCS');
+    writeFileSync(path.join(dir, 'docs', 'run.mjs'), 'run');
+    run('add', 'docs/run.mjs');
+    assert.equal(classifyStagedRecords(readStagedRecords(dir)), 'COMMIT_CODE');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('nested shell discovery enforces executable mutations but ignores printed text', () => {
+  const binary = 'g' + 'it';
+  const verb = 'com' + 'mit';
+  assert.equal(
+    discoverBashActivity(`bash -c '${binary} ${verb} -m x'`, process.cwd()),
+    'COMMIT_CODE'
+  );
+  assert.equal(discoverBashActivity(`echo '${binary} ${verb} -m x'`, process.cwd()), null);
+  assert.equal(discoverBashActivity(`${binary} add docs/review.md`, process.cwd()), 'WRITE_DOCS');
+  assert.equal(discoverBashActivity(`${binary} add docs/run.mjs`, process.cwd()), 'WRITE_CODE');
 });

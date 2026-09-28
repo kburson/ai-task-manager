@@ -7,7 +7,8 @@ export class MutationParseError extends Error {
 }
 
 function safePatchPath(value) {
-  const candidate = String(value || '').trim();
+  const candidate = String(value || '');
+  if (candidate !== candidate.trim()) throw new MutationParseError('invalid patch path');
   if (!candidate || candidate.includes('\0') || candidate.includes('\\')) {
     throw new MutationParseError('invalid patch path');
   }
@@ -18,8 +19,32 @@ function safePatchPath(value) {
   return candidate;
 }
 
+export function extractApplyPatchText(toolInput) {
+  if (typeof toolInput === 'string') {
+    if (toolInput.length === 0) throw new MutationParseError('empty patch payload');
+    return toolInput;
+  }
+  if (!toolInput || typeof toolInput !== 'object' || Array.isArray(toolInput)) {
+    throw new MutationParseError('invalid patch payload');
+  }
+  const supplied = ['patch', 'input', 'text']
+    .filter((key) => Object.hasOwn(toolInput, key))
+    .map((key) => toolInput[key]);
+  if (supplied.some((value) => typeof value !== 'string')) {
+    throw new MutationParseError('invalid patch payload');
+  }
+  const values = supplied.filter(Boolean);
+  if (!values.length) {
+    throw new MutationParseError('empty or invalid patch payload');
+  }
+  if (values.some((value) => value !== values[0])) {
+    throw new MutationParseError('conflicting patch payload fields');
+  }
+  return values[0];
+}
+
 export function extractApplyPatchTargets(patchText) {
-  const text = String(patchText || '');
+  const text = String(patchText || '').replace(/\r?\n$/, '');
   const lines = text.split(/\r?\n/);
   if (lines[0] !== '*** Begin Patch' || lines.at(-1) !== '*** End Patch') {
     throw new MutationParseError('missing exact patch boundaries');

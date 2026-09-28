@@ -13,9 +13,11 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { resolveMutationTarget } from '../../../../task-tracker/lib/mutation-context.mjs';
 import {
   decideSourceEdit,
   isAllowlistedPath,
@@ -434,6 +436,115 @@ test('#658: fetchIssueSignals reads false when neither grammar is present', asyn
     const r = await fetchIssueSignals('#658', dir, signalDeps(NO_MARKER_BODY));
     assert.equal(r.hasPostedMarker, false);
     assert.equal(r.hasCompleteMarker, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('Plan permits only owned Markdown with exact binding signal', () => {
+  const base = {
+    toolName: 'Edit',
+    filePath: 'docs/plan.md',
+    projectDir: PROJECT_DIR,
+    boundIssue: '#1830',
+    issueState: 'plan',
+    choreModeActive: false,
+    planBindingValid: true,
+    ...LOCAL_OWNERSHIP,
+  };
+  assert.equal(decideSourceEdit(base).decision, 'allow');
+  for (const input of [
+    { planBindingValid: false },
+    { assignees: [] },
+    { currentUser: 'other' },
+    { filePath: 'docs/run.mjs' },
+    { filePath: 'CLAUDE.md' },
+  ])
+    assert.equal(decideSourceEdit({ ...base, ...input }).decision, 'block');
+});
+
+test('installed guard targets refuse before chore and scratch exits', () => {
+  for (const filePath of [
+    'node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs',
+    '.scratch/alias/node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs',
+  ]) {
+    const result = decideSourceEdit({
+      toolName: 'Write',
+      filePath,
+      projectDir: PROJECT_DIR,
+      choreModeActive: true,
+      boundIssue: null,
+    });
+    assert.equal(result.code, 'source-edit-installed-guard');
+  }
+});
+
+test('target ancestry refuses an alias through an installed guard tree', () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    mkdirSync(path.join(dir, 'node_modules', 'ai-task-manager', 'scripts', 'task-tracker'), {
+      recursive: true,
+    });
+    mkdirSync(path.join(dir, '.scratch'), { recursive: true });
+    symlinkSync(
+      path.join(dir, 'node_modules', 'ai-task-manager'),
+      path.join(dir, '.scratch', 'alias')
+    );
+    assert.throws(
+      () => resolveMutationTarget('.scratch/alias/scripts/task-tracker/guard.mjs', dir, dir),
+      /installed guard/
+    );
+    assert.equal(
+      resolveMutationTarget('.scratch/plain.md', dir, dir).relative,
+      '.scratch/plain.md'
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test('Plan source-edit hook accepts owned Markdown from observed worktree', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  const binary = 'g' + 'it';
+  try {
+    execFileSync(binary, ['init', '-q'], { cwd: dir });
+    const branch = String(
+      execFileSync(binary, ['symbolic-ref', '--short', 'HEAD'], { cwd: dir })
+    ).trim();
+    mkdirSync(path.join(dir, 'docs'));
+    const deps = {
+      projectDir: dir,
+      readExactSessionBinding: () => ({
+        issueNumber: 1830,
+        worktreePath: dir,
+        worktreeBranch: branch,
+      }),
+      isChoreModeActive: () => false,
+      resolveIssueSignals: async () => ({
+        state: 'plan',
+        assignees: ['kburson'],
+        currentUser: 'kburson',
+      }),
+    };
+    const allowed = await runHook(
+      { tool_name: 'Edit', cwd: dir, tool_input: { file_path: 'docs/plan.md' } },
+      deps
+    );
+    assert.equal(allowed.decision, 'allow', allowed.reason);
+    const source = await runHook(
+      { tool_name: 'Edit', cwd: dir, tool_input: { file_path: 'docs/run.mjs' } },
+      deps
+    );
+    assert.equal(source.decision, 'block');
+    const patch = await runHook(
+      {
+        tool_name: 'apply_patch',
+        cwd: dir,
+        tool_input: '*** Begin Patch\n*** Add File: docs/review.md\n+x\n*** End Patch\n',
+      },
+      deps
+    );
+    assert.equal(patch.decision, 'allow');
   } finally {
     cleanup();
   }
