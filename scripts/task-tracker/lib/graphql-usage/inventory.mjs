@@ -48,9 +48,13 @@ function classify(line, source) {
   )
     return ['out-of-scope', 'static command text without dispatch evidence', 'out-of-scope'];
   if (source === 'scripts/task-tracker/action-capture-bin/gh' && value.includes('spawn(realGh'))
-    return ['uncovered', 'shared action capture shim lacks usage observation', 'uncovered'];
+    return ['opaque-gh-cli', 'shared action capture shim process boundary', 'opaque'];
   if (value.includes('api.github.com/graphql') || value.includes('graphql.github.com'))
-    return ['direct-http', 'direct GraphQL HTTP endpoint', 'planned'];
+    return [
+      'direct-http',
+      'direct GraphQL HTTP endpoint',
+      value.includes('observeGraphqlHttp(') ? 'covered' : 'planned',
+    ];
   if (/['"]\/[A-Za-z0-9_./-]*gh['"]/.test(value) && /(exec|spawn|\bgh\b)/.test(value))
     return ['uncovered', 'absolute gh executable bypasses inherited PATH', 'uncovered'];
   if (/\$\{?GH_[A-Za-z_]*\}?\s+api\s+graphql/.test(value))

@@ -1,3 +1,4 @@
+import { identifyGraphqlOperation } from './graphql-usage/identity.mjs';
 // @story #1295
 
 import { createHash } from 'node:crypto';
@@ -458,4 +459,26 @@ export function summarizeActionCorpus(context, deps = {}) {
     Object.entries(summary.byKind).sort(([a], [b]) => a.localeCompare(b))
   );
   return summary;
+}
+
+// @story #1837
+export function classifyGhUsage(args, stdin) {
+  if (args[0] === 'api' && args[1] !== 'graphql') return null;
+  if (['auth', 'version', 'help', '--version', '--help', 'completion', 'config'].includes(args[0]))
+    return null;
+  let payload = {};
+  try {
+    payload = JSON.parse(Buffer.from(stdin || []).toString('utf8'));
+  } catch {
+    /* argv form */
+  }
+  const query = args[0] === 'api' ? graphqlDocument(args, stdin) : '';
+  const selectedOperation =
+    payload?.operationName || args.find((arg) => arg.startsWith('operationName='))?.slice(14);
+  return {
+    query,
+    selectedOperation,
+    variables: payload?.variables || {},
+    ...identifyGraphqlOperation(query, { selectedOperation }),
+  };
 }

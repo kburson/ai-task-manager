@@ -1,4 +1,4 @@
-// @story #1653 #1836
+// @story #1653 #1836 #1837
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -17,7 +17,15 @@ const authorityPath = path.join(fixtureRoot, 'authority-baseline.json');
 const extensionPath = path.join(projectRoot, 'scripts/tests/fixtures/1836/behavioral-flags.json');
 function liveFlags() {
   const baseline = loadJson(flagPath);
-  return { ...baseline, flags: [...baseline.flags, ...loadJson(extensionPath).flags] };
+  const flags = new Map(baseline.flags.map((row) => [row.flag, row]));
+  for (const row of [
+    ...loadJson(extensionPath).flags,
+    ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/1837/behavioral-flags.json')).flags,
+  ]) {
+    const previous = flags.get(row.flag);
+    flags.set(row.flag, previous ? { ...previous, reads: [...previous.reads, ...row.reads] } : row);
+  }
+  return { ...baseline, flags: [...flags.values()] };
 }
 const ACTION_IDS = Object.freeze([
   'bind',
@@ -257,5 +265,7 @@ test('inventory completeness rejects a removed action observation or behavioral 
 });
 
 test('live inventory refuses removal of the post-baseline usage context', () => {
-  assert.throws(() => validateFlags(loadJson(flagPath)), new RegExp('AITM_GRAPHQL_USAGE_CONTEXT'));
+  const flags = liveFlags();
+  flags.flags = flags.flags.filter((row) => row.flag !== 'AITM_GRAPHQL_USAGE_CONTEXT');
+  assert.throws(() => validateFlags(flags), new RegExp('AITM_GRAPHQL_USAGE_CONTEXT'));
 });

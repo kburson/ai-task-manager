@@ -6,7 +6,7 @@ const number = new RegExp('^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)
 const whitespace = new RegExp('^[\\s,]');
 const punctuation = new Set('!$():=@[]{|}&');
 
-function tokenize(document) {
+function tokenize(document, offsets = []) {
   const tokens = [];
   let offset = 0;
   while (offset < document.length) {
@@ -20,6 +20,7 @@ function tokenize(document) {
       offset += end < 0 ? rest.length : end;
       continue;
     }
+    offsets.push(offset);
     if (rest.startsWith('"""')) {
       const end = rest.indexOf('"""', 3);
       if (end < 0) return null;
@@ -228,7 +229,7 @@ class GraphqlShapeParser {
       this.parseDirectives();
     }
     this.parseSelectionSet();
-    this.operations.push({ kind, operation });
+    this.operations.push({ kind, operation, endToken: this.position - 1 });
   }
   parse() {
     while (this.position < this.tokens.length) this.parseDefinition();
@@ -257,8 +258,39 @@ export function identifyGraphqlOperation(document, { selectedOperation = null } 
         : { kind: 'mixed', operation: null };
     if (!chosen || chosen.kind === 'subscription') return unknown;
     const digest = createHash('sha256').update(parser.normalized.join(' ')).digest('hex');
-    return { ...chosen, queryFingerprint: `sha256:${digest}`, fingerprintVersion: 'v1' };
+    return {
+      kind: chosen.kind,
+      operation: chosen.operation,
+      queryFingerprint: `sha256:${digest}`,
+      fingerprintVersion: 'v1',
+    };
   } catch {
     return unknown;
+  }
+}
+
+// @story #1837
+// Reuse the validated parser and source offsets; never reconstruct literal values.
+export function prepareGraphqlQuery(query, { selectedOperation = null } = {}) {
+  const identity = identifyGraphqlOperation(query, { selectedOperation });
+  const unchanged = { query, alias: null, identity };
+  if (identity.kind !== 'query') return unchanged;
+  try {
+    const offsets = [];
+    const tokens = tokenize(query, offsets);
+    const operations = new GraphqlShapeParser(tokens).parse();
+    const selected = selectedOperation
+      ? operations.find((operation) => operation.operation === selectedOperation)
+      : operations[0];
+    let alias = '_aitmUsage';
+    for (let i = 1; tokens.includes(alias); i += 1) alias = `_aitmUsage${i}`;
+    const end = offsets[selected.endToken];
+    return {
+      query: query.slice(0, end) + ` ${alias}: rateLimit { cost } ` + query.slice(end),
+      alias,
+      identity,
+    };
+  } catch {
+    return unchanged;
   }
 }

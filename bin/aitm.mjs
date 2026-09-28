@@ -200,5 +200,8 @@ export function resolvesAsMain(moduleUrl, argvPath, { realpath = realpathSync } 
 const isMain = resolvesAsMain(import.meta.url, process.argv[1]);
 
 if (isMain) {
+  const { prepareUsageEnv } =
+    await import('../scripts/task-tracker/lib/graphql-usage/collection.mjs');
+  Object.assign(process.env, await prepareUsageEnv({ launchRoute: 'aitm-cli' }));
   process.exit(run());
 }

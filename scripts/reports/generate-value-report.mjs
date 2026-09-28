@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { observeGraphqlHttp } from '../task-tracker/lib/graphql-usage/collection.mjs';
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'value-report');
 /**
@@ -153,12 +154,11 @@ function ghToken() {
 }
 
 async function gql(query, variables = {}) {
-  const r = await fetch('https://api.github.com/graphql', {
+  const j = await observeGraphqlHttp('https://api.github.com/graphql', {
     method: 'POST',
     headers: { Authorization: `Bearer ${ghToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
-  const j = await r.json();
   if (j.errors) throw new Error(j.errors.map(e => e.message).join('; '));
   return j.data;
 }
