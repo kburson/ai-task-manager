@@ -6,7 +6,12 @@ description: Run a provider-neutral, integrity-bound AI peer review for a tracke
 # AI Peer Review
 
 Run `peer-review setup` with an explicit user or project scope, then run
-`peer-review doctor` before starting or joining a review. After a package
+`peer-review doctor --mode installation` to check package health. Run
+`peer-review doctor` from the active agent session to check current-session
+readiness before a review. Setup installs Codex and Claude provider hooks that
+capture the current model for each CLI invocation; model and effort may change at
+any time in the same session, so never pin them in project configuration.
+After a package
 upgrade, run `peer-review setup --update --dry-run` then `peer-review setup
 --update` in the affected project, or add `--scope user` for a user-scope
 installation. Update discovers all hosts recorded by the prior setup;

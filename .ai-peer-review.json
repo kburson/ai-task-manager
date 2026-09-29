@@ -32,7 +32,7 @@
     "owner": "ai-peer-review",
     "version": 2,
     "package_version": "0.4.0",
-    "skill_sha256": "477309e3004b1d5e110d54df7459ea1c0ed615c9579b1f5a29db3fc22cd38e7a",
+    "skill_sha256": "1671de0824bd140a8b367d5aef4e9d296c001593765cd075f564ece4a3c39efe",
     "agents": ["claude", "codex"],
     "config_created": true,
     "scratch_exclude_added": false,

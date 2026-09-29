@@ -105,6 +105,15 @@
             "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/@kburson/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\\\",\\\"scripts/task-tracker/hooks/on-ask.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (scoped package + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p,\\\"pause\\\"];import(pathToFileURL(p).href);\""
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "peer-review-claude-hook"
+          }
+        ]
       }
     ],
     "PostToolUse": [
