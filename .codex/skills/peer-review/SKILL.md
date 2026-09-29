@@ -6,9 +6,33 @@ description: Run a provider-neutral, integrity-bound AI peer review for a tracke
 # AI Peer Review
 
 Run `peer-review setup` with an explicit user or project scope, then run
-`peer-review doctor` before starting or joining a review. Query
+`peer-review doctor` before starting or joining a review. After a package
+upgrade, run `peer-review setup --update --dry-run` then `peer-review setup
+--update` in the affected project, or add `--scope user` for a user-scope
+installation. Update discovers all hosts recorded by the prior setup;
+setup backs up the prior bytes. `setup --remove` is an idempotent teardown. If a
+review command reports `APR_SETUP_VERSION_MISMATCH`, run `peer-review explain
+APR_SETUP_VERSION_MISMATCH` and `peer-review help setup`, then refresh each
+previously installed host in the same scope.
+Query
 `peer-review help <command>` whenever syntax is uncertain; never guess flags or
 state transitions.
+
+## Package installation and migration
+
+Install the scoped registry package while continuing to invoke the local `peer-review` binary:
+
+```bash
+npm install --save-dev @kburson/ai-peer-review
+npx --yes @kburson/ai-peer-review@0.3.0 --help
+```
+
+Existing consumers migrate without changing binary, configuration, or runtime paths:
+
+```bash
+npm uninstall ai-peer-review
+npm install --save-dev @kburson/ai-peer-review
+```
 
 Use every generated artifact, workspace, invitation, and response location as
 exact absolute paths. Relay only the reviewer invitation in the default
@@ -53,19 +77,12 @@ event-derived `peer-review advance <workspace> <artifact>` action. The command
 derives the next kind and cursor, resumes the same reviewer, and resets only the
 phase turn budget. Omitting `--phases` keeps the legacy single-artifact contract.
 
-The Reviewer Git boundary excludes only
-`refs/codex/turn-diffs/checkpoints/**`, which is provider-private author-session
-bookkeeping. Every other ref remains sealed, as do the artifact, checked-out
-`HEAD`, branch, index, and worktree. This exclusion is package-defined and must
-not be widened through repository configuration, environment, command input, or
-lookalike ref names.
-
-If a review joined with 0.2.1 reports a ref-only
-`APR_REVIEWER_GIT_VIOLATION`, preserve the existing review workspace and
-response, upgrade, and restart under the fixed package with a distinct output
-path when required. The old response is draft evidence, never
-accepted authority; recreate or copy its text only into the new authorized
-reviewer response before submitting from the distinct reviewer session.
+The sealed reviewer boundary checks the artifact, checked-out `HEAD`, branch,
+index, and this worktree. Shared Git refs are diagnostic only: parallel worktrees
+may commit, fetch, and create refs without invalidating this review. Reviewers
+still must not run Git commands or push. If an older package reports a ref-only
+`APR_REVIEWER_GIT_VIOLATION`, preserve the review workspace and response, use a
+compatible updated package, and retry the same authorized submission.
 
 If startup reports `NO-COMMIT TEST MODE`, disclose that mode and its authority
 assurance in every handoff. It is test evidence, not normal acceptance evidence.
@@ -100,11 +117,32 @@ model turns while idle. An expired lease or changed process instance requires
 the recorded participant-loss intervention. If any automatic delivery remains
 pending, use the exact printed manual recovery command.
 
-When the host declares durable coordination active, run `peer-review coordinator run <workspace>`
-in the host-owned foreground process (or invoke
-`coordinator reconcile` from its out-of-context timer). The coordinator
-validates event authority and the current resident adapter before waking the
-exact participant. Under an active coordinator, do not poll or repeat wait
-calls. If coordinator startup reports a capability refusal, use only the
-bounded manual fallback `peer-review status <workspace> --next`; never claim
-unattended progress from a manual or resume-only host.
+Start from the invoking author session with an explicit reviewer provider and
+model; print the resolved effort even when it defaults to medium. Preserve the
+user's exact model and effort identifiers instead of choosing from a
+package-owned availability list. If the provider explicitly rejects either
+selection, report `APR_REVIEWER_SELECTION_REFUSED` and its provider code.
+For conversational requests, identify which named app is the reviewer; the
+invoking session is the author. Treat names such as a model family or a version
+nickname as hints, not exact IDs. Use the installed provider app's current
+model and effort choices when available, and ask for the exact reviewer model
+ID if the hint has more than one plausible match. An omitted effort means
+`medium`; never infer a model or effort from a nickname suffix. Show the
+resolved provider, exact model ID, and effort before starting, then pass those
+values unchanged into the sealed review intent. Do not add a package-owned
+alias or availability table.
+Treat generic process failures and missing output as uncertain launch outcomes
+that require reconciliation. Human
+sponsorship is not participant identity. Use `peer-review help start`,
+`peer-review help spr`, and `peer-review help xpr` for offline guidance. Native
+SPR needs a same-provider second-session capability. New XPR, including manual
+transport, requires the project-local broker; broker failure never triggers an
+automatic fallback to a different reviewer or runtime.
+
+For broker recovery, inspect `peer-review broker status --json`, preserve
+receipts, then use `peer-review broker reconcile <absolute-workspace> --json`
+only when the reported evidence calls for it. `broker suspend` fences one
+review; `broker stop` refuses runnable or unreconciled work. Under an active
+broker, yield after a handoff rather than polling or repeating wait calls.
+Existing manual reviews may use the bounded `peer-review status
+<absolute-workspace> --next` recovery path.

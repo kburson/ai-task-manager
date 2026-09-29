@@ -1,0 +1,23 @@
+{
+  "ai_peer_review": {
+    "owner": "ai-peer-review",
+    "version": 2,
+    "adapter_version": "2.0.0",
+    "reviewer_guard": {
+      "installed": false,
+      "enforcement": "advisory"
+    },
+    "resume_adapter": true,
+    "transport": "live-wait",
+    "mcp": {
+      "adapter_version": "2.0.0",
+      "capability": "live-wait",
+      "server_command": ["peer-review-mcp"],
+      "tool_timeout_ms": 28800000,
+      "heartbeat_interval_ms": 15000,
+      "lease_ttl_ms": 60000
+    },
+    "config_created": true,
+    "skill_created": true
+  }
+}
