@@ -12,9 +12,7 @@
     "mcp": {
       "adapter_version": "2.0.0",
       "capability": "live-wait",
-      "server_command": [
-        "peer-review-mcp"
-      ],
+      "server_command": ["peer-review-mcp"],
       "tool_timeout_ms": 28800000,
       "heartbeat_interval_ms": 15000,
       "lease_ttl_ms": 60000
