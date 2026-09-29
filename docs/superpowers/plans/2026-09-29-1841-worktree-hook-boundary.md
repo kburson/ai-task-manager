@@ -52,20 +52,17 @@ The units above form one migration because removing an old hook before its repla
 - [ ] Rerun the focused command and the existing scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs. Test a real nested git worktree, not only injected records.
 - [ ] Commit only this unit with subject [#1841] Anchor governed binding to the invoking session.
 
-Test assertion shape:
+The session-authority unit test contains this self-contained refusal case:
 
 ```js
-assert.equal(
-  resolveCurrentSessionWorktreeBinding({
-    invokingDir: childRoot,
-    sessionId: childSession,
-    deps: fixtureDeps,
-  }).issueNumber,
-  1841
+assert.throws(
+  () =>
+    resolveAuthoritativeSessionId({
+      env: {},
+      provider: { name: 'codex', sessionIdEnvKeys: ['CODEX_THREAD_ID'] },
+    }),
+  { code: 'provider-session-id-required' }
 );
-assert.throws(() => resolveAuthoritativeSessionId({ env: {}, provider: codexProvider }), {
-  code: 'provider-session-id-required',
-});
 ```
 
 ### Task 2: Resolve every explicit file target and pin provider payloads
