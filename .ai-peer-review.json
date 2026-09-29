@@ -3,17 +3,12 @@
   "hosts": {
     "claude": {
       "resume": {
-        "command": [
-          "claude",
-          "--resume"
-        ]
+        "command": ["claude", "--resume"]
       },
       "automatic": {
         "adapter_version": "2.0.0",
         "capability": "live-wait",
-        "server_command": [
-          "peer-review-mcp"
-        ],
+        "server_command": ["peer-review-mcp"],
         "tool_timeout_ms": 28800000,
         "heartbeat_interval_ms": 15000,
         "lease_ttl_ms": 60000
@@ -21,17 +16,12 @@
     },
     "codex": {
       "resume": {
-        "command": [
-          "codex",
-          "resume"
-        ]
+        "command": ["codex", "resume"]
       },
       "automatic": {
         "adapter_version": "2.0.0",
         "capability": "live-wait",
-        "server_command": [
-          "peer-review-mcp"
-        ],
+        "server_command": ["peer-review-mcp"],
         "tool_timeout_ms": 28800000,
         "heartbeat_interval_ms": 15000,
         "lease_ttl_ms": 60000
@@ -43,19 +33,10 @@
     "version": 2,
     "package_version": "0.3.0",
     "skill_sha256": "25b7c537e5ea2108018bf2e26b75a2ac0ffa5ade46a2035713928944ccc85ded",
-    "agents": [
-      "claude",
-      "codex"
-    ],
+    "agents": ["claude", "codex"],
     "config_created": true,
     "scratch_exclude_added": false,
-    "resume_commands_added": [
-      "claude",
-      "codex"
-    ],
-    "automatic_adapters_added": [
-      "claude",
-      "codex"
-    ]
+    "resume_commands_added": ["claude", "codex"],
+    "automatic_adapters_added": ["claude", "codex"]
   }
 }
