@@ -31,8 +31,8 @@
   "setup": {
     "owner": "ai-peer-review",
     "version": 2,
-    "package_version": "0.3.0",
-    "skill_sha256": "25b7c537e5ea2108018bf2e26b75a2ac0ffa5ade46a2035713928944ccc85ded",
+    "package_version": "0.4.0",
+    "skill_sha256": "477309e3004b1d5e110d54df7459ea1c0ed615c9579b1f5a29db3fc22cd38e7a",
     "agents": ["claude", "codex"],
     "config_created": true,
     "scratch_exclude_added": false,
