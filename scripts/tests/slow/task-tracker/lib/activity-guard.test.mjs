@@ -98,8 +98,7 @@ test('Edit src/foo.ts in develop → pass', () => {
       cwd: dir,
       payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -149,8 +148,7 @@ test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', () => {
         tool_input: { file_path: '.github/ISSUE_TEMPLATE/bug.md' },
       },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -163,8 +161,7 @@ test('Bash npm test in test → pass', () => {
       cwd: dir,
       payload: { tool_name: 'Bash', tool_input: { command: 'npm test' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -177,8 +174,7 @@ test('Bash READ command (cat README.md) in done → pass', () => {
       cwd: dir,
       payload: { tool_name: 'Bash', tool_input: { command: 'cat README.md' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -191,8 +187,7 @@ test('Write .scratch/gh/foo.txt in develop → pass (scratch carve-out)', () => 
       cwd: dir,
       payload: { tool_name: 'Write', tool_input: { file_path: '.scratch/gh/foo.txt' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -205,8 +200,7 @@ test('Write .scratch/plan/draft.md in refine → pass (scratch carve-out)', () =
       cwd: dir,
       payload: { tool_name: 'Write', tool_input: { file_path: '.scratch/plan/draft.md' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -222,8 +216,7 @@ test('Write absolute .scratch/ path → pass (scratch carve-out)', () => {
         tool_input: { file_path: path.join(dir, '.scratch/gh/issue-body.md') },
       },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -239,8 +232,7 @@ test('Write .tmp/aitm runtime path in refine → pass', () => {
         tool_input: { file_path: '.tmp/aitm/state/task-tracker-state.json' },
       },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -396,8 +388,7 @@ test('Read with no active task is universally allowed; no state file → pass', 
       cwd: dir,
       payload: { tool_name: 'Bash', tool_input: { command: 'cat package.json' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -411,8 +402,7 @@ test("malformed stdin JSON → pass (don't deadlock)", () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({ cwd: dir, stdinRaw: 'not-json{' });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -425,8 +415,7 @@ test('unknown tool_name → pass-through', () => {
       cwd: dir,
       payload: { tool_name: 'WeirdTool', tool_input: { command: 'whatever' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -439,8 +428,7 @@ test('Edit with missing file_path → pass (avoid false-positive)', () => {
       cwd: dir,
       payload: { tool_name: 'Edit', tool_input: {} },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -483,8 +471,7 @@ test('session kanbanState cache supplies state when global state field is absent
       cwd: dir,
       payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
@@ -552,8 +539,7 @@ test('most-recently-modified session cache wins when multiple match', () => {
       cwd: dir,
       payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
     });
-    assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.deepEqual([r.code, r.stdout], [0, '']);
   } finally {
     cleanup(dir);
   }
