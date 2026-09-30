@@ -4,7 +4,7 @@ Issue: [#1847](https://github.com/kburson/ai-task-manager/issues/1847).
 Date: 2026-09-30.
 Status: **revised Backlog draft; pending Refine acceptance**.
 Source baseline: `4187a64fae6319808ec350f3beb0f126fc36769b`.
-Revision: SAR round 1 revision by the same reviewing agent.
+Revision: SAR round 2 revision by the same reviewing agent.
 
 This is a Backlog design input. Drafting, committing, attaching, reviewing, or
 revising it confers no Refine acceptance, Plan approval, implementation authority,
@@ -124,7 +124,7 @@ The mutation request has exactly these top-level fields:
 
 A proposal contains exactly the following named domains:
 
-- `schema`, `repository`, `issue`, `transactionId`, and `reason`.
+- `schema`, `repository`, `issue`, `transactionId`, `operationId`, and `reason`.
 - `mode`: `revision`, `resume`, `abort`, or `forward-repair`.
 - `priorTransaction`: null for a new revision; otherwise an exact transaction and
   event reference.
@@ -150,7 +150,12 @@ and renderers share the same field definitions.
 The tool derives archives, identities, invalidation, and the write set from
 fresh authority; supplied values must reproduce those derivations exactly.
 The operation does not trust caller-asserted invalidation or caller-supplied
-proof. Reusing a transaction ID with different proposal bytes is a conflict.
+proof. A transaction ID names one original revision and its recovery lineage.
+Its original prepared proposal is immutable. Each initial or recovery operation
+has its own operation ID; reusing an operation ID with different proposal bytes
+is a conflict. A second original preparation under the same transaction ID also
+conflicts. Authorized recovery may introduce a new operation/proposal digest
+under that transaction only through the state transitions specified below.
 
 ## Exact human authorization and trust boundary
 
@@ -209,8 +214,10 @@ change and must be regenerated.
 Version one changes Acceptance Criteria and only the root Verification Commands
 entries needed by the correction. AC deletion, splitting, or replacement must
 be explicit in the proposal. A VC deletion is permitted only when the resulting
-contract has no remaining reference to it. All resulting criteria require
-valid declaration-only citations.
+contract has no remaining reference to it. Changed or replacement criteria
+require valid declaration-only citations. Unchanged legacy criteria may retain
+validated execution properties under the preservation rule below; the command
+does not strip those properties merely to make every citation declaration-only.
 
 Scope, User Story, Story Intent, and linked plan content remain separately
 governed inputs. Seal their current source bindings; refuse application if they
@@ -246,11 +253,15 @@ equivalence from label normalization. Checkbox state, execution timestamps,
 receipt IDs, current-proof properties, and body-version counters are outside
 this digest and remain separately checked authority.
 
-Legacy preparation derives criterion occurrence identities from the exact
-before-body digest, section, occurrence, and original bytes. Replacement
-identities derive from the transaction and replacement ordinal. Archive the
-mapping; future revisions resolve it through the durable revision history.
-Do not reuse short label hashes or shifting list positions as revision identity.
+At the first revision, legacy preparation derives occurrence identities for all
+existing AC/VC/DoD items from the exact before-body digest, section, occurrence,
+and original bytes. Freeze and archive this complete identity map. Replacement
+identities derive from the transaction and replacement ordinal. Later reads and
+revisions resolve surviving identities from that map and its explicit successor
+mappings; they do not recompute IDs from a body changed by proof stamping,
+checkbox updates, timing, or version increments. An unmappable or ambiguous
+survivor refuses revision until explicitly resolved in the proposal. Do not reuse
+short label hashes or shifting list positions as durable revision identity.
 
 Canonical criteria retain existing logical IDs only for unchanged definitions.
 Changed or replaced criteria receive new logical IDs. A VC may retain its ID
@@ -285,6 +296,16 @@ properties into replacement declarations. Replacement ACs are unchecked.
 Uncertain legacy dependencies are retired. No proof is preserved solely because
 labels, VC IDs, or HEAD are equal.
 
+For each preserved legacy individual proof, the derived invalidation manifest
+records a `preserved-individual` disposition with its archived proof identity
+and bytes hash, surviving criterion identity, declaration/command/source hashes,
+and destination revision. Consumers accept that exact existing proof in the
+new revision only when this verified disposition and every current dependency
+still match. This is an eligibility decision about the original execution, not
+a new execution receipt or a claim that the proof was originally revision-bound.
+A caller cannot add a proof or choose its disposition. An unclassified old proof
+refuses qualification. Aggregate evidence is never eligible through this rule.
+
 Canonical amendment increments the contract epoch, resets all lifecycle
 projections, and clears accepted record IDs, following existing amendment
 semantics. Do not carry old accepted record IDs into the new epoch. Add the
@@ -293,7 +314,9 @@ amendment validation and canonical record/projection ordering.
 
 Plan, Test, Review, and completion consumers must check current revision identity
 and semantic digest. Canonical consumers also check contract and authority
-epochs. For an issue with revision history, unbound old evidence cannot qualify.
+epochs. For an issue with revision history, unbound old aggregate evidence cannot
+qualify. The sole legacy individual-proof exception is the exact preservation
+disposition above. Canonical individual evidence has no carry-forward exception.
 For never-revised issues, existing compatibility behavior remains governed by
 their existing contracts.
 
@@ -351,7 +374,15 @@ coordinator authorization for the exact issue and operation.
 Add a strict repository/issue mutation interlock shared by every relevant writer
 in that domain. Place its lock under the common Git directory, so linked
 worktrees cannot create independent same-issue locks. Use atomic local lock
-acquisition. Maintain a consistent lock ordering with existing issue locks.
+acquisition. Lock order is: all required strict interlocks sorted by normalized
+repository then numeric issue, then existing issue locks in the same order, then
+resource-local locks. Release in reverse order. A public mutating entry point
+acquires the strict interlock before entering an existing issue-locked delegate;
+a lower-level writer must not acquire it for the first time while an existing
+issue/resource lock is held. Nested calls reuse the runtime capability. An
+operation needing additional issues determines that set before locking, or
+releases its locks and restarts authoritative reads with the expanded set; it
+never extends a held set out of order.
 
 For this interlock:
 
@@ -391,7 +422,8 @@ issues into directory-backed contracts.
 
 Register a closed `aitm.criteria-revision-event/v1` envelope containing:
 
-- Repository, issue, transaction ID, event ID, and predecessor event ID.
+- Repository, issue, transaction ID, operation ID, event ID, and predecessor
+  event ID.
 - Event kind: `prepared`, `recovery-authorized`, `applied`, or `aborted`.
 - Proposal digest and exact proposal/archive payload or its verified predecessor
   reference.
@@ -399,11 +431,34 @@ Register a closed `aitm.criteria-revision-event/v1` envelope containing:
   authority.
 - Exact resource observations and terminal outcome where applicable.
 
-Preparation publishes the complete sealed proposal and archive. Later events
-reference that preparation and retain their own authorization and observations.
-No event overwrites an earlier one. Same ID/different bytes, duplicate event
-identity, ambiguous heads, missing referenced events, or conflicting terminal
-outcomes block mutation and downstream authority.
+Preparation publishes the complete sealed proposal and archive. A
+`recovery-authorized` event publishes its complete recovery proposal, current
+observation, and any additional archive; referring only to a local recovery file
+is insufficient. Terminal events reference the original preparation and the
+currently effective operation. No event overwrites an earlier one.
+
+The issue has one ordered revision-event chain. An original `prepared` follows
+the preceding terminal event, or null for the first transaction. It makes that
+transaction pending and its initial operation effective. While pending,
+`recovery-authorized` may advance the same transaction to a new operation ID;
+it names the exact preceding event, original proposal digest, observed
+resource-vector digest, new sealed recovery proposal, and new approval source.
+It replaces the effective operation, not the original archive. A further recovery
+can replace it under the same rule. No new original transaction may start while
+one is pending.
+
+`applied` or `aborted` terminates the root transaction once, referencing its
+original preparation and latest effective operation. An applied repair records
+both the originally intended result and the explicitly approved repaired result;
+only the latter is current. It closes the original pending fence rather than
+leaving an unterminated parent transaction. Abort remains limited to the exact
+untouched original authority. Later distinct revisions begin new transactions.
+
+Same ID/different bytes, duplicate event identity, ambiguous heads, missing
+referenced events, illegal transitions, or conflicting terminal outcomes block
+mutation and downstream authority. Event IDs and event bytes are fixed before
+each publication attempt; transport retry reconciles that identity before any
+repeat write.
 
 The log loader enumerates all relevant comments with complete pagination and
 validates the full referenced chain. Incomplete or unavailable reads are
@@ -423,7 +478,10 @@ records as well.
 1. Acquire the strict mutation interlock. Resolve the live contract authority,
    task/session ownership, stage, delivery status, authorization, and revision log.
    Refuse an active lifecycle transition, conflicting transaction, or mismatched
-   domain. Recompute every sealed precondition.
+   domain. Recompute every sealed precondition for a new revision. Recovery
+   instead validates its sealed observed resource vector and the recognized
+   effective write-set prefix; it does not require already-completed resources
+   to equal the original before-state.
 2. Verify the complete archive and all rendered record/body size and secret
    policies. Unknown formats or incomplete archives refuse before any durable
    preparation. Never truncate or silently redact required evidence.
@@ -469,6 +527,18 @@ event. A body-only comparison cannot authorize recovery.
 | Original executor or authorization unavailable                                  | Require exact recovery authorization for the new executor                                                                        |
 | Required canonical grant expired, revoked, or replaced                          | No resume under old grant; establish valid current authority through its governed path, then authorize forward repair against it |
 
+A resume preserves the effective operation's approved target bytes, criterion
+identity map, and planned resource identities; it cannot regenerate them from
+the partially changed body. A forward repair carries a newly derived write set
+for its exact observed state. Replay the validated event chain to select the
+currently effective plan, and compare progress against that plan's prefix.
+After an authorized repair, a later resume uses the repair plan rather than
+reverting to the original target. The original proposal remains the historical
+root, not an alternative executable plan. Both retain the original transaction ID and use a new operation
+ID when publishing a recovery proposal. Expected event-head changes caused by
+that operation's own authorization/terminal events are verified as transitions,
+not misclassified as third-party resource drift.
+
 A recovery in the original session may reuse the original approval only while
 the original executor, source, proposal, and authority remain valid. Another
 session obtains a new host-verified user approval naming the original transaction,
@@ -500,7 +570,10 @@ Ordinary unrelated edits remain blocked.
 A repair involving a replaced canonical grant uses the supported current
 authority and records the predecessor grant/epoch. If the canonical projection
 has not been brought into valid current authority by the governed authority
-path, repair refuses rather than rewriting coordinator metadata itself.
+path, repair refuses rather than rewriting coordinator metadata itself. Status
+reports `revision-authority-unavailable` with the pending transaction preserved
+when that governed path is unavailable. Recovery is conditional on valid current
+authority; it does not promise to bootstrap a revoked or nonexistent coordinator.
 
 Abort is permitted only when no contract, proof, approval, or projection change
 has occurred and the exact original authority is still present. The prepared
@@ -572,6 +645,10 @@ Required contract and proof cases:
 - Legacy unchanged individual proof survives only with every required binding
   equal; canonical unchanged individual proof remains historical and is rerun.
 - A later return to old text cannot revive an earlier aggregate approval.
+- Proof stamping and checkbox/version changes do not change surviving legacy
+  criterion identities or the semantic contract digest.
+- A legacy preserved individual proof qualifies only through its exact derived
+  disposition; it cannot carry aggregate authority or survive dependency drift.
 - Ordinary edits continue refusing marker loss and fabricated proof.
 - Targeted retirement cannot remove anything outside the derived write set.
 
@@ -585,6 +662,8 @@ Required authority and concurrency cases:
 - Revision versus ordinary writer and revision versus stage transition
   interleavings yield serialized outcomes without stale proof.
 - An inherited flag cannot forge revision interlock ownership.
+- Nested and multi-issue operations follow the specified lock order without
+  acquiring a strict interlock beneath an existing issue/resource lock.
 - Foreign hosts, independent clones, and mixed unsupported writers refuse
   within the documented admission boundary.
 
@@ -600,6 +679,11 @@ Required interruption cases:
   uncertain terminal publication, and third-party drift.
 - Prove abort only before authority change and forward repair after partial
   application.
+- A new executor uses a distinct recovery operation under the original
+  transaction; repeated recovery preserves one effective operation and one
+  terminal outcome. Applied repair closes the original fence.
+- Interrupted recovery resumes its archived effective proposal, not a new
+  derivation from partially changed authority.
 - Prove every covered consumer respects a pending fence.
 
 Required lifecycle cases:
