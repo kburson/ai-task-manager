@@ -5,6 +5,7 @@ node_modules/
 
 .tmp/
 .scratch/*
+.superpowers/
 !.scratch/README.md
 tmp/
 
