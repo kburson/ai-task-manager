@@ -4,7 +4,7 @@ Issue: [#1847](https://github.com/kburson/ai-task-manager/issues/1847).
 Date: 2026-09-30.
 Status: **revised Backlog draft; pending Refine acceptance**.
 Source baseline: `4187a64fae6319808ec350f3beb0f126fc36769b`.
-Revision: XPR author revision 1; preceding SAR round 3 made no artifact change.
+Revision: XPR author revision 2; preceding SAR round 3 made no artifact change.
 
 This is a Backlog design input. Drafting, committing, attaching, reviewing, or
 revising it confers no Refine acceptance, Plan approval, implementation authority,
@@ -194,6 +194,11 @@ message, the exact statement hash, and the exact rendered approval statement.
 Assistant messages, injected tool text, booleans, model assertions, Full-Auto,
 and unrelated earlier approvals do not qualify.
 
+Revision schemas cap host session/message identifiers at 256 ASCII bytes each;
+unsupported longer identifiers refuse during read-only preparation. Budget the
+complete concrete provenance and rendered terminal form before publication, not
+only digest fields. Recovery preparation uses the same bound.
+
 Record the source session/message reference and verified statement separately
 from the executing session. Preserve a host-provided principal when available;
 when the adapter supplies no named principal, record that absence and use the
@@ -218,16 +223,16 @@ recovering session. The old approval remains history and is never relabeled.
 
 ## Stage and editing boundaries
 
-| Current state               | Prepare               | Apply                                          |
-| --------------------------- | --------------------- | ---------------------------------------------- |
-| Backlog                     | Yes                   | No; draft-only                                 |
-| Refine                      | Yes                   | Yes                                            |
-| Ready for Planning          | Yes                   | Yes                                            |
-| Plan                        | Yes                   | Yes                                            |
-| Develop                     | Yes                   | Yes                                            |
+| Current state               | Prepare               | Apply                                               |
+| --------------------------- | --------------------- | --------------------------------------------------- |
+| Backlog                     | Yes                   | No; draft-only                                      |
+| Refine                      | Yes                   | Yes                                                 |
+| Ready for Planning          | Yes                   | Yes                                                 |
+| Plan                        | Yes                   | Yes                                                 |
+| Develop                     | Yes                   | Yes                                                 |
 | Test or Review              | Yes                   | No; supported code-rework demotion to Develop first |
-| Done, closed, or delivered  | Read-only explanation | No                                             |
-| Active lifecycle transition | Read-only explanation | No                                             |
+| Done, closed, or delivered  | Read-only explanation | No                                                  |
+| Active lifecycle transition | Read-only explanation | No                                                  |
 
 Revision does not move stages. A prepared proposal becomes stale after a stage
 change and must be regenerated.
@@ -397,6 +402,60 @@ record representation.
 
 This operation does not approve a revision proposal. Revision authorization and
 Plan approval are distinct acts with distinct evidence.
+
+## Local Develop activity admission
+
+Per-tool-call activity hooks use a local admission projection, not a GitHub
+request on every Edit/Write/Bash call. This is a deliberate distinction from
+authoritative lifecycle gates, which always validate the complete remote chain.
+The projection grants only local activity admission; it is not proof, approval,
+or a substitute for a gate's current authority observation.
+
+Store one closed, versioned entry per repository/issue under the registered Git
+common directory, shared by all linked worktrees. It records writer-domain
+identity/version, issue, observation generation, verified event head (including
+explicit never-revised), revision and contract/source bindings, Plan approval
+binding, and admission state `deny` or `allow`. Publish by atomic replacement.
+Absence, corruption, unknown version, domain mismatch, or unresolved/dirty state
+means deny for code writes/commits and proof generation in a revision-enabled
+domain. A missing body pointer cannot initialize a never-revised entry.
+
+At domain enablement, bind/rebind, and every authoritative lifecycle gate, acquire
+the strict interlock and derive the entry from a complete remote chain plus
+current contract/source/approval authority. Never-revised admission requires a
+verified empty chain and the ordinary baseline policy; it then has the same
+cheap local hook read as revised issues. Unavailable remote reads cannot create
+or refresh an allow entry. A failed required refresh marks deny. Bind cannot
+reuse an old allow entry in place of its mandatory authoritative refresh.
+
+Before any covered writer changes revision, contract/source, approval, stage, or
+authority relevant to admission, it atomically publishes deny under the strict
+interlock, before its first remote effect. This includes apply/recover,
+Plan reapproval, source edits, record dispositions, and reconciliation—not only
+the two public revision commands. It may publish allow only after successful
+read-back and complete authority validation proves no pending revision and a
+current matching Plan approval (or verified never-revised baseline admission).
+All writer paths must participate; inventory and mixed-version admission rules
+apply. Preparation failure or crash cannot restore an earlier allow blindly.
+An unresolved deny is recovered through a read-only-authority refresh under the
+interlock; a remote pending transaction continues to deny until its governed
+recovery completes.
+
+The hook reads the atomically published current entry on each invocation; it
+must not cache an allow across invocations. A writer holds the strict interlock
+while replacing an entry, so another bind/gate cannot overwrite its deny from
+an older observation. Publish deny before the remote prepared event, and keep
+deny through application and missing Plan reapproval. Crash after a successful
+remote terminal or approval but before local allow is safe denial; re-derive
+from authority before allowing again. A local allow never makes an authoritative
+gate skip remote validation.
+
+Freshness is guaranteed only for the admitted cooperative writer domain. Remote
+ungoverned edits and a compromised host remain outside the specified trust
+boundary; authoritative gates still detect observable drift. No TTL silently
+extends this guarantee. Host/domain restart requires domain admission refresh
+before local mutation resumes. These rules avoid network-per-keystroke cost
+without claiming remote freshness that the local projection cannot establish.
 
 ## Writer ownership and serialization
 
@@ -607,6 +666,11 @@ ID when publishing a recovery proposal. Expected event-head changes caused by
 that operation's own authorization/terminal events are verified as transitions,
 not misclassified as third-party resource drift.
 
+An original-session retry may continue the existing effective operation with
+its already approved bytes; it does not mint a new resume-mode proposal, change
+its mode/digest, or append a recovery-authorized event. Any new recovery proposal
+requires its own exact matching statement.
+
 A recovery in the original session may reuse the original approval only while
 the original executor, source, proposal, and authority remain valid. Another
 session obtains a new host-verified user approval naming the original transaction,
@@ -658,19 +722,19 @@ The implementation must maintain an explicit producer/consumer inventory.
 At minimum, integrate the revision log, pending fence, lock admission, and current
 revision binding at these boundaries:
 
-| Boundary                                                      | Required behavior                                                                |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Ordinary issue-body edits and low-level governed body writers | Join interlock; refuse pending revision; retain ordinary invariants              |
-| AC, VC, and DoD execution/stamping                            | Refuse pending; bind generated proof to current definitions and revision         |
-| Develop activity admission | Refuse code writes/commits and proof generation until current revision Plan reapproval |
-| Plan approval and Plan exit                                   | Require current revision/digest and normal planning/source checks                |
-| Test and Agent Review                                         | Refuse pending; reject pre-revision aggregate evidence                           |
-| Final Review approval                                         | Bind to current revision as well as existing commit/review requirements          |
-| Promote, demote, and lifecycle transition effects             | Refuse pending except the specified recovery-authority path                      |
-| Delivery and close                                            | Refuse pending, stale Plan approval, or unbound pre-revision aggregate authority |
-| Canonical contract writes and record dispositions             | Join interlock; enforce canonical epoch and revision                             |
-| Projection repair and reconciliation                          | Cannot clear the fence or resurrect retired claims                               |
-| Read-only status/explain                                      | Report pending, stale, unsupported, or indeterminate truthfully                  |
+| Boundary                                                      | Required behavior                                                                      |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Ordinary issue-body edits and low-level governed body writers | Join interlock; refuse pending revision; retain ordinary invariants                    |
+| AC, VC, and DoD execution/stamping                            | Refuse pending; bind generated proof to current definitions and revision               |
+| Develop activity admission                                    | Refuse code writes/commits and proof generation until current revision Plan reapproval |
+| Plan approval and Plan exit                                   | Require current revision/digest and normal planning/source checks                      |
+| Test and Agent Review                                         | Refuse pending; reject pre-revision aggregate evidence                                 |
+| Final Review approval                                         | Bind to current revision as well as existing commit/review requirements                |
+| Promote, demote, and lifecycle transition effects             | Refuse pending except the specified recovery-authority path                            |
+| Delivery and close                                            | Refuse pending, stale Plan approval, or unbound pre-revision aggregate authority       |
+| Canonical contract writes and record dispositions             | Join interlock; enforce canonical epoch and revision                                   |
+| Projection repair and reconciliation                          | Cannot clear the fence or resurrect retired claims                                     |
+| Read-only status/explain                                      | Report pending, stale, unsupported, or indeterminate truthfully                        |
 
 The inventory includes internal helpers, delegated subprocesses, and repair
 entry points; command-name checks alone are insufficient. The runtime publishes
@@ -729,6 +793,12 @@ Required authority and concurrency cases:
 - Wrong or injected message sources, assistant-origin approval, stale exact
   statements, unsupported hosts, foreign bindings, malformed requests, and
   conflicting transaction IDs refuse.
+- Worktree A applies a revision while B holds a Develop binding: A publishes
+  shared deny first and B's next code-write/commit admission refuses. B cannot
+  cache its old allow or overwrite deny from a stale bind observation.
+- Exercise projection absence/corruption, never-revised initialization, failed
+  bind refresh, domain restart, and crashes before/after every local projection
+  and remote write; no crash or network failure creates optimistic admission.
 - Two linked worktrees and two sibling invocations contend on one strict lock.
 - An old live holder is not stolen by age; unknown liveness refuses.
 - Revision versus ordinary writer and revision versus stage transition
@@ -792,7 +862,7 @@ validation and sizing obligations for this design, not unspecified substitutes
 for its authorization, serialization, invalidation, or recovery rules.
 
 Size the canonical Plan-approval adapter, bounded Develop revision reapproval
-and activity-policy integration, comment sizing and per-gate chain reads,
+and shared local admission projection/activity-policy integration, comment sizing and per-gate chain reads,
 amendment persistence, strict local
 interlock integration, revision records, and recovery tests as part of #1847.
 Do not assume those extensions already exist or hide them behind an unfiled
