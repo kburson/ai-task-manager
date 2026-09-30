@@ -582,6 +582,20 @@ orchestration. Use `aitm split-plan 1847 --dry-run --plan docs/superpowers/plans
 after this committed plan is reviewed, then the sanctioned confirmed operation.
 Create children only through the registered split-plan operation.
 
+Immediately after the confirmed split, bind and assign each generated child in
+its own recorded worktree, then run the registered `aitm refine <child> --size
+<task-size> --estimate <task-hours> --priority p1 --rank <child-rank> --labels bug
+--reason <scope-derived-reason>` for normal Refine entry and completion. This
+explicitly supplies the kind label; split-plan does not inherit it. Before
+accepting child readiness, read back each live child label and title: require
+`bug` and equality with `ensureKindPrefix(task.title, ['bug'])`, containing
+exactly one `🐞 [BUG] ` prefix. The prefix in these task headings is intentional;
+label-driven reconciliation idempotently preserves it. If title, label or pinned
+section disagree, stop and repair the governed linkage before further planning.
+For the existing #1851–#1856 children, retain their completed Refine evidence and
+verify the already-applied labels rather than recreate or re-refine them merely
+to replay this instruction.
+
 Before parent completion, integrate all child changes and use the parent root
 Verification Commands plus the new revision integration commands at the exact
 clean accepted SHA. Evidence must show legacy and canonical end-to-end success,
